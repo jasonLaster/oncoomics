@@ -16,6 +16,8 @@ This map records the online research inputs used to design the project. It favor
 | [Landscape of somatic mutations in 560 breast cancer WGS](https://www.nature.com/articles/nature17676) | HRD/signature-positive WGS reference backbone used by HRDetect/CHORD-style work. | Publication plus ICGC access paths. | Freeze a small public positive/negative panel and verify sample IDs against publication/ICGC-derived labels. |
 | [Hartwig Medical Database](https://www.hartwigmedicalfoundation.nl/en/data/database/) | Metastatic tumor-normal WGS/RNA validation and PURPLE/GRIDSS/LINX-style ecosystem context. | Access request. | Keep as phase-3 access-request source; verifier records access-request status, not downloadable data. |
 | [DepMap / CCLE](https://depmap.org/portal/ccle/) | TNBC cell-line technical controls for expression and DNA/RNA sanity checks, not patient-tumor validation. | Open. | Verify cell-line lineage filter, expression matrix dimensions, and known TNBC cell-line marker sanity. |
+| [SEQC2/HCC1395 SRA study SRP162370](https://www.ncbi.nlm.nih.gov/sra/?term=SRP162370) | Raw tumor-normal breast/TNBC benchmark data for WES/WGS FASTQ readiness before Diana files arrive. | Open SRA runs; very large for full WGS. | Refresh `manifests/raw_representative_panel.csv`, verify public tumor/normal pair metadata, then run a downsampled/regional smoke before full WGS. |
+| [SEQC2 reference materials FTP](https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/) | Truth-set/benchmark artifacts and supporting files for HCC1395 somatic-calling comparisons. | Open FTP. | Use only after raw-data smoke works; record exact truth-set version and genome build. |
 
 ## HRD And Variant Tools
 
@@ -39,4 +41,3 @@ This map records the online research inputs used to design the project. It favor
 | [TNBCtype-4 refinement PubMed](https://pubmed.ncbi.nlm.nih.gov/27310713/) | Refined TNBCtype-4 classification context. | Verify whether labels are TNBCtype-6, TNBCtype-4, or another schema before comparing cohorts. |
 | [genefu Bioconductor](https://bioconductor.org/packages/release/bioc/html/genefu.html) | PAM50/breast subtype cross-check. | Requires R/container setup; verify PAM50 fixture before interpretation. |
 | [GSVA Bioconductor](https://bioconductor.org/packages/release/bioc/html/GSVA.html) | RNA module activity scoring for immune, proliferation, LAR/androgen, EMT/stroma, interferon, and antigen-presentation modules. | Requires R/container setup or Python substitute; verify gene-set identifier mapping. |
-

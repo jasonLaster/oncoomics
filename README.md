@@ -17,9 +17,12 @@ The active scope is intentionally conservative:
 ## Current Artifacts
 
 - `docs/PROJECT_PLAN.md` - detailed milestones, deliverables, and verifiers.
+- `docs/PHASE_STATUS.md` - current phase status and remaining gates.
+- `docs/RAW_DATA_READINESS.md` - representative raw-data plan for pre-Diana FASTQ/BAM readiness.
 - `docs/SOURCE_MAP.md` - researched datasets, tools, and access paths.
 - `docs/WIKI_SOURCE_SUMMARY.md` - local wiki findings that drive the project boundary.
 - `manifests/validation_atlases.json` - machine-readable source manifest for phase planning.
+- `manifests/raw_representative_panel.csv` - public SEQC2/HCC1395 raw-data candidate ladder.
 - `scripts/verify-plan.ts` - Bun verifier for the project plan, source manifest, and local wiki assumptions.
 
 ## Verify
@@ -30,9 +33,21 @@ Run the local plan checks:
 bun run verify:plan
 ```
 
+Refresh representative raw-data metadata:
+
+```sh
+bun run fetch:raw-candidates
+```
+
+Build and run the Phase 2A raw FASTQ smoke test:
+
+```sh
+bun run build:raw-samplesheets
+bun run smoke:raw
+```
+
 Optionally check the online source links too:
 
 ```sh
 bun run verify:plan:online
 ```
-

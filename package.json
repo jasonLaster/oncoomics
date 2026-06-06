@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "fetch:phase1": "bun run scripts/fetch-phase1.ts",
+    "fetch:raw-candidates": "bun run scripts/fetch-raw-candidate-metadata.ts",
+    "audit:raw-tools": "bun run scripts/audit-raw-tools.ts",
+    "build:raw-samplesheets": "bun run scripts/build-raw-samplesheets.ts",
+    "smoke:raw": "bun run scripts/run-raw-smoke.ts",
     "build:panel": "bun run scripts/build-reference-panel.ts",
     "analyze:hrd": "bun run scripts/analyze-hrd.ts",
     "analyze:rna": "bun run scripts/build-rna-context.ts",
@@ -12,6 +16,6 @@
     "verify:outputs": "bun run scripts/verify-outputs.ts",
     "verify:plan": "bun run scripts/verify-plan.ts",
     "verify:plan:online": "CHECK_URLS=1 bun run scripts/verify-plan.ts",
-    "run:all": "bun run verify:plan && bun run fetch:phase1 && bun run build:panel && bun run analyze:hrd && bun run analyze:rna && bun run build:packet && bun run verify:outputs"
+    "run:all": "bun run verify:plan && bun run fetch:phase1 && bun run fetch:raw-candidates && bun run audit:raw-tools && bun run build:raw-samplesheets && bun run smoke:raw && bun run build:panel && bun run analyze:hrd && bun run analyze:rna && bun run build:packet && bun run verify:outputs"
   }
 }

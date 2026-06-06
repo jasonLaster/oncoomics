@@ -1,0 +1,159 @@
+{
+  "generatedAt": "2026-06-06T21:43:21.943Z",
+  "phase2aReady": true,
+  "alignmentReady": false,
+  "workflowReady": false,
+  "groups": [
+    {
+      "group": "baseline_streaming",
+      "requiredFor": "Phase 2A direct FASTQ metadata and tiny read-subset smoke",
+      "tools": [
+        {
+          "tool": "bun",
+          "path": "/Users/jasonlaster/.bun/bin/bun",
+          "available": true
+        },
+        {
+          "tool": "curl",
+          "path": "/usr/bin/curl",
+          "available": true
+        },
+        {
+          "tool": "gunzip",
+          "path": "/usr/bin/gunzip",
+          "available": true
+        },
+        {
+          "tool": "gzip",
+          "path": "/usr/bin/gzip",
+          "available": true
+        },
+        {
+          "tool": "python3",
+          "path": "/usr/bin/python3",
+          "available": true
+        }
+      ],
+      "allAvailable": true
+    },
+    {
+      "group": "sra_conversion",
+      "requiredFor": "NCBI SRA prefetch and local full-run conversion",
+      "tools": [
+        {
+          "tool": "prefetch",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "fasterq-dump",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "fastq-dump",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "vdb-config",
+          "path": "",
+          "available": false
+        }
+      ],
+      "allAvailable": false
+    },
+    {
+      "group": "qc",
+      "requiredFor": "Standard FASTQ QC and aggregate reports",
+      "tools": [
+        {
+          "tool": "fastqc",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "multiqc",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "seqtk",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "seqkit",
+          "path": "",
+          "available": false
+        }
+      ],
+      "allAvailable": false
+    },
+    {
+      "group": "alignment_and_bam",
+      "requiredFor": "Reference alignment and BAM/CRAM generation",
+      "tools": [
+        {
+          "tool": "bwa",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "bwa-mem2",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "minimap2",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "samtools",
+          "path": "",
+          "available": false
+        }
+      ],
+      "allAvailable": false
+    },
+    {
+      "group": "workflow_runtime",
+      "requiredFor": "nf-core/sarek or containerized raw-data workflow execution",
+      "tools": [
+        {
+          "tool": "nextflow",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "docker",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "singularity",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "apptainer",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "conda",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "micromamba",
+          "path": "",
+          "available": false
+        }
+      ],
+      "allAvailable": false
+    }
+  ],
+  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests. Alignment/caller phases require additional tools or containers."
+}

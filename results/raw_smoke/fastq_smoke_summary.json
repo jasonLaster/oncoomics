@@ -1,0 +1,82 @@
+{
+  "generatedAt": "2026-06-06T21:43:31.899Z",
+  "status": "passed",
+  "pairId": "seqc2_hcc1395_wes_minimal_smoke",
+  "readLimit": 1000,
+  "source": "ENA direct paired FASTQ links for SEQC2/HCC1395 minimal WES pair",
+  "stats": [
+    {
+      "run": "SRR7890851",
+      "read": "R1",
+      "sourceUrl": "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR789/001/SRR7890851/SRR7890851_1.fastq.gz",
+      "outputPath": "data/raw/smoke/seqc2_hcc1395_wes_minimal_smoke/SRR7890851_R1.fastq",
+      "records": 1000,
+      "minLength": 151,
+      "maxLength": 151,
+      "meanLength": 151,
+      "gcFraction": 0.4978,
+      "nFraction": 0.002205,
+      "qualityAsciiMin": 35,
+      "qualityAsciiMax": 74,
+      "firstReadId": "SRR7890851.1",
+      "lastReadId": "SRR7890851.1000",
+      "fileSizeBytes": 327786
+    },
+    {
+      "run": "SRR7890851",
+      "read": "R2",
+      "sourceUrl": "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR789/001/SRR7890851/SRR7890851_2.fastq.gz",
+      "outputPath": "data/raw/smoke/seqc2_hcc1395_wes_minimal_smoke/SRR7890851_R2.fastq",
+      "records": 1000,
+      "minLength": 151,
+      "maxLength": 151,
+      "meanLength": 151,
+      "gcFraction": 0.4984,
+      "nFraction": 0.001377,
+      "qualityAsciiMin": 35,
+      "qualityAsciiMax": 74,
+      "firstReadId": "SRR7890851.1",
+      "lastReadId": "SRR7890851.1000",
+      "fileSizeBytes": 327786
+    },
+    {
+      "run": "SRR7890850",
+      "read": "R1",
+      "sourceUrl": "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR789/000/SRR7890850/SRR7890850_1.fastq.gz",
+      "outputPath": "data/raw/smoke/seqc2_hcc1395_wes_minimal_smoke/SRR7890850_R1.fastq",
+      "records": 1000,
+      "minLength": 151,
+      "maxLength": 151,
+      "meanLength": 151,
+      "gcFraction": 0.5045,
+      "nFraction": 0.001325,
+      "qualityAsciiMin": 35,
+      "qualityAsciiMax": 74,
+      "firstReadId": "SRR7890850.1",
+      "lastReadId": "SRR7890850.1000",
+      "fileSizeBytes": 327786
+    },
+    {
+      "run": "SRR7890850",
+      "read": "R2",
+      "sourceUrl": "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR789/000/SRR7890850/SRR7890850_2.fastq.gz",
+      "outputPath": "data/raw/smoke/seqc2_hcc1395_wes_minimal_smoke/SRR7890850_R2.fastq",
+      "records": 1000,
+      "minLength": 151,
+      "maxLength": 151,
+      "meanLength": 151,
+      "gcFraction": 0.5037,
+      "nFraction": 0.000742,
+      "qualityAsciiMin": 35,
+      "qualityAsciiMax": 74,
+      "firstReadId": "SRR7890850.1",
+      "lastReadId": "SRR7890850.1000",
+      "fileSizeBytes": 327786
+    }
+  ],
+  "limitations": [
+    "This is a tiny first-read subset, not variant-calling depth.",
+    "No alignment or somatic caller was run locally because aligner/BAM tools are not installed in the current environment.",
+    "Use the remote samplesheet for full WES/WGS on a genomics-ready machine or container runtime."
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-06-06T21:43:21.963Z",
+  "remoteRows": 8,
+  "smokeRows": 2,
+  "smokePairId": "seqc2_hcc1395_wes_minimal_smoke",
+  "nfCoreStatusConvention": "status 0 = normal, status 1 = tumor",
+  "boundaries": [
+    "Remote samplesheet points to full public ENA FASTQ files.",
+    "Smoke samplesheet points to local ignored first-read subsets created by scripts/run-raw-smoke.ts.",
+    "These samplesheets are representative templates for Diana, not Diana data."
+  ]
+}

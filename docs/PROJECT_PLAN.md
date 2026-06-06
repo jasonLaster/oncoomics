@@ -57,6 +57,21 @@ HRD is not one number. The project must keep causal alteration, allele state, an
 
 ## Milestones
 
+## Phase status
+
+Phase 1 is complete as of the committed workflow in `9938d1f Initial HRD omics validation workflow`.
+
+Completed Phase 1 scope:
+
+1. Source audit and validation-atlas manifest.
+2. Public processed-data fetches from cBioPortal/TCGA-BRCA, GDC open catalog metadata, and UCSC Xena.
+3. Frozen HRD reference panel.
+4. HRR event, allele-state proxy, scar-proxy, RNA-context, and failure-mode evidence tables.
+5. Reviewer packet and Diana readiness gate.
+6. End-to-end validation with `bun run run:all` and `bun run verify:outputs`.
+
+Phase 1 was intentionally processed-data-only. The next phase must prove representative raw-data ingestion and tumor-normal workflow mechanics before Diana's FASTQ/BAM/CRAM files arrive.
+
 ### Milestone 0: Project Baseline And Source Audit
 
 Goal: Freeze what the Diana wiki says, what the project will analyze, and which sources are valid enough for the first benchmark.
@@ -252,15 +267,96 @@ Exit criteria:
 1. A reviewer can tell what was run, what agreed, what failed, and what would be needed to make the result clinically actionable.
 2. Applying the workflow to Diana's data is a separate intentional step, not an accidental continuation of validation.
 
-## First Implementation Slice
+## Completed Phase 1 Slice
 
-The next coding slice should be deliberately small:
+This slice has been completed:
 
-1. Keep the current plan verifier.
-2. Add a Bun GDC/cBioPortal/Xena catalog fetcher.
-3. Generate a TCGA-BRCA open-data catalog without downloading raw controlled data.
-4. Create the first candidate reference-panel draft from metadata and public labels.
-5. Verify the panel before building any HRD scoring.
+1. Kept the current plan verifier.
+2. Added a Bun cBioPortal/GDC/Xena phase-1 fetcher.
+3. Generated a TCGA-BRCA open-data catalog without downloading controlled raw data.
+4. Created the first candidate reference panel from metadata and public labels.
+5. Verified the panel and evidence tables.
 
 This gives us a clean foundation: source truth first, labels second, scoring third.
 
+## Remaining Phases
+
+### Phase 2A: Representative Raw-Data FASTQ Smoke
+
+Status: complete and validated.
+
+Goal: use public raw tumor-normal data now, before Diana's files arrive, to prove the project can resolve representative raw-read sources, build tumor-normal samplesheets, and validate FASTQ pairing/QC.
+
+Representative source:
+
+1. SEQC2/HCC1395 under SRA study `SRP162370`.
+2. Tumor-normal breast/TNBC cell-line pair: HCC1395 tumor and HCC1395BL matched normal.
+3. WES and WGS runs, including FFPE/process-stress and cross-platform WGS options.
+4. SEQC2 benchmark/truth-set artifacts under the NCBI ReferenceSamples FTP tree.
+
+Deliverables:
+
+1. `manifests/raw_representative_panel.csv`.
+2. `docs/RAW_DATA_READINESS.md`.
+3. `manifests/raw_samplesheet.csv`.
+4. `manifests/raw_smoke_samplesheet.csv`.
+5. `results/raw_smoke/README.md`.
+6. `results/raw_smoke/fastq_smoke_summary.csv`.
+7. `results/raw_smoke/tooling_audit.md`.
+
+Verifier:
+
+1. `bun run fetch:raw-candidates` refreshes the selected SRA run metadata.
+2. `bun run verify:outputs` confirms every raw representative pair has public tumor and normal runs.
+3. `bun run smoke:raw` streams 1,000 read pairs per end from the SEQC2/HCC1395 minimal WES pair and validates paired FASTQ structure.
+4. `bun run run:all` includes the Phase 2A smoke and passes.
+
+### Phase 2B: Alignment And Somatic-Caller Input Readiness
+
+Status: next.
+
+Goal: take the Phase 2A smoke FASTQs or a larger downsample through alignment/BAM generation and somatic-caller input validation.
+
+Deliverables:
+
+1. A pinned reference-build decision and interval strategy.
+2. A genomics-ready environment: SRA Toolkit or ENA download route, FastQC/MultiQC, BWA/BWA-MEM2 or nf-core/sarek, samtools, and a somatic caller path.
+3. BAM/CRAM/QC artifacts from the minimal WES pair or a larger downsample.
+4. A somatic-caller input validation report.
+
+Verifier:
+
+1. Alignment/BAM tooling is available locally or through a container/runtime.
+2. The minimal WES tumor-normal pair produces reproducible QC and BAM/CRAM artifacts.
+3. Somatic-caller input validation passes without hidden manual steps.
+4. WES-limited and WGS-capable evidence remain separated.
+
+### Phase 3: WGS Signature And Allele-Specific HRD
+
+Goal: replace Phase 1 proxy evidence with real WGS-capable outputs where inputs allow.
+
+Deliverables:
+
+1. Raw-derived SNV/indel VCFs.
+2. Allele-specific copy-number/purity-ploidy outputs.
+3. SV/rearrangement outputs.
+4. Mutation matrices and SBS3/signature assignment.
+5. CHORD/scarHRD/HRDetect-style evidence tables where tool inputs support them.
+
+Verifier:
+
+1. Full WES/WGS or explicit subset run has reproducible logs and versions.
+2. Tool outputs are ingested into the evidence table without collapsing distinct evidence classes.
+3. WES-only and WGS-capable results remain clearly separated.
+
+### Phase 4: Diana Data
+
+Goal: apply only the validated raw-data workflow to Diana's files.
+
+Gate:
+
+1. Raw-file inventory is available.
+2. Matched normal status and reference build are known.
+3. Tissue timing, tumor purity/content, fixation, and extraction context are recorded.
+4. Reviewer sign-off is obtained for the representative-data smoke tests and caveats.
+5. Clinical action remains clinician-owned and requires orthogonal validation when needed.

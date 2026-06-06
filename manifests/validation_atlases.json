@@ -149,6 +149,43 @@
       "verifier": "Verify lineage filter, matrix dimensions, and known TNBC marker behavior."
     },
     {
+      "id": "seqc2-hcc1395-sra",
+      "title": "SEQC2/HCC1395 raw tumor-normal SRA benchmark",
+      "kind": "dataset",
+      "priority": "phase-2-raw-readiness",
+      "primary_use": "Representative raw FASTQ/SRA tumor-normal breast/TNBC benchmark before Diana FASTQ/BAM/CRAM files arrive.",
+      "access": "open SRA runs; full WGS is large",
+      "urls": [
+        "https://www.ncbi.nlm.nih.gov/sra/?term=SRP162370",
+        "https://trace.ncbi.nlm.nih.gov/Traces/sra-db-be/runinfo?acc=SRP162370"
+      ],
+      "expected_artifacts": [
+        "public tumor-normal WES runs",
+        "public tumor-normal WGS runs",
+        "SRA run metadata",
+        "FASTQ conversion and QC smoke outputs"
+      ],
+      "verifier": "Refresh raw representative panel metadata, confirm public tumor and normal roles for each pair, then run a downsampled or regional FASTQ smoke test before full WGS."
+    },
+    {
+      "id": "seqc2-hcc1395-reference-materials",
+      "title": "SEQC2/HCC1395 reference materials FTP",
+      "kind": "dataset",
+      "priority": "phase-2-truthset",
+      "primary_use": "Benchmark/truth-set materials for HCC1395 somatic variant comparison after raw-data smoke tests work.",
+      "access": "open FTP",
+      "urls": [
+        "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/"
+      ],
+      "expected_artifacts": [
+        "truth-set VCFs",
+        "analysis files",
+        "technical/reference files",
+        "versioned benchmark documentation"
+      ],
+      "verifier": "Record exact truth-set file/version and genome build before comparing any caller output."
+    },
+    {
       "id": "nf-core-sarek",
       "title": "nf-core/sarek",
       "kind": "tool",
@@ -238,4 +275,3 @@
     }
   ]
 }
-
