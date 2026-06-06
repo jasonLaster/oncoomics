@@ -1,0 +1,15 @@
+{
+  "source": "https://tcga.xenahubs.net/download/TCGA.BRCA.sampleMap/BRCA_clinicalMatrix",
+  "rowCount": 1247,
+  "columnCount": 194,
+  "selectedColumns": [
+    "sampleID",
+    "ER_Status_nature2012",
+    "PR_Status_nature2012",
+    "HER2_Final_Status_nature2012",
+    "PAM50Call_RNAseq",
+    "PAM50_mRNA_nature2012",
+    "Integrated_Clusters_with_PAM50__nature2012"
+  ],
+  "sampleIntersectionWithCbioAll": 1084
+}

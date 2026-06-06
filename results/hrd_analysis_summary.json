@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-06-06T21:18:38.847Z",
+  "panelSampleCount": 28,
+  "eventRowCount": 31,
+  "alleleStateRowCount": 31,
+  "scarSignatureRowCount": 28,
+  "failureModeRowCount": 63,
+  "confusionMatrix": [
+    {
+      "expected_bucket": "expected_ambiguous",
+      "predicted_bucket": "predicted_ambiguous_or_not_assessable",
+      "count": 7
+    },
+    {
+      "expected_bucket": "expected_ambiguous",
+      "predicted_bucket": "predicted_hrd_like",
+      "count": 1
+    },
+    {
+      "expected_bucket": "expected_hrd_like",
+      "predicted_bucket": "predicted_hrd_like",
+      "count": 12
+    },
+    {
+      "expected_bucket": "expected_negative",
+      "predicted_bucket": "predicted_negative",
+      "count": 8
+    }
+  ],
+  "boundary": "Phase-1 HRD classes are processed public-data candidates. WGS signatures, allele-specific LOH, CHORD, HRDetect, and companion diagnostics are not run."
+}

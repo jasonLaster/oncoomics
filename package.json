@@ -1,0 +1,17 @@
+{
+  "name": "diana-omics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fetch:phase1": "bun run scripts/fetch-phase1.ts",
+    "build:panel": "bun run scripts/build-reference-panel.ts",
+    "analyze:hrd": "bun run scripts/analyze-hrd.ts",
+    "analyze:rna": "bun run scripts/build-rna-context.ts",
+    "build:packet": "bun run scripts/build-reviewer-packet.ts",
+    "verify:outputs": "bun run scripts/verify-outputs.ts",
+    "verify:plan": "bun run scripts/verify-plan.ts",
+    "verify:plan:online": "CHECK_URLS=1 bun run scripts/verify-plan.ts",
+    "run:all": "bun run verify:plan && bun run fetch:phase1 && bun run build:panel && bun run analyze:hrd && bun run analyze:rna && bun run build:packet && bun run verify:outputs"
+  }
+}

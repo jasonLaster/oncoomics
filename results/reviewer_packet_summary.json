@@ -1,0 +1,62 @@
+{
+  "generatedAt": "2026-06-06T21:18:38.904Z",
+  "panelSampleCount": 28,
+  "categoryCounts": [
+    {
+      "key": "ambiguous_control",
+      "count": 8
+    },
+    {
+      "key": "mechanistic_control",
+      "count": 4
+    },
+    {
+      "key": "negative_control",
+      "count": 8
+    },
+    {
+      "key": "positive_control",
+      "count": 8
+    }
+  ],
+  "predictionCounts": [
+    {
+      "key": "ambiguous_or_incomplete",
+      "count": 7
+    },
+    {
+      "key": "suggestive_hrd_like_candidate",
+      "count": 5
+    },
+    {
+      "key": "low_evidence_negative_candidate",
+      "count": 8
+    },
+    {
+      "key": "strong_hrd_like_candidate",
+      "count": 8
+    }
+  ],
+  "confusion": [
+    {
+      "expected_bucket": "expected_ambiguous",
+      "predicted_bucket": "predicted_ambiguous_or_not_assessable",
+      "count": "7"
+    },
+    {
+      "expected_bucket": "expected_ambiguous",
+      "predicted_bucket": "predicted_hrd_like",
+      "count": "1"
+    },
+    {
+      "expected_bucket": "expected_hrd_like",
+      "predicted_bucket": "predicted_hrd_like",
+      "count": "12"
+    },
+    {
+      "expected_bucket": "expected_negative",
+      "predicted_bucket": "predicted_negative",
+      "count": "8"
+    }
+  ]
+}

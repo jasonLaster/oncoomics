@@ -1,0 +1,15 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+
+data/raw/*
+!data/raw/.gitkeep
+
+# Track small processed/public summary outputs and reviewer deliverables.
+
+.venv/
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+node_modules/

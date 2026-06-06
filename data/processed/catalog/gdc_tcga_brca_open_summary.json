@@ -1,0 +1,49 @@
+{
+  "source": "GDC files API",
+  "project": "TCGA-BRCA",
+  "query": {
+    "filters": {
+      "op": "and",
+      "content": [
+        {
+          "op": "in",
+          "content": {
+            "field": "cases.project.project_id",
+            "value": [
+              "TCGA-BRCA"
+            ]
+          }
+        },
+        {
+          "op": "in",
+          "content": {
+            "field": "access",
+            "value": [
+              "open"
+            ]
+          }
+        }
+      ]
+    },
+    "fields": "file_id,file_name,data_category,data_type,experimental_strategy,access,file_size,md5sum",
+    "format": "JSON",
+    "size": "100",
+    "sort": "data_category:asc"
+  },
+  "firstPageCount": 100,
+  "totalOpenFiles": 27931,
+  "firstPageCounts": [
+    {
+      "category": "Biospecimen | Biospecimen Supplement",
+      "count": 41
+    },
+    {
+      "category": "Biospecimen | Slide Image | Tissue Slide",
+      "count": 38
+    },
+    {
+      "category": "Biospecimen | Slide Image | Diagnostic Slide",
+      "count": 21
+    }
+  ]
+}

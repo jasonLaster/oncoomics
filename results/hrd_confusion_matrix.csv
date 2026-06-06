@@ -1,0 +1,5 @@
+expected_bucket,predicted_bucket,count
+expected_ambiguous,predicted_ambiguous_or_not_assessable,7
+expected_ambiguous,predicted_hrd_like,1
+expected_hrd_like,predicted_hrd_like,12
+expected_negative,predicted_negative,8
