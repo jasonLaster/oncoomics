@@ -186,6 +186,27 @@
       "verifier": "Record exact truth-set file/version and genome build before comparing any caller output."
     },
     {
+      "id": "ucsc-human-reference-chromosomes",
+      "title": "UCSC hg38/hg19 per-chromosome FASTA references",
+      "kind": "reference",
+      "priority": "phase-2c-human-reference-smoke",
+      "primary_use": "Partial real-human-reference validation for GRCh38/hg38 and GRCh37/hg19 alignment handling before full reference bundles are configured.",
+      "access": "open",
+      "urls": [
+        "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/",
+        "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/chromosomes/"
+      ],
+      "expected_artifacts": [
+        "chr13 FASTA",
+        "chr17 FASTA",
+        "md5sum.txt",
+        "FAI indexes",
+        "BWA indexes",
+        "partial-reference BAM smoke outputs"
+      ],
+      "verifier": "Download chr13/chr17 for hg38 and hg19, validate md5 values, index FASTA/BWA references, align HCC1395 tumor-normal FASTQ subset, and verify BAM contracts across both builds."
+    },
+    {
       "id": "nf-core-sarek",
       "title": "nf-core/sarek",
       "kind": "tool",

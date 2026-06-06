@@ -64,18 +64,20 @@ async function main() {
   const fullAlignmentToolboxReady = groups.find((group) => group.group === "alignment_and_bam")?.allAvailable ?? false;
   const workflowReady = groups.find((group) => group.group === "workflow_runtime")?.tools.some((tool) => tool.available) ?? false;
   const fullWorkflowReady = workflowReady && groups.find((group) => group.group === "qc")?.tools.some((tool) => tool.available) === true;
+  const humanReferenceSmokeReady = phase2aReady && alignmentReady;
 
   const audit = {
     generatedAt: new Date().toISOString(),
     phase2aReady,
     alignmentReady,
+    humanReferenceSmokeReady,
     fullAlignmentToolboxReady,
     workflowReady,
     fullWorkflowReady,
     alignmentReadyDefinition: "At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.",
     groups,
-    conclusion: alignmentReady
-      ? "Local machine can run Phase 2A direct-FASTQ smoke tests and Phase 2B local BAM alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers."
+    conclusion: humanReferenceSmokeReady
+      ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, and Phase 2C partial human-reference alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers."
       : phase2aReady
         ? "Local machine can run Phase 2A direct-FASTQ smoke tests. Phase 2B local BAM smoke requires at least one short-read aligner and samtools."
         : "Local machine is missing baseline streaming tools required for Phase 2A."
@@ -97,6 +99,8 @@ Workflow/container runtime available: **${workflowReady ? "yes" : "no"}**
 Full QC/workflow runtime available: **${fullWorkflowReady ? "yes" : "no"}**
 
 Alignment-ready definition: ${audit.alignmentReadyDefinition}
+
+Phase 2C partial human-reference smoke ready: **${humanReferenceSmokeReady ? "yes" : "no"}**
 
 ${groups
   .map((group) => {

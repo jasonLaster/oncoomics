@@ -76,7 +76,9 @@ Phase 2A is complete as of `6d930ea Add raw-data readiness smoke workflow`: the 
 
 Phase 2B is complete for local file-contract validation: the project builds a read-backed synthetic smoke reference, aligns the HCC1395 tumor-normal FASTQ subset with `bwa mem`, produces coordinate-sorted/indexed BAMs with `samtools`, and validates read groups, shared reference hash, mapped reads, and BAM/BAI presence.
 
-The next gate is Phase 2C: real human-reference alignment and somatic-caller input readiness using a larger HCC1395 WES downsample or full WES pair. This requires a reference-build decision, intervals/known-sites resources where needed, and full QC/workflow tooling.
+Phase 2C is complete for partial real-human-reference validation: the project downloads checksum-verified UCSC hg38 and hg19 chr13+chr17 FASTA references, indexes them, aligns HCC1395 tumor-normal reads to both builds, and validates BAM contracts and build comparison summaries.
+
+The next gate is Phase 2D: full-reference alignment and somatic-caller input readiness using a larger HCC1395 WES downsample or full WES pair. This requires a production reference-build decision, intervals/known-sites resources where needed, and full QC/workflow tooling.
 
 ### Milestone 0: Project Baseline And Source Audit
 

@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-06-06T22:06:55.648Z",
+  "status": "built",
+  "referenceCount": 2,
+  "sampleRows": 4,
+  "references": [
+    {
+      "reference_id": "ucsc_hg38_chr13_chr17",
+      "assembly": "hg38",
+      "genome_build": "GRCh38",
+      "source": "UCSC Genome Browser per-chromosome FASTA",
+      "source_base_url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes",
+      "chromosomes": "chr13;chr17",
+      "genes_covered": "BRCA2;BRCA1",
+      "source_urls": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/chr13.fa.gz;https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/chr17.fa.gz",
+      "source_md5s": "faddb3ad7e9c468ade70b1c88171f1eb;023ccefd298db339159a446e88d742ac",
+      "md5_status": "passed",
+      "fasta_path": "data/raw/reference/human_reference_smoke/ucsc_hg38_chr13_chr17/ucsc_hg38_chr13_chr17.fa",
+      "fasta_fai_path": "data/raw/reference/human_reference_smoke/ucsc_hg38_chr13_chr17/ucsc_hg38_chr13_chr17.fa.fai",
+      "fasta_sha256": "3ee11c6f7709e766401f34ee8770d4db002fc6822a52f1983e278498ec9af4ba",
+      "fasta_size_bytes": 201574219,
+      "caveat": "Partial human-reference smoke containing chr13 and chr17 only. Validates real-reference alignment mechanics, not whole-genome/full-exome performance."
+    },
+    {
+      "reference_id": "ucsc_hg19_chr13_chr17",
+      "assembly": "hg19",
+      "genome_build": "GRCh37",
+      "source": "UCSC Genome Browser per-chromosome FASTA",
+      "source_base_url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/chromosomes",
+      "chromosomes": "chr13;chr17",
+      "genes_covered": "BRCA2;BRCA1",
+      "source_urls": "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/chromosomes/chr13.fa.gz;https://hgdownload.soe.ucsc.edu/goldenPath/hg19/chromosomes/chr17.fa.gz",
+      "source_md5s": "a48e9c56b167edc089df7ab141001e5d;ee98e8346d23ccd91fb7ef60e9ccede9",
+      "md5_status": "passed",
+      "fasta_path": "data/raw/reference/human_reference_smoke/ucsc_hg19_chr13_chr17/ucsc_hg19_chr13_chr17.fa",
+      "fasta_fai_path": "data/raw/reference/human_reference_smoke/ucsc_hg19_chr13_chr17/ucsc_hg19_chr13_chr17.fa.fai",
+      "fasta_sha256": "64387635a9b1f5e34c603f49b55a57dcdda2ee517f96f413fe1388a9d18cd069",
+      "fasta_size_bytes": 200292405,
+      "caveat": "Partial human-reference smoke containing chr13 and chr17 only. Validates real-reference alignment mechanics, not whole-genome/full-exome performance."
+    }
+  ],
+  "boundary": "Phase 2C uses partial UCSC hg38/hg19 chromosome references for local validation. Full-depth Diana or SEQC2 calling still requires full reference bundles, intervals, known-sites resources, and caller configuration."
+}

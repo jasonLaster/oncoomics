@@ -13,6 +13,8 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 - cBioPortal RNA marker records fetched: 20558
 - Xena clinical rows: 1247
 - GDC open files total from catalog query: 27931
+- Human-reference smoke rows: 4
+- Human-reference smoke builds: GRCh38, GRCh37
 
 ## Frozen Panel
 
@@ -48,6 +50,7 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 3. The reference panel includes positive, mechanistic, ambiguous, and negative controls.
 4. HRR events, copy-loss proxies, scar proxies, and RNA context are written as separate evidence tables.
 5. Ambiguous samples remain ambiguous instead of being forced into HRD-positive or HRD-negative buckets.
+6. Raw-data smoke tests validate FASTQ pairing, local BAM contracts, and partial real-human-reference alignment against two reference builds.
 
 ## Main Limitations
 
@@ -68,5 +71,5 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 
 ## Summaries
 
-- HRD summary: {"generatedAt":"2026-06-06T21:53:51.787Z","panelSampleCount":28,"eventRowCount":31,"alleleStateRowCount":31,"scarSignatureRowCount":28,"failureModeRowCount":63,"confusionMatrix":[{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_ambiguous_or_not_assessable","count":7},{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_hrd_like","count":1},{"expected_bucket":"expected_hrd_like","predicted_bucket":"predicted_hrd_like","count":12},{"expected_bucket":"expected_negative","predicted_bucket":"predicted_negative","count":8}],"boundary":"Phase-1 HRD classes are processed public-data candidates. WGS signatures, allele-specific LOH, CHORD, HRDetect, and companion diagnostics are not run."}
-- RNA summary: {"generatedAt":"2026-06-06T21:53:51.827Z","panelSampleCount":28,"expressionRecordCount":20558,"moduleDefinitions":{"basal_marker":["KRT5","KRT14","KRT17","EGFR","FOXC1"],"lar_luminal_marker":["AR","FOXA1","GATA3","ESR1"],"proliferation_marker":["MKI67"],"immune_inflammation_marker":["CD8A","CD274","CXCL9","IFNG"],"epithelial_marker":["EPCAM","MUC1"],"stromal_emt_marker":["VIM"]},"boundary":"RNA context is a small marker-module lane and does not reproduce TNBCtype, TNBC-DX, or Reveal."}
+- HRD summary: {"generatedAt":"2026-06-06T22:06:57.373Z","panelSampleCount":28,"eventRowCount":31,"alleleStateRowCount":31,"scarSignatureRowCount":28,"failureModeRowCount":63,"confusionMatrix":[{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_ambiguous_or_not_assessable","count":7},{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_hrd_like","count":1},{"expected_bucket":"expected_hrd_like","predicted_bucket":"predicted_hrd_like","count":12},{"expected_bucket":"expected_negative","predicted_bucket":"predicted_negative","count":8}],"boundary":"Phase-1 HRD classes are processed public-data candidates. WGS signatures, allele-specific LOH, CHORD, HRDetect, and companion diagnostics are not run."}
+- RNA summary: {"generatedAt":"2026-06-06T22:06:57.424Z","panelSampleCount":28,"expressionRecordCount":20558,"moduleDefinitions":{"basal_marker":["KRT5","KRT14","KRT17","EGFR","FOXC1"],"lar_luminal_marker":["AR","FOXA1","GATA3","ESR1"],"proliferation_marker":["MKI67"],"immune_inflammation_marker":["CD8A","CD274","CXCL9","IFNG"],"epithelial_marker":["EPCAM","MUC1"],"stromal_emt_marker":["VIM"]},"boundary":"RNA context is a small marker-module lane and does not reproduce TNBCtype, TNBC-DX, or Reveal."}

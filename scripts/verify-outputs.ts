@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { parseCsv, pathFromRoot, readJson, readText } from "./lib";
+import { groupBy, parseCsv, pathFromRoot, readJson, readText } from "./lib";
 
 const errors: string[] = [];
 const warnings: string[] = [];
@@ -43,6 +43,8 @@ const requiredFiles = [
   "manifests/raw_samplesheet.csv",
   "manifests/raw_smoke_samplesheet.csv",
   "manifests/alignment_smoke_samplesheet.csv",
+  "manifests/human_reference_smoke_references.csv",
+  "manifests/human_reference_smoke_samplesheet.csv",
   "manifests/reference_panel_validation.json",
   "docs/reference-panel-label-rules.md",
   "results/hrd_event_table.csv",
@@ -68,7 +70,16 @@ const requiredFiles = [
   "results/alignment_smoke/alignment_smoke_summary.csv",
   "results/alignment_smoke/alignment_smoke_summary.json",
   "results/alignment_smoke/bam_validation_summary.csv",
-  "results/alignment_smoke/bam_validation_summary.json"
+  "results/alignment_smoke/bam_validation_summary.json",
+  "results/human_reference_smoke/README.md",
+  "results/human_reference_smoke/reference_assets_summary.json",
+  "results/human_reference_smoke/tool_versions.json",
+  "results/human_reference_smoke/human_reference_alignment_summary.csv",
+  "results/human_reference_smoke/human_reference_alignment_summary.json",
+  "results/human_reference_smoke/bam_validation_summary.csv",
+  "results/human_reference_smoke/bam_validation_summary.json",
+  "results/human_reference_smoke/reference_comparison_summary.csv",
+  "results/human_reference_smoke/reference_comparison_summary.json"
 ];
 
 for (const file of requiredFiles) {
@@ -266,6 +277,9 @@ if (rawToolingAudit.phase2aReady !== true) {
 if (rawToolingAudit.alignmentReady !== true) {
   errors.push("Raw tooling audit says Phase 2B local alignment smoke is not ready.");
 }
+if (rawToolingAudit.humanReferenceSmokeReady !== true) {
+  errors.push("Raw tooling audit says Phase 2C partial human-reference smoke is not ready.");
+}
 
 const alignmentSamplesheet = requireRows("manifests/alignment_smoke_samplesheet.csv", 2);
 requireColumns("manifests/alignment_smoke_samplesheet.csv", alignmentSamplesheet, [
@@ -398,6 +412,210 @@ for (const row of bamRows) {
 const bamSummary = readJson<Record<string, unknown>>(pathFromRoot("results/alignment_smoke/bam_validation_summary.json"));
 if (bamSummary.status !== "passed") {
   errors.push("Alignment smoke BAM validation JSON did not pass.");
+}
+
+const humanReferenceRows = requireRows("manifests/human_reference_smoke_references.csv", 2);
+requireColumns("manifests/human_reference_smoke_references.csv", humanReferenceRows, [
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "source",
+  "source_base_url",
+  "chromosomes",
+  "genes_covered",
+  "source_urls",
+  "source_md5s",
+  "md5_status",
+  "fasta_path",
+  "fasta_fai_path",
+  "fasta_sha256",
+  "fasta_size_bytes",
+  "caveat"
+]);
+const humanReferenceAssemblies = new Set(humanReferenceRows.map((row) => row.assembly));
+if (!humanReferenceAssemblies.has("hg38") || !humanReferenceAssemblies.has("hg19")) {
+  errors.push("Human-reference smoke must include hg38 and hg19 references.");
+}
+for (const row of humanReferenceRows) {
+  if (row.md5_status !== "passed") {
+    errors.push(`Human-reference source MD5 validation did not pass for ${row.reference_id}.`);
+  }
+  if (!row.chromosomes.includes("chr13") || !row.chromosomes.includes("chr17")) {
+    errors.push(`Human-reference smoke ${row.reference_id} must include chr13 and chr17.`);
+  }
+  if (!row.genes_covered.includes("BRCA2") || !row.genes_covered.includes("BRCA1")) {
+    errors.push(`Human-reference smoke ${row.reference_id} must document BRCA1/BRCA2 chromosome coverage.`);
+  }
+  if (!row.source_urls.split(";").every((url) => url.startsWith("https://hgdownload.soe.ucsc.edu/"))) {
+    errors.push(`Human-reference smoke ${row.reference_id} has unexpected source URLs.`);
+  }
+  if (row.fasta_sha256.length < 32) {
+    errors.push(`Human-reference smoke ${row.reference_id} is missing a reference sha256.`);
+  }
+  if (!row.caveat.includes("Partial human-reference smoke")) {
+    errors.push(`Human-reference smoke ${row.reference_id} must preserve partial-reference caveat.`);
+  }
+}
+
+const humanReferenceSamplesheet = requireRows("manifests/human_reference_smoke_samplesheet.csv", 4);
+requireColumns("manifests/human_reference_smoke_samplesheet.csv", humanReferenceSamplesheet, [
+  "pair_id",
+  "patient",
+  "sample",
+  "role",
+  "status",
+  "run_accession",
+  "fastq_1",
+  "fastq_2",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "chromosomes",
+  "genes_covered",
+  "reference_path",
+  "reference_sha256",
+  "read_group_id",
+  "read_group_sample",
+  "output_bam",
+  "output_bai",
+  "caveat"
+]);
+for (const row of humanReferenceSamplesheet) {
+  if (!["hg38", "hg19"].includes(row.assembly)) {
+    errors.push(`Unexpected human-reference assembly in samplesheet: ${row.assembly}`);
+  }
+  if (!row.caveat.includes("not full-depth WES/WGS")) {
+    errors.push(`Human-reference samplesheet caveat must preserve full-depth boundary for ${row.run_accession} ${row.reference_id}.`);
+  }
+}
+const sampleRowsByReference = groupBy(humanReferenceSamplesheet, (row) => row.reference_id);
+for (const [referenceId, rows] of sampleRowsByReference.entries()) {
+  if (!rows.some((row) => row.role === "tumor") || !rows.some((row) => row.role === "normal")) {
+    errors.push(`Human-reference samplesheet ${referenceId} must include tumor and normal rows.`);
+  }
+}
+
+const humanReferenceAssets = readJson<Record<string, unknown>>(pathFromRoot("results/human_reference_smoke/reference_assets_summary.json"));
+if (humanReferenceAssets.status !== "built") {
+  errors.push("Human-reference asset summary was not built.");
+}
+if (humanReferenceAssets.referenceCount !== 2) {
+  errors.push("Human-reference asset summary must include two references.");
+}
+if (!String(humanReferenceAssets.boundary ?? "").includes("Full-depth Diana or SEQC2 calling still requires full reference bundles")) {
+  errors.push("Human-reference asset summary must preserve full-reference boundary.");
+}
+
+const humanReferenceSummaryRows = requireRows("results/human_reference_smoke/human_reference_alignment_summary.csv", 1);
+requireColumns("results/human_reference_smoke/human_reference_alignment_summary.csv", humanReferenceSummaryRows, [
+  "status",
+  "sample_rows",
+  "references",
+  "assemblies",
+  "genome_builds",
+  "tumor_rows",
+  "normal_rows",
+  "boundary"
+]);
+if (humanReferenceSummaryRows[0]?.status !== "passed") {
+  errors.push("Human-reference alignment summary CSV did not pass.");
+}
+if (!humanReferenceSummaryRows[0]?.assemblies.includes("hg38") || !humanReferenceSummaryRows[0]?.assemblies.includes("hg19")) {
+  errors.push("Human-reference alignment summary CSV must include hg38 and hg19.");
+}
+if (!humanReferenceSummaryRows[0]?.boundary.includes("not full-depth WES/WGS")) {
+  errors.push("Human-reference alignment summary CSV must preserve full-depth boundary.");
+}
+
+const humanReferenceSummary = readJson<Record<string, unknown>>(pathFromRoot("results/human_reference_smoke/human_reference_alignment_summary.json"));
+if (humanReferenceSummary.status !== "passed") {
+  errors.push("Human-reference alignment summary JSON did not pass.");
+}
+if (humanReferenceSummary.sampleRows !== 4 || humanReferenceSummary.tumorRows !== 2 || humanReferenceSummary.normalRows !== 2) {
+  errors.push("Human-reference alignment summary must include four rows: tumor and normal across two references.");
+}
+if (!String(humanReferenceSummary.boundary ?? "").includes("does not validate full-depth WES/WGS")) {
+  errors.push("Human-reference alignment summary JSON must preserve full-depth boundary.");
+}
+
+const humanReferenceBamRows = requireRows("results/human_reference_smoke/bam_validation_summary.csv", 4);
+requireColumns("results/human_reference_smoke/bam_validation_summary.csv", humanReferenceBamRows, [
+  "pair_id",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "chromosomes",
+  "genes_covered",
+  "role",
+  "run_accession",
+  "sample",
+  "reference_sha256",
+  "output_bam",
+  "output_bai",
+  "bam_exists",
+  "bai_exists",
+  "quickcheck",
+  "sort_order",
+  "read_group_present",
+  "expected_contigs_present",
+  "reference_contigs",
+  "total_alignments",
+  "mapped_alignments",
+  "mapped_fraction",
+  "mapped_by_contig",
+  "status",
+  "caveat"
+]);
+for (const row of humanReferenceBamRows) {
+  if (row.status !== "passed") {
+    errors.push(`Human-reference BAM validation failed for ${row.run_accession} ${row.reference_id}.`);
+  }
+  if (row.quickcheck !== "passed" || row.sort_order !== "coordinate" || row.read_group_present !== "yes") {
+    errors.push(`Human-reference BAM contract failed for ${row.run_accession} ${row.reference_id}.`);
+  }
+  if (row.bam_exists !== "yes" || row.bai_exists !== "yes") {
+    errors.push(`Human-reference BAM/BAI paths were not present when validated for ${row.run_accession} ${row.reference_id}.`);
+  }
+  if (row.expected_contigs_present !== "yes" || !row.reference_contigs.includes("chr13") || !row.reference_contigs.includes("chr17")) {
+    errors.push(`Human-reference BAM header is missing expected contigs for ${row.run_accession} ${row.reference_id}.`);
+  }
+  if (Number(row.total_alignments) <= 0 || Number(row.mapped_alignments) <= 0) {
+    errors.push(`Human-reference BAM has no mapped alignments for ${row.run_accession} ${row.reference_id}.`);
+  }
+  if (!row.mapped_by_contig.includes("chr13:") || !row.mapped_by_contig.includes("chr17:")) {
+    errors.push(`Human-reference mapped-by-contig summary is incomplete for ${row.run_accession} ${row.reference_id}.`);
+  }
+  if (!row.caveat.includes("not full-depth WES/WGS")) {
+    errors.push(`Human-reference BAM caveat must preserve full-depth boundary for ${row.run_accession} ${row.reference_id}.`);
+  }
+}
+const humanReferenceBamSummary = readJson<Record<string, unknown>>(pathFromRoot("results/human_reference_smoke/bam_validation_summary.json"));
+if (humanReferenceBamSummary.status !== "passed") {
+  errors.push("Human-reference BAM validation JSON did not pass.");
+}
+
+const humanReferenceComparisons = requireRows("results/human_reference_smoke/reference_comparison_summary.csv", 2);
+requireColumns("results/human_reference_smoke/reference_comparison_summary.csv", humanReferenceComparisons, [
+  "run_accession",
+  "sample",
+  "role",
+  "tested_builds",
+  "passed_builds",
+  "mapped_alignment_range",
+  "status",
+  "caveat"
+]);
+for (const row of humanReferenceComparisons) {
+  if (row.status !== "passed") {
+    errors.push(`Human-reference build comparison failed for ${row.run_accession}.`);
+  }
+  if (!row.passed_builds.includes("hg38") || !row.passed_builds.includes("hg19")) {
+    errors.push(`Human-reference build comparison must pass hg38 and hg19 for ${row.run_accession}.`);
+  }
+}
+const humanReferenceComparisonSummary = readJson<Record<string, unknown>>(pathFromRoot("results/human_reference_smoke/reference_comparison_summary.json"));
+if (humanReferenceComparisonSummary.status !== "passed") {
+  errors.push("Human-reference comparison summary JSON did not pass.");
 }
 
 const cbioSummary = readJson<Record<string, unknown>>(pathFromRoot("data/processed/catalog/cbioportal_tcga_brca_summary.json"));

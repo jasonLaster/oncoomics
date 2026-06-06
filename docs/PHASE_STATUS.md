@@ -75,17 +75,51 @@ Key outputs:
 
 ## Phase 2C: Human-Reference And Full-Depth Readiness
 
-Status: **next**.
+Status: **complete and validated for partial real-human-reference smoke**.
 
 Goal: move from local file-contract smoke to a real human-reference WES/WGS workflow.
 
+Completed work:
+
+1. Added two partial UCSC human-reference bundles:
+   - `ucsc_hg38_chr13_chr17` / GRCh38 / hg38.
+   - `ucsc_hg19_chr13_chr17` / GRCh37 / hg19.
+2. Used chr13 and chr17 because they cover BRCA2 and BRCA1 while keeping the local smoke repeatable.
+3. Downloaded UCSC per-chromosome FASTA files, validated md5s, concatenated FASTA bundles, and built `.fai` plus BWA indexes locally.
+4. Built `manifests/human_reference_smoke_references.csv` and `manifests/human_reference_smoke_samplesheet.csv`.
+5. Aligned HCC1395 tumor and normal FASTQs to both references.
+6. Validated coordinate-sorted BAMs, indexes, read groups, shared reference hashes, expected contigs, mapped reads, and build comparison summaries.
+
+Exit criteria:
+
+1. At least two human reference builds are represented. **Complete: hg38/GRCh38 and hg19/GRCh37.**
+2. Reference source checksums validate. **Complete.**
+3. Tumor and normal HCC1395 FASTQs align to both builds. **Complete.**
+4. BAM/BAI file contracts pass for every sample/build row. **Complete.**
+5. Limitations remain explicit: partial chr13/chr17 only, not full-depth WES/WGS, somatic calling, CNV/SV calling, or HRD signatures. **Complete.**
+
+Key outputs:
+
+1. `manifests/human_reference_smoke_references.csv`
+2. `manifests/human_reference_smoke_samplesheet.csv`
+3. `results/human_reference_smoke/README.md`
+4. `results/human_reference_smoke/human_reference_alignment_summary.csv`
+5. `results/human_reference_smoke/bam_validation_summary.csv`
+6. `results/human_reference_smoke/reference_comparison_summary.csv`
+
+## Phase 2D: Full Reference, Intervals, And Somatic Caller Readiness
+
+Status: **next**.
+
+Goal: move from partial human-reference smoke to full WES/WGS caller readiness.
+
 Required work:
 
-1. Decide the exact human reference build for representative runs and Diana intake: GRCh38, GRCh37/hg19, or hs37d5.
-2. Add capture intervals and known-sites resources if WES/GATK-style workflows are used.
+1. Decide the exact production reference bundle for Diana intake: GRCh38, GRCh37/hg19, hs37d5, or vendor-specific reference.
+2. Add WES capture intervals and known-sites resources if WES/GATK-style workflows are used.
 3. Install or containerize full QC/workflow tools: FastQC/MultiQC, SRA Toolkit or ENA download route, Nextflow or another pinned workflow runtime, and a somatic caller path.
-4. Run a larger HCC1395 WES downsample or full WES pair against the selected human reference.
-5. Produce real-reference BAM/CRAM/QC artifacts and somatic-caller-ready inputs.
+4. Run a larger HCC1395 WES downsample or full WES pair against the selected full reference.
+5. Produce full-reference BAM/CRAM/QC artifacts and somatic-caller-ready inputs.
 6. Keep WES-limited evidence separate from WGS signature evidence.
 
 ## Phase 3: WGS HRD Signature Capability

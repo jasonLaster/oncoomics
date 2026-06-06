@@ -51,6 +51,7 @@ Phase 2 should not be considered complete until these pass:
 5. The smoke report says whether the test used full SRA, SRA Lite, downsampled FASTQ, or a regional subset.
 6. The alignment smoke produces coordinate-sorted tumor and normal BAMs with indexes and read groups.
 7. The alignment report preserves the boundary between file-contract validation and human-reference biology.
+8. The partial human-reference smoke validates hg38 and hg19 reference handling with checksum-verified FASTA inputs.
 
 ## Phase 2A Result
 
@@ -83,16 +84,36 @@ This validates FASTQ-to-BAM mechanics, read groups, BAM sorting/indexing, shared
 
 It does **not** validate GRCh37/GRCh38 alignment, capture interval behavior, full-depth WES/WGS performance, somatic calls, CNV/SV calls, or HRD signatures.
 
-## Phase 2C Remaining Gate
+## Phase 2C Result
+
+Status: **complete for partial real-human-reference validation**.
+
+The project now downloads and validates partial UCSC human references for two builds:
+
+1. `ucsc_hg38_chr13_chr17`: GRCh38/hg38 chr13 + chr17.
+2. `ucsc_hg19_chr13_chr17`: GRCh37/hg19 chr13 + chr17.
+
+The smoke run validates:
+
+1. UCSC FASTA download and md5 validation.
+2. `samtools faidx` indexing.
+3. BWA reference indexing.
+4. HCC1395 tumor and normal alignment to both builds.
+5. Coordinate-sorted/indexed BAMs with read groups.
+6. Expected chr13/chr17 contig handling and mapped reads.
+
+This intentionally uses chr13 and chr17 because they carry BRCA2 and BRCA1. It is a real-reference alignment smoke, not a full genome bundle and not a full-depth WES/WGS run.
+
+## Phase 2D Remaining Gate
 
 Required next output:
 
-1. A human reference-build decision.
+1. A production human reference-build decision.
 2. WES intervals and known-sites resources if needed.
 3. Full QC/workflow tooling: FastQC/MultiQC, SRA Toolkit or ENA download path, and Nextflow/container or pinned local caller stack.
-4. BAM/CRAM/QC artifact generation from a larger HCC1395 WES downsample or full WES pair against a human reference.
-5. Somatic-caller input validation against the real reference.
-6. A report that distinguishes format smoke, local alignment smoke, real-reference alignment, and full-depth benchmark runs.
+4. BAM/CRAM/QC artifact generation from a larger HCC1395 WES downsample or full WES pair against a full human reference.
+5. Somatic-caller input validation against the full reference.
+6. A report that distinguishes format smoke, local alignment smoke, partial real-reference alignment, full-reference alignment, and full-depth benchmark runs.
 
 ## Boundary
 

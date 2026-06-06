@@ -30,6 +30,9 @@ async function main() {
   const cbioSummary = readJson<Record<string, unknown>>(pathFromRoot("data/processed/catalog/cbioportal_tcga_brca_summary.json"));
   const xenaSummary = readJson<Record<string, unknown>>(pathFromRoot("data/processed/catalog/xena_tcga_brca_clinical_summary.json"));
   const gdcSummary = readJson<Record<string, unknown>>(pathFromRoot("data/processed/catalog/gdc_tcga_brca_open_summary.json"));
+  const humanReferenceSummary = readJson<Record<string, unknown>>(
+    pathFromRoot("results/human_reference_smoke/human_reference_alignment_summary.json")
+  );
 
   const categoryCounts = countBy(panel, "panel_category");
   const predictionCounts = countBy(predictions, "predicted_hrd_class");
@@ -43,6 +46,8 @@ async function main() {
 - cBioPortal study: \`brca_tcga_pan_can_atlas_2018\`, imported by cBioPortal on 2026-06-05 according to live study metadata.
 - GDC: TCGA-BRCA open file catalog metadata only, used to verify public/open project availability and access posture.
 - UCSC Xena: TCGA-BRCA clinical matrix, used for PAM50/receptor-status context and sample-ID cross-checking.
+- SEQC2/HCC1395: public tumor-normal WES/WGS raw-data benchmark metadata and small FASTQ subsets used for raw-read and alignment smoke tests.
+- UCSC Genome Browser: hg38/GRCh38 and hg19/GRCh37 chr13+chr17 FASTA references used for Phase 2C partial human-reference alignment smoke.
 
 ## HRD Evidence
 
@@ -58,6 +63,12 @@ Likely damaging variants are rule-classified as nonsense, frameshift, splice-sit
 
 RNA context uses selected marker genes from cBioPortal RNA Seq V2 RSEM batch-normalized values. Scores are log2(value + 1), z-scored across the fetched cohort, then averaged into marker modules.
 
+## Raw-Data Smoke Lanes
+
+Phase 2A validates direct raw FASTQ access and pairing from a small SEQC2/HCC1395 tumor-normal WES subset. Phase 2B validates local FASTQ-to-BAM mechanics against a read-backed synthetic smoke reference. Phase 2C validates partial real-human-reference alignment against UCSC hg38 and hg19 chr13+chr17 references.
+
+These raw lanes are plumbing and file-contract validators. They do not yet produce somatic calls, CNV/SV calls, full-depth WES/WGS coverage metrics, or HRD signatures.
+
 ## Non-Run Lanes
 
 WGS rearrangement signatures, SBS3 assignment, scarHRD, CHORD, HRDetect, FACETS/ASCAT/PURPLE allele-specific LOH, methylation-specific second-hit evidence, and companion diagnostics were not run in this phase. They are explicit future or external validation lanes.
@@ -68,7 +79,7 @@ WGS rearrangement signatures, SBS3 assignment, scarHRD, CHORD, HRDetect, FACETS/
     pathFromRoot("results/diana_readiness_gate.md"),
     `# Diana Readiness Gate
 
-Status: **not ready to run on Diana files without raw-file inventory and reviewer sign-off**.
+Status: **not ready to run on Diana files without raw-file inventory, full-reference/caller decision, and reviewer sign-off**.
 
 ## Required Before Diana Data
 
@@ -76,11 +87,19 @@ Status: **not ready to run on Diana files without raw-file inventory and reviewe
 2. Confirm bulk RNA source, library type, normalization route, batch, and RNA quality metadata.
 3. Confirm sample timing, tissue block/core, tumor purity or tumor content, fixation, and extraction context.
 4. Decide whether open analysis is for reviewer biology only or whether a clinician will order orthogonal validation.
-5. Get reviewer sign-off on the phase-1 benchmark caveats.
+5. Confirm whether the requested DNA workflow should be GRCh38, GRCh37/hg19, hs37d5, or a vendor-specific reference bundle.
+6. Confirm WES intervals, known-sites resources, and somatic-caller route if raw DNA is FASTQ/BAM/CRAM.
+7. Get reviewer sign-off on the benchmark caveats.
 
 ## Validation State
 
-The benchmark mechanics are runnable and validated on open processed public data. The current workflow is sufficient to build an evidence table and identify limitations. It is not sufficient to make a treatment-changing HRD claim.
+The benchmark mechanics are runnable and validated on open processed public data. The raw-read lane now has:
+
+1. Phase 2A direct FASTQ smoke on SEQC2/HCC1395 tumor-normal WES.
+2. Phase 2B local FASTQ-to-coordinate-sorted-BAM smoke with read groups and indexes.
+3. Phase 2C partial real-human-reference alignment smoke across UCSC hg38/GRCh38 and hg19/GRCh37 chr13+chr17 references.
+
+The current workflow is sufficient to validate project plumbing, samplesheet shape, local BAM file contracts, partial human-reference handling, and evidence-table boundaries. It is not sufficient to make a treatment-changing HRD claim, and it does not yet validate full-depth WES/WGS coverage, somatic calls, CNV/SV calls, or WGS-grade HRD signatures.
 `
   );
 
@@ -99,6 +118,8 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 - cBioPortal RNA marker records fetched: ${(cbioSummary.expressionRecordCount as number) ?? "unknown"}
 - Xena clinical rows: ${(xenaSummary.rowCount as number) ?? "unknown"}
 - GDC open files total from catalog query: ${(gdcSummary.totalOpenFiles as number) ?? "unknown"}
+- Human-reference smoke rows: ${(humanReferenceSummary.sampleRows as number) ?? "unknown"}
+- Human-reference smoke builds: ${Array.isArray(humanReferenceSummary.genomeBuilds) ? humanReferenceSummary.genomeBuilds.join(", ") : "unknown"}
 
 ## Frozen Panel
 
@@ -119,6 +140,7 @@ ${table(confusion)}
 3. The reference panel includes positive, mechanistic, ambiguous, and negative controls.
 4. HRR events, copy-loss proxies, scar proxies, and RNA context are written as separate evidence tables.
 5. Ambiguous samples remain ambiguous instead of being forced into HRD-positive or HRD-negative buckets.
+6. Raw-data smoke tests validate FASTQ pairing, local BAM contracts, and partial real-human-reference alignment against two reference builds.
 
 ## Main Limitations
 

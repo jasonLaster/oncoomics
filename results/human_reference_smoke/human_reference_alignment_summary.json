@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-06-06T22:06:57.292Z",
+  "status": "passed",
+  "sampleRows": 4,
+  "references": [
+    "ucsc_hg38_chr13_chr17",
+    "ucsc_hg19_chr13_chr17"
+  ],
+  "assemblies": [
+    "hg38",
+    "hg19"
+  ],
+  "genomeBuilds": [
+    "GRCh38",
+    "GRCh37"
+  ],
+  "tumorRows": 2,
+  "normalRows": 2,
+  "boundary": "Phase 2C validates partial real-human-reference alignment across hg38 and hg19 chr13/chr17. It does not validate full-depth WES/WGS performance, target capture intervals, somatic calling, CNV/SV calling, or HRD signatures."
+}

@@ -1,7 +1,8 @@
 {
-  "generatedAt": "2026-06-06T21:53:44.443Z",
+  "generatedAt": "2026-06-06T22:06:47.254Z",
   "phase2aReady": true,
   "alignmentReady": true,
+  "humanReferenceSmokeReady": true,
   "fullAlignmentToolboxReady": false,
   "workflowReady": false,
   "fullWorkflowReady": false,
@@ -158,5 +159,5 @@
       "allAvailable": false
     }
   ],
-  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests and Phase 2B local BAM alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers."
+  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, and Phase 2C partial human-reference alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers."
 }

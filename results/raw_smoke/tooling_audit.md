@@ -12,6 +12,8 @@ Full QC/workflow runtime available: **no**
 
 Alignment-ready definition: At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.
 
+Phase 2C partial human-reference smoke ready: **yes**
+
 ## baseline_streaming
 
 Required for: Phase 2A direct FASTQ metadata and tiny read-subset smoke
@@ -62,4 +64,4 @@ Required for: nf-core/sarek or containerized raw-data workflow execution
 
 ## Conclusion
 
-Local machine can run Phase 2A direct-FASTQ smoke tests and Phase 2B local BAM alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers.
+Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, and Phase 2C partial human-reference alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers.

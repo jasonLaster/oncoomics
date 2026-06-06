@@ -1,0 +1,2 @@
+status,sample_rows,references,assemblies,genome_builds,tumor_rows,normal_rows,boundary
+passed,4,ucsc_hg38_chr13_chr17;ucsc_hg19_chr13_chr17,hg38;hg19,GRCh38;GRCh37,2,2,"Partial hg38/hg19 chr13/chr17 human-reference smoke only; not full-depth WES/WGS, somatic calling, or HRD evidence."
