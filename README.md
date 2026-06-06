@@ -12,6 +12,7 @@ The active scope is intentionally conservative:
 
 - **Bun** is used for one-off project scripts: source checks, dataset-catalog fetchers, manifest generation, and validation utilities.
 - **Python** is the primary local analysis language for the first phase because Python 3.9 is available here and R is not installed locally.
+- **BWA + samtools** are used for the local Phase 2B FASTQ-to-BAM smoke test.
 - **External workflow adapters** are planned for raw WGS or R-only HRD tools: nf-core/sarek, SigProfiler, CHORD, scarHRD, FACETS/ASCAT/PURPLE-style outputs, and containerized R when needed.
 
 ## Current Artifacts
@@ -23,6 +24,7 @@ The active scope is intentionally conservative:
 - `docs/WIKI_SOURCE_SUMMARY.md` - local wiki findings that drive the project boundary.
 - `manifests/validation_atlases.json` - machine-readable source manifest for phase planning.
 - `manifests/raw_representative_panel.csv` - public SEQC2/HCC1395 raw-data candidate ladder.
+- `manifests/alignment_smoke_samplesheet.csv` - local Phase 2B tumor-normal alignment smoke samplesheet.
 - `scripts/verify-plan.ts` - Bun verifier for the project plan, source manifest, and local wiki assumptions.
 
 ## Verify
@@ -44,6 +46,19 @@ Build and run the Phase 2A raw FASTQ smoke test:
 ```sh
 bun run build:raw-samplesheets
 bun run smoke:raw
+```
+
+Build and run the Phase 2B local alignment/BAM smoke test:
+
+```sh
+bun run build:alignment-smoke
+bun run smoke:alignment
+```
+
+Run the full workflow:
+
+```sh
+bun run run:all
 ```
 
 Optionally check the online source links too:

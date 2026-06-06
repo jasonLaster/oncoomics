@@ -72,6 +72,12 @@ Completed Phase 1 scope:
 
 Phase 1 was intentionally processed-data-only. The next phase must prove representative raw-data ingestion and tumor-normal workflow mechanics before Diana's FASTQ/BAM/CRAM files arrive.
 
+Phase 2A is complete as of `6d930ea Add raw-data readiness smoke workflow`: the project streams and validates a real SEQC2/HCC1395 tumor-normal FASTQ subset.
+
+Phase 2B is complete for local file-contract validation: the project builds a read-backed synthetic smoke reference, aligns the HCC1395 tumor-normal FASTQ subset with `bwa mem`, produces coordinate-sorted/indexed BAMs with `samtools`, and validates read groups, shared reference hash, mapped reads, and BAM/BAI presence.
+
+The next gate is Phase 2C: real human-reference alignment and somatic-caller input readiness using a larger HCC1395 WES downsample or full WES pair. This requires a reference-build decision, intervals/known-sites resources where needed, and full QC/workflow tooling.
+
 ### Milestone 0: Project Baseline And Source Audit
 
 Goal: Freeze what the Diana wiki says, what the project will analyze, and which sources are valid enough for the first benchmark.

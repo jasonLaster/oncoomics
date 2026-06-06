@@ -1,0 +1,2 @@
+status,pair_id,reference_id,aligner,bam_tool,samples,tumor_rows,normal_rows,boundary
+passed,seqc2_hcc1395_wes_minimal_smoke,seqc2_hcc1395_readback_smoke_v1,bwa mem,samtools,2,1,1,"Local file-contract smoke only; not human-reference alignment, somatic calling, or HRD signature evidence."

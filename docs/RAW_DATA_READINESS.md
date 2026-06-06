@@ -49,6 +49,8 @@ Phase 2 should not be considered complete until these pass:
 3. A raw samplesheet exists and validates.
 4. A small raw-data smoke run completes and leaves a report.
 5. The smoke report says whether the test used full SRA, SRA Lite, downsampled FASTQ, or a regional subset.
+6. The alignment smoke produces coordinate-sorted tumor and normal BAMs with indexes and read groups.
+7. The alignment report preserves the boundary between file-contract validation and human-reference biology.
 
 ## Phase 2A Result
 
@@ -65,17 +67,32 @@ The project now streams a tiny real-read subset from ENA direct FASTQ links for 
 
 This validates direct raw-read access, paired FASTQ layout, read-ID pairing, basic read metrics, and samplesheet shape.
 
-## Phase 2B Remaining Gate
+## Phase 2B Result
 
-The local machine does not currently have SRA Toolkit, FastQC/MultiQC, BWA/BWA-MEM2, samtools, Nextflow, or a container runtime installed. The next raw-readiness step is therefore alignment/caller input readiness on a genomics-ready environment.
+Status: **complete for local file-contract validation**.
 
-Required Phase 2B output:
+The local machine now has a minimal alignment stack for a contained BAM smoke:
 
-1. A reference-build decision.
-2. An alignment-capable environment.
-3. BAM/CRAM/QC artifact generation from the minimal WES pair or a larger downsample.
-4. Somatic-caller input validation.
-5. A report that distinguishes format smoke, alignment smoke, and full-depth benchmark runs.
+1. `bwa 0.7.19`.
+2. `samtools 1.23.1`.
+3. A read-backed synthetic smoke reference built from the Phase 2A FASTQ subset.
+4. Tumor and normal coordinate-sorted BAMs under ignored local `data/raw/smoke/`.
+5. Tracked validation summaries under `results/alignment_smoke/`.
+
+This validates FASTQ-to-BAM mechanics, read groups, BAM sorting/indexing, shared reference hash, mapped reads, and `samtools quickcheck`.
+
+It does **not** validate GRCh37/GRCh38 alignment, capture interval behavior, full-depth WES/WGS performance, somatic calls, CNV/SV calls, or HRD signatures.
+
+## Phase 2C Remaining Gate
+
+Required next output:
+
+1. A human reference-build decision.
+2. WES intervals and known-sites resources if needed.
+3. Full QC/workflow tooling: FastQC/MultiQC, SRA Toolkit or ENA download path, and Nextflow/container or pinned local caller stack.
+4. BAM/CRAM/QC artifact generation from a larger HCC1395 WES downsample or full WES pair against a human reference.
+5. Somatic-caller input validation against the real reference.
+6. A report that distinguishes format smoke, local alignment smoke, real-reference alignment, and full-depth benchmark runs.
 
 ## Boundary
 

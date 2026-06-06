@@ -115,6 +115,20 @@ async function main() {
     enaRows.push(...parseDelimited(enaText, "\t"));
   }
   const enaByRun = new Map(enaRows.map((row) => [row.run_accession, row]));
+  const selectedRunInfo = runs.map((run) => {
+    const row = byRun.get(run);
+    if (!row) {
+      throw new Error(`Missing SRA runinfo row for ${run}`);
+    }
+    return row;
+  });
+  const selectedEnaRows = runs.map((run) => {
+    const row = enaByRun.get(run);
+    if (!row) {
+      throw new Error(`Missing ENA FASTQ row for ${run}`);
+    }
+    return row;
+  });
 
   const manifestRows = candidates.map((candidate) => {
     const row = byRun.get(candidate.run);
@@ -165,8 +179,8 @@ async function main() {
     };
   });
 
-  await writeCsv(pathFromRoot("data/processed/catalog/seqc2_sra_runinfo_selected.csv"), runInfo);
-  await writeCsv(pathFromRoot("data/processed/catalog/seqc2_ena_fastq_selected.csv"), enaRows);
+  await writeCsv(pathFromRoot("data/processed/catalog/seqc2_sra_runinfo_selected.csv"), selectedRunInfo);
+  await writeCsv(pathFromRoot("data/processed/catalog/seqc2_ena_fastq_selected.csv"), selectedEnaRows);
   await writeCsv(pathFromRoot("manifests/raw_representative_panel.csv"), manifestRows);
   await writeJson(pathFromRoot("manifests/raw_representative_panel_summary.json"), {
     generatedAt: new Date().toISOString(),

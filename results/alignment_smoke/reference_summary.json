@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-06-06T21:53:51.390Z",
+  "status": "built",
+  "referenceId": "seqc2_hcc1395_readback_smoke_v1",
+  "referencePath": "data/raw/smoke/seqc2_hcc1395_alignment_smoke/reference/seqc2_hcc1395_readback_smoke_v1.fa",
+  "referenceSha256": "4d96ba3cae32f2ba55cf642aeb8865cc53d47df68c1fb03e3211e26b09a9b4cb",
+  "referenceType": "read-backed synthetic smoke reference",
+  "smokePairId": "seqc2_hcc1395_wes_minimal_smoke",
+  "samples": [
+    {
+      "run_accession": "SRR7890851",
+      "role": "normal",
+      "sample": "HCC1395BL",
+      "read_pairs": 1000,
+      "fastq_1": "data/raw/smoke/seqc2_hcc1395_wes_minimal_smoke/SRR7890851_R1.fastq",
+      "fastq_2": "data/raw/smoke/seqc2_hcc1395_wes_minimal_smoke/SRR7890851_R2.fastq"
+    },
+    {
+      "run_accession": "SRR7890850",
+      "role": "tumor",
+      "sample": "HCC1395",
+      "read_pairs": 1000,
+      "fastq_1": "data/raw/smoke/seqc2_hcc1395_wes_minimal_smoke/SRR7890850_R1.fastq",
+      "fastq_2": "data/raw/smoke/seqc2_hcc1395_wes_minimal_smoke/SRR7890850_R2.fastq"
+    }
+  ],
+  "contigs": 2000,
+  "minContigLength": 402,
+  "maxContigLength": 402,
+  "gapLength": 100,
+  "caveat": "This reference is intentionally built from the representative FASTQ subset to validate alignment mechanics locally. It is not GRCh37, GRCh38, or any biological reference."
+}

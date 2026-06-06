@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-06-06T21:53:51.712Z",
+  "bwa": {
+    "path": "/opt/homebrew/bin/bwa",
+    "version": "Program: bwa (alignment via Burrows-Wheeler transformation)\nVersion: 0.7.19-r1273\nContact: Heng Li <hli@ds.dfci.harvard.edu>\n\nUsage:   bwa <command> [options]"
+  },
+  "samtools": {
+    "path": "/opt/homebrew/bin/samtools",
+    "version": "Program: samtools (Tools for alignments in the SAM format)\nVersion: 1.23.1 (using htslib 1.23.1)\n\nUsage:   samtools <command> [options]"
+  }
+}

@@ -45,17 +45,48 @@ Key outputs:
 
 ## Phase 2B: Alignment And Somatic-Caller Input Readiness
 
+Status: **complete and validated for local BAM file-contract smoke**.
+
+Goal: take the Phase 2A smoke FASTQs through local alignment/BAM generation and somatic-caller input validation.
+
+Completed work:
+
+1. Installed a minimal local alignment stack: `bwa` and `samtools`.
+2. Built `manifests/alignment_smoke_samplesheet.csv`.
+3. Built a read-backed synthetic smoke reference from the HCC1395 tumor-normal FASTQ subset.
+4. Ran `bwa mem` and `samtools sort/index/quickcheck/stats` for tumor and normal.
+5. Validated coordinate-sorted BAMs, indexes, read groups, shared reference hash, mapped reads, and tumor-normal rows.
+6. Recorded the boundary that this is not GRCh37/GRCh38 alignment, somatic calling, or HRD signature evidence.
+
+Exit criteria:
+
+1. Tumor and normal representative FASTQs align locally. **Complete.**
+2. BAM/BAI files are generated, coordinate-sorted, indexed, and read-grouped. **Complete.**
+3. Somatic-caller input file-contract checks pass. **Complete.**
+4. Biological and reference-build limitations are explicit. **Complete.**
+
+Key outputs:
+
+1. `manifests/alignment_smoke_samplesheet.csv`
+2. `results/alignment_smoke/README.md`
+3. `results/alignment_smoke/reference_summary.json`
+4. `results/alignment_smoke/alignment_smoke_summary.csv`
+5. `results/alignment_smoke/bam_validation_summary.csv`
+
+## Phase 2C: Human-Reference And Full-Depth Readiness
+
 Status: **next**.
 
-Goal: take the Phase 2A smoke FASTQs or a larger downsample through alignment/BAM generation and somatic-caller input validation.
+Goal: move from local file-contract smoke to a real human-reference WES/WGS workflow.
 
 Required work:
 
-1. Install or containerize a genomics stack: SRA Toolkit or ENA download route, FastQC/MultiQC, BWA/BWA-MEM2 or nf-core/sarek, samtools, and a somatic caller path.
-2. Confirm reference build and intervals before any alignment.
-3. Run the minimal WES pair through either a tiny synthetic/reference smoke or a small real-reference subset on a genomics-ready machine.
-4. Produce BAM/CRAM/QC artifacts or a complete nf-core/sarek test-profile equivalent.
-5. Keep WES-limited evidence separate from WGS signature evidence.
+1. Decide the exact human reference build for representative runs and Diana intake: GRCh38, GRCh37/hg19, or hs37d5.
+2. Add capture intervals and known-sites resources if WES/GATK-style workflows are used.
+3. Install or containerize full QC/workflow tools: FastQC/MultiQC, SRA Toolkit or ENA download route, Nextflow or another pinned workflow runtime, and a somatic caller path.
+4. Run a larger HCC1395 WES downsample or full WES pair against the selected human reference.
+5. Produce real-reference BAM/CRAM/QC artifacts and somatic-caller-ready inputs.
+6. Keep WES-limited evidence separate from WGS signature evidence.
 
 ## Phase 3: WGS HRD Signature Capability
 

@@ -1,8 +1,11 @@
 {
-  "generatedAt": "2026-06-06T21:43:21.943Z",
+  "generatedAt": "2026-06-06T21:53:44.443Z",
   "phase2aReady": true,
-  "alignmentReady": false,
+  "alignmentReady": true,
+  "fullAlignmentToolboxReady": false,
   "workflowReady": false,
+  "fullWorkflowReady": false,
+  "alignmentReadyDefinition": "At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.",
   "groups": [
     {
       "group": "baseline_streaming",
@@ -96,8 +99,8 @@
       "tools": [
         {
           "tool": "bwa",
-          "path": "",
-          "available": false
+          "path": "/opt/homebrew/bin/bwa",
+          "available": true
         },
         {
           "tool": "bwa-mem2",
@@ -111,8 +114,8 @@
         },
         {
           "tool": "samtools",
-          "path": "",
-          "available": false
+          "path": "/opt/homebrew/bin/samtools",
+          "available": true
         }
       ],
       "allAvailable": false
@@ -155,5 +158,5 @@
       "allAvailable": false
     }
   ],
-  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests. Alignment/caller phases require additional tools or containers."
+  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests and Phase 2B local BAM alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers."
 }

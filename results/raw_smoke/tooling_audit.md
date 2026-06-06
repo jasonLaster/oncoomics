@@ -2,9 +2,15 @@
 
 Phase 2A direct-FASTQ smoke ready: **yes**
 
-Alignment/BAM ready locally: **no**
+Alignment/BAM ready locally: **yes**
+
+Full aligner toolbox available: **no**
 
 Workflow/container runtime available: **no**
+
+Full QC/workflow runtime available: **no**
+
+Alignment-ready definition: At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.
 
 ## baseline_streaming
 
@@ -38,10 +44,10 @@ Required for: Standard FASTQ QC and aggregate reports
 
 Required for: Reference alignment and BAM/CRAM generation
 
-- bwa: missing
+- bwa: /opt/homebrew/bin/bwa
 - bwa-mem2: missing
 - minimap2: missing
-- samtools: missing
+- samtools: /opt/homebrew/bin/samtools
 
 ## workflow_runtime
 
@@ -56,4 +62,4 @@ Required for: nf-core/sarek or containerized raw-data workflow execution
 
 ## Conclusion
 
-Local machine can run Phase 2A direct-FASTQ smoke tests. Alignment/caller phases require additional tools or containers.
+Local machine can run Phase 2A direct-FASTQ smoke tests and Phase 2B local BAM alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers.

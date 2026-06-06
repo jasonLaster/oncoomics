@@ -7,6 +7,7 @@ data/raw/*
 !data/raw/.gitkeep
 
 # Track small processed/public summary outputs and reviewer deliverables.
+results/alignment_smoke/logs/
 
 .venv/
 __pycache__/

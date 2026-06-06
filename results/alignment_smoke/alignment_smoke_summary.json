@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-06-06T21:53:51.725Z",
+  "status": "passed",
+  "pairId": "seqc2_hcc1395_wes_minimal_smoke",
+  "referenceId": "seqc2_hcc1395_readback_smoke_v1",
+  "referencePath": "data/raw/smoke/seqc2_hcc1395_alignment_smoke/reference/seqc2_hcc1395_readback_smoke_v1.fa",
+  "referenceSha256": "4d96ba3cae32f2ba55cf642aeb8865cc53d47df68c1fb03e3211e26b09a9b4cb",
+  "indexedReference": false,
+  "aligner": "bwa mem",
+  "bamTool": "samtools",
+  "samples": 2,
+  "tumorRows": 1,
+  "normalRows": 1,
+  "boundary": "Phase 2B local BAM smoke validates FASTQ-to-coordinate-sorted-BAM mechanics and caller-input file contracts against a read-backed synthetic reference. It does not validate GRCh37/GRCh38 alignment, coverage, somatic calls, or HRD signatures."
+}

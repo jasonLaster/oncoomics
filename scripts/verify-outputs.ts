@@ -42,6 +42,7 @@ const requiredFiles = [
   "manifests/raw_representative_panel_summary.json",
   "manifests/raw_samplesheet.csv",
   "manifests/raw_smoke_samplesheet.csv",
+  "manifests/alignment_smoke_samplesheet.csv",
   "manifests/reference_panel_validation.json",
   "docs/reference-panel-label-rules.md",
   "results/hrd_event_table.csv",
@@ -60,7 +61,14 @@ const requiredFiles = [
   "results/raw_smoke/fastq_smoke_summary.json",
   "results/raw_smoke/samplesheet_summary.json",
   "results/raw_smoke/tooling_audit.json",
-  "results/raw_smoke/tooling_audit.md"
+  "results/raw_smoke/tooling_audit.md",
+  "results/alignment_smoke/README.md",
+  "results/alignment_smoke/reference_summary.json",
+  "results/alignment_smoke/tool_versions.json",
+  "results/alignment_smoke/alignment_smoke_summary.csv",
+  "results/alignment_smoke/alignment_smoke_summary.json",
+  "results/alignment_smoke/bam_validation_summary.csv",
+  "results/alignment_smoke/bam_validation_summary.json"
 ];
 
 for (const file of requiredFiles) {
@@ -254,6 +262,142 @@ if (rawSmokeSummary.status !== "passed") {
 const rawToolingAudit = readJson<Record<string, unknown>>(pathFromRoot("results/raw_smoke/tooling_audit.json"));
 if (rawToolingAudit.phase2aReady !== true) {
   errors.push("Raw tooling audit says Phase 2A is not ready.");
+}
+if (rawToolingAudit.alignmentReady !== true) {
+  errors.push("Raw tooling audit says Phase 2B local alignment smoke is not ready.");
+}
+
+const alignmentSamplesheet = requireRows("manifests/alignment_smoke_samplesheet.csv", 2);
+requireColumns("manifests/alignment_smoke_samplesheet.csv", alignmentSamplesheet, [
+  "pair_id",
+  "patient",
+  "sample",
+  "role",
+  "status",
+  "run_accession",
+  "fastq_1",
+  "fastq_2",
+  "reference_id",
+  "reference_path",
+  "reference_sha256",
+  "aligner",
+  "read_group_id",
+  "read_group_sample",
+  "output_bam",
+  "output_bai",
+  "caveat"
+]);
+if (!alignmentSamplesheet.some((row) => row.role === "tumor") || !alignmentSamplesheet.some((row) => row.role === "normal")) {
+  errors.push("Alignment smoke samplesheet must include tumor and normal rows.");
+}
+const alignmentReferenceHashes = new Set(alignmentSamplesheet.map((row) => row.reference_sha256));
+if (alignmentReferenceHashes.size !== 1) {
+  errors.push("Alignment smoke samplesheet must use one shared reference hash.");
+}
+for (const row of alignmentSamplesheet) {
+  if (Object.values(row).some((value) => value === "undefined")) {
+    errors.push(`Alignment smoke samplesheet row contains undefined: ${JSON.stringify(row)}`);
+  }
+  if (!row.output_bam.endsWith(".bam") || !row.output_bai.endsWith(".bam.bai")) {
+    errors.push(`Alignment smoke outputs are not BAM/BAI paths for ${row.run_accession}`);
+  }
+  if (!row.caveat.includes("not a human-reference")) {
+    errors.push(`Alignment smoke caveat must preserve non-human-reference boundary for ${row.run_accession}`);
+  }
+}
+
+const alignmentReferenceSummary = readJson<Record<string, unknown>>(pathFromRoot("results/alignment_smoke/reference_summary.json"));
+if (alignmentReferenceSummary.status !== "built") {
+  errors.push("Alignment smoke reference summary was not built.");
+}
+if (alignmentReferenceSummary.referenceType !== "read-backed synthetic smoke reference") {
+  errors.push("Alignment smoke reference summary must identify the synthetic smoke reference.");
+}
+if (Number(alignmentReferenceSummary.contigs) < 1000) {
+  errors.push("Alignment smoke reference has too few contigs for the HCC1395 read-pair smoke.");
+}
+if (!String(alignmentReferenceSummary.caveat ?? "").includes("not GRCh37, GRCh38")) {
+  errors.push("Alignment smoke reference summary must preserve reference-build caveat.");
+}
+
+const alignmentSummaryRows = requireRows("results/alignment_smoke/alignment_smoke_summary.csv", 1);
+requireColumns("results/alignment_smoke/alignment_smoke_summary.csv", alignmentSummaryRows, [
+  "status",
+  "pair_id",
+  "reference_id",
+  "aligner",
+  "bam_tool",
+  "samples",
+  "tumor_rows",
+  "normal_rows",
+  "boundary"
+]);
+if (alignmentSummaryRows[0]?.status !== "passed") {
+  errors.push("Alignment smoke summary CSV did not pass.");
+}
+if (!alignmentSummaryRows[0]?.boundary.includes("not human-reference alignment")) {
+  errors.push("Alignment smoke summary CSV must preserve human-reference boundary.");
+}
+
+const alignmentSummary = readJson<Record<string, unknown>>(pathFromRoot("results/alignment_smoke/alignment_smoke_summary.json"));
+if (alignmentSummary.status !== "passed") {
+  errors.push("Alignment smoke summary JSON did not pass.");
+}
+if (alignmentSummary.tumorRows !== 1 || alignmentSummary.normalRows !== 1) {
+  errors.push("Alignment smoke summary must include one tumor and one normal BAM.");
+}
+if (!String(alignmentSummary.boundary ?? "").includes("does not validate GRCh37/GRCh38 alignment")) {
+  errors.push("Alignment smoke summary JSON must preserve GRCh37/GRCh38 boundary.");
+}
+
+const bamRows = requireRows("results/alignment_smoke/bam_validation_summary.csv", 2);
+requireColumns("results/alignment_smoke/bam_validation_summary.csv", bamRows, [
+  "pair_id",
+  "role",
+  "run_accession",
+  "sample",
+  "reference_id",
+  "reference_sha256",
+  "output_bam",
+  "output_bai",
+  "bam_exists",
+  "bai_exists",
+  "quickcheck",
+  "sort_order",
+  "read_group_present",
+  "total_alignments",
+  "mapped_alignments",
+  "mapped_fraction",
+  "properly_paired_alignments",
+  "status",
+  "caveat"
+]);
+for (const row of bamRows) {
+  if (row.status !== "passed") {
+    errors.push(`Alignment smoke BAM validation failed for ${row.run_accession}.`);
+  }
+  if (row.quickcheck !== "passed") {
+    errors.push(`Alignment smoke quickcheck failed for ${row.run_accession}.`);
+  }
+  if (row.sort_order !== "coordinate") {
+    errors.push(`Alignment smoke BAM is not coordinate sorted for ${row.run_accession}.`);
+  }
+  if (row.read_group_present !== "yes") {
+    errors.push(`Alignment smoke BAM is missing read group for ${row.run_accession}.`);
+  }
+  if (row.bam_exists !== "yes" || row.bai_exists !== "yes") {
+    errors.push(`Alignment smoke BAM/BAI paths were not present when validated for ${row.run_accession}.`);
+  }
+  if (Number(row.total_alignments) <= 0 || Number(row.mapped_alignments) <= 0) {
+    errors.push(`Alignment smoke BAM has no mapped alignments for ${row.run_accession}.`);
+  }
+  if (!row.caveat.includes("not a human-reference")) {
+    errors.push(`Alignment smoke BAM caveat must preserve non-human-reference boundary for ${row.run_accession}.`);
+  }
+}
+const bamSummary = readJson<Record<string, unknown>>(pathFromRoot("results/alignment_smoke/bam_validation_summary.json"));
+if (bamSummary.status !== "passed") {
+  errors.push("Alignment smoke BAM validation JSON did not pass.");
 }
 
 const cbioSummary = readJson<Record<string, unknown>>(pathFromRoot("data/processed/catalog/cbioportal_tcga_brca_summary.json"));
