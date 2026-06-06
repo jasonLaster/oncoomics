@@ -12,7 +12,8 @@ The active scope is intentionally conservative:
 
 - **Bun** is used for one-off project scripts: source checks, dataset-catalog fetchers, manifest generation, and validation utilities.
 - **Python** is the primary local analysis language for the first phase because Python 3.9 is available here and R is not installed locally.
-- **BWA + samtools** are used for the local Phase 2B FASTQ-to-BAM smoke test and Phase 2C partial human-reference smoke.
+- **BWA + samtools** are used for the local Phase 2B FASTQ-to-BAM smoke test, Phase 2C partial human-reference smoke, and Phase 2D full-reference BAM smoke.
+- **bcftools** is used for the Phase 2D tiny VCF caller-contract smoke.
 - **External workflow adapters** are planned for raw WGS or R-only HRD tools: nf-core/sarek, SigProfiler, CHORD, scarHRD, FACETS/ASCAT/PURPLE-style outputs, and containerized R when needed.
 
 ## Current Artifacts
@@ -26,6 +27,7 @@ The active scope is intentionally conservative:
 - `manifests/raw_representative_panel.csv` - public SEQC2/HCC1395 raw-data candidate ladder.
 - `manifests/alignment_smoke_samplesheet.csv` - local Phase 2B tumor-normal alignment smoke samplesheet.
 - `manifests/human_reference_smoke_samplesheet.csv` - Phase 2C hg38/hg19 partial human-reference alignment smoke samplesheet.
+- `manifests/full_reference_smoke_samplesheet.csv` - Phase 2D full hg38 analysis-set caller-readiness smoke samplesheet.
 - `scripts/verify-plan.ts` - Bun verifier for the project plan, source manifest, and local wiki assumptions.
 
 ## Verify
@@ -61,6 +63,13 @@ Fetch and run the Phase 2C partial human-reference smoke test:
 ```sh
 bun run fetch:human-reference-smoke
 bun run smoke:human-reference
+```
+
+Fetch and run the Phase 2D full-reference caller-readiness smoke test:
+
+```sh
+bun run fetch:full-reference-smoke
+bun run smoke:full-reference
 ```
 
 Run the full workflow:

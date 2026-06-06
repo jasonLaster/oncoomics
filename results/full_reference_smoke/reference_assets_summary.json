@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-06-06T23:06:22.667Z",
+  "status": "built",
+  "referenceCount": 1,
+  "sampleRows": 2,
+  "references": [
+    {
+      "reference_id": "ucsc_hg38_analysis_set_full",
+      "assembly": "hg38",
+      "genome_build": "GRCh38",
+      "source": "UCSC hg38 analysisSet FASTA",
+      "source_url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/analysisSet/hg38.analysisSet.fa.gz",
+      "source_md5": "6d3c82e1e12b127d526395294526b9c8",
+      "md5_status": "passed",
+      "fasta_path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa",
+      "fasta_fai_path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.fai",
+      "fasta_sha256": "d2b7be348fb20af46461855faec64dfbd21532620bd125783df050180446055e",
+      "fasta_size_bytes": 3161924569,
+      "interval_bed_path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/brca_chr13_chr17_smoke.bed",
+      "interval_regions": "chr13:32315086-32400266;chr17:43044295-43125482",
+      "interval_genes": "BRCA2;BRCA1",
+      "caller_smoke_tool": "bcftools mpileup/call",
+      "caveat": "Full hg38 analysis-set reference for local caller-readiness smoke. Uses tiny HCC1395 FASTQ subset and BRCA interval targets; not full-depth WES/WGS sensitivity validation."
+    }
+  ],
+  "boundary": "Phase 2D uses a full UCSC hg38 analysis-set reference with BRCA1/BRCA2 smoke intervals. It validates full-reference plumbing and caller-readiness contracts, not full-depth WES/WGS sensitivity."
+}

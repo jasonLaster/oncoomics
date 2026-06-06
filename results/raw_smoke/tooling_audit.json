@@ -1,8 +1,10 @@
 {
-  "generatedAt": "2026-06-06T22:06:47.254Z",
+  "generatedAt": "2026-06-06T23:06:06.412Z",
   "phase2aReady": true,
   "alignmentReady": true,
   "humanReferenceSmokeReady": true,
+  "callerSmokeReady": true,
+  "fullReferenceSmokeReady": true,
   "fullAlignmentToolboxReady": false,
   "workflowReady": false,
   "fullWorkflowReady": false,
@@ -122,6 +124,18 @@
       "allAvailable": false
     },
     {
+      "group": "caller_smoke",
+      "requiredFor": "Tiny local variant-caller smoke and VCF contract checks",
+      "tools": [
+        {
+          "tool": "bcftools",
+          "path": "/opt/homebrew/bin/bcftools",
+          "available": true
+        }
+      ],
+      "allAvailable": true
+    },
+    {
       "group": "workflow_runtime",
       "requiredFor": "nf-core/sarek or containerized raw-data workflow execution",
       "tools": [
@@ -159,5 +173,5 @@
       "allAvailable": false
     }
   ],
-  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, and Phase 2C partial human-reference alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers."
+  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, and Phase 2D full-reference caller-readiness smoke tests. Full workflow/WGS phases still require additional tools or containers."
 }

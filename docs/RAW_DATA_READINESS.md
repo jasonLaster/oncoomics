@@ -52,6 +52,7 @@ Phase 2 should not be considered complete until these pass:
 6. The alignment smoke produces coordinate-sorted tumor and normal BAMs with indexes and read groups.
 7. The alignment report preserves the boundary between file-contract validation and human-reference biology.
 8. The partial human-reference smoke validates hg38 and hg19 reference handling with checksum-verified FASTA inputs.
+9. The full-reference smoke validates one full analysis-set reference, BRCA interval metadata, caller-ready BAM contracts, and indexed VCF generation.
 
 ## Phase 2A Result
 
@@ -104,16 +105,38 @@ The smoke run validates:
 
 This intentionally uses chr13 and chr17 because they carry BRCA2 and BRCA1. It is a real-reference alignment smoke, not a full genome bundle and not a full-depth WES/WGS run.
 
-## Phase 2D Remaining Gate
+## Phase 2D Result
+
+Status: **complete for one full-reference caller-readiness smoke**.
+
+The project now validates one full reference bundle:
+
+1. `ucsc_hg38_analysis_set_full`: UCSC hg38 / GRCh38 analysis set.
+2. Source: `https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/analysisSet/hg38.analysisSet.fa.gz`.
+3. Local cached footprint after FASTA, `.fai`, and BWA index: about 9 GB.
+
+The smoke run validates:
+
+1. Full reference download and md5 validation.
+2. `samtools faidx` indexing.
+3. BWA full-reference indexing.
+4. HCC1395 tumor and normal alignment to the full reference.
+5. Coordinate-sorted/indexed BAMs with read groups.
+6. BRCA1/BRCA2 interval metadata for caller readiness.
+7. `bcftools mpileup/call` execution and indexed VCF output.
+
+The VCF smoke produced zero variants, which is acceptable here because the tiny downsample and interval slice are not intended to recover biology. The exit criterion is caller execution and VCF contract validation.
+
+## Phase 2E Remaining Gate
 
 Required next output:
 
-1. A production human reference-build decision.
-2. WES intervals and known-sites resources if needed.
+1. A production somatic caller decision.
+2. Caller-specific full reference extras: sequence dictionary, known-sites resources, germline resource, panel of normals if required, and WES capture intervals.
 3. Full QC/workflow tooling: FastQC/MultiQC, SRA Toolkit or ENA download path, and Nextflow/container or pinned local caller stack.
-4. BAM/CRAM/QC artifact generation from a larger HCC1395 WES downsample or full WES pair against a full human reference.
-5. Somatic-caller input validation against the full reference.
-6. A report that distinguishes format smoke, local alignment smoke, partial real-reference alignment, full-reference alignment, and full-depth benchmark runs.
+4. BAM/CRAM/QC artifact generation from a larger HCC1395 WES downsample or full WES pair against the full reference.
+5. Production somatic-caller output validation against the full reference.
+6. A report that distinguishes format smoke, local alignment smoke, partial real-reference alignment, full-reference caller-readiness smoke, production somatic calling, and full-depth benchmark runs.
 
 ## Boundary
 

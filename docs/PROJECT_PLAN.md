@@ -78,7 +78,9 @@ Phase 2B is complete for local file-contract validation: the project builds a re
 
 Phase 2C is complete for partial real-human-reference validation: the project downloads checksum-verified UCSC hg38 and hg19 chr13+chr17 FASTA references, indexes them, aligns HCC1395 tumor-normal reads to both builds, and validates BAM contracts and build comparison summaries.
 
-The next gate is Phase 2D: full-reference alignment and somatic-caller input readiness using a larger HCC1395 WES downsample or full WES pair. This requires a production reference-build decision, intervals/known-sites resources where needed, and full QC/workflow tooling.
+Phase 2D is complete for one full-reference caller-readiness smoke: the project downloads and md5-validates the UCSC hg38 analysis set, builds `.fai` and BWA indexes, aligns HCC1395 tumor-normal reads to the full reference, validates caller-ready BAM contracts with BRCA interval metadata, and produces an indexed bcftools VCF smoke.
+
+The next gate is Phase 2E: production somatic workflow and depth scale-up using a larger HCC1395 WES downsample or full WES pair. This requires a production caller choice, caller-specific reference extras, intervals/known-sites resources where needed, and full QC/workflow tooling.
 
 ### Milestone 0: Project Baseline And Source Audit
 

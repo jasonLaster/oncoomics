@@ -23,6 +23,11 @@ const toolGroups = [
     tools: ["bwa", "bwa-mem2", "minimap2", "samtools"]
   },
   {
+    group: "caller_smoke",
+    requiredFor: "Tiny local variant-caller smoke and VCF contract checks",
+    tools: ["bcftools"]
+  },
+  {
     group: "workflow_runtime",
     requiredFor: "nf-core/sarek or containerized raw-data workflow execution",
     tools: ["nextflow", "docker", "singularity", "apptainer", "conda", "micromamba"]
@@ -65,19 +70,25 @@ async function main() {
   const workflowReady = groups.find((group) => group.group === "workflow_runtime")?.tools.some((tool) => tool.available) ?? false;
   const fullWorkflowReady = workflowReady && groups.find((group) => group.group === "qc")?.tools.some((tool) => tool.available) === true;
   const humanReferenceSmokeReady = phase2aReady && alignmentReady;
+  const callerSmokeReady = groups.find((group) => group.group === "caller_smoke")?.allAvailable ?? false;
+  const fullReferenceSmokeReady = humanReferenceSmokeReady && callerSmokeReady;
 
   const audit = {
     generatedAt: new Date().toISOString(),
     phase2aReady,
     alignmentReady,
     humanReferenceSmokeReady,
+    callerSmokeReady,
+    fullReferenceSmokeReady,
     fullAlignmentToolboxReady,
     workflowReady,
     fullWorkflowReady,
     alignmentReadyDefinition: "At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.",
     groups,
-    conclusion: humanReferenceSmokeReady
-      ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, and Phase 2C partial human-reference alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers."
+    conclusion: fullReferenceSmokeReady
+      ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, and Phase 2D full-reference caller-readiness smoke tests. Full workflow/WGS phases still require additional tools or containers."
+      : humanReferenceSmokeReady
+        ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, and Phase 2C partial human-reference alignment smoke tests. Phase 2D caller smoke requires bcftools or another pinned caller."
       : phase2aReady
         ? "Local machine can run Phase 2A direct-FASTQ smoke tests. Phase 2B local BAM smoke requires at least one short-read aligner and samtools."
         : "Local machine is missing baseline streaming tools required for Phase 2A."
@@ -101,6 +112,8 @@ Full QC/workflow runtime available: **${fullWorkflowReady ? "yes" : "no"}**
 Alignment-ready definition: ${audit.alignmentReadyDefinition}
 
 Phase 2C partial human-reference smoke ready: **${humanReferenceSmokeReady ? "yes" : "no"}**
+
+Phase 2D full-reference caller-readiness smoke ready: **${fullReferenceSmokeReady ? "yes" : "no"}**
 
 ${groups
   .map((group) => {

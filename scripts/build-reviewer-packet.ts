@@ -33,6 +33,9 @@ async function main() {
   const humanReferenceSummary = readJson<Record<string, unknown>>(
     pathFromRoot("results/human_reference_smoke/human_reference_alignment_summary.json")
   );
+  const fullReferenceSummary = readJson<Record<string, unknown>>(
+    pathFromRoot("results/full_reference_smoke/full_reference_alignment_summary.json")
+  );
 
   const categoryCounts = countBy(panel, "panel_category");
   const predictionCounts = countBy(predictions, "predicted_hrd_class");
@@ -48,6 +51,7 @@ async function main() {
 - UCSC Xena: TCGA-BRCA clinical matrix, used for PAM50/receptor-status context and sample-ID cross-checking.
 - SEQC2/HCC1395: public tumor-normal WES/WGS raw-data benchmark metadata and small FASTQ subsets used for raw-read and alignment smoke tests.
 - UCSC Genome Browser: hg38/GRCh38 and hg19/GRCh37 chr13+chr17 FASTA references used for Phase 2C partial human-reference alignment smoke.
+- UCSC Genome Browser: hg38/GRCh38 analysisSet FASTA used for Phase 2D full-reference caller-readiness smoke.
 
 ## HRD Evidence
 
@@ -65,9 +69,9 @@ RNA context uses selected marker genes from cBioPortal RNA Seq V2 RSEM batch-nor
 
 ## Raw-Data Smoke Lanes
 
-Phase 2A validates direct raw FASTQ access and pairing from a small SEQC2/HCC1395 tumor-normal WES subset. Phase 2B validates local FASTQ-to-BAM mechanics against a read-backed synthetic smoke reference. Phase 2C validates partial real-human-reference alignment against UCSC hg38 and hg19 chr13+chr17 references.
+Phase 2A validates direct raw FASTQ access and pairing from a small SEQC2/HCC1395 tumor-normal WES subset. Phase 2B validates local FASTQ-to-BAM mechanics against a read-backed synthetic smoke reference. Phase 2C validates partial real-human-reference alignment against UCSC hg38 and hg19 chr13+chr17 references. Phase 2D validates one full reference, the UCSC hg38 analysis set, with BRCA1/BRCA2 interval metadata, full-reference BAM contracts, and a tiny indexed VCF caller smoke.
 
-These raw lanes are plumbing and file-contract validators. They do not yet produce somatic calls, CNV/SV calls, full-depth WES/WGS coverage metrics, or HRD signatures.
+These raw lanes are plumbing and file-contract validators. They do not yet produce clinically interpretable somatic calls, CNV/SV calls, full-depth WES/WGS coverage metrics, or HRD signatures.
 
 ## Non-Run Lanes
 
@@ -79,7 +83,7 @@ WGS rearrangement signatures, SBS3 assignment, scarHRD, CHORD, HRDetect, FACETS/
     pathFromRoot("results/diana_readiness_gate.md"),
     `# Diana Readiness Gate
 
-Status: **not ready to run on Diana files without raw-file inventory, full-reference/caller decision, and reviewer sign-off**.
+Status: **not ready to run on Diana files without raw-file inventory, production somatic-caller decision, and reviewer sign-off**.
 
 ## Required Before Diana Data
 
@@ -88,7 +92,7 @@ Status: **not ready to run on Diana files without raw-file inventory, full-refer
 3. Confirm sample timing, tissue block/core, tumor purity or tumor content, fixation, and extraction context.
 4. Decide whether open analysis is for reviewer biology only or whether a clinician will order orthogonal validation.
 5. Confirm whether the requested DNA workflow should be GRCh38, GRCh37/hg19, hs37d5, or a vendor-specific reference bundle.
-6. Confirm WES intervals, known-sites resources, and somatic-caller route if raw DNA is FASTQ/BAM/CRAM.
+6. Confirm WES intervals, known-sites resources, and production somatic-caller route if raw DNA is FASTQ/BAM/CRAM.
 7. Get reviewer sign-off on the benchmark caveats.
 
 ## Validation State
@@ -98,8 +102,9 @@ The benchmark mechanics are runnable and validated on open processed public data
 1. Phase 2A direct FASTQ smoke on SEQC2/HCC1395 tumor-normal WES.
 2. Phase 2B local FASTQ-to-coordinate-sorted-BAM smoke with read groups and indexes.
 3. Phase 2C partial real-human-reference alignment smoke across UCSC hg38/GRCh38 and hg19/GRCh37 chr13+chr17 references.
+4. Phase 2D full-reference caller-readiness smoke using the UCSC hg38 analysis set, BRCA1/BRCA2 interval metadata, and an indexed bcftools VCF contract smoke.
 
-The current workflow is sufficient to validate project plumbing, samplesheet shape, local BAM file contracts, partial human-reference handling, and evidence-table boundaries. It is not sufficient to make a treatment-changing HRD claim, and it does not yet validate full-depth WES/WGS coverage, somatic calls, CNV/SV calls, or WGS-grade HRD signatures.
+The current workflow is sufficient to validate project plumbing, samplesheet shape, local BAM file contracts, partial and full human-reference handling, a tiny caller execution path, and evidence-table boundaries. It is not sufficient to make a treatment-changing HRD claim, and it does not yet validate full-depth WES/WGS coverage, production somatic calls, CNV/SV calls, or WGS-grade HRD signatures.
 `
   );
 
@@ -120,6 +125,8 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 - GDC open files total from catalog query: ${(gdcSummary.totalOpenFiles as number) ?? "unknown"}
 - Human-reference smoke rows: ${(humanReferenceSummary.sampleRows as number) ?? "unknown"}
 - Human-reference smoke builds: ${Array.isArray(humanReferenceSummary.genomeBuilds) ? humanReferenceSummary.genomeBuilds.join(", ") : "unknown"}
+- Full-reference smoke reference: ${(fullReferenceSummary.referenceId as string) ?? "unknown"}
+- Full-reference caller smoke: ${(fullReferenceSummary.callerSmokeStatus as string) ?? "unknown"}
 
 ## Frozen Panel
 
@@ -141,13 +148,15 @@ ${table(confusion)}
 4. HRR events, copy-loss proxies, scar proxies, and RNA context are written as separate evidence tables.
 5. Ambiguous samples remain ambiguous instead of being forced into HRD-positive or HRD-negative buckets.
 6. Raw-data smoke tests validate FASTQ pairing, local BAM contracts, and partial real-human-reference alignment against two reference builds.
+7. Full-reference smoke validates one full hg38 analysis-set reference, BRCA interval metadata, caller-ready BAM contracts, and indexed VCF generation.
 
 ## Main Limitations
 
 1. GISTIC copy loss is not allele-specific LOH.
 2. Fraction genome altered and aneuploidy are scar proxies, not scarHRD.
 3. SBS3, SV signatures, CHORD, and HRDetect are not assessable from the current processed phase-1 inputs.
-4. Clinical action still requires clinician-owned validation, companion diagnostics, or orthogonal confirmation.
+4. The bcftools VCF smoke is not a tumor-normal somatic caller and is not interpreted biologically.
+5. Clinical action still requires clinician-owned validation, companion diagnostics, or orthogonal confirmation.
 
 ## Output Tables
 

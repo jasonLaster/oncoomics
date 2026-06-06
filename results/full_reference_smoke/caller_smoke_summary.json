@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-06-06T23:06:26.706Z",
+  "status": "passed",
+  "rows": [
+    {
+      "reference_id": "ucsc_hg38_analysis_set_full",
+      "caller": "bcftools mpileup/call",
+      "caller_scope": "tiny germline-style variant-caller smoke over BRCA1/BRCA2 intervals using tumor and normal BAM inputs",
+      "reference_path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa",
+      "interval_bed_path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/brca_chr13_chr17_smoke.bed",
+      "input_bams": "data/raw/smoke/seqc2_hcc1395_full_reference_smoke/ucsc_hg38_analysis_set_full/bam/SRR7890851.coordinate_sorted.bam;data/raw/smoke/seqc2_hcc1395_full_reference_smoke/ucsc_hg38_analysis_set_full/bam/SRR7890850.coordinate_sorted.bam",
+      "output_vcf": "data/raw/smoke/seqc2_hcc1395_full_reference_smoke/ucsc_hg38_analysis_set_full/vcf/ucsc_hg38_analysis_set_full.bcftools_smoke.vcf.gz",
+      "output_tbi": "data/raw/smoke/seqc2_hcc1395_full_reference_smoke/ucsc_hg38_analysis_set_full/vcf/ucsc_hg38_analysis_set_full.bcftools_smoke.vcf.gz.tbi",
+      "vcf_exists": "yes",
+      "tbi_exists": "yes",
+      "sample_count": 2,
+      "samples": "HCC1395BL;HCC1395",
+      "records": 0,
+      "snps": 0,
+      "indels": 0,
+      "status": "passed",
+      "caveat": "This is a caller execution and VCF contract smoke only. bcftools call is not a tumor-normal somatic caller and this tiny downsample is not interpreted biologically."
+    }
+  ]
+}

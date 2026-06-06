@@ -14,6 +14,8 @@ Alignment-ready definition: At least one short-read aligner from bwa/bwa-mem2/mi
 
 Phase 2C partial human-reference smoke ready: **yes**
 
+Phase 2D full-reference caller-readiness smoke ready: **yes**
+
 ## baseline_streaming
 
 Required for: Phase 2A direct FASTQ metadata and tiny read-subset smoke
@@ -51,6 +53,12 @@ Required for: Reference alignment and BAM/CRAM generation
 - minimap2: missing
 - samtools: /opt/homebrew/bin/samtools
 
+## caller_smoke
+
+Required for: Tiny local variant-caller smoke and VCF contract checks
+
+- bcftools: /opt/homebrew/bin/bcftools
+
 ## workflow_runtime
 
 Required for: nf-core/sarek or containerized raw-data workflow execution
@@ -64,4 +72,4 @@ Required for: nf-core/sarek or containerized raw-data workflow execution
 
 ## Conclusion
 
-Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, and Phase 2C partial human-reference alignment smoke tests. Full QC/workflow/WGS phases still require additional tools or containers.
+Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, and Phase 2D full-reference caller-readiness smoke tests. Full workflow/WGS phases still require additional tools or containers.

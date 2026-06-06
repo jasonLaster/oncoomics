@@ -7,6 +7,7 @@
 - UCSC Xena: TCGA-BRCA clinical matrix, used for PAM50/receptor-status context and sample-ID cross-checking.
 - SEQC2/HCC1395: public tumor-normal WES/WGS raw-data benchmark metadata and small FASTQ subsets used for raw-read and alignment smoke tests.
 - UCSC Genome Browser: hg38/GRCh38 and hg19/GRCh37 chr13+chr17 FASTA references used for Phase 2C partial human-reference alignment smoke.
+- UCSC Genome Browser: hg38/GRCh38 analysisSet FASTA used for Phase 2D full-reference caller-readiness smoke.
 
 ## HRD Evidence
 
@@ -24,9 +25,9 @@ RNA context uses selected marker genes from cBioPortal RNA Seq V2 RSEM batch-nor
 
 ## Raw-Data Smoke Lanes
 
-Phase 2A validates direct raw FASTQ access and pairing from a small SEQC2/HCC1395 tumor-normal WES subset. Phase 2B validates local FASTQ-to-BAM mechanics against a read-backed synthetic smoke reference. Phase 2C validates partial real-human-reference alignment against UCSC hg38 and hg19 chr13+chr17 references.
+Phase 2A validates direct raw FASTQ access and pairing from a small SEQC2/HCC1395 tumor-normal WES subset. Phase 2B validates local FASTQ-to-BAM mechanics against a read-backed synthetic smoke reference. Phase 2C validates partial real-human-reference alignment against UCSC hg38 and hg19 chr13+chr17 references. Phase 2D validates one full reference, the UCSC hg38 analysis set, with BRCA1/BRCA2 interval metadata, full-reference BAM contracts, and a tiny indexed VCF caller smoke.
 
-These raw lanes are plumbing and file-contract validators. They do not yet produce somatic calls, CNV/SV calls, full-depth WES/WGS coverage metrics, or HRD signatures.
+These raw lanes are plumbing and file-contract validators. They do not yet produce clinically interpretable somatic calls, CNV/SV calls, full-depth WES/WGS coverage metrics, or HRD signatures.
 
 ## Non-Run Lanes
 

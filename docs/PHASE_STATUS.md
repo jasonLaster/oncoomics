@@ -109,17 +109,51 @@ Key outputs:
 
 ## Phase 2D: Full Reference, Intervals, And Somatic Caller Readiness
 
-Status: **next**.
+Status: **complete and validated for one full-reference caller-readiness smoke**.
 
 Goal: move from partial human-reference smoke to full WES/WGS caller readiness.
 
+Completed work:
+
+1. Chose the UCSC `hg38.analysisSet.fa.gz` reference for the first full-reference smoke because it is explicitly prepared for next-generation alignment.
+2. Downloaded the full hg38 analysis-set FASTA, validated the UCSC md5, decompressed it, built `.fai`, and built a BWA index locally.
+3. Added BRCA1/BRCA2 interval metadata for chr17 and chr13 smoke checks.
+4. Built `manifests/full_reference_smoke_references.csv` and `manifests/full_reference_smoke_samplesheet.csv`.
+5. Aligned HCC1395 tumor and normal FASTQs to the full hg38 analysis-set reference.
+6. Validated coordinate-sorted BAMs, indexes, read groups, full-reference contig dictionary shape, mapped reads, BRCA contig presence, and caller-ready scope.
+7. Ran a tiny `bcftools mpileup/call` VCF smoke over the BRCA interval BED and validated that an indexed VCF is produced.
+
+Exit criteria:
+
+1. At least one full human reference is downloaded, checksum-validated, indexed, and recorded. **Complete: UCSC hg38 analysis set.**
+2. Tumor and normal representative FASTQs align to the full reference. **Complete.**
+3. BAM/BAI file contracts pass for every sample. **Complete.**
+4. Caller-readiness metadata includes BRCA1/BRCA2 intervals. **Complete.**
+5. A caller execution smoke produces an indexed VCF. **Complete.**
+6. Limitations remain explicit: not full-depth WES/WGS, not a clinical tumor-normal somatic caller, not CNV/SV calling, and not HRD signature evidence. **Complete.**
+
+Key outputs:
+
+1. `manifests/full_reference_smoke_references.csv`
+2. `manifests/full_reference_smoke_samplesheet.csv`
+3. `results/full_reference_smoke/README.md`
+4. `results/full_reference_smoke/full_reference_alignment_summary.csv`
+5. `results/full_reference_smoke/bam_validation_summary.csv`
+6. `results/full_reference_smoke/caller_smoke_summary.csv`
+
+## Phase 2E: Production Somatic Workflow And Depth Scale-Up
+
+Status: **next**.
+
+Goal: move from full-reference/caller-readiness smoke to a production-style tumor-normal somatic workflow.
+
 Required work:
 
-1. Decide the exact production reference bundle for Diana intake: GRCh38, GRCh37/hg19, hs37d5, or vendor-specific reference.
-2. Add WES capture intervals and known-sites resources if WES/GATK-style workflows are used.
-3. Install or containerize full QC/workflow tools: FastQC/MultiQC, SRA Toolkit or ENA download route, Nextflow or another pinned workflow runtime, and a somatic caller path.
-4. Run a larger HCC1395 WES downsample or full WES pair against the selected full reference.
-5. Produce full-reference BAM/CRAM/QC artifacts and somatic-caller-ready inputs.
+1. Choose the production caller path: Mutect2, Strelka2, nf-core/sarek, or another pinned workflow.
+2. Add caller-specific reference extras: sequence dictionary, known-sites resources, germline resource, panel of normals if required, and WES capture intervals when available.
+3. Run a larger HCC1395 WES downsample or full WES pair against the selected full reference.
+4. Produce production-style somatic VCF/QC outputs, not just a bcftools execution smoke.
+5. Compare against SEQC2/HCC1395 benchmark/truth-set materials where build-compatible.
 6. Keep WES-limited evidence separate from WGS signature evidence.
 
 ## Phase 3: WGS HRD Signature Capability

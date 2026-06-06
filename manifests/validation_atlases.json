@@ -207,6 +207,28 @@
       "verifier": "Download chr13/chr17 for hg38 and hg19, validate md5 values, index FASTA/BWA references, align HCC1395 tumor-normal FASTQ subset, and verify BAM contracts across both builds."
     },
     {
+      "id": "ucsc-hg38-analysis-set-full-reference",
+      "title": "UCSC hg38 analysisSet full reference",
+      "kind": "reference",
+      "priority": "phase-2d-full-reference-smoke",
+      "primary_use": "Full GRCh38/hg38 analysis-set reference for caller-readiness validation before Diana raw DNA files arrive.",
+      "access": "open",
+      "urls": [
+        "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/analysisSet/",
+        "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/analysisSet/hg38.analysisSet.fa.gz"
+      ],
+      "expected_artifacts": [
+        "hg38.analysisSet.fa.gz",
+        "md5sum.txt",
+        "FAI index",
+        "BWA index",
+        "BRCA interval BED",
+        "caller-ready BAM smoke outputs",
+        "indexed VCF caller smoke output"
+      ],
+      "verifier": "Download hg38.analysisSet.fa.gz, validate md5, build FAI/BWA indexes, align HCC1395 tumor-normal FASTQ subset, validate BAM contracts, and produce an indexed bcftools VCF smoke."
+    },
+    {
       "id": "nf-core-sarek",
       "title": "nf-core/sarek",
       "kind": "tool",

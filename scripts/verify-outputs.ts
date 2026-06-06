@@ -45,6 +45,8 @@ const requiredFiles = [
   "manifests/alignment_smoke_samplesheet.csv",
   "manifests/human_reference_smoke_references.csv",
   "manifests/human_reference_smoke_samplesheet.csv",
+  "manifests/full_reference_smoke_references.csv",
+  "manifests/full_reference_smoke_samplesheet.csv",
   "manifests/reference_panel_validation.json",
   "docs/reference-panel-label-rules.md",
   "results/hrd_event_table.csv",
@@ -79,7 +81,16 @@ const requiredFiles = [
   "results/human_reference_smoke/bam_validation_summary.csv",
   "results/human_reference_smoke/bam_validation_summary.json",
   "results/human_reference_smoke/reference_comparison_summary.csv",
-  "results/human_reference_smoke/reference_comparison_summary.json"
+  "results/human_reference_smoke/reference_comparison_summary.json",
+  "results/full_reference_smoke/README.md",
+  "results/full_reference_smoke/reference_assets_summary.json",
+  "results/full_reference_smoke/tool_versions.json",
+  "results/full_reference_smoke/full_reference_alignment_summary.csv",
+  "results/full_reference_smoke/full_reference_alignment_summary.json",
+  "results/full_reference_smoke/bam_validation_summary.csv",
+  "results/full_reference_smoke/bam_validation_summary.json",
+  "results/full_reference_smoke/caller_smoke_summary.csv",
+  "results/full_reference_smoke/caller_smoke_summary.json"
 ];
 
 for (const file of requiredFiles) {
@@ -279,6 +290,12 @@ if (rawToolingAudit.alignmentReady !== true) {
 }
 if (rawToolingAudit.humanReferenceSmokeReady !== true) {
   errors.push("Raw tooling audit says Phase 2C partial human-reference smoke is not ready.");
+}
+if (rawToolingAudit.fullReferenceSmokeReady !== true) {
+  errors.push("Raw tooling audit says Phase 2D full-reference smoke is not ready.");
+}
+if (rawToolingAudit.callerSmokeReady !== true) {
+  errors.push("Raw tooling audit says caller smoke tooling is not ready.");
 }
 
 const alignmentSamplesheet = requireRows("manifests/alignment_smoke_samplesheet.csv", 2);
@@ -616,6 +633,231 @@ for (const row of humanReferenceComparisons) {
 const humanReferenceComparisonSummary = readJson<Record<string, unknown>>(pathFromRoot("results/human_reference_smoke/reference_comparison_summary.json"));
 if (humanReferenceComparisonSummary.status !== "passed") {
   errors.push("Human-reference comparison summary JSON did not pass.");
+}
+
+const fullReferenceRows = requireRows("manifests/full_reference_smoke_references.csv", 1);
+requireColumns("manifests/full_reference_smoke_references.csv", fullReferenceRows, [
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "source",
+  "source_url",
+  "source_md5",
+  "md5_status",
+  "fasta_path",
+  "fasta_fai_path",
+  "fasta_sha256",
+  "fasta_size_bytes",
+  "interval_bed_path",
+  "interval_regions",
+  "interval_genes",
+  "caller_smoke_tool",
+  "caveat"
+]);
+const fullReference = fullReferenceRows[0] ?? {};
+if (fullReference.reference_id !== "ucsc_hg38_analysis_set_full") {
+  errors.push("Full-reference smoke must include ucsc_hg38_analysis_set_full.");
+}
+if (fullReference.assembly !== "hg38" || fullReference.genome_build !== "GRCh38") {
+  errors.push("Full-reference smoke must use hg38/GRCh38 for the first Phase 2D reference.");
+}
+if (fullReference.md5_status !== "passed") {
+  errors.push("Full-reference source MD5 validation did not pass.");
+}
+if (!fullReference.source_url?.includes("/analysisSet/hg38.analysisSet.fa.gz")) {
+  errors.push("Full-reference smoke must use the UCSC hg38 analysisSet FASTA.");
+}
+if (!fullReference.interval_genes?.includes("BRCA1") || !fullReference.interval_genes?.includes("BRCA2")) {
+  errors.push("Full-reference smoke must document BRCA1/BRCA2 interval targets.");
+}
+if (Number(fullReference.fasta_size_bytes) < 1_000_000_000) {
+  errors.push("Full-reference FASTA size is unexpectedly small.");
+}
+if (!fullReference.caveat?.includes("not full-depth WES/WGS")) {
+  errors.push("Full-reference caveat must preserve full-depth boundary.");
+}
+
+const fullReferenceSamplesheet = requireRows("manifests/full_reference_smoke_samplesheet.csv", 2);
+requireColumns("manifests/full_reference_smoke_samplesheet.csv", fullReferenceSamplesheet, [
+  "pair_id",
+  "patient",
+  "sample",
+  "role",
+  "status",
+  "run_accession",
+  "fastq_1",
+  "fastq_2",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "reference_path",
+  "reference_sha256",
+  "interval_bed_path",
+  "interval_regions",
+  "interval_genes",
+  "read_group_id",
+  "read_group_sample",
+  "output_bam",
+  "output_bai",
+  "caller_ready_scope",
+  "caveat"
+]);
+if (!fullReferenceSamplesheet.some((row) => row.role === "tumor") || !fullReferenceSamplesheet.some((row) => row.role === "normal")) {
+  errors.push("Full-reference samplesheet must include tumor and normal rows.");
+}
+for (const row of fullReferenceSamplesheet) {
+  if (row.reference_id !== "ucsc_hg38_analysis_set_full") {
+    errors.push(`Unexpected full-reference samplesheet reference ${row.reference_id}.`);
+  }
+  if (!row.interval_genes.includes("BRCA1") || !row.interval_genes.includes("BRCA2")) {
+    errors.push(`Full-reference samplesheet must include BRCA1/BRCA2 intervals for ${row.run_accession}.`);
+  }
+  if (!row.caller_ready_scope.includes("full reference")) {
+    errors.push(`Full-reference samplesheet must record caller-ready scope for ${row.run_accession}.`);
+  }
+  if (!row.caveat.includes("not full-depth WES/WGS")) {
+    errors.push(`Full-reference samplesheet caveat must preserve full-depth boundary for ${row.run_accession}.`);
+  }
+}
+
+const fullReferenceAssets = readJson<Record<string, unknown>>(pathFromRoot("results/full_reference_smoke/reference_assets_summary.json"));
+if (fullReferenceAssets.status !== "built") {
+  errors.push("Full-reference asset summary was not built.");
+}
+if (fullReferenceAssets.referenceCount !== 1 || fullReferenceAssets.sampleRows !== 2) {
+  errors.push("Full-reference asset summary must include one reference and two sample rows.");
+}
+if (!String(fullReferenceAssets.boundary ?? "").includes("caller-readiness contracts")) {
+  errors.push("Full-reference asset summary must preserve caller-readiness boundary.");
+}
+
+const fullReferenceSummaryRows = requireRows("results/full_reference_smoke/full_reference_alignment_summary.csv", 1);
+requireColumns("results/full_reference_smoke/full_reference_alignment_summary.csv", fullReferenceSummaryRows, [
+  "status",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "sample_rows",
+  "tumor_rows",
+  "normal_rows",
+  "caller_smoke_status",
+  "boundary"
+]);
+if (fullReferenceSummaryRows[0]?.status !== "passed" || fullReferenceSummaryRows[0]?.caller_smoke_status !== "passed") {
+  errors.push("Full-reference alignment summary CSV did not pass.");
+}
+if (!fullReferenceSummaryRows[0]?.boundary.includes("not full-depth WES/WGS")) {
+  errors.push("Full-reference alignment summary CSV must preserve full-depth boundary.");
+}
+const fullReferenceSummary = readJson<Record<string, unknown>>(pathFromRoot("results/full_reference_smoke/full_reference_alignment_summary.json"));
+if (fullReferenceSummary.status !== "passed" || fullReferenceSummary.callerSmokeStatus !== "passed") {
+  errors.push("Full-reference alignment summary JSON did not pass.");
+}
+if (fullReferenceSummary.sampleRows !== 2 || fullReferenceSummary.tumorRows !== 1 || fullReferenceSummary.normalRows !== 1) {
+  errors.push("Full-reference alignment summary must include one tumor and one normal row.");
+}
+if (!String(fullReferenceSummary.boundary ?? "").includes("clinical somatic calling")) {
+  errors.push("Full-reference alignment summary must preserve clinical-calling boundary.");
+}
+
+const fullReferenceBamRows = requireRows("results/full_reference_smoke/bam_validation_summary.csv", 2);
+requireColumns("results/full_reference_smoke/bam_validation_summary.csv", fullReferenceBamRows, [
+  "pair_id",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "role",
+  "run_accession",
+  "sample",
+  "reference_sha256",
+  "interval_bed_path",
+  "interval_regions",
+  "interval_genes",
+  "output_bam",
+  "output_bai",
+  "bam_exists",
+  "bai_exists",
+  "quickcheck",
+  "sort_order",
+  "read_group_present",
+  "reference_contig_count",
+  "expected_brca_contigs_present",
+  "total_alignments",
+  "mapped_alignments",
+  "mapped_fraction",
+  "interval_alignments",
+  "mapped_by_key_contig",
+  "caller_ready_scope",
+  "status",
+  "caveat"
+]);
+for (const row of fullReferenceBamRows) {
+  if (row.status !== "passed") {
+    errors.push(`Full-reference BAM validation failed for ${row.run_accession}.`);
+  }
+  if (row.quickcheck !== "passed" || row.sort_order !== "coordinate" || row.read_group_present !== "yes") {
+    errors.push(`Full-reference BAM contract failed for ${row.run_accession}.`);
+  }
+  if (row.bam_exists !== "yes" || row.bai_exists !== "yes") {
+    errors.push(`Full-reference BAM/BAI paths were not present when validated for ${row.run_accession}.`);
+  }
+  if (row.expected_brca_contigs_present !== "yes" || Number(row.reference_contig_count) < 20) {
+    errors.push(`Full-reference BAM header does not look like a full human reference for ${row.run_accession}.`);
+  }
+  if (Number(row.total_alignments) <= 0 || Number(row.mapped_alignments) <= 0) {
+    errors.push(`Full-reference BAM has no mapped alignments for ${row.run_accession}.`);
+  }
+  if (!row.mapped_by_key_contig.includes("chr13:") || !row.mapped_by_key_contig.includes("chr17:")) {
+    errors.push(`Full-reference mapped-by-contig summary is incomplete for ${row.run_accession}.`);
+  }
+  if (!row.caller_ready_scope.includes("full reference")) {
+    errors.push(`Full-reference BAM row must preserve caller-ready scope for ${row.run_accession}.`);
+  }
+  if (!row.caveat.includes("not full-depth WES/WGS")) {
+    errors.push(`Full-reference BAM caveat must preserve full-depth boundary for ${row.run_accession}.`);
+  }
+}
+const fullReferenceBamSummary = readJson<Record<string, unknown>>(pathFromRoot("results/full_reference_smoke/bam_validation_summary.json"));
+if (fullReferenceBamSummary.status !== "passed") {
+  errors.push("Full-reference BAM validation JSON did not pass.");
+}
+
+const callerRows = requireRows("results/full_reference_smoke/caller_smoke_summary.csv", 1);
+requireColumns("results/full_reference_smoke/caller_smoke_summary.csv", callerRows, [
+  "reference_id",
+  "caller",
+  "caller_scope",
+  "reference_path",
+  "interval_bed_path",
+  "input_bams",
+  "output_vcf",
+  "output_tbi",
+  "vcf_exists",
+  "tbi_exists",
+  "sample_count",
+  "samples",
+  "records",
+  "snps",
+  "indels",
+  "status",
+  "caveat"
+]);
+const callerRow = callerRows[0] ?? {};
+if (callerRow.status !== "passed" || callerRow.vcf_exists !== "yes" || callerRow.tbi_exists !== "yes") {
+  errors.push("Full-reference caller smoke did not produce an indexed VCF.");
+}
+if (callerRow.caller !== "bcftools mpileup/call") {
+  errors.push("Full-reference caller smoke must use bcftools mpileup/call.");
+}
+if (Number(callerRow.sample_count) !== 2 || !callerRow.samples.includes("HCC1395") || !callerRow.samples.includes("HCC1395BL")) {
+  errors.push("Full-reference caller smoke VCF must contain tumor and normal sample columns.");
+}
+if (!callerRow.caveat.includes("not a tumor-normal somatic caller")) {
+  errors.push("Full-reference caller smoke caveat must preserve non-somatic-caller boundary.");
+}
+const callerSummary = readJson<Record<string, unknown>>(pathFromRoot("results/full_reference_smoke/caller_smoke_summary.json"));
+if (callerSummary.status !== "passed") {
+  errors.push("Full-reference caller smoke JSON did not pass.");
 }
 
 const cbioSummary = readJson<Record<string, unknown>>(pathFromRoot("data/processed/catalog/cbioportal_tcga_brca_summary.json"));
