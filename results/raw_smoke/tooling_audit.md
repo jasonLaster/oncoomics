@@ -18,6 +18,8 @@ Phase 2D full-reference caller-readiness smoke ready: **yes**
 
 Phase 2E production somatic Mutect2 smoke ready: **yes**
 
+Phase 2F full WES benchmark ready: **yes**
+
 ## baseline_streaming
 
 Required for: Phase 2A direct FASTQ metadata and tiny read-subset smoke
@@ -68,6 +70,17 @@ Required for: Phase 2E GATK Mutect2 production-style tumor-normal somatic smoke
 - java17: /opt/homebrew/opt/openjdk@17/bin/java
 - unzip: /usr/bin/unzip
 
+## full_wes_benchmark
+
+Required for: Phase 2F full WES benchmark download, duplicate marking, contamination, and truth-overlap calling
+
+- curl: /usr/bin/curl
+- gzip: /usr/bin/gzip
+- bwa: /opt/homebrew/bin/bwa
+- samtools: /opt/homebrew/bin/samtools
+- bcftools: /opt/homebrew/bin/bcftools
+- java17: /opt/homebrew/opt/openjdk@17/bin/java
+
 ## workflow_runtime
 
 Required for: nf-core/sarek or containerized raw-data workflow execution
@@ -81,4 +94,4 @@ Required for: nf-core/sarek or containerized raw-data workflow execution
 
 ## Conclusion
 
-Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, and Phase 2E GATK Mutect2 production-style somatic smoke tests. Full workflow/WGS signature phases still require additional tools, resources, or containers.
+Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, and Phase 2F full WES benchmark mechanics. Full WGS signature phases still require WGS data and additional CNV/SV/signature tooling.

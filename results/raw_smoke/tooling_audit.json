@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T00:56:37.778Z",
+  "generatedAt": "2026-06-07T03:38:27.314Z",
   "phase2aReady": true,
   "alignmentReady": true,
   "humanReferenceSmokeReady": true,
@@ -7,6 +7,8 @@
   "fullReferenceSmokeReady": true,
   "productionSomaticToolReady": true,
   "productionSomaticSmokeReady": true,
+  "fullWesBenchmarkToolReady": true,
+  "fullWesBenchmarkReady": true,
   "fullAlignmentToolboxReady": false,
   "workflowReady": false,
   "fullWorkflowReady": false,
@@ -155,6 +157,43 @@
       "allAvailable": true
     },
     {
+      "group": "full_wes_benchmark",
+      "requiredFor": "Phase 2F full WES benchmark download, duplicate marking, contamination, and truth-overlap calling",
+      "tools": [
+        {
+          "tool": "curl",
+          "path": "/usr/bin/curl",
+          "available": true
+        },
+        {
+          "tool": "gzip",
+          "path": "/usr/bin/gzip",
+          "available": true
+        },
+        {
+          "tool": "bwa",
+          "path": "/opt/homebrew/bin/bwa",
+          "available": true
+        },
+        {
+          "tool": "samtools",
+          "path": "/opt/homebrew/bin/samtools",
+          "available": true
+        },
+        {
+          "tool": "bcftools",
+          "path": "/opt/homebrew/bin/bcftools",
+          "available": true
+        },
+        {
+          "tool": "java17",
+          "path": "/opt/homebrew/opt/openjdk@17/bin/java",
+          "available": true
+        }
+      ],
+      "allAvailable": true
+    },
+    {
       "group": "workflow_runtime",
       "requiredFor": "nf-core/sarek or containerized raw-data workflow execution",
       "tools": [
@@ -192,5 +231,5 @@
       "allAvailable": false
     }
   ],
-  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, and Phase 2E GATK Mutect2 production-style somatic smoke tests. Full workflow/WGS signature phases still require additional tools, resources, or containers."
+  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, and Phase 2F full WES benchmark mechanics. Full WGS signature phases still require WGS data and additional CNV/SV/signature tooling."
 }

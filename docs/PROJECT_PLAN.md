@@ -82,7 +82,9 @@ Phase 2D is complete for one full-reference caller-readiness smoke: the project 
 
 Phase 2E is complete for one downsampled production-style somatic smoke: the project pins GATK 4.6.2.0, adds the GATK sequence dictionary for the full hg38 analysis-set reference, fetches SEQC2/HCC1395 v1.2.1 SNV/INDEL truth VCFs, aligns a 50,000 read-pair/end HCC1395 WES downsample, runs Mutect2 and FilterMutectCalls, and validates an indexed filtered somatic VCF. The bounded downsample produced zero PASS calls, so it validates execution/file contracts rather than sensitivity.
 
-The next gate is Phase 2F: production resources and full-depth WES benchmark behavior. This requires known-sites/germline-resource/PoN/contamination/orientation-bias/duplicate/BQSR policy, capture intervals, richer QC, and a full WES or materially larger WES truth-set comparison.
+Phase 2F is complete and validated: the project downloads and validates the complete SEQC2/HCC1395 WES tumor-normal FASTQs, aligns to the UCSC hg38 analysis set, runs GATK MarkDuplicates, estimates contamination with common-biallelic gnomAD, runs PoN-aware Mutect2/FilterMutectCalls, and compares PASS calls against covered SEQC2 truth variants. The benchmark produced 1,277 intervals, 1,307 depth-eligible truth variants, 1,122 exact PASS truth matches, 0.8585 recall, 0.9842 precision, contamination estimate 0.0, and `readyForPhase3: true`. The full multi-GB Broad af-only gnomAD resource is documented as a production/cloud input instead of a local gating download.
+
+The next gate is Phase 3: WGS HRD signature capability. This requires WGS representative data, copy-number/SV/signature tooling, and a clear separation between WES small-variant benchmark evidence and WGS-grade HRD evidence.
 
 ### Milestone 0: Project Baseline And Source Audit
 

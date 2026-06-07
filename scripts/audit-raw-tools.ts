@@ -33,6 +33,11 @@ const toolGroups = [
     tools: ["java17", "unzip"]
   },
   {
+    group: "full_wes_benchmark",
+    requiredFor: "Phase 2F full WES benchmark download, duplicate marking, contamination, and truth-overlap calling",
+    tools: ["curl", "gzip", "bwa", "samtools", "bcftools", "java17"]
+  },
+  {
     group: "workflow_runtime",
     requiredFor: "nf-core/sarek or containerized raw-data workflow execution",
     tools: ["nextflow", "docker", "singularity", "apptainer", "conda", "micromamba"]
@@ -100,6 +105,8 @@ async function main() {
   const fullReferenceSmokeReady = humanReferenceSmokeReady && callerSmokeReady;
   const productionSomaticToolReady = groups.find((group) => group.group === "production_somatic_caller")?.allAvailable ?? false;
   const productionSomaticSmokeReady = fullReferenceSmokeReady && productionSomaticToolReady;
+  const fullWesBenchmarkToolReady = groups.find((group) => group.group === "full_wes_benchmark")?.allAvailable ?? false;
+  const fullWesBenchmarkReady = productionSomaticSmokeReady && fullWesBenchmarkToolReady;
 
   const audit = {
     generatedAt: new Date().toISOString(),
@@ -110,13 +117,17 @@ async function main() {
     fullReferenceSmokeReady,
     productionSomaticToolReady,
     productionSomaticSmokeReady,
+    fullWesBenchmarkToolReady,
+    fullWesBenchmarkReady,
     fullAlignmentToolboxReady,
     workflowReady,
     fullWorkflowReady,
     alignmentReadyDefinition: "At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.",
     groups,
-    conclusion: productionSomaticSmokeReady
-      ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, and Phase 2E GATK Mutect2 production-style somatic smoke tests. Full workflow/WGS signature phases still require additional tools, resources, or containers."
+    conclusion: fullWesBenchmarkReady
+      ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, and Phase 2F full WES benchmark mechanics. Full WGS signature phases still require WGS data and additional CNV/SV/signature tooling."
+      : productionSomaticSmokeReady
+        ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, and Phase 2E GATK Mutect2 production-style somatic smoke tests. Phase 2F full WES benchmark requires curl, gzip, bwa, samtools, bcftools, and Java 17."
       : fullReferenceSmokeReady
         ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, and Phase 2D full-reference caller-readiness smoke tests. Phase 2E Mutect2 smoke requires Java 17 and unzip for the pinned GATK bundle."
       : humanReferenceSmokeReady
@@ -148,6 +159,8 @@ Phase 2C partial human-reference smoke ready: **${humanReferenceSmokeReady ? "ye
 Phase 2D full-reference caller-readiness smoke ready: **${fullReferenceSmokeReady ? "yes" : "no"}**
 
 Phase 2E production somatic Mutect2 smoke ready: **${productionSomaticSmokeReady ? "yes" : "no"}**
+
+Phase 2F full WES benchmark ready: **${fullWesBenchmarkReady ? "yes" : "no"}**
 
 ${groups
   .map((group) => {

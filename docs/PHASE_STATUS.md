@@ -180,21 +180,58 @@ Key outputs:
 
 ## Phase 2F: Production Resources And Full-Depth WES Benchmark
 
-Status: **planned**.
+Status: **complete and validated**.
 
 Goal: move from validated Mutect2 execution smoke to full-depth WES benchmark behavior.
 
-Required work:
+Completed work:
 
-1. Decide the production resource policy: known-sites, germline resource, panel of normals, contamination estimation, orientation-bias modeling, duplicate marking, BQSR, and WES capture intervals.
-2. Run full WES or a materially larger HCC1395 WES pair against the selected full reference.
-3. Produce depth/coverage/QC reports and production-resource-filtered somatic VCFs.
-4. Compare against SEQC2/HCC1395 truth sets with sensitivity/specificity metrics where the reference and intervals are compatible.
-5. Keep WES-limited small-variant evidence separate from WGS HRD signature evidence.
+1. Added a full SEQC2/HCC1395 WES asset fetcher for the ENA tumor-normal FASTQ gzip files.
+2. Validated full FASTQ MD5 checksums, source byte counts, and gzip readability.
+3. Added Broad hg38 resource handling for the 1000g panel of normals and common-biallelic gnomAD contamination resource.
+4. Documented the full multi-GB Broad af-only gnomAD germline resource as a production/cloud input rather than a local Phase 2F gating download.
+5. Ran full-reference alignment to the UCSC hg38 analysis set for tumor and matched normal.
+6. Ran GATK MarkDuplicates, indexed deduplicated BAMs, and validated read groups, coordinate sort, mapped reads, BRCA interval coverage, duplicate fractions, and BAM quickcheck.
+7. Ran GetPileupSummaries and CalculateContamination on bounded BRCA intervals.
+8. Built covered SEQC2 truth-overlap benchmark intervals from full WES BAM depth.
+9. Ran PoN-aware GATK Mutect2 and FilterMutectCalls and compared PASS calls against covered SEQC2 SNV/INDEL truth variants.
+10. Kept WES-limited small-variant evidence separate from WGS HRD signature, CNV, and SV evidence.
+
+Measured result:
+
+1. Full WES FASTQs validated: 4.
+2. BAM validation status: passed.
+3. Benchmark intervals: 1,277.
+4. Depth-eligible SEQC2 truth variants: 1,307.
+5. PASS calls in benchmark intervals: 1,140.
+6. Exact PASS truth matches: 1,122.
+7. Exact PASS recall: 0.8585.
+8. Exact PASS precision: 0.9842.
+9. Contamination status: passed; estimate 0.0.
+10. Ready for Phase 3: yes.
+
+Exit criteria:
+
+1. Four full FASTQ files validate against ENA MD5 and byte counts. **Verified by `results/full_wes_benchmark/full_wes_fastq_validation.*`.**
+2. Tumor and matched-normal full WES BAM contracts pass. **Verified by `results/full_wes_benchmark/full_wes_bam_validation.*`.**
+3. Contamination estimation runs with the common-biallelic resource. **Verified by `results/full_wes_benchmark/truth_overlap_benchmark_summary.*`.**
+4. Mutect2/FilterMutectCalls produces an indexed filtered VCF. **Verified by `results/full_wes_benchmark/full_wes_benchmark_summary.*`.**
+5. Covered SEQC2 truth variants and benchmark intervals are non-empty. **Verified by `bun run verify:outputs`.**
+6. `readyForPhase3` is true. **Complete.**
+
+Key outputs:
+
+1. `manifests/full_wes_benchmark_samplesheet.csv`
+2. `results/full_wes_benchmark/README.md`
+3. `results/full_wes_benchmark/asset_summary.json`
+4. `results/full_wes_benchmark/full_wes_fastq_validation.csv`
+5. `results/full_wes_benchmark/full_wes_bam_validation.csv`
+6. `results/full_wes_benchmark/truth_overlap_benchmark_summary.csv`
+7. `results/full_wes_benchmark/full_wes_benchmark_summary.csv`
 
 ## Phase 3: WGS HRD Signature Capability
 
-Status: **planned**.
+Status: **next**.
 
 Goal: test the full WGS-capable HRD interpretation lane.
 

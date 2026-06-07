@@ -1,0 +1,62 @@
+{
+  "generatedAt": "2026-06-07T03:40:31.973Z",
+  "status": "passed",
+  "rows": [
+    {
+      "pair_id": "seqc2_hcc1395_wes_minimal_smoke",
+      "sample": "HCC1395",
+      "role": "tumor",
+      "run_accession": "SRR7890850",
+      "read": "1",
+      "fastq_path": "data/raw/full_wes/seqc2_hcc1395_wes_minimal/SRR7890850_R1.fastq.gz",
+      "expected_md5": "40ad1990b670a07ac855236c63782585",
+      "actual_md5": "40ad1990b670a07ac855236c63782585",
+      "expected_bytes": 1933019989,
+      "actual_bytes": 1933019989,
+      "source_read_pairs": "26749449",
+      "status": "passed"
+    },
+    {
+      "pair_id": "seqc2_hcc1395_wes_minimal_smoke",
+      "sample": "HCC1395",
+      "role": "tumor",
+      "run_accession": "SRR7890850",
+      "read": "2",
+      "fastq_path": "data/raw/full_wes/seqc2_hcc1395_wes_minimal/SRR7890850_R2.fastq.gz",
+      "expected_md5": "d849aae1df29aa8d78038ebd5ee07792",
+      "actual_md5": "d849aae1df29aa8d78038ebd5ee07792",
+      "expected_bytes": 2028180298,
+      "actual_bytes": 2028180298,
+      "source_read_pairs": "26749449",
+      "status": "passed"
+    },
+    {
+      "pair_id": "seqc2_hcc1395_wes_minimal_smoke",
+      "sample": "HCC1395BL",
+      "role": "normal",
+      "run_accession": "SRR7890851",
+      "read": "1",
+      "fastq_path": "data/raw/full_wes/seqc2_hcc1395_wes_minimal/SRR7890851_R1.fastq.gz",
+      "expected_md5": "872a47b05e8ebdc7cb7d2a6de4adedcd",
+      "actual_md5": "872a47b05e8ebdc7cb7d2a6de4adedcd",
+      "expected_bytes": 2541173682,
+      "actual_bytes": 2541173682,
+      "source_read_pairs": "34905382",
+      "status": "passed"
+    },
+    {
+      "pair_id": "seqc2_hcc1395_wes_minimal_smoke",
+      "sample": "HCC1395BL",
+      "role": "normal",
+      "run_accession": "SRR7890851",
+      "read": "2",
+      "fastq_path": "data/raw/full_wes/seqc2_hcc1395_wes_minimal/SRR7890851_R2.fastq.gz",
+      "expected_md5": "1240d5e5d402fbd192437cec09388c83",
+      "actual_md5": "1240d5e5d402fbd192437cec09388c83",
+      "expected_bytes": 2657441601,
+      "actual_bytes": 2657441601,
+      "source_read_pairs": "34905382",
+      "status": "passed"
+    }
+  ]
+}

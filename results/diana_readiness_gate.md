@@ -1,6 +1,6 @@
 # Diana Readiness Gate
 
-Status: **not ready to run on Diana files without raw-file inventory, production resource decisions, full-depth scale-up, and reviewer sign-off**.
+Status: **not ready to run on Diana files without raw-file inventory, Diana-specific production resource decisions, WGS/CNV/SV/signature policy, and reviewer sign-off**.
 
 ## Required Before Diana Data
 
@@ -10,7 +10,8 @@ Status: **not ready to run on Diana files without raw-file inventory, production
 4. Decide whether open analysis is for reviewer biology only or whether a clinician will order orthogonal validation.
 5. Confirm whether the requested DNA workflow should be GRCh38, GRCh37/hg19, hs37d5, or a vendor-specific reference bundle.
 6. Confirm WES intervals, known-sites resources, germline-resource/PoN/contamination policy, and final production somatic-caller route if raw DNA is FASTQ/BAM/CRAM.
-7. Get reviewer sign-off on the benchmark caveats.
+7. If Diana DNA is WGS, confirm CNV/SV/signature tooling, compute target, and benchmark thresholds before interpreting HRD signatures.
+8. Get reviewer sign-off on the benchmark caveats.
 
 ## Validation State
 
@@ -21,5 +22,6 @@ The benchmark mechanics are runnable and validated on open processed public data
 3. Phase 2C partial real-human-reference alignment smoke across UCSC hg38/GRCh38 and hg19/GRCh37 chr13+chr17 references.
 4. Phase 2D full-reference caller-readiness smoke using the UCSC hg38 analysis set, BRCA1/BRCA2 interval metadata, and an indexed bcftools VCF contract smoke.
 5. Phase 2E GATK Mutect2 production-style tumor-normal smoke on a larger HCC1395 WES downsample, with SEQC2 truth VCFs available for bounded overlap checks.
+6. Phase 2F full WES benchmark on the SEQC2/HCC1395 tumor-normal pair, with full FASTQ MD5 validation, full-reference BAM contracts, GATK duplicate marking, common-biallelic contamination estimation, PoN-aware Mutect2, and bounded truth-overlap metrics.
 
-The current workflow is sufficient to validate project plumbing, samplesheet shape, local BAM file contracts, partial and full human-reference handling, a production-style Mutect2 execution path, indexed somatic VCF outputs, and evidence-table boundaries. It is not sufficient to make a treatment-changing HRD claim, and it does not yet validate full-depth WES/WGS coverage, production-resource-filtered calls, CNV/SV calls, or WGS-grade HRD signatures.
+The current workflow is sufficient to validate project plumbing, samplesheet shape, local BAM file contracts, partial and full human-reference handling, a production-style Mutect2 execution path, indexed somatic VCF outputs, full WES small-variant benchmark behavior, and evidence-table boundaries. It is not sufficient to make a treatment-changing HRD claim, and it does not yet validate WGS coverage, CNV/SV calls, or WGS-grade HRD signatures.

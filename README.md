@@ -14,7 +14,7 @@ The active scope is intentionally conservative:
 - **Python** is the primary local analysis language for the first phase because Python 3.9 is available here and R is not installed locally.
 - **BWA + samtools** are used for the local Phase 2B FASTQ-to-BAM smoke test, Phase 2C partial human-reference smoke, and Phase 2D full-reference BAM smoke.
 - **bcftools** is used for the Phase 2D tiny VCF caller-contract smoke.
-- **GATK Mutect2 + FilterMutectCalls** is used for the Phase 2E production-style tumor-normal somatic smoke.
+- **GATK Mutect2 + FilterMutectCalls** is used for the Phase 2E production-style tumor-normal somatic smoke and Phase 2F full WES benchmark.
 - **External workflow adapters** are planned for raw WGS or R-only HRD tools: nf-core/sarek, SigProfiler, CHORD, scarHRD, FACETS/ASCAT/PURPLE-style outputs, and containerized R when needed.
 
 ## Current Artifacts
@@ -30,6 +30,7 @@ The active scope is intentionally conservative:
 - `manifests/human_reference_smoke_samplesheet.csv` - Phase 2C hg38/hg19 partial human-reference alignment smoke samplesheet.
 - `manifests/full_reference_smoke_samplesheet.csv` - Phase 2D full hg38 analysis-set caller-readiness smoke samplesheet.
 - `manifests/production_somatic_smoke_samplesheet.csv` - Phase 2E GATK Mutect2 tumor-normal smoke samplesheet.
+- `manifests/full_wes_benchmark_samplesheet.csv` - Phase 2F full SEQC2/HCC1395 WES benchmark samplesheet.
 - `scripts/verify-plan.ts` - Bun verifier for the project plan, source manifest, and local wiki assumptions.
 
 ## Verify
@@ -79,6 +80,13 @@ Fetch and run the Phase 2E production-style somatic smoke test:
 ```sh
 bun run fetch:production-somatic
 bun run smoke:production-somatic
+```
+
+Fetch and run the Phase 2F full WES benchmark:
+
+```sh
+bun run fetch:full-wes
+bun run benchmark:full-wes
 ```
 
 Run the full workflow:

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T03:38:47.446Z",
+  "generatedAt": "2026-06-07T03:46:47.945Z",
   "bwa": {
     "path": "/opt/homebrew/bin/bwa",
     "version": "Program: bwa (alignment via Burrows-Wheeler transformation)\nVersion: 0.7.19-r1273\nContact: Heng Li <hli@ds.dfci.harvard.edu>\n\nUsage:   bwa <command> [options]\n\nCommand: index         index sequences in the FASTA format"
@@ -11,5 +11,13 @@
   "bcftools": {
     "path": "/opt/homebrew/bin/bcftools",
     "version": "Program: bcftools (Tools for variant calling and manipulating VCFs and BCFs)\nLicense: GNU GPLv3+, due to use of the GNU Scientific Library\nVersion: 1.23.1 (using htslib 1.23.1)\n\nUsage:   bcftools [--version|--version-only] [--help] <command> <argument>\n\nCommands:"
+  },
+  "java": {
+    "path": "/opt/homebrew/opt/openjdk@17/bin/java",
+    "version": "openjdk version \"17.0.19\" 2026-04-21"
+  },
+  "gatk": {
+    "jarPath": "data/raw/tools/gatk/gatk-4.6.2.0/gatk-package-4.6.2.0-local.jar",
+    "version": "The Genome Analysis Toolkit (GATK) v4.6.2.0"
   }
 }

@@ -48,6 +48,7 @@ const requiredFiles = [
   "manifests/full_reference_smoke_references.csv",
   "manifests/full_reference_smoke_samplesheet.csv",
   "manifests/production_somatic_smoke_samplesheet.csv",
+  "manifests/full_wes_benchmark_samplesheet.csv",
   "manifests/reference_panel_validation.json",
   "docs/reference-panel-label-rules.md",
   "results/hrd_event_table.csv",
@@ -102,7 +103,18 @@ const requiredFiles = [
   "results/production_somatic_smoke/mutect2_smoke_summary.csv",
   "results/production_somatic_smoke/mutect2_smoke_summary.json",
   "results/production_somatic_smoke/production_somatic_summary.csv",
-  "results/production_somatic_smoke/production_somatic_summary.json"
+  "results/production_somatic_smoke/production_somatic_summary.json",
+  "results/full_wes_benchmark/README.md",
+  "results/full_wes_benchmark/asset_summary.json",
+  "results/full_wes_benchmark/tool_versions.json",
+  "results/full_wes_benchmark/full_wes_fastq_validation.csv",
+  "results/full_wes_benchmark/full_wes_fastq_validation.json",
+  "results/full_wes_benchmark/full_wes_bam_validation.csv",
+  "results/full_wes_benchmark/full_wes_bam_validation.json",
+  "results/full_wes_benchmark/truth_overlap_benchmark_summary.csv",
+  "results/full_wes_benchmark/truth_overlap_benchmark_summary.json",
+  "results/full_wes_benchmark/full_wes_benchmark_summary.csv",
+  "results/full_wes_benchmark/full_wes_benchmark_summary.json"
 ];
 
 for (const file of requiredFiles) {
@@ -311,6 +323,9 @@ if (rawToolingAudit.callerSmokeReady !== true) {
 }
 if (rawToolingAudit.productionSomaticSmokeReady !== true) {
   errors.push("Raw tooling audit says Phase 2E production somatic smoke is not ready.");
+}
+if (rawToolingAudit.fullWesBenchmarkReady !== true) {
+  errors.push("Raw tooling audit says Phase 2F full WES benchmark is not ready.");
 }
 
 const alignmentSamplesheet = requireRows("manifests/alignment_smoke_samplesheet.csv", 2);
@@ -1126,6 +1141,231 @@ if (Number(productionSummary.readPairsPerEnd) < 10000 || Number(productionSummar
 }
 if (!String(productionSummary.boundary ?? "").includes("WES-limited small-variant evidence remains separate")) {
   errors.push("Production somatic summary JSON must separate WES evidence from WGS HRD signatures.");
+}
+
+const fullWesSamplesheet = requireRows("manifests/full_wes_benchmark_samplesheet.csv", 2);
+requireColumns("manifests/full_wes_benchmark_samplesheet.csv", fullWesSamplesheet, [
+  "pair_id",
+  "patient",
+  "sample",
+  "role",
+  "status",
+  "run_accession",
+  "source_read_pairs",
+  "source_bases",
+  "fastq_1",
+  "fastq_2",
+  "fastq_1_md5",
+  "fastq_2_md5",
+  "fastq_1_bytes",
+  "fastq_2_bytes",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "reference_path",
+  "reference_fai_path",
+  "reference_dict_path",
+  "gatk_jar_path",
+  "java_path",
+  "mutect2_germline_resource_path",
+  "mutect2_germline_resource_source_url",
+  "mutect2_panel_of_normals_path",
+  "common_biallelic_resource_path",
+  "common_biallelic_resource_index_path",
+  "bqsr_known_sites_policy",
+  "contamination_policy",
+  "duplicate_marking_tool",
+  "production_caller",
+  "raw_bam",
+  "dedup_bam",
+  "dedup_bai",
+  "duplicate_metrics_path",
+  "caveat"
+]);
+if (!fullWesSamplesheet.some((row) => row.role === "tumor") || !fullWesSamplesheet.some((row) => row.role === "normal")) {
+  errors.push("Full WES benchmark samplesheet must include tumor and normal rows.");
+}
+for (const row of fullWesSamplesheet) {
+  if (row.reference_id !== "ucsc_hg38_analysis_set_full") {
+    errors.push(`Full WES benchmark samplesheet must use ucsc_hg38_analysis_set_full, not ${row.reference_id}.`);
+  }
+  if (!row.mutect2_panel_of_normals_path.includes("1000g_pon.hg38.vcf.gz")) {
+    errors.push(`Full WES benchmark samplesheet must include the Broad 1000g PoN for ${row.run_accession}.`);
+  }
+  if (!row.common_biallelic_resource_path.includes("common_biallelic")) {
+    errors.push(`Full WES benchmark samplesheet must include the common-biallelic contamination resource for ${row.run_accession}.`);
+  }
+  if (!row.mutect2_germline_resource_source_url.includes("gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz")) {
+    errors.push(`Full WES benchmark must document the full production af-only gnomAD resource for ${row.run_accession}.`);
+  }
+  if (Number(row.fastq_1_bytes) < 1_000_000_000 || Number(row.fastq_2_bytes) < 1_000_000_000) {
+    errors.push(`Full WES FASTQ byte counts look too small for ${row.run_accession}.`);
+  }
+  if (!row.caveat.includes("full SEQC2/HCC1395 WES FASTQs")) {
+    errors.push(`Full WES benchmark caveat must preserve full-WES boundary for ${row.run_accession}.`);
+  }
+}
+
+const fullWesAssets = readJson<Record<string, unknown>>(pathFromRoot("results/full_wes_benchmark/asset_summary.json"));
+if (fullWesAssets.status !== "ready") {
+  errors.push("Full WES asset summary is not ready.");
+}
+const fullWesFastqAssets = (fullWesAssets.fullWesFastqs as Record<string, unknown>[] | undefined) ?? [];
+const fullWesResources = (fullWesAssets.resources as Record<string, unknown>[] | undefined) ?? [];
+if (fullWesFastqAssets.length !== 4) {
+  errors.push("Full WES asset summary must validate four FASTQ files.");
+}
+if (!fullWesResources.some((row) => String(row.kind) === "mutect2_panel_of_normals")) {
+  errors.push("Full WES asset summary is missing the Mutect2 panel of normals.");
+}
+if (!fullWesResources.some((row) => String(row.kind) === "common_biallelic_gnomad_resource")) {
+  errors.push("Full WES asset summary is missing the common-biallelic resource.");
+}
+
+const fullWesFastqRows = requireRows("results/full_wes_benchmark/full_wes_fastq_validation.csv", 4);
+requireColumns("results/full_wes_benchmark/full_wes_fastq_validation.csv", fullWesFastqRows, [
+  "pair_id",
+  "sample",
+  "role",
+  "run_accession",
+  "read",
+  "fastq_path",
+  "expected_md5",
+  "actual_md5",
+  "expected_bytes",
+  "actual_bytes",
+  "source_read_pairs",
+  "status"
+]);
+for (const row of fullWesFastqRows) {
+  if (row.status !== "passed" || row.expected_md5 !== row.actual_md5 || row.expected_bytes !== row.actual_bytes) {
+    errors.push(`Full WES FASTQ validation failed for ${row.run_accession} read ${row.read}.`);
+  }
+}
+const fullWesFastqSummary = readJson<Record<string, unknown>>(pathFromRoot("results/full_wes_benchmark/full_wes_fastq_validation.json"));
+if (fullWesFastqSummary.status !== "passed") {
+  errors.push("Full WES FASTQ validation JSON did not pass.");
+}
+
+const fullWesBamRows = requireRows("results/full_wes_benchmark/full_wes_bam_validation.csv", 2);
+requireColumns("results/full_wes_benchmark/full_wes_bam_validation.csv", fullWesBamRows, [
+  "pair_id",
+  "reference_id",
+  "role",
+  "run_accession",
+  "sample",
+  "raw_bam",
+  "dedup_bam",
+  "dedup_bai",
+  "dedup_bam_exists",
+  "dedup_bai_exists",
+  "quickcheck",
+  "sort_order",
+  "read_group_present",
+  "reference_contig_count",
+  "total_alignments",
+  "mapped_alignments",
+  "properly_paired_alignments",
+  "duplicate_alignments",
+  "duplicate_fraction",
+  "brca_interval_alignments",
+  "duplicate_metrics_path",
+  "status",
+  "caveat"
+]);
+for (const row of fullWesBamRows) {
+  if (row.status !== "passed" || row.quickcheck !== "passed" || row.sort_order !== "coordinate" || row.read_group_present !== "yes") {
+    errors.push(`Full WES BAM contract failed for ${row.run_accession}.`);
+  }
+  if (row.dedup_bam_exists !== "yes" || row.dedup_bai_exists !== "yes") {
+    errors.push(`Full WES BAM/BAI missing for ${row.run_accession}.`);
+  }
+  if (Number(row.mapped_alignments) <= 0 || Number(row.brca_interval_alignments) <= 0) {
+    errors.push(`Full WES BAM lacks mapped/BRCA alignments for ${row.run_accession}.`);
+  }
+  if (!row.caveat.includes("full SEQC2/HCC1395 WES FASTQs")) {
+    errors.push(`Full WES BAM caveat must preserve full-WES boundary for ${row.run_accession}.`);
+  }
+}
+const fullWesBamSummary = readJson<Record<string, unknown>>(pathFromRoot("results/full_wes_benchmark/full_wes_bam_validation.json"));
+if (fullWesBamSummary.status !== "passed") {
+  errors.push("Full WES BAM validation JSON did not pass.");
+}
+
+const fullWesTruthRows = requireRows("results/full_wes_benchmark/truth_overlap_benchmark_summary.csv", 1);
+requireColumns("results/full_wes_benchmark/truth_overlap_benchmark_summary.csv", fullWesTruthRows, [
+  "status",
+  "phase",
+  "caller",
+  "reference_id",
+  "pair_id",
+  "tumor_sample",
+  "normal_sample",
+  "duplicate_marking_tool",
+  "germline_resource",
+  "germline_resource_source_url",
+  "panel_of_normals",
+  "common_biallelic_resource",
+  "contamination_status",
+  "contamination_table",
+  "contamination_interval_bed_path",
+  "benchmark_interval_bed_path",
+  "benchmark_interval_count",
+  "truth_variants_total",
+  "truth_variants_depth_eligible",
+  "filtered_vcf",
+  "pass_records_in_benchmark_intervals",
+  "exact_pass_truth_matches",
+  "exact_pass_recall",
+  "exact_pass_precision",
+  "boundary"
+]);
+const fullWesTruthRow = fullWesTruthRows[0] ?? {};
+if (fullWesTruthRow.status !== "passed" || fullWesTruthRow.phase !== "2F") {
+  errors.push("Full WES truth-overlap benchmark did not pass Phase 2F.");
+}
+if (fullWesTruthRow.contamination_status !== "passed" || !fullWesTruthRow.contamination_table) {
+  errors.push("Full WES benchmark must pass contamination estimation.");
+}
+if (Number(fullWesTruthRow.benchmark_interval_count) <= 0 || Number(fullWesTruthRow.truth_variants_depth_eligible) <= 0) {
+  errors.push("Full WES benchmark did not produce covered truth intervals.");
+}
+if (!fullWesTruthRow.boundary.includes("not WGS HRD signature")) {
+  errors.push("Full WES truth-overlap benchmark must preserve WGS HRD boundary.");
+}
+
+const fullWesSummaryRows = requireRows("results/full_wes_benchmark/full_wes_benchmark_summary.csv", 1);
+requireColumns("results/full_wes_benchmark/full_wes_benchmark_summary.csv", fullWesSummaryRows, [
+  "status",
+  "phase",
+  "caller",
+  "reference_id",
+  "full_wes_fastqs_validated",
+  "bam_validation_status",
+  "benchmark_interval_count",
+  "truth_variants_depth_eligible",
+  "pass_records_in_benchmark_intervals",
+  "exact_pass_truth_matches",
+  "exact_pass_recall",
+  "exact_pass_precision",
+  "contamination_status",
+  "contamination_table",
+  "ready_for_phase3",
+  "boundary"
+]);
+const fullWesSummaryRow = fullWesSummaryRows[0] ?? {};
+if (fullWesSummaryRow.status !== "passed" || fullWesSummaryRow.phase !== "2F" || fullWesSummaryRow.ready_for_phase3 !== "yes") {
+  errors.push("Full WES benchmark summary CSV did not pass the Phase 2F ready-for-Phase-3 gate.");
+}
+if (Number(fullWesSummaryRow.full_wes_fastqs_validated) !== 4 || fullWesSummaryRow.bam_validation_status !== "passed") {
+  errors.push("Full WES benchmark summary does not show four validated FASTQs and passed BAM validation.");
+}
+const fullWesSummary = readJson<Record<string, unknown>>(pathFromRoot("results/full_wes_benchmark/full_wes_benchmark_summary.json"));
+if (fullWesSummary.status !== "passed" || fullWesSummary.phase !== "2F" || fullWesSummary.readyForPhase3 !== true) {
+  errors.push("Full WES benchmark summary JSON did not pass the Phase 2F ready-for-Phase-3 gate.");
+}
+if (!String(fullWesSummary.boundary ?? "").includes("Phase 3 starts WGS HRD signature")) {
+  errors.push("Full WES benchmark summary JSON must point to Phase 3 WGS HRD signature work.");
 }
 
 const cbioSummary = readJson<Record<string, unknown>>(pathFromRoot("data/processed/catalog/cbioportal_tcga_brca_summary.json"));

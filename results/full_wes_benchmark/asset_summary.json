@@ -1,0 +1,132 @@
+{
+  "generatedAt": "2026-06-07T03:40:18.533Z",
+  "status": "ready",
+  "pairId": "seqc2_hcc1395_wes_minimal_smoke",
+  "source": "ENA direct full FASTQ gzip files for SEQC2/HCC1395 minimal WES pair",
+  "fullWesFastqs": [
+    {
+      "pair_id": "seqc2_hcc1395_wes_minimal_smoke",
+      "sample": "HCC1395",
+      "role": "tumor",
+      "run_accession": "SRR7890850",
+      "read": "1",
+      "url": "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR789/000/SRR7890850/SRR7890850_1.fastq.gz",
+      "path": "data/raw/full_wes/seqc2_hcc1395_wes_minimal/SRR7890850_R1.fastq.gz",
+      "expected_md5": "40ad1990b670a07ac855236c63782585",
+      "actual_md5": "40ad1990b670a07ac855236c63782585",
+      "expected_bytes": 1933019989,
+      "actual_bytes": 1933019989,
+      "downloaded": false,
+      "gzip_test": "passed"
+    },
+    {
+      "pair_id": "seqc2_hcc1395_wes_minimal_smoke",
+      "sample": "HCC1395",
+      "role": "tumor",
+      "run_accession": "SRR7890850",
+      "read": "2",
+      "url": "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR789/000/SRR7890850/SRR7890850_2.fastq.gz",
+      "path": "data/raw/full_wes/seqc2_hcc1395_wes_minimal/SRR7890850_R2.fastq.gz",
+      "expected_md5": "d849aae1df29aa8d78038ebd5ee07792",
+      "actual_md5": "d849aae1df29aa8d78038ebd5ee07792",
+      "expected_bytes": 2028180298,
+      "actual_bytes": 2028180298,
+      "downloaded": false,
+      "gzip_test": "passed"
+    },
+    {
+      "pair_id": "seqc2_hcc1395_wes_minimal_smoke",
+      "sample": "HCC1395BL",
+      "role": "normal",
+      "run_accession": "SRR7890851",
+      "read": "1",
+      "url": "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR789/001/SRR7890851/SRR7890851_1.fastq.gz",
+      "path": "data/raw/full_wes/seqc2_hcc1395_wes_minimal/SRR7890851_R1.fastq.gz",
+      "expected_md5": "872a47b05e8ebdc7cb7d2a6de4adedcd",
+      "actual_md5": "872a47b05e8ebdc7cb7d2a6de4adedcd",
+      "expected_bytes": 2541173682,
+      "actual_bytes": 2541173682,
+      "downloaded": false,
+      "gzip_test": "passed"
+    },
+    {
+      "pair_id": "seqc2_hcc1395_wes_minimal_smoke",
+      "sample": "HCC1395BL",
+      "role": "normal",
+      "run_accession": "SRR7890851",
+      "read": "2",
+      "url": "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR789/001/SRR7890851/SRR7890851_2.fastq.gz",
+      "path": "data/raw/full_wes/seqc2_hcc1395_wes_minimal/SRR7890851_R2.fastq.gz",
+      "expected_md5": "1240d5e5d402fbd192437cec09388c83",
+      "actual_md5": "1240d5e5d402fbd192437cec09388c83",
+      "expected_bytes": 2657441601,
+      "actual_bytes": 2657441601,
+      "downloaded": false,
+      "gzip_test": "passed"
+    }
+  ],
+  "resourcePolicy": {
+    "duplicateMarking": "run GATK MarkDuplicates on full WES BAMs",
+    "mutect2GermlineResource": "Broad gatk-best-practices somatic-hg38 af-only gnomAD",
+    "mutect2PanelOfNormals": "Broad gatk-best-practices somatic-hg38 1000g PoN",
+    "commonBiallelicResource": "common-biallelic af-only gnomAD chr1-22XY resource for GetPileupSummaries/contamination",
+    "bqsr": "deferred until matching known-sites and capture interval policy are selected",
+    "contamination": "run on benchmark intervals when common biallelic sites overlap",
+    "intervalStrategy": "derive covered SEQC2 truth-overlap intervals from full WES BAMs; report sensitivity/precision only inside the bounded interval set"
+  },
+  "resources": [
+    {
+      "kind": "mutect2_panel_of_normals",
+      "url": "https://storage.googleapis.com/gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz",
+      "path": "data/raw/reference/gatk_best_practices/somatic-hg38/1000g_pon.hg38.vcf.gz",
+      "usable_path": "data/raw/reference/gatk_best_practices/somatic-hg38/1000g_pon.hg38.vcf.gz",
+      "size_bytes": 17273497,
+      "sha256": "497325d7017232b6bf91dcab12c72154c68e7edd75fdfd76c08cd57882dab533",
+      "index_url": "https://storage.googleapis.com/gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz.tbi",
+      "index_path": "data/raw/reference/gatk_best_practices/somatic-hg38/1000g_pon.hg38.vcf.gz.tbi",
+      "usable_index_path": "data/raw/reference/gatk_best_practices/somatic-hg38/1000g_pon.hg38.vcf.gz.tbi",
+      "index_status": "present",
+      "index_download_status": "cached",
+      "uncompressed_status": "not_needed",
+      "usable_size_bytes": 17273497,
+      "usable_sha256": "497325d7017232b6bf91dcab12c72154c68e7edd75fdfd76c08cd57882dab533",
+      "index_size_bytes": 1534802,
+      "index_sha256": "534b9539c8f8bff03864217014a1a8c4aeb7846e76cc306f5ad000b778fdfc37",
+      "downloaded": false
+    },
+    {
+      "kind": "common_biallelic_gnomad_resource",
+      "url": "https://downloads.sourceforge.net/project/mutect2-data/common_biallelic/af-only-gnomad.hg38.common_biallelic.chr1-22XY.vcf.gz",
+      "path": "data/raw/reference/gatk_best_practices/somatic-hg38/af-only-gnomad.hg38.common_biallelic.chr1-22XY.vcf.gz",
+      "usable_path": "data/raw/reference/gatk_best_practices/somatic-hg38/af-only-gnomad.hg38.common_biallelic.chr1-22XY.vcf",
+      "size_bytes": 156912989,
+      "sha256": "b2582d4ef02dc788ce7dd4a0336898d19c295b0a7e78561cb840da91f3ebf924",
+      "index_url": "https://downloads.sourceforge.net/project/mutect2-data/common_biallelic/af-only-gnomad.hg38.common_biallelic.chr1-22XY.vcf.idx",
+      "index_path": "data/raw/reference/gatk_best_practices/somatic-hg38/af-only-gnomad.hg38.common_biallelic.chr1-22XY.vcf.idx",
+      "usable_index_path": "data/raw/reference/gatk_best_practices/somatic-hg38/af-only-gnomad.hg38.common_biallelic.chr1-22XY.vcf.idx",
+      "index_status": "present_for_uncompressed_vcf",
+      "index_download_status": "cached",
+      "uncompressed_status": "present",
+      "usable_size_bytes": 515271436,
+      "usable_sha256": "4b200796f8fa526c4784c67cdcb56ff2a7801cdf06aef33cc65b340b15673dc4",
+      "index_size_bytes": 11954404,
+      "index_sha256": "e529d1be3e64ede88f71dbf09223fd9b5a4180f476744c7633fa17c6d71284ca",
+      "downloaded": false
+    }
+  ],
+  "reference": {
+    "referenceId": "ucsc_hg38_analysis_set_full",
+    "assembly": "hg38",
+    "genomeBuild": "GRCh38",
+    "fastaPath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa",
+    "fastaSha256": "d2b7be348fb20af46461855faec64dfbd21532620bd125783df050180446055e",
+    "dictPath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.dict"
+  },
+  "tools": {
+    "java": "/opt/homebrew/opt/openjdk@17/bin/java",
+    "gatkJar": "data/raw/tools/gatk/gatk-4.6.2.0/gatk-package-4.6.2.0-local.jar",
+    "bwa": "/opt/homebrew/bin/bwa",
+    "samtools": "/opt/homebrew/bin/samtools",
+    "bcftools": "/opt/homebrew/bin/bcftools"
+  }
+}

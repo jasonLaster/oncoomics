@@ -54,6 +54,7 @@ Phase 2 should not be considered complete until these pass:
 8. The partial human-reference smoke validates hg38 and hg19 reference handling with checksum-verified FASTA inputs.
 9. The full-reference smoke validates one full analysis-set reference, BRCA interval metadata, caller-ready BAM contracts, and indexed VCF generation.
 10. The production somatic smoke validates a pinned tumor-normal caller path, larger WES downsample, indexed filtered somatic VCF, and explicit SEQC2 truth-comparison status.
+11. The full WES benchmark validates complete representative FASTQs, full-reference alignment, duplicate marking, contamination estimation, PoN-aware Mutect2, and covered truth-overlap metrics.
 
 ## Phase 2A Result
 
@@ -146,16 +147,37 @@ The project now validates a pinned production-style somatic caller path:
 
 The zero-call result is acceptable for Phase 2E because the exit criterion is production-style execution and file-contract validation, not sensitivity. Full-depth WES sensitivity remains a separate gate.
 
-## Phase 2F Remaining Gate
+## Phase 2F Result
 
-Required next output:
+Status: **complete and validated**.
 
-1. Production resource policy: known-sites, germline resource, panel of normals, contamination estimation, orientation-bias modeling, duplicate marking, BQSR, and WES capture intervals.
-2. Full QC/workflow tooling: FastQC/MultiQC, SRA Toolkit or ENA download path, and Nextflow/container or pinned local caller stack.
-3. BAM/CRAM/QC artifact generation from full WES or a materially larger HCC1395 WES downsample against the full reference.
-4. Production-resource-filtered somatic-caller output validation against the full reference.
-5. A truth-set comparison report with sensitivity/specificity metrics where build and intervals are compatible.
-6. A report that distinguishes format smoke, local alignment smoke, partial real-reference alignment, full-reference caller-readiness smoke, production somatic calling, full-depth WES benchmark runs, and WGS signature runs.
+The project now validates the full SEQC2/HCC1395 WES representative pair:
+
+1. Full tumor FASTQs: `SRR7890850` R1/R2.
+2. Full matched-normal FASTQs: `SRR7890851` R1/R2.
+3. Reference: `ucsc_hg38_analysis_set_full`.
+4. Duplicate marking: GATK MarkDuplicates.
+5. Somatic caller: GATK Mutect2 + FilterMutectCalls.
+6. Production resource used locally: Broad hg38 1000g panel of normals.
+7. Contamination resource used locally: common-biallelic gnomAD.
+8. Production resource documented for cloud/full production: Broad hg38 af-only gnomAD germline resource.
+9. Truth benchmark: SEQC2/HCC1395 high-confidence SNV/INDEL truth variants covered by the full WES BAMs.
+
+Measured Phase 2F benchmark:
+
+1. Full FASTQs validated: 4.
+2. Tumor source read pairs: 26,749,449.
+3. Normal source read pairs: 34,905,382.
+4. Benchmark intervals: 1,277.
+5. Depth-eligible truth variants: 1,307.
+6. PASS calls in benchmark intervals: 1,140.
+7. Exact PASS truth matches: 1,122.
+8. Exact PASS recall: 0.8585.
+9. Exact PASS precision: 0.9842.
+10. Contamination estimate: 0.0.
+11. Ready for Phase 3: yes.
+
+The output distinguishes full-depth WES small-variant readiness from WGS-grade HRD signature readiness. Remaining production decisions are Diana-specific or Phase 3 decisions: BQSR known-sites, vendor capture BEDs, orientation-bias modeling, full af-only gnomAD use, allele-specific copy-number, SV calling, and WGS signatures.
 
 ## Boundary
 
