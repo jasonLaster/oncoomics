@@ -1,6 +1,6 @@
 {
-  "fetchedAt": "2026-06-07T04:49:42.569Z",
-  "generatedBy": "scripts/fetch-phase1.ts",
+  "fetchedAt": "2026-06-07T06:34:32.220Z",
+  "generatedBy": "py/src/diana_omics/commands/fetch_phase1.py",
   "sources": [
     {
       "id": "cbioportal-brca-pan-cancer",

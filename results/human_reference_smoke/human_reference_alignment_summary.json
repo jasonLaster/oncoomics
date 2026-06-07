@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-06-07T04:50:09.873Z",
+  "generatedAt": "2026-06-07T06:35:08.845Z",
   "status": "passed",
   "sampleRows": 4,
   "references": [
-    "ucsc_hg38_chr13_chr17",
-    "ucsc_hg19_chr13_chr17"
+    "ucsc_hg19_chr13_chr17",
+    "ucsc_hg38_chr13_chr17"
   ],
   "assemblies": [
-    "hg38",
-    "hg19"
+    "hg19",
+    "hg38"
   ],
   "genomeBuilds": [
-    "GRCh38",
-    "GRCh37"
+    "GRCh37",
+    "GRCh38"
   ],
   "tumorRows": 2,
   "normalRows": 2,

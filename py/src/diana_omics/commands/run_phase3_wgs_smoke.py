@@ -1,0 +1,878 @@
+from __future__ import annotations
+
+import gzip
+import math
+import os
+import re
+from typing import Any, Optional
+
+from ..paths import path_from_root
+from ..utils import (
+    capture_allow_empty,
+    capture_command,
+    detect_cpu_count,
+    ensure_dir,
+    file_non_empty,
+    iso_now,
+    median,
+    parse_csv,
+    quickcheck_bam,
+    quote_shell_arg,
+    read_json,
+    read_text,
+    round_value,
+    run_command,
+    run_commands_parallel,
+    standard_contig,
+    tool_version,
+    write_csv,
+    write_json,
+    write_text,
+)
+
+RESULTS_DIR = "results/phase3_wgs_smoke"
+FORCE = os.environ.get("PHASE3_WGS_FORCE") == "1"
+AVAILABLE_CPUS = detect_cpu_count()
+TOTAL_THREADS = max(2, int(os.environ.get("PHASE3_WGS_THREADS", str(min(16, AVAILABLE_CPUS)))))
+PARALLEL_ALIGN = os.environ.get("PHASE3_WGS_PARALLEL_ALIGN") != "0"
+PER_SAMPLE_THREADS = max(2, TOTAL_THREADS // 2) if PARALLEL_ALIGN else TOTAL_THREADS
+GATK_THREADS = max(1, min(int(os.environ.get("PHASE3_WGS_GATK_THREADS", str(TOTAL_THREADS // 2))), 8))
+MIN_TRUTH_DEPTH = int(os.environ.get("PHASE3_WGS_MIN_TRUTH_DEPTH", "1"))
+MAX_TRUTH_VARIANTS = int(os.environ.get("PHASE3_WGS_MAX_TRUTH_VARIANTS", "300"))
+INTERVAL_PADDING = int(os.environ.get("PHASE3_WGS_INTERVAL_PADDING", "100"))
+BIN_SIZE = int(os.environ.get("PHASE3_WGS_CNV_BIN_SIZE", "5000000"))
+MATRIX_RECORD_POLICY = os.environ.get("PHASE3_WGS_MATRIX_RECORD_POLICY", "pass_preferred_all_filtered_fallback")
+
+MUTATION_TYPES = ["C>A", "C>G", "C>T", "T>A", "T>C", "T>G"]
+BASES = ["A", "C", "G", "T"]
+COMPLEMENT = {"A": "T", "C": "G", "G": "C", "T": "A"}
+
+
+def read_group(row: dict[str, str]) -> str:
+    return "\\t".join(
+        [
+            "@RG",
+            f"ID:{row['read_group_id']}",
+            f"SM:{row['read_group_sample']}",
+            f"LB:{row['read_group_library']}",
+            f"PL:{row['read_group_platform']}",
+            f"PU:{row['read_group_platform_unit']}",
+        ]
+    )
+
+
+def parse_header(header: str, row: dict[str, str]) -> dict[str, Any]:
+    lines = header.splitlines()
+    hd = next((line for line in lines if line.startswith("@HD")), "")
+    sort_order = re.search(r"\bSO:([^\t]+)", hd)
+    rg_lines = [line for line in lines if line.startswith("@RG")]
+    sq_lines = [line for line in lines if line.startswith("@SQ")]
+    contigs = [match.group(1) for line in sq_lines if (match := re.search(r"\bSN:([^\t]+)", line))]
+    read_group_present = any(f"ID:{row['read_group_id']}" in line and f"SM:{row['read_group_sample']}" in line for line in rg_lines)
+    return {
+        "sortOrder": sort_order.group(1) if sort_order else "",
+        "readGroupPresent": read_group_present,
+        "readGroupCount": len(rg_lines),
+        "contigs": contigs,
+    }
+
+
+def count(command: str) -> int:
+    return int(capture_command(command) or "0")
+
+
+def load_truth_variants(vcf_path: str, variant_type: str) -> list[dict[str, Any]]:
+    variants: list[dict[str, Any]] = []
+    with gzip.open(path_from_root(vcf_path), "rt", encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip() or line.startswith("#"):
+                continue
+            contig, position_text, _id, ref, alt_text, *_rest = line.rstrip("\n").split("\t")
+            if not standard_contig(contig):
+                continue
+            position = int(position_text)
+            for alt in alt_text.split(","):
+                variants.append(
+                    {
+                        "key": f"{contig}:{position}:{ref}:{alt}",
+                        "type": variant_type,
+                        "contig": contig,
+                        "position": position,
+                        "ref": ref,
+                        "alt": alt,
+                    }
+                )
+    return variants
+
+
+def write_truth_position_bed(variants: list[dict[str, Any]], output_path: str) -> None:
+    ensure_dir(path_from_root("/".join(output_path.split("/")[:-1])))
+    write_text(
+        path_from_root(output_path),
+        "\n".join(f"{variant['contig']}\t{int(variant['position']) - 1}\t{variant['position']}\t{variant['key']}" for variant in variants),
+    )
+
+
+def pick_covered_truth_variants(variants: list[dict[str, Any]], depth_text: str) -> list[dict[str, Any]]:
+    by_position: dict[str, list[dict[str, Any]]] = {}
+    for variant in variants:
+        by_position.setdefault(f"{variant['contig']}:{variant['position']}", []).append(variant)
+    unique: dict[str, dict[str, Any]] = {}
+    for line in depth_text.splitlines():
+        fields = line.split("\t")
+        if len(fields) < 4:
+            continue
+        contig, position_text, tumor_text, normal_text = fields[:4]
+        tumor_depth = int(tumor_text or "0")
+        normal_depth = int(normal_text or "0")
+        if tumor_depth < MIN_TRUTH_DEPTH or normal_depth < MIN_TRUTH_DEPTH:
+            continue
+        for variant in by_position.get(f"{contig}:{position_text}", []):
+            enriched = dict(variant)
+            enriched["tumorDepth"] = tumor_depth
+            enriched["normalDepth"] = normal_depth
+            enriched["minDepth"] = min(tumor_depth, normal_depth)
+            unique[str(enriched["key"])] = enriched
+    return sorted(unique.values(), key=lambda row: (-int(row["minDepth"]), str(row["contig"]), int(row["position"])))[:MAX_TRUTH_VARIANTS]
+
+
+def read_reference_order(fai_path: str) -> dict[str, int]:
+    order: dict[str, int] = {}
+    for index, line in enumerate(read_text(path_from_root(fai_path)).splitlines()):
+        if line:
+            order[line.split("\t")[0]] = index
+    return order
+
+
+def write_intervals(variants: list[dict[str, Any]], reference_order: dict[str, int], output_path: str) -> list[dict[str, Any]]:
+    intervals = sorted(
+        [
+            {
+                "contig": variant["contig"],
+                "start": max(0, int(variant["position"]) - 1 - INTERVAL_PADDING),
+                "end": int(variant["position"]) + INTERVAL_PADDING,
+            }
+            for variant in variants
+        ],
+        key=lambda row: (reference_order.get(str(row["contig"]), 9999), int(row["start"]), int(row["end"])),
+    )
+    merged: list[dict[str, Any]] = []
+    for interval in intervals:
+        last = merged[-1] if merged else None
+        if not last or last["contig"] != interval["contig"] or int(interval["start"]) > int(last["end"]) + 50:
+            merged.append(dict(interval))
+        else:
+            last["end"] = max(int(last["end"]), int(interval["end"]))
+    write_text(path_from_root(output_path), "\n".join(f"{row['contig']}\t{row['start']}\t{row['end']}" for row in merged))
+    return merged
+
+
+def write_fallback_mapped_intervals(rows: list[dict[str, str]], reference_order: dict[str, int], output_path: str) -> list[dict[str, Any]]:
+    intervals: list[dict[str, Any]] = []
+    for row in rows:
+        mapped = capture_allow_empty(
+            f'samtools view -F 4 {quote_shell_arg(row["output_bam"])} | awk \'NR<=10000 {{print $3 "\\t" $4 "\\t" length($10)}}\''
+        )
+        for line in mapped.splitlines():
+            contig, start_text, length_text = line.split("\t")
+            start_one = int(start_text)
+            read_length = int(length_text)
+            if not standard_contig(contig) or read_length <= 0:
+                continue
+            intervals.append(
+                {"contig": contig, "start": max(0, start_one - 1 - INTERVAL_PADDING), "end": start_one - 1 + read_length + INTERVAL_PADDING}
+            )
+    intervals.sort(key=lambda row: (reference_order.get(str(row["contig"]), 9999), int(row["start"]), int(row["end"])))
+    step = max(1, len(intervals) // MAX_TRUTH_VARIANTS)
+    picked = intervals[::step][:MAX_TRUTH_VARIANTS]
+    if not picked:
+        raise RuntimeError("No mapped-read fallback intervals could be built for Phase 3 WGS smoke.")
+    write_text(path_from_root(output_path), "\n".join(f"{row['contig']}\t{row['start']}\t{row['end']}" for row in picked))
+    return picked
+
+
+def parse_vcf_sample_names(vcf_path: str) -> list[str]:
+    header = capture_command(f"bcftools view -h {quote_shell_arg(vcf_path)}")
+    sample_line = next((line for line in header.splitlines() if line.startswith("#CHROM")), "")
+    return sample_line.split("\t")[9:]
+
+
+def variant_keys(vcf_path: str, region_bed_path: Optional[str] = None) -> dict[str, Any]:
+    region_part = f"-R {quote_shell_arg(region_bed_path)}" if region_bed_path else ""
+    rows = capture_allow_empty(f"bcftools view {region_part} -H {quote_shell_arg(vcf_path)}")
+    keys: set[str] = set()
+    pass_keys: set[str] = set()
+    snv_count = indel_count = pass_count = 0
+    for line in rows.splitlines():
+        if not line:
+            continue
+        contig, position, _id, ref, alt_text, _qual, filter_value, *_rest = line.split("\t")
+        for alt in alt_text.split(","):
+            key = f"{contig}:{position}:{ref}:{alt}"
+            keys.add(key)
+            if len(ref) == 1 and len(alt) == 1:
+                snv_count += 1
+            else:
+                indel_count += 1
+            if filter_value == "PASS":
+                pass_keys.add(key)
+                pass_count += 1
+    return {
+        "keys": keys,
+        "passKeys": pass_keys,
+        "totalCount": len(keys),
+        "passCount": pass_count,
+        "snvCount": snv_count,
+        "indelCount": indel_count,
+    }
+
+
+def build_bins(fai_path: str, output_path: str) -> list[dict[str, Any]]:
+    intervals: list[dict[str, Any]] = []
+    for line in read_text(path_from_root(fai_path)).splitlines():
+        if not line:
+            continue
+        contig, length_text, *_rest = line.split("\t")
+        if not standard_contig(contig):
+            continue
+        length = int(length_text)
+        for start in range(0, length, BIN_SIZE):
+            intervals.append({"contig": contig, "start": start, "end": min(length, start + BIN_SIZE)})
+    write_text(path_from_root(output_path), "\n".join(f"{row['contig']}\t{row['start']}\t{row['end']}" for row in intervals))
+    return intervals
+
+
+def build_coverage_cnv(tumor: dict[str, str], normal: dict[str, str], bins_path: str) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    bedcov = capture_allow_empty(
+        f"samtools bedcov {quote_shell_arg(bins_path)} {quote_shell_arg(tumor['output_bam'])} {quote_shell_arg(normal['output_bam'])}"
+    )
+    for line in bedcov.splitlines():
+        contig, start_text, end_text, tumor_sum_text, normal_sum_text = line.split("\t")
+        start = int(start_text)
+        end = int(end_text)
+        length = max(1, end - start)
+        tumor_depth = float(tumor_sum_text or "0") / length
+        normal_depth = float(normal_sum_text or "0") / length
+        log2_ratio = math.log2((tumor_depth + 0.0001) / (normal_depth + 0.0001))
+        rows.append(
+            {
+                "contig": contig,
+                "start": start,
+                "end": end,
+                "length": length,
+                "tumor_depth_sum": int(tumor_sum_text or "0"),
+                "normal_depth_sum": int(normal_sum_text or "0"),
+                "tumor_mean_depth": round_value(tumor_depth, 6),
+                "normal_mean_depth": round_value(normal_depth, 6),
+                "log2_tumor_normal": round_value(log2_ratio, 4),
+                "coverage_class": "relative_gain"
+                if log2_ratio >= 0.5
+                else "relative_loss"
+                if log2_ratio <= -0.5
+                else "neutral_or_low_signal",
+            }
+        )
+    write_csv(path_from_root(f"{RESULTS_DIR}/coverage_cnv_bins.csv"), rows)
+    log2_values = [float(row["log2_tumor_normal"]) for row in rows if row["log2_tumor_normal"] != ""]
+    summary = {
+        "status": "passed" if rows else "failed",
+        "tool": "samtools bedcov",
+        "bin_size": BIN_SIZE,
+        "bin_count": len(rows),
+        "median_log2_tumor_normal": round_value(median(log2_values), 4),
+        "relative_gain_bins": sum(1 for row in rows if row["coverage_class"] == "relative_gain"),
+        "relative_loss_bins": sum(1 for row in rows if row["coverage_class"] == "relative_loss"),
+        "output_bins": "results/phase3_wgs_smoke/coverage_cnv_bins.csv",
+        "scarhrd_input_status": "not_assessable_low_depth_smoke_no_allele_specific_segments",
+        "caveat": "Real WGS BAM coverage-derived CNV bins from samtools bedcov. This validates CNV feature plumbing but is not allele-specific segmentation or scarHRD.",
+    }
+    write_csv(path_from_root(f"{RESULTS_DIR}/coverage_cnv_summary.csv"), [summary])
+    write_json(
+        path_from_root(f"{RESULTS_DIR}/coverage_cnv_summary.json"),
+        {"generatedAt": iso_now(), "status": summary["status"], "rows": [summary]},
+    )
+    return summary
+
+
+def reverse_complement(sequence: str) -> str:
+    return "".join(COMPLEMENT.get(base, "N") for base in reversed(sequence.upper()))
+
+
+def normalized_context(context: str, ref: str, alt: str) -> Optional[dict[str, str]]:
+    context = context.upper()
+    ref = ref.upper()
+    alt = alt.upper()
+    if len(context) != 3 or any(base not in BASES for base in context):
+        return None
+    if ref in ("C", "T"):
+        return {"mutationType": f"{ref}>{alt}", "trinucleotide": f"{context[0]}[{ref}>{alt}]{context[2]}"}
+    rc = reverse_complement(context)
+    normalized_ref = COMPLEMENT.get(ref, "N")
+    normalized_alt = COMPLEMENT.get(alt, "N")
+    return {"mutationType": f"{normalized_ref}>{normalized_alt}", "trinucleotide": f"{rc[0]}[{normalized_ref}>{normalized_alt}]{rc[2]}"}
+
+
+def all_sbs96_rows() -> list[dict[str, Any]]:
+    return [
+        {
+            "sample": "HCC1395",
+            "mutation_type": mutation_type,
+            "trinucleotide": f"{left}[{mutation_type}]{right}",
+            "count": 0,
+            "source_records": 0,
+            "source_vcf_policy": MATRIX_RECORD_POLICY,
+        }
+        for mutation_type in MUTATION_TYPES
+        for left in BASES
+        for right in BASES
+    ]
+
+
+def build_sbs96_matrix(filtered_vcf: str, reference_path: str) -> dict[str, Any]:
+    pass_rows = capture_allow_empty(f"bcftools view -f PASS -v snps -H {quote_shell_arg(filtered_vcf)}")
+    all_filtered_rows = capture_allow_empty(f"bcftools view -v snps -H {quote_shell_arg(filtered_vcf)}")
+    selected_rows = pass_rows if pass_rows.strip() else all_filtered_rows
+    selected_policy = "pass_only" if pass_rows.strip() else "all_filtered_fallback"
+    matrix_rows = all_sbs96_rows()
+    by_trinucleotide = {str(row["trinucleotide"]): row for row in matrix_rows}
+    usable_snvs = skipped_snvs = 0
+    for line in selected_rows.splitlines():
+        if not line:
+            continue
+        contig, position_text, _id, ref, alt_text, *_rest = line.split("\t")
+        position = int(position_text)
+        if not standard_contig(contig) or len(ref) != 1:
+            skipped_snvs += 1
+            continue
+        for alt in alt_text.split(","):
+            if len(alt) != 1 or ref.upper() not in BASES or alt.upper() not in BASES:
+                skipped_snvs += 1
+                continue
+            context = capture_allow_empty(
+                f"samtools faidx {quote_shell_arg(reference_path)} {quote_shell_arg(f'{contig}:{position - 1}-{position + 1}')} | awk 'NR>1 {{printf \"%s\", $0}}'"
+            )
+            normalized = normalized_context(context, ref, alt)
+            if not normalized or normalized["mutationType"] not in MUTATION_TYPES:
+                skipped_snvs += 1
+                continue
+            row = by_trinucleotide.get(normalized["trinucleotide"])
+            if not row:
+                skipped_snvs += 1
+                continue
+            row["count"] = int(row["count"]) + 1
+            row["source_records"] = int(row["source_records"]) + 1
+            usable_snvs += 1
+    write_csv(path_from_root(f"{RESULTS_DIR}/wgs_sbs96_matrix.csv"), matrix_rows)
+    summary = {
+        "status": "passed",
+        "tool": "local_sbs96_matrix_builder",
+        "source_vcf": filtered_vcf,
+        "source_record_policy": selected_policy,
+        "sbs96_rows": len(matrix_rows),
+        "usable_snv_records": usable_snvs,
+        "skipped_snv_records": skipped_snvs,
+        "total_matrix_count": sum(int(row["count"]) for row in matrix_rows),
+        "sigprofiler_assignment_status": "input_ready_threshold_met" if usable_snvs >= 50 else "not_assessable_low_mutation_count",
+        "output_matrix": "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
+        "caveat": "SBS96 matrix is built from actual Phase 3 WGS smoke VCF records. Signature assignment is not interpreted when the downsample has too few mutations.",
+    }
+    write_csv(path_from_root(f"{RESULTS_DIR}/signature_assignment_summary.csv"), [summary])
+    write_json(
+        path_from_root(f"{RESULTS_DIR}/signature_assignment_summary.json"),
+        {"generatedAt": iso_now(), "status": "passed", "rows": [summary]},
+    )
+    return summary
+
+
+def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
+    summary_rows: list[dict[str, Any]] = []
+    candidate_rows: list[dict[str, Any]] = []
+    for row in rows:
+        total_alignments = count(f"samtools view -c {quote_shell_arg(row['output_bam'])}")
+        supplementary = count(f"samtools view -c -f 2048 {quote_shell_arg(row['output_bam'])}")
+        discordant_mapped_pairs = count(f"samtools view -c -f 1 -F 14 {quote_shell_arg(row['output_bam'])}")
+        interchromosomal_pairs = count(
+            f'samtools view -f 1 -F 14 {quote_shell_arg(row["output_bam"])} | awk \'$7!="=" && $7!="*" {{n++}} END {{print n+0}}\''
+        )
+        large_insert_pairs = count(
+            f"samtools view -f 1 -F 14 {quote_shell_arg(row['output_bam'])} | awk '$7==\"=\" && ($9>100000 || $9<-100000) {{n++}} END {{print n+0}}'"
+        )
+        candidates = capture_allow_empty(
+            f"samtools view -f 1 -F 14 {quote_shell_arg(row['output_bam'])} | awk 'BEGIN{{OFS=\"\\t\"}} NR<=100 {{print $1,$3,$4,$7,$8,$9,$5,$6}}'"
+        )
+        for line in candidates.splitlines():
+            fields = line.split("\t")
+            if len(fields) != 8:
+                continue
+            read_name, chrom1, pos1, chrom2, pos2, template_length, mapq, cigar = fields
+            candidate_rows.append(
+                {
+                    "sample": row["sample"],
+                    "role": row["role"],
+                    "run_accession": row["run_accession"],
+                    "read_name": read_name,
+                    "chrom1": chrom1,
+                    "pos1": pos1,
+                    "chrom2": chrom2,
+                    "pos2": pos2,
+                    "template_length": template_length,
+                    "mapq": mapq,
+                    "cigar": cigar,
+                }
+            )
+        summary_rows.append(
+            {
+                "status": "passed",
+                "tool": "samtools view flag/evidence counters",
+                "sample": row["sample"],
+                "role": row["role"],
+                "run_accession": row["run_accession"],
+                "input_bam": row["output_bam"],
+                "total_alignments": total_alignments,
+                "supplementary_alignments": supplementary,
+                "discordant_mapped_pairs": discordant_mapped_pairs,
+                "interchromosomal_pairs": interchromosomal_pairs,
+                "large_insert_pairs": large_insert_pairs,
+                "sv_candidate_rows_written": min(100, len(candidates.splitlines())),
+                "chord_input_status": "not_assessable_low_depth_smoke_requires_full_depth_sv_caller_vcf",
+                "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is a WGS SV evidence smoke, not a validated full-depth SV caller VCF.",
+            }
+        )
+    write_csv(path_from_root(f"{RESULTS_DIR}/sv_evidence_candidates.csv"), candidate_rows)
+    write_csv(path_from_root(f"{RESULTS_DIR}/sv_evidence_summary.csv"), summary_rows)
+    write_json(
+        path_from_root(f"{RESULTS_DIR}/sv_evidence_summary.json"),
+        {
+            "generatedAt": iso_now(),
+            "status": "passed" if all(row["status"] == "passed" for row in summary_rows) else "failed",
+            "rows": summary_rows,
+        },
+    )
+    return summary_rows
+
+
+def main() -> None:
+    ensure_dir(path_from_root(RESULTS_DIR))
+    ensure_dir(path_from_root(f"{RESULTS_DIR}/logs"))
+    asset_summary = read_json(path_from_root(f"{RESULTS_DIR}/asset_summary.json"))
+    if asset_summary.get("status") != "ready":
+        raise RuntimeError("Phase 3 WGS asset summary is not ready. Run fetch:phase3-wgs first.")
+
+    rows = parse_csv(read_text(path_from_root("manifests/phase3_wgs_smoke_samplesheet.csv")))
+    if len(rows) != 2 or {row["role"] for row in rows} != {"tumor", "normal"}:
+        raise RuntimeError("Expected tumor and normal rows in manifests/phase3_wgs_smoke_samplesheet.csv.")
+    tumor = next(row for row in rows if row["role"] == "tumor")
+    normal = next(row for row in rows if row["role"] == "normal")
+    reference_id = tumor["reference_id"]
+    output_root = f"data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/{reference_id}"
+    interval_dir = f"{output_root}/intervals"
+    vcf_dir = f"{output_root}/vcf"
+    bins_path = f"{interval_dir}/standard_contig_{BIN_SIZE}bp_bins.bed"
+    truth_position_bed = f"{interval_dir}/seqc2_truth_positions.bed"
+    mutect_intervals = f"{interval_dir}/phase3_wgs_mutect2_intervals.bed"
+    unfiltered_vcf = f"{vcf_dir}/hcc1395.phase3_wgs_smoke.mutect2.unfiltered.vcf.gz"
+    filtered_vcf = f"{vcf_dir}/hcc1395.phase3_wgs_smoke.mutect2.filtered.vcf.gz"
+    f1r2_path = f"{vcf_dir}/hcc1395.phase3_wgs_smoke.mutect2.f1r2.tar.gz"
+
+    for row in rows:
+        for required_path in [
+            row["fastq_1"],
+            row["fastq_2"],
+            row["reference_path"],
+            row["reference_fai_path"],
+            row["reference_dict_path"],
+            row["gatk_jar_path"],
+        ]:
+            if not path_from_root(required_path).exists():
+                raise RuntimeError(f"Required Phase 3 WGS input is missing: {required_path}")
+    if not path_from_root(f"{tumor['reference_path']}.bwt").exists():
+        run_command(f"bwa index {quote_shell_arg(tumor['reference_path'])}", f"{RESULTS_DIR}/logs/{reference_id}.bwa_index.log")
+
+    align_commands: list[tuple[str, str]] = []
+    for row in rows:
+        ensure_dir(path_from_root("/".join(row["output_bam"].split("/")[:-1])))
+        if not FORCE and quickcheck_bam(row["output_bam"]):
+            continue
+        command = (
+            "set -o pipefail; "
+            f"bwa mem -t {PER_SAMPLE_THREADS} -R {quote_shell_arg(read_group(row))} {quote_shell_arg(row['reference_path'])} "
+            f"{quote_shell_arg(row['fastq_1'])} {quote_shell_arg(row['fastq_2'])} | "
+            f"samtools sort -@ {PER_SAMPLE_THREADS} -o {quote_shell_arg(row['output_bam'])} -"
+        )
+        align_commands.append((command, f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.align.log"))
+    if align_commands:
+        if PARALLEL_ALIGN:
+            run_commands_parallel(align_commands, len(align_commands))
+        else:
+            for command, log_path in align_commands:
+                run_command(command, log_path)
+
+    index_commands: list[tuple[str, str]] = []
+    stats_commands: list[tuple[str, str]] = []
+    for row in rows:
+        if FORCE or not path_from_root(row["output_bai"]).exists():
+            index_commands.append(
+                (
+                    f"samtools index -@ {PER_SAMPLE_THREADS} -o {quote_shell_arg(row['output_bai'])} {quote_shell_arg(row['output_bam'])}",
+                    f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.index.log",
+                )
+            )
+        stats_commands.append(
+            (
+                f"samtools flagstat {quote_shell_arg(row['output_bam'])}",
+                f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt",
+            )
+        )
+        stats_commands.append(
+            (f"samtools stats {quote_shell_arg(row['output_bam'])}", f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.stats.txt")
+        )
+    if index_commands:
+        run_commands_parallel(index_commands, len(index_commands))
+    run_commands_parallel(stats_commands, min(4, len(stats_commands)))
+
+    bam_rows: list[dict[str, Any]] = []
+    for row in rows:
+        header = parse_header(capture_command(f"samtools view -H {quote_shell_arg(row['output_bam'])}"), row)
+        total_alignments = count(f"samtools view -c {quote_shell_arg(row['output_bam'])}")
+        mapped_alignments = count(f"samtools view -c -F 4 {quote_shell_arg(row['output_bam'])}")
+        properly_paired = count(f"samtools view -c -f 2 {quote_shell_arg(row['output_bam'])}")
+        standard_mapped_contigs = count(
+            f"samtools idxstats {quote_shell_arg(row['output_bam'])} | awk '$1 ~ /^chr([1-9]|1[0-9]|2[0-2]|X|Y)$/ && $3 > 0 {{n++}} END {{print n+0}}'"
+        )
+        status = (
+            "passed"
+            if quickcheck_bam(row["output_bam"])
+            and path_from_root(row["output_bai"]).exists()
+            and header["sortOrder"] == "coordinate"
+            and header["readGroupPresent"]
+            and len(header["contigs"]) > 20
+            and mapped_alignments > 0
+            and standard_mapped_contigs > 0
+            else "failed"
+        )
+        bam_rows.append(
+            {
+                "pair_id": row["pair_id"],
+                "reference_id": row["reference_id"],
+                "assembly": row["assembly"],
+                "genome_build": row["genome_build"],
+                "role": row["role"],
+                "run_accession": row["run_accession"],
+                "sample": row["sample"],
+                "read_pairs_per_end": row["read_pairs_per_end"],
+                "reference_sha256": row["reference_sha256"],
+                "output_bam": row["output_bam"],
+                "output_bai": row["output_bai"],
+                "bam_exists": "yes" if path_from_root(row["output_bam"]).exists() else "no",
+                "bai_exists": "yes" if path_from_root(row["output_bai"]).exists() else "no",
+                "quickcheck": "passed" if quickcheck_bam(row["output_bam"]) else "failed",
+                "sort_order": header["sortOrder"],
+                "read_group_present": "yes" if header["readGroupPresent"] else "no",
+                "read_group_count": header["readGroupCount"],
+                "reference_contig_count": len(header["contigs"]),
+                "total_alignments": total_alignments,
+                "mapped_alignments": mapped_alignments,
+                "mapped_fraction": round_value(mapped_alignments / total_alignments if total_alignments else None, 4),
+                "properly_paired_alignments": properly_paired,
+                "properly_paired_fraction": round_value(properly_paired / total_alignments if total_alignments else None, 4),
+                "mapped_standard_contigs": standard_mapped_contigs,
+                "bam_size_bytes": path_from_root(row["output_bam"]).stat().st_size if path_from_root(row["output_bam"]).exists() else "",
+                "status": status,
+                "caveat": row["caveat"],
+            }
+        )
+    bam_status = "passed" if all(row["status"] == "passed" for row in bam_rows) else "failed"
+    write_csv(path_from_root(f"{RESULTS_DIR}/bam_validation_summary.csv"), bam_rows)
+    write_json(
+        path_from_root(f"{RESULTS_DIR}/bam_validation_summary.json"), {"generatedAt": iso_now(), "status": bam_status, "rows": bam_rows}
+    )
+    if bam_status != "passed":
+        raise RuntimeError("Phase 3 WGS BAM validation failed.")
+
+    ensure_dir(path_from_root(interval_dir))
+    ensure_dir(path_from_root(vcf_dir))
+    build_bins(tumor["reference_fai_path"], bins_path)
+    cnv_summary = build_coverage_cnv(tumor, normal, bins_path)
+
+    truth_variants = load_truth_variants(tumor["truth_snv_vcf_path"], "snv") + load_truth_variants(tumor["truth_indel_vcf_path"], "indel")
+    write_truth_position_bed(truth_variants, truth_position_bed)
+    truth_depth_text = capture_allow_empty(
+        f"samtools depth -a -b {quote_shell_arg(truth_position_bed)} {quote_shell_arg(tumor['output_bam'])} {quote_shell_arg(normal['output_bam'])}"
+    )
+    covered_truth = pick_covered_truth_variants(truth_variants, truth_depth_text)
+    reference_order = read_reference_order(tumor["reference_fai_path"])
+    interval_rows = (
+        write_intervals(covered_truth, reference_order, mutect_intervals)
+        if covered_truth
+        else write_fallback_mapped_intervals(rows, reference_order, mutect_intervals)
+    )
+    write_csv(
+        path_from_root(f"{RESULTS_DIR}/covered_truth_variants.csv"),
+        [
+            {
+                "key": variant["key"],
+                "type": variant["type"],
+                "contig": variant["contig"],
+                "position": variant["position"],
+                "ref": variant["ref"],
+                "alt": variant["alt"],
+                "tumor_depth": variant["tumorDepth"],
+                "normal_depth": variant["normalDepth"],
+                "min_depth": variant["minDepth"],
+            }
+            for variant in covered_truth
+        ],
+    )
+
+    pon_part = (
+        f"--panel-of-normals {quote_shell_arg(tumor['mutect2_panel_of_normals_path'])}"
+        if file_non_empty(tumor["mutect2_panel_of_normals_path"])
+        else ""
+    )
+    if FORCE or not (path_from_root(unfiltered_vcf).exists() and path_from_root(f"{unfiltered_vcf}.tbi").exists()):
+        run_command(
+            " ".join(
+                [
+                    f"{quote_shell_arg(tumor['java_path'])} -Xmx10g -jar {quote_shell_arg(tumor['gatk_jar_path'])} Mutect2",
+                    f"-R {quote_shell_arg(tumor['reference_path'])}",
+                    f"-L {quote_shell_arg(mutect_intervals)}",
+                    f"-I {quote_shell_arg(tumor['output_bam'])} -tumor {quote_shell_arg(tumor['sample'])}",
+                    f"-I {quote_shell_arg(normal['output_bam'])} -normal {quote_shell_arg(normal['sample'])}",
+                    pon_part,
+                    f"--native-pair-hmm-threads {GATK_THREADS}",
+                    f"--f1r2-tar-gz {quote_shell_arg(f1r2_path)}",
+                    f"-O {quote_shell_arg(unfiltered_vcf)}",
+                ]
+            ),
+            f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.mutect2.log",
+        )
+    if FORCE or not (path_from_root(filtered_vcf).exists() and path_from_root(f"{filtered_vcf}.tbi").exists()):
+        run_command(
+            f"{quote_shell_arg(tumor['java_path'])} -Xmx6g -jar {quote_shell_arg(tumor['gatk_jar_path'])} FilterMutectCalls -R {quote_shell_arg(tumor['reference_path'])} -V {quote_shell_arg(unfiltered_vcf)} -O {quote_shell_arg(filtered_vcf)}",
+            f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filter_mutect_calls.log",
+        )
+        run_command(
+            f"bcftools index -t -f {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filtered_vcf_index.log"
+        )
+    run_command(f"bcftools stats {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filtered_vcf_stats.txt")
+
+    filtered_samples = parse_vcf_sample_names(filtered_vcf)
+    filtered_calls = variant_keys(filtered_vcf, mutect_intervals)
+    truth_snv_active = variant_keys(tumor["truth_snv_vcf_path"], mutect_intervals)
+    truth_indel_active = variant_keys(tumor["truth_indel_vcf_path"], mutect_intervals)
+    truth_active_keys = set(truth_snv_active["keys"]) | set(truth_indel_active["keys"])
+    exact_matches = [key for key in filtered_calls["passKeys"] if key in truth_active_keys]
+    mutect_status = (
+        "passed"
+        if path_from_root(filtered_vcf).exists()
+        and path_from_root(f"{filtered_vcf}.tbi").exists()
+        and tumor["sample"] in filtered_samples
+        and normal["sample"] in filtered_samples
+        else "failed"
+    )
+    comparison_status = (
+        "not_assessable_no_depth_covered_truth_variants_in_wgs_smoke"
+        if not covered_truth
+        else "assessed_no_passing_mutect2_calls"
+        if filtered_calls["passCount"] == 0
+        else "assessed_exact_key_overlap"
+    )
+    mutect_row = {
+        "status": mutect_status,
+        "phase": "3",
+        "caller": tumor["production_caller"],
+        "reference_id": reference_id,
+        "pair_id": tumor["pair_id"],
+        "tumor_sample": tumor["sample"],
+        "normal_sample": normal["sample"],
+        "tumor_run": tumor["run_accession"],
+        "normal_run": normal["run_accession"],
+        "read_pairs_per_end": tumor["read_pairs_per_end"],
+        "interval_strategy": "covered_seqc2_truth_variants" if covered_truth else "mapped_read_fallback_intervals",
+        "mutect_interval_bed_path": mutect_intervals,
+        "mutect_interval_count": len(interval_rows),
+        "truth_variants_total": len(truth_variants),
+        "truth_variants_depth_eligible": len(covered_truth),
+        "truth_snv_records_in_intervals": truth_snv_active["totalCount"],
+        "truth_indel_records_in_intervals": truth_indel_active["totalCount"],
+        "filtered_vcf": filtered_vcf,
+        "filtered_tbi": f"{filtered_vcf}.tbi",
+        "filtered_records_in_intervals": filtered_calls["totalCount"],
+        "pass_records_in_intervals": filtered_calls["passCount"],
+        "exact_pass_truth_matches": len(exact_matches),
+        "comparison_status": comparison_status,
+        "panel_of_normals_used": tumor["mutect2_panel_of_normals_path"] if pon_part else "",
+        "caveat": "Real GATK Mutect2 WGS-smoke small-variant output. Downsample depth limits sensitivity and signature interpretability.",
+    }
+    write_csv(path_from_root(f"{RESULTS_DIR}/mutect2_wgs_summary.csv"), [mutect_row])
+    write_json(
+        path_from_root(f"{RESULTS_DIR}/mutect2_wgs_summary.json"), {"generatedAt": iso_now(), "status": mutect_status, "rows": [mutect_row]}
+    )
+
+    signature_summary = build_sbs96_matrix(filtered_vcf, tumor["reference_path"])
+    sv_rows = build_sv_evidence(rows)
+    hrd_tool_rows = [
+        {
+            "tool": "SigProfilerAssignment",
+            "evidence_input": "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
+            "local_phase3_output": "results/phase3_wgs_smoke/signature_assignment_summary.csv",
+            "real_output_status": "real_sbs96_matrix_output",
+            "interpretability_status": signature_summary["sigprofiler_assignment_status"],
+            "caveat": "Classification is deferred for low mutation count; the matrix is a real VCF-derived output, not a proxy.",
+        },
+        {
+            "tool": "scarHRD",
+            "evidence_input": "results/phase3_wgs_smoke/coverage_cnv_bins.csv",
+            "local_phase3_output": "results/phase3_wgs_smoke/coverage_cnv_summary.csv",
+            "real_output_status": "real_coverage_cnv_bin_output",
+            "interpretability_status": cnv_summary["scarhrd_input_status"],
+            "caveat": "scarHRD needs allele-specific segmented CN calls; this smoke validates WGS coverage-bin plumbing only.",
+        },
+        {
+            "tool": "CHORD",
+            "evidence_input": "results/phase3_wgs_smoke/sv_evidence_summary.csv",
+            "local_phase3_output": "results/phase3_wgs_smoke/sv_evidence_summary.csv",
+            "real_output_status": "real_bam_sv_evidence_output",
+            "interpretability_status": "not_assessable_low_depth_smoke_requires_full_depth_sv_caller_vcf",
+            "caveat": "CHORD-style interpretation needs full-depth SNV/indel/SV/CNV feature inputs; this smoke validates the feature lanes.",
+        },
+    ]
+    write_csv(path_from_root(f"{RESULTS_DIR}/hrd_tool_readiness_summary.csv"), hrd_tool_rows)
+    write_json(
+        path_from_root(f"{RESULTS_DIR}/hrd_tool_readiness_summary.json"),
+        {"generatedAt": iso_now(), "status": "passed", "rows": hrd_tool_rows},
+    )
+
+    write_json(
+        path_from_root(f"{RESULTS_DIR}/tool_versions.json"),
+        {
+            "generatedAt": iso_now(),
+            "bwa": {"path": capture_command("command -v bwa"), "version": tool_version("bwa")},
+            "samtools": {"path": capture_command("command -v samtools"), "version": tool_version("samtools")},
+            "bcftools": {"path": capture_command("command -v bcftools"), "version": tool_version("bcftools")},
+            "java": {
+                "path": tumor["java_path"],
+                "version": capture_command(f"{quote_shell_arg(tumor['java_path'])} -version 2>&1 | head -n 1"),
+            },
+            "gatk": {
+                "jarPath": tumor["gatk_jar_path"],
+                "version": capture_command(
+                    f"{quote_shell_arg(tumor['java_path'])} -jar {quote_shell_arg(tumor['gatk_jar_path'])} --version 2>&1 | head -n 1"
+                ),
+            },
+        },
+    )
+
+    phase3_complete = (
+        bam_status == "passed"
+        and mutect_status == "passed"
+        and cnv_summary["status"] == "passed"
+        and signature_summary["status"] == "passed"
+        and all(row["status"] == "passed" for row in sv_rows)
+    )
+    summary_row = {
+        "status": "passed" if phase3_complete else "failed",
+        "phase": "3",
+        "pair_id": tumor["pair_id"],
+        "reference_id": reference_id,
+        "read_pairs_per_end": tumor["read_pairs_per_end"],
+        "available_cpus": AVAILABLE_CPUS,
+        "total_threads": TOTAL_THREADS,
+        "parallel_align": "yes" if PARALLEL_ALIGN else "no",
+        "per_sample_threads": PER_SAMPLE_THREADS,
+        "gatk_threads": GATK_THREADS,
+        "bam_validation_status": bam_status,
+        "mutect2_status": mutect_status,
+        "mutect_interval_count": len(interval_rows),
+        "truth_variants_depth_eligible": len(covered_truth),
+        "pass_records_in_intervals": filtered_calls["passCount"],
+        "exact_pass_truth_matches": len(exact_matches),
+        "coverage_cnv_status": cnv_summary["status"],
+        "coverage_cnv_bins": cnv_summary["bin_count"],
+        "sbs96_matrix_status": signature_summary["status"],
+        "sbs96_usable_snv_records": signature_summary["usable_snv_records"],
+        "sv_evidence_status": "passed" if all(row["status"] == "passed" for row in sv_rows) else "failed",
+        "phase3_complete": "yes" if phase3_complete else "no",
+        "ready_for_phase4_when_diana_raw_arrives": "yes" if phase3_complete else "no",
+        "boundary": "Phase 3 validates WGS-capable mechanics with real representative WGS FASTQ, BAM, small-variant VCF, coverage-CNV bins, SBS96 matrix, and SV evidence outputs. Full-depth Diana interpretation still needs Diana raw data and production CNV/SV/signature policy.",
+    }
+    write_csv(path_from_root(f"{RESULTS_DIR}/phase3_wgs_summary.csv"), [summary_row])
+    write_json(
+        path_from_root(f"{RESULTS_DIR}/phase3_wgs_summary.json"),
+        {
+            "generatedAt": iso_now(),
+            "status": summary_row["status"],
+            "phase": "3",
+            "pairId": tumor["pair_id"],
+            "referenceId": reference_id,
+            "readPairsPerEnd": int(tumor["read_pairs_per_end"]),
+            "availableCpus": AVAILABLE_CPUS,
+            "totalThreads": TOTAL_THREADS,
+            "parallelAlign": PARALLEL_ALIGN,
+            "perSampleThreads": PER_SAMPLE_THREADS,
+            "gatkThreads": GATK_THREADS,
+            "bamValidationStatus": bam_status,
+            "mutect2Status": mutect_status,
+            "mutectIntervalCount": len(interval_rows),
+            "truthVariantsDepthEligible": len(covered_truth),
+            "passRecordsInIntervals": filtered_calls["passCount"],
+            "exactPassTruthMatches": len(exact_matches),
+            "coverageCnvStatus": cnv_summary["status"],
+            "coverageCnvBins": cnv_summary["bin_count"],
+            "sbs96MatrixStatus": signature_summary["status"],
+            "sbs96UsableSnvRecords": signature_summary["usable_snv_records"],
+            "svEvidenceStatus": summary_row["sv_evidence_status"],
+            "phase3Complete": phase3_complete,
+            "readyForPhase4WhenDianaRawArrives": phase3_complete,
+            "boundary": summary_row["boundary"],
+        },
+    )
+    write_text(
+        path_from_root(f"{RESULTS_DIR}/README.md"),
+        f"""# Phase 3 WGS HRD Capability Smoke
+
+Status: **{"passed" if phase3_complete else "failed"}**.
+
+Representative pair: `{tumor["pair_id"]}`
+
+Reference: `{reference_id}` ({tumor["genome_build"]}/{tumor["assembly"]})
+
+Reads per FASTQ end: `{tumor["read_pairs_per_end"]}`
+
+Parallelism:
+
+1. Available CPUs detected: `{AVAILABLE_CPUS}`
+2. Total thread budget: `{TOTAL_THREADS}`
+3. Tumor/normal alignment in parallel: `{"yes" if PARALLEL_ALIGN else "no"}`
+4. Per-sample alignment/sort threads: `{PER_SAMPLE_THREADS}`
+5. GATK PairHMM threads: `{GATK_THREADS}`
+
+What this validates:
+
+1. Real representative HCC1395 WGS FASTQ subset alignment to the full hg38 analysis-set reference.
+2. Coordinate-sorted, indexed, read-grouped tumor and matched-normal WGS BAM contracts.
+3. Real GATK Mutect2/FilterMutectCalls tumor-normal WGS-smoke VCF output.
+4. Real coverage-derived tumor/normal CNV bin output from `samtools bedcov`.
+5. Real SBS96 mutation matrix output from the actual WGS-smoke VCF.
+6. Real BAM-derived SV evidence counts from split/supplementary/discordant/interchromosomal read evidence.
+7. A clear boundary between WES small-variant evidence, WGS-capable smoke outputs, and full-depth WGS HRD interpretation.
+
+What remains Diana-specific:
+
+1. Full-depth WGS or WES input inventory, reference policy, and production compute target.
+2. Allele-specific CNV segmentation for scarHRD.
+3. Validated SV caller VCF for CHORD/HRDetect-style feature extraction.
+4. Stable SBS signature assignment only when mutation count and coverage are adequate.
+5. Reviewer sign-off before any treatment-changing interpretation.
+""",
+    )
+    if not phase3_complete:
+        raise RuntimeError("Phase 3 WGS smoke failed.")
+    print(
+        f"Phase 3 WGS smoke passed: {len(interval_rows)} intervals, {filtered_calls['passCount']} PASS calls, {cnv_summary['bin_count']} CNV bins."
+    )
+
+
+if __name__ == "__main__":
+    main()

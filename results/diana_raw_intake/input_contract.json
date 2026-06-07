@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-06-07T06:34:59.016Z",
+  "samplesheet": "manifests/diana_raw_inputs.csv",
+  "template": "manifests/diana_raw_inputs.template.csv",
+  "requiredColumns": [
+    "patient_id",
+    "pair_id",
+    "sample_id",
+    "role",
+    "assay",
+    "data_type",
+    "library_layout",
+    "fastq_1",
+    "fastq_2",
+    "bam",
+    "bai",
+    "cram",
+    "crai",
+    "reference_id",
+    "reference_path",
+    "reference_fai_path",
+    "reference_dict_path",
+    "read_group_id",
+    "read_group_sample",
+    "read_group_library",
+    "read_group_platform",
+    "read_group_platform_unit",
+    "tumor_purity",
+    "tumor_content",
+    "normal_type",
+    "capture_bed",
+    "rna_fastq_1",
+    "rna_fastq_2",
+    "notes",
+    "caveat"
+  ],
+  "dnaRoles": [
+    "normal",
+    "tumor"
+  ],
+  "dnaAssays": [
+    "WES",
+    "WGS"
+  ],
+  "dataTypes": [
+    "BAM",
+    "CRAM",
+    "FASTQ",
+    "MANIFEST_ONLY",
+    "RNA_FASTQ"
+  ],
+  "requiredDnaContract": "At least one tumor DNA row and one matched normal DNA row sharing pair_id, with FASTQ pairs, BAM+BAI, or CRAM+CRAI.",
+  "rnaContract": "Optional RNA_FASTQ rows can be included for expression context, but DNA tumor-normal rows are required for HRD mechanics.",
+  "referenceContract": "Diana DNA rows should use the same reference_id/reference_path/reference_fai_path/reference_dict_path unless a reviewer approves a build-specific split.",
+  "recomputeCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run stage:diana-raw",
+  "validationCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run verify:diana-raw"
+}

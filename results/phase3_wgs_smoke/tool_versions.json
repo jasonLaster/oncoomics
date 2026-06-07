@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T04:58:49.756Z",
+  "generatedAt": "2026-06-07T06:44:47.295Z",
   "bwa": {
     "path": "/opt/homebrew/bin/bwa",
     "version": "Program: bwa (alignment via Burrows-Wheeler transformation)\nVersion: 0.7.19-r1273\nContact: Heng Li <hli@ds.dfci.harvard.edu>\n\nUsage:   bwa <command> [options]\n\nCommand: index         index sequences in the FASTA format"

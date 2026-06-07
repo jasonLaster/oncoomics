@@ -1,0 +1,2 @@
+status,template,actual_samplesheet,ready_for_diana_raw_data,ready_to_interpret,next_step
+template_ready,manifests/diana_raw_inputs.template.csv,manifests/diana_raw_inputs.csv,yes,no,"Copy the template to manifests/diana_raw_inputs.csv, replace placeholder paths, then run verify:diana-raw with DIANA_RAW_REQUIRE_DATA=1."

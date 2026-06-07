@@ -1,91 +1,96 @@
-# Phase 3 Parallel Compute Strategy
+# Parallel Compute Strategy
 
-Phase 3 now has a local WGS-capable smoke lane and a clear path to full-depth WGS scaling.
+The workflow should use local CPU aggressively without hiding reproducibility or failure details.
 
-## Local Smoke Defaults
+## Current Local Pattern
 
-The local machine reported 18 CPUs during the Phase 3 run. The smoke runner uses these defaults:
+Phase 3 WGS smoke records:
 
-1. `PHASE3_WGS_THREADS=16`
-2. `PHASE3_WGS_PARALLEL_ALIGN=1`
-3. `PHASE3_WGS_GATK_THREADS=8`
-4. `PHASE3_WGS_READS=500000`
+- available CPUs
+- total threads
+- per-sample threads
+- GATK threads
+- whether alignment ran in parallel
 
-That means tumor and matched-normal alignment run at the same time, each with 8 BWA/samtools threads. Mutect2 then uses 8 native PairHMM threads on bounded intervals.
+Latest smoke values:
 
-Run:
+- available CPUs: 18
+- total threads: 16
+- per-sample threads: 8
+- GATK threads: 8
+- parallel alignment: true
 
-```sh
-bun run fetch:phase3-wgs
-bun run smoke:phase3-wgs
-```
+## Where Parallelism Helps
 
-Force a fresh run:
+FASTQ validation:
 
-```sh
-PHASE3_WGS_FORCE=1 bun run smoke:phase3-wgs
-```
+- Validate tumor and normal files independently.
+- Hash large files in separate workers when IO allows it.
 
-Use fewer CPUs on a busy workstation:
+Alignment:
 
-```sh
-PHASE3_WGS_THREADS=8 PHASE3_WGS_GATK_THREADS=4 bun run smoke:phase3-wgs
-```
+- Run tumor and normal alignment concurrently.
+- Give each sample a bounded thread count, for example 8 threads each on an 18 CPU machine.
+- Avoid oversubscribing when samtools sort also uses threads.
 
-Disable parallel tumor/normal alignment if memory or IO is constrained:
+Post-alignment QC:
 
-```sh
-PHASE3_WGS_PARALLEL_ALIGN=0 PHASE3_WGS_THREADS=12 bun run smoke:phase3-wgs
-```
+- Run flagstat, stats, quickcheck, and depth summaries per BAM in parallel.
 
-## Full WGS Scaling
+Somatic calling:
 
-The full HiSeq X WGS pair is roughly 198 GB compressed FASTQ across tumor and normal. A full run should be treated as a production or cloud/HPC job, not a casual laptop extension of the smoke.
+- Use native tool threads where available.
+- Split large WGS calling by intervals only after reference, PoN, contamination, and merge behavior are locked down.
 
-Recommended full-depth strategy:
+CNV/SV/signature:
 
-1. Keep tumor and normal FASTQ download/validation independent and resumable.
-2. Align tumor and normal as separate jobs.
-3. Mark duplicates or CRAM-convert as separate downstream jobs.
-4. Scatter small-variant calling by interval shards, then gather VCFs.
-5. Run CNV segmentation on genome-wide bins or allele-specific tooling after BAM validation.
-6. Run SV calling as its own lane, preferably with a pinned caller/container that emits VCF/BEDPE.
-7. Build SBS/ID/DB matrices only after PASS-filter policy is settled.
-8. Run CHORD/scarHRD/HRDetect-style feature handling only after SNV/indel, CNV, and SV inputs meet each tool's contract.
+- CNV bins can be computed by chromosome or interval shard.
+- SV callers are often memory-heavy; prefer sample-level or interval-level parallelism after benchmarking.
+- Signature summaries are cheap compared with alignment and calling.
 
-## Practical Job Shapes
+## Environment Knobs
 
-Local smoke:
+Existing commands use environment variables such as:
 
-1. 16 CPU threads.
-2. Less than 1 GB Phase 3 local WGS smoke data.
-3. Real BAM/VCF/CNV/matrix/SV-evidence outputs.
-4. Not full-depth interpretation.
+- `PHASE2F_THREADS`
+- `PHASE2F_FORCE`
+- `PHASE2F_MIN_TRUTH_DEPTH`
+- `PHASE2F_MAX_TRUTH_VARIANTS`
+- `PHASE3_WGS_THREADS`
+- `PHASE3_WGS_READ_PAIRS`
 
-Full WGS local workstation:
+Use force flags only when intentionally rebuilding expensive outputs.
 
-1. At least 16 to 32 CPU threads.
-2. Hundreds of GB free for FASTQ, BAM/CRAM, temporary sort files, VCFs, CNV/SV outputs, and logs.
-3. Run tumor/normal alignment separately if IO contention dominates.
-4. Prefer CRAM output once reference policy is frozen.
+## Full-Depth Recommendation
 
-Cloud/HPC:
+For full HG008, COLO829, or Diana WGS:
 
-1. One job per sample for alignment.
-2. One job per sample for duplicate marking and QC.
-3. One scatter array for Mutect2 intervals.
-4. One scatter array or caller-native parallel mode for SV.
-5. One gather/QC/reporting job.
+1. Download and checksum files first.
+2. Align tumor and normal in parallel.
+3. Mark duplicates per sample in parallel if memory allows.
+4. Run BAM QC per sample in parallel.
+5. Run Mutect2 by interval shards if full-genome runtime becomes limiting.
+6. Merge and index VCFs deterministically.
+7. Run CNV/SV/signature tools with tool-specific parallelism.
+8. Record wall time, CPU count, thread counts, and tool versions in summary JSON.
 
-## Phase 3 Boundary
+## Bug Risks
 
-The completed Phase 3 smoke proves the mechanics:
+- Too many threads can make jobs slower through IO contention.
+- Parallel commands can obscure which sample failed unless logs are per sample.
+- Interval sharding can create boundary artifacts.
+- Merged VCF order can change if sorting is not explicit.
+- Existing outputs can mask stale runs unless force flags and input checksums are tracked.
 
-1. Representative WGS FASTQ access.
-2. Full-reference WGS BAM contracts.
-3. Tumor-normal Mutect2 VCF output.
-4. Coverage-CNV bin output.
-5. SBS96 matrix output.
-6. BAM-derived SV evidence output.
+## Documentation Requirement
 
-It does not replace a full-depth WGS production run. Diana interpretation still needs Diana's raw data, final reference/resource policy, production CNV/SV/signature tooling, and reviewer sign-off.
+Every full-depth run should record:
+
+- command
+- input checksums
+- reference ID
+- thread counts
+- tool versions
+- elapsed time
+- output paths
+- pass/fail status

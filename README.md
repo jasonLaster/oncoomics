@@ -1,118 +1,109 @@
 # Diana HRD Omics
 
-This project is the reproducible analysis workspace for Diana's HRD-focused omics validation work. It starts from the validation-atlas packet in `../diana-tnbc/obsidian/wiki/omics` and turns it into a project plan, source map, frozen benchmark manifest, and eventually runnable analyses.
+This repository is a reproducible Python workspace for testing whether we can analyze Diana's future raw omics files for homologous recombination deficiency (HRD) in a way that is auditable before any real Diana FASTQ, BAM, CRAM, VCF, or RNA files arrive.
 
-The active scope is intentionally conservative:
+The project has two jobs:
 
-1. HRD, biallelic BRCA/HRR state, and mutational-signature biology from tumor-normal DNA.
-2. RNA subtype biology only as a context lane when it helps interpret TNBC biology or validate sample handling.
-3. No treatment-changing claim without clinician review and orthogonal or companion-diagnostic validation.
+1. Build a validation sidecar from public data so the pipeline is already exercised on known samples.
+2. Provide a clean plug-in contract for Diana's real data so we can rerun the same checks when the files arrive.
 
-## Stack Decision
+It does not make treatment recommendations. It produces evidence tables, quality summaries, and reviewer packets that still require expert review and clinical confirmation.
 
-- **Bun** is used for one-off project scripts: source checks, dataset-catalog fetchers, manifest generation, and validation utilities.
-- **Python** is the primary local analysis language for the first phase because Python 3.9 is available here and R is not installed locally.
-- **BWA + samtools** are used for the local Phase 2B FASTQ-to-BAM smoke test, Phase 2C partial human-reference smoke, and Phase 2D full-reference BAM smoke.
-- **bcftools** is used for the Phase 2D tiny VCF caller-contract smoke.
-- **GATK Mutect2 + FilterMutectCalls** is used for the Phase 2E production-style tumor-normal somatic smoke and Phase 2F full WES benchmark.
-- **GATK Mutect2, samtools bedcov, and local SBS96/SV evidence builders** are used for the Phase 3 representative WGS smoke.
-- **External workflow adapters** are planned for raw WGS or R-only HRD tools: nf-core/sarek, SigProfiler, CHORD, scarHRD, FACETS/ASCAT/PURPLE-style outputs, and containerized R when needed.
+## Current State
 
-## Current Artifacts
+The implementation is Python-only. `bun` is retained only as a convenient task runner around `PYTHONPATH=py/src python3 -m diana_omics ...`.
 
-- `docs/PROJECT_PLAN.md` - detailed milestones, deliverables, and verifiers.
-- `docs/PHASE_STATUS.md` - current phase status and remaining gates.
-- `docs/RAW_DATA_READINESS.md` - representative raw-data plan for pre-Diana FASTQ/BAM readiness.
-- `docs/PHASE3_PARALLEL_COMPUTE.md` - local and full-depth WGS parallel compute strategy.
-- `docs/SOURCE_MAP.md` - researched datasets, tools, and access paths.
-- `docs/WIKI_SOURCE_SUMMARY.md` - local wiki findings that drive the project boundary.
-- `manifests/validation_atlases.json` - machine-readable source manifest for phase planning.
-- `manifests/raw_representative_panel.csv` - public SEQC2/HCC1395 raw-data candidate ladder.
-- `manifests/alignment_smoke_samplesheet.csv` - local Phase 2B tumor-normal alignment smoke samplesheet.
-- `manifests/human_reference_smoke_samplesheet.csv` - Phase 2C hg38/hg19 partial human-reference alignment smoke samplesheet.
-- `manifests/full_reference_smoke_samplesheet.csv` - Phase 2D full hg38 analysis-set caller-readiness smoke samplesheet.
-- `manifests/production_somatic_smoke_samplesheet.csv` - Phase 2E GATK Mutect2 tumor-normal smoke samplesheet.
-- `manifests/full_wes_benchmark_samplesheet.csv` - Phase 2F full SEQC2/HCC1395 WES benchmark samplesheet.
-- `manifests/phase3_wgs_smoke_samplesheet.csv` - Phase 3 representative SEQC2/HCC1395 WGS smoke samplesheet.
-- `scripts/verify-plan.ts` - Bun verifier for the project plan, source manifest, and local wiki assumptions.
+The latest full run passed:
 
-## Verify
+- Phase 2F full WES benchmark: 4 FASTQs validated, BAM validation passed, GATK Mutect2 ran, 1307 depth-eligible SEQC2/HCC1395 truth variants, 1122 exact PASS truth matches, recall 0.8585, precision 0.9842.
+- Phase 3 WGS smoke: 500000 read pairs per end, parallel alignment enabled, BAM validation passed, WGS Mutect2 smoke passed, 631 coverage-CNV bins generated, SBS96 and SV evidence tables generated.
+- Phase 1 public HRD/RNA tables: 28 reference-panel samples processed into reviewer-facing evidence tables.
+- Diana intake: template and strict validation contract are ready; interpretation waits for actual Diana files.
 
-Run the local plan checks:
+## Quick Start
+
+Run the lightweight checks:
 
 ```sh
 bun run verify:plan
+bun run py:lint
+bun run py:format:check
+bun run py:typecheck
+bun run py:test
+bun run verify:outputs
 ```
 
-Refresh representative raw-data metadata:
-
-```sh
-bun run fetch:raw-candidates
-```
-
-Build and run the Phase 2A raw FASTQ smoke test:
-
-```sh
-bun run build:raw-samplesheets
-bun run smoke:raw
-```
-
-Build and run the Phase 2B local alignment/BAM smoke test:
-
-```sh
-bun run build:alignment-smoke
-bun run smoke:alignment
-```
-
-Fetch and run the Phase 2C partial human-reference smoke test:
-
-```sh
-bun run fetch:human-reference-smoke
-bun run smoke:human-reference
-```
-
-Fetch and run the Phase 2D full-reference caller-readiness smoke test:
-
-```sh
-bun run fetch:full-reference-smoke
-bun run smoke:full-reference
-```
-
-Fetch and run the Phase 2E production-style somatic smoke test:
-
-```sh
-bun run fetch:production-somatic
-bun run smoke:production-somatic
-```
-
-Fetch and run the Phase 2F full WES benchmark:
-
-```sh
-bun run fetch:full-wes
-bun run benchmark:full-wes
-```
-
-Fetch and run the Phase 3 representative WGS smoke:
-
-```sh
-bun run fetch:phase3-wgs
-bun run smoke:phase3-wgs
-```
-
-Phase 3 parallel knobs:
-
-```sh
-PHASE3_WGS_READS=500000 PHASE3_WGS_THREADS=16 PHASE3_WGS_PARALLEL_ALIGN=1 bun run smoke:phase3-wgs
-```
-
-Run the full workflow:
+Run the whole public validation workflow:
 
 ```sh
 bun run run:all
 ```
 
-Optionally check the online source links too:
+Prepare for Diana's actual files:
 
 ```sh
-bun run verify:plan:online
+bun run build:diana-template
+bun run verify:diana-raw
 ```
+
+When the real samplesheet exists:
+
+```sh
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
+DIANA_RAW_REQUIRE_DATA=1 \
+bun run verify:diana-raw
+
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
+DIANA_RAW_REQUIRE_DATA=1 \
+bun run stage:diana-raw
+```
+
+## How To Read The Repo
+
+Start here:
+
+- [docs/README.md](/Users/jasonlaster/src/projects/diana-omics/docs/README.md): new-reader guide, concepts, and map.
+- [docs/PROJECT_PLAN.md](/Users/jasonlaster/src/projects/diana-omics/docs/PROJECT_PLAN.md): milestone plan from current state to Diana recompute.
+- [docs/PHASE_STATUS.md](/Users/jasonlaster/src/projects/diana-omics/docs/PHASE_STATUS.md): what is done, what is partial, and what blocks clinical interpretation.
+- [docs/BUG_AUDIT.md](/Users/jasonlaster/src/projects/diana-omics/docs/BUG_AUDIT.md): likely failure modes and what currently catches them.
+- [docs/DIANA_RAW_INPUTS.md](/Users/jasonlaster/src/projects/diana-omics/docs/DIANA_RAW_INPUTS.md): raw-data manifest contract.
+- [docs/ORTHOGONAL_VALIDATION_SAMPLES.md](/Users/jasonlaster/src/projects/diana-omics/docs/ORTHOGONAL_VALIDATION_SAMPLES.md): HG008, COLO829, and Seraseq validation candidates.
+- [docs/PYTHON_IMPLEMENTATION.md](/Users/jasonlaster/src/projects/diana-omics/docs/PYTHON_IMPLEMENTATION.md): package architecture and command map.
+
+Main code:
+
+- [py/src/diana_omics](/Users/jasonlaster/src/projects/diana-omics/py/src/diana_omics): Python package.
+- [py/tests](/Users/jasonlaster/src/projects/diana-omics/py/tests): unit and integration-style contract tests.
+- [package.json](/Users/jasonlaster/src/projects/diana-omics/package.json): task aliases only.
+
+Main data contracts:
+
+- [manifests/diana_raw_inputs.template.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/diana_raw_inputs.template.csv): fill-in template for Diana.
+- [manifests/orthogonal_validation_candidates.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/orthogonal_validation_candidates.csv): next public truth-set targets.
+- [results/reviewer_packet.md](/Users/jasonlaster/src/projects/diana-omics/results/reviewer_packet.md): current reviewer summary.
+- [results/diana_readiness_gate.md](/Users/jasonlaster/src/projects/diana-omics/results/diana_readiness_gate.md): readiness boundary.
+
+## Tools
+
+Python orchestrates everything. The current workflow uses:
+
+- Python standard library for manifests, JSON/CSV, downloads, hashing, and subprocess orchestration.
+- Ruff, mypy, and pytest for formatting, static checks, and tests.
+- BWA and samtools for FASTQ-to-BAM alignment and BAM QC.
+- bcftools for VCF indexing, statistics, and caller-contract checks.
+- Java plus GATK Mutect2, FilterMutectCalls, and MarkDuplicates for production-style somatic smoke tests.
+- Local Python evidence builders for HRD tables, RNA context tables, WGS SBS96 summaries, coverage-CNV bins, and SV evidence summaries.
+
+Future full-depth work should add native-backed libraries where they reduce bug risk: `pysam` for BAM/VCF IO, `polars` for larger tabular joins, `pyfaidx` for reference sequence access, `truvari` for SV benchmarking, and SigProfiler/CHORD/scarHRD/FACETS/ASCAT/PURPLE-compatible adapters for real HRD interpretation.
+
+## Boundaries
+
+Current public validation proves mechanics and partial correctness. It does not prove that Diana is HRD-positive or HRD-negative.
+
+Before Diana interpretation, we still need:
+
+- Diana's actual raw files and metadata.
+- Reference build and tumor-normal pairing confirmation.
+- Tumor purity and sample provenance.
+- Orthogonal HG008/COLO829 correctness validation for full WGS truth sets.
+- Reviewer sign-off on HRD interpretation policy and companion-diagnostic boundaries.

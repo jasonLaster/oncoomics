@@ -1,29 +1,47 @@
-# HRD Reference Panel Label Rules
+# Reference Panel Label Rules
 
-This frozen phase-1 panel uses open processed TCGA-BRCA PanCancer Atlas data from cBioPortal. It is a validation panel for workflow mechanics, not a clinical HRD truth set.
+The Phase 1 reference panel uses processed public data to create examples for reviewer triage. These labels are deliberately conservative.
 
-## Positive Controls
+## Positive Control
 
-Positive controls require all of the following:
+A sample may be a positive control when processed data show strong HRR evidence and a second-hit proxy such as copy loss.
 
-1. A likely damaging BRCA1/2 event in the fetched HRR mutation table.
-2. A GISTIC copy-loss proxy for the same gene.
-3. Elevated fraction genome altered in sample clinical data.
+Interpretation:
 
-These are labeled expected HRD-like, but still carry a caveat that WGS structural-signature and companion-diagnostic evidence are not available in this phase.
+- Useful for pipeline behavior and table generation.
+- Not a clinical HRD truth label.
 
-## Mechanistic Controls
+## Ambiguous Control
 
-Mechanistic controls use likely damaging non-BRCA HRR events with copy-loss proxy and elevated fraction genome altered. These are useful stress tests, but less direct than BRCA1/2 controls.
+A sample is ambiguous when it has an HRR alteration but processed data do not prove functional HRD.
 
-## Ambiguous Controls
+Examples:
 
-Ambiguous controls include HRR alterations without enough second-hit or scar-proxy support. They are intentionally included so the workflow can prove it does not force hard cases into binary labels.
+- Damaging HRR event without copy-loss proxy.
+- Copy-number context that does not support biallelic loss.
+- Incomplete subtype or scar evidence.
 
-## Negative Controls
+Interpretation:
 
-Negative controls require no fetched HRR mutation, neutral BRCA1/2 GISTIC calls, low fraction genome altered, and modest mutation count. They are processed-data negative candidates, not proof of homologous-recombination proficiency.
+- Should remain caveated in reviewer outputs.
 
-## Boundary
+## Negative Control
 
-No phase-1 label is based on WGS rearrangement signatures, SBS3 assignment, HRDetect, CHORD, Myriad myChoice, or clinician-owned companion-diagnostic review. Those remain future or external validation lanes.
+A sample may be a negative control when processed data lack the selected HRR evidence and do not show the positive-control pattern.
+
+Interpretation:
+
+- Useful as a contrast group.
+- Not proof of homologous recombination proficiency.
+
+## Required Output Behavior
+
+Every derived table should keep:
+
+- `expected_hrd_label`
+- `panel_category`
+- `label_source`
+- `second_hit_proxy`
+- `caveat`
+
+If a downstream command drops these fields or presents a label without caveat, treat that as a documentation and analysis bug.

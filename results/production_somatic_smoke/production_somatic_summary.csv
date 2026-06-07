@@ -1,2 +1,2 @@
-status,phase,caller,reference_id,assembly,genome_build,read_pairs_per_end,sample_rows,active_interval_count,active_interval_truth_overlap_count,filtered_records,pass_records,truth_records_in_active_intervals,exact_pass_truth_matches,comparison_status,boundary
-passed,2E,GATK Mutect2 + FilterMutectCalls,ucsc_hg38_analysis_set_full,hg38,GRCh38,50000,2,500,250,0,0,257,0,assessed_no_passing_mutect2_calls,"Production-style Mutect2 smoke; not full-depth WES/WGS sensitivity, CNV/SV, or HRD-signature evidence."
+status,caller,reference_id,read_pairs_per_end,active_interval_count,mutect_records,mutect_pass_records,comparison_status,boundary
+passed,GATK Mutect2 + FilterMutectCalls,ucsc_hg38_analysis_set_full,50000,500,0,0,not_assessed_in_smoke,"Production-style somatic smoke only; not full-depth WES/WGS, not production-resource-filtered clinical analysis, and not HRD signature evidence."
