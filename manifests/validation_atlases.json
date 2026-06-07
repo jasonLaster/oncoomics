@@ -178,7 +178,9 @@
         "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/"
       ],
       "expected_artifacts": [
-        "truth-set VCFs",
+        "high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz",
+        "high-confidence_sINDEL_in_HC_regions_v1.2.1.vcf.gz",
+        "High-Confidence_Regions_v1.2.bed",
         "analysis files",
         "technical/reference files",
         "versioned benchmark documentation"
@@ -227,6 +229,27 @@
         "indexed VCF caller smoke output"
       ],
       "verifier": "Download hg38.analysisSet.fa.gz, validate md5, build FAI/BWA indexes, align HCC1395 tumor-normal FASTQ subset, validate BAM contracts, and produce an indexed bcftools VCF smoke."
+    },
+    {
+      "id": "gatk-mutect2-4-6-2-0",
+      "title": "GATK Mutect2 4.6.2.0",
+      "kind": "tool",
+      "priority": "phase-2e-production-somatic-smoke",
+      "primary_use": "Pinned production-style tumor-normal somatic SNV/indel caller for the HCC1395 WES smoke.",
+      "access": "open source release",
+      "urls": [
+        "https://gatk.broadinstitute.org/hc/en-us/articles/360036733771-Mutect2",
+        "https://github.com/broadinstitute/gatk/releases/tag/4.6.2.0"
+      ],
+      "expected_artifacts": [
+        "gatk-package-4.6.2.0-local.jar",
+        "reference sequence dictionary",
+        "Mutect2 unfiltered VCF",
+        "FilterMutectCalls filtered VCF",
+        "filtered VCF index",
+        "truth-overlap comparison summary"
+      ],
+      "verifier": "Run fetch:production-somatic and smoke:production-somatic; confirm Java 17 execution, sequence dictionary, tumor-normal sample columns, indexed filtered VCF, and explicit caveats for omitted production resources."
     },
     {
       "id": "nf-core-sarek",

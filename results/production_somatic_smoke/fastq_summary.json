@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-06-07T00:57:39.065Z",
+  "status": "passed",
+  "readPairsPerEnd": 50000,
+  "rows": [
+    {
+      "pair_id": "seqc2_hcc1395_wes_minimal_smoke",
+      "sample": "HCC1395",
+      "role": "tumor",
+      "run_accession": "SRR7890850",
+      "reads_per_end": 50000,
+      "r1_mean_length": 151,
+      "r2_mean_length": 151,
+      "r1_gc_fraction": 0.5009,
+      "r2_gc_fraction": 0.5011,
+      "first_read_id": "SRR7890850.1",
+      "last_read_id": "SRR7890850.50000",
+      "paired_id_check": "passed",
+      "local_fastq_1": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/fastq/SRR7890850_R1.50000reads.fastq",
+      "local_fastq_2": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/fastq/SRR7890850_R2.50000reads.fastq",
+      "caveat": "Downsampled FASTQ subset for Phase 2E production somatic smoke; not full WES depth."
+    },
+    {
+      "pair_id": "seqc2_hcc1395_wes_minimal_smoke",
+      "sample": "HCC1395BL",
+      "role": "normal",
+      "run_accession": "SRR7890851",
+      "reads_per_end": 50000,
+      "r1_mean_length": 151,
+      "r2_mean_length": 151,
+      "r1_gc_fraction": 0.4957,
+      "r2_gc_fraction": 0.4969,
+      "first_read_id": "SRR7890851.1",
+      "last_read_id": "SRR7890851.50000",
+      "paired_id_check": "passed",
+      "local_fastq_1": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/fastq/SRR7890851_R1.50000reads.fastq",
+      "local_fastq_2": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/fastq/SRR7890851_R2.50000reads.fastq",
+      "caveat": "Downsampled FASTQ subset for Phase 2E production somatic smoke; not full WES depth."
+    }
+  ]
+}

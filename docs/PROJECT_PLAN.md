@@ -80,7 +80,9 @@ Phase 2C is complete for partial real-human-reference validation: the project do
 
 Phase 2D is complete for one full-reference caller-readiness smoke: the project downloads and md5-validates the UCSC hg38 analysis set, builds `.fai` and BWA indexes, aligns HCC1395 tumor-normal reads to the full reference, validates caller-ready BAM contracts with BRCA interval metadata, and produces an indexed bcftools VCF smoke.
 
-The next gate is Phase 2E: production somatic workflow and depth scale-up using a larger HCC1395 WES downsample or full WES pair. This requires a production caller choice, caller-specific reference extras, intervals/known-sites resources where needed, and full QC/workflow tooling.
+Phase 2E is complete for one downsampled production-style somatic smoke: the project pins GATK 4.6.2.0, adds the GATK sequence dictionary for the full hg38 analysis-set reference, fetches SEQC2/HCC1395 v1.2.1 SNV/INDEL truth VCFs, aligns a 50,000 read-pair/end HCC1395 WES downsample, runs Mutect2 and FilterMutectCalls, and validates an indexed filtered somatic VCF. The bounded downsample produced zero PASS calls, so it validates execution/file contracts rather than sensitivity.
+
+The next gate is Phase 2F: production resources and full-depth WES benchmark behavior. This requires known-sites/germline-resource/PoN/contamination/orientation-bias/duplicate/BQSR policy, capture intervals, richer QC, and a full WES or materially larger WES truth-set comparison.
 
 ### Milestone 0: Project Baseline And Source Audit
 
@@ -323,23 +325,79 @@ Verifier:
 
 ### Phase 2B: Alignment And Somatic-Caller Input Readiness
 
-Status: next.
+Status: complete and validated for local file-contract validation.
 
 Goal: take the Phase 2A smoke FASTQs or a larger downsample through alignment/BAM generation and somatic-caller input validation.
 
-Deliverables:
+Completed deliverables:
 
-1. A pinned reference-build decision and interval strategy.
-2. A genomics-ready environment: SRA Toolkit or ENA download route, FastQC/MultiQC, BWA/BWA-MEM2 or nf-core/sarek, samtools, and a somatic caller path.
-3. BAM/CRAM/QC artifacts from the minimal WES pair or a larger downsample.
-4. A somatic-caller input validation report.
+1. `manifests/alignment_smoke_samplesheet.csv`.
+2. Read-backed synthetic smoke reference.
+3. Coordinate-sorted/indexed tumor and normal BAMs from the minimal WES pair.
+4. `results/alignment_smoke/bam_validation_summary.csv`.
 
 Verifier:
 
-1. Alignment/BAM tooling is available locally or through a container/runtime.
-2. The minimal WES tumor-normal pair produces reproducible QC and BAM/CRAM artifacts.
-3. Somatic-caller input validation passes without hidden manual steps.
-4. WES-limited and WGS-capable evidence remain separated.
+1. `bun run smoke:alignment` produces coordinate-sorted BAMs with indexes and read groups.
+2. `bun run verify:outputs` confirms the Phase 2B file contracts and caveats.
+
+### Phase 2C: Partial Human-Reference Smoke
+
+Status: complete and validated.
+
+Goal: validate real-human-reference alignment handling before full reference bundles.
+
+Verifier:
+
+1. `bun run fetch:human-reference-smoke` downloads checksum-verified UCSC hg38/hg19 chr13+chr17 references.
+2. `bun run smoke:human-reference` aligns tumor/normal reads to both builds and validates BAM contracts.
+3. `bun run verify:outputs` confirms partial-reference boundaries remain explicit.
+
+### Phase 2D: Full-Reference Caller-Readiness Smoke
+
+Status: complete and validated.
+
+Goal: validate one full analysis-set reference and an indexed VCF caller contract.
+
+Verifier:
+
+1. `bun run fetch:full-reference-smoke` downloads and md5-validates the UCSC hg38 analysis-set FASTA.
+2. `bun run smoke:full-reference` aligns tumor/normal reads to the full reference and produces an indexed bcftools VCF smoke.
+3. `bun run verify:outputs` confirms BRCA interval metadata, full-reference BAM contracts, and caller-readiness caveats.
+
+### Phase 2E: Production Somatic Caller Smoke
+
+Status: complete and validated for one downsampled Mutect2 smoke.
+
+Goal: validate production-style tumor-normal somatic caller execution before Diana raw files arrive.
+
+Deliverables:
+
+1. `manifests/production_somatic_smoke_samplesheet.csv`.
+2. `results/production_somatic_smoke/asset_summary.json`.
+3. `results/production_somatic_smoke/bam_validation_summary.csv`.
+4. `results/production_somatic_smoke/mutect2_smoke_summary.csv`.
+5. `results/production_somatic_smoke/production_somatic_summary.csv`.
+
+Verifier:
+
+1. `bun run fetch:production-somatic` pins GATK, creates the sequence dictionary, and fetches SEQC2 truth materials.
+2. `bun run smoke:production-somatic` runs a 50,000 read-pair/end HCC1395 WES downsample through BWA/samtools and GATK Mutect2/FilterMutectCalls.
+3. `bun run verify:outputs` confirms the indexed filtered VCF, truth-comparison status, and WES-versus-WGS evidence boundary.
+
+### Phase 2F: Production Resources And Full-Depth WES Benchmark
+
+Status: planned.
+
+Goal: move from production-style execution smoke to full-depth WES benchmark behavior.
+
+Required deliverables:
+
+1. Production known-sites, germline resource, panel-of-normals, contamination, orientation-bias, duplicate-marking, BQSR, and interval policy.
+2. Full WES or materially larger HCC1395 WES run.
+3. Depth/coverage/QC reports.
+4. Production-resource-filtered somatic VCFs.
+5. SEQC2 truth-set sensitivity/specificity report where compatible.
 
 ### Phase 3: WGS Signature And Allele-Specific HRD
 

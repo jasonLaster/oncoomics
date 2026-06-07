@@ -1,10 +1,12 @@
 {
-  "generatedAt": "2026-06-06T23:06:06.412Z",
+  "generatedAt": "2026-06-07T00:56:37.778Z",
   "phase2aReady": true,
   "alignmentReady": true,
   "humanReferenceSmokeReady": true,
   "callerSmokeReady": true,
   "fullReferenceSmokeReady": true,
+  "productionSomaticToolReady": true,
+  "productionSomaticSmokeReady": true,
   "fullAlignmentToolboxReady": false,
   "workflowReady": false,
   "fullWorkflowReady": false,
@@ -136,6 +138,23 @@
       "allAvailable": true
     },
     {
+      "group": "production_somatic_caller",
+      "requiredFor": "Phase 2E GATK Mutect2 production-style tumor-normal somatic smoke",
+      "tools": [
+        {
+          "tool": "java17",
+          "path": "/opt/homebrew/opt/openjdk@17/bin/java",
+          "available": true
+        },
+        {
+          "tool": "unzip",
+          "path": "/usr/bin/unzip",
+          "available": true
+        }
+      ],
+      "allAvailable": true
+    },
+    {
       "group": "workflow_runtime",
       "requiredFor": "nf-core/sarek or containerized raw-data workflow execution",
       "tools": [
@@ -173,5 +192,5 @@
       "allAvailable": false
     }
   ],
-  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, and Phase 2D full-reference caller-readiness smoke tests. Full workflow/WGS phases still require additional tools or containers."
+  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, and Phase 2E GATK Mutect2 production-style somatic smoke tests. Full workflow/WGS signature phases still require additional tools, resources, or containers."
 }

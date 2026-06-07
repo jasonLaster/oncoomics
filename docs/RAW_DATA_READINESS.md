@@ -53,6 +53,7 @@ Phase 2 should not be considered complete until these pass:
 7. The alignment report preserves the boundary between file-contract validation and human-reference biology.
 8. The partial human-reference smoke validates hg38 and hg19 reference handling with checksum-verified FASTA inputs.
 9. The full-reference smoke validates one full analysis-set reference, BRCA interval metadata, caller-ready BAM contracts, and indexed VCF generation.
+10. The production somatic smoke validates a pinned tumor-normal caller path, larger WES downsample, indexed filtered somatic VCF, and explicit SEQC2 truth-comparison status.
 
 ## Phase 2A Result
 
@@ -127,16 +128,34 @@ The smoke run validates:
 
 The VCF smoke produced zero variants, which is acceptable here because the tiny downsample and interval slice are not intended to recover biology. The exit criterion is caller execution and VCF contract validation.
 
-## Phase 2E Remaining Gate
+## Phase 2E Result
+
+Status: **complete for one downsampled production-style somatic-caller smoke**.
+
+The project now validates a pinned production-style somatic caller path:
+
+1. Caller: `GATK Mutect2 + FilterMutectCalls`.
+2. GATK version: `4.6.2.0`.
+3. Java runtime: OpenJDK 17.
+4. Reference: `ucsc_hg38_analysis_set_full`.
+5. Caller-specific reference extra: GATK sequence dictionary.
+6. Truth materials: SEQC2/HCC1395 high-confidence SNV/INDEL v1.2.1 VCFs and high-confidence BED.
+7. Downsample: 50,000 read pairs per FASTQ end from `SRR7890850` tumor and `SRR7890851` normal.
+8. Active intervals: 500 mapped-read intervals, with 245 SNV and 12 indel truth records inside the active interval set.
+9. Mutect2 result: indexed filtered VCF produced; zero filtered/PASS records in this bounded downsample.
+
+The zero-call result is acceptable for Phase 2E because the exit criterion is production-style execution and file-contract validation, not sensitivity. Full-depth WES sensitivity remains a separate gate.
+
+## Phase 2F Remaining Gate
 
 Required next output:
 
-1. A production somatic caller decision.
-2. Caller-specific full reference extras: sequence dictionary, known-sites resources, germline resource, panel of normals if required, and WES capture intervals.
-3. Full QC/workflow tooling: FastQC/MultiQC, SRA Toolkit or ENA download path, and Nextflow/container or pinned local caller stack.
-4. BAM/CRAM/QC artifact generation from a larger HCC1395 WES downsample or full WES pair against the full reference.
-5. Production somatic-caller output validation against the full reference.
-6. A report that distinguishes format smoke, local alignment smoke, partial real-reference alignment, full-reference caller-readiness smoke, production somatic calling, and full-depth benchmark runs.
+1. Production resource policy: known-sites, germline resource, panel of normals, contamination estimation, orientation-bias modeling, duplicate marking, BQSR, and WES capture intervals.
+2. Full QC/workflow tooling: FastQC/MultiQC, SRA Toolkit or ENA download path, and Nextflow/container or pinned local caller stack.
+3. BAM/CRAM/QC artifact generation from full WES or a materially larger HCC1395 WES downsample against the full reference.
+4. Production-resource-filtered somatic-caller output validation against the full reference.
+5. A truth-set comparison report with sensitivity/specificity metrics where build and intervals are compatible.
+6. A report that distinguishes format smoke, local alignment smoke, partial real-reference alignment, full-reference caller-readiness smoke, production somatic calling, full-depth WES benchmark runs, and WGS signature runs.
 
 ## Boundary
 

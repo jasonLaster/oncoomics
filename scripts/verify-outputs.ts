@@ -47,6 +47,7 @@ const requiredFiles = [
   "manifests/human_reference_smoke_samplesheet.csv",
   "manifests/full_reference_smoke_references.csv",
   "manifests/full_reference_smoke_samplesheet.csv",
+  "manifests/production_somatic_smoke_samplesheet.csv",
   "manifests/reference_panel_validation.json",
   "docs/reference-panel-label-rules.md",
   "results/hrd_event_table.csv",
@@ -90,7 +91,18 @@ const requiredFiles = [
   "results/full_reference_smoke/bam_validation_summary.csv",
   "results/full_reference_smoke/bam_validation_summary.json",
   "results/full_reference_smoke/caller_smoke_summary.csv",
-  "results/full_reference_smoke/caller_smoke_summary.json"
+  "results/full_reference_smoke/caller_smoke_summary.json",
+  "results/production_somatic_smoke/README.md",
+  "results/production_somatic_smoke/asset_summary.json",
+  "results/production_somatic_smoke/tool_versions.json",
+  "results/production_somatic_smoke/fastq_summary.csv",
+  "results/production_somatic_smoke/fastq_summary.json",
+  "results/production_somatic_smoke/bam_validation_summary.csv",
+  "results/production_somatic_smoke/bam_validation_summary.json",
+  "results/production_somatic_smoke/mutect2_smoke_summary.csv",
+  "results/production_somatic_smoke/mutect2_smoke_summary.json",
+  "results/production_somatic_smoke/production_somatic_summary.csv",
+  "results/production_somatic_smoke/production_somatic_summary.json"
 ];
 
 for (const file of requiredFiles) {
@@ -296,6 +308,9 @@ if (rawToolingAudit.fullReferenceSmokeReady !== true) {
 }
 if (rawToolingAudit.callerSmokeReady !== true) {
   errors.push("Raw tooling audit says caller smoke tooling is not ready.");
+}
+if (rawToolingAudit.productionSomaticSmokeReady !== true) {
+  errors.push("Raw tooling audit says Phase 2E production somatic smoke is not ready.");
 }
 
 const alignmentSamplesheet = requireRows("manifests/alignment_smoke_samplesheet.csv", 2);
@@ -858,6 +873,259 @@ if (!callerRow.caveat.includes("not a tumor-normal somatic caller")) {
 const callerSummary = readJson<Record<string, unknown>>(pathFromRoot("results/full_reference_smoke/caller_smoke_summary.json"));
 if (callerSummary.status !== "passed") {
   errors.push("Full-reference caller smoke JSON did not pass.");
+}
+
+const productionSamplesheet = requireRows("manifests/production_somatic_smoke_samplesheet.csv", 2);
+requireColumns("manifests/production_somatic_smoke_samplesheet.csv", productionSamplesheet, [
+  "pair_id",
+  "patient",
+  "sample",
+  "role",
+  "status",
+  "run_accession",
+  "source_fastq_1",
+  "source_fastq_2",
+  "read_pairs_per_end",
+  "fastq_1",
+  "fastq_2",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "reference_path",
+  "reference_fai_path",
+  "reference_dict_path",
+  "reference_sha256",
+  "brca_interval_bed_path",
+  "brca_interval_regions",
+  "brca_interval_genes",
+  "known_sites_resource_path",
+  "germline_resource_path",
+  "panel_of_normals_path",
+  "truth_snv_vcf_path",
+  "truth_indel_vcf_path",
+  "truth_high_confidence_bed_path",
+  "gatk_jar_path",
+  "java_path",
+  "production_caller",
+  "read_group_id",
+  "read_group_sample",
+  "output_bam",
+  "output_bai",
+  "caller_interval_strategy",
+  "caveat"
+]);
+if (!productionSamplesheet.some((row) => row.role === "tumor") || !productionSamplesheet.some((row) => row.role === "normal")) {
+  errors.push("Production somatic samplesheet must include tumor and normal rows.");
+}
+for (const row of productionSamplesheet) {
+  if (row.reference_id !== "ucsc_hg38_analysis_set_full") {
+    errors.push(`Production somatic samplesheet must use ucsc_hg38_analysis_set_full, not ${row.reference_id}.`);
+  }
+  if (row.production_caller !== "GATK Mutect2 + FilterMutectCalls") {
+    errors.push(`Production somatic samplesheet has unexpected caller: ${row.production_caller}`);
+  }
+  if (Number(row.read_pairs_per_end) < 10000) {
+    errors.push(`Production somatic read subset is too small for ${row.run_accession}: ${row.read_pairs_per_end}`);
+  }
+  if (!row.reference_dict_path.endsWith(".dict")) {
+    errors.push(`Production somatic samplesheet is missing a GATK sequence dictionary path for ${row.run_accession}.`);
+  }
+  if (!row.truth_snv_vcf_path.includes("high-confidence_sSNV") || !row.truth_indel_vcf_path.includes("high-confidence_sINDEL")) {
+    errors.push(`Production somatic samplesheet must reference SEQC2 high-confidence truth VCFs for ${row.run_accession}.`);
+  }
+  if (!row.known_sites_resource_path.includes("not_supplied") || !row.germline_resource_path.includes("not_supplied")) {
+    errors.push(`Production somatic samplesheet must explicitly mark omitted production resources for ${row.run_accession}.`);
+  }
+  if (!row.caveat.includes("not full-depth sensitivity")) {
+    errors.push(`Production somatic caveat must preserve full-depth boundary for ${row.run_accession}.`);
+  }
+}
+
+const productionAssets = readJson<Record<string, unknown>>(pathFromRoot("results/production_somatic_smoke/asset_summary.json"));
+const productionGatk = productionAssets.gatk as Record<string, unknown> | undefined;
+const productionReference = productionAssets.reference as Record<string, unknown> | undefined;
+const productionTruth = productionAssets.seqc2Truth as Record<string, unknown> | undefined;
+if (productionAssets.status !== "ready") {
+  errors.push("Production somatic asset summary is not ready.");
+}
+if (productionGatk?.version !== "4.6.2.0" || !String(productionGatk?.jarPath ?? "").includes("gatk-package-4.6.2.0-local.jar")) {
+  errors.push("Production somatic GATK asset summary must pin GATK 4.6.2.0.");
+}
+if (!String(productionReference?.dictPath ?? "").endsWith(".dict") || productionReference?.referenceId !== "ucsc_hg38_analysis_set_full") {
+  errors.push("Production somatic asset summary must include the full-reference GATK sequence dictionary.");
+}
+if (!String(productionTruth?.sourceDirectory ?? "").includes("ReferenceSamples/seqc/Somatic_Mutation_WG/release/latest")) {
+  errors.push("Production somatic asset summary must point to the SEQC2 HCC1395 truth-set source.");
+}
+if (!String(productionAssets.productionResourceCaveat ?? "").includes("Known-sites")) {
+  errors.push("Production somatic asset summary must preserve omitted production-resource caveat.");
+}
+
+const productionFastqRows = requireRows("results/production_somatic_smoke/fastq_summary.csv", 2);
+requireColumns("results/production_somatic_smoke/fastq_summary.csv", productionFastqRows, [
+  "pair_id",
+  "sample",
+  "role",
+  "run_accession",
+  "reads_per_end",
+  "paired_id_check",
+  "local_fastq_1",
+  "local_fastq_2",
+  "caveat"
+]);
+for (const row of productionFastqRows) {
+  if (row.paired_id_check !== "passed") {
+    errors.push(`Production somatic FASTQ pairing failed for ${row.run_accession}.`);
+  }
+  if (Number(row.reads_per_end) < 10000) {
+    errors.push(`Production somatic FASTQ read count too low for ${row.run_accession}: ${row.reads_per_end}`);
+  }
+  if (!row.caveat.includes("not full WES depth")) {
+    errors.push(`Production somatic FASTQ caveat must preserve downsample boundary for ${row.run_accession}.`);
+  }
+}
+const productionFastqSummary = readJson<Record<string, unknown>>(pathFromRoot("results/production_somatic_smoke/fastq_summary.json"));
+if (productionFastqSummary.status !== "passed") {
+  errors.push("Production somatic FASTQ summary JSON did not pass.");
+}
+
+const productionBamRows = requireRows("results/production_somatic_smoke/bam_validation_summary.csv", 2);
+requireColumns("results/production_somatic_smoke/bam_validation_summary.csv", productionBamRows, [
+  "pair_id",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "role",
+  "run_accession",
+  "sample",
+  "reference_sha256",
+  "output_bam",
+  "output_bai",
+  "bam_exists",
+  "bai_exists",
+  "quickcheck",
+  "sort_order",
+  "read_group_present",
+  "reference_contig_count",
+  "expected_brca_contigs_present",
+  "total_alignments",
+  "mapped_alignments",
+  "mapped_fraction",
+  "brca_interval_alignments",
+  "mapped_standard_contigs",
+  "status",
+  "caveat"
+]);
+for (const row of productionBamRows) {
+  if (row.status !== "passed") {
+    errors.push(`Production somatic BAM validation failed for ${row.run_accession}.`);
+  }
+  if (row.quickcheck !== "passed" || row.sort_order !== "coordinate" || row.read_group_present !== "yes") {
+    errors.push(`Production somatic BAM contract failed for ${row.run_accession}.`);
+  }
+  if (row.bam_exists !== "yes" || row.bai_exists !== "yes") {
+    errors.push(`Production somatic BAM/BAI missing for ${row.run_accession}.`);
+  }
+  if (Number(row.total_alignments) <= 0 || Number(row.mapped_alignments) <= 0 || Number(row.mapped_standard_contigs) <= 0) {
+    errors.push(`Production somatic BAM has insufficient mapped alignments for ${row.run_accession}.`);
+  }
+  if (!row.caveat.includes("Mutect2 plumbing")) {
+    errors.push(`Production somatic BAM caveat must preserve caller-plumbing boundary for ${row.run_accession}.`);
+  }
+}
+const productionBamSummary = readJson<Record<string, unknown>>(pathFromRoot("results/production_somatic_smoke/bam_validation_summary.json"));
+if (productionBamSummary.status !== "passed") {
+  errors.push("Production somatic BAM validation JSON did not pass.");
+}
+
+const mutectRows = requireRows("results/production_somatic_smoke/mutect2_smoke_summary.csv", 1);
+requireColumns("results/production_somatic_smoke/mutect2_smoke_summary.csv", mutectRows, [
+  "reference_id",
+  "caller",
+  "gatk_jar_path",
+  "java_path",
+  "input_tumor_bam",
+  "input_normal_bam",
+  "active_interval_bed_path",
+  "active_interval_count",
+  "active_interval_truth_overlap_count",
+  "output_unfiltered_vcf",
+  "output_filtered_vcf",
+  "output_filtered_tbi",
+  "filtered_vcf_exists",
+  "filtered_tbi_exists",
+  "sample_count",
+  "samples",
+  "filtered_records",
+  "pass_records",
+  "truth_snv_records_in_active_intervals",
+  "truth_indel_records_in_active_intervals",
+  "exact_pass_truth_matches",
+  "comparison_status",
+  "status",
+  "caveat"
+]);
+const mutectRow = mutectRows[0] ?? {};
+if (mutectRow.status !== "passed" || mutectRow.filtered_vcf_exists !== "yes" || mutectRow.filtered_tbi_exists !== "yes") {
+  errors.push("Production somatic Mutect2 smoke did not produce an indexed filtered VCF.");
+}
+if (mutectRow.caller !== "GATK Mutect2 + FilterMutectCalls") {
+  errors.push(`Production somatic Mutect2 summary has unexpected caller: ${mutectRow.caller}`);
+}
+if (Number(mutectRow.active_interval_count) <= 0) {
+  errors.push("Production somatic Mutect2 smoke did not build active intervals.");
+}
+if (Number(mutectRow.sample_count) !== 2 || !mutectRow.samples.includes("HCC1395") || !mutectRow.samples.includes("HCC1395BL")) {
+  errors.push("Production somatic Mutect2 VCF must contain tumor and normal sample columns.");
+}
+if (!mutectRow.comparison_status) {
+  errors.push("Production somatic Mutect2 summary must include truth comparison status.");
+}
+if (!mutectRow.caveat.includes("not a full-depth sensitivity benchmark")) {
+  errors.push("Production somatic Mutect2 caveat must preserve full-depth benchmark boundary.");
+}
+const mutectSummary = readJson<Record<string, unknown>>(pathFromRoot("results/production_somatic_smoke/mutect2_smoke_summary.json"));
+if (mutectSummary.status !== "passed") {
+  errors.push("Production somatic Mutect2 summary JSON did not pass.");
+}
+
+const productionSummaryRows = requireRows("results/production_somatic_smoke/production_somatic_summary.csv", 1);
+requireColumns("results/production_somatic_smoke/production_somatic_summary.csv", productionSummaryRows, [
+  "status",
+  "phase",
+  "caller",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "read_pairs_per_end",
+  "sample_rows",
+  "active_interval_count",
+  "filtered_records",
+  "pass_records",
+  "truth_records_in_active_intervals",
+  "exact_pass_truth_matches",
+  "comparison_status",
+  "boundary"
+]);
+const productionSummaryRow = productionSummaryRows[0] ?? {};
+if (productionSummaryRow.status !== "passed" || productionSummaryRow.phase !== "2E") {
+  errors.push("Production somatic summary CSV did not pass Phase 2E.");
+}
+if (Number(productionSummaryRow.read_pairs_per_end) < 10000 || Number(productionSummaryRow.active_interval_count) <= 0) {
+  errors.push("Production somatic summary CSV does not show a larger downsample with active intervals.");
+}
+if (!productionSummaryRow.boundary.includes("not full-depth WES/WGS sensitivity")) {
+  errors.push("Production somatic summary CSV must preserve WES/WGS boundary.");
+}
+const productionSummary = readJson<Record<string, unknown>>(pathFromRoot("results/production_somatic_smoke/production_somatic_summary.json"));
+if (productionSummary.status !== "passed" || productionSummary.phase !== "2E") {
+  errors.push("Production somatic summary JSON did not pass Phase 2E.");
+}
+if (Number(productionSummary.readPairsPerEnd) < 10000 || Number(productionSummary.activeIntervalCount) <= 0) {
+  errors.push("Production somatic summary JSON does not show a larger downsample with active intervals.");
+}
+if (!String(productionSummary.boundary ?? "").includes("WES-limited small-variant evidence remains separate")) {
+  errors.push("Production somatic summary JSON must separate WES evidence from WGS HRD signatures.");
 }
 
 const cbioSummary = readJson<Record<string, unknown>>(pathFromRoot("data/processed/catalog/cbioportal_tcga_brca_summary.json"));

@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-06-07T00:57:51.704Z",
+  "status": "passed",
+  "rows": [
+    {
+      "reference_id": "ucsc_hg38_analysis_set_full",
+      "caller": "GATK Mutect2 + FilterMutectCalls",
+      "gatk_jar_path": "data/raw/tools/gatk/gatk-4.6.2.0/gatk-package-4.6.2.0-local.jar",
+      "java_path": "/opt/homebrew/opt/openjdk@17/bin/java",
+      "input_tumor_bam": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/ucsc_hg38_analysis_set_full/bam/SRR7890850.tumor.bam",
+      "input_normal_bam": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/ucsc_hg38_analysis_set_full/bam/SRR7890851.normal.bam",
+      "active_interval_bed_path": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/ucsc_hg38_analysis_set_full/intervals/mutect2_active_intervals.bed",
+      "active_interval_count": 500,
+      "active_interval_truth_overlap_count": 250,
+      "output_unfiltered_vcf": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/ucsc_hg38_analysis_set_full/vcf/hcc1395.mutect2.unfiltered.vcf.gz",
+      "output_filtered_vcf": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/ucsc_hg38_analysis_set_full/vcf/hcc1395.mutect2.filtered.vcf.gz",
+      "output_filtered_tbi": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/ucsc_hg38_analysis_set_full/vcf/hcc1395.mutect2.filtered.vcf.gz.tbi",
+      "filtered_vcf_exists": "yes",
+      "filtered_tbi_exists": "yes",
+      "sample_count": 2,
+      "samples": "HCC1395;HCC1395BL",
+      "filtered_records": 0,
+      "pass_records": 0,
+      "filtered_snv_records": 0,
+      "filtered_indel_records": 0,
+      "truth_snv_records_in_active_intervals": 245,
+      "truth_indel_records_in_active_intervals": 12,
+      "exact_pass_truth_matches": 0,
+      "comparison_status": "assessed_no_passing_mutect2_calls",
+      "status": "passed",
+      "caveat": "Downsampled WES Mutect2 smoke validates production-style tumor-normal caller execution and VCF contracts. It is not a full-depth sensitivity benchmark, does not use PoN/germline-resource filtering, and does not assess WGS HRD signatures."
+    }
+  ]
+}

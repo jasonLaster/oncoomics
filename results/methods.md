@@ -8,6 +8,7 @@
 - SEQC2/HCC1395: public tumor-normal WES/WGS raw-data benchmark metadata and small FASTQ subsets used for raw-read and alignment smoke tests.
 - UCSC Genome Browser: hg38/GRCh38 and hg19/GRCh37 chr13+chr17 FASTA references used for Phase 2C partial human-reference alignment smoke.
 - UCSC Genome Browser: hg38/GRCh38 analysisSet FASTA used for Phase 2D full-reference caller-readiness smoke.
+- GATK/SEQC2: GATK Mutect2/FilterMutectCalls and SEQC2 HCC1395 high-confidence SNV/INDEL truth VCFs used for Phase 2E production-style somatic-caller smoke.
 
 ## HRD Evidence
 
@@ -25,9 +26,9 @@ RNA context uses selected marker genes from cBioPortal RNA Seq V2 RSEM batch-nor
 
 ## Raw-Data Smoke Lanes
 
-Phase 2A validates direct raw FASTQ access and pairing from a small SEQC2/HCC1395 tumor-normal WES subset. Phase 2B validates local FASTQ-to-BAM mechanics against a read-backed synthetic smoke reference. Phase 2C validates partial real-human-reference alignment against UCSC hg38 and hg19 chr13+chr17 references. Phase 2D validates one full reference, the UCSC hg38 analysis set, with BRCA1/BRCA2 interval metadata, full-reference BAM contracts, and a tiny indexed VCF caller smoke.
+Phase 2A validates direct raw FASTQ access and pairing from a small SEQC2/HCC1395 tumor-normal WES subset. Phase 2B validates local FASTQ-to-BAM mechanics against a read-backed synthetic smoke reference. Phase 2C validates partial real-human-reference alignment against UCSC hg38 and hg19 chr13+chr17 references. Phase 2D validates one full reference, the UCSC hg38 analysis set, with BRCA1/BRCA2 interval metadata, full-reference BAM contracts, and a tiny indexed VCF caller smoke. Phase 2E validates a production-style GATK Mutect2 tumor-normal execution path on a larger HCC1395 WES downsample and keeps its WES-limited small-variant evidence separate from WGS HRD signature evidence.
 
-These raw lanes are plumbing and file-contract validators. They do not yet produce clinically interpretable somatic calls, CNV/SV calls, full-depth WES/WGS coverage metrics, or HRD signatures.
+These raw lanes are plumbing and file-contract validators. They do not yet produce clinically interpretable somatic calls, production resource-filtered calls, CNV/SV calls, full-depth WES/WGS coverage metrics, or HRD signatures.
 
 ## Non-Run Lanes
 

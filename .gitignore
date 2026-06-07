@@ -10,6 +10,7 @@ data/raw/*
 results/alignment_smoke/logs/
 results/human_reference_smoke/logs/
 results/full_reference_smoke/logs/
+results/production_somatic_smoke/logs/
 
 .venv/
 __pycache__/

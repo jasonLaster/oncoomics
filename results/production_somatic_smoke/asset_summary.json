@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-06-07T00:58:48.827Z",
+  "status": "ready",
+  "caller": "GATK Mutect2 + FilterMutectCalls",
+  "gatk": {
+    "version": "4.6.2.0",
+    "releaseApi": "https://api.github.com/repos/broadinstitute/gatk/releases/tags/4.6.2.0",
+    "releaseUrl": "https://github.com/broadinstitute/gatk/releases/tag/4.6.2.0",
+    "assetUrl": "https://github.com/broadinstitute/gatk/releases/download/4.6.2.0/gatk-4.6.2.0.zip",
+    "assetSizeBytes": 703986327,
+    "zipPath": "data/raw/tools/gatk/gatk-4.6.2.0.zip",
+    "zipSha256": "32d2f90bf13fcb3a8ac765bb2cb8ec1fc9a6cc447055d0156bd1db2092d4e3e8",
+    "jarPath": "data/raw/tools/gatk/gatk-4.6.2.0/gatk-package-4.6.2.0-local.jar",
+    "jarSha256": "40b494b1e356931c9143be09c57ba6dfbb8d150167361aac2ceec24089b75667",
+    "downloaded": false
+  },
+  "java": {
+    "path": "/opt/homebrew/opt/openjdk@17/bin/java",
+    "version": "openjdk version \"17.0.19\" 2026-04-21"
+  },
+  "reference": {
+    "referenceId": "ucsc_hg38_analysis_set_full",
+    "assembly": "hg38",
+    "genomeBuild": "GRCh38",
+    "sourceUrl": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/analysisSet/hg38.analysisSet.fa.gz",
+    "fastaPath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa",
+    "fastaSha256": "d2b7be348fb20af46461855faec64dfbd21532620bd125783df050180446055e",
+    "faiPath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.fai",
+    "dictPath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.dict",
+    "dictSha256": "f2b6feb2430603005fdf29a0177438ff642784eac6ae2fb097baed51aa2b50ce",
+    "dictCreated": false,
+    "brcaIntervalBedPath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/brca_chr13_chr17_smoke.bed",
+    "brcaIntervalRegions": "chr13:32315086-32400266;chr17:43044295-43125482",
+    "brcaIntervalGenes": "BRCA2;BRCA1"
+  },
+  "seqc2Truth": {
+    "sourceDirectory": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/release/latest/",
+    "reference": "GRCh38.d1.vd1.fa per VCF header",
+    "assets": [
+      {
+        "kind": "snv",
+        "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/release/latest/high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz",
+        "path": "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz",
+        "sizeBytes": 4818105,
+        "sha256": "0c49f7e1519fc7860b773f79bdcf07453fe4def8303707f34542471d92494c9d",
+        "downloaded": false
+      },
+      {
+        "kind": "indel",
+        "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/release/latest/high-confidence_sINDEL_in_HC_regions_v1.2.1.vcf.gz",
+        "path": "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sINDEL_in_HC_regions_v1.2.1.vcf.gz",
+        "sizeBytes": 269761,
+        "sha256": "db7dc8be2ec04bab830ff1411146c7d538c217ff684e874b85d98a3dbbda91cf",
+        "downloaded": false
+      },
+      {
+        "kind": "high_confidence_regions",
+        "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/release/latest/High-Confidence_Regions_v1.2.bed",
+        "path": "data/raw/reference/seqc2_hcc1395_truth/latest/High-Confidence_Regions_v1.2.bed",
+        "sizeBytes": 16879606,
+        "sha256": "dedaa36a956d6121fb8fccd9ae1891a4fefd608ff31ab277cb55d7c96bb4a6c4",
+        "downloaded": false
+      },
+      {
+        "kind": "readme",
+        "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/release/latest/README.md",
+        "path": "data/raw/reference/seqc2_hcc1395_truth/latest/README.md",
+        "sizeBytes": 985,
+        "sha256": "9b5ebabb9401f8198779aaca3fb6e9c6f80e353c48a115e6c81f8a14a5f7165f",
+        "downloaded": false
+      }
+    ]
+  },
+  "sampleRows": 2,
+  "readPairsPerEnd": 50000,
+  "productionResourceCaveat": "Known-sites, germline-resource, contamination-estimation, and panel-of-normals resources are intentionally not supplied in this local smoke. They remain required for a full production clinical-grade workflow."
+}

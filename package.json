@@ -15,6 +15,8 @@
     "smoke:human-reference": "bun run scripts/run-human-reference-smoke.ts",
     "fetch:full-reference-smoke": "bun run scripts/fetch-full-reference-smoke-assets.ts",
     "smoke:full-reference": "bun run scripts/run-full-reference-smoke.ts",
+    "fetch:production-somatic": "bun run scripts/fetch-production-somatic-assets.ts",
+    "smoke:production-somatic": "bun run scripts/run-production-somatic-smoke.ts",
     "build:panel": "bun run scripts/build-reference-panel.ts",
     "analyze:hrd": "bun run scripts/analyze-hrd.ts",
     "analyze:rna": "bun run scripts/build-rna-context.ts",
@@ -22,6 +24,6 @@
     "verify:outputs": "bun run scripts/verify-outputs.ts",
     "verify:plan": "bun run scripts/verify-plan.ts",
     "verify:plan:online": "CHECK_URLS=1 bun run scripts/verify-plan.ts",
-    "run:all": "bun run verify:plan && bun run fetch:phase1 && bun run fetch:raw-candidates && bun run audit:raw-tools && bun run build:raw-samplesheets && bun run smoke:raw && bun run build:alignment-smoke && bun run smoke:alignment && bun run fetch:human-reference-smoke && bun run smoke:human-reference && bun run fetch:full-reference-smoke && bun run smoke:full-reference && bun run build:panel && bun run analyze:hrd && bun run analyze:rna && bun run build:packet && bun run verify:outputs"
+    "run:all": "bun run verify:plan && bun run fetch:phase1 && bun run fetch:raw-candidates && bun run audit:raw-tools && bun run build:raw-samplesheets && bun run smoke:raw && bun run build:alignment-smoke && bun run smoke:alignment && bun run fetch:human-reference-smoke && bun run smoke:human-reference && bun run fetch:full-reference-smoke && bun run smoke:full-reference && bun run fetch:production-somatic && bun run smoke:production-somatic && bun run build:panel && bun run analyze:hrd && bun run analyze:rna && bun run build:packet && bun run verify:outputs"
   }
 }

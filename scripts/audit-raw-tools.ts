@@ -28,15 +28,41 @@ const toolGroups = [
     tools: ["bcftools"]
   },
   {
+    group: "production_somatic_caller",
+    requiredFor: "Phase 2E GATK Mutect2 production-style tumor-normal somatic smoke",
+    tools: ["java17", "unzip"]
+  },
+  {
     group: "workflow_runtime",
     requiredFor: "nf-core/sarek or containerized raw-data workflow execution",
     tools: ["nextflow", "docker", "singularity", "apptainer", "conda", "micromamba"]
   }
 ];
 
+function java17Path() {
+  const candidates = [
+    process.env.GATK_JAVA ?? "",
+    "/opt/homebrew/opt/openjdk@17/bin/java",
+    "/opt/homebrew/bin/java",
+    spawnSync("bash", ["-lc", "command -v java"], { encoding: "utf8" }).stdout.trim()
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    const result = spawnSync(candidate, ["-version"], { encoding: "utf8" });
+    const output = `${result.stdout}${result.stderr}`;
+    const major = Number(output.match(/version "(\d+)/)?.[1] ?? "0");
+    if (result.status === 0 && major >= 17) {
+      return candidate;
+    }
+  }
+  return "";
+}
+
 function commandPath(tool: string) {
   if (tool === "bun" && process.argv[0]) {
     return process.argv[0];
+  }
+  if (tool === "java17") {
+    return java17Path();
   }
   const result = spawnSync("bash", ["-lc", `command -v ${tool}`], { encoding: "utf8" });
   return result.status === 0 ? result.stdout.trim() : "";
@@ -72,6 +98,8 @@ async function main() {
   const humanReferenceSmokeReady = phase2aReady && alignmentReady;
   const callerSmokeReady = groups.find((group) => group.group === "caller_smoke")?.allAvailable ?? false;
   const fullReferenceSmokeReady = humanReferenceSmokeReady && callerSmokeReady;
+  const productionSomaticToolReady = groups.find((group) => group.group === "production_somatic_caller")?.allAvailable ?? false;
+  const productionSomaticSmokeReady = fullReferenceSmokeReady && productionSomaticToolReady;
 
   const audit = {
     generatedAt: new Date().toISOString(),
@@ -80,13 +108,17 @@ async function main() {
     humanReferenceSmokeReady,
     callerSmokeReady,
     fullReferenceSmokeReady,
+    productionSomaticToolReady,
+    productionSomaticSmokeReady,
     fullAlignmentToolboxReady,
     workflowReady,
     fullWorkflowReady,
     alignmentReadyDefinition: "At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.",
     groups,
-    conclusion: fullReferenceSmokeReady
-      ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, and Phase 2D full-reference caller-readiness smoke tests. Full workflow/WGS phases still require additional tools or containers."
+    conclusion: productionSomaticSmokeReady
+      ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, and Phase 2E GATK Mutect2 production-style somatic smoke tests. Full workflow/WGS signature phases still require additional tools, resources, or containers."
+      : fullReferenceSmokeReady
+        ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, and Phase 2D full-reference caller-readiness smoke tests. Phase 2E Mutect2 smoke requires Java 17 and unzip for the pinned GATK bundle."
       : humanReferenceSmokeReady
         ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, and Phase 2C partial human-reference alignment smoke tests. Phase 2D caller smoke requires bcftools or another pinned caller."
       : phase2aReady
@@ -114,6 +146,8 @@ Alignment-ready definition: ${audit.alignmentReadyDefinition}
 Phase 2C partial human-reference smoke ready: **${humanReferenceSmokeReady ? "yes" : "no"}**
 
 Phase 2D full-reference caller-readiness smoke ready: **${fullReferenceSmokeReady ? "yes" : "no"}**
+
+Phase 2E production somatic Mutect2 smoke ready: **${productionSomaticSmokeReady ? "yes" : "no"}**
 
 ${groups
   .map((group) => {

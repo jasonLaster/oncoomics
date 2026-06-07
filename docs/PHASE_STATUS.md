@@ -143,18 +143,54 @@ Key outputs:
 
 ## Phase 2E: Production Somatic Workflow And Depth Scale-Up
 
-Status: **next**.
+Status: **complete and validated for one downsampled production-style Mutect2 smoke**.
 
 Goal: move from full-reference/caller-readiness smoke to a production-style tumor-normal somatic workflow.
 
+Completed work:
+
+1. Chose `GATK Mutect2 + FilterMutectCalls` as the first production-style somatic caller path.
+2. Pinned GATK `4.6.2.0` under the ignored local tool cache and validated Java 17 execution.
+3. Added the GATK sequence dictionary for `ucsc_hg38_analysis_set_full`.
+4. Downloaded SEQC2/HCC1395 high-confidence SNV/INDEL v1.2.1 truth VCFs and high-confidence BED.
+5. Built `manifests/production_somatic_smoke_samplesheet.csv`.
+6. Streamed 50,000 read pairs per FASTQ end from the HCC1395 WES tumor-normal pair.
+7. Aligned tumor and normal to the full hg38 analysis-set reference and validated coordinate-sorted, indexed, read-grouped BAMs.
+8. Built 500 active Mutect2 intervals from mapped reads, prioritizing intervals with SEQC2 truth overlap where compatible.
+9. Ran Mutect2 and FilterMutectCalls and validated an indexed filtered somatic VCF.
+10. Kept WES-limited small-variant evidence separate from WGS HRD signature, CNV, and SV evidence.
+
+Exit criteria:
+
+1. A production-style tumor-normal caller path is selected and pinned. **Complete: GATK Mutect2 4.6.2.0.**
+2. Caller-specific reference extras include a GATK sequence dictionary. **Complete.**
+3. A larger HCC1395 WES downsample runs against the full reference. **Complete: 50,000 read pairs/end.**
+4. Production-style somatic VCF/QC outputs are produced. **Complete.**
+5. SEQC2 truth materials are available and comparison status is explicit. **Complete: active intervals contained 245 SNV and 12 indel truth records; this downsample produced zero PASS Mutect2 calls.**
+6. Limitations remain explicit: not full-depth WES sensitivity, not production PoN/germline-resource/contamination/BQSR policy, not CNV/SV calling, and not HRD signature evidence. **Complete.**
+
+Key outputs:
+
+1. `manifests/production_somatic_smoke_samplesheet.csv`
+2. `results/production_somatic_smoke/README.md`
+3. `results/production_somatic_smoke/asset_summary.json`
+4. `results/production_somatic_smoke/bam_validation_summary.csv`
+5. `results/production_somatic_smoke/mutect2_smoke_summary.csv`
+6. `results/production_somatic_smoke/production_somatic_summary.csv`
+
+## Phase 2F: Production Resources And Full-Depth WES Benchmark
+
+Status: **planned**.
+
+Goal: move from validated Mutect2 execution smoke to full-depth WES benchmark behavior.
+
 Required work:
 
-1. Choose the production caller path: Mutect2, Strelka2, nf-core/sarek, or another pinned workflow.
-2. Add caller-specific reference extras: sequence dictionary, known-sites resources, germline resource, panel of normals if required, and WES capture intervals when available.
-3. Run a larger HCC1395 WES downsample or full WES pair against the selected full reference.
-4. Produce production-style somatic VCF/QC outputs, not just a bcftools execution smoke.
-5. Compare against SEQC2/HCC1395 benchmark/truth-set materials where build-compatible.
-6. Keep WES-limited evidence separate from WGS signature evidence.
+1. Decide the production resource policy: known-sites, germline resource, panel of normals, contamination estimation, orientation-bias modeling, duplicate marking, BQSR, and WES capture intervals.
+2. Run full WES or a materially larger HCC1395 WES pair against the selected full reference.
+3. Produce depth/coverage/QC reports and production-resource-filtered somatic VCFs.
+4. Compare against SEQC2/HCC1395 truth sets with sensitivity/specificity metrics where the reference and intervals are compatible.
+5. Keep WES-limited small-variant evidence separate from WGS HRD signature evidence.
 
 ## Phase 3: WGS HRD Signature Capability
 
