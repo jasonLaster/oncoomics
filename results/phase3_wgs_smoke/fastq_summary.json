@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-06-07T04:58:14.878Z",
+  "status": "passed",
+  "pairId": "seqc2_hcc1395_wgs_hiseqx_full",
+  "readPairsPerEnd": 500000,
+  "fetchConcurrency": 2,
+  "rows": [
+    {
+      "pair_id": "seqc2_hcc1395_wgs_hiseqx_full",
+      "sample": "HCC1395",
+      "role": "tumor",
+      "run_accession": "SRR7890824",
+      "assay": "WGS",
+      "source_read_pairs": "568040077",
+      "reads_per_end": 500000,
+      "local_fastq_1": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/fastq/SRR7890824_R1.500000reads.fastq",
+      "local_fastq_2": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/fastq/SRR7890824_R2.500000reads.fastq",
+      "r1_mean_length": 150,
+      "r2_mean_length": 150,
+      "r1_gc_fraction": 0.4079,
+      "r2_gc_fraction": 0.4085,
+      "r1_n_fraction": 0.00002,
+      "r2_n_fraction": 0.000042,
+      "first_read_id": "SRR7890824.1",
+      "last_read_id": "SRR7890824.500000",
+      "paired_id_check": "passed",
+      "fetch_state": "existing/existing",
+      "caveat": "Downsampled real WGS FASTQ subset for Phase 3 WGS-capable HRD lane validation."
+    },
+    {
+      "pair_id": "seqc2_hcc1395_wgs_hiseqx_full",
+      "sample": "HCC1395BL",
+      "role": "normal",
+      "run_accession": "SRR7890827",
+      "assay": "WGS",
+      "source_read_pairs": "598576900",
+      "reads_per_end": 500000,
+      "local_fastq_1": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/fastq/SRR7890827_R1.500000reads.fastq",
+      "local_fastq_2": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/fastq/SRR7890827_R2.500000reads.fastq",
+      "r1_mean_length": 150,
+      "r2_mean_length": 150,
+      "r1_gc_fraction": 0.4055,
+      "r2_gc_fraction": 0.4058,
+      "r1_n_fraction": 0.000052,
+      "r2_n_fraction": 0.000094,
+      "first_read_id": "SRR7890827.1",
+      "last_read_id": "SRR7890827.500000",
+      "paired_id_check": "passed",
+      "fetch_state": "existing/existing",
+      "caveat": "Downsampled real WGS FASTQ subset for Phase 3 WGS-capable HRD lane validation."
+    }
+  ]
+}

@@ -26,6 +26,12 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 - Full WES benchmark intervals: 1277
 - Full WES depth-eligible truth variants: 1307
 - Full WES contamination status: passed
+- Phase 3 WGS smoke status: passed
+- Phase 3 WGS smoke reads/end: 500000
+- Phase 3 WGS smoke parallel alignment: yes
+- Phase 3 WGS smoke CNV bins: 631
+- Phase 3 WGS smoke SBS96 usable SNVs: 0
+- Phase 3 ready for Diana raw arrival: yes
 
 ## Frozen Panel
 
@@ -65,6 +71,7 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 7. Full-reference smoke validates one full hg38 analysis-set reference, BRCA interval metadata, caller-ready BAM contracts, and indexed VCF generation.
 8. Production somatic smoke validates GATK Mutect2/FilterMutectCalls execution on a larger downsampled HCC1395 WES tumor-normal pair.
 9. Full WES benchmark validates complete ENA FASTQ files, full-reference BAM contracts, duplicate marking, contamination estimation, PoN-aware Mutect2, and SEQC2 truth-overlap metrics.
+10. Phase 3 WGS smoke validates representative WGS FASTQ, BAM, VCF, CNV-bin, SBS96-matrix, and SV-evidence outputs with real tools and explicit low-depth interpretability gates.
 
 ## Main Limitations
 
@@ -72,9 +79,10 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 2. Fraction genome altered and aneuploidy are scar proxies, not scarHRD.
 3. SBS3, SV signatures, CHORD, and HRDetect are not assessable from the current processed phase-1 inputs.
 4. The Phase 2F Mutect2 VCF is WES small-variant benchmark evidence, not WGS HRD signature evidence.
-5. The Phase 2F local gate uses the Broad 1000g PoN and common-biallelic contamination resource, but the full multi-GB af-only gnomAD resource remains documented as a production/cloud input rather than a local gating download.
-6. BQSR, orientation-bias modeling, vendor capture intervals, allele-specific copy-number, SV calling, and WGS signature calling remain Phase 3 or Diana-specific production decisions.
-7. Clinical action still requires clinician-owned validation, companion diagnostics, or orthogonal confirmation.
+5. The Phase 3 WGS lane is a representative WGS smoke, not full-depth WGS sensitivity or a final HRD classifier.
+6. The Phase 2F local gate uses the Broad 1000g PoN and common-biallelic contamination resource, but the full multi-GB af-only gnomAD resource remains documented as a production/cloud input rather than a local gating download.
+7. BQSR, orientation-bias modeling, vendor capture intervals, allele-specific copy-number, validated SV calling, and WGS signature classification remain Diana-specific production decisions.
+8. Clinical action still requires clinician-owned validation, companion diagnostics, or orthogonal confirmation.
 
 ## Output Tables
 
@@ -88,5 +96,5 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 
 ## Summaries
 
-- HRD summary: {"generatedAt":"2026-06-07T03:46:48.828Z","panelSampleCount":28,"eventRowCount":31,"alleleStateRowCount":31,"scarSignatureRowCount":28,"failureModeRowCount":63,"confusionMatrix":[{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_ambiguous_or_not_assessable","count":7},{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_hrd_like","count":1},{"expected_bucket":"expected_hrd_like","predicted_bucket":"predicted_hrd_like","count":12},{"expected_bucket":"expected_negative","predicted_bucket":"predicted_negative","count":8}],"boundary":"Phase-1 HRD classes are processed public-data candidates. WGS signatures, allele-specific LOH, CHORD, HRDetect, and companion diagnostics are not run."}
-- RNA summary: {"generatedAt":"2026-06-07T03:46:48.867Z","panelSampleCount":28,"expressionRecordCount":20558,"moduleDefinitions":{"basal_marker":["KRT5","KRT14","KRT17","EGFR","FOXC1"],"lar_luminal_marker":["AR","FOXA1","GATA3","ESR1"],"proliferation_marker":["MKI67"],"immune_inflammation_marker":["CD8A","CD274","CXCL9","IFNG"],"epithelial_marker":["EPCAM","MUC1"],"stromal_emt_marker":["VIM"]},"boundary":"RNA context is a small marker-module lane and does not reproduce TNBCtype, TNBC-DX, or Reveal."}
+- HRD summary: {"generatedAt":"2026-06-07T04:58:50.486Z","panelSampleCount":28,"eventRowCount":31,"alleleStateRowCount":31,"scarSignatureRowCount":28,"failureModeRowCount":63,"confusionMatrix":[{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_ambiguous_or_not_assessable","count":7},{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_hrd_like","count":1},{"expected_bucket":"expected_hrd_like","predicted_bucket":"predicted_hrd_like","count":12},{"expected_bucket":"expected_negative","predicted_bucket":"predicted_negative","count":8}],"boundary":"Phase-1 HRD classes are processed public-data candidates. WGS signatures, allele-specific LOH, CHORD, HRDetect, and companion diagnostics are not run."}
+- RNA summary: {"generatedAt":"2026-06-07T04:58:50.525Z","panelSampleCount":28,"expressionRecordCount":20558,"moduleDefinitions":{"basal_marker":["KRT5","KRT14","KRT17","EGFR","FOXC1"],"lar_luminal_marker":["AR","FOXA1","GATA3","ESR1"],"proliferation_marker":["MKI67"],"immune_inflammation_marker":["CD8A","CD274","CXCL9","IFNG"],"epithelial_marker":["EPCAM","MUC1"],"stromal_emt_marker":["VIM"]},"boundary":"RNA context is a small marker-module lane and does not reproduce TNBCtype, TNBC-DX, or Reveal."}

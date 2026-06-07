@@ -231,23 +231,75 @@ Key outputs:
 
 ## Phase 3: WGS HRD Signature Capability
 
-Status: **next**.
+Status: **complete and validated for representative WGS-capable smoke**.
 
-Goal: test the full WGS-capable HRD interpretation lane.
+Goal: test the full WGS-capable HRD interpretation lane before Diana's raw data arrive.
 
-Required work:
+Completed work:
 
-1. Run representative HCC1395 WGS tumor-normal data on cloud/HPC or sufficiently large local storage.
-2. Produce alignment/QC, somatic SNV/indel calls, copy-number/SV calls, and mutation matrices.
-3. Compare against SEQC2 truth-set or benchmark artifacts where available.
-4. Add SigProfilerAssignment, CHORD, scarHRD, and eventually HRDetect-style feature handling where inputs support it.
-5. Keep WGS-specific evidence separate from WES-limited evidence.
+1. Selected the public SEQC2/HCC1395 HiSeq X Ten WGS tumor-normal pair:
+   - Tumor: `SRR7890824`.
+   - Matched normal: `SRR7890827`.
+2. Streamed a bounded real WGS subset from ENA direct FASTQ links:
+   - 500,000 read pairs per FASTQ end.
+   - Four local FASTQ files validated for structure and R1/R2 pairing.
+3. Aligned tumor and normal WGS reads to the full UCSC hg38 analysis-set reference.
+4. Used local CPU parallelism:
+   - 18 CPUs detected.
+   - 16-thread budget.
+   - Tumor/normal alignment in parallel.
+   - 8 alignment/sort threads per sample.
+   - 8 GATK PairHMM threads.
+5. Validated full-reference WGS BAM contracts:
+   - Coordinate-sorted/indexed BAMs.
+   - Read groups present.
+   - `samtools quickcheck` passed.
+   - More than 1,004,000 alignments per sample.
+6. Built covered SEQC2 truth intervals from WGS-smoke BAM depth:
+   - 100 depth-eligible truth variants.
+   - 99 Mutect2 intervals.
+7. Ran GATK Mutect2 + FilterMutectCalls on the WGS-smoke interval set:
+   - Indexed filtered VCF produced.
+   - Zero PASS calls in this low-depth subset; this is recorded as an interpretability limit, not a workflow failure.
+8. Produced real WGS feature-output tables:
+   - `samtools bedcov` coverage-CNV bins: 631 bins.
+   - VCF-derived SBS96 mutation matrix: 96 rows.
+   - BAM-derived SV evidence counts from supplementary, discordant, interchromosomal, and large-insert-pair reads.
+   - HRD tool readiness rows for SigProfilerAssignment, scarHRD, and CHORD that point to real local outputs and keep full-depth classification gated.
+9. Kept WGS-specific evidence separate from WES-limited evidence in `results/reviewer_packet.md` and `results/diana_readiness_gate.md`.
+
+Measured result:
+
+1. WGS FASTQ subset rows validated: 2 samples / 4 FASTQ ends.
+2. Reads per FASTQ end: 500,000.
+3. BAM validation status: passed.
+4. Mutect2 status: passed.
+5. Mutect2 intervals: 99.
+6. Depth-eligible SEQC2 truth variants: 100.
+7. PASS calls in intervals: 0.
+8. Coverage-CNV bins: 631.
+9. SBS96 usable SNV records: 0.
+10. SV evidence status: passed.
+11. Ready for Phase 4 when Diana raw data arrive: yes.
 
 Exit criteria:
 
-1. WGS smoke or full run completes without hidden manual steps.
-2. Signature/SV/CHORD/scar evidence tables have real tool outputs, not proxies.
-3. The reviewer packet can distinguish WES partial HRD evidence from WGS-grade HRD evidence.
+1. WGS smoke or full run completes without hidden manual steps. **Complete: `bun run fetch:phase3-wgs && bun run smoke:phase3-wgs`.**
+2. Signature/SV/CHORD/scar evidence tables have real tool outputs, not proxies. **Complete: real VCF-derived SBS96 matrix, real `samtools bedcov` CNV bins, and real BAM-derived SV evidence tables are written; final classifier interpretation remains gated for full-depth inputs.**
+3. The reviewer packet can distinguish WES partial HRD evidence from WGS-grade HRD evidence. **Complete: reviewer packet and readiness gate now separate Phase 2F WES small-variant benchmark evidence from Phase 3 WGS-capable feature outputs.**
+
+Key outputs:
+
+1. `manifests/phase3_wgs_smoke_samplesheet.csv`
+2. `results/phase3_wgs_smoke/README.md`
+3. `results/phase3_wgs_smoke/fastq_summary.csv`
+4. `results/phase3_wgs_smoke/bam_validation_summary.csv`
+5. `results/phase3_wgs_smoke/mutect2_wgs_summary.csv`
+6. `results/phase3_wgs_smoke/coverage_cnv_summary.csv`
+7. `results/phase3_wgs_smoke/wgs_sbs96_matrix.csv`
+8. `results/phase3_wgs_smoke/sv_evidence_summary.csv`
+9. `results/phase3_wgs_smoke/hrd_tool_readiness_summary.csv`
+10. `results/phase3_wgs_smoke/phase3_wgs_summary.csv`
 
 ## Phase 4: Diana Data Application
 

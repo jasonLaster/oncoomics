@@ -49,6 +49,7 @@ const requiredFiles = [
   "manifests/full_reference_smoke_samplesheet.csv",
   "manifests/production_somatic_smoke_samplesheet.csv",
   "manifests/full_wes_benchmark_samplesheet.csv",
+  "manifests/phase3_wgs_smoke_samplesheet.csv",
   "manifests/reference_panel_validation.json",
   "docs/reference-panel-label-rules.md",
   "results/hrd_event_table.csv",
@@ -114,7 +115,30 @@ const requiredFiles = [
   "results/full_wes_benchmark/truth_overlap_benchmark_summary.csv",
   "results/full_wes_benchmark/truth_overlap_benchmark_summary.json",
   "results/full_wes_benchmark/full_wes_benchmark_summary.csv",
-  "results/full_wes_benchmark/full_wes_benchmark_summary.json"
+  "results/full_wes_benchmark/full_wes_benchmark_summary.json",
+  "results/phase3_wgs_smoke/README.md",
+  "results/phase3_wgs_smoke/asset_summary.json",
+  "results/phase3_wgs_smoke/tool_versions.json",
+  "results/phase3_wgs_smoke/fastq_summary.csv",
+  "results/phase3_wgs_smoke/fastq_summary.json",
+  "results/phase3_wgs_smoke/bam_validation_summary.csv",
+  "results/phase3_wgs_smoke/bam_validation_summary.json",
+  "results/phase3_wgs_smoke/mutect2_wgs_summary.csv",
+  "results/phase3_wgs_smoke/mutect2_wgs_summary.json",
+  "results/phase3_wgs_smoke/coverage_cnv_bins.csv",
+  "results/phase3_wgs_smoke/coverage_cnv_summary.csv",
+  "results/phase3_wgs_smoke/coverage_cnv_summary.json",
+  "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
+  "results/phase3_wgs_smoke/signature_assignment_summary.csv",
+  "results/phase3_wgs_smoke/signature_assignment_summary.json",
+  "results/phase3_wgs_smoke/sv_evidence_candidates.csv",
+  "results/phase3_wgs_smoke/sv_evidence_summary.csv",
+  "results/phase3_wgs_smoke/sv_evidence_summary.json",
+  "results/phase3_wgs_smoke/hrd_tool_readiness_summary.csv",
+  "results/phase3_wgs_smoke/hrd_tool_readiness_summary.json",
+  "results/phase3_wgs_smoke/covered_truth_variants.csv",
+  "results/phase3_wgs_smoke/phase3_wgs_summary.csv",
+  "results/phase3_wgs_smoke/phase3_wgs_summary.json"
 ];
 
 for (const file of requiredFiles) {
@@ -326,6 +350,9 @@ if (rawToolingAudit.productionSomaticSmokeReady !== true) {
 }
 if (rawToolingAudit.fullWesBenchmarkReady !== true) {
   errors.push("Raw tooling audit says Phase 2F full WES benchmark is not ready.");
+}
+if (rawToolingAudit.phase3WgsSmokeReady !== true) {
+  errors.push("Raw tooling audit says Phase 3 WGS smoke is not ready.");
 }
 
 const alignmentSamplesheet = requireRows("manifests/alignment_smoke_samplesheet.csv", 2);
@@ -1366,6 +1393,333 @@ if (fullWesSummary.status !== "passed" || fullWesSummary.phase !== "2F" || fullW
 }
 if (!String(fullWesSummary.boundary ?? "").includes("Phase 3 starts WGS HRD signature")) {
   errors.push("Full WES benchmark summary JSON must point to Phase 3 WGS HRD signature work.");
+}
+
+const phase3Samplesheet = requireRows("manifests/phase3_wgs_smoke_samplesheet.csv", 2);
+requireColumns("manifests/phase3_wgs_smoke_samplesheet.csv", phase3Samplesheet, [
+  "pair_id",
+  "patient",
+  "sample",
+  "role",
+  "status",
+  "run_accession",
+  "assay",
+  "library_strategy",
+  "source_read_pairs",
+  "source_fastq_1",
+  "source_fastq_2",
+  "read_pairs_per_end",
+  "fastq_1",
+  "fastq_2",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "reference_path",
+  "reference_fai_path",
+  "reference_dict_path",
+  "truth_snv_vcf_path",
+  "truth_indel_vcf_path",
+  "gatk_jar_path",
+  "java_path",
+  "production_caller",
+  "output_bam",
+  "output_bai",
+  "caller_interval_strategy",
+  "cnv_strategy",
+  "sv_strategy",
+  "signature_strategy",
+  "caveat"
+]);
+if (!phase3Samplesheet.some((row) => row.role === "tumor") || !phase3Samplesheet.some((row) => row.role === "normal")) {
+  errors.push("Phase 3 WGS samplesheet must include tumor and normal rows.");
+}
+for (const row of phase3Samplesheet) {
+  if (row.assay !== "WGS" || row.library_strategy !== "WGS") {
+    errors.push(`Phase 3 WGS samplesheet row is not WGS for ${row.run_accession}.`);
+  }
+  if (row.reference_id !== "ucsc_hg38_analysis_set_full") {
+    errors.push(`Phase 3 WGS samplesheet must use ucsc_hg38_analysis_set_full, not ${row.reference_id}.`);
+  }
+  if (Number(row.read_pairs_per_end) < 100000) {
+    errors.push(`Phase 3 WGS read subset is too small for ${row.run_accession}: ${row.read_pairs_per_end}`);
+  }
+  if (!row.truth_snv_vcf_path.includes("high-confidence_sSNV") || !row.truth_indel_vcf_path.includes("high-confidence_sINDEL")) {
+    errors.push(`Phase 3 WGS samplesheet must reference SEQC2 truth VCFs for ${row.run_accession}.`);
+  }
+  if (!row.caveat.includes("real WGS FASTQ subset")) {
+    errors.push(`Phase 3 WGS samplesheet caveat must preserve WGS-smoke boundary for ${row.run_accession}.`);
+  }
+}
+
+const phase3Assets = readJson<Record<string, unknown>>(pathFromRoot("results/phase3_wgs_smoke/asset_summary.json"));
+if (phase3Assets.status !== "ready" || phase3Assets.phase !== "3") {
+  errors.push("Phase 3 WGS asset summary is not ready.");
+}
+if (Number(phase3Assets.readPairsPerEnd) < 100000 || Number(phase3Assets.sampleRows) !== 2) {
+  errors.push("Phase 3 WGS asset summary must include two samples and a meaningful WGS read subset.");
+}
+if (!String(phase3Assets.boundary ?? "").includes("does not download the complete")) {
+  errors.push("Phase 3 WGS asset summary must preserve full-WGS download boundary.");
+}
+
+const phase3FastqRows = requireRows("results/phase3_wgs_smoke/fastq_summary.csv", 2);
+requireColumns("results/phase3_wgs_smoke/fastq_summary.csv", phase3FastqRows, [
+  "pair_id",
+  "sample",
+  "role",
+  "run_accession",
+  "assay",
+  "source_read_pairs",
+  "reads_per_end",
+  "local_fastq_1",
+  "local_fastq_2",
+  "paired_id_check",
+  "fetch_state",
+  "caveat"
+]);
+for (const row of phase3FastqRows) {
+  if (row.paired_id_check !== "passed") {
+    errors.push(`Phase 3 WGS FASTQ pairing failed for ${row.run_accession}.`);
+  }
+  if (row.assay !== "WGS" || Number(row.reads_per_end) < 100000) {
+    errors.push(`Phase 3 WGS FASTQ summary is not a meaningful WGS subset for ${row.run_accession}.`);
+  }
+  if (!row.caveat.includes("WGS FASTQ subset")) {
+    errors.push(`Phase 3 WGS FASTQ caveat must preserve WGS-smoke boundary for ${row.run_accession}.`);
+  }
+}
+const phase3FastqSummary = readJson<Record<string, unknown>>(pathFromRoot("results/phase3_wgs_smoke/fastq_summary.json"));
+if (phase3FastqSummary.status !== "passed") {
+  errors.push("Phase 3 WGS FASTQ summary JSON did not pass.");
+}
+
+const phase3BamRows = requireRows("results/phase3_wgs_smoke/bam_validation_summary.csv", 2);
+requireColumns("results/phase3_wgs_smoke/bam_validation_summary.csv", phase3BamRows, [
+  "pair_id",
+  "reference_id",
+  "assembly",
+  "genome_build",
+  "role",
+  "run_accession",
+  "sample",
+  "read_pairs_per_end",
+  "output_bam",
+  "output_bai",
+  "bam_exists",
+  "bai_exists",
+  "quickcheck",
+  "sort_order",
+  "read_group_present",
+  "reference_contig_count",
+  "total_alignments",
+  "mapped_alignments",
+  "mapped_standard_contigs",
+  "status",
+  "caveat"
+]);
+for (const row of phase3BamRows) {
+  if (row.status !== "passed" || row.quickcheck !== "passed" || row.sort_order !== "coordinate" || row.read_group_present !== "yes") {
+    errors.push(`Phase 3 WGS BAM contract failed for ${row.run_accession}.`);
+  }
+  if (row.bam_exists !== "yes" || row.bai_exists !== "yes") {
+    errors.push(`Phase 3 WGS BAM/BAI missing for ${row.run_accession}.`);
+  }
+  if (Number(row.reference_contig_count) < 20 || Number(row.mapped_alignments) <= 0 || Number(row.mapped_standard_contigs) <= 0) {
+    errors.push(`Phase 3 WGS BAM lacks full-reference mapped alignments for ${row.run_accession}.`);
+  }
+}
+const phase3BamSummary = readJson<Record<string, unknown>>(pathFromRoot("results/phase3_wgs_smoke/bam_validation_summary.json"));
+if (phase3BamSummary.status !== "passed") {
+  errors.push("Phase 3 WGS BAM validation JSON did not pass.");
+}
+
+const phase3MutectRows = requireRows("results/phase3_wgs_smoke/mutect2_wgs_summary.csv", 1);
+requireColumns("results/phase3_wgs_smoke/mutect2_wgs_summary.csv", phase3MutectRows, [
+  "status",
+  "phase",
+  "caller",
+  "reference_id",
+  "pair_id",
+  "tumor_sample",
+  "normal_sample",
+  "read_pairs_per_end",
+  "interval_strategy",
+  "mutect_interval_bed_path",
+  "mutect_interval_count",
+  "truth_variants_total",
+  "truth_variants_depth_eligible",
+  "filtered_vcf",
+  "filtered_tbi",
+  "filtered_records_in_intervals",
+  "pass_records_in_intervals",
+  "exact_pass_truth_matches",
+  "comparison_status",
+  "caveat"
+]);
+const phase3MutectRow = phase3MutectRows[0] ?? {};
+if (phase3MutectRow.status !== "passed" || phase3MutectRow.phase !== "3") {
+  errors.push("Phase 3 WGS Mutect2 summary did not pass.");
+}
+if (phase3MutectRow.caller !== "GATK Mutect2 + FilterMutectCalls") {
+  errors.push(`Phase 3 WGS Mutect2 summary has unexpected caller: ${phase3MutectRow.caller}`);
+}
+if (Number(phase3MutectRow.mutect_interval_count) <= 0 || !phase3MutectRow.comparison_status) {
+  errors.push("Phase 3 WGS Mutect2 summary must include intervals and comparison status.");
+}
+if (!phase3MutectRow.caveat.includes("WGS-smoke small-variant output")) {
+  errors.push("Phase 3 WGS Mutect2 caveat must preserve WGS-smoke boundary.");
+}
+const phase3MutectSummary = readJson<Record<string, unknown>>(pathFromRoot("results/phase3_wgs_smoke/mutect2_wgs_summary.json"));
+if (phase3MutectSummary.status !== "passed") {
+  errors.push("Phase 3 WGS Mutect2 summary JSON did not pass.");
+}
+
+const phase3CnvRows = requireRows("results/phase3_wgs_smoke/coverage_cnv_summary.csv", 1);
+requireColumns("results/phase3_wgs_smoke/coverage_cnv_summary.csv", phase3CnvRows, [
+  "status",
+  "tool",
+  "bin_size",
+  "bin_count",
+  "median_log2_tumor_normal",
+  "relative_gain_bins",
+  "relative_loss_bins",
+  "output_bins",
+  "scarhrd_input_status",
+  "caveat"
+]);
+if (phase3CnvRows[0]?.status !== "passed" || Number(phase3CnvRows[0]?.bin_count) < 100) {
+  errors.push("Phase 3 WGS coverage/CNV summary did not produce enough bins.");
+}
+if (!phase3CnvRows[0]?.scarhrd_input_status.includes("not_assessable")) {
+  errors.push("Phase 3 WGS CNV summary must keep scarHRD interpretation gated.");
+}
+const phase3CnvBins = requireRows("results/phase3_wgs_smoke/coverage_cnv_bins.csv", 100);
+requireColumns("results/phase3_wgs_smoke/coverage_cnv_bins.csv", phase3CnvBins, [
+  "contig",
+  "start",
+  "end",
+  "tumor_depth_sum",
+  "normal_depth_sum",
+  "tumor_mean_depth",
+  "normal_mean_depth",
+  "log2_tumor_normal",
+  "coverage_class"
+]);
+
+const phase3MatrixRows = requireRows("results/phase3_wgs_smoke/wgs_sbs96_matrix.csv", 96);
+requireColumns("results/phase3_wgs_smoke/wgs_sbs96_matrix.csv", phase3MatrixRows, [
+  "sample",
+  "mutation_type",
+  "trinucleotide",
+  "count",
+  "source_records",
+  "source_vcf_policy"
+]);
+if (phase3MatrixRows.length !== 96) {
+  errors.push(`Phase 3 WGS SBS96 matrix has ${phase3MatrixRows.length} rows; expected 96.`);
+}
+const phase3SignatureRows = requireRows("results/phase3_wgs_smoke/signature_assignment_summary.csv", 1);
+requireColumns("results/phase3_wgs_smoke/signature_assignment_summary.csv", phase3SignatureRows, [
+  "status",
+  "tool",
+  "source_vcf",
+  "source_record_policy",
+  "sbs96_rows",
+  "usable_snv_records",
+  "total_matrix_count",
+  "sigprofiler_assignment_status",
+  "output_matrix",
+  "caveat"
+]);
+if (phase3SignatureRows[0]?.status !== "passed" || Number(phase3SignatureRows[0]?.sbs96_rows) !== 96) {
+  errors.push("Phase 3 WGS signature summary did not produce an SBS96 matrix.");
+}
+if (!phase3SignatureRows[0]?.caveat.includes("actual Phase 3 WGS smoke VCF records")) {
+  errors.push("Phase 3 WGS signature caveat must show the matrix is VCF-derived.");
+}
+
+const phase3SvRows = requireRows("results/phase3_wgs_smoke/sv_evidence_summary.csv", 2);
+requireColumns("results/phase3_wgs_smoke/sv_evidence_summary.csv", phase3SvRows, [
+  "status",
+  "tool",
+  "sample",
+  "role",
+  "run_accession",
+  "input_bam",
+  "total_alignments",
+  "supplementary_alignments",
+  "discordant_mapped_pairs",
+  "interchromosomal_pairs",
+  "large_insert_pairs",
+  "chord_input_status",
+  "caveat"
+]);
+for (const row of phase3SvRows) {
+  if (row.status !== "passed" || Number(row.total_alignments) <= 0) {
+    errors.push(`Phase 3 WGS SV evidence failed for ${row.run_accession}.`);
+  }
+  if (!row.caveat.includes("Real BAM-derived")) {
+    errors.push(`Phase 3 WGS SV evidence caveat must show real BAM-derived evidence for ${row.run_accession}.`);
+  }
+}
+
+const phase3ToolRows = requireRows("results/phase3_wgs_smoke/hrd_tool_readiness_summary.csv", 3);
+requireColumns("results/phase3_wgs_smoke/hrd_tool_readiness_summary.csv", phase3ToolRows, [
+  "tool",
+  "evidence_input",
+  "local_phase3_output",
+  "real_output_status",
+  "interpretability_status",
+  "caveat"
+]);
+for (const tool of ["SigProfilerAssignment", "scarHRD", "CHORD"]) {
+  if (!phase3ToolRows.some((row) => row.tool === tool)) {
+    errors.push(`Phase 3 HRD tool readiness summary is missing ${tool}.`);
+  }
+}
+if (!phase3ToolRows.every((row) => row.real_output_status.startsWith("real_"))) {
+  errors.push("Phase 3 HRD tool readiness rows must be backed by real outputs, not proxies.");
+}
+
+const phase3SummaryRows = requireRows("results/phase3_wgs_smoke/phase3_wgs_summary.csv", 1);
+requireColumns("results/phase3_wgs_smoke/phase3_wgs_summary.csv", phase3SummaryRows, [
+  "status",
+  "phase",
+  "pair_id",
+  "reference_id",
+  "read_pairs_per_end",
+  "available_cpus",
+  "total_threads",
+  "parallel_align",
+  "per_sample_threads",
+  "gatk_threads",
+  "bam_validation_status",
+  "mutect2_status",
+  "mutect_interval_count",
+  "coverage_cnv_status",
+  "coverage_cnv_bins",
+  "sbs96_matrix_status",
+  "sv_evidence_status",
+  "phase3_complete",
+  "ready_for_phase4_when_diana_raw_arrives",
+  "boundary"
+]);
+const phase3SummaryRow = phase3SummaryRows[0] ?? {};
+if (phase3SummaryRow.status !== "passed" || phase3SummaryRow.phase !== "3" || phase3SummaryRow.phase3_complete !== "yes") {
+  errors.push("Phase 3 WGS summary CSV did not pass.");
+}
+if (phase3SummaryRow.ready_for_phase4_when_diana_raw_arrives !== "yes") {
+  errors.push("Phase 3 WGS summary must mark readiness for Phase 4 once Diana raw data arrives.");
+}
+if (!phase3SummaryRow.boundary.includes("Full-depth Diana interpretation still needs Diana raw data")) {
+  errors.push("Phase 3 WGS summary must preserve Diana raw-data boundary.");
+}
+const phase3Summary = readJson<Record<string, unknown>>(pathFromRoot("results/phase3_wgs_smoke/phase3_wgs_summary.json"));
+if (phase3Summary.status !== "passed" || phase3Summary.phase !== "3" || phase3Summary.phase3Complete !== true) {
+  errors.push("Phase 3 WGS summary JSON did not pass.");
+}
+if (phase3Summary.readyForPhase4WhenDianaRawArrives !== true) {
+  errors.push("Phase 3 WGS summary JSON must mark readiness for Phase 4 once Diana raw data arrives.");
 }
 
 const cbioSummary = readJson<Record<string, unknown>>(pathFromRoot("data/processed/catalog/cbioportal_tcga_brca_summary.json"));

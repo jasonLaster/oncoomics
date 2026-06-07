@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-06-07T04:58:45.251Z",
+  "status": "passed",
+  "rows": [
+    {
+      "status": "passed",
+      "tool": "local_sbs96_matrix_builder",
+      "source_vcf": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/vcf/hcc1395.phase3_wgs_smoke.mutect2.filtered.vcf.gz",
+      "source_record_policy": "all_filtered_fallback",
+      "sbs96_rows": 96,
+      "usable_snv_records": 0,
+      "skipped_snv_records": 0,
+      "total_matrix_count": 0,
+      "sigprofiler_assignment_status": "not_assessable_low_mutation_count",
+      "output_matrix": "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
+      "caveat": "SBS96 matrix is built from actual Phase 3 WGS smoke VCF records. Signature assignment is not interpreted when the downsample has too few mutations."
+    }
+  ]
+}

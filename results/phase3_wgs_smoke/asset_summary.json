@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-06-07T04:58:14.878Z",
+  "status": "ready",
+  "phase": "3",
+  "pairId": "seqc2_hcc1395_wgs_hiseqx_full",
+  "readPairsPerEnd": 500000,
+  "sampleRows": 2,
+  "source": "SEQC2/HCC1395 public HiSeq X Ten WGS tumor-normal FASTQ pair",
+  "reference": {
+    "referenceId": "ucsc_hg38_analysis_set_full",
+    "assembly": "hg38",
+    "genomeBuild": "GRCh38",
+    "fastaPath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa",
+    "faiPath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.fai",
+    "dictPath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.dict"
+  },
+  "gatk": {
+    "jarPath": "data/raw/tools/gatk/gatk-4.6.2.0/gatk-package-4.6.2.0-local.jar",
+    "javaPath": "/opt/homebrew/opt/openjdk@17/bin/java"
+  },
+  "seqc2Truth": {
+    "snvVcfPath": "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz",
+    "indelVcfPath": "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sINDEL_in_HC_regions_v1.2.1.vcf.gz",
+    "highConfidenceBedPath": "data/raw/reference/seqc2_hcc1395_truth/latest/High-Confidence_Regions_v1.2.bed"
+  },
+  "parallelism": {
+    "fetchConcurrency": 2,
+    "note": "FASTQ end streams can be fetched concurrently; alignment/runtime thread controls live in smoke:phase3-wgs."
+  },
+  "boundary": "This prepares a bounded WGS smoke subset from full public WGS FASTQs. It does not download the complete 198 GB compressed HiSeq X tumor-normal WGS pair."
+}

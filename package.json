@@ -19,6 +19,8 @@
     "smoke:production-somatic": "bun run scripts/run-production-somatic-smoke.ts",
     "fetch:full-wes": "bun run scripts/fetch-full-wes-benchmark-assets.ts",
     "benchmark:full-wes": "bun run scripts/run-full-wes-benchmark.ts",
+    "fetch:phase3-wgs": "bun run scripts/fetch-phase3-wgs-smoke-assets.ts",
+    "smoke:phase3-wgs": "bun run scripts/run-phase3-wgs-smoke.ts",
     "build:panel": "bun run scripts/build-reference-panel.ts",
     "analyze:hrd": "bun run scripts/analyze-hrd.ts",
     "analyze:rna": "bun run scripts/build-rna-context.ts",
@@ -26,6 +28,6 @@
     "verify:outputs": "bun run scripts/verify-outputs.ts",
     "verify:plan": "bun run scripts/verify-plan.ts",
     "verify:plan:online": "CHECK_URLS=1 bun run scripts/verify-plan.ts",
-    "run:all": "bun run verify:plan && bun run fetch:phase1 && bun run fetch:raw-candidates && bun run audit:raw-tools && bun run build:raw-samplesheets && bun run smoke:raw && bun run build:alignment-smoke && bun run smoke:alignment && bun run fetch:human-reference-smoke && bun run smoke:human-reference && bun run fetch:full-reference-smoke && bun run smoke:full-reference && bun run fetch:production-somatic && bun run smoke:production-somatic && bun run fetch:full-wes && bun run benchmark:full-wes && bun run build:panel && bun run analyze:hrd && bun run analyze:rna && bun run build:packet && bun run verify:outputs"
+    "run:all": "bun run verify:plan && bun run fetch:phase1 && bun run fetch:raw-candidates && bun run audit:raw-tools && bun run build:raw-samplesheets && bun run smoke:raw && bun run build:alignment-smoke && bun run smoke:alignment && bun run fetch:human-reference-smoke && bun run smoke:human-reference && bun run fetch:full-reference-smoke && bun run smoke:full-reference && bun run fetch:production-somatic && bun run smoke:production-somatic && bun run fetch:full-wes && bun run benchmark:full-wes && bun run fetch:phase3-wgs && bun run smoke:phase3-wgs && bun run build:panel && bun run analyze:hrd && bun run analyze:rna && bun run build:packet && bun run verify:outputs"
   }
 }

@@ -12,6 +12,7 @@ results/human_reference_smoke/logs/
 results/full_reference_smoke/logs/
 results/production_somatic_smoke/logs/
 results/full_wes_benchmark/logs/
+results/phase3_wgs_smoke/logs/
 
 .venv/
 __pycache__/

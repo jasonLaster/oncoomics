@@ -38,6 +38,16 @@ const toolGroups = [
     tools: ["curl", "gzip", "bwa", "samtools", "bcftools", "java17"]
   },
   {
+    group: "phase3_wgs_smoke",
+    requiredFor: "Phase 3 representative WGS alignment, Mutect2, coverage-CNV bins, SBS96 matrix, and BAM-derived SV evidence",
+    tools: ["curl", "gunzip", "gzip", "bwa", "samtools", "bcftools", "java17"]
+  },
+  {
+    group: "phase3_wgs_optional_signature_callers",
+    requiredFor: "Full-depth WGS CHORD/scarHRD/HRDetect/SigProfiler production interpretation",
+    tools: ["R", "python3", "nextflow", "docker", "singularity", "apptainer"]
+  },
+  {
     group: "workflow_runtime",
     requiredFor: "nf-core/sarek or containerized raw-data workflow execution",
     tools: ["nextflow", "docker", "singularity", "apptainer", "conda", "micromamba"]
@@ -107,6 +117,10 @@ async function main() {
   const productionSomaticSmokeReady = fullReferenceSmokeReady && productionSomaticToolReady;
   const fullWesBenchmarkToolReady = groups.find((group) => group.group === "full_wes_benchmark")?.allAvailable ?? false;
   const fullWesBenchmarkReady = productionSomaticSmokeReady && fullWesBenchmarkToolReady;
+  const phase3WgsToolReady = groups.find((group) => group.group === "phase3_wgs_smoke")?.allAvailable ?? false;
+  const phase3WgsSmokeReady = fullWesBenchmarkReady && phase3WgsToolReady;
+  const phase3OptionalSignatureRuntimeReady =
+    groups.find((group) => group.group === "phase3_wgs_optional_signature_callers")?.tools.some((tool) => tool.available) ?? false;
 
   const audit = {
     generatedAt: new Date().toISOString(),
@@ -119,13 +133,18 @@ async function main() {
     productionSomaticSmokeReady,
     fullWesBenchmarkToolReady,
     fullWesBenchmarkReady,
+    phase3WgsToolReady,
+    phase3WgsSmokeReady,
+    phase3OptionalSignatureRuntimeReady,
     fullAlignmentToolboxReady,
     workflowReady,
     fullWorkflowReady,
     alignmentReadyDefinition: "At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.",
     groups,
-    conclusion: fullWesBenchmarkReady
-      ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, and Phase 2F full WES benchmark mechanics. Full WGS signature phases still require WGS data and additional CNV/SV/signature tooling."
+    conclusion: phase3WgsSmokeReady
+      ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, Phase 2F full WES benchmark mechanics, and Phase 3 representative WGS smoke mechanics. Full-depth WGS interpretation still requires Diana data and final CNV/SV/signature policy."
+      : fullWesBenchmarkReady
+        ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, and Phase 2F full WES benchmark mechanics. Phase 3 WGS smoke requires curl, gzip/gunzip, bwa, samtools, bcftools, and Java 17."
       : productionSomaticSmokeReady
         ? "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, and Phase 2E GATK Mutect2 production-style somatic smoke tests. Phase 2F full WES benchmark requires curl, gzip, bwa, samtools, bcftools, and Java 17."
       : fullReferenceSmokeReady
@@ -161,6 +180,10 @@ Phase 2D full-reference caller-readiness smoke ready: **${fullReferenceSmokeRead
 Phase 2E production somatic Mutect2 smoke ready: **${productionSomaticSmokeReady ? "yes" : "no"}**
 
 Phase 2F full WES benchmark ready: **${fullWesBenchmarkReady ? "yes" : "no"}**
+
+Phase 3 WGS smoke ready: **${phase3WgsSmokeReady ? "yes" : "no"}**
+
+Phase 3 optional signature runtime available: **${phase3OptionalSignatureRuntimeReady ? "yes" : "no"}**
 
 ${groups
   .map((group) => {

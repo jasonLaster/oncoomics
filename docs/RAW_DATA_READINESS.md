@@ -55,6 +55,7 @@ Phase 2 should not be considered complete until these pass:
 9. The full-reference smoke validates one full analysis-set reference, BRCA interval metadata, caller-ready BAM contracts, and indexed VCF generation.
 10. The production somatic smoke validates a pinned tumor-normal caller path, larger WES downsample, indexed filtered somatic VCF, and explicit SEQC2 truth-comparison status.
 11. The full WES benchmark validates complete representative FASTQs, full-reference alignment, duplicate marking, contamination estimation, PoN-aware Mutect2, and covered truth-overlap metrics.
+12. The Phase 3 WGS smoke validates real representative WGS FASTQ access, full-reference alignment, Mutect2 VCF output, coverage-CNV bins, SBS96 matrix output, and BAM-derived SV evidence with explicit low-depth interpretability gates.
 
 ## Phase 2A Result
 
@@ -177,7 +178,41 @@ Measured Phase 2F benchmark:
 10. Contamination estimate: 0.0.
 11. Ready for Phase 3: yes.
 
-The output distinguishes full-depth WES small-variant readiness from WGS-grade HRD signature readiness. Remaining production decisions are Diana-specific or Phase 3 decisions: BQSR known-sites, vendor capture BEDs, orientation-bias modeling, full af-only gnomAD use, allele-specific copy-number, SV calling, and WGS signatures.
+The output distinguishes full-depth WES small-variant readiness from WGS-grade HRD signature readiness. Remaining production decisions are Diana-specific: BQSR known-sites, vendor capture BEDs, orientation-bias modeling, full af-only gnomAD use, allele-specific copy-number, validated SV calling, and WGS signature classification.
+
+## Phase 3 Result
+
+Status: **complete and validated for representative WGS-capable smoke**.
+
+The project now validates a WGS-capable HRD feature lane on the SEQC2/HCC1395 HiSeq X Ten WGS pair:
+
+1. Tumor WGS run: `SRR7890824`.
+2. Matched-normal WGS run: `SRR7890827`.
+3. Read subset: 500,000 read pairs per FASTQ end.
+4. Reference: `ucsc_hg38_analysis_set_full`.
+5. Alignment: `bwa mem` plus `samtools sort/index`.
+6. Somatic caller: GATK Mutect2 + FilterMutectCalls.
+7. Coverage-CNV smoke: `samtools bedcov` over 5 Mb standard-contig bins.
+8. Mutation matrix: local SBS96 builder from actual Phase 3 WGS-smoke VCF records.
+9. SV evidence: `samtools view` counters for supplementary, discordant, interchromosomal, and large-insert-pair evidence.
+
+Measured Phase 3 WGS smoke:
+
+1. CPUs detected: 18.
+2. Thread budget used: 16.
+3. Parallel tumor/normal alignment: yes.
+4. Per-sample alignment/sort threads: 8.
+5. GATK PairHMM threads: 8.
+6. BAM validation status: passed.
+7. Mutect2 intervals: 99.
+8. Depth-eligible SEQC2 truth variants: 100.
+9. PASS calls in intervals: 0.
+10. Coverage-CNV bins: 631.
+11. SBS96 usable SNV records: 0.
+12. SV evidence status: passed.
+13. Ready for Phase 4 when Diana raw data arrive: yes.
+
+The zero PASS-call and zero SBS96-usable-SNV result is an expected low-depth smoke limitation. The run validates WGS-capable mechanics and real feature-output tables; it does not claim full-depth WGS sensitivity, allele-specific CN segmentation, CHORD classification, scarHRD scoring, or SBS3 assignment.
 
 ## Boundary
 
@@ -189,6 +224,8 @@ The representative data should prove system readiness, not Diana biology. Use it
 4. QC thresholds and failure reporting.
 5. Reference build consistency.
 6. Tumor-normal calling flow.
-7. Evidence-table ingestion from raw-derived outputs.
+7. WES small-variant benchmarking.
+8. WGS feature-output mechanics for CNV bins, mutation matrices, and SV evidence.
+9. Evidence-table ingestion from raw-derived outputs.
 
 Do not use it to decide Diana treatment or infer Diana HRD status.

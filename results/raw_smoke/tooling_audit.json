@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T03:38:27.314Z",
+  "generatedAt": "2026-06-07T04:49:53.093Z",
   "phase2aReady": true,
   "alignmentReady": true,
   "humanReferenceSmokeReady": true,
@@ -9,6 +9,9 @@
   "productionSomaticSmokeReady": true,
   "fullWesBenchmarkToolReady": true,
   "fullWesBenchmarkReady": true,
+  "phase3WgsToolReady": true,
+  "phase3WgsSmokeReady": true,
+  "phase3OptionalSignatureRuntimeReady": true,
   "fullAlignmentToolboxReady": false,
   "workflowReady": false,
   "fullWorkflowReady": false,
@@ -194,6 +197,85 @@
       "allAvailable": true
     },
     {
+      "group": "phase3_wgs_smoke",
+      "requiredFor": "Phase 3 representative WGS alignment, Mutect2, coverage-CNV bins, SBS96 matrix, and BAM-derived SV evidence",
+      "tools": [
+        {
+          "tool": "curl",
+          "path": "/usr/bin/curl",
+          "available": true
+        },
+        {
+          "tool": "gunzip",
+          "path": "/usr/bin/gunzip",
+          "available": true
+        },
+        {
+          "tool": "gzip",
+          "path": "/usr/bin/gzip",
+          "available": true
+        },
+        {
+          "tool": "bwa",
+          "path": "/opt/homebrew/bin/bwa",
+          "available": true
+        },
+        {
+          "tool": "samtools",
+          "path": "/opt/homebrew/bin/samtools",
+          "available": true
+        },
+        {
+          "tool": "bcftools",
+          "path": "/opt/homebrew/bin/bcftools",
+          "available": true
+        },
+        {
+          "tool": "java17",
+          "path": "/opt/homebrew/opt/openjdk@17/bin/java",
+          "available": true
+        }
+      ],
+      "allAvailable": true
+    },
+    {
+      "group": "phase3_wgs_optional_signature_callers",
+      "requiredFor": "Full-depth WGS CHORD/scarHRD/HRDetect/SigProfiler production interpretation",
+      "tools": [
+        {
+          "tool": "R",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "python3",
+          "path": "/usr/bin/python3",
+          "available": true
+        },
+        {
+          "tool": "nextflow",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "docker",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "singularity",
+          "path": "",
+          "available": false
+        },
+        {
+          "tool": "apptainer",
+          "path": "",
+          "available": false
+        }
+      ],
+      "allAvailable": false
+    },
+    {
       "group": "workflow_runtime",
       "requiredFor": "nf-core/sarek or containerized raw-data workflow execution",
       "tools": [
@@ -231,5 +313,5 @@
       "allAvailable": false
     }
   ],
-  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, and Phase 2F full WES benchmark mechanics. Full WGS signature phases still require WGS data and additional CNV/SV/signature tooling."
+  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, Phase 2F full WES benchmark mechanics, and Phase 3 representative WGS smoke mechanics. Full-depth WGS interpretation still requires Diana data and final CNV/SV/signature policy."
 }

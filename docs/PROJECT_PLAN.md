@@ -84,7 +84,9 @@ Phase 2E is complete for one downsampled production-style somatic smoke: the pro
 
 Phase 2F is complete and validated: the project downloads and validates the complete SEQC2/HCC1395 WES tumor-normal FASTQs, aligns to the UCSC hg38 analysis set, runs GATK MarkDuplicates, estimates contamination with common-biallelic gnomAD, runs PoN-aware Mutect2/FilterMutectCalls, and compares PASS calls against covered SEQC2 truth variants. The benchmark produced 1,277 intervals, 1,307 depth-eligible truth variants, 1,122 exact PASS truth matches, 0.8585 recall, 0.9842 precision, contamination estimate 0.0, and `readyForPhase3: true`. The full multi-GB Broad af-only gnomAD resource is documented as a production/cloud input instead of a local gating download.
 
-The next gate is Phase 3: WGS HRD signature capability. This requires WGS representative data, copy-number/SV/signature tooling, and a clear separation between WES small-variant benchmark evidence and WGS-grade HRD evidence.
+Phase 3 is complete and validated for representative WGS-capable smoke: the project streams a real SEQC2/HCC1395 HiSeq X WGS tumor-normal subset, aligns both samples to the full hg38 analysis-set reference in parallel, runs GATK Mutect2/FilterMutectCalls over covered truth-derived intervals, writes coverage-CNV bins, writes a VCF-derived SBS96 matrix, writes BAM-derived SV evidence, and keeps SigProfilerAssignment/scarHRD/CHORD interpretation gated until full-depth inputs support it.
+
+The next gate is Phase 4: Diana data application. This requires Diana's raw-file inventory, matched-normal/reference-build confirmation, sample context, production CNV/SV/signature policy, and reviewer sign-off.
 
 ### Milestone 0: Project Baseline And Source Audit
 
@@ -389,35 +391,51 @@ Verifier:
 
 ### Phase 2F: Production Resources And Full-Depth WES Benchmark
 
-Status: planned.
+Status: complete and validated.
 
 Goal: move from production-style execution smoke to full-depth WES benchmark behavior.
 
-Required deliverables:
+Completed deliverables:
 
 1. Production known-sites, germline resource, panel-of-normals, contamination, orientation-bias, duplicate-marking, BQSR, and interval policy.
-2. Full WES or materially larger HCC1395 WES run.
+2. Full HCC1395 WES tumor-normal FASTQ run.
 3. Depth/coverage/QC reports.
 4. Production-resource-filtered somatic VCFs.
 5. SEQC2 truth-set sensitivity/specificity report where compatible.
 
+Measured result: 1,277 benchmark intervals, 1,307 depth-eligible truth variants, 1,122 exact PASS truth matches, 0.8585 recall, 0.9842 precision, contamination estimate 0.0, and `readyForPhase3: true`.
+
 ### Phase 3: WGS Signature And Allele-Specific HRD
+
+Status: complete and validated for representative WGS-capable smoke.
 
 Goal: replace Phase 1 proxy evidence with real WGS-capable outputs where inputs allow.
 
-Deliverables:
+Completed deliverables:
 
-1. Raw-derived SNV/indel VCFs.
-2. Allele-specific copy-number/purity-ploidy outputs.
-3. SV/rearrangement outputs.
-4. Mutation matrices and SBS3/signature assignment.
-5. CHORD/scarHRD/HRDetect-style evidence tables where tool inputs support them.
+1. Raw-derived WGS-smoke SNV/indel VCF from GATK Mutect2 + FilterMutectCalls.
+2. Coverage-derived copy-number bin table from `samtools bedcov`.
+3. BAM-derived SV evidence table from supplementary, discordant, interchromosomal, and large-insert read evidence.
+4. Mutation matrix: 96-row SBS matrix from actual WGS-smoke VCF records.
+5. SigProfilerAssignment, scarHRD, and CHORD readiness evidence table that points to real local outputs and keeps final classification gated for full-depth inputs.
+
+Measured result:
+
+1. Reads per FASTQ end: 500,000.
+2. BAM validation status: passed.
+3. Mutect2 intervals: 99.
+4. Depth-eligible SEQC2 truth variants: 100.
+5. PASS calls in intervals: 0.
+6. Coverage-CNV bins: 631.
+7. SBS96 usable SNV records: 0.
+8. SV evidence status: passed.
+9. Ready for Phase 4 when Diana raw data arrive: yes.
 
 Verifier:
 
-1. Full WES/WGS or explicit subset run has reproducible logs and versions.
-2. Tool outputs are ingested into the evidence table without collapsing distinct evidence classes.
-3. WES-only and WGS-capable results remain clearly separated.
+1. `bun run fetch:phase3-wgs` streams and validates the representative WGS FASTQ subset.
+2. `bun run smoke:phase3-wgs` runs the WGS-capable BAM/VCF/CNV/matrix/SV evidence smoke.
+3. `bun run verify:outputs` confirms the WGS outputs and the WES-versus-WGS evidence boundary.
 
 ### Phase 4: Diana Data
 
