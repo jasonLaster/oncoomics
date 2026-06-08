@@ -8,6 +8,7 @@ ENV DIANA_OMICS_ROOT=/opt/diana-omics
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         aria2 \
+        awscli \
         bcftools \
         bwa \
         ca-certificates \
@@ -21,6 +22,10 @@ RUN apt-get update \
         seqkit \
         unzip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /opt/diana-aws/bin \
+    && printf '%s\n' '#!/bin/sh' 'export AWS_CA_BUNDLE="${AWS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}"' 'exec /usr/bin/aws "$@"' > /opt/diana-aws/bin/aws \
+    && chmod +x /opt/diana-aws/bin/aws
 
 WORKDIR /opt/diana-omics
 COPY . /opt/diana-omics

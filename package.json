@@ -43,6 +43,16 @@
     "nf:full-wes": "nextflow run main.nf -profile local --workflow full_wes",
     "nf:phase3-wgs:dev": "nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads 500000",
     "nf:phase3-wgs:full": "nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads full",
-    "nf:all-public": "nextflow run main.nf -profile local --workflow all_public --phase3_reads 500000"
+    "nf:all-public": "nextflow run main.nf -profile local --workflow all_public --phase3_reads 500000",
+    "infra:aws:init": "terraform -chdir=infra/aws init",
+    "infra:aws:fmt": "terraform -chdir=infra/aws fmt",
+    "infra:aws:fmt:check": "terraform -chdir=infra/aws fmt -check",
+    "infra:aws:validate": "terraform -chdir=infra/aws validate",
+    "infra:aws:plan": "TF_VAR_image_tag=${AWS_IMAGE_TAG:-$(git rev-parse --short HEAD)} terraform -chdir=infra/aws plan",
+    "infra:aws:apply": "TF_VAR_image_tag=${AWS_IMAGE_TAG:-$(git rev-parse --short HEAD)} terraform -chdir=infra/aws apply",
+    "aws:ecr:push": "AWS_REGION=${AWS_REGION:-us-west-1} bash infra/aws/push-image.sh",
+    "nf:aws:quick:stub": "nextflow run main.nf -profile awsbatch_spot -params-file infra/aws/nextflow.aws.json --workflow quick -stub-run",
+    "nf:aws:phase3-wgs:dev": "nextflow run main.nf -profile awsbatch_spot -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs --phase3_reads 500000",
+    "nf:aws:phase3-wgs:full": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs --phase3_reads full"
   }
 }

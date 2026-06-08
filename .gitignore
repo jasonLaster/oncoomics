@@ -25,3 +25,10 @@ node_modules/
 .nextflow.log*
 work/
 nextflow-out/
+
+# Terraform runtime state.
+infra/aws/.terraform/
+infra/aws/*.tfstate
+infra/aws/*.tfstate.*
+infra/aws/*.tfplan
+infra/aws/nextflow.aws.json

@@ -8,3 +8,11 @@ nextflow-out/
 
 data/raw/**
 !data/raw/.gitkeep
+data/processed/**
+results/**
+
+infra/aws/.terraform/**
+infra/aws/*.tfstate
+infra/aws/*.tfstate.*
+infra/aws/*.tfplan
+infra/aws/nextflow.aws.json
