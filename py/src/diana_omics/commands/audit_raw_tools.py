@@ -55,8 +55,17 @@ TOOL_GROUPS = [
 
 
 def java17_path() -> str:
-    candidates = [os.environ.get("GATK_JAVA", ""), "/opt/homebrew/opt/openjdk@17/bin/java", "/opt/homebrew/bin/java", command_path("java")]
+    candidates = [
+        os.environ.get("GATK_JAVA", ""),
+        os.path.join(os.environ.get("JAVA_HOME", ""), "bin", "java") if os.environ.get("JAVA_HOME") else "",
+        command_path("java"),
+        "/usr/bin/java",
+        "/opt/homebrew/opt/openjdk@17/bin/java",
+        "/opt/homebrew/bin/java",
+    ]
     for candidate in [candidate for candidate in candidates if candidate]:
+        if not os.path.exists(candidate):
+            continue
         result = subprocess.run([candidate, "-version"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
         output = f"{result.stdout}{result.stderr}"
         match = re.search(r'version "(\d+)', output)

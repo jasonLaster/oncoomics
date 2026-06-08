@@ -51,6 +51,7 @@
     "infra:aws:plan": "TF_VAR_image_tag=${AWS_IMAGE_TAG:-$(git rev-parse --short HEAD)} terraform -chdir=infra/aws plan",
     "infra:aws:apply": "TF_VAR_image_tag=${AWS_IMAGE_TAG:-$(git rev-parse --short HEAD)} terraform -chdir=infra/aws apply",
     "aws:ecr:push": "AWS_REGION=${AWS_REGION:-us-west-1} bash infra/aws/push-image.sh",
+    "nf:aws:monitor": "bash infra/aws/monitor-batch-job.sh",
     "nf:aws:quick:stub": "nextflow run main.nf -profile awsbatch_spot -params-file infra/aws/nextflow.aws.json --workflow quick -stub-run",
     "nf:aws:phase3-wgs:dev": "nextflow run main.nf -profile awsbatch_spot -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs --phase3_reads 500000",
     "nf:aws:phase3-wgs:full": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs --phase3_reads full"

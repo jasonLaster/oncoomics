@@ -71,6 +71,28 @@ Confirm:
 - S3 work objects appear under the `diana-omics-work-...` bucket.
 - No raw data was uploaded from local.
 
+## Monitoring
+
+Get the AWS Batch job id from Nextflow output or from `nextflow.log`, then poll status and recent logs:
+
+```sh
+bun run nf:aws:monitor -- JOB_ID
+```
+
+For a one-time snapshot:
+
+```sh
+bun run nf:aws:monitor -- JOB_ID --once
+```
+
+For live CloudWatch log following:
+
+```sh
+bun run nf:aws:monitor -- JOB_ID --follow
+```
+
+The monitor prints Batch job state, queue compute environment capacity, active Batch EC2 hosts, and the assigned CloudWatch stream. By default it repeats every 60 seconds until the job reaches `SUCCEEDED` or `FAILED`; override with `AWS_MONITOR_INTERVAL=...` or `--interval ...`. Use it during long WGS runs; when a run finishes or fails, also confirm Batch compute returns to `desired: 0` and no `diana-omics-prod-batch` EC2 instances are still running.
+
 ## Bounded Validation
 
 Only after the stub succeeds:

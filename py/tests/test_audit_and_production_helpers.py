@@ -16,6 +16,34 @@ class AuditAndProductionHelpersTest(unittest.TestCase):
         self.assertEqual(audit_raw_tools.available_tools("x", groups), ["a"])
         self.assertEqual(audit_raw_tools.available_tools("missing", groups), [])
 
+    def test_java17_path_uses_path_java_before_homebrew(self):
+        calls = []
+
+        def fake_run(args, **kwargs):
+            calls.append(args[0])
+            return type("Result", (), {"returncode": 0, "stdout": "", "stderr": 'openjdk version "17.0.15"\n'})()
+
+        with (
+            patch.object(audit_raw_tools, "command_path", lambda tool: "/usr/bin/java" if tool == "java" else ""),
+            patch.object(audit_raw_tools.os.path, "exists", lambda path: path == "/usr/bin/java"),
+            patch.object(audit_raw_tools.subprocess, "run", fake_run),
+            patch.dict(audit_raw_tools.os.environ, {}, clear=True),
+        ):
+            self.assertEqual(audit_raw_tools.java17_path(), "/usr/bin/java")
+
+        self.assertEqual(calls, ["/usr/bin/java"])
+
+    def test_java17_path_skips_missing_candidates(self):
+        with (
+            patch.object(audit_raw_tools, "command_path", lambda tool: ""),
+            patch.object(audit_raw_tools.os.path, "exists", lambda path: False),
+            patch.object(audit_raw_tools.subprocess, "run") as run,
+            patch.dict(audit_raw_tools.os.environ, {"GATK_JAVA": "/missing/java"}, clear=True),
+        ):
+            self.assertEqual(audit_raw_tools.java17_path(), "")
+
+        run.assert_not_called()
+
     def test_reference_dict_path(self):
         self.assertEqual(fetch_production_somatic_assets.reference_dict_path("ref.fa"), "ref.dict")
         self.assertEqual(fetch_production_somatic_assets.reference_dict_path("ref.fasta"), "ref.dict")
