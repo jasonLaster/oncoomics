@@ -77,6 +77,7 @@ Start with [docs/readme.md](/Users/jasonlaster/src/projects/diana-omics/docs/rea
 | [docs/source-map.md](/Users/jasonlaster/src/projects/diana-omics/docs/source-map.md) | Audit where each dataset, truth set, tool, and vendor-context claim came from. |
 | [docs/wiki-source-summary.md](/Users/jasonlaster/src/projects/diana-omics/docs/wiki-source-summary.md) | Understand how the original Diana wiki packet shaped the scope and caveats. |
 | [docs/reference-panel-label-rules.md](/Users/jasonlaster/src/projects/diana-omics/docs/reference-panel-label-rules.md) | Review how Phase 1 public HRD panel labels are assigned and caveated. |
+| [docs/aws-silly-ec2.md](/Users/jasonlaster/src/projects/diana-omics/docs/aws-silly-ec2.md) | Run a tiny self-terminating AWS EC2 smoke test. |
 
 Main code:
 
