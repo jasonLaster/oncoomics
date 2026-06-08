@@ -10,6 +10,8 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
+import time
 import urllib.error
 import urllib.request
 from collections import defaultdict
@@ -177,14 +179,39 @@ def file_non_empty(relative_path: Union[str, Path]) -> bool:
 
 
 def run_command(command: str, log_path: Optional[str] = None, max_buffer: Optional[int] = None) -> str:
-    result = subprocess.run(
-        ["bash", "-lc", command],
-        cwd=path_from_root(""),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    heartbeat_seconds = int(os.environ.get("DIANA_OMICS_COMMAND_HEARTBEAT_SECONDS", "300"))
+    started_at = time.monotonic()
+    next_heartbeat = started_at + max(1, heartbeat_seconds)
+    with tempfile.TemporaryDirectory(prefix="diana-omics-command-") as tmpdir:
+        stdout_path = Path(tmpdir) / "stdout.txt"
+        stderr_path = Path(tmpdir) / "stderr.txt"
+        with stdout_path.open("w+", encoding="utf-8") as stdout_handle, stderr_path.open("w+", encoding="utf-8") as stderr_handle:
+            process = subprocess.Popen(
+                ["bash", "-lc", command],
+                cwd=path_from_root(""),
+                text=True,
+                stdout=stdout_handle,
+                stderr=stderr_handle,
+            )
+            while True:
+                exit_status = process.poll()
+                if exit_status is not None:
+                    break
+                now = time.monotonic()
+                if heartbeat_seconds > 0 and now >= next_heartbeat:
+                    elapsed = int(now - started_at)
+                    log_suffix = f" log={log_path}" if log_path else ""
+                    print(f"[heartbeat] command still running elapsed={elapsed}s{log_suffix}: {command}", flush=True)
+                    next_heartbeat = now + heartbeat_seconds
+                time.sleep(1)
+
+            stdout_handle.seek(0)
+            stderr_handle.seek(0)
+            stdout = stdout_handle.read()
+            stderr = stderr_handle.read()
+    if max_buffer is not None and max_buffer > 0:
+        stdout = stdout[-max_buffer:]
+        stderr = stderr[-max_buffer:]
     if log_path:
         write_text(
             path_from_root(log_path),
@@ -193,19 +220,19 @@ def run_command(command: str, log_path: Optional[str] = None, max_buffer: Option
                     f"$ {command}",
                     "",
                     "## stdout",
-                    result.stdout or "",
+                    stdout or "",
                     "",
                     "## stderr",
-                    result.stderr or "",
+                    stderr or "",
                     "",
-                    f"exit_status={result.returncode}",
+                    f"exit_status={exit_status}",
                 ]
             ),
         )
-    if result.returncode != 0:
-        suffix = f". See {log_path}." if log_path else f"\n{result.stderr}"
-        raise RuntimeError(f"Command failed ({result.returncode}): {command}{suffix}")
-    return result.stdout
+    if exit_status != 0:
+        suffix = f". See {log_path}." if log_path else f"\n{stderr}"
+        raise RuntimeError(f"Command failed ({exit_status}): {command}{suffix}")
+    return stdout
 
 
 def run_commands_parallel(commands: Sequence[tuple[str, str]], workers: int) -> list[str]:

@@ -1,6 +1,8 @@
 import tempfile
 import unittest
+from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 from diana_omics import utils
 
@@ -26,6 +28,20 @@ class UtilsTest(unittest.TestCase):
             path.write_text("x")
             self.assertTrue(utils.file_non_empty(path))
             self.assertFalse(utils.file_non_empty(Path(tmp)))
+
+    def test_run_command_writes_heartbeat_for_long_command(self):
+        output = StringIO()
+        with (
+            patch.dict(utils.os.environ, {"DIANA_OMICS_COMMAND_HEARTBEAT_SECONDS": "1"}),
+            patch("sys.stdout", output),
+        ):
+            self.assertEqual(utils.run_command("sleep 2; printf done"), "done")
+
+        self.assertIn("[heartbeat] command still running", output.getvalue())
+        self.assertIn("sleep 2; printf done", output.getvalue())
+
+    def test_run_command_honors_max_buffer(self):
+        self.assertEqual(utils.run_command("printf 123456", max_buffer=3), "456")
 
     def test_math_and_clinical_helpers(self):
         self.assertEqual(utils.to_number("4.5"), 4.5)
