@@ -1,0 +1,529 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+COMMAND="${1:-help}"
+REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-us-west-2}}"
+NAME="${AWS_SILLY_NAME:-diana-omics-silly-ec2}"
+INSTANCE_TYPE="${AWS_SILLY_INSTANCE_TYPE:-t3.micro}"
+ARCH="${AWS_SILLY_ARCH:-x86_64}"
+ROLE_NAME="${AWS_SILLY_ROLE_NAME:-diana-omics-silly-ec2-role}"
+INSTANCE_PROFILE_NAME="${AWS_SILLY_INSTANCE_PROFILE_NAME:-diana-omics-silly-ec2-profile}"
+
+case "${ARCH}" in
+  x86_64)
+    AMI_PARAM="/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+    ;;
+  arm64)
+    AMI_PARAM="/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64"
+    ;;
+  *)
+    echo "Unsupported AWS_SILLY_ARCH=${ARCH}. Use x86_64 or arm64." >&2
+    exit 2
+    ;;
+esac
+
+require_aws() {
+  if ! command -v aws >/dev/null 2>&1; then
+    cat >&2 <<'EOF'
+aws CLI was not found.
+
+Install it first, for example:
+  brew install awscli
+
+Then authenticate, for example:
+  aws configure sso
+EOF
+    exit 1
+  fi
+}
+
+account_id() {
+  aws sts get-caller-identity \
+    --region "${REGION}" \
+    --query Account \
+    --output text
+}
+
+silly_bucket_name() {
+  if [[ -n "${AWS_SILLY_S3_BUCKET:-}" ]]; then
+    echo "${AWS_SILLY_S3_BUCKET}"
+    return
+  fi
+
+  echo "diana-omics-silly-$(account_id)-${REGION}"
+}
+
+instance_profile_exists() {
+  aws iam get-instance-profile \
+    --instance-profile-name "${INSTANCE_PROFILE_NAME}" \
+    >/dev/null 2>&1
+}
+
+default_subnet_id() {
+  if [[ -n "${AWS_SILLY_SUBNET_ID:-}" ]]; then
+    echo "${AWS_SILLY_SUBNET_ID}"
+    return
+  fi
+
+  aws ec2 describe-subnets \
+    --region "${REGION}" \
+    --filters "Name=default-for-az,Values=true" \
+    --query "Subnets[0].SubnetId" \
+    --output text
+}
+
+default_security_group_id() {
+  if [[ -n "${AWS_SILLY_SECURITY_GROUP_ID:-}" ]]; then
+    echo "${AWS_SILLY_SECURITY_GROUP_ID}"
+    return
+  fi
+
+  local subnet_id vpc_id
+  subnet_id="$(default_subnet_id)"
+  vpc_id="$(
+    aws ec2 describe-subnets \
+      --region "${REGION}" \
+      --subnet-ids "${subnet_id}" \
+      --query "Subnets[0].VpcId" \
+      --output text
+  )"
+
+  aws ec2 describe-security-groups \
+    --region "${REGION}" \
+    --filters "Name=vpc-id,Values=${vpc_id}" "Name=group-name,Values=default" \
+    --query "SecurityGroups[0].GroupId" \
+    --output text
+}
+
+check_default_network() {
+  local subnet_id sg_id
+  subnet_id="$(default_subnet_id)"
+  if [[ -z "${subnet_id}" || "${subnet_id}" == "None" ]]; then
+    cat >&2 <<EOF
+No default subnet was found in ${REGION}.
+
+Set AWS_SILLY_SUBNET_ID and AWS_SILLY_SECURITY_GROUP_ID, or choose a region
+with a default VPC:
+  AWS_REGION=us-east-1 scripts/aws-silly-ec2 check
+EOF
+    exit 1
+  fi
+
+  sg_id="$(default_security_group_id)"
+  if [[ -z "${sg_id}" || "${sg_id}" == "None" ]]; then
+    echo "No default security group found for subnet ${subnet_id}." >&2
+    exit 1
+  fi
+}
+
+check() {
+  require_aws
+  check_default_network
+
+  local bucket profile_status
+  bucket="$(silly_bucket_name)"
+  if instance_profile_exists; then
+    profile_status="present"
+  else
+    profile_status="missing; run scripts/aws-silly-ec2 setup-s3"
+  fi
+
+  echo "AWS account: $(account_id)"
+  echo "Region: ${REGION}"
+  echo "Instance type: ${INSTANCE_TYPE}"
+  echo "AMI alias: resolve:ssm:${AMI_PARAM}"
+  echo "Subnet: $(default_subnet_id)"
+  echo "Security group: $(default_security_group_id)"
+  echo "S3 bucket: ${bucket}"
+  echo "EC2 S3 instance profile: ${profile_status}"
+  echo
+  echo "Ready. Launch with:"
+  echo "  scripts/aws-silly-ec2 launch"
+}
+
+setup_s3() {
+  require_aws
+
+  local bucket assume_role_policy role_policy
+  bucket="$(silly_bucket_name)"
+  assume_role_policy="$(mktemp)"
+  role_policy="$(mktemp)"
+  AWS_SILLY_ASSUME_POLICY_TMP="${assume_role_policy}"
+  AWS_SILLY_ROLE_POLICY_TMP="${role_policy}"
+  trap 'rm -f "${AWS_SILLY_ASSUME_POLICY_TMP:-}" "${AWS_SILLY_ROLE_POLICY_TMP:-}"' EXIT
+
+  cat >"${assume_role_policy}" <<'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
+  cat >"${role_policy}" <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::${bucket}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::${bucket}/silly-ec2/*"
+    }
+  ]
+}
+EOF
+
+  if aws s3api head-bucket --region "${REGION}" --bucket "${bucket}" >/dev/null 2>&1; then
+    echo "Bucket already exists and is reachable: s3://${bucket}"
+  else
+    if [[ "${REGION}" == "us-east-1" ]]; then
+      aws s3api create-bucket \
+        --region "${REGION}" \
+        --bucket "${bucket}" \
+        >/dev/null
+    else
+      aws s3api create-bucket \
+        --region "${REGION}" \
+        --bucket "${bucket}" \
+        --create-bucket-configuration "LocationConstraint=${REGION}" \
+        >/dev/null
+    fi
+    echo "Created bucket: s3://${bucket}"
+  fi
+
+  aws s3api put-public-access-block \
+    --region "${REGION}" \
+    --bucket "${bucket}" \
+    --public-access-block-configuration \
+      BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+  aws s3api put-bucket-encryption \
+    --region "${REGION}" \
+    --bucket "${bucket}" \
+    --server-side-encryption-configuration \
+      '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+
+  if aws iam get-role --role-name "${ROLE_NAME}" >/dev/null 2>&1; then
+    echo "Role already exists: ${ROLE_NAME}"
+  else
+    aws iam create-role \
+      --role-name "${ROLE_NAME}" \
+      --assume-role-policy-document "file://${assume_role_policy}" \
+      >/dev/null
+    echo "Created role: ${ROLE_NAME}"
+  fi
+
+  aws iam put-role-policy \
+    --role-name "${ROLE_NAME}" \
+    --policy-name "${ROLE_NAME}-s3-policy" \
+    --policy-document "file://${role_policy}"
+
+  if instance_profile_exists; then
+    echo "Instance profile already exists: ${INSTANCE_PROFILE_NAME}"
+  else
+    aws iam create-instance-profile \
+      --instance-profile-name "${INSTANCE_PROFILE_NAME}" \
+      >/dev/null
+    echo "Created instance profile: ${INSTANCE_PROFILE_NAME}"
+  fi
+
+  if aws iam get-instance-profile \
+    --instance-profile-name "${INSTANCE_PROFILE_NAME}" \
+    --query "InstanceProfile.Roles[?RoleName=='${ROLE_NAME}']" \
+    --output text | grep -q "${ROLE_NAME}"; then
+    echo "Role is already attached to instance profile."
+  else
+    aws iam add-role-to-instance-profile \
+      --instance-profile-name "${INSTANCE_PROFILE_NAME}" \
+      --role-name "${ROLE_NAME}"
+    echo "Attached role to instance profile."
+    echo "AWS may need a minute before the instance profile is launchable."
+  fi
+
+  echo
+  echo "S3 setup complete. Launch with:"
+  echo "  scripts/aws-silly-ec2 launch"
+}
+
+cleanup_s3() {
+  require_aws
+
+  local bucket
+  bucket="$(silly_bucket_name)"
+
+  echo "Removing silly S3 reports from s3://${bucket}/silly-ec2/"
+  aws s3 rm "s3://${bucket}/silly-ec2/" --region "${REGION}" --recursive || true
+
+  if instance_profile_exists; then
+    if aws iam get-instance-profile \
+      --instance-profile-name "${INSTANCE_PROFILE_NAME}" \
+      --query "InstanceProfile.Roles[?RoleName=='${ROLE_NAME}']" \
+      --output text | grep -q "${ROLE_NAME}"; then
+      aws iam remove-role-from-instance-profile \
+        --instance-profile-name "${INSTANCE_PROFILE_NAME}" \
+        --role-name "${ROLE_NAME}"
+    fi
+
+    aws iam delete-instance-profile \
+      --instance-profile-name "${INSTANCE_PROFILE_NAME}" \
+      || true
+  fi
+
+  if aws iam get-role --role-name "${ROLE_NAME}" >/dev/null 2>&1; then
+    aws iam delete-role-policy \
+      --role-name "${ROLE_NAME}" \
+      --policy-name "${ROLE_NAME}-s3-policy" \
+      || true
+
+    aws iam delete-role \
+      --role-name "${ROLE_NAME}" \
+      || true
+  fi
+
+  aws s3api delete-bucket --region "${REGION}" --bucket "${bucket}" || true
+  echo "S3 cleanup attempted. If bucket deletion failed, check for remaining objects in s3://${bucket}."
+}
+
+confirm_launch() {
+  if [[ "${AWS_SILLY_YES:-}" == "1" ]]; then
+    return
+  fi
+
+  echo "This will launch one ${INSTANCE_TYPE} EC2 instance in ${REGION}."
+  echo "It should run briefly, print silly console output, then terminate itself."
+  echo "AWS may still charge for EC2/EBS usage depending on your account."
+  printf "Type launch to continue: "
+  read -r answer
+  if [[ "${answer}" != "launch" ]]; then
+    echo "Canceled."
+    exit 0
+  fi
+}
+
+launch() {
+  require_aws
+  check_default_network
+  confirm_launch
+
+  local user_data instance_id subnet_id sg_id bucket has_instance_profile
+  user_data="$(mktemp)"
+  AWS_SILLY_USER_DATA_TMP="${user_data}"
+  subnet_id="$(default_subnet_id)"
+  sg_id="$(default_security_group_id)"
+  bucket="$(silly_bucket_name)"
+  if instance_profile_exists; then
+    has_instance_profile=1
+  else
+    has_instance_profile=0
+    echo "No EC2 S3 instance profile found; launch will skip S3." >&2
+    echo "Run scripts/aws-silly-ec2 setup-s3 to let the instance write to S3." >&2
+  fi
+  trap 'rm -f "${AWS_SILLY_USER_DATA_TMP:-}"' EXIT
+
+  cat >"${user_data}" <<EOF
+#!/bin/bash
+set -euxo pipefail
+exec > >(tee /var/log/silly-ec2.log | logger -t silly-ec2 -s 2>/dev/console) 2>&1
+SILLY_S3_BUCKET="${bucket}"
+SILLY_AWS_REGION="${REGION}"
+
+echo "SILLY_EC2_BEGIN \$(date -Is)"
+echo "Hello from a tiny disposable EC2 instance."
+echo
+cat <<'ART'
+     .-.
+    (o o)   cloud potato says:
+    | O \   "I booted, therefore I yam."
+     \   \
+      \`~~~'
+ART
+echo
+
+adjectives=(crunchy luminous overcaffeinated ceremonial tactical)
+nouns=(waffle comet pickle spreadsheet nebula)
+adj="\${adjectives[\$((RANDOM % \${#adjectives[@]}))]}"
+noun="\${nouns[\$((RANDOM % \${#nouns[@]}))]}"
+score=\$((RANDOM % 1000))
+
+echo "Silly verdict: \${adj} \${noun}"
+echo "Moon-cheese compatibility score: \${score}/999"
+
+if command -v aws >/dev/null 2>&1 && [[ -n "\${SILLY_S3_BUCKET}" ]]; then
+  report="/tmp/silly-ec2-report.txt"
+  {
+    echo "Silly EC2 S3 report"
+    echo "created_at=\$(date -Is)"
+    token="\$(curl -fsS -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')"
+    instance_id="\$(curl -fsS -H "X-aws-ec2-metadata-token: \${token}" 'http://169.254.169.254/latest/meta-data/instance-id')"
+    echo "instance_id=\${instance_id}"
+    echo "verdict=\${adj} \${noun}"
+    echo "moon_cheese_score=\${score}/999"
+  } >"\${report}"
+  key="silly-ec2/\$(date +%Y%m%dT%H%M%SZ)-report.txt"
+  aws s3 cp "\${report}" "s3://\${SILLY_S3_BUCKET}/\${key}" --region "\${SILLY_AWS_REGION}"
+  echo "S3 report: s3://\${SILLY_S3_BUCKET}/\${key}"
+else
+  echo "Skipping S3 report; aws CLI or bucket setting is unavailable."
+fi
+
+echo "SILLY_EC2_DONE \$(date -Is)"
+echo "Self-terminating in 20 seconds to keep this cheap."
+sleep 20
+shutdown -h now
+EOF
+
+  if [[ "${has_instance_profile}" == "1" ]]; then
+    instance_id="$(
+      aws ec2 run-instances \
+        --region "${REGION}" \
+        --image-id "resolve:ssm:${AMI_PARAM}" \
+        --instance-type "${INSTANCE_TYPE}" \
+        --subnet-id "${subnet_id}" \
+        --security-group-ids "${sg_id}" \
+        --user-data "file://${user_data}" \
+        --instance-initiated-shutdown-behavior terminate \
+        --metadata-options "HttpTokens=required" \
+        --iam-instance-profile "Name=${INSTANCE_PROFILE_NAME}" \
+        --block-device-mappings "DeviceName=/dev/xvda,Ebs={VolumeSize=8,VolumeType=gp3,DeleteOnTermination=true,Encrypted=true}" \
+        --tag-specifications \
+          "ResourceType=instance,Tags=[{Key=Name,Value=${NAME}},{Key=Project,Value=diana-omics},{Key=Purpose,Value=silly-ec2-smoke},{Key=Owner,Value=${USER:-codex}}]" \
+          "ResourceType=volume,Tags=[{Key=Name,Value=${NAME}},{Key=Project,Value=diana-omics},{Key=Purpose,Value=silly-ec2-smoke},{Key=Owner,Value=${USER:-codex}}]" \
+        --query "Instances[0].InstanceId" \
+        --output text
+    )"
+  else
+    instance_id="$(
+      aws ec2 run-instances \
+        --region "${REGION}" \
+        --image-id "resolve:ssm:${AMI_PARAM}" \
+        --instance-type "${INSTANCE_TYPE}" \
+        --subnet-id "${subnet_id}" \
+        --security-group-ids "${sg_id}" \
+        --user-data "file://${user_data}" \
+        --instance-initiated-shutdown-behavior terminate \
+        --metadata-options "HttpTokens=required" \
+        --block-device-mappings "DeviceName=/dev/xvda,Ebs={VolumeSize=8,VolumeType=gp3,DeleteOnTermination=true,Encrypted=true}" \
+        --tag-specifications \
+          "ResourceType=instance,Tags=[{Key=Name,Value=${NAME}},{Key=Project,Value=diana-omics},{Key=Purpose,Value=silly-ec2-smoke},{Key=Owner,Value=${USER:-codex}}]" \
+          "ResourceType=volume,Tags=[{Key=Name,Value=${NAME}},{Key=Project,Value=diana-omics},{Key=Purpose,Value=silly-ec2-smoke},{Key=Owner,Value=${USER:-codex}}]" \
+        --query "Instances[0].InstanceId" \
+        --output text
+    )"
+  fi
+
+  echo "Launched ${instance_id}"
+  echo
+  echo "Watch status:"
+  echo "  scripts/aws-silly-ec2 status"
+  echo
+  echo "Fetch console output after a minute or two:"
+  echo "  scripts/aws-silly-ec2 console ${instance_id}"
+}
+
+status() {
+  require_aws
+  aws ec2 describe-instances \
+    --region "${REGION}" \
+    --filters "Name=tag:Project,Values=diana-omics" "Name=tag:Purpose,Values=silly-ec2-smoke" \
+    --query "Reservations[].Instances[].{InstanceId:InstanceId,State:State.Name,Type:InstanceType,LaunchTime:LaunchTime,Name:Tags[?Key=='Name']|[0].Value}" \
+    --output table
+}
+
+s3_ls() {
+  require_aws
+  local bucket
+  bucket="$(silly_bucket_name)"
+
+  aws s3 ls "s3://${bucket}/silly-ec2/" --region "${REGION}" --recursive
+}
+
+console() {
+  require_aws
+  local instance_id="${2:-}"
+  if [[ -z "${instance_id}" ]]; then
+    echo "Usage: scripts/aws-silly-ec2 console i-0123456789abcdef0" >&2
+    exit 2
+  fi
+
+  aws ec2 get-console-output \
+    --region "${REGION}" \
+    --instance-id "${instance_id}" \
+    --latest \
+    --query Output \
+    --output text
+}
+
+terminate() {
+  require_aws
+  local instance_id="${2:-}"
+  if [[ -z "${instance_id}" ]]; then
+    echo "Usage: scripts/aws-silly-ec2 terminate i-0123456789abcdef0" >&2
+    exit 2
+  fi
+
+  aws ec2 terminate-instances \
+    --region "${REGION}" \
+    --instance-ids "${instance_id}" \
+    --output table
+}
+
+help() {
+  cat <<EOF
+Usage: scripts/aws-silly-ec2 <command>
+
+Commands:
+  check       Verify AWS CLI auth, region, AMI alias, subnet, and security group.
+  setup-s3    Create a private S3 bucket and EC2 role for the smoke test.
+  cleanup-s3  Delete the smoke-test S3 bucket, instance profile, and role.
+  launch      Launch one self-terminating EC2 instance that prints silly output.
+  status      List silly EC2 smoke-test instances.
+  s3-ls       List silly reports written to S3.
+  console ID  Print EC2 console output for an instance.
+  terminate ID
+              Terminate an instance manually.
+
+Environment:
+  AWS_REGION or AWS_DEFAULT_REGION       Default: us-west-2
+  AWS_SILLY_INSTANCE_TYPE                Default: t3.micro
+  AWS_SILLY_ARCH                         Default: x86_64; also supports arm64
+  AWS_SILLY_SUBNET_ID                    Optional explicit subnet
+  AWS_SILLY_SECURITY_GROUP_ID            Optional explicit security group
+  AWS_SILLY_S3_BUCKET                    Optional explicit bucket name
+  AWS_SILLY_YES=1                        Skip launch confirmation
+EOF
+}
+
+case "${COMMAND}" in
+  check) check ;;
+  setup-s3) setup_s3 ;;
+  cleanup-s3) cleanup_s3 ;;
+  launch) launch ;;
+  status) status ;;
+  s3-ls) s3_ls ;;
+  console) console "$@" ;;
+  terminate) terminate "$@" ;;
+  help|-h|--help) help ;;
+  *)
+    echo "Unknown command: ${COMMAND}" >&2
+    help >&2
+    exit 2
+    ;;
+esac
