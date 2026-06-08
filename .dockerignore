@@ -1,0 +1,10 @@
+.git/
+.nextflow/
+work/
+nextflow-out/
+.pytest_cache/
+**/__pycache__/
+*.pyc
+
+data/raw/**
+!data/raw/.gitkeep

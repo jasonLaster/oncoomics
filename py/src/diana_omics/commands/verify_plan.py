@@ -61,21 +61,24 @@ def main() -> None:
         "manifests/validation_atlases.json",
     ]:
         require_file(ROOT / file)
-    for file in [
-        "index.md",
-        "findings-overview.md",
-        "derived-findings.md",
-        "analysis-workflows.md",
-        "validation-atlases.md",
-        "partner-questions.md",
-    ]:
-        require_file(WIKI_ROOT / file)
+    if os.environ.get("DIANA_OMICS_SKIP_WIKI_CHECKS", "").lower() in {"1", "true", "yes"}:
+        warnings.append("Skipping Diana wiki source checks because DIANA_OMICS_SKIP_WIKI_CHECKS=1.")
+    else:
+        for file in [
+            "index.md",
+            "findings-overview.md",
+            "derived-findings.md",
+            "analysis-workflows.md",
+            "validation-atlases.md",
+            "partner-questions.md",
+        ]:
+            require_file(WIKI_ROOT / file)
 
     plan = read_project_file("docs/project-plan.md")
     for required_section in [
         "Phase 1: Processed Public HRD/RNA Panel",
         "Phase 2: Raw WES and Caller Readiness",
-        "Phase 3: Representative WGS Mechanics",
+        "Phase 3: Full Public WGS Validation",
         "Phase 3B: Orthogonal Known-Answer Validation",
         "Phase 4: Diana Raw-Data Recompute",
         "Continuous Quality Gates",

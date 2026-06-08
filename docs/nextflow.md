@@ -1,0 +1,96 @@
+# Nextflow Orchestration
+
+This repository keeps the Python commands as the source of truth and uses Nextflow as a portable runner around those commands. The first Nextflow layer is command-stage based: each selected workflow copies the repo into a task workspace, sets `DIANA_OMICS_ROOT` to that workspace, and runs the existing `python -m diana_omics ...` commands there.
+
+## Local Runs
+
+Install Nextflow, then run one of the task aliases:
+
+```sh
+bun run nf:quick
+bun run nf:full-wes
+bun run nf:phase3-wgs:dev
+bun run nf:phase3-wgs:full
+bun run nf:all-public
+```
+
+Direct Nextflow equivalents:
+
+```sh
+nextflow run main.nf -profile local --workflow quick
+nextflow run main.nf -profile local --workflow full_wes
+nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads 500000
+nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads full
+nextflow run main.nf -profile local --workflow all_public --phase3_reads 500000
+```
+
+`phase3_wgs` defaults to `500000` read pairs when `--phase3_reads` is omitted. Full-source WGS is intentionally opt-in:
+
+```sh
+nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads full
+```
+
+`all_public` requires an explicit `--phase3_reads` value. If that value is `full`, it also requires:
+
+```sh
+nextflow run main.nf -profile local --workflow all_public --phase3_reads full --allow_full_wgs true
+```
+
+Outputs are published under `nextflow-out/<workflow>/`.
+
+Bounded Phase 3 runs are developer plumbing checks. They may run `verify:outputs` for visibility, but a failing full-output verifier is non-fatal unless `--phase3_reads full` is selected. Full-source runs keep `verify:outputs` fatal because that verifier is the acceptance gate for Diana-readiness evidence.
+
+## Docker Profile
+
+Build the local image:
+
+```sh
+docker build -t diana-omics:local .
+```
+
+Run with the Docker profile:
+
+```sh
+nextflow run main.nf -profile docker --workflow quick
+nextflow run main.nf -profile docker --workflow phase3_wgs --phase3_reads 500000
+```
+
+Use `-stub-run` for a fast container wiring check that does not fetch data or run analysis:
+
+```sh
+nextflow run main.nf -profile docker --workflow quick -stub-run
+```
+
+The Docker image includes the repo skeleton, manifests, docs, result summaries, Python package, Java 17, BWA, samtools, bcftools, seqkit, aria2, curl, unzip, and rsync. It does not bake bulky `data/raw` files into the image; fetch commands recreate raw inputs inside the task workspace.
+
+The Docker and AWS Batch profiles set `DIANA_OMICS_SKIP_WIKI_CHECKS=true` because the external Diana wiki checkout is not part of the container image. Local profile runs keep the wiki source checks enabled.
+
+## AWS Batch Profile
+
+The AWS Batch profile is cloud-ready but requires account-specific values:
+
+```sh
+nextflow run main.nf \
+  -profile awsbatch \
+  --workflow phase3_wgs \
+  --phase3_reads 500000 \
+  --container '<account>.dkr.ecr.<region>.amazonaws.com/diana-omics:<tag>' \
+  --aws_queue '<aws-batch-job-queue>' \
+  --aws_region '<region>' \
+  --aws_workdir 's3://<bucket>/nextflow-work'
+```
+
+Use an ECR image built from this `Dockerfile`, an AWS Batch compute environment with enough local disk for FASTQ/BAM/VCF work, and an S3 work bucket in the same region as the compute. Prefer Spot for repeatable public validation runs and On-Demand for precious Diana recomputes.
+
+## Blob Storage Rule
+
+Blob stores are good for durable inputs, references, logs, and final outputs. They are not a substitute for local task scratch when the tools do heavy BAM/VCF IO.
+
+For cloud runs:
+
+- Keep raw inputs and references in S3.
+- Let Nextflow/AWS Batch stage objects into the task workspace.
+- Run alignment, sorting, indexing, depth, and variant calling against local task disk.
+- Write final manifests, summaries, BAM/VCF outputs, and logs back to S3 through Nextflow publishing or an explicit upload step.
+
+If repeated full WGS runs spend too much time restaging references or large shared assets, add a fast shared scratch layer such as FSx for Lustre after the AWS Batch path is proven.

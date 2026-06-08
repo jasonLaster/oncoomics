@@ -38,6 +38,11 @@
     "py:test": "PYTHONPATH=py/src ${PYTHON_BIN:-/usr/bin/python3} -m pytest py/tests",
     "typecheck": "bun run py:typecheck",
     "test": "bun run py:test",
-    "run:all": "bun run verify:plan && bun run fetch:phase1 && bun run fetch:raw-candidates && bun run audit:raw-tools && bun run build:diana-template && bun run verify:diana-raw && bun run build:raw-samplesheets && bun run smoke:raw && bun run build:alignment-smoke && bun run smoke:alignment && bun run fetch:human-reference-smoke && bun run smoke:human-reference && bun run fetch:full-reference-smoke && bun run smoke:full-reference && bun run fetch:production-somatic && bun run smoke:production-somatic && bun run fetch:full-wes && bun run benchmark:full-wes && bun run fetch:phase3-wgs && bun run validate:phase3-wgs && bun run verify:orthogonal && bun run build:panel && bun run analyze:hrd && bun run analyze:rna && bun run build:packet && bun run verify:outputs"
+    "run:all": "bun run verify:plan && bun run fetch:phase1 && bun run fetch:raw-candidates && bun run audit:raw-tools && bun run build:diana-template && bun run verify:diana-raw && bun run build:raw-samplesheets && bun run smoke:raw && bun run build:alignment-smoke && bun run smoke:alignment && bun run fetch:human-reference-smoke && bun run smoke:human-reference && bun run fetch:full-reference-smoke && bun run smoke:full-reference && bun run fetch:production-somatic && bun run smoke:production-somatic && bun run fetch:full-wes && bun run benchmark:full-wes && bun run fetch:phase3-wgs && bun run validate:phase3-wgs && bun run verify:orthogonal && bun run build:panel && bun run analyze:hrd && bun run analyze:rna && bun run build:packet && bun run verify:outputs",
+    "nf:quick": "nextflow run main.nf -profile local --workflow quick",
+    "nf:full-wes": "nextflow run main.nf -profile local --workflow full_wes",
+    "nf:phase3-wgs:dev": "nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads 500000",
+    "nf:phase3-wgs:full": "nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads full",
+    "nf:all-public": "nextflow run main.nf -profile local --workflow all_public --phase3_reads 500000"
   }
 }

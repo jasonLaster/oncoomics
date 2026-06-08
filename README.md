@@ -41,6 +41,15 @@ Run the whole public validation workflow:
 bun run run:all
 ```
 
+Run through Nextflow:
+
+```sh
+bun run nf:quick
+bun run nf:phase3-wgs:dev
+```
+
+See [docs/nextflow.md](/Users/jasonlaster/src/projects/diana-omics/docs/nextflow.md) for Docker, AWS Batch, S3, and full-source WGS options.
+
 Prepare for Diana's actual files:
 
 ```sh

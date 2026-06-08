@@ -19,3 +19,9 @@ __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
 node_modules/
+
+# Nextflow runtime state.
+.nextflow/
+.nextflow.log*
+work/
+nextflow-out/
