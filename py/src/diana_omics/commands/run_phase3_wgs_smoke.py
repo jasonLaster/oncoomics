@@ -81,6 +81,37 @@ def count(command: str) -> int:
     return int(capture_command(command) or "0")
 
 
+def existing_output_current(outputs: list[str], inputs: list[str]) -> bool:
+    output_paths = [path_from_root(output) for output in outputs]
+    input_paths = [path_from_root(input_path) for input_path in inputs if input_path]
+    if not output_paths or any(not output.exists() for output in output_paths):
+        return False
+    if not input_paths or any(not input_path.exists() for input_path in input_paths):
+        return False
+    newest_input = max(input_path.stat().st_mtime for input_path in input_paths)
+    return all(output.stat().st_mtime >= newest_input for output in output_paths)
+
+
+def indexed_alignment_count(row: dict[str, str]) -> int:
+    if not path_from_root(row["output_bai"]).exists():
+        return 0
+    return count(f"samtools idxstats {quote_shell_arg(row['output_bam'])} | awk '{{s += $3 + $4}} END {{print s + 0}}'")
+
+
+def bam_satisfies_read_scope(row: dict[str, str]) -> bool:
+    if not quickcheck_bam(row["output_bam"]) or not path_from_root(row["output_bai"]).exists():
+        return False
+    expected_read_pairs = int(row["read_pairs_per_end"])
+    return indexed_alignment_count(row) >= expected_read_pairs
+
+
+def remove_stale_alignment(row: dict[str, str]) -> None:
+    for relative_path in [row["output_bai"], row["output_bam"]]:
+        path = path_from_root(relative_path)
+        if path.exists():
+            path.unlink()
+
+
 def load_truth_variants(vcf_path: str, variant_type: str) -> list[dict[str, Any]]:
     variants: list[dict[str, Any]] = []
     with gzip.open(path_from_root(vcf_path), "rt", encoding="utf-8") as handle:
@@ -186,7 +217,7 @@ def write_fallback_mapped_intervals(rows: list[dict[str, str]], reference_order:
     step = max(1, len(intervals) // MAX_TRUTH_VARIANTS)
     picked = intervals[::step][:MAX_TRUTH_VARIANTS]
     if not picked:
-        raise RuntimeError("No mapped-read fallback intervals could be built for Phase 3 WGS smoke.")
+        raise RuntimeError("No mapped-read fallback intervals could be built for Phase 3 WGS validation.")
     write_text(path_from_root(output_path), "\n".join(f"{row['contig']}\t{row['start']}\t{row['end']}" for row in picked))
     return picked
 
@@ -284,7 +315,7 @@ def build_coverage_cnv(tumor: dict[str, str], normal: dict[str, str], bins_path:
         "relative_gain_bins": sum(1 for row in rows if row["coverage_class"] == "relative_gain"),
         "relative_loss_bins": sum(1 for row in rows if row["coverage_class"] == "relative_loss"),
         "output_bins": "results/phase3_wgs_smoke/coverage_cnv_bins.csv",
-        "scarhrd_input_status": "not_assessable_low_depth_smoke_no_allele_specific_segments",
+        "scarhrd_input_status": "not_assessable_without_allele_specific_segments",
         "caveat": "Real WGS BAM coverage-derived CNV bins from samtools bedcov. This validates CNV feature plumbing but is not allele-specific segmentation or scarHRD.",
     }
     write_csv(path_from_root(f"{RESULTS_DIR}/coverage_cnv_summary.csv"), [summary])
@@ -375,7 +406,7 @@ def build_sbs96_matrix(filtered_vcf: str, reference_path: str) -> dict[str, Any]
         "total_matrix_count": sum(int(row["count"]) for row in matrix_rows),
         "sigprofiler_assignment_status": "input_ready_threshold_met" if usable_snvs >= 50 else "not_assessable_low_mutation_count",
         "output_matrix": "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
-        "caveat": "SBS96 matrix is built from actual Phase 3 WGS smoke VCF records. Signature assignment is not interpreted when the downsample has too few mutations.",
+        "caveat": "SBS96 matrix is built from actual Phase 3 WGS VCF records. Signature assignment is not interpreted unless mutation count is sufficient.",
     }
     write_csv(path_from_root(f"{RESULTS_DIR}/signature_assignment_summary.csv"), [summary])
     write_json(
@@ -435,8 +466,8 @@ def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
                 "interchromosomal_pairs": interchromosomal_pairs,
                 "large_insert_pairs": large_insert_pairs,
                 "sv_candidate_rows_written": min(100, len(candidates.splitlines())),
-                "chord_input_status": "not_assessable_low_depth_smoke_requires_full_depth_sv_caller_vcf",
-                "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is a WGS SV evidence smoke, not a validated full-depth SV caller VCF.",
+                "chord_input_status": "not_assessable_requires_validated_sv_caller_vcf",
+                "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is WGS SV evidence, not a validated production SV caller VCF.",
             }
         )
     write_csv(path_from_root(f"{RESULTS_DIR}/sv_evidence_candidates.csv"), candidate_rows)
@@ -465,15 +496,15 @@ def main() -> None:
     tumor = next(row for row in rows if row["role"] == "tumor")
     normal = next(row for row in rows if row["role"] == "normal")
     reference_id = tumor["reference_id"]
-    output_root = f"data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/{reference_id}"
+    output_root = "/".join(tumor["output_bam"].split("/")[:-2])
     interval_dir = f"{output_root}/intervals"
     vcf_dir = f"{output_root}/vcf"
     bins_path = f"{interval_dir}/standard_contig_{BIN_SIZE}bp_bins.bed"
     truth_position_bed = f"{interval_dir}/seqc2_truth_positions.bed"
     mutect_intervals = f"{interval_dir}/phase3_wgs_mutect2_intervals.bed"
-    unfiltered_vcf = f"{vcf_dir}/hcc1395.phase3_wgs_smoke.mutect2.unfiltered.vcf.gz"
-    filtered_vcf = f"{vcf_dir}/hcc1395.phase3_wgs_smoke.mutect2.filtered.vcf.gz"
-    f1r2_path = f"{vcf_dir}/hcc1395.phase3_wgs_smoke.mutect2.f1r2.tar.gz"
+    unfiltered_vcf = f"{vcf_dir}/hcc1395.phase3_wgs.mutect2.unfiltered.vcf.gz"
+    filtered_vcf = f"{vcf_dir}/hcc1395.phase3_wgs.mutect2.filtered.vcf.gz"
+    f1r2_path = f"{vcf_dir}/hcc1395.phase3_wgs.mutect2.f1r2.tar.gz"
 
     for row in rows:
         for required_path in [
@@ -492,8 +523,9 @@ def main() -> None:
     align_commands: list[tuple[str, str]] = []
     for row in rows:
         ensure_dir(path_from_root("/".join(row["output_bam"].split("/")[:-1])))
-        if not FORCE and quickcheck_bam(row["output_bam"]):
+        if not FORCE and bam_satisfies_read_scope(row):
             continue
+        remove_stale_alignment(row)
         command = (
             "set -o pipefail; "
             f"bwa mem -t {PER_SAMPLE_THREADS} -R {quote_shell_arg(read_group(row))} {quote_shell_arg(row['reference_path'])} "
@@ -511,7 +543,7 @@ def main() -> None:
     index_commands: list[tuple[str, str]] = []
     stats_commands: list[tuple[str, str]] = []
     for row in rows:
-        if FORCE or not path_from_root(row["output_bai"]).exists():
+        if FORCE or not existing_output_current([row["output_bai"]], [row["output_bam"]]):
             index_commands.append(
                 (
                     f"samtools index -@ {PER_SAMPLE_THREADS} -o {quote_shell_arg(row['output_bai'])} {quote_shell_arg(row['output_bam'])}",
@@ -630,7 +662,10 @@ def main() -> None:
         if file_non_empty(tumor["mutect2_panel_of_normals_path"])
         else ""
     )
-    if FORCE or not (path_from_root(unfiltered_vcf).exists() and path_from_root(f"{unfiltered_vcf}.tbi").exists()):
+    if FORCE or not existing_output_current(
+        [unfiltered_vcf, f"{unfiltered_vcf}.tbi"],
+        [tumor["output_bam"], normal["output_bam"], mutect_intervals],
+    ):
         run_command(
             " ".join(
                 [
@@ -647,7 +682,7 @@ def main() -> None:
             ),
             f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.mutect2.log",
         )
-    if FORCE or not (path_from_root(filtered_vcf).exists() and path_from_root(f"{filtered_vcf}.tbi").exists()):
+    if FORCE or not existing_output_current([filtered_vcf, f"{filtered_vcf}.tbi"], [unfiltered_vcf]):
         run_command(
             f"{quote_shell_arg(tumor['java_path'])} -Xmx6g -jar {quote_shell_arg(tumor['gatk_jar_path'])} FilterMutectCalls -R {quote_shell_arg(tumor['reference_path'])} -V {quote_shell_arg(unfiltered_vcf)} -O {quote_shell_arg(filtered_vcf)}",
             f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filter_mutect_calls.log",
@@ -672,7 +707,7 @@ def main() -> None:
         else "failed"
     )
     comparison_status = (
-        "not_assessable_no_depth_covered_truth_variants_in_wgs_smoke"
+        "not_assessable_no_depth_covered_truth_variants_in_wgs_validation"
         if not covered_truth
         else "assessed_no_passing_mutect2_calls"
         if filtered_calls["passCount"] == 0
@@ -703,7 +738,7 @@ def main() -> None:
         "exact_pass_truth_matches": len(exact_matches),
         "comparison_status": comparison_status,
         "panel_of_normals_used": tumor["mutect2_panel_of_normals_path"] if pon_part else "",
-        "caveat": "Real GATK Mutect2 WGS-smoke small-variant output. Downsample depth limits sensitivity and signature interpretability.",
+        "caveat": "Real GATK Mutect2 WGS small-variant output over covered SEQC2 truth intervals. Genome-wide HRD interpretation still needs production caller policy.",
     }
     write_csv(path_from_root(f"{RESULTS_DIR}/mutect2_wgs_summary.csv"), [mutect_row])
     write_json(
@@ -727,15 +762,15 @@ def main() -> None:
             "local_phase3_output": "results/phase3_wgs_smoke/coverage_cnv_summary.csv",
             "real_output_status": "real_coverage_cnv_bin_output",
             "interpretability_status": cnv_summary["scarhrd_input_status"],
-            "caveat": "scarHRD needs allele-specific segmented CN calls; this smoke validates WGS coverage-bin plumbing only.",
+            "caveat": "scarHRD needs allele-specific segmented CN calls; this run validates WGS coverage-bin plumbing only.",
         },
         {
             "tool": "CHORD",
             "evidence_input": "results/phase3_wgs_smoke/sv_evidence_summary.csv",
             "local_phase3_output": "results/phase3_wgs_smoke/sv_evidence_summary.csv",
             "real_output_status": "real_bam_sv_evidence_output",
-            "interpretability_status": "not_assessable_low_depth_smoke_requires_full_depth_sv_caller_vcf",
-            "caveat": "CHORD-style interpretation needs full-depth SNV/indel/SV/CNV feature inputs; this smoke validates the feature lanes.",
+            "interpretability_status": "not_assessable_requires_validated_sv_caller_vcf",
+            "caveat": "CHORD-style interpretation needs full-depth SNV/indel/SV/CNV feature inputs; this validates the feature lanes.",
         },
     ]
     write_csv(path_from_root(f"{RESULTS_DIR}/hrd_tool_readiness_summary.csv"), hrd_tool_rows)
@@ -777,6 +812,8 @@ def main() -> None:
         "pair_id": tumor["pair_id"],
         "reference_id": reference_id,
         "read_pairs_per_end": tumor["read_pairs_per_end"],
+        "read_pairs_mode": asset_summary.get("readPairsMode", ""),
+        "read_request": asset_summary.get("readRequest", ""),
         "available_cpus": AVAILABLE_CPUS,
         "total_threads": TOTAL_THREADS,
         "parallel_align": "yes" if PARALLEL_ALIGN else "no",
@@ -807,6 +844,9 @@ def main() -> None:
             "pairId": tumor["pair_id"],
             "referenceId": reference_id,
             "readPairsPerEnd": int(tumor["read_pairs_per_end"]),
+            "readPairsMode": asset_summary.get("readPairsMode", ""),
+            "readRequest": asset_summary.get("readRequest", ""),
+            "fullSourceFastqs": asset_summary.get("readPairsMode") == "full",
             "availableCpus": AVAILABLE_CPUS,
             "totalThreads": TOTAL_THREADS,
             "parallelAlign": PARALLEL_ALIGN,
@@ -830,7 +870,7 @@ def main() -> None:
     )
     write_text(
         path_from_root(f"{RESULTS_DIR}/README.md"),
-        f"""# Phase 3 WGS HRD Capability Smoke
+        f"""# Phase 3 WGS HRD Capability Validation
 
 Status: **{"passed" if phase3_complete else "failed"}**.
 
@@ -839,6 +879,8 @@ Representative pair: `{tumor["pair_id"]}`
 Reference: `{reference_id}` ({tumor["genome_build"]}/{tumor["assembly"]})
 
 Reads per FASTQ end: `{tumor["read_pairs_per_end"]}`
+
+Read mode: `{asset_summary.get("readPairsMode", "")}`
 
 Parallelism:
 
@@ -850,11 +892,11 @@ Parallelism:
 
 What this validates:
 
-1. Real representative HCC1395 WGS FASTQ subset alignment to the full hg38 analysis-set reference.
+1. Real representative HCC1395 WGS FASTQ alignment to the full hg38 analysis-set reference.
 2. Coordinate-sorted, indexed, read-grouped tumor and matched-normal WGS BAM contracts.
-3. Real GATK Mutect2/FilterMutectCalls tumor-normal WGS-smoke VCF output.
+3. Real GATK Mutect2/FilterMutectCalls tumor-normal WGS VCF output.
 4. Real coverage-derived tumor/normal CNV bin output from `samtools bedcov`.
-5. Real SBS96 mutation matrix output from the actual WGS-smoke VCF.
+5. Real SBS96 mutation matrix output from the actual WGS VCF.
 6. Real BAM-derived SV evidence counts from split/supplementary/discordant/interchromosomal read evidence.
 7. A clear boundary between WES small-variant evidence, WGS-capable smoke outputs, and full-depth WGS HRD interpretation.
 
@@ -868,9 +910,9 @@ What remains Diana-specific:
 """,
     )
     if not phase3_complete:
-        raise RuntimeError("Phase 3 WGS smoke failed.")
+        raise RuntimeError("Phase 3 WGS validation failed.")
     print(
-        f"Phase 3 WGS smoke passed: {len(interval_rows)} intervals, {filtered_calls['passCount']} PASS calls, {cnv_summary['bin_count']} CNV bins."
+        f"Phase 3 WGS validation passed: {len(interval_rows)} intervals, {filtered_calls['passCount']} PASS calls, {cnv_summary['bin_count']} CNV bins."
     )
 
 

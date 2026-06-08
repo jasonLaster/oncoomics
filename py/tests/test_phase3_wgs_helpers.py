@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from diana_omics import utils
+from diana_omics.commands import fetch_phase3_wgs_smoke_assets as fetch_phase3
 from diana_omics.commands import run_phase3_wgs_smoke as phase3
 
 
@@ -50,6 +51,14 @@ class Phase3WgsHelpersTest(unittest.TestCase):
             rows = phase3.pick_covered_truth_variants(variants, "chr1\t10\t2\t9\nchr1\t11\t1\t8\n")
         self.assertEqual([row["key"] for row in rows], ["a"])
         self.assertEqual(rows[0]["minDepth"], 2)
+
+    def test_phase3_fetch_full_mode_uses_source_spots(self):
+        with patch.object(fetch_phase3, "READ_PAIRS_LIMIT", None):
+            self.assertEqual(fetch_phase3.expected_read_pairs({"spots": "12345"}), 12345)
+            self.assertEqual(fetch_phase3.read_count_label(12345), "full")
+        with patch.object(fetch_phase3, "READ_PAIRS_LIMIT", 500000):
+            self.assertEqual(fetch_phase3.expected_read_pairs({"spots": "12345"}), 500000)
+            self.assertEqual(fetch_phase3.read_count_label(500000), "500000reads")
 
 
 if __name__ == "__main__":

@@ -33,6 +33,7 @@ Plan and verification:
 - `verify:plan`
 - `verify:outputs`
 - `verify:diana-raw`
+- `verify:orthogonal`
 
 Public data and processed-panel analysis:
 
@@ -62,10 +63,19 @@ Alignment and caller readiness:
 - `fetch:full-wes`
 - `benchmark:full-wes`
 
-WGS smoke:
+WGS validation:
 
 - `fetch:phase3-wgs`
-- `smoke:phase3-wgs`
+- `validate:phase3-wgs`
+
+Phase 3 full-source mode:
+
+```sh
+bun run fetch:phase3-wgs
+bun run validate:phase3-wgs
+```
+
+This streams each complete SEQC2/HCC1395 public source FASTQ. Set `PHASE3_WGS_READS` to an integer only for developer plumbing checks; bounded runs do not satisfy `verify:outputs`.
 
 Diana intake:
 

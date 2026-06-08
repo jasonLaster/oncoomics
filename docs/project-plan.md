@@ -6,6 +6,11 @@ The plan is organized around evidence gates. A phase is complete only when it pr
 
 Be ready to recompute Diana's HRD-relevant findings from actual raw data while keeping public validation results beside the Diana-specific run.
 
+Implementation assumptions:
+
+- Python owns workflow orchestration and generated evidence tables.
+- Full-depth HRD interpretation should eventually connect to established tools such as CHORD and scarHRD instead of relying only on local smoke summaries.
+
 The end state should answer:
 
 - Did the files arrive in a valid shape?
@@ -84,14 +89,14 @@ Main limitation:
 
 This is WES small-variant readiness, not full WGS HRD interpretation.
 
-## Phase 3: Representative WGS Mechanics
+## Phase 3: Full Public WGS Validation
 
-Status: complete for WGS smoke mechanics.
+Status: in progress for full-source WGS validation.
 
 Purpose:
 
-- Prove that representative WGS FASTQs can flow through validation, alignment, small-variant smoke calling, coverage-CNV bins, SBS96 summaries, and SV evidence summaries.
-- Confirm parallel CPU usage knobs exist before full-depth local runs.
+- Prove that full-source representative WGS FASTQs can flow through validation, alignment, small-variant calling, coverage-CNV bins, SBS96 summaries, and SV evidence summaries.
+- Confirm parallel CPU usage knobs exist before Diana raw-data runs.
 
 Primary artifacts:
 
@@ -103,24 +108,21 @@ Primary artifacts:
 
 Latest evidence:
 
-- Read pairs per end: 500000.
-- Available CPUs: 18.
-- Total threads: 16.
-- Parallel alignment: true.
-- Coverage-CNV bins: 631.
-- Phase 3 complete: true.
+- Completion now requires `readPairsMode=full`.
+- Bounded subsets are developer checks and fail final verification.
+- Full-run values are recorded in `results/phase3_wgs_smoke/phase3_wgs_summary.json`.
 
 Verifier:
 
 ```sh
 bun run fetch:phase3-wgs
-bun run smoke:phase3-wgs
+bun run validate:phase3-wgs
 bun run verify:outputs
 ```
 
 Main limitation:
 
-The WGS smoke is not full-depth HRD truth. It proves mechanics and output contracts. It should now be strengthened with HG008 and COLO829 truth-set runs.
+The SEQC2/HCC1395 full WGS run is a representative public validation example, not a final clinical HRD truth set. It should still be strengthened with HG008 and COLO829 truth-set runs.
 
 ## Phase 3B: Orthogonal Known-Answer Validation
 
@@ -146,8 +148,15 @@ Planned gates:
 
 Primary planning artifacts:
 
-- `docs/ORTHOGONAL_VALIDATION_SAMPLES.md`
+- `docs/orthogonal-validation-samples.md`
+- `manifests/orthogonal_public_examples.csv`
 - `manifests/orthogonal_validation_candidates.csv`
+
+Verifier:
+
+```sh
+bun run verify:orthogonal
+```
 
 ## Phase 4: Diana Raw-Data Recompute
 

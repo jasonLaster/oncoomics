@@ -55,9 +55,9 @@ def main() -> None:
 
     for file in [
         "README.md",
-        "docs/PROJECT_PLAN.md",
-        "docs/SOURCE_MAP.md",
-        "docs/WIKI_SOURCE_SUMMARY.md",
+        "docs/project-plan.md",
+        "docs/source-map.md",
+        "docs/wiki-source-summary.md",
         "manifests/validation_atlases.json",
     ]:
         require_file(ROOT / file)
@@ -71,24 +71,32 @@ def main() -> None:
     ]:
         require_file(WIKI_ROOT / file)
 
-    plan = read_project_file("docs/PROJECT_PLAN.md")
-    for index in range(8):
-        if f"Milestone {index}" not in plan:
-            errors.append(f"PROJECT_PLAN.md is missing Milestone {index}.")
-    for required in ["Verifier", "HRD", "Bun", "Python", "TCGA-BRCA", "CHORD", "scarHRD"]:
+    plan = read_project_file("docs/project-plan.md")
+    for required_section in [
+        "Phase 1: Processed Public HRD/RNA Panel",
+        "Phase 2: Raw WES and Caller Readiness",
+        "Phase 3: Representative WGS Mechanics",
+        "Phase 3B: Orthogonal Known-Answer Validation",
+        "Phase 4: Diana Raw-Data Recompute",
+        "Continuous Quality Gates",
+    ]:
+        if required_section not in plan:
+            errors.append(f"project-plan.md is missing section: {required_section}.")
+    for required in ["Verifier", "HRD", "Python", "Diana", "HG008", "COLO829", "CHORD", "scarHRD"]:
         if required not in plan:
-            errors.append(f"PROJECT_PLAN.md is missing required term: {required}")
+            errors.append(f"project-plan.md is missing required term: {required}")
 
-    source_map = read_project_file("docs/SOURCE_MAP.md")
+    source_map = read_project_file("docs/source-map.md")
     for required_url in [
-        "https://gdc.cancer.gov/about-data/publications/brca_2012",
-        "https://docs.cbioportal.org/downloads/",
-        "https://xena.ucsc.edu/",
-        "https://www.nature.com/articles/nm.4292",
-        "https://github.com/UMCUGenetics/CHORD",
+        "https://www.nist.gov/programs-projects/cancer-genome-bottle",
+        "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-smvar_DraftBenchmark_V0.3-20260425/",
+        "https://www.ebi.ac.uk/ena/browser/view/PRJEB27698",
+        "https://zenodo.org/records/7515830",
+        "https://www.natera.com/oncology/altera/",
+        "https://investors.personalis.com/news-releases/news-release-details/personalis-launches-next-personaltm-tumor-informed-liquid-biopsy",
     ]:
         if required_url not in source_map:
-            errors.append(f"SOURCE_MAP.md is missing required URL: {required_url}")
+            errors.append(f"source-map.md is missing required URL: {required_url}")
 
     manifest = None
     try:

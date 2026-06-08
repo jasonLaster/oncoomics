@@ -15,7 +15,7 @@ Use:
 
 Project summary:
 
-- [WIKI_SOURCE_SUMMARY.md](/Users/jasonlaster/src/projects/diana-omics/docs/WIKI_SOURCE_SUMMARY.md)
+- [wiki-source-summary.md](/Users/jasonlaster/src/projects/diana-omics/docs/wiki-source-summary.md)
 
 ## cBioPortal TCGA-BRCA
 
@@ -70,7 +70,7 @@ Use:
 
 - Representative breast tumor/normal WES and WGS data.
 - Current Phase 2F full WES benchmark.
-- Current Phase 3 WGS smoke mechanics.
+- Current Phase 3 full-source WGS validation mechanics.
 
 Artifacts:
 

@@ -29,6 +29,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.run_raw_smoke import main as run_raw_smoke
     from .commands.stage_diana_raw_analysis import main as stage_diana_raw_analysis
     from .commands.verify_diana_raw import main as verify_diana_raw
+    from .commands.verify_orthogonal_validation import main as verify_orthogonal_validation
     from .commands.verify_outputs import main as verify_outputs
     from .commands.verify_plan import main as verify_plan
 
@@ -52,11 +53,12 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "smoke:full-reference": run_full_reference_smoke,
         "benchmark:full-wes": run_full_wes_benchmark,
         "smoke:human-reference": run_human_reference_smoke,
-        "smoke:phase3-wgs": run_phase3_wgs_smoke,
+        "validate:phase3-wgs": run_phase3_wgs_smoke,
         "smoke:production-somatic": run_production_somatic_smoke,
         "smoke:raw": run_raw_smoke,
         "stage:diana-raw": stage_diana_raw_analysis,
         "verify:diana-raw": verify_diana_raw,
+        "verify:orthogonal": verify_orthogonal_validation,
         "verify:outputs": verify_outputs,
         "verify:plan": verify_plan,
     }

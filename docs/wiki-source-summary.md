@@ -31,7 +31,7 @@ The wiki did not provide Diana's raw FASTQ/BAM/CRAM files. It also did not provi
 
 Use:
 
-- `docs/DIANA_RAW_INPUTS.md`
+- `docs/diana-raw-inputs.md`
 - `manifests/diana_raw_inputs.template.csv`
 - `results/diana_raw_intake/input_contract.json`
 

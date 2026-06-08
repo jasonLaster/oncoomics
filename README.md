@@ -11,12 +11,13 @@ It does not make treatment recommendations. It produces evidence tables, quality
 
 ## Current State
 
-The implementation is Python-only. `bun` is retained only as a convenient task runner around `PYTHONPATH=py/src python3 -m diana_omics ...`.
+The implementation is Python-only. `bun` is retained only as a convenient task runner around `PYTHONPATH=py/src ${PYTHON_BIN:-/usr/bin/python3} -m diana_omics ...`, so a PATH change will not silently switch interpreters. Set `PYTHON_BIN=/path/to/python` when using a dedicated environment.
 
 The latest full run passed:
 
 - Phase 2F full WES benchmark: 4 FASTQs validated, BAM validation passed, GATK Mutect2 ran, 1307 depth-eligible SEQC2/HCC1395 truth variants, 1122 exact PASS truth matches, recall 0.8585, precision 0.9842.
-- Phase 3 WGS smoke: 500000 read pairs per end, parallel alignment enabled, BAM validation passed, WGS Mutect2 smoke passed, 631 coverage-CNV bins generated, SBS96 and SV evidence tables generated.
+- Phase 3 WGS validation: full-source SEQC2/HCC1395 WGS FASTQs are the acceptance gate; bounded subsets are developer checks only. The verifier now fails unless Phase 3 records `readPairsMode=full`.
+- Orthogonal public examples: SEQC2/HCC1395 full WES and Phase 3 WGS are verified; HG008, COLO829, COLO829 purity, and Seraseq MRD are documented as next known-answer gates.
 - Phase 1 public HRD/RNA tables: 28 reference-panel samples processed into reviewer-facing evidence tables.
 - Diana intake: template and strict validation contract are ready; interpretation waits for actual Diana files.
 
@@ -30,6 +31,7 @@ bun run py:lint
 bun run py:format:check
 bun run py:typecheck
 bun run py:test
+bun run verify:orthogonal
 bun run verify:outputs
 ```
 
@@ -58,17 +60,23 @@ DIANA_RAW_REQUIRE_DATA=1 \
 bun run stage:diana-raw
 ```
 
-## How To Read The Repo
+## Documentation Guide
 
-Start here:
+Start with [docs/readme.md](/Users/jasonlaster/src/projects/diana-omics/docs/readme.md) if you are new to the project. Use the rest of the docs by task:
 
-- [docs/README.md](/Users/jasonlaster/src/projects/diana-omics/docs/README.md): new-reader guide, concepts, and map.
-- [docs/PROJECT_PLAN.md](/Users/jasonlaster/src/projects/diana-omics/docs/PROJECT_PLAN.md): milestone plan from current state to Diana recompute.
-- [docs/PHASE_STATUS.md](/Users/jasonlaster/src/projects/diana-omics/docs/PHASE_STATUS.md): what is done, what is partial, and what blocks clinical interpretation.
-- [docs/BUG_AUDIT.md](/Users/jasonlaster/src/projects/diana-omics/docs/BUG_AUDIT.md): likely failure modes and what currently catches them.
-- [docs/DIANA_RAW_INPUTS.md](/Users/jasonlaster/src/projects/diana-omics/docs/DIANA_RAW_INPUTS.md): raw-data manifest contract.
-- [docs/ORTHOGONAL_VALIDATION_SAMPLES.md](/Users/jasonlaster/src/projects/diana-omics/docs/ORTHOGONAL_VALIDATION_SAMPLES.md): HG008, COLO829, and Seraseq validation candidates.
-- [docs/PYTHON_IMPLEMENTATION.md](/Users/jasonlaster/src/projects/diana-omics/docs/PYTHON_IMPLEMENTATION.md): package architecture and command map.
+| Document | Use it when you need to... |
+| --- | --- |
+| [docs/project-plan.md](/Users/jasonlaster/src/projects/diana-omics/docs/project-plan.md) | Understand the milestone plan, evidence gates, and what still needs to happen before Diana recompute. |
+| [docs/phase-status.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase-status.md) | Check what is currently complete, what passed, and what still needs full-data validation. |
+| [docs/bug-audit.md](/Users/jasonlaster/src/projects/diana-omics/docs/bug-audit.md) | Review the most likely ways the analysis could be wrong before trusting a result. |
+| [docs/diana-raw-inputs.md](/Users/jasonlaster/src/projects/diana-omics/docs/diana-raw-inputs.md) | Fill in Diana's future FASTQ/BAM/CRAM/RNA/vendor files and validate the handoff. |
+| [docs/raw-data-readiness.md](/Users/jasonlaster/src/projects/diana-omics/docs/raw-data-readiness.md) | See which public raw-data mechanics already work, from FASTQ smoke tests through WES/WGS validation. |
+| [docs/orthogonal-validation-samples.md](/Users/jasonlaster/src/projects/diana-omics/docs/orthogonal-validation-samples.md) | Pick the next known-answer datasets, especially HG008, COLO829, and Seraseq MRD. |
+| [docs/phase3-parallel-compute.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase3-parallel-compute.md) | Tune local CPU/thread usage for WGS, full-depth validation, and future Diana runs. |
+| [docs/python-implementation.md](/Users/jasonlaster/src/projects/diana-omics/docs/python-implementation.md) | Work on the Python package, command modules, tests, and verifier contracts. |
+| [docs/source-map.md](/Users/jasonlaster/src/projects/diana-omics/docs/source-map.md) | Audit where each dataset, truth set, tool, and vendor-context claim came from. |
+| [docs/wiki-source-summary.md](/Users/jasonlaster/src/projects/diana-omics/docs/wiki-source-summary.md) | Understand how the original Diana wiki packet shaped the scope and caveats. |
+| [docs/reference-panel-label-rules.md](/Users/jasonlaster/src/projects/diana-omics/docs/reference-panel-label-rules.md) | Review how Phase 1 public HRD panel labels are assigned and caveated. |
 
 Main code:
 

@@ -19,16 +19,14 @@ class CliParityTest(unittest.TestCase):
             "run:all",
             "verify:plan:online",
         }
-        expected = {
-            name for name, command in package_json["scripts"].items() if name not in excluded and "python3 -m diana_omics" in command
-        }
+        expected = {name for name, command in package_json["scripts"].items() if name not in excluded and "-m diana_omics" in command}
         commands = _load_commands()
         self.assertEqual(expected, set(commands))
 
     def test_phase3_commands_are_registered(self):
         commands = _load_commands()
         self.assertIn("fetch:phase3-wgs", commands)
-        self.assertIn("smoke:phase3-wgs", commands)
+        self.assertIn("validate:phase3-wgs", commands)
 
     def test_registered_commands_are_callable(self):
         for name, command in _load_commands().items():

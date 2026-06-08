@@ -102,13 +102,13 @@ def main() -> None:
     full_wes_benchmark_tool_ready = next((group["allAvailable"] for group in groups if group["group"] == "full_wes_benchmark"), False)
     full_wes_benchmark_ready = production_somatic_smoke_ready and full_wes_benchmark_tool_ready
     phase3_wgs_tool_ready = next((group["allAvailable"] for group in groups if group["group"] == "phase3_wgs_smoke"), False)
-    phase3_wgs_smoke_ready = full_wes_benchmark_ready and phase3_wgs_tool_ready
+    phase3_wgs_validation_ready = full_wes_benchmark_ready and phase3_wgs_tool_ready
     phase3_optional_signature_runtime_ready = any(
         tool["available"] for group in groups if group["group"] == "phase3_wgs_optional_signature_callers" for tool in group["tools"]
     )
     conclusion = (
-        "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, Phase 2F full WES benchmark mechanics, and Phase 3 representative WGS smoke mechanics. Full-depth WGS interpretation still requires Diana data and final CNV/SV/signature policy."
-        if phase3_wgs_smoke_ready
+        "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, Phase 2F full WES benchmark mechanics, and Phase 3 full-source WGS validation mechanics. Final HRD interpretation still requires Diana data and reviewer-approved CNV/SV/signature policy."
+        if phase3_wgs_validation_ready
         else "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, and Phase 2F full WES benchmark mechanics. Full WGS signature phases still require WGS data and additional CNV/SV/signature tooling."
         if full_wes_benchmark_ready
         else "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, and Phase 2E GATK Mutect2 production-style somatic smoke tests. Full workflow/WGS signature phases still require additional tools, resources, or containers."
@@ -133,7 +133,8 @@ def main() -> None:
         "fullWesBenchmarkToolReady": full_wes_benchmark_tool_ready,
         "fullWesBenchmarkReady": full_wes_benchmark_ready,
         "phase3WgsToolReady": phase3_wgs_tool_ready,
-        "phase3WgsSmokeReady": phase3_wgs_smoke_ready,
+        "phase3WgsSmokeReady": phase3_wgs_validation_ready,
+        "phase3WgsValidationReady": phase3_wgs_validation_ready,
         "phase3OptionalSignatureRuntimeReady": phase3_optional_signature_runtime_ready,
         "fullAlignmentToolboxReady": full_alignment_toolbox_ready,
         "workflowReady": workflow_ready,
@@ -173,7 +174,7 @@ Phase 2E production somatic Mutect2 smoke ready: **{"yes" if production_somatic_
 
 Phase 2F full WES benchmark ready: **{"yes" if full_wes_benchmark_ready else "no"}**
 
-Phase 3 WGS smoke ready: **{"yes" if phase3_wgs_smoke_ready else "no"}**
+Phase 3 WGS validation toolchain ready: **{"yes" if phase3_wgs_validation_ready else "no"}**
 
 Phase 3 optional signature runtime available: **{"yes" if phase3_optional_signature_runtime_ready else "no"}**
 

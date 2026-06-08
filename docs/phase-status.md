@@ -9,9 +9,9 @@ This file is the current operational status. It intentionally distinguishes pass
 | Python rewrite | Passed | Workflow logic lives in `py/src/diana_omics`; JS/TS scripts were removed. |
 | Phase 1 processed HRD/RNA panel | Passed | Public processed data generate review tables for 28 samples. |
 | Phase 2 raw WES benchmark | Passed | Full SEQC2/HCC1395 WES FASTQs, alignment, GATK Mutect2, and truth overlap run. |
-| Phase 3 WGS smoke | Passed | Representative WGS mechanics generate BAM, VCF, CNV, SBS96, and SV evidence outputs. |
+| Phase 3 WGS validation | In progress for full-source run | Full SEQC2/HCC1395 WGS FASTQs are the acceptance gate; bounded subsets are developer checks only. |
 | Diana raw-data intake | Ready, waiting | Template and strict validation exist; actual Diana files are not present. |
-| Orthogonal known-answer WGS validation | Planned | HG008 and COLO829 should be added before interpreting Diana WGS. |
+| Orthogonal known-answer WGS validation | Partially implemented | SEQC2/HCC1395 public WES and WGS examples are verified; HG008 and COLO829 remain planned known-answer gates. |
 | Clinical interpretation | Blocked | Requires Diana files, full-depth analysis policy, and reviewer/clinical sign-off. |
 
 ## Latest Full-Run Evidence
@@ -31,9 +31,10 @@ Important values:
 - Full WES exact PASS truth matches: `1122`.
 - Full WES exact PASS recall: `0.8585`.
 - Full WES exact PASS precision: `0.9842`.
-- Phase 3 WGS smoke status: `passed`.
-- Phase 3 WGS coverage-CNV bins: `631`.
-- Phase 3 WGS ready for Phase 4 when Diana raw arrives: `true`.
+- Phase 3 WGS validation status: pending full-source rerun in the current pass.
+- Phase 3 WGS completion requires `readPairsMode=full` and `fullSourceFastqs=true`.
+- Phase 3 WGS ready for Phase 4 only after the full-source gate passes.
+- Orthogonal public examples verified: `2` implemented, `5` planned or request-only.
 - Diana raw intake status: `template_ready`.
 - Diana raw intake ready to interpret: `false`.
 
@@ -92,37 +93,42 @@ bun run verify:outputs
 
 ## Phase 3
 
-Status: complete for representative WGS smoke.
+Status: in progress for full-source public WGS validation.
 
 What passed:
 
-- Representative WGS FASTQs fetched.
-- Parallel alignment path ran.
-- BAM validation passed.
-- WGS Mutect2 smoke output exists.
-- Coverage-CNV bins, SBS96 matrix, SV evidence, and HRD tool readiness summaries exist.
+- Full-source WGS FASTQ fetch and validation are the active gate.
+- Parallel alignment path is configured.
+- Bounded developer subsets have exercised BAM, Mutect2, coverage-CNV, SBS96, SV evidence, and HRD tool readiness outputs.
 
 Known risks:
 
-- Downsampled WGS can prove mechanics but cannot prove full-depth clinical HRD sensitivity.
-- Current CNV/SV/signature outputs are smoke evidence, not final clinical-grade callers.
-- `0` PASS calls in the WGS smoke reflects the selected intervals/downsampled smoke, not a biological conclusion.
+- Bounded WGS subsets can prove mechanics but do not satisfy Phase 3 completion.
+- Old bounded BAM/VCF outputs must not be reused for the full-source gate; the runner checks indexed alignment counts and output timestamps before reusing expensive artifacts.
+- Current CNV/SV/signature outputs are feature evidence, not final clinical-grade callers.
+- Truth-overlap status must be read from the full-source `phase3_wgs_summary.json` after the run.
 
 Verifier:
 
 ```sh
 bun run fetch:phase3-wgs
-bun run smoke:phase3-wgs
+bun run validate:phase3-wgs
+bun run verify:orthogonal
 bun run verify:outputs
 ```
 
 ## Orthogonal Validation
 
-Status: planned and documented.
+Status: partially implemented and documented.
 
 Why it matters:
 
-The existing workflow finishes and produces structured outputs. The next important question is whether it returns the correct answer on independent full public samples.
+The existing workflow finishes and produces structured outputs. `verify:orthogonal` now checks that the TS-era SEQC2/HCC1395 full public examples remain implemented in Python and that the independent full public samples are documented as known-answer gates.
+
+Implemented now:
+
+- SEQC2/HCC1395 full WES benchmark.
+- SEQC2/HCC1395 Phase 3 WGS public FASTQ workflow, with full-source mode as the required acceptance gate.
 
 Next targets:
 
@@ -132,7 +138,7 @@ Next targets:
 
 Planning artifacts:
 
-- `docs/ORTHOGONAL_VALIDATION_SAMPLES.md`
+- `docs/orthogonal-validation-samples.md`
 - `manifests/orthogonal_validation_candidates.csv`
 
 ## Diana Intake

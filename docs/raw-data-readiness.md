@@ -117,41 +117,68 @@ Primary outputs:
 - `results/full_wes_benchmark/full_wes_benchmark_summary.json`
 - `results/full_wes_benchmark/truth_overlap_benchmark_summary.json`
 
-### Representative WGS Smoke
+### Full Public WGS Validation
 
 Command:
 
 ```sh
 bun run fetch:phase3-wgs
-bun run smoke:phase3-wgs
+bun run validate:phase3-wgs
 ```
 
 Purpose:
 
-- Validate WGS-scale plumbing.
+- Validate WGS-scale plumbing on full-source public WGS FASTQs.
 - Generate BAM, VCF, coverage-CNV, SBS96, and SV evidence outputs from representative WGS FASTQs.
+- Preserve the TypeScript-era public Phase 3 example in the Python implementation.
 
 Latest evidence:
 
-- 500000 read pairs per end.
-- 16 total threads.
-- 631 coverage-CNV bins.
-- Phase 3 complete.
+- Full-source SEQC2/HCC1395 HiSeq X Ten WGS FASTQs are the acceptance gate.
+- Bounded read subsets are developer checks only and fail the final Phase 3 verifier.
+- The completion summary records `readPairsMode=full` and `fullSourceFastqs=true` when the full run has passed.
 
 Primary outputs:
 
 - `manifests/phase3_wgs_smoke_samplesheet.csv`
 - `results/phase3_wgs_smoke/phase3_wgs_summary.json`
 
+Developer subset mode:
+
+```sh
+PHASE3_WGS_READS=500000 bun run fetch:phase3-wgs
+PHASE3_WGS_READS=500000 bun run validate:phase3-wgs
+```
+
+The developer subset mode uses the same workflow for quick plumbing checks. It is not accepted as completed Phase 3 orthogonal validation.
+
+### Orthogonal Public Example Verification
+
+Command:
+
+```sh
+bun run verify:orthogonal
+```
+
+Purpose:
+
+- Verify that the implemented public WES/WGS examples have passing completion artifacts.
+- Verify that HG008, COLO829, COLO829 purity, and Seraseq MRD are documented as public or obtainable known-answer gates.
+
+Primary outputs:
+
+- `manifests/orthogonal_public_examples.csv`
+- `results/orthogonal_validation/public_examples_summary.json`
+
 ## What Still Needs A Known Answer
 
-The current workflow is mechanically strong, but Phase 3 WGS needs independent correctness validation. The next validation targets are:
+The current workflow is mechanically strong, and the SEQC2/HCC1395 public examples are implemented. Phase 3 WGS still needs independent correctness validation. The next validation targets are:
 
 1. HG008 tumor/normal WGS from NIST Cancer Genome in a Bottle.
 2. COLO829/COLO829BL tumor/normal WGS from ENA plus Zenodo truth files.
 3. Seraseq ctDNA MRD Panel Mix if true liquid-biopsy dilution validation is needed.
 
-See [ORTHOGONAL_VALIDATION_SAMPLES.md](/Users/jasonlaster/src/projects/diana-omics/docs/ORTHOGONAL_VALIDATION_SAMPLES.md).
+See [orthogonal-validation-samples.md](/Users/jasonlaster/src/projects/diana-omics/docs/orthogonal-validation-samples.md).
 
 ## Diana Handoff
 

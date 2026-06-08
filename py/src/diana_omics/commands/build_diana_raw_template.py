@@ -38,36 +38,84 @@ def main() -> None:
         },
     )
     write_text(
-        path_from_root("docs/DIANA_RAW_INPUTS.md"),
-        """# Diana Raw Data Plug-In Contract
+        path_from_root("docs/diana-raw-inputs.md"),
+        """# Diana Raw Inputs
 
-Status: **template ready; waiting for Diana raw FASTQ/BAM/CRAM paths**.
+Use this document when Diana's real files arrive and you need to tell the project where they are.
 
-Use this when Diana's files arrive:
+## What This Does
+
+This contract validates and stages file paths. It does not interpret HRD by itself.
+
+Supported input types:
+
+- Tumor DNA FASTQ pairs.
+- Matched normal DNA FASTQ pairs.
+- Tumor or normal BAM/CRAM files with indexes.
+- RNA FASTQ pairs or derived RNA files.
+- Vendor VCF/CNV/SV/fusion/report files.
+
+The strongest Diana analysis would include tumor-normal WGS plus RNA-seq. WES is still useful for coding variants, but it is weaker for genome-wide HRD signatures, CNVs, and SVs.
+
+## How To Fill The Samplesheet
+
+Generate the template:
+
+```sh
+bun run build:diana-template
+```
+
+Copy it:
 
 ```sh
 cp manifests/diana_raw_inputs.template.csv manifests/diana_raw_inputs.csv
 ```
 
-Fill `manifests/diana_raw_inputs.csv` with the actual local paths and metadata, then run:
+Fill `manifests/diana_raw_inputs.csv` with actual local paths and metadata. Do not leave placeholder paths in strict mode.
+
+Each row should identify:
+
+- `sample_id`
+- `patient_id`
+- `assay`
+- `modality`
+- `role`
+- `pair_id`
+- file paths
+- reference build
+- platform
+- library layout
+- tumor purity or tumor content when known
+- source/vendor notes
+
+## Validate The Files
 
 ```sh
 DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run verify:diana-raw
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run stage:diana-raw
-bun run run:all
 ```
 
-The validation workflow and Diana staging workflow are intentionally separate. `bun run run:all` keeps the public validation ladder reproducible. `stage:diana-raw` checks the Diana-specific samplesheet and writes a Diana analysis packet that records exactly which inputs, reference, resource policy, and next compute commands should be used.
+Strict validation checks:
 
-## Required DNA Rows
+- The samplesheet exists.
+- Required columns are present.
+- Required file paths exist.
+- FASTQ pairs are coherent.
+- BAM/CRAM index metadata are present where applicable.
+- Tumor-normal pair IDs are coherent.
+- Reference metadata are present.
+- Optional RNA rows are clearly separated from DNA rows.
 
-The samplesheet must contain at least:
+## Stage A Recompute Packet
 
-1. One tumor DNA row.
-2. One matched-normal DNA row.
-3. A shared `pair_id` for the tumor-normal DNA rows.
-4. Either FASTQ pairs, BAM+BAI, or CRAM+CRAI paths for each DNA row.
-5. A reference policy: `reference_id`, `reference_path`, `reference_fai_path`, and `reference_dict_path`.
+```sh
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run stage:diana-raw
+```
+
+The stage command writes:
+
+```text
+results/diana_raw_analysis/<analysis_id>/
+```
 
 ## Supported Input Shapes
 
@@ -78,9 +126,18 @@ The samplesheet must contain at least:
 | `CRAM` | `cram`, `crai` |
 | `RNA_FASTQ` | `rna_fastq_1`, `rna_fastq_2` |
 
-## Boundary
+## Common Mistakes
 
-This contract makes Diana raw data easy to plug in without changing code. It does not make a clinical HRD claim by itself. Clinical interpretation still requires reviewer sign-off, final CNV/SV/signature policy, and any clinician-owned orthogonal validation.
+- Tumor and normal rows have different `pair_id` values.
+- FASTQ R1 and R2 paths are swapped or mixed across lanes.
+- BAM or CRAM paths are present without indexes.
+- Vendor VCFs use a different reference build than raw alignments.
+- RNA files are listed as DNA, or DNA files are listed as RNA.
+- A report PDF is present but the underlying VCF/CNV/SV files are absent.
+
+## Interpretation Boundary
+
+Passing `verify:diana-raw` means the files are staged correctly. It does not mean Diana has any specific HRD result. Interpretation requires full analysis, public truth-set sidecar validation, and reviewer sign-off.
 """,
     )
     write_text(
@@ -92,7 +149,7 @@ Status: **template ready**.
 Artifacts:
 
 1. `manifests/diana_raw_inputs.template.csv`
-2. `docs/DIANA_RAW_INPUTS.md`
+2. `docs/diana-raw-inputs.md`
 3. `results/diana_raw_intake/input_contract.json`
 4. `results/diana_raw_intake/intake_readiness_summary.csv`
 

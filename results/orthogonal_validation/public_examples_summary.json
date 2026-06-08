@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-06-07T14:23:34.792Z",
+  "status": "passed",
+  "implementedExamples": 2,
+  "plannedExamples": 4,
+  "blockedExamples": 1,
+  "errors": [],
+  "warnings": [],
+  "rows": [
+    {
+      "example_id": "seqc2_hcc1395_full_wes",
+      "status": "implemented",
+      "public_access": "yes",
+      "modality": "tumor_normal_wes",
+      "source_scope": "full public WES FASTQs",
+      "completion_artifact": "results/full_wes_benchmark/full_wes_benchmark_summary.json",
+      "artifact_exists": "yes",
+      "artifact_status": "passed",
+      "pass_gate": "status passed and readyForPhase3 true",
+      "full_data_command": "bun run fetch:full-wes && bun run benchmark:full-wes",
+      "documentation": "docs/raw-data-readiness.md"
+    },
+    {
+      "example_id": "seqc2_hcc1395_phase3_wgs",
+      "status": "implemented",
+      "public_access": "yes",
+      "modality": "tumor_normal_wgs",
+      "source_scope": "full public WGS source FASTQs with bounded default and full-source mode",
+      "completion_artifact": "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+      "artifact_exists": "yes",
+      "artifact_status": "passed",
+      "pass_gate": "status passed and phase3Complete true",
+      "full_data_command": "PHASE3_WGS_READS=full bun run fetch:phase3-wgs && bun run smoke:phase3-wgs",
+      "documentation": "docs/raw-data-readiness.md"
+    },
+    {
+      "example_id": "giab_hg008_wgs",
+      "status": "planned",
+      "public_access": "yes",
+      "modality": "tumor_normal_wgs",
+      "source_scope": "full public WGS and truth files",
+      "completion_artifact": "planned results/orthogonal_validation/hg008_summary.json",
+      "artifact_exists": "no",
+      "artifact_status": "planned",
+      "pass_gate": "planned recall/precision and SV/CNV overlap thresholds",
+      "full_data_command": "planned full or 30x downsample HG008 WGS run",
+      "documentation": "docs/orthogonal-validation-samples.md"
+    },
+    {
+      "example_id": "giab_hg008_rna",
+      "status": "planned",
+      "public_access": "yes",
+      "modality": "tumor_rna_seq",
+      "source_scope": "full public RNA-seq FASTQs",
+      "completion_artifact": "planned results/orthogonal_validation/hg008_rna_summary.json",
+      "artifact_exists": "no",
+      "artifact_status": "planned",
+      "pass_gate": "planned paired FASTQ plus quantification QC",
+      "full_data_command": "planned full HG008 RNA-seq run",
+      "documentation": "docs/orthogonal-validation-samples.md"
+    },
+    {
+      "example_id": "colo829_wgs",
+      "status": "planned",
+      "public_access": "yes",
+      "modality": "tumor_normal_wgs",
+      "source_scope": "full public WGS FASTQs and truth files",
+      "completion_artifact": "planned results/orthogonal_validation/colo829_summary.json",
+      "artifact_exists": "no",
+      "artifact_status": "planned",
+      "pass_gate": "planned SV/CNA overlap plus BRAF/UV guardrail",
+      "full_data_command": "planned full or 30x downsample COLO829 WGS run",
+      "documentation": "docs/orthogonal-validation-samples.md"
+    },
+    {
+      "example_id": "colo829_purity_series",
+      "status": "planned",
+      "public_access": "yes",
+      "modality": "tumor_normal_wgs_dilution",
+      "source_scope": "full public WGS purity-series FASTQs",
+      "completion_artifact": "planned results/orthogonal_validation/colo829_purity_summary.json",
+      "artifact_exists": "no",
+      "artifact_status": "planned",
+      "pass_gate": "planned monotonic recall by purity",
+      "full_data_command": "planned selected full purity-series WGS levels",
+      "documentation": "docs/orthogonal-validation-samples.md"
+    },
+    {
+      "example_id": "seraseq_ctdna_mrd",
+      "status": "blocked_request_or_purchase",
+      "public_access": "request_or_purchase",
+      "modality": "ctdna_mrd_reference",
+      "source_scope": "reference material or request-only files",
+      "completion_artifact": "planned results/orthogonal_validation/seraseq_mrd_summary.json",
+      "artifact_exists": "no",
+      "artifact_status": "planned",
+      "pass_gate": "blocked positive/negative dilution classification",
+      "full_data_command": "blocked until data/material obtained",
+      "documentation": "docs/orthogonal-validation-samples.md"
+    }
+  ]
+}

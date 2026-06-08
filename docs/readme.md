@@ -24,24 +24,27 @@ Truth sets are known-answer datasets. They are the only way to show that a pipel
 
 ## Documentation Map
 
-- [PROJECT_PLAN.md](/Users/jasonlaster/src/projects/diana-omics/docs/PROJECT_PLAN.md): what remains to do.
-- [PHASE_STATUS.md](/Users/jasonlaster/src/projects/diana-omics/docs/PHASE_STATUS.md): current completion status and evidence.
-- [BUG_AUDIT.md](/Users/jasonlaster/src/projects/diana-omics/docs/BUG_AUDIT.md): bug risks, mitigations, and missing verifiers.
-- [PYTHON_IMPLEMENTATION.md](/Users/jasonlaster/src/projects/diana-omics/docs/PYTHON_IMPLEMENTATION.md): command and package architecture.
-- [DIANA_RAW_INPUTS.md](/Users/jasonlaster/src/projects/diana-omics/docs/DIANA_RAW_INPUTS.md): how to provide Diana's files.
-- [RAW_DATA_READINESS.md](/Users/jasonlaster/src/projects/diana-omics/docs/RAW_DATA_READINESS.md): public representative raw-data ladder.
-- [ORTHOGONAL_VALIDATION_SAMPLES.md](/Users/jasonlaster/src/projects/diana-omics/docs/ORTHOGONAL_VALIDATION_SAMPLES.md): next known-answer reference samples.
-- [PHASE3_PARALLEL_COMPUTE.md](/Users/jasonlaster/src/projects/diana-omics/docs/PHASE3_PARALLEL_COMPUTE.md): local CPU and full-depth parallelization strategy.
-- [SOURCE_MAP.md](/Users/jasonlaster/src/projects/diana-omics/docs/SOURCE_MAP.md): source datasets and external references.
-- [WIKI_SOURCE_SUMMARY.md](/Users/jasonlaster/src/projects/diana-omics/docs/WIKI_SOURCE_SUMMARY.md): how the original Diana wiki packet shaped the project.
+| Document | Use it when you need to... |
+| --- | --- |
+| [project-plan.md](/Users/jasonlaster/src/projects/diana-omics/docs/project-plan.md) | Understand the evidence-gate plan and remaining work. |
+| [phase-status.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase-status.md) | Check what has passed, what is partial, and what is blocked. |
+| [bug-audit.md](/Users/jasonlaster/src/projects/diana-omics/docs/bug-audit.md) | Review likely bugs before trusting results. |
+| [diana-raw-inputs.md](/Users/jasonlaster/src/projects/diana-omics/docs/diana-raw-inputs.md) | Prepare Diana's real raw files for validation and staging. |
+| [raw-data-readiness.md](/Users/jasonlaster/src/projects/diana-omics/docs/raw-data-readiness.md) | See the public FASTQ/WES/WGS readiness ladder. |
+| [orthogonal-validation-samples.md](/Users/jasonlaster/src/projects/diana-omics/docs/orthogonal-validation-samples.md) | Choose additional known-answer datasets. |
+| [phase3-parallel-compute.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase3-parallel-compute.md) | Tune CPU/thread usage for large WGS runs. |
+| [python-implementation.md](/Users/jasonlaster/src/projects/diana-omics/docs/python-implementation.md) | Work on Python commands, tests, and verifier contracts. |
+| [source-map.md](/Users/jasonlaster/src/projects/diana-omics/docs/source-map.md) | Audit dataset, tool, truth-set, and vendor-context sources. |
+| [wiki-source-summary.md](/Users/jasonlaster/src/projects/diana-omics/docs/wiki-source-summary.md) | Understand the original Diana wiki scope. |
+| [reference-panel-label-rules.md](/Users/jasonlaster/src/projects/diana-omics/docs/reference-panel-label-rules.md) | Review Phase 1 label rules and caveats. |
 
 ## New Reader Path
 
 1. Read this file.
 2. Run `bun run verify:outputs` to confirm generated artifacts are internally complete.
-3. Read [PHASE_STATUS.md](/Users/jasonlaster/src/projects/diana-omics/docs/PHASE_STATUS.md) to see what has actually passed.
-4. Read [BUG_AUDIT.md](/Users/jasonlaster/src/projects/diana-omics/docs/BUG_AUDIT.md) before trusting any biological interpretation.
-5. Read [DIANA_RAW_INPUTS.md](/Users/jasonlaster/src/projects/diana-omics/docs/DIANA_RAW_INPUTS.md) before plugging in Diana's files.
+3. Read [phase-status.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase-status.md) to see what has actually passed.
+4. Read [bug-audit.md](/Users/jasonlaster/src/projects/diana-omics/docs/bug-audit.md) before trusting any biological interpretation.
+5. Read [diana-raw-inputs.md](/Users/jasonlaster/src/projects/diana-omics/docs/diana-raw-inputs.md) before plugging in Diana's files.
 
 ## Command Pattern
 

@@ -1,9 +1,10 @@
 {
-  "generatedAt": "2026-06-07T06:44:13.822Z",
+  "generatedAt": "2026-06-08T14:54:56.675Z",
   "status": "ready",
   "phase": "3",
   "pairId": "seqc2_hcc1395_wgs_hiseqx_full",
-  "readPairsPerEnd": 500000,
+  "readRequest": "full",
+  "readPairsMode": "full",
   "sampleRows": 2,
   "source": "SEQC2/HCC1395 public HiSeq X Ten WGS tumor-normal FASTQ pair",
   "reference": {
@@ -24,8 +25,12 @@
     "highConfidenceBedPath": "data/raw/reference/seqc2_hcc1395_truth/latest/High-Confidence_Regions_v1.2.bed"
   },
   "parallelism": {
-    "fetchConcurrency": 2,
-    "note": "FASTQ end streams can be fetched concurrently; alignment/runtime thread controls live in smoke:phase3-wgs."
+    "fetchConcurrency": 4,
+    "note": "FASTQ end streams can be fetched concurrently; alignment/runtime thread controls live in validate:phase3-wgs."
   },
-  "boundary": "This prepares a bounded WGS smoke subset from full public WGS FASTQs. It does not download the complete 198 GB compressed HiSeq X tumor-normal WGS pair."
+  "completionModes": {
+    "default": "Full-source public WGS validation.",
+    "bounded_developer_check": "Set PHASE3_WGS_READS to an integer only for developer plumbing checks; bounded mode does not satisfy the Phase 3 acceptance gate."
+  },
+  "boundary": "Full-source runs prepare complete SEQC2/HCC1395 public WGS FASTQs for Phase 3 validation. Bounded subsets are optional developer checks and are not accepted as completed orthogonal validation."
 }

@@ -25,8 +25,10 @@ REQUIRED_FILES = [
     "manifests/full_wes_benchmark_samplesheet.csv",
     "manifests/phase3_wgs_smoke_samplesheet.csv",
     "manifests/diana_raw_inputs.template.csv",
+    "manifests/orthogonal_public_examples.csv",
+    "manifests/orthogonal_validation_candidates.csv",
     "manifests/reference_panel_validation.json",
-    "docs/DIANA_RAW_INPUTS.md",
+    "docs/diana-raw-inputs.md",
     "docs/reference-panel-label-rules.md",
     "results/hrd_event_table.csv",
     "results/allele_state_table.csv",
@@ -115,6 +117,8 @@ REQUIRED_FILES = [
     "results/phase3_wgs_smoke/covered_truth_variants.csv",
     "results/phase3_wgs_smoke/phase3_wgs_summary.csv",
     "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+    "results/orthogonal_validation/public_examples_summary.csv",
+    "results/orthogonal_validation/public_examples_summary.json",
     "results/diana_raw_intake/README.md",
     "results/diana_raw_intake/input_contract.json",
     "results/diana_raw_intake/intake_readiness_summary.csv",
@@ -288,6 +292,7 @@ def main() -> None:
         ("results/phase3_wgs_smoke/sv_evidence_summary.json", "passed"),
         ("results/phase3_wgs_smoke/hrd_tool_readiness_summary.json", "passed"),
         ("results/phase3_wgs_smoke/phase3_wgs_summary.json", "passed"),
+        ("results/orthogonal_validation/public_examples_summary.json", "passed"),
     ]:
         require_status(errors, json_path, expected)
 
@@ -358,8 +363,15 @@ def main() -> None:
             errors.append(f"Phase 3 samplesheet must use WGS assay rows, not {row.get('assay')}.")
         if row.get("reference_id") != "ucsc_hg38_analysis_set_full":
             errors.append(f"Phase 3 samplesheet must use ucsc_hg38_analysis_set_full, not {row.get('reference_id')}.")
-        if "full-depth WGS HRD" not in row.get("caveat", ""):
-            errors.append(f"Phase 3 caveat must preserve full-depth WGS boundary for {row.get('run_accession')}.")
+        if row.get("read_pairs_per_end") != row.get("source_read_pairs"):
+            errors.append(f"Phase 3 WGS validation must use full source read pairs for {row.get('run_accession')}.")
+        if not row.get("fastq_1", "").endswith(".full.fastq.gz") or not row.get("fastq_2", "").endswith(".full.fastq.gz"):
+            errors.append(f"Phase 3 WGS validation FASTQs must be complete compressed source files for {row.get('run_accession')}.")
+        if "/full/bam/" not in row.get("output_bam", ""):
+            errors.append(f"Phase 3 WGS full validation BAM must be isolated under a full output directory for {row.get('run_accession')}.")
+        caveat = row.get("caveat", "")
+        if "Full-source validation is the acceptance gate" not in caveat:
+            errors.append(f"Phase 3 caveat must preserve the full-source acceptance gate for {row.get('run_accession')}.")
 
     phase3_summary_rows = require_rows(errors, "results/phase3_wgs_smoke/phase3_wgs_summary.csv", 1)
     require_columns(
@@ -370,6 +382,8 @@ def main() -> None:
             "status",
             "phase",
             "read_pairs_per_end",
+            "read_pairs_mode",
+            "read_request",
             "bam_validation_status",
             "mutect2_status",
             "coverage_cnv_status",
@@ -386,16 +400,62 @@ def main() -> None:
             errors.append("Phase 3 WGS summary CSV did not pass the completed Phase 3 gate.")
         if row.get("ready_for_phase4_when_diana_raw_arrives") != "yes":
             errors.append("Phase 3 WGS summary must mark the project ready for Phase 4 setup once Diana raw files arrive.")
-        if int(row.get("read_pairs_per_end") or "0") < 500000:
-            errors.append("Phase 3 WGS smoke must use at least 500,000 representative read pairs per FASTQ end.")
+        if row.get("read_pairs_mode") != "full":
+            errors.append("Phase 3 WGS summary CSV must come from a full-source run.")
+        if row.get("read_request") != "full":
+            errors.append("Phase 3 WGS summary CSV must record read_request=full.")
+        source_pairs = [int(sample.get("source_read_pairs") or "0") for sample in phase3_samplesheet]
+        if source_pairs and int(row.get("read_pairs_per_end") or "0") < min(source_pairs):
+            errors.append("Phase 3 WGS full validation must use the full source read-pair count.")
         if "Full-depth Diana interpretation" not in row.get("boundary", ""):
             errors.append("Phase 3 WGS summary must preserve the full-depth Diana interpretation boundary.")
 
     phase3_summary = read_json_if_exists(errors, "results/phase3_wgs_smoke/phase3_wgs_summary.json")
     if phase3_summary.get("phase3Complete") is not True or phase3_summary.get("readyForPhase4WhenDianaRawArrives") is not True:
         errors.append("Phase 3 WGS JSON summary must mark Phase 3 complete and ready for Phase 4 setup.")
+    if phase3_summary.get("readPairsMode") != "full" or phase3_summary.get("fullSourceFastqs") is not True:
+        errors.append("Phase 3 WGS JSON summary must be from full-source FASTQs, not a bounded smoke run.")
     if int(phase3_summary.get("coverageCnvBins") or 0) <= 0:
         errors.append("Phase 3 WGS summary must include non-empty coverage CNV bins.")
+
+    orthogonal_examples = require_rows(errors, "manifests/orthogonal_public_examples.csv", 7)
+    require_columns(
+        errors,
+        "manifests/orthogonal_public_examples.csv",
+        orthogonal_examples,
+        [
+            "example_id",
+            "priority",
+            "status",
+            "public_access",
+            "modality",
+            "source_scope",
+            "raw_inputs",
+            "truth_or_expected_answer",
+            "runnable_command",
+            "full_data_command",
+            "completion_artifact",
+            "pass_gate",
+            "documentation",
+        ],
+    )
+    example_ids = {row.get("example_id") for row in orthogonal_examples}
+    for example_id in ["seqc2_hcc1395_full_wes", "seqc2_hcc1395_phase3_wgs", "giab_hg008_wgs", "colo829_wgs"]:
+        if example_id not in example_ids:
+            errors.append(f"Orthogonal public examples manifest is missing {example_id}.")
+    for row in orthogonal_examples:
+        if row.get("status") == "implemented" and not row.get("completion_artifact", "").startswith("results/"):
+            errors.append(f"Implemented orthogonal example {row.get('example_id')} must point to a results completion artifact.")
+        if row.get("status") == "implemented" and not row.get("full_data_command"):
+            errors.append(f"Implemented orthogonal example {row.get('example_id')} must include a full_data_command.")
+        if row.get("documentation") and not path_from_root(row["documentation"]).exists():
+            errors.append(f"Orthogonal example {row.get('example_id')} references missing documentation {row.get('documentation')}.")
+
+    orthogonal_summary = read_json_if_exists(errors, "results/orthogonal_validation/public_examples_summary.json")
+    if int(orthogonal_summary.get("implementedExamples") or 0) < 2:
+        errors.append("Orthogonal public examples summary must include at least two implemented public examples.")
+    if int(orthogonal_summary.get("plannedExamples") or 0) < 4:
+        errors.append("Orthogonal public examples summary must keep the HG008/COLO829 known-answer examples visible.")
 
     sbs96_rows = require_rows(errors, "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv", 96)
     require_columns(

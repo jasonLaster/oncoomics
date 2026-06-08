@@ -2,6 +2,28 @@
 
 This document lists the extra public or reference-material samples that should be run before trusting the pipeline on Diana's real files. The point is correctness, not just completion.
 
+## Current Public Examples
+
+The machine-readable public examples live in:
+
+- `manifests/orthogonal_public_examples.csv`
+- `results/orthogonal_validation/public_examples_summary.json`
+
+Verify them with:
+
+```sh
+bun run verify:orthogonal
+```
+
+Current implemented examples:
+
+| Example | What it proves | Default command | Full-source command |
+| --- | --- | --- | --- |
+| `seqc2_hcc1395_full_wes` | Full public WES FASTQs can be validated, aligned, called with GATK Mutect2, and compared with SEQC2/HCC1395 truth-overlap variants. | `bun run fetch:full-wes && bun run benchmark:full-wes` | Same command; Phase 2F already uses the full public WES FASTQs. |
+| `seqc2_hcc1395_phase3_wgs` | The TypeScript-era public WGS example is preserved in Python: full-source SEQC2/HCC1395 WGS FASTQs flow through FASTQ validation, BAM, VCF, CNV bins, SBS96, and SV evidence outputs. | `bun run fetch:phase3-wgs && bun run validate:phase3-wgs` | Same command; full-source WGS is now the required Phase 3 acceptance gate. |
+
+Bounded Phase 3 WGS runs are available only by setting `PHASE3_WGS_READS` to an integer for developer plumbing checks. They do not satisfy the orthogonal validation gate.
+
 ## Selection Criteria
 
 A useful validation sample needs:
@@ -36,6 +58,21 @@ Known-answer gates:
 - Compare SV/CNV calls with `GRCh38_HG008-T-V0.5_somatic-stvar-CNV_ALL.draftbenchmark.vcf.gz` and related PASS CNV BED/BEDPE files.
 - Confirm reference-build compatibility before benchmarking.
 - Treat RNA-seq as QC/quantification validation until a specific RNA truth target is chosen.
+
+Planned runnable gate:
+
+```sh
+fetch:hg008
+benchmark:hg008
+```
+
+Required outputs before this counts as complete:
+
+- small-variant recall/precision summary
+- SV truth overlap summary
+- CNV reciprocal-overlap summary
+- reference compatibility report
+- tool version and command provenance
 
 Key sources:
 
@@ -72,6 +109,22 @@ Known-answer gates:
 - Compare CNA outputs against Zenodo CNA files.
 - Run at least one dilution level and confirm recall decreases as tumor purity decreases.
 
+Planned runnable gate:
+
+```sh
+fetch:colo829
+benchmark:colo829
+benchmark:colo829-purity
+```
+
+Required outputs before this counts as complete:
+
+- BRAF/driver sanity summary
+- UV/SBS7 guardrail summary
+- SV/CNA truth-overlap summary
+- purity-series recall table
+- explicit HRD-negative or non-HRD-signature caveat
+
 Key sources:
 
 - ENA project: https://www.ebi.ac.uk/ena/browser/view/PRJEB27698
@@ -106,13 +159,14 @@ Key source:
 
 ## Implementation Plan
 
-1. Add `fetch:hg008` and `benchmark:hg008` commands.
-2. Add truth-file manifest rows for HG008 small variants and SV/CNV.
-3. Add 30x downsample controls so local runs are feasible.
-4. Add `fetch:colo829` and `benchmark:colo829` commands.
-5. Add COLO829 driver/signature/SV/CNA assertions.
-6. Add purity-series reporting.
-7. Decide whether to request Seraseq data or material.
+1. Keep `verify:orthogonal` green so implemented and planned public examples stay documented.
+2. Add `fetch:hg008` and `benchmark:hg008` commands.
+3. Add truth-file manifest rows for HG008 small variants and SV/CNV.
+4. Add 30x downsample controls so local runs are feasible.
+5. Add `fetch:colo829` and `benchmark:colo829` commands.
+6. Add COLO829 driver/signature/SV/CNA assertions.
+7. Add purity-series reporting.
+8. Decide whether to request Seraseq data or material.
 
 ## Acceptance Criteria
 

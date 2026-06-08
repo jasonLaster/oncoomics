@@ -54,16 +54,16 @@ Missing verifier:
 
 Risk:
 
-The Phase 3 WGS smoke proves mechanics, not sensitivity. A small downsample can miss true variants, signatures, or CNV/SV events.
+Bounded Phase 3 WGS subsets prove mechanics, not sensitivity. A small downsample can miss true variants, signatures, or CNV/SV events.
 
 Current mitigations:
 
-- Docs state that Phase 3 is a smoke test.
+- Docs state that bounded Phase 3 runs are developer checks only.
 - Full WES benchmark uses truth overlap and reports recall/precision.
 
 Missing verifier:
 
-- Add HG008 and COLO829 full or 30x downsample truth benchmarks with explicit pass/fail thresholds.
+- Keep the SEQC2/HCC1395 full-source WGS gate passing and add HG008 and COLO829 full or 30x truth benchmarks with explicit pass/fail thresholds.
 
 ### HRD Label Leakage or Weak Labels
 

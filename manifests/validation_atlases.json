@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1.0",
-  "generated_from": "docs/PROJECT_PLAN.md",
+  "generated_from": "docs/project-plan.md",
   "sources": [
     {
       "id": "tcga-brca-gdc",
