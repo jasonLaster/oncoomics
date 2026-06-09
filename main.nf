@@ -319,7 +319,7 @@ def run_s5cmd_cat(run, part_index, requested_bytes):
     object_uri = f"s3://{bucket}/{key}"
     count = max(1, (requested_bytes + (8 * 1024 * 1024) - 1) // (8 * 1024 * 1024))
     command = (
-        f"set -euo pipefail; "
+        f"set -eu; "
         f"{subprocess.list2cmdline([s5cmd, '--no-sign-request', 'cat', object_uri])} "
         f"| dd of=/dev/null bs=8M count={count} iflag=fullblock status=none"
     )
