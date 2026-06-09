@@ -9,6 +9,8 @@ Install Nextflow, then run one of the task aliases:
 ```sh
 bun run nf:quick
 bun run nf:full-wes
+bun run nf:phase3-fetch:dev
+bun run nf:phase3-fetch:full
 bun run nf:phase3-wgs:dev
 bun run nf:phase3-wgs:full
 bun run nf:all-public
@@ -19,6 +21,8 @@ Direct Nextflow equivalents:
 ```sh
 nextflow run main.nf -profile local --workflow quick
 nextflow run main.nf -profile local --workflow full_wes
+nextflow run main.nf -profile local --workflow phase3_fetch --phase3_reads 500000
+nextflow run main.nf -profile local --workflow phase3_fetch --phase3_reads full --phase3_fetch_concurrency 4 --phase3_aria2_split 1
 nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads 500000
 nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads full
 nextflow run main.nf -profile local --workflow all_public --phase3_reads 500000
@@ -39,6 +43,24 @@ nextflow run main.nf -profile local --workflow all_public --phase3_reads full --
 Outputs are published under `nextflow-out/<workflow>/`.
 
 Bounded Phase 3 runs are developer plumbing checks. They may run `verify:outputs` for visibility, but a failing full-output verifier is non-fatal unless `--phase3_reads full` is selected. Full-source runs keep `verify:outputs` fatal because that verifier is the acceptance gate for Diana-readiness evidence.
+
+## Phase 3 Fetch Experiments
+
+Use `phase3_fetch` to benchmark WGS FASTQ download strategies without running the full WES benchmark or WGS validation ladder:
+
+```sh
+nextflow run main.nf \
+  -profile awsbatch_ondemand \
+  -params-file infra/aws/nextflow.aws.json \
+  --workflow phase3_fetch \
+  --phase3_reads full \
+  --phase3_fetch_cpus 4 \
+  --phase3_fetch_memory '16 GB' \
+  --phase3_fetch_concurrency 4 \
+  --phase3_aria2_split 1
+```
+
+`phase3_fetch` still fetches the small prerequisites needed by `fetch:phase3-wgs`, then downloads and checks the full SEQC2/HCC1395 WGS FASTQs. Keep `--phase3_aria2_split 1` for acceptance data unless a segmented transfer strategy has already been proven against provider MD5s and gzip validation. Increase `--phase3_fetch_concurrency` first; it controls how many FASTQ end streams are downloaded concurrently.
 
 ## Docker Profile
 

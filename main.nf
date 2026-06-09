@@ -4,6 +4,10 @@ nextflow.enable.dsl = 2
 
 params.workflow = params.workflow ?: 'quick'
 params.phase3_reads = params.phase3_reads ?: null
+params.phase3_fetch_cpus = params.phase3_fetch_cpus ?: 4
+params.phase3_fetch_memory = params.phase3_fetch_memory ?: '16 GB'
+params.phase3_fetch_concurrency = params.phase3_fetch_concurrency ?: 2
+params.phase3_aria2_split = params.phase3_aria2_split ?: 1
 params.allow_full_wgs = params.allow_full_wgs ?: false
 params.repo_dir = params.repo_dir ?: projectDir.toString()
 params.outdir = params.outdir ?: "${projectDir}/nextflow-out"
@@ -133,6 +137,54 @@ process FULL_WES {
     """
 }
 
+process PHASE3_FETCH {
+    tag "phase3_fetch_${params.phase3_reads ?: '500000'}_c${params.phase3_fetch_concurrency}_s${params.phase3_aria2_split}"
+    cpus { params.phase3_fetch_cpus as int }
+    memory { params.phase3_fetch_memory }
+    time '48h'
+    publishDir "${params.outdir}/phase3_fetch", mode: 'copy', overwrite: true
+
+    output:
+    path 'workspace/manifests', optional: true
+    path 'workspace/results', optional: true
+
+    script:
+    """
+    set -euo pipefail
+    SOURCE_DIR="${params.repo_dir}"
+    rm -rf workspace
+    mkdir -p workspace
+    rsync -a --delete --exclude '.git/' --exclude '.nextflow/' --exclude 'work/' --exclude 'nextflow-out/' "\${SOURCE_DIR%/}/" workspace/
+    cd workspace
+    export DIANA_OMICS_ROOT="\$PWD"
+    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
+    export PYTHONPATH="\$PWD/py/src"
+    export PYTHON_BIN="${params.python_bin}"
+    export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
+    export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
+    export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
+    run() { echo "==> \$*"; "\$@"; }
+
+    run "\$PYTHON_BIN" -m diana_omics verify:plan
+    run "\$PYTHON_BIN" -m diana_omics fetch:phase1
+    run "\$PYTHON_BIN" -m diana_omics fetch:raw-candidates
+    run "\$PYTHON_BIN" -m diana_omics audit:raw-tools
+    run "\$PYTHON_BIN" -m diana_omics build:diana-template
+    run "\$PYTHON_BIN" -m diana_omics verify:diana-raw
+    run "\$PYTHON_BIN" -m diana_omics build:raw-samplesheets
+    run "\$PYTHON_BIN" -m diana_omics fetch:full-reference-smoke
+    run "\$PYTHON_BIN" -m diana_omics fetch:production-somatic
+    run "\$PYTHON_BIN" -m diana_omics fetch:phase3-wgs
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests workspace/results
+    PYTHONPATH="${params.repo_dir}/py/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    """
+}
+
 process PHASE3_WGS {
     tag "phase3_wgs_${params.phase3_reads ?: '500000'}"
     cpus 16
@@ -158,6 +210,8 @@ process PHASE3_WGS {
     export PYTHON_BIN="${params.python_bin}"
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
     export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
+    export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
+    export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan
@@ -227,6 +281,8 @@ process ALL_PUBLIC {
     export PHASE2F_THREADS="\${PHASE2F_THREADS:-8}"
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
     export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
+    export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
+    export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan
@@ -274,7 +330,7 @@ workflow {
     selectedWorkflow = params.workflow.toString()
     effectivePhase3Reads = params.phase3_reads ? params.phase3_reads.toString() : '500000'
     allowFullWgs = params.allow_full_wgs.toString() == 'true'
-    workflows = ['quick', 'full_wes', 'phase3_wgs', 'all_public']
+    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_wgs', 'all_public']
 
     if (!workflows.contains(selectedWorkflow)) {
         error "Unknown workflow '${selectedWorkflow}'. Choose one of: ${workflows.join(', ')}."
@@ -292,6 +348,8 @@ workflow {
         QUICK()
     } else if (selectedWorkflow == 'full_wes') {
         FULL_WES()
+    } else if (selectedWorkflow == 'phase3_fetch') {
+        PHASE3_FETCH()
     } else if (selectedWorkflow == 'phase3_wgs') {
         PHASE3_WGS()
     } else {

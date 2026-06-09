@@ -103,6 +103,23 @@ bun run nf:aws:phase3-wgs:dev
 
 This uses `--phase3_reads 500000` and is still a developer plumbing check. It downloads public/reference inputs in AWS.
 
+## Phase 3 Fetch Experiments
+
+Use the fetch-only workflow to test WGS download throughput on smaller Batch jobs without running the full validation ladder:
+
+```sh
+bun run nf:aws:phase3-fetch:full
+```
+
+The default full fetch experiment uses:
+
+- `--phase3_fetch_cpus 4`
+- `--phase3_fetch_memory '16 GB'`
+- `--phase3_fetch_concurrency 4`
+- `--phase3_aria2_split 1`
+
+Keep `phase3_aria2_split=1` for acceptance-scale data unless a segmented ENA strategy has been proven against provider MD5s and gzip validation. Raising fetch concurrency is the safer first download experiment. The job writes FASTQs to local task storage first; S3 work/results objects are only durable after the task publishes or exits cleanly.
+
 ## Full-Source WGS
 
 Run full WGS only by explicit command, preferably on the On-Demand queue unless Spot interruption is acceptable:
