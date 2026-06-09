@@ -57,7 +57,7 @@
     "nf:aws:monitor": "bash infra/aws/monitor-batch-job.sh",
     "nf:aws:quick:stub": "nextflow run main.nf -profile awsbatch_spot -params-file infra/aws/nextflow.aws.json --workflow quick -stub-run",
     "nf:aws:phase3-fetch:dev": "nextflow run main.nf -profile awsbatch_spot -params-file infra/aws/nextflow.aws.json --workflow phase3_fetch --phase3_reads 500000 --phase3_fetch_cpus 4 --phase3_fetch_memory '16 GB'",
-    "nf:aws:phase3-sra-benchmark": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_sra_benchmark --phase3_fetch_cpus 4 --phase3_fetch_memory '16 GB' --phase3_fetch_concurrency 2 --sra_benchmark_bytes 1073741824",
+    "nf:aws:phase3-sra-benchmark": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_sra_benchmark --phase3_fetch_cpus 4 --phase3_fetch_memory '16 GB' --phase3_fetch_concurrency 8 --sra_benchmark_bytes 268435456 --sra_benchmark_parts 4",
     "nf:aws:phase3-fetch:full": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_fetch --phase3_reads full --phase3_source_mode aws_sra --phase3_fetch_cpus 8 --phase3_fetch_memory '48 GB' --phase3_fetch_concurrency 2",
     "nf:aws:phase3-wgs:dev": "nextflow run main.nf -profile awsbatch_spot -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs --phase3_reads 500000",
     "nf:aws:phase3-wgs:full": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs --phase3_reads full --phase3_source_mode aws_sra --phase3_fetch_concurrency 2"

@@ -111,7 +111,7 @@ Use the SRA benchmark workflow to test AWS Open Data throughput on smaller Batch
 bun run nf:aws:phase3-sra-benchmark
 ```
 
-The default benchmark range-reads 1 GiB from each HCC1395 SRA object in `sra-pub-run-odp` and writes throughput summaries to the configured results bucket. Increase `--sra_benchmark_bytes` once the basic path is working.
+The default benchmark range-reads four 256 MiB ranges from each HCC1395 SRA object in `sra-pub-run-odp` and writes throughput summaries to the configured results bucket. Increase `--sra_benchmark_bytes`, `--sra_benchmark_parts`, or `--phase3_fetch_concurrency` once the basic path is working.
 
 Use the fetch-only workflow to test the full SRA download and FASTQ conversion path without running the full validation ladder:
 

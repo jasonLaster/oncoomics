@@ -12,6 +12,7 @@ params.phase3_source_mode = params.phase3_source_mode ?: 'ena_fastq'
 params.phase3_sra_aws_bucket = params.phase3_sra_aws_bucket ?: 'sra-pub-run-odp'
 params.sra_benchmark_runs = params.sra_benchmark_runs ?: 'SRR7890824,SRR7890827'
 params.sra_benchmark_bytes = params.sra_benchmark_bytes ?: 1073741824
+params.sra_benchmark_parts = params.sra_benchmark_parts ?: 1
 params.allow_full_wgs = params.allow_full_wgs ?: false
 params.repo_dir = params.repo_dir ?: projectDir.toString()
 params.outdir = params.outdir ?: "${projectDir}/nextflow-out"
@@ -193,7 +194,7 @@ process PHASE3_FETCH {
 }
 
 process PHASE3_SRA_BENCHMARK {
-    tag "phase3_sra_benchmark_${params.sra_benchmark_bytes}_c${params.phase3_fetch_concurrency}"
+    tag "phase3_sra_benchmark_${params.sra_benchmark_bytes}_p${params.sra_benchmark_parts}_c${params.phase3_fetch_concurrency}"
     cpus { params.phase3_fetch_cpus as int }
     memory { params.phase3_fetch_memory }
     time '4h'
@@ -226,10 +227,11 @@ process PHASE3_SRA_BENCHMARK {
 
     mkdir -p results/phase3_wgs_smoke
     BYTES="${params.sra_benchmark_bytes}"
+    PARTS="${params.sra_benchmark_parts}"
     RUNS="${params.sra_benchmark_runs}"
     BUCKET="${params.phase3_sra_aws_bucket}"
     CONCURRENCY="${params.phase3_fetch_concurrency}"
-    export AWS_CLI BYTES RUNS BUCKET CONCURRENCY
+    export AWS_CLI BYTES PARTS RUNS BUCKET CONCURRENCY
 
     "\$PYTHON_BIN" - <<'PY'
 import json
@@ -242,14 +244,18 @@ from pathlib import Path
 aws = os.environ["AWS_CLI"]
 bucket = os.environ["BUCKET"]
 bytes_requested = int(os.environ["BYTES"])
+parts_per_run = max(1, int(os.environ["PARTS"]))
 runs = [run.strip() for run in os.environ["RUNS"].split(",") if run.strip()]
 concurrency = max(1, int(os.environ["CONCURRENCY"]))
 outdir = Path("results/phase3_wgs_smoke")
 outdir.mkdir(parents=True, exist_ok=True)
 
-def benchmark(run):
+def benchmark(part):
+    run, part_index = part
     key = f"sra/{run}/{run}"
-    target = Path("/tmp") / f"{run}.{bytes_requested}.sra.part"
+    start_byte = part_index * bytes_requested
+    end_byte = start_byte + bytes_requested - 1
+    target = Path("/tmp") / f"{run}.{start_byte}-{end_byte}.sra.part"
     target.unlink(missing_ok=True)
     started = time.monotonic()
     command = [
@@ -262,7 +268,7 @@ def benchmark(run):
         "--key",
         key,
         "--range",
-        f"bytes=0-{bytes_requested - 1}",
+        f"bytes={start_byte}-{end_byte}",
         str(target),
     ]
     subprocess.run(command, check=True)
@@ -273,19 +279,23 @@ def benchmark(run):
         "run": run,
         "bucket": bucket,
         "key": key,
+        "part": part_index,
+        "range": f"bytes={start_byte}-{end_byte}",
         "bytes": size,
         "elapsedSeconds": round(elapsed, 3),
         "mbPerSecond": round(size / 1_000_000 / elapsed, 2),
     }
 
+parts = [(run, part_index) for run in runs for part_index in range(parts_per_run)]
 started_all = time.monotonic()
-with ThreadPoolExecutor(max_workers=min(concurrency, len(runs))) as pool:
-    rows = list(pool.map(benchmark, runs))
+with ThreadPoolExecutor(max_workers=min(concurrency, len(parts))) as pool:
+    rows = list(pool.map(benchmark, parts))
 elapsed_all = time.monotonic() - started_all
 total_bytes = sum(row["bytes"] for row in rows)
 summary = {
     "sourceMode": "aws_sra",
     "requestedBytesPerRun": bytes_requested,
+    "partsPerRun": parts_per_run,
     "concurrency": concurrency,
     "runs": rows,
     "totalBytes": total_bytes,
@@ -294,9 +304,9 @@ summary = {
 }
 (outdir / "sra_benchmark.json").write_text(json.dumps(summary, indent=2) + chr(10), encoding="utf-8")
 with (outdir / "sra_benchmark.tsv").open("w", encoding="utf-8") as handle:
-    handle.write("run\tbytes\telapsedSeconds\tmbPerSecond" + chr(10))
+    handle.write("run\tpart\trange\tbytes\telapsedSeconds\tmbPerSecond" + chr(10))
     for row in rows:
-        handle.write(f"{row['run']}\t{row['bytes']}\t{row['elapsedSeconds']}\t{row['mbPerSecond']}" + chr(10))
+        handle.write(f"{row['run']}\t{row['part']}\t{row['range']}\t{row['bytes']}\t{row['elapsedSeconds']}\t{row['mbPerSecond']}" + chr(10))
 print(json.dumps(summary, indent=2))
 PY
     """

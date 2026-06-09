@@ -71,11 +71,12 @@ nextflow run main.nf \
   --workflow phase3_sra_benchmark \
   --phase3_fetch_cpus 4 \
   --phase3_fetch_memory '16 GB' \
-  --phase3_fetch_concurrency 2 \
-  --sra_benchmark_bytes 1073741824
+  --phase3_fetch_concurrency 8 \
+  --sra_benchmark_bytes 268435456 \
+  --sra_benchmark_parts 4
 ```
 
-This range-reads the public SRA objects and reports per-run plus aggregate MB/s without keeping the downloaded bytes. It tests the AWS S3 path only; full `aws_sra` performance also includes SRA-to-FASTQ conversion and gzip compression. Keep `--phase3_aria2_split 1` for ENA acceptance data unless a segmented transfer strategy has already been proven against provider MD5s and gzip validation.
+This range-reads the public SRA objects and reports per-range plus aggregate MB/s without keeping the downloaded bytes. `--sra_benchmark_bytes` is bytes per range and `--sra_benchmark_parts` is ranges per run accession. It tests the AWS S3 path only; full `aws_sra` performance also includes SRA-to-FASTQ conversion and gzip compression. Keep `--phase3_aria2_split 1` for ENA acceptance data unless a segmented transfer strategy has already been proven against provider MD5s and gzip validation.
 
 ## Docker Profile
 
