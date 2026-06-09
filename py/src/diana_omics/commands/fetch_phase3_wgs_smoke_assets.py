@@ -34,6 +34,7 @@ ARIA2_SPLIT = max(1, int(os.environ.get("PHASE3_WGS_ARIA2_SPLIT", "1")))
 SOURCE_MODE = os.environ.get("PHASE3_WGS_SOURCE_MODE", "ena_fastq").lower().replace("-", "_")
 SRA_AWS_BUCKET = os.environ.get("PHASE3_WGS_SRA_AWS_BUCKET", "sra-pub-run-odp")
 SRA_THREADS = max(1, int(os.environ.get("PHASE3_WGS_SRA_THREADS", str(FETCH_CONCURRENCY))))
+S3_MAX_CONCURRENT_REQUESTS = max(1, int(os.environ.get("PHASE3_WGS_S3_MAX_CONCURRENT_REQUESTS", str(max(16, SRA_THREADS * 2)))))
 RESULTS_DIR = "results/phase3_wgs_smoke"
 SMOKE_ROOT = "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full"
 SEQC2_TRUTH_ROOT = "data/raw/reference/seqc2_hcc1395_truth/latest"
@@ -481,6 +482,23 @@ def gzip_fastq(input_path: Path, output_path: Path, threads: int) -> None:
                 shutil.copyfileobj(source, target, length=1024 * 1024)
 
 
+def write_aws_s3_transfer_config(max_concurrent_requests: int) -> Path:
+    config_path = path_from_root(f"{RESULTS_DIR}/logs/aws_s3_config")
+    write_text(
+        config_path,
+        "\n".join(
+            [
+                "[default]",
+                "s3 =",
+                f"    max_concurrent_requests = {max(1, max_concurrent_requests)}",
+                "    multipart_threshold = 64MB",
+                "    multipart_chunksize = 64MB",
+            ]
+        ),
+    )
+    return config_path
+
+
 def download_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, Any]]:
     run = row["run_accession"]
     r1_path = path_from_root(row["fastq_1"])
@@ -497,6 +515,7 @@ def download_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, An
     fasterq = command_path("fasterq-dump")
     if not fasterq:
         raise RuntimeError("PHASE3_WGS_SOURCE_MODE=aws_sra requires fasterq-dump from sra-tools.")
+    aws_config = write_aws_s3_transfer_config(S3_MAX_CONCURRENT_REQUESTS)
     sra_dir = path_from_root(f"{SMOKE_ROOT}/sra")
     tmp_dir = path_from_root(f"{SMOKE_ROOT}/tmp/{run}")
     ensure_dir(sra_dir)
@@ -506,6 +525,7 @@ def download_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, An
         run_command(
             " ".join(
                 [
+                    f"AWS_CONFIG_FILE={quote_shell_arg(str(aws_config))}",
                     quote_shell_arg(aws),
                     "s3",
                     "cp",
