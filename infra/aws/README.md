@@ -28,7 +28,15 @@ bun run infra:aws:fmt:check
 bun run infra:aws:validate
 ```
 
-Plan and apply:
+The preferred cloud stack for public SRA work is `us-east-1`, because the `sra-pub-run-odp` AWS Open Data bucket is in `us-east-1`. Use the `sra-use1` Terraform workspace and the `prod-use1` environment name for this stack:
+
+```sh
+bun run infra:aws:use1
+bun run infra:aws:plan:use1
+bun run infra:aws:apply:use1
+```
+
+Generic plan/apply commands operate on the currently selected Terraform workspace:
 
 ```sh
 bun run infra:aws:plan
@@ -38,11 +46,11 @@ bun run infra:aws:apply
 To point Terraform at a specific immutable ECR tag:
 
 ```sh
-AWS_IMAGE_TAG=24d8a65-awswrap2 bun run infra:aws:plan
-AWS_IMAGE_TAG=24d8a65-awswrap2 bun run infra:aws:apply
+AWS_IMAGE_TAG=24d8a65-awswrap2 bun run infra:aws:plan:use1
+AWS_IMAGE_TAG=24d8a65-awswrap2 bun run infra:aws:apply:use1
 ```
 
-The stack defaults to account-local AWS credentials and `us-west-1`. It writes `infra/aws/nextflow.aws.json`, which is ignored by git and used by the AWS Nextflow scripts.
+The active SRA stack uses account-local AWS credentials and `us-east-1`. It writes `infra/aws/nextflow.aws.json`, which is ignored by git and used by the AWS Nextflow scripts. The original `us-west-1` stack is legacy for this workload because cross-region SRA reads benchmarked much slower.
 
 ## Build And Push Image
 
@@ -52,7 +60,7 @@ After the ECR repository exists:
 bun run aws:ecr:push
 ```
 
-The image tag defaults to the current git SHA. Override it with `AWS_IMAGE_TAG=...` when testing an image before a commit. Because the ECR repository uses immutable tags, use a new tag for every pushed cloud image.
+The image push defaults to `us-east-1` and the current git SHA. Override it with `AWS_REGION=...` or `AWS_IMAGE_TAG=...` when testing an image before a commit. Because the ECR repository uses immutable tags, use a new tag for every pushed cloud image.
 
 AWS Batch mounts the host-side AWS CLI path configured in `nextflow.config` into task containers. The Batch launch template creates `/opt/diana-aws/bin/aws` on each EC2 host so Nextflow can stage S3 work files while the container image still carries the Python code and bioinformatics tools.
 
@@ -67,7 +75,7 @@ bun run nf:aws:quick:stub
 Confirm:
 
 - AWS Batch job succeeds.
-- CloudWatch logs appear under `/aws/batch/diana-omics-prod`.
+- CloudWatch logs appear under `/aws/batch/diana-omics-prod-use1`.
 - S3 work objects appear under the `diana-omics-work-...` bucket.
 - No raw data was uploaded from local.
 
@@ -91,7 +99,7 @@ For live CloudWatch log following:
 bun run nf:aws:monitor -- JOB_ID --follow
 ```
 
-The monitor prints Batch job state, queue compute environment capacity, active Batch EC2 hosts, and the assigned CloudWatch stream. By default it repeats every 60 seconds until the job reaches `SUCCEEDED` or `FAILED`; override with `AWS_MONITOR_INTERVAL=...` or `--interval ...`. Use it during long WGS runs; when a run finishes or fails, also confirm Batch compute returns to `desired: 0` and no `diana-omics-prod-batch` EC2 instances are still running.
+The monitor prints Batch job state, queue compute environment capacity, active Batch EC2 hosts, and the assigned CloudWatch stream. By default it targets `us-east-1` and repeats every 60 seconds until the job reaches `SUCCEEDED` or `FAILED`; override with `AWS_REGION=...`, `AWS_BATCH_LOG_GROUP=...`, `AWS_MONITOR_INTERVAL=...`, or `--interval ...`. Use it during long WGS runs; when a run finishes or fails, also confirm Batch compute returns to `desired: 0` and no `diana-omics-prod-use1-batch` EC2 instances are still running.
 
 ## Bounded Validation
 
@@ -112,6 +120,11 @@ bun run nf:aws:phase3-sra-benchmark
 ```
 
 The default benchmark range-reads four 256 MiB ranges from each HCC1395 SRA object in `sra-pub-run-odp` and writes throughput summaries to the configured results bucket. Increase `--sra_benchmark_bytes`, `--sra_benchmark_parts`, or `--phase3_fetch_concurrency` once the basic path is working.
+
+Observed benchmark results:
+
+- `us-east-1`, same region as `sra-pub-run-odp`: about 196 MB/s aggregate.
+- `us-west-1`, cross-region to `sra-pub-run-odp`: about 38-51 MB/s aggregate.
 
 Use the fetch-only workflow to test the full SRA download and FASTQ conversion path without running the full validation ladder:
 

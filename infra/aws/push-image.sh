@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-REGION="${AWS_REGION:-us-west-1}"
+REGION="${AWS_REGION:-us-east-1}"
 TAG="${AWS_IMAGE_TAG:-$(git -C "${ROOT_DIR}" rev-parse --short HEAD)}"
 
 repository_url="$(terraform -chdir="${ROOT_DIR}/infra/aws" output -raw ecr_repository_url)"
