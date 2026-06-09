@@ -292,11 +292,11 @@ summary = {
     "wallSeconds": round(elapsed_all, 3),
     "aggregateMbPerSecond": round(total_bytes / 1_000_000 / elapsed_all, 2),
 }
-(outdir / "sra_benchmark.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+(outdir / "sra_benchmark.json").write_text(json.dumps(summary, indent=2) + chr(10), encoding="utf-8")
 with (outdir / "sra_benchmark.tsv").open("w", encoding="utf-8") as handle:
-    handle.write("run\tbytes\telapsedSeconds\tmbPerSecond\n")
+    handle.write("run\tbytes\telapsedSeconds\tmbPerSecond" + chr(10))
     for row in rows:
-        handle.write(f"{row['run']}\t{row['bytes']}\t{row['elapsedSeconds']}\t{row['mbPerSecond']}\n")
+        handle.write(f"{row['run']}\t{row['bytes']}\t{row['elapsedSeconds']}\t{row['mbPerSecond']}" + chr(10))
 print(json.dumps(summary, indent=2))
 PY
     """
