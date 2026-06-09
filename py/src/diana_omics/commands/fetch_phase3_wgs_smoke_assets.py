@@ -8,6 +8,7 @@ import subprocess
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 from ..paths import path_from_root
@@ -35,6 +36,8 @@ SOURCE_MODE = os.environ.get("PHASE3_WGS_SOURCE_MODE", "ena_fastq").lower().repl
 SRA_AWS_BUCKET = os.environ.get("PHASE3_WGS_SRA_AWS_BUCKET", "sra-pub-run-odp")
 SRA_THREADS = max(1, int(os.environ.get("PHASE3_WGS_SRA_THREADS", str(FETCH_CONCURRENCY))))
 S3_MAX_CONCURRENT_REQUESTS = max(1, int(os.environ.get("PHASE3_WGS_S3_MAX_CONCURRENT_REQUESTS", str(max(16, SRA_THREADS * 2)))))
+S3_RANGE_CONCURRENCY = max(1, int(os.environ.get("PHASE3_WGS_S3_RANGE_CONCURRENCY", str(max(8, SRA_THREADS * 2)))))
+S3_RANGE_BYTES = max(8 * 1024 * 1024, int(os.environ.get("PHASE3_WGS_S3_RANGE_BYTES", str(256 * 1024 * 1024))))
 RESULTS_DIR = "results/phase3_wgs_smoke"
 SMOKE_ROOT = "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full"
 SEQC2_TRUTH_ROOT = "data/raw/reference/seqc2_hcc1395_truth/latest"
@@ -499,6 +502,126 @@ def write_aws_s3_transfer_config(max_concurrent_requests: int) -> Path:
     return config_path
 
 
+def aws_sra_object_size(aws: str, run: str, log_path: Path) -> int:
+    command = [
+        aws,
+        "s3api",
+        "head-object",
+        "--no-sign-request",
+        "--bucket",
+        SRA_AWS_BUCKET,
+        "--key",
+        f"sra/{run}/{run}",
+        "--query",
+        "ContentLength",
+        "--output",
+        "text",
+    ]
+    started = iso_now()
+    with log_path.open("a", encoding="utf-8") as log:
+        log.write(f"[{started}] head-object {sra_aws_uri(run)}\n")
+        result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        log.write(result.stdout)
+        if not result.stdout.endswith("\n"):
+            log.write("\n")
+    if result.returncode != 0:
+        raise RuntimeError(f"Unable to inspect SRA object for {run}. See {log_path}.")
+    return int(result.stdout.strip().splitlines()[-1])
+
+
+def download_aws_sra_object_with_ranges(aws: str, run: str, target_path: Path, concurrency: int, range_bytes: int) -> dict[str, Any]:
+    ensure_dir(target_path.parent)
+    log_path = path_from_root(f"{RESULTS_DIR}/logs/aws_sra_range_cp.{run}.log")
+    ensure_dir(log_path.parent)
+    object_size = aws_sra_object_size(aws, run, log_path)
+    if target_path.exists() and target_path.stat().st_size == object_size:
+        return {
+            "run": run,
+            "sourceUrl": sra_aws_uri(run),
+            "outputPath": str(target_path),
+            "bytes": object_size,
+            "rangeConcurrency": concurrency,
+            "rangeBytes": range_bytes,
+            "source": "existing_aws_sra_range",
+        }
+
+    partial_path = target_path.with_suffix(f"{target_path.suffix}.partial")
+    if partial_path.exists():
+        partial_path.unlink()
+    ensure_dir(partial_path.parent)
+    with partial_path.open("wb") as handle:
+        handle.truncate(object_size)
+
+    ranges = [(start, min(start + range_bytes - 1, object_size - 1)) for start in range(0, object_size, range_bytes)]
+    temp_dir = target_path.parent / f".{run}.ranges"
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    ensure_dir(temp_dir)
+    write_lock = Lock()
+
+    with log_path.open("a", encoding="utf-8") as log:
+        log.write(
+            f"[{iso_now()}] range-download start run={run} bytes={object_size} "
+            f"range_bytes={range_bytes} ranges={len(ranges)} concurrency={concurrency}\n"
+        )
+
+    def download_range(index_and_range: tuple[int, tuple[int, int]]) -> dict[str, Any]:
+        index, (start, end) = index_and_range
+        part_path = temp_dir / f"{run}.{index:06d}.part"
+        command = [
+            aws,
+            "s3api",
+            "get-object",
+            "--no-sign-request",
+            "--bucket",
+            SRA_AWS_BUCKET,
+            "--key",
+            f"sra/{run}/{run}",
+            "--range",
+            f"bytes={start}-{end}",
+            str(part_path),
+        ]
+        part_started = iso_now()
+        result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        if result.returncode != 0:
+            with log_path.open("a", encoding="utf-8") as log:
+                log.write(f"[{part_started}] range failed index={index} bytes={start}-{end}\n{result.stdout}\n")
+            raise RuntimeError(f"SRA range download failed for {run} bytes={start}-{end}. See {log_path}.")
+        size = part_path.stat().st_size
+        expected = end - start + 1
+        if size != expected:
+            raise RuntimeError(f"SRA range download for {run} bytes={start}-{end} wrote {size} bytes, expected {expected}.")
+        with write_lock:
+            with partial_path.open("r+b") as target, part_path.open("rb") as part:
+                target.seek(start)
+                shutil.copyfileobj(part, target, length=8 * 1024 * 1024)
+        part_path.unlink()
+        if index == 0 or (index + 1) % 25 == 0 or index + 1 == len(ranges):
+            with log_path.open("a", encoding="utf-8") as log:
+                log.write(f"[{iso_now()}] range complete {index + 1}/{len(ranges)} bytes={start}-{end}\n")
+        return {"index": index, "bytes": size}
+
+    with ThreadPoolExecutor(max_workers=min(concurrency, len(ranges))) as pool:
+        list(pool.map(download_range, enumerate(ranges)))
+
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    if partial_path.stat().st_size != object_size:
+        raise RuntimeError(f"SRA range download for {run} has unexpected final size {partial_path.stat().st_size}; expected {object_size}.")
+    partial_path.replace(target_path)
+    with log_path.open("a", encoding="utf-8") as log:
+        log.write(f"[{iso_now()}] range-download complete run={run} bytes={object_size} output={target_path}\n")
+    return {
+        "run": run,
+        "sourceUrl": sra_aws_uri(run),
+        "outputPath": str(target_path),
+        "bytes": object_size,
+        "rangeConcurrency": concurrency,
+        "rangeBytes": range_bytes,
+        "source": "aws_sra_range",
+    }
+
+
 def download_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, Any]]:
     run = row["run_accession"]
     r1_path = path_from_root(row["fastq_1"])
@@ -515,27 +638,14 @@ def download_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, An
     fasterq = command_path("fasterq-dump")
     if not fasterq:
         raise RuntimeError("PHASE3_WGS_SOURCE_MODE=aws_sra requires fasterq-dump from sra-tools.")
-    aws_config = write_aws_s3_transfer_config(S3_MAX_CONCURRENT_REQUESTS)
+    write_aws_s3_transfer_config(S3_MAX_CONCURRENT_REQUESTS)
     sra_dir = path_from_root(f"{SMOKE_ROOT}/sra")
     tmp_dir = path_from_root(f"{SMOKE_ROOT}/tmp/{run}")
     ensure_dir(sra_dir)
     ensure_dir(tmp_dir)
     sra_path = sra_dir / f"{run}.sra"
     if not sra_path.exists() or sra_path.stat().st_size == 0:
-        run_command(
-            " ".join(
-                [
-                    f"AWS_CONFIG_FILE={quote_shell_arg(str(aws_config))}",
-                    quote_shell_arg(aws),
-                    "s3",
-                    "cp",
-                    "--no-sign-request",
-                    quote_shell_arg(sra_aws_uri(run)),
-                    quote_shell_arg(str(sra_path)),
-                ]
-            ),
-            f"{RESULTS_DIR}/logs/aws_sra_cp.{run}.log",
-        )
+        download_aws_sra_object_with_ranges(aws, run, sra_path, S3_RANGE_CONCURRENCY, S3_RANGE_BYTES)
 
     for path in [r1_path, r2_path]:
         if path.exists():
