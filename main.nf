@@ -8,6 +8,10 @@ params.phase3_fetch_cpus = params.phase3_fetch_cpus ?: 4
 params.phase3_fetch_memory = params.phase3_fetch_memory ?: '16 GB'
 params.phase3_fetch_concurrency = params.phase3_fetch_concurrency ?: 2
 params.phase3_aria2_split = params.phase3_aria2_split ?: 1
+params.phase3_source_mode = params.phase3_source_mode ?: 'ena_fastq'
+params.phase3_sra_aws_bucket = params.phase3_sra_aws_bucket ?: 'sra-pub-run-odp'
+params.sra_benchmark_runs = params.sra_benchmark_runs ?: 'SRR7890824,SRR7890827'
+params.sra_benchmark_bytes = params.sra_benchmark_bytes ?: 1073741824
 params.allow_full_wgs = params.allow_full_wgs ?: false
 params.repo_dir = params.repo_dir ?: projectDir.toString()
 params.outdir = params.outdir ?: "${projectDir}/nextflow-out"
@@ -138,7 +142,7 @@ process FULL_WES {
 }
 
 process PHASE3_FETCH {
-    tag "phase3_fetch_${params.phase3_reads ?: '500000'}_c${params.phase3_fetch_concurrency}_s${params.phase3_aria2_split}"
+    tag "phase3_fetch_${params.phase3_reads ?: '500000'}_${params.phase3_source_mode}_c${params.phase3_fetch_concurrency}_s${params.phase3_aria2_split}"
     cpus { params.phase3_fetch_cpus as int }
     memory { params.phase3_fetch_memory }
     time '48h'
@@ -163,6 +167,9 @@ process PHASE3_FETCH {
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
     export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
     export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
+    export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
+    export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
+    export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan
@@ -182,6 +189,126 @@ process PHASE3_FETCH {
     set -euo pipefail
     mkdir -p workspace/manifests workspace/results
     PYTHONPATH="${params.repo_dir}/py/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    """
+}
+
+process PHASE3_SRA_BENCHMARK {
+    tag "phase3_sra_benchmark_${params.sra_benchmark_bytes}_c${params.phase3_fetch_concurrency}"
+    cpus { params.phase3_fetch_cpus as int }
+    memory { params.phase3_fetch_memory }
+    time '4h'
+    publishDir "${params.outdir}/phase3_sra_benchmark", mode: 'copy', overwrite: true
+
+    output:
+    path 'workspace/results/phase3_wgs_smoke/sra_benchmark.*'
+
+    script:
+    """
+    set -euo pipefail
+    SOURCE_DIR="${params.repo_dir}"
+    rm -rf workspace
+    mkdir -p workspace
+    rsync -a --delete --exclude '.git/' --exclude '.nextflow/' --exclude 'work/' --exclude 'nextflow-out/' "\${SOURCE_DIR%/}/" workspace/
+    cd workspace
+    export DIANA_OMICS_ROOT="\$PWD"
+    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
+    export PYTHONPATH="\$PWD/py/src"
+    export PYTHON_BIN="${params.python_bin}"
+    export AWS_CA_BUNDLE="\${AWS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}"
+    AWS_CLI="\$(command -v aws || true)"
+    if [ -z "\$AWS_CLI" ] && [ -x /opt/diana-aws/bin/aws ]; then
+        AWS_CLI=/opt/diana-aws/bin/aws
+    fi
+    if [ -z "\$AWS_CLI" ]; then
+        echo "AWS CLI is required for phase3_sra_benchmark." >&2
+        exit 1
+    fi
+
+    mkdir -p results/phase3_wgs_smoke
+    BYTES="${params.sra_benchmark_bytes}"
+    RUNS="${params.sra_benchmark_runs}"
+    BUCKET="${params.phase3_sra_aws_bucket}"
+    CONCURRENCY="${params.phase3_fetch_concurrency}"
+    export AWS_CLI BYTES RUNS BUCKET CONCURRENCY
+
+    "\$PYTHON_BIN" - <<'PY'
+import json
+import os
+import subprocess
+import time
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+aws = os.environ["AWS_CLI"]
+bucket = os.environ["BUCKET"]
+bytes_requested = int(os.environ["BYTES"])
+runs = [run.strip() for run in os.environ["RUNS"].split(",") if run.strip()]
+concurrency = max(1, int(os.environ["CONCURRENCY"]))
+outdir = Path("results/phase3_wgs_smoke")
+outdir.mkdir(parents=True, exist_ok=True)
+
+def benchmark(run):
+    key = f"sra/{run}/{run}"
+    target = Path("/tmp") / f"{run}.{bytes_requested}.sra.part"
+    target.unlink(missing_ok=True)
+    started = time.monotonic()
+    command = [
+        aws,
+        "s3api",
+        "get-object",
+        "--no-sign-request",
+        "--bucket",
+        bucket,
+        "--key",
+        key,
+        "--range",
+        f"bytes=0-{bytes_requested - 1}",
+        str(target),
+    ]
+    subprocess.run(command, check=True)
+    elapsed = time.monotonic() - started
+    size = target.stat().st_size
+    target.unlink(missing_ok=True)
+    return {
+        "run": run,
+        "bucket": bucket,
+        "key": key,
+        "bytes": size,
+        "elapsedSeconds": round(elapsed, 3),
+        "mbPerSecond": round(size / 1_000_000 / elapsed, 2),
+    }
+
+started_all = time.monotonic()
+with ThreadPoolExecutor(max_workers=min(concurrency, len(runs))) as pool:
+    rows = list(pool.map(benchmark, runs))
+elapsed_all = time.monotonic() - started_all
+total_bytes = sum(row["bytes"] for row in rows)
+summary = {
+    "sourceMode": "aws_sra",
+    "requestedBytesPerRun": bytes_requested,
+    "concurrency": concurrency,
+    "runs": rows,
+    "totalBytes": total_bytes,
+    "wallSeconds": round(elapsed_all, 3),
+    "aggregateMbPerSecond": round(total_bytes / 1_000_000 / elapsed_all, 2),
+}
+(outdir / "sra_benchmark.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+with (outdir / "sra_benchmark.tsv").open("w", encoding="utf-8") as handle:
+    handle.write("run\tbytes\telapsedSeconds\tmbPerSecond\n")
+    for row in rows:
+        handle.write(f"{row['run']}\t{row['bytes']}\t{row['elapsedSeconds']}\t{row['mbPerSecond']}\n")
+print(json.dumps(summary, indent=2))
+PY
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/results/phase3_wgs_smoke
+    cat > workspace/results/phase3_wgs_smoke/sra_benchmark.json <<'JSON'
+{"sourceMode":"aws_sra","stub":true}
+JSON
+    touch workspace/results/phase3_wgs_smoke/sra_benchmark.tsv
     """
 }
 
@@ -212,6 +339,9 @@ process PHASE3_WGS {
     export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
     export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
     export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
+    export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
+    export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
+    export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan
@@ -283,6 +413,9 @@ process ALL_PUBLIC {
     export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
     export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
     export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
+    export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
+    export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
+    export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan
@@ -330,7 +463,7 @@ workflow {
     selectedWorkflow = params.workflow.toString()
     effectivePhase3Reads = params.phase3_reads ? params.phase3_reads.toString() : '500000'
     allowFullWgs = params.allow_full_wgs.toString() == 'true'
-    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_wgs', 'all_public']
+    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_sra_benchmark', 'phase3_wgs', 'all_public']
 
     if (!workflows.contains(selectedWorkflow)) {
         error "Unknown workflow '${selectedWorkflow}'. Choose one of: ${workflows.join(', ')}."
@@ -350,6 +483,8 @@ workflow {
         FULL_WES()
     } else if (selectedWorkflow == 'phase3_fetch') {
         PHASE3_FETCH()
+    } else if (selectedWorkflow == 'phase3_sra_benchmark') {
+        PHASE3_SRA_BENCHMARK()
     } else if (selectedWorkflow == 'phase3_wgs') {
         PHASE3_WGS()
     } else {

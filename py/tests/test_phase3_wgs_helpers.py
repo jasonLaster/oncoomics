@@ -60,6 +60,10 @@ class Phase3WgsHelpersTest(unittest.TestCase):
             self.assertEqual(fetch_phase3.expected_read_pairs({"spots": "12345"}), 500000)
             self.assertEqual(fetch_phase3.read_count_label(500000), "500000reads")
 
+    def test_sra_aws_uri_uses_configured_open_data_bucket(self):
+        with patch.object(fetch_phase3, "SRA_AWS_BUCKET", "sra-pub-run-odp"):
+            self.assertEqual(fetch_phase3.sra_aws_uri("SRR7890824"), "s3://sra-pub-run-odp/sra/SRR7890824/SRR7890824")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -54,13 +54,28 @@ nextflow run main.nf \
   -params-file infra/aws/nextflow.aws.json \
   --workflow phase3_fetch \
   --phase3_reads full \
-  --phase3_fetch_cpus 4 \
-  --phase3_fetch_memory '16 GB' \
-  --phase3_fetch_concurrency 4 \
-  --phase3_aria2_split 1
+  --phase3_source_mode aws_sra \
+  --phase3_fetch_cpus 8 \
+  --phase3_fetch_memory '48 GB' \
+  --phase3_fetch_concurrency 2
 ```
 
-`phase3_fetch` still fetches the small prerequisites needed by `fetch:phase3-wgs`, then downloads and checks the full SEQC2/HCC1395 WGS FASTQs. Keep `--phase3_aria2_split 1` for acceptance data unless a segmented transfer strategy has already been proven against provider MD5s and gzip validation. Increase `--phase3_fetch_concurrency` first; it controls how many FASTQ end streams are downloaded concurrently.
+`phase3_fetch` still fetches the small prerequisites needed by `fetch:phase3-wgs`, then downloads and checks the full SEQC2/HCC1395 WGS reads. The default source mode is `ena_fastq`, which downloads the published gzip FASTQs directly from ENA. AWS cloud runs can use `--phase3_source_mode aws_sra` to download public SRA objects from the AWS Open Data bucket `sra-pub-run-odp`, convert them with `fasterq-dump`, gzip the split FASTQs, and leave the existing validation logic unchanged.
+
+Use `phase3_sra_benchmark` for cheap network-only experiments before a full download and conversion run:
+
+```sh
+nextflow run main.nf \
+  -profile awsbatch_ondemand \
+  -params-file infra/aws/nextflow.aws.json \
+  --workflow phase3_sra_benchmark \
+  --phase3_fetch_cpus 4 \
+  --phase3_fetch_memory '16 GB' \
+  --phase3_fetch_concurrency 2 \
+  --sra_benchmark_bytes 1073741824
+```
+
+This range-reads the public SRA objects and reports per-run plus aggregate MB/s without keeping the downloaded bytes. It tests the AWS S3 path only; full `aws_sra` performance also includes SRA-to-FASTQ conversion and gzip compression. Keep `--phase3_aria2_split 1` for ENA acceptance data unless a segmented transfer strategy has already been proven against provider MD5s and gzip validation.
 
 ## Docker Profile
 
@@ -83,7 +98,7 @@ Use `-stub-run` for a fast container wiring check that does not fetch data or ru
 nextflow run main.nf -profile docker --workflow quick -stub-run
 ```
 
-The Docker image includes the repo skeleton, manifests, docs, result summaries, Python package, Java 17, BWA, samtools, bcftools, seqkit, aria2, curl, unzip, and rsync. It does not bake bulky `data/raw` files into the image; fetch commands recreate raw inputs inside the task workspace.
+The Docker image includes the repo skeleton, manifests, docs, result summaries, Python package, Java 17, BWA, samtools, bcftools, seqkit, sra-tools, pigz, aria2, curl, unzip, and rsync. It does not bake bulky `data/raw` files into the image; fetch commands recreate raw inputs inside the task workspace.
 
 The Docker and AWS Batch profiles set `DIANA_OMICS_SKIP_WIKI_CHECKS=true` because the external Diana wiki checkout is not part of the container image. Local profile runs keep the wiki source checks enabled.
 

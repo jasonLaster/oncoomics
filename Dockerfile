@@ -17,9 +17,11 @@ RUN apt-get update \
         openjdk-17-jre-headless \
         python3 \
         python3-pip \
+        pigz \
         rsync \
         samtools \
         seqkit \
+        sra-toolkit \
         unzip \
     && rm -rf /var/lib/apt/lists/*
 

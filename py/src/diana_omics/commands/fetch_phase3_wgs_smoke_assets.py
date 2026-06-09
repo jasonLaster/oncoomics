@@ -16,8 +16,10 @@ from ..utils import (
     ensure_dir,
     iso_now,
     parse_csv,
+    quote_shell_arg,
     read_text,
     round_value,
+    run_command,
     validate_fastq_record,
     write_csv,
     write_json,
@@ -29,10 +31,17 @@ READS_REQUEST = os.environ.get("PHASE3_WGS_READS", "full")
 READ_PAIRS_LIMIT = None if READS_REQUEST.lower() in {"all", "full", "0"} else int(READS_REQUEST)
 FETCH_CONCURRENCY = max(1, int(os.environ.get("PHASE3_WGS_FETCH_CONCURRENCY", "2")))
 ARIA2_SPLIT = max(1, int(os.environ.get("PHASE3_WGS_ARIA2_SPLIT", "1")))
+SOURCE_MODE = os.environ.get("PHASE3_WGS_SOURCE_MODE", "ena_fastq").lower().replace("-", "_")
+SRA_AWS_BUCKET = os.environ.get("PHASE3_WGS_SRA_AWS_BUCKET", "sra-pub-run-odp")
+SRA_THREADS = max(1, int(os.environ.get("PHASE3_WGS_SRA_THREADS", str(FETCH_CONCURRENCY))))
 RESULTS_DIR = "results/phase3_wgs_smoke"
 SMOKE_ROOT = "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full"
 SEQC2_TRUTH_ROOT = "data/raw/reference/seqc2_hcc1395_truth/latest"
 STORE_IDS_LIMIT = 1_000_000
+
+
+def sra_aws_uri(run: str) -> str:
+    return f"s3://{SRA_AWS_BUCKET}/sra/{run}/{run}"
 
 
 def reference_dict_path(fasta_path: str) -> str:
@@ -458,6 +467,90 @@ def download_full_fastq_without_summary(task: tuple[str, str, str, str, int, int
     return download_full_fastq(run, read, source_url, output_relative_path, expected_records, expected_bytes, expected_md5, False)
 
 
+def gzip_fastq(input_path: Path, output_path: Path, threads: int) -> None:
+    ensure_dir(output_path.parent)
+    pigz = command_path("pigz")
+    if pigz:
+        run_command(
+            f"{quote_shell_arg(pigz)} -p {max(1, threads)} -c {quote_shell_arg(str(input_path))} > {quote_shell_arg(str(output_path))}",
+            f"{RESULTS_DIR}/logs/gzip.{output_path.name}.log",
+        )
+    else:
+        with input_path.open("rb") as source:
+            with gzip.open(output_path, "wb") as target:
+                shutil.copyfileobj(source, target, length=1024 * 1024)
+
+
+def download_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, Any]]:
+    run = row["run_accession"]
+    r1_path = path_from_root(row["fastq_1"])
+    r2_path = path_from_root(row["fastq_2"])
+    if r1_path.exists() and r1_path.stat().st_size > 0 and r2_path.exists() and r2_path.stat().st_size > 0:
+        return [
+            {"run": run, "read": "R1", "sourceUrl": sra_aws_uri(run), "outputPath": str(r1_path), "records": row["read_pairs_per_end"], "ids": [], "idsStored": False, "source": "existing_aws_sra"},
+            {"run": run, "read": "R2", "sourceUrl": sra_aws_uri(run), "outputPath": str(r2_path), "records": row["read_pairs_per_end"], "ids": [], "idsStored": False, "source": "existing_aws_sra"},
+        ]
+
+    aws = command_path("aws") or "/opt/diana-aws/bin/aws"
+    if not Path(aws).exists():
+        raise RuntimeError("PHASE3_WGS_SOURCE_MODE=aws_sra requires the AWS CLI.")
+    fasterq = command_path("fasterq-dump")
+    if not fasterq:
+        raise RuntimeError("PHASE3_WGS_SOURCE_MODE=aws_sra requires fasterq-dump from sra-tools.")
+    sra_dir = path_from_root(f"{SMOKE_ROOT}/sra")
+    tmp_dir = path_from_root(f"{SMOKE_ROOT}/tmp/{run}")
+    ensure_dir(sra_dir)
+    ensure_dir(tmp_dir)
+    sra_path = sra_dir / f"{run}.sra"
+    if not sra_path.exists() or sra_path.stat().st_size == 0:
+        run_command(
+            " ".join(
+                [
+                    quote_shell_arg(aws),
+                    "s3",
+                    "cp",
+                    "--no-sign-request",
+                    quote_shell_arg(sra_aws_uri(run)),
+                    quote_shell_arg(str(sra_path)),
+                ]
+            ),
+            f"{RESULTS_DIR}/logs/aws_sra_cp.{run}.log",
+        )
+
+    for path in [r1_path, r2_path]:
+        if path.exists():
+            path.unlink()
+    run_command(
+        " ".join(
+            [
+                quote_shell_arg(fasterq),
+                "--split-files",
+                "--threads",
+                str(max(1, threads)),
+                "--outdir",
+                quote_shell_arg(str(tmp_dir)),
+                "--temp",
+                quote_shell_arg(str(tmp_dir)),
+                quote_shell_arg(str(sra_path)),
+            ]
+        ),
+        f"{RESULTS_DIR}/logs/fasterq_dump.{run}.log",
+    )
+    produced_r1 = tmp_dir / f"{run}_1.fastq"
+    produced_r2 = tmp_dir / f"{run}_2.fastq"
+    if not produced_r1.exists() or not produced_r2.exists():
+        raise RuntimeError(f"fasterq-dump did not produce split FASTQs for {run}.")
+    gzip_threads = max(1, threads // 2)
+    gzip_fastq(produced_r1, r1_path, gzip_threads)
+    gzip_fastq(produced_r2, r2_path, gzip_threads)
+    produced_r1.unlink()
+    produced_r2.unlink()
+    return [
+        {"run": run, "read": "R1", "sourceUrl": sra_aws_uri(run), "outputPath": str(r1_path), "records": row["read_pairs_per_end"], "ids": [], "idsStored": False, "source": "aws_sra"},
+        {"run": run, "read": "R2", "sourceUrl": sra_aws_uri(run), "outputPath": str(r2_path), "records": row["read_pairs_per_end"], "ids": [], "idsStored": False, "source": "aws_sra"},
+    ]
+
+
 def stream_fastq_subset(run: str, read: str, source_url: str, output_relative_path: str, expected_records: int) -> dict[str, Any]:
     output_path = path_from_root(output_relative_path)
     ensure_dir(output_path.parent)
@@ -637,7 +730,29 @@ def main() -> None:
         )
 
     fastq_stats: list[dict[str, Any]]
-    if READ_PAIRS_LIMIT is None:
+    if READ_PAIRS_LIMIT is None and SOURCE_MODE == "aws_sra":
+        with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(sample_rows))) as pool:
+            nested_stats = list(pool.map(lambda row: download_aws_sra_run(row, SRA_THREADS), sample_rows))
+        download_stats = [stat for run_stats in nested_stats for stat in run_stats]
+        fastq_stats = []
+        paired_stats = {}
+        source_by_run_read = {(stat["run"], stat["read"]): stat["source"] for stat in download_stats}
+
+        def summarize_full_row(row: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+            source = "/".join(
+                [
+                    str(source_by_run_read.get((row["run_accession"], "R1"), "existing")),
+                    str(source_by_run_read.get((row["run_accession"], "R2"), "existing")),
+                ]
+            )
+            return summarize_paired_fastqs(row, source)
+
+        with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(sample_rows))) as pool:
+            paired_results = list(pool.map(summarize_full_row, sample_rows))
+        for r1_summary, r2_summary, paired_summary in paired_results:
+            fastq_stats.extend([r1_summary, r2_summary])
+            paired_stats[r1_summary["run"]] = paired_summary
+    elif READ_PAIRS_LIMIT is None:
         full_tasks: list[tuple[str, str, str, str, int, int, str]] = []
         for row in sample_rows:
             full_tasks.append(
@@ -740,6 +855,7 @@ def main() -> None:
             "readRequest": READS_REQUEST,
             "readPairsMode": "full" if READ_PAIRS_LIMIT is None else "bounded",
             "fetchConcurrency": FETCH_CONCURRENCY,
+            "sourceMode": SOURCE_MODE,
             "rows": fastq_rows,
         },
     )
@@ -752,6 +868,7 @@ def main() -> None:
             "pairId": PAIR_ID,
             "readRequest": READS_REQUEST,
             "readPairsMode": "full" if READ_PAIRS_LIMIT is None else "bounded",
+            "sourceMode": SOURCE_MODE,
             "sampleRows": len(sample_rows),
             "source": "SEQC2/HCC1395 public HiSeq X Ten WGS tumor-normal FASTQ pair",
             "reference": {
