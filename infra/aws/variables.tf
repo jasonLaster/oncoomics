@@ -43,7 +43,7 @@ variable "ondemand_max_vcpus" {
 variable "batch_arm_instance_families" {
   description = "ARM64 EC2 instance families for Batch. The local OrbStack image build is arm64."
   type        = list(string)
-  default     = ["c7g", "m7g", "r7g"]
+  default     = ["c7gn", "c7g", "m7g", "r7g"]
 }
 
 variable "work_bucket_lifecycle_days" {

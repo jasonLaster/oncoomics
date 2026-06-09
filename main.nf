@@ -13,6 +13,8 @@ params.phase3_sra_aws_bucket = params.phase3_sra_aws_bucket ?: 'sra-pub-run-odp'
 params.sra_benchmark_runs = params.sra_benchmark_runs ?: 'SRR7890824,SRR7890827'
 params.sra_benchmark_bytes = params.sra_benchmark_bytes ?: 1073741824
 params.sra_benchmark_parts = params.sra_benchmark_parts ?: 1
+params.sra_benchmark_strategy = params.sra_benchmark_strategy ?: 'aws_s3api_range'
+params.sra_benchmark_matrix = params.sra_benchmark_matrix ?: null
 params.allow_full_wgs = params.allow_full_wgs ?: false
 params.repo_dir = params.repo_dir ?: projectDir.toString()
 params.outdir = params.outdir ?: "${projectDir}/nextflow-out"
@@ -194,7 +196,7 @@ process PHASE3_FETCH {
 }
 
 process PHASE3_SRA_BENCHMARK {
-    tag "phase3_sra_benchmark_${params.sra_benchmark_bytes}_p${params.sra_benchmark_parts}_c${params.phase3_fetch_concurrency}"
+    tag "phase3_sra_benchmark_${params.sra_benchmark_strategy}_${params.sra_benchmark_bytes}_p${params.sra_benchmark_parts}_c${params.phase3_fetch_concurrency}"
     cpus { params.phase3_fetch_cpus as int }
     memory { params.phase3_fetch_memory }
     time '4h'
@@ -217,6 +219,7 @@ process PHASE3_SRA_BENCHMARK {
     export PYTHON_BIN="${params.python_bin}"
     export AWS_CA_BUNDLE="\${AWS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}"
     AWS_CLI="\$(command -v aws || true)"
+    S5CMD="\$(command -v s5cmd || true)"
     if [ -z "\$AWS_CLI" ] && [ -x /opt/diana-aws/bin/aws ]; then
         AWS_CLI=/opt/diana-aws/bin/aws
     fi
@@ -231,7 +234,9 @@ process PHASE3_SRA_BENCHMARK {
     RUNS="${params.sra_benchmark_runs}"
     BUCKET="${params.phase3_sra_aws_bucket}"
     CONCURRENCY="${params.phase3_fetch_concurrency}"
-    export AWS_CLI BYTES PARTS RUNS BUCKET CONCURRENCY
+    STRATEGY="${params.sra_benchmark_strategy}"
+    MATRIX="${params.sra_benchmark_matrix ?: ''}"
+    export AWS_CLI S5CMD BYTES PARTS RUNS BUCKET CONCURRENCY STRATEGY MATRIX
 
     "\$PYTHON_BIN" - <<'PY'
 import json
@@ -242,22 +247,53 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 aws = os.environ["AWS_CLI"]
+s5cmd = os.environ.get("S5CMD", "")
 bucket = os.environ["BUCKET"]
 bytes_requested = int(os.environ["BYTES"])
 parts_per_run = max(1, int(os.environ["PARTS"]))
 runs = [run.strip() for run in os.environ["RUNS"].split(",") if run.strip()]
 concurrency = max(1, int(os.environ["CONCURRENCY"]))
+strategy = os.environ["STRATEGY"]
+matrix = os.environ.get("MATRIX", "").strip()
 outdir = Path("results/phase3_wgs_smoke")
 outdir.mkdir(parents=True, exist_ok=True)
 
-def benchmark(part):
-    run, part_index = part
+def parse_matrix():
+    if not matrix:
+        return [{
+            "label": "single",
+            "strategy": strategy,
+            "bytes": bytes_requested,
+            "parts": parts_per_run,
+            "concurrency": concurrency,
+        }]
+    configs = []
+    for index, raw_entry in enumerate(matrix.split(","), start=1):
+        entry = raw_entry.strip()
+        if not entry:
+            continue
+        pieces = entry.split(":")
+        if len(pieces) not in {4, 5}:
+            raise SystemExit(f"Invalid sra_benchmark_matrix entry '{entry}'. Expected strategy:concurrency:bytes:parts[:label].")
+        entry_strategy, entry_concurrency, entry_bytes, entry_parts = pieces[:4]
+        label = pieces[4] if len(pieces) == 5 else f"{entry_strategy}-c{entry_concurrency}-p{entry_parts}-b{entry_bytes}"
+        configs.append({
+            "label": label,
+            "strategy": entry_strategy,
+            "bytes": int(entry_bytes),
+            "parts": max(1, int(entry_parts)),
+            "concurrency": max(1, int(entry_concurrency)),
+        })
+    if not configs:
+        raise SystemExit("sra_benchmark_matrix did not contain any benchmark configs.")
+    return configs
+
+def run_aws_range(run, part_index, requested_bytes):
     key = f"sra/{run}/{run}"
-    start_byte = part_index * bytes_requested
-    end_byte = start_byte + bytes_requested - 1
+    start_byte = part_index * requested_bytes
+    end_byte = start_byte + requested_bytes - 1
     target = Path("/tmp") / f"{run}.{start_byte}-{end_byte}.sra.part"
     target.unlink(missing_ok=True)
-    started = time.monotonic()
     command = [
         aws,
         "s3api",
@@ -272,41 +308,83 @@ def benchmark(part):
         str(target),
     ]
     subprocess.run(command, check=True)
-    elapsed = time.monotonic() - started
     size = target.stat().st_size
     target.unlink(missing_ok=True)
+    return size, f"bytes={start_byte}-{end_byte}", key
+
+def run_s5cmd_cat(run, part_index, requested_bytes):
+    if not s5cmd:
+        raise SystemExit("s5cmd is required for s5cmd_cat benchmarks.")
+    key = f"sra/{run}/{run}"
+    object_uri = f"s3://{bucket}/{key}"
+    count = max(1, (requested_bytes + (8 * 1024 * 1024) - 1) // (8 * 1024 * 1024))
+    command = (
+        f"set -euo pipefail; "
+        f"{subprocess.list2cmdline([s5cmd, '--no-sign-request', 'cat', object_uri])} "
+        f"| dd of=/dev/null bs=8M count={count} iflag=fullblock status=none"
+    )
+    subprocess.run(["bash", "-lc", command], check=True)
+    return count * 8 * 1024 * 1024, f"stream-prefix:{requested_bytes}", key
+
+def benchmark(config, part):
+    run, part_index = part
+    started = time.monotonic()
+    if config["strategy"] == "aws_s3api_range":
+        size, byte_range, key = run_aws_range(run, part_index, config["bytes"])
+    elif config["strategy"] == "s5cmd_cat":
+        size, byte_range, key = run_s5cmd_cat(run, part_index, config["bytes"])
+    else:
+        raise SystemExit(f"Unsupported sra benchmark strategy: {config['strategy']}")
+    elapsed = time.monotonic() - started
     return {
+        "label": config["label"],
+        "strategy": config["strategy"],
         "run": run,
         "bucket": bucket,
         "key": key,
         "part": part_index,
-        "range": f"bytes={start_byte}-{end_byte}",
+        "range": byte_range,
         "bytes": size,
         "elapsedSeconds": round(elapsed, 3),
         "mbPerSecond": round(size / 1_000_000 / elapsed, 2),
     }
 
-parts = [(run, part_index) for run in runs for part_index in range(parts_per_run)]
-started_all = time.monotonic()
-with ThreadPoolExecutor(max_workers=min(concurrency, len(parts))) as pool:
-    rows = list(pool.map(benchmark, parts))
-elapsed_all = time.monotonic() - started_all
-total_bytes = sum(row["bytes"] for row in rows)
+summaries = []
+all_rows = []
+for config in parse_matrix():
+    print(f"[sra-benchmark] starting {config['label']} strategy={config['strategy']} concurrency={config['concurrency']} bytes={config['bytes']} parts={config['parts']}", flush=True)
+    parts = [(run, part_index) for run in runs for part_index in range(config["parts"])]
+    started_all = time.monotonic()
+    with ThreadPoolExecutor(max_workers=min(config["concurrency"], len(parts))) as pool:
+        rows = list(pool.map(lambda part: benchmark(config, part), parts))
+    elapsed_all = time.monotonic() - started_all
+    total_bytes = sum(row["bytes"] for row in rows)
+    summary_row = {
+        "label": config["label"],
+        "strategy": config["strategy"],
+        "requestedBytesPerPart": config["bytes"],
+        "partsPerRun": config["parts"],
+        "concurrency": config["concurrency"],
+        "totalBytes": total_bytes,
+        "wallSeconds": round(elapsed_all, 3),
+        "aggregateMbPerSecond": round(total_bytes / 1_000_000 / elapsed_all, 2),
+    }
+    summaries.append(summary_row)
+    all_rows.extend(rows)
+    print(f"[sra-benchmark] finished {config['label']} aggregateMbPerSecond={summary_row['aggregateMbPerSecond']}", flush=True)
+
 summary = {
     "sourceMode": "aws_sra",
-    "requestedBytesPerRun": bytes_requested,
-    "partsPerRun": parts_per_run,
-    "concurrency": concurrency,
-    "runs": rows,
-    "totalBytes": total_bytes,
-    "wallSeconds": round(elapsed_all, 3),
-    "aggregateMbPerSecond": round(total_bytes / 1_000_000 / elapsed_all, 2),
+    "bucket": bucket,
+    "benchmarkMode": "matrix" if matrix else "single",
+    "summaries": summaries,
+    "runs": all_rows,
 }
 (outdir / "sra_benchmark.json").write_text(json.dumps(summary, indent=2) + chr(10), encoding="utf-8")
 with (outdir / "sra_benchmark.tsv").open("w", encoding="utf-8") as handle:
-    handle.write("run\tpart\trange\tbytes\telapsedSeconds\tmbPerSecond" + chr(10))
-    for row in rows:
-        handle.write(f"{row['run']}\t{row['part']}\t{row['range']}\t{row['bytes']}\t{row['elapsedSeconds']}\t{row['mbPerSecond']}" + chr(10))
+    handle.write("label\tstrategy\trun\tpart\trange\tbytes\telapsedSeconds\tmbPerSecond" + chr(10))
+    for row in all_rows:
+        handle.write(f"{row['label']}\t{row['strategy']}\t{row['run']}\t{row['part']}\t{row['range']}\t{row['bytes']}\t{row['elapsedSeconds']}\t{row['mbPerSecond']}" + chr(10))
 print(json.dumps(summary, indent=2))
 PY
     """
