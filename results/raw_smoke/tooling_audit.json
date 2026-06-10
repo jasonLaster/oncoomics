@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T06:34:58.955Z",
+  "generatedAt": "2026-06-08T20:50:16.814Z",
   "phase2aReady": true,
   "alignmentReady": true,
   "humanReferenceSmokeReady": true,
@@ -11,10 +11,11 @@
   "fullWesBenchmarkReady": true,
   "phase3WgsToolReady": true,
   "phase3WgsSmokeReady": true,
+  "phase3WgsValidationReady": true,
   "phase3OptionalSignatureRuntimeReady": true,
   "fullAlignmentToolboxReady": false,
-  "workflowReady": false,
-  "fullWorkflowReady": false,
+  "workflowReady": true,
+  "fullWorkflowReady": true,
   "alignmentReadyDefinition": "At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.",
   "groups": [
     {
@@ -43,7 +44,7 @@
         },
         {
           "tool": "python3",
-          "path": "/usr/bin/python3",
+          "path": "/opt/homebrew/bin/python3",
           "available": true
         }
       ],
@@ -97,8 +98,8 @@
         },
         {
           "tool": "seqkit",
-          "path": "",
-          "available": false
+          "path": "/opt/homebrew/bin/seqkit",
+          "available": true
         }
       ],
       "allAvailable": false
@@ -249,18 +250,18 @@
         },
         {
           "tool": "python3",
-          "path": "/usr/bin/python3",
+          "path": "/opt/homebrew/bin/python3",
           "available": true
         },
         {
           "tool": "nextflow",
-          "path": "",
-          "available": false
+          "path": "/opt/homebrew/bin/nextflow",
+          "available": true
         },
         {
           "tool": "docker",
-          "path": "",
-          "available": false
+          "path": "/opt/homebrew/bin/docker",
+          "available": true
         },
         {
           "tool": "singularity",
@@ -281,13 +282,13 @@
       "tools": [
         {
           "tool": "nextflow",
-          "path": "",
-          "available": false
+          "path": "/opt/homebrew/bin/nextflow",
+          "available": true
         },
         {
           "tool": "docker",
-          "path": "",
-          "available": false
+          "path": "/opt/homebrew/bin/docker",
+          "available": true
         },
         {
           "tool": "singularity",
@@ -313,5 +314,5 @@
       "allAvailable": false
     }
   ],
-  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, Phase 2F full WES benchmark mechanics, and Phase 3 representative WGS smoke mechanics. Full-depth WGS interpretation still requires Diana data and final CNV/SV/signature policy."
+  "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, Phase 2F full WES benchmark mechanics, and Phase 3 full-source WGS validation mechanics. Final HRD interpretation still requires Diana data and reviewer-approved CNV/SV/signature policy."
 }

@@ -340,6 +340,8 @@ def main() -> None:
             "role",
             "assay",
             "run_accession",
+            "source_read_pairs",
+            "read_pairs_per_end",
             "fastq_1",
             "fastq_2",
             "reference_id",

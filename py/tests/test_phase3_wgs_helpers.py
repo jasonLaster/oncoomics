@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from diana_omics import utils
+from diana_omics.commands import analyze_hrd
 from diana_omics.commands import fetch_phase3_wgs_smoke_assets as fetch_phase3
 from diana_omics.commands import run_phase3_wgs_smoke as phase3
 
@@ -73,6 +74,38 @@ class Phase3WgsHelpersTest(unittest.TestCase):
             self.assertEqual(fetch_phase3.full_scan_validation_method(), "seqkit_stats_full_scan_sra_spot_count_check")
         with patch.object(fetch_phase3, "SOURCE_MODE", "ena_fastq"):
             self.assertEqual(fetch_phase3.full_scan_validation_method(), "seqkit_stats_full_scan_with_exact_provider_md5")
+
+    def test_phase3_asset_cache_uri_joins_paths(self):
+        with patch.object(fetch_phase3, "ASSET_CACHE_URI", "s3://diana-omics-raw/cache/phase3_wgs"):
+            self.assertEqual(
+                fetch_phase3.cache_uri("/fastq/", "SRR7890824_R1.full.fastq.gz"),
+                "s3://diana-omics-raw/cache/phase3_wgs/fastq/SRR7890824_R1.full.fastq.gz",
+            )
+
+    def test_parse_s3_uri_requires_bucket_and_key(self):
+        self.assertEqual(fetch_phase3.parse_s3_uri("s3://bucket/path/to/object"), ("bucket", "path/to/object"))
+        with self.assertRaises(ValueError):
+            fetch_phase3.parse_s3_uri("https://example.com/object")
+
+    def test_restore_fastq_cache_requires_both_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            r1 = root / "SRR7890824_R1.full.fastq.gz"
+            r2 = root / "SRR7890824_R2.full.fastq.gz"
+            with (
+                patch.object(fetch_phase3, "ASSET_CACHE_URI", "s3://cache/phase3_wgs"),
+                patch.object(fetch_phase3, "ASSET_CACHE_MODE", "readwrite"),
+                patch.object(fetch_phase3, "CACHE_FASTQS", True),
+                patch.object(fetch_phase3, "s3_object_size", side_effect=[10, None]),
+                patch.object(fetch_phase3, "restore_cached_asset") as restore,
+            ):
+                self.assertFalse(fetch_phase3.restore_aws_sra_fastq_cache("/usr/bin/aws", "SRR7890824", r1, r2))
+            restore.assert_not_called()
+
+    def test_expected_hrd_bucket_keeps_unknown_labels_separate(self):
+        self.assertEqual(analyze_hrd.expected_bucket_for_label("expected_hrd_positive"), "expected_hrd_like")
+        self.assertEqual(analyze_hrd.expected_bucket_for_label("expected_hrd_negative"), "expected_negative")
+        self.assertEqual(analyze_hrd.expected_bucket_for_label("needs_manual_review"), "expected_unknown")
 
 
 if __name__ == "__main__":

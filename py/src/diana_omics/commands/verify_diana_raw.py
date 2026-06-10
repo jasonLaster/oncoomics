@@ -64,8 +64,17 @@ def validate_rows(rows: list[dict[str, str]], *, require_files: bool) -> tuple[l
         data_type = row.get("data_type", "")
         if data_type not in {"FASTQ", "BAM", "CRAM"}:
             errors.append(f"DNA row {row.get('sample_id')} must use data_type FASTQ, BAM, or CRAM.")
-        if not (row_has_fastq_pair(row) or row_has_bam_pair(row) or row_has_cram_pair(row)):
+        has_fastq = row_has_fastq_pair(row)
+        has_bam = row_has_bam_pair(row)
+        has_cram = row_has_cram_pair(row)
+        if not (has_fastq or has_bam or has_cram):
             errors.append(f"DNA row {row.get('sample_id')} must provide FASTQ pairs, BAM+BAI, or CRAM+CRAI.")
+        if data_type == "FASTQ" and not has_fastq:
+            errors.append(f"DNA row {row.get('sample_id')} data_type FASTQ must provide fastq_1 and fastq_2.")
+        if data_type == "BAM" and not has_bam:
+            errors.append(f"DNA row {row.get('sample_id')} data_type BAM must provide bam and bai.")
+        if data_type == "CRAM" and not has_cram:
+            errors.append(f"DNA row {row.get('sample_id')} data_type CRAM must provide cram and crai.")
         for column in ["reference_id", "reference_path", "reference_fai_path", "reference_dict_path"]:
             if not row.get(column):
                 errors.append(f"DNA row {row.get('sample_id')} is missing {column}.")

@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Lock
 from typing import Any
+from urllib.parse import urlparse
 
 from ..paths import path_from_root
 from ..utils import (
@@ -39,7 +40,14 @@ SRA_THREADS = max(1, int(os.environ.get("PHASE3_WGS_SRA_THREADS", str(FETCH_CONC
 S3_MAX_CONCURRENT_REQUESTS = max(1, int(os.environ.get("PHASE3_WGS_S3_MAX_CONCURRENT_REQUESTS", str(max(16, SRA_THREADS * 2)))))
 S3_RANGE_CONCURRENCY = max(1, int(os.environ.get("PHASE3_WGS_S3_RANGE_CONCURRENCY", str(max(8, SRA_THREADS * 2)))))
 S3_RANGE_BYTES = max(8 * 1024 * 1024, int(os.environ.get("PHASE3_WGS_S3_RANGE_BYTES", str(256 * 1024 * 1024))))
+S3_RANGE_RETRIES = max(1, int(os.environ.get("PHASE3_WGS_S3_RANGE_RETRIES", "4")))
 SRA_RUN_CONCURRENCY = max(1, int(os.environ.get("PHASE3_WGS_SRA_RUN_CONCURRENCY", "1")))
+SRA_COMMAND_RETRIES = max(1, int(os.environ.get("PHASE3_WGS_SRA_COMMAND_RETRIES", "2")))
+ASSET_CACHE_URI = os.environ.get("PHASE3_WGS_ASSET_CACHE_URI", "").rstrip("/")
+ASSET_CACHE_MODE = os.environ.get("PHASE3_WGS_ASSET_CACHE_MODE", "readwrite" if ASSET_CACHE_URI else "off").lower()
+CACHE_SRA_OBJECTS = os.environ.get("PHASE3_WGS_CACHE_SRA_OBJECTS", "true").lower() not in {"0", "false", "no"}
+CACHE_FASTQS = os.environ.get("PHASE3_WGS_CACHE_FASTQS", "true").lower() not in {"0", "false", "no"}
+DELETE_SRA_AFTER_CONVERSION = os.environ.get("PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION", "false").lower() in {"1", "true", "yes"}
 RESULTS_DIR = "results/phase3_wgs_smoke"
 SMOKE_ROOT = "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full"
 SEQC2_TRUTH_ROOT = "data/raw/reference/seqc2_hcc1395_truth/latest"
@@ -48,6 +56,13 @@ STORE_IDS_LIMIT = 1_000_000
 
 def sra_aws_uri(run: str) -> str:
     return f"s3://{SRA_AWS_BUCKET}/sra/{run}/{run}"
+
+
+def aws_cli_path() -> str:
+    aws = command_path("aws") or "/opt/diana-aws/bin/aws"
+    if not Path(aws).exists():
+        raise RuntimeError("PHASE3_WGS_SOURCE_MODE=aws_sra requires the AWS CLI.")
+    return aws
 
 
 def reference_dict_path(fasta_path: str) -> str:
@@ -234,7 +249,7 @@ def seqkit_n_fraction(stats: dict[str, str], bases: int) -> float:
     if not bases:
         return 0
     sum_n = stats.get("sum_n") or stats.get("num_N") or stats.get("N")
-    return int(float(sum_n)) / bases if sum_n not in (None, "") else 0
+    return int(float(str(sum_n))) / bases if sum_n not in (None, "") else 0
 
 
 def full_scan_validation_method() -> str:
@@ -517,6 +532,131 @@ def write_aws_s3_transfer_config(max_concurrent_requests: int) -> Path:
     return config_path
 
 
+def cache_reads_enabled() -> bool:
+    return bool(ASSET_CACHE_URI) and ASSET_CACHE_MODE in {"read", "readwrite"}
+
+
+def cache_writes_enabled() -> bool:
+    return bool(ASSET_CACHE_URI) and ASSET_CACHE_MODE in {"write", "readwrite"}
+
+
+def cache_uri(*parts: str) -> str:
+    if not ASSET_CACHE_URI:
+        return ""
+    clean_parts = [part.strip("/") for part in parts if part.strip("/")]
+    return "/".join([ASSET_CACHE_URI, *clean_parts])
+
+
+def parse_s3_uri(uri: str) -> tuple[str, str]:
+    parsed = urlparse(uri)
+    if parsed.scheme != "s3" or not parsed.netloc or not parsed.path.strip("/"):
+        raise ValueError(f"Expected an s3://bucket/key URI, got {uri!r}.")
+    return parsed.netloc, parsed.path.lstrip("/")
+
+
+def s3_object_size(aws: str, uri: str) -> int | None:
+    bucket, key = parse_s3_uri(uri)
+    result = subprocess.run(
+        [
+            aws,
+            "s3api",
+            "head-object",
+            "--bucket",
+            bucket,
+            "--key",
+            key,
+            "--query",
+            "ContentLength",
+            "--output",
+            "text",
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    try:
+        return int(result.stdout.strip().splitlines()[-1])
+    except (IndexError, ValueError):
+        return None
+
+
+def restore_cached_asset(aws: str, uri: str, target_path: Path, expected_bytes: int | None, label: str) -> bool:
+    if not cache_reads_enabled():
+        return False
+    size = s3_object_size(aws, uri)
+    if size is None:
+        print(f"[cache-miss] label={label} uri={uri}", flush=True)
+        return False
+    if expected_bytes is not None and size != expected_bytes:
+        print(f"[cache-skip] label={label} uri={uri} bytes={size} expected={expected_bytes}", flush=True)
+        return False
+    ensure_dir(target_path.parent)
+    tmp_path = target_path.with_suffix(target_path.suffix + ".cache-tmp")
+    if tmp_path.exists():
+        tmp_path.unlink()
+    started = time.monotonic()
+    run_command(
+        f"{quote_shell_arg(aws)} s3 cp --only-show-errors {quote_shell_arg(uri)} {quote_shell_arg(str(tmp_path))}",
+        f"{RESULTS_DIR}/logs/cache_restore.{label}.log",
+    )
+    actual_bytes = tmp_path.stat().st_size
+    if expected_bytes is not None and actual_bytes != expected_bytes:
+        tmp_path.unlink(missing_ok=True)
+        raise RuntimeError(f"Cached asset {uri} restored {actual_bytes} bytes; expected {expected_bytes}.")
+    tmp_path.replace(target_path)
+    elapsed = max(0.001, time.monotonic() - started)
+    print(
+        f"[cache-restore] label={label} bytes={actual_bytes} elapsed_seconds={elapsed:.1f} "
+        f"avg_mb_s={actual_bytes / 1_000_000 / elapsed:.2f} uri={uri}",
+        flush=True,
+    )
+    return True
+
+
+def publish_cached_asset(aws: str, source_path: Path, uri: str, label: str, expected_bytes: int | None = None) -> bool:
+    if not cache_writes_enabled() or not source_path.exists() or source_path.stat().st_size == 0:
+        return False
+    actual_bytes = source_path.stat().st_size
+    if expected_bytes is not None and actual_bytes != expected_bytes:
+        raise RuntimeError(f"Refusing to cache {source_path}: {actual_bytes} bytes; expected {expected_bytes}.")
+    existing_bytes = s3_object_size(aws, uri)
+    if existing_bytes == actual_bytes:
+        print(f"[cache-hit] label={label} bytes={actual_bytes} uri={uri}", flush=True)
+        return False
+    started = time.monotonic()
+    run_command(
+        f"{quote_shell_arg(aws)} s3 cp --only-show-errors {quote_shell_arg(str(source_path))} {quote_shell_arg(uri)}",
+        f"{RESULTS_DIR}/logs/cache_publish.{label}.log",
+    )
+    elapsed = max(0.001, time.monotonic() - started)
+    print(
+        f"[cache-publish] label={label} bytes={actual_bytes} elapsed_seconds={elapsed:.1f} "
+        f"avg_mb_s={actual_bytes / 1_000_000 / elapsed:.2f} uri={uri}",
+        flush=True,
+    )
+    return True
+
+
+def run_command_with_retries(command: str, log_path: str, attempts: int, label: str) -> str:
+    last_error: RuntimeError | None = None
+    for attempt in range(1, max(1, attempts) + 1):
+        try:
+            return run_command(command, log_path)
+        except RuntimeError as error:
+            last_error = error
+            if attempt >= max(1, attempts):
+                break
+            delay = min(60, 2**attempt)
+            print(f"[retry] label={label} attempt={attempt} next_attempt={attempt + 1} delay_seconds={delay}", flush=True)
+            time.sleep(delay)
+    if last_error:
+        raise last_error
+    raise RuntimeError(f"Command did not run for {label}.")
+
+
 def aws_sra_object_size(aws: str, run: str, log_path: Path) -> int:
     command = [
         aws,
@@ -558,6 +698,18 @@ def download_aws_sra_object_with_ranges(aws: str, run: str, target_path: Path, c
             "rangeConcurrency": concurrency,
             "rangeBytes": range_bytes,
             "source": "existing_aws_sra_range",
+        }
+
+    sra_cache_uri = cache_uri("sra", f"{run}.sra")
+    if CACHE_SRA_OBJECTS and sra_cache_uri and restore_cached_asset(aws, sra_cache_uri, target_path, object_size, f"{run}.sra"):
+        return {
+            "run": run,
+            "sourceUrl": sra_aws_uri(run),
+            "outputPath": str(target_path),
+            "bytes": object_size,
+            "rangeConcurrency": concurrency,
+            "rangeBytes": range_bytes,
+            "source": "cache_aws_sra",
         }
 
     partial_path = target_path.with_suffix(f"{target_path.suffix}.partial")
@@ -621,11 +773,28 @@ def download_aws_sra_object_with_ranges(aws: str, run: str, target_path: Path, c
             f"bytes={start}-{end}",
             str(part_path),
         ]
-        part_started = iso_now()
-        result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-        if result.returncode != 0:
+        result: subprocess.CompletedProcess[str] | None = None
+        for attempt in range(1, S3_RANGE_RETRIES + 1):
+            part_started = iso_now()
+            if part_path.exists():
+                part_path.unlink()
+            result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+            if result.returncode == 0:
+                break
             with log_path.open("a", encoding="utf-8") as log:
-                log.write(f"[{part_started}] range failed index={index} bytes={start}-{end}\n{result.stdout}\n")
+                log.write(
+                    f"[{part_started}] range failed index={index} attempt={attempt}/{S3_RANGE_RETRIES} "
+                    f"bytes={start}-{end}\n{result.stdout}\n"
+                )
+            if attempt < S3_RANGE_RETRIES:
+                delay = min(60, 2**attempt)
+                print(
+                    f"[download-retry] source=aws_sra run={run} range_index={index} "
+                    f"attempt={attempt} next_attempt={attempt + 1} delay_seconds={delay}",
+                    flush=True,
+                )
+                time.sleep(delay)
+        if result is None or result.returncode != 0:
             raise RuntimeError(f"SRA range download failed for {run} bytes={start}-{end}. See {log_path}.")
         size = part_path.stat().st_size
         expected = end - start + 1
@@ -640,11 +809,7 @@ def download_aws_sra_object_with_ranges(aws: str, run: str, target_path: Path, c
             progress["completed"] = int(progress["completed"]) + 1
             progress["bytes"] = int(progress["bytes"]) + size
             now = time.monotonic()
-            should_log = (
-                progress["completed"] == 1
-                or progress["completed"] == len(ranges)
-                or now >= float(progress["nextHeartbeat"])
-            )
+            should_log = progress["completed"] == 1 or progress["completed"] == len(ranges) or now >= float(progress["nextHeartbeat"])
             if should_log:
                 line = progress_line("range_complete")
                 progress["nextHeartbeat"] = now + heartbeat_seconds
@@ -697,23 +862,83 @@ def ensure_aws_sra_object(row: dict[str, Any]) -> dict[str, Any]:
     run, r1_path, r2_path, sra_path, _tmp_dir = aws_sra_run_paths(row)
     if r1_path.exists() and r1_path.stat().st_size > 0 and r2_path.exists() and r2_path.stat().st_size > 0:
         return {"run": run, "source": "existing_fastq", "path": str(sra_path), "downloaded": False}
-    aws = command_path("aws") or "/opt/diana-aws/bin/aws"
-    if not Path(aws).exists():
-        raise RuntimeError("PHASE3_WGS_SOURCE_MODE=aws_sra requires the AWS CLI.")
+    aws = aws_cli_path()
     write_aws_s3_transfer_config(S3_MAX_CONCURRENT_REQUESTS)
     ensure_dir(sra_path.parent)
     if not sra_path.exists() or sra_path.stat().st_size == 0:
-        download_aws_sra_object_with_ranges(aws, run, sra_path, S3_RANGE_CONCURRENCY, S3_RANGE_BYTES)
-        return {"run": run, "source": "aws_sra_range", "path": str(sra_path), "downloaded": True}
+        stat = download_aws_sra_object_with_ranges(aws, run, sra_path, S3_RANGE_CONCURRENCY, S3_RANGE_BYTES)
+        return {"run": run, "source": stat["source"], "path": str(sra_path), "downloaded": stat["source"] != "cache_aws_sra"}
     return {"run": run, "source": "existing_aws_sra", "path": str(sra_path), "downloaded": False}
+
+
+def restore_aws_sra_fastq_cache(aws: str, run: str, r1_path: Path, r2_path: Path) -> bool:
+    if not CACHE_FASTQS:
+        return False
+    r1_uri = cache_uri("fastq", r1_path.name)
+    r2_uri = cache_uri("fastq", r2_path.name)
+    if not r1_uri or not r2_uri:
+        return False
+    if s3_object_size(aws, r1_uri) is None or s3_object_size(aws, r2_uri) is None:
+        print(f"[cache-miss] label={run}.fastq-pair uri={cache_uri('fastq')}", flush=True)
+        return False
+    restored_r1 = restore_cached_asset(aws, r1_uri, r1_path, None, f"{run}.R1.fastq.gz")
+    try:
+        restored_r2 = restore_cached_asset(aws, r2_uri, r2_path, None, f"{run}.R2.fastq.gz")
+    except Exception:
+        if restored_r1:
+            r1_path.unlink(missing_ok=True)
+        raise
+    return restored_r1 and restored_r2
 
 
 def convert_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, Any]]:
     run, r1_path, r2_path, sra_path, tmp_dir = aws_sra_run_paths(row)
     if r1_path.exists() and r1_path.stat().st_size > 0 and r2_path.exists() and r2_path.stat().st_size > 0:
         return [
-            {"run": run, "read": "R1", "sourceUrl": sra_aws_uri(run), "outputPath": str(r1_path), "records": row["read_pairs_per_end"], "ids": [], "idsStored": False, "source": "existing_aws_sra"},
-            {"run": run, "read": "R2", "sourceUrl": sra_aws_uri(run), "outputPath": str(r2_path), "records": row["read_pairs_per_end"], "ids": [], "idsStored": False, "source": "existing_aws_sra"},
+            {
+                "run": run,
+                "read": "R1",
+                "sourceUrl": sra_aws_uri(run),
+                "outputPath": str(r1_path),
+                "records": row["read_pairs_per_end"],
+                "ids": [],
+                "idsStored": False,
+                "source": "existing_aws_sra",
+            },
+            {
+                "run": run,
+                "read": "R2",
+                "sourceUrl": sra_aws_uri(run),
+                "outputPath": str(r2_path),
+                "records": row["read_pairs_per_end"],
+                "ids": [],
+                "idsStored": False,
+                "source": "existing_aws_sra",
+            },
+        ]
+    aws = aws_cli_path()
+    if restore_aws_sra_fastq_cache(aws, run, r1_path, r2_path):
+        return [
+            {
+                "run": run,
+                "read": "R1",
+                "sourceUrl": sra_aws_uri(run),
+                "outputPath": str(r1_path),
+                "records": row["read_pairs_per_end"],
+                "ids": [],
+                "idsStored": False,
+                "source": "cache_aws_sra_fastq",
+            },
+            {
+                "run": run,
+                "read": "R2",
+                "sourceUrl": sra_aws_uri(run),
+                "outputPath": str(r2_path),
+                "records": row["read_pairs_per_end"],
+                "ids": [],
+                "idsStored": False,
+                "source": "cache_aws_sra_fastq",
+            },
         ]
     if not sra_path.exists() or sra_path.stat().st_size == 0:
         raise RuntimeError(f"Missing SRA object for {run}: {sra_path}")
@@ -724,22 +949,32 @@ def convert_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, Any
     for path in [r1_path, r2_path]:
         if path.exists():
             path.unlink()
-    run_command(
-        " ".join(
-            [
-                quote_shell_arg(fasterq),
-                "--split-files",
-                "--threads",
-                str(max(1, threads)),
-                "--outdir",
-                quote_shell_arg(str(tmp_dir)),
-                "--temp",
-                quote_shell_arg(str(tmp_dir)),
-                quote_shell_arg(str(sra_path)),
-            ]
-        ),
-        f"{RESULTS_DIR}/logs/fasterq_dump.{run}.log",
+    command = " ".join(
+        [
+            quote_shell_arg(fasterq),
+            "--split-files",
+            "--threads",
+            str(max(1, threads)),
+            "--outdir",
+            quote_shell_arg(str(tmp_dir)),
+            "--temp",
+            quote_shell_arg(str(tmp_dir)),
+            quote_shell_arg(str(sra_path)),
+        ]
     )
+    for attempt in range(1, SRA_COMMAND_RETRIES + 1):
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir)
+        ensure_dir(tmp_dir)
+        try:
+            run_command_with_retries(command, f"{RESULTS_DIR}/logs/fasterq_dump.{run}.log", 1, f"fasterq-dump.{run}")
+            break
+        except RuntimeError:
+            if attempt >= SRA_COMMAND_RETRIES:
+                raise
+            delay = min(120, 10 * attempt)
+            print(f"[retry] label=fasterq-dump.{run} attempt={attempt} next_attempt={attempt + 1} delay_seconds={delay}", flush=True)
+            time.sleep(delay)
     produced_r1 = tmp_dir / f"{run}_1.fastq"
     produced_r2 = tmp_dir / f"{run}_2.fastq"
     if not produced_r1.exists() or not produced_r2.exists():
@@ -749,10 +984,64 @@ def convert_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, Any
     gzip_fastq(produced_r2, r2_path, gzip_threads)
     produced_r1.unlink()
     produced_r2.unlink()
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
     return [
-        {"run": run, "read": "R1", "sourceUrl": sra_aws_uri(run), "outputPath": str(r1_path), "records": row["read_pairs_per_end"], "ids": [], "idsStored": False, "source": "aws_sra"},
-        {"run": run, "read": "R2", "sourceUrl": sra_aws_uri(run), "outputPath": str(r2_path), "records": row["read_pairs_per_end"], "ids": [], "idsStored": False, "source": "aws_sra"},
+        {
+            "run": run,
+            "read": "R1",
+            "sourceUrl": sra_aws_uri(run),
+            "outputPath": str(r1_path),
+            "records": row["read_pairs_per_end"],
+            "ids": [],
+            "idsStored": False,
+            "source": "aws_sra",
+        },
+        {
+            "run": run,
+            "read": "R2",
+            "sourceUrl": sra_aws_uri(run),
+            "outputPath": str(r2_path),
+            "records": row["read_pairs_per_end"],
+            "ids": [],
+            "idsStored": False,
+            "source": "aws_sra",
+        },
     ]
+
+
+def publish_validated_aws_sra_cache(sample_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    if not ASSET_CACHE_URI:
+        return {"enabled": False, "uri": "", "published": [], "deletedLocalSra": []}
+    aws = aws_cli_path()
+    published: list[dict[str, Any]] = []
+    deleted_local_sra: list[str] = []
+    for row in sample_rows:
+        run, r1_path, r2_path, sra_path, _tmp_dir = aws_sra_run_paths(row)
+        if CACHE_FASTQS:
+            for read, fastq_path in [("R1", r1_path), ("R2", r2_path)]:
+                uri = cache_uri("fastq", fastq_path.name)
+                if uri and publish_cached_asset(aws, fastq_path, uri, f"{run}.{read}.fastq.gz"):
+                    published.append({"run": run, "kind": f"fastq_{read}", "uri": uri, "bytes": fastq_path.stat().st_size})
+        if CACHE_SRA_OBJECTS and sra_path.exists() and sra_path.stat().st_size > 0:
+            uri = cache_uri("sra", f"{run}.sra")
+            if uri and publish_cached_asset(aws, sra_path, uri, f"{run}.sra", sra_path.stat().st_size):
+                published.append({"run": run, "kind": "sra", "uri": uri, "bytes": sra_path.stat().st_size})
+        if DELETE_SRA_AFTER_CONVERSION and sra_path.exists() and r1_path.exists() and r2_path.exists():
+            deleted_bytes = sra_path.stat().st_size
+            sra_path.unlink()
+            deleted_local_sra.append(str(sra_path))
+            print(f"[cleanup] deleted_local_sra run={run} bytes={deleted_bytes} path={sra_path}", flush=True)
+    return {
+        "enabled": True,
+        "uri": ASSET_CACHE_URI,
+        "mode": ASSET_CACHE_MODE,
+        "cacheSraObjects": CACHE_SRA_OBJECTS,
+        "cacheFastqs": CACHE_FASTQS,
+        "deleteSraAfterConversion": DELETE_SRA_AFTER_CONVERSION,
+        "published": published,
+        "deletedLocalSra": deleted_local_sra,
+    }
 
 
 def stream_fastq_subset(run: str, read: str, source_url: str, output_relative_path: str, expected_records: int) -> dict[str, Any]:
@@ -934,6 +1223,8 @@ def main() -> None:
         )
 
     fastq_stats: list[dict[str, Any]]
+    paired_stats: dict[str, dict[str, Any]]
+    asset_cache_summary: dict[str, Any] = {"enabled": bool(ASSET_CACHE_URI), "uri": ASSET_CACHE_URI, "mode": ASSET_CACHE_MODE}
     if READ_PAIRS_LIMIT is None and SOURCE_MODE == "aws_sra":
         with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(sample_rows))) as pool:
             list(pool.map(ensure_aws_sra_object, sample_rows))
@@ -958,6 +1249,7 @@ def main() -> None:
         for r1_summary, r2_summary, paired_summary in paired_results:
             fastq_stats.extend([r1_summary, r2_summary])
             paired_stats[r1_summary["run"]] = paired_summary
+        asset_cache_summary = publish_validated_aws_sra_cache(sample_rows)
     elif READ_PAIRS_LIMIT is None:
         full_tasks: list[tuple[str, str, str, str, int, int, str]] = []
         for row in sample_rows:
@@ -986,7 +1278,7 @@ def main() -> None:
         with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(full_tasks))) as pool:
             download_stats = list(pool.map(download_full_fastq_without_summary, full_tasks))
         fastq_stats = []
-        paired_stats: dict[str, dict[str, Any]] = {}
+        paired_stats = {}
         source_by_run_read = {(stat["run"], stat["read"]): stat["source"] for stat in download_stats}
 
         def summarize_full_row(row: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
@@ -1062,6 +1354,7 @@ def main() -> None:
             "readPairsMode": "full" if READ_PAIRS_LIMIT is None else "bounded",
             "fetchConcurrency": FETCH_CONCURRENCY,
             "sourceMode": SOURCE_MODE,
+            "assetCache": asset_cache_summary,
             "rows": fastq_rows,
         },
     )
@@ -1095,6 +1388,7 @@ def main() -> None:
                 "fetchConcurrency": FETCH_CONCURRENCY,
                 "note": "FASTQ end streams can be fetched concurrently; alignment/runtime thread controls live in validate:phase3-wgs.",
             },
+            "assetCache": asset_cache_summary,
             "completionModes": {
                 "default": "Full-source public WGS validation.",
                 "bounded_developer_check": "Set PHASE3_WGS_READS to an integer only for developer plumbing checks; bounded mode does not satisfy the Phase 3 acceptance gate.",

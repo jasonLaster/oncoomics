@@ -145,6 +145,23 @@ The job downloads public SRA objects fresh from the AWS Open Data bucket, conver
 
 The full-WGS stack expects high-throughput gp3 task storage. The Terraform defaults use a 2 TB root volume with 16000 IOPS and 1000 MB/s throughput so future applies do not fall back to the gp3 125 MB/s floor.
 
+## Cloud-Side Asset Cache
+
+Terraform writes `phase3_asset_cache_uri` into `infra/aws/nextflow.aws.json`:
+
+```txt
+s3://diana-omics-raw-inputs-<account>-<region>/cache/phase3_wgs
+```
+
+This bucket is private, encrypted, and writable by the Batch job role. It is reserved for assets fetched or generated inside AWS Batch:
+
+- `sra/SRR....sra` stores public SRA Open Data objects after cloud-side range download.
+- `fastq/SRR..._R1.full.fastq.gz` and `fastq/SRR..._R2.full.fastq.gz` store converted FASTQs after full validation.
+
+Do not upload local `data/raw`, local FASTQ/BAM/VCF files, or local generated artifacts into this cache. Subsequent AWS Batch runs restore cached FASTQs first, cached SRA objects second, and only then re-download from public SRA. Restored FASTQs still go through the full scan/spot-count checks.
+
+AWS profiles delete local `.sra` files after validated conversion and cache publication to reduce disk pressure before alignment. Override with `--phase3_delete_sra_after_conversion false` if you need to inspect the local SRA file inside a retained work directory.
+
 ## Full-Source WGS
 
 Run full WGS only by explicit command, preferably on the On-Demand queue unless Spot interruption is acceptable:

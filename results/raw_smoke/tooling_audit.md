@@ -6,9 +6,9 @@ Alignment/BAM ready locally: **yes**
 
 Full aligner toolbox available: **no**
 
-Workflow/container runtime available: **no**
+Workflow/container runtime available: **yes**
 
-Full QC/workflow runtime available: **no**
+Full QC/workflow runtime available: **yes**
 
 Alignment-ready definition: At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.
 
@@ -20,7 +20,7 @@ Phase 2E production somatic Mutect2 smoke ready: **yes**
 
 Phase 2F full WES benchmark ready: **yes**
 
-Phase 3 WGS smoke ready: **yes**
+Phase 3 WGS validation toolchain ready: **yes**
 
 Phase 3 optional signature runtime available: **yes**
 
@@ -32,7 +32,7 @@ Required for: Phase 2A direct FASTQ metadata and tiny read-subset smoke
 - curl: /usr/bin/curl
 - gunzip: /usr/bin/gunzip
 - gzip: /usr/bin/gzip
-- python3: /usr/bin/python3
+- python3: /opt/homebrew/bin/python3
 
 ## sra_conversion
 
@@ -50,7 +50,7 @@ Required for: Standard FASTQ QC and aggregate reports
 - fastqc: missing
 - multiqc: missing
 - seqtk: missing
-- seqkit: missing
+- seqkit: /opt/homebrew/bin/seqkit
 
 ## alignment_and_bam
 
@@ -102,9 +102,9 @@ Required for: Phase 3 representative WGS alignment, Mutect2, coverage-CNV bins, 
 Required for: Full-depth WGS CHORD/scarHRD/HRDetect/SigProfiler production interpretation
 
 - R: missing
-- python3: /usr/bin/python3
-- nextflow: missing
-- docker: missing
+- python3: /opt/homebrew/bin/python3
+- nextflow: /opt/homebrew/bin/nextflow
+- docker: /opt/homebrew/bin/docker
 - singularity: missing
 - apptainer: missing
 
@@ -112,8 +112,8 @@ Required for: Full-depth WGS CHORD/scarHRD/HRDetect/SigProfiler production inter
 
 Required for: nf-core/sarek or containerized raw-data workflow execution
 
-- nextflow: missing
-- docker: missing
+- nextflow: /opt/homebrew/bin/nextflow
+- docker: /opt/homebrew/bin/docker
 - singularity: missing
 - apptainer: missing
 - conda: missing
@@ -121,4 +121,4 @@ Required for: nf-core/sarek or containerized raw-data workflow execution
 
 ## Conclusion
 
-Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, Phase 2F full WES benchmark mechanics, and Phase 3 representative WGS smoke mechanics. Full-depth WGS interpretation still requires Diana data and final CNV/SV/signature policy.
+Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, Phase 2F full WES benchmark mechanics, and Phase 3 full-source WGS validation mechanics. Final HRD interpretation still requires Diana data and reviewer-approved CNV/SV/signature policy.

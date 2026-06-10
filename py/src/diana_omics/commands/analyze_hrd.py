@@ -19,6 +19,16 @@ from ..utils import (
 )
 
 
+def expected_bucket_for_label(expected_label: str) -> str:
+    if "negative" in expected_label:
+        return "expected_negative"
+    if "ambiguous" in expected_label:
+        return "expected_ambiguous"
+    if "hrd" in expected_label or "positive" in expected_label:
+        return "expected_hrd_like"
+    return "expected_unknown"
+
+
 def main() -> None:
     ensure_dir(path_from_root("results/evidence_tables"))
 
@@ -177,11 +187,7 @@ def main() -> None:
                 "sample_id": sample_id,
                 "expected_hrd_label": expected_label,
                 "predicted_hrd_class": prediction,
-                "expected_bucket": "expected_negative"
-                if "negative" in expected_label
-                else "expected_ambiguous"
-                if "ambiguous" in expected_label
-                else "expected_hrd_like",
+                "expected_bucket": expected_bucket_for_label(expected_label),
                 "predicted_bucket": confusion_bucket(prediction),
             }
         )

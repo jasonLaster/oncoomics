@@ -14,9 +14,14 @@ params.phase3_source_mode = params.phase3_source_mode ?: 'ena_fastq'
 params.phase3_sra_aws_bucket = params.phase3_sra_aws_bucket ?: 'sra-pub-run-odp'
 params.phase3_s3_range_concurrency = params.phase3_s3_range_concurrency ?: 8
 params.phase3_s3_range_bytes = params.phase3_s3_range_bytes ?: 268435456
+params.phase3_s3_range_retries = params.phase3_s3_range_retries ?: 4
 params.phase3_include_wes = params.phase3_include_wes ?: false
 params.phase3_prereq_mode = params.phase3_prereq_mode ?: 'minimal'
 params.phase3_sra_run_concurrency = params.phase3_sra_run_concurrency ?: 1
+params.phase3_sra_command_retries = params.phase3_sra_command_retries ?: 2
+params.phase3_asset_cache_uri = params.phase3_asset_cache_uri ?: null
+params.phase3_asset_cache_mode = params.phase3_asset_cache_mode ?: 'readwrite'
+params.phase3_delete_sra_after_conversion = params.phase3_delete_sra_after_conversion ?: false
 params.sra_benchmark_runs = params.sra_benchmark_runs ?: 'SRR7890824,SRR7890827'
 params.sra_benchmark_bytes = params.sra_benchmark_bytes ?: 1073741824
 params.sra_benchmark_parts = params.sra_benchmark_parts ?: 1
@@ -182,7 +187,12 @@ process PHASE3_FETCH {
     export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
     export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
     export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
+    export PHASE3_WGS_S3_RANGE_RETRIES="${params.phase3_s3_range_retries}"
     export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
+    export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
+    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
+    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
+    export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan
@@ -442,7 +452,12 @@ process PHASE3_WGS {
     export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
     export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
     export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
+    export PHASE3_WGS_S3_RANGE_RETRIES="${params.phase3_s3_range_retries}"
     export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
+    export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
+    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
+    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
+    export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan
@@ -539,7 +554,12 @@ process ALL_PUBLIC {
     export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
     export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
     export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
+    export PHASE3_WGS_S3_RANGE_RETRIES="${params.phase3_s3_range_retries}"
     export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
+    export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
+    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
+    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
+    export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan

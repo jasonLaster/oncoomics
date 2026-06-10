@@ -657,13 +657,14 @@ resource "local_file" "nextflow_params" {
   filename        = "${path.module}/nextflow.aws.json"
   file_permission = "0600"
   content = jsonencode({
-    aws_region         = var.region
-    aws_workdir        = "s3://${aws_s3_bucket.this["work"].bucket}/work"
-    aws_results_dir    = "s3://${aws_s3_bucket.this["results"].bucket}/runs"
-    aws_spot_queue     = aws_batch_job_queue.spot.name
-    aws_ondemand_queue = aws_batch_job_queue.ondemand.name
-    aws_job_role       = aws_iam_role.batch_job.arn
-    aws_logs_group     = aws_cloudwatch_log_group.batch.name
-    container          = "${aws_ecr_repository.diana_omics.repository_url}:${var.image_tag}"
+    aws_region             = var.region
+    aws_workdir            = "s3://${aws_s3_bucket.this["work"].bucket}/work"
+    aws_results_dir        = "s3://${aws_s3_bucket.this["results"].bucket}/runs"
+    aws_spot_queue         = aws_batch_job_queue.spot.name
+    aws_ondemand_queue     = aws_batch_job_queue.ondemand.name
+    aws_job_role           = aws_iam_role.batch_job.arn
+    aws_logs_group         = aws_cloudwatch_log_group.batch.name
+    container              = "${aws_ecr_repository.diana_omics.repository_url}:${var.image_tag}"
+    phase3_asset_cache_uri = "s3://${aws_s3_bucket.this["raw"].bucket}/cache/phase3_wgs"
   })
 }

@@ -63,6 +63,12 @@ class DianaRawContractTest(unittest.TestCase):
         errors, _warnings, _summary = validate_rows(rows, require_files=False)
         self.assertIn("Diana raw tumor and normal DNA rows must share at least one non-empty pair_id.", errors)
 
+    def test_validate_rows_rejects_data_type_file_mismatch(self):
+        rows = template_rows()[:2]
+        rows[0]["data_type"] = "BAM"
+        errors, _warnings, _summary = validate_rows(rows, require_files=False)
+        self.assertIn("DNA row DIANA-TUMOR-DNA data_type BAM must provide bam and bai.", errors)
+
 
 if __name__ == "__main__":
     unittest.main()
