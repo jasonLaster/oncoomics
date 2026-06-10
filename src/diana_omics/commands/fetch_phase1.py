@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ..paths import path_from_root
+from ..tcga_standard import HRR_GENES
 from ..utils import (
     ensure_dir,
     fetch_json,
@@ -17,23 +18,6 @@ from ..utils import (
 CBIO = "https://www.cbioportal.org/api"
 STUDY_ID = "brca_tcga_pan_can_atlas_2018"
 XENA_CLINICAL = "https://tcga.xenahubs.net/download/TCGA.BRCA.sampleMap/BRCA_clinicalMatrix"
-HRR_GENES = [
-    "BRCA1",
-    "BRCA2",
-    "PALB2",
-    "RAD51",
-    "RAD51B",
-    "RAD51C",
-    "RAD51D",
-    "ATM",
-    "CHEK2",
-    "BARD1",
-    "BRIP1",
-    "FANCA",
-    "RAD50",
-    "MRE11",
-    "NBN",
-]
 RNA_MARKER_GENES = [
     "ESR1",
     "PGR",
