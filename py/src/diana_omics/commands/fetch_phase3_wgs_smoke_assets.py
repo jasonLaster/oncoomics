@@ -5,6 +5,7 @@ import hashlib
 import os
 import shutil
 import subprocess
+import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -38,6 +39,7 @@ SRA_THREADS = max(1, int(os.environ.get("PHASE3_WGS_SRA_THREADS", str(FETCH_CONC
 S3_MAX_CONCURRENT_REQUESTS = max(1, int(os.environ.get("PHASE3_WGS_S3_MAX_CONCURRENT_REQUESTS", str(max(16, SRA_THREADS * 2)))))
 S3_RANGE_CONCURRENCY = max(1, int(os.environ.get("PHASE3_WGS_S3_RANGE_CONCURRENCY", str(max(8, SRA_THREADS * 2)))))
 S3_RANGE_BYTES = max(8 * 1024 * 1024, int(os.environ.get("PHASE3_WGS_S3_RANGE_BYTES", str(256 * 1024 * 1024))))
+SRA_RUN_CONCURRENCY = max(1, int(os.environ.get("PHASE3_WGS_SRA_RUN_CONCURRENCY", "1")))
 RESULTS_DIR = "results/phase3_wgs_smoke"
 SMOKE_ROOT = "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full"
 SEQC2_TRUTH_ROOT = "data/raw/reference/seqc2_hcc1395_truth/latest"
@@ -228,6 +230,19 @@ def parse_seqkit_stats(output: str) -> dict[str, dict[str, str]]:
     return {row["file"]: row for row in rows}
 
 
+def seqkit_n_fraction(stats: dict[str, str], bases: int) -> float:
+    if not bases:
+        return 0
+    sum_n = stats.get("sum_n") or stats.get("num_N") or stats.get("N")
+    return int(float(sum_n)) / bases if sum_n not in (None, "") else 0
+
+
+def full_scan_validation_method() -> str:
+    if SOURCE_MODE == "aws_sra":
+        return "seqkit_stats_full_scan_sra_spot_count_check"
+    return "seqkit_stats_full_scan_with_exact_provider_md5"
+
+
 def first_fastq_id(path: str, label: str) -> str:
     seqkit = command_path("seqkit")
     if not seqkit:
@@ -283,7 +298,7 @@ def summarize_paired_fastqs_with_seqkit(row: dict[str, Any], source: str) -> tup
             "maxLength": int(float(stats["max_len"])),
             "meanLength": float(stats["avg_len"]),
             "gcFraction": float(stats["GC(%)"]) / 100,
-            "nFraction": int(stats["sum_n"]) / bases if bases else 0,
+            "nFraction": seqkit_n_fraction(stats, bases),
             "qualityAsciiMin": "",
             "qualityAsciiMax": "",
             "firstReadId": first_fastq_id(path, f"{row['run_accession']} {read}"),
@@ -306,7 +321,7 @@ def summarize_paired_fastqs_with_seqkit(row: dict[str, Any], source: str) -> tup
         "firstReadId": r1_summary["firstReadId"],
         "lastReadId": "not_collected_seqkit_full_scan",
         "pairedIdCheck": "passed",
-        "validationMethod": "seqkit_stats_full_scan_with_exact_provider_md5",
+        "validationMethod": full_scan_validation_method(),
     }
     return r1_summary, r2_summary, paired_summary
 
@@ -558,12 +573,37 @@ def download_aws_sra_object_with_ranges(aws: str, run: str, target_path: Path, c
         shutil.rmtree(temp_dir)
     ensure_dir(temp_dir)
     write_lock = Lock()
+    progress_lock = Lock()
+    started_monotonic = time.monotonic()
+    heartbeat_seconds = max(1, int(os.environ.get("DIANA_OMICS_DOWNLOAD_HEARTBEAT_SECONDS", "60")))
+    progress = {
+        "completed": 0,
+        "bytes": 0,
+        "nextHeartbeat": started_monotonic + heartbeat_seconds,
+    }
+
+    def progress_line(reason: str) -> str:
+        elapsed = max(0.001, time.monotonic() - started_monotonic)
+        completed_bytes = int(progress["bytes"])
+        mb_per_second = completed_bytes / 1_000_000 / elapsed
+        remaining_bytes = max(0, object_size - completed_bytes)
+        eta_seconds = int(remaining_bytes / (mb_per_second * 1_000_000)) if mb_per_second > 0 else -1
+        percent = completed_bytes / object_size * 100 if object_size else 100
+        return (
+            f"[download-heartbeat] source=aws_sra run={run} reason={reason} "
+            f"completed_ranges={progress['completed']}/{len(ranges)} "
+            f"bytes={completed_bytes}/{object_size} percent={percent:.2f} "
+            f"avg_mb_s={mb_per_second:.2f} eta_seconds={eta_seconds} "
+            f"concurrency={concurrency} range_bytes={range_bytes}"
+        )
 
     with log_path.open("a", encoding="utf-8") as log:
-        log.write(
+        line = (
             f"[{iso_now()}] range-download start run={run} bytes={object_size} "
-            f"range_bytes={range_bytes} ranges={len(ranges)} concurrency={concurrency}\n"
+            f"range_bytes={range_bytes} ranges={len(ranges)} concurrency={concurrency}"
         )
+        print(line, flush=True)
+        log.write(f"{line}\n")
 
     def download_range(index_and_range: tuple[int, tuple[int, int]]) -> dict[str, Any]:
         index, (start, end) = index_and_range
@@ -596,9 +636,24 @@ def download_aws_sra_object_with_ranges(aws: str, run: str, target_path: Path, c
                 target.seek(start)
                 shutil.copyfileobj(part, target, length=8 * 1024 * 1024)
         part_path.unlink()
-        if index == 0 or (index + 1) % 25 == 0 or index + 1 == len(ranges):
+        with progress_lock:
+            progress["completed"] = int(progress["completed"]) + 1
+            progress["bytes"] = int(progress["bytes"]) + size
+            now = time.monotonic()
+            should_log = (
+                progress["completed"] == 1
+                or progress["completed"] == len(ranges)
+                or now >= float(progress["nextHeartbeat"])
+            )
+            if should_log:
+                line = progress_line("range_complete")
+                progress["nextHeartbeat"] = now + heartbeat_seconds
+            else:
+                line = ""
+        if line:
             with log_path.open("a", encoding="utf-8") as log:
-                log.write(f"[{iso_now()}] range complete {index + 1}/{len(ranges)} bytes={start}-{end}\n")
+                log.write(f"[{iso_now()}] {line}\n")
+            print(line, flush=True)
         return {"index": index, "bytes": size}
 
     with ThreadPoolExecutor(max_workers=min(concurrency, len(ranges))) as pool:
@@ -610,7 +665,14 @@ def download_aws_sra_object_with_ranges(aws: str, run: str, target_path: Path, c
         raise RuntimeError(f"SRA range download for {run} has unexpected final size {partial_path.stat().st_size}; expected {object_size}.")
     partial_path.replace(target_path)
     with log_path.open("a", encoding="utf-8") as log:
-        log.write(f"[{iso_now()}] range-download complete run={run} bytes={object_size} output={target_path}\n")
+        elapsed = max(0.001, time.monotonic() - started_monotonic)
+        mb_per_second = object_size / 1_000_000 / elapsed
+        line = (
+            f"[download-complete] source=aws_sra run={run} bytes={object_size} "
+            f"elapsed_seconds={elapsed:.1f} avg_mb_s={mb_per_second:.2f} output={target_path}"
+        )
+        print(line, flush=True)
+        log.write(f"[{iso_now()}] {line}\n")
     return {
         "run": run,
         "sourceUrl": sra_aws_uri(run),
@@ -622,31 +684,43 @@ def download_aws_sra_object_with_ranges(aws: str, run: str, target_path: Path, c
     }
 
 
-def download_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, Any]]:
+def aws_sra_run_paths(row: dict[str, Any]) -> tuple[str, Path, Path, Path, Path]:
     run = row["run_accession"]
     r1_path = path_from_root(row["fastq_1"])
     r2_path = path_from_root(row["fastq_2"])
+    sra_dir = path_from_root(f"{SMOKE_ROOT}/sra")
+    tmp_dir = path_from_root(f"{SMOKE_ROOT}/tmp/{run}")
+    return run, r1_path, r2_path, sra_dir / f"{run}.sra", tmp_dir
+
+
+def ensure_aws_sra_object(row: dict[str, Any]) -> dict[str, Any]:
+    run, r1_path, r2_path, sra_path, _tmp_dir = aws_sra_run_paths(row)
+    if r1_path.exists() and r1_path.stat().st_size > 0 and r2_path.exists() and r2_path.stat().st_size > 0:
+        return {"run": run, "source": "existing_fastq", "path": str(sra_path), "downloaded": False}
+    aws = command_path("aws") or "/opt/diana-aws/bin/aws"
+    if not Path(aws).exists():
+        raise RuntimeError("PHASE3_WGS_SOURCE_MODE=aws_sra requires the AWS CLI.")
+    write_aws_s3_transfer_config(S3_MAX_CONCURRENT_REQUESTS)
+    ensure_dir(sra_path.parent)
+    if not sra_path.exists() or sra_path.stat().st_size == 0:
+        download_aws_sra_object_with_ranges(aws, run, sra_path, S3_RANGE_CONCURRENCY, S3_RANGE_BYTES)
+        return {"run": run, "source": "aws_sra_range", "path": str(sra_path), "downloaded": True}
+    return {"run": run, "source": "existing_aws_sra", "path": str(sra_path), "downloaded": False}
+
+
+def convert_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, Any]]:
+    run, r1_path, r2_path, sra_path, tmp_dir = aws_sra_run_paths(row)
     if r1_path.exists() and r1_path.stat().st_size > 0 and r2_path.exists() and r2_path.stat().st_size > 0:
         return [
             {"run": run, "read": "R1", "sourceUrl": sra_aws_uri(run), "outputPath": str(r1_path), "records": row["read_pairs_per_end"], "ids": [], "idsStored": False, "source": "existing_aws_sra"},
             {"run": run, "read": "R2", "sourceUrl": sra_aws_uri(run), "outputPath": str(r2_path), "records": row["read_pairs_per_end"], "ids": [], "idsStored": False, "source": "existing_aws_sra"},
         ]
-
-    aws = command_path("aws") or "/opt/diana-aws/bin/aws"
-    if not Path(aws).exists():
-        raise RuntimeError("PHASE3_WGS_SOURCE_MODE=aws_sra requires the AWS CLI.")
+    if not sra_path.exists() or sra_path.stat().st_size == 0:
+        raise RuntimeError(f"Missing SRA object for {run}: {sra_path}")
     fasterq = command_path("fasterq-dump")
     if not fasterq:
         raise RuntimeError("PHASE3_WGS_SOURCE_MODE=aws_sra requires fasterq-dump from sra-tools.")
-    write_aws_s3_transfer_config(S3_MAX_CONCURRENT_REQUESTS)
-    sra_dir = path_from_root(f"{SMOKE_ROOT}/sra")
-    tmp_dir = path_from_root(f"{SMOKE_ROOT}/tmp/{run}")
-    ensure_dir(sra_dir)
     ensure_dir(tmp_dir)
-    sra_path = sra_dir / f"{run}.sra"
-    if not sra_path.exists() or sra_path.stat().st_size == 0:
-        download_aws_sra_object_with_ranges(aws, run, sra_path, S3_RANGE_CONCURRENCY, S3_RANGE_BYTES)
-
     for path in [r1_path, r2_path]:
         if path.exists():
             path.unlink()
@@ -862,7 +936,9 @@ def main() -> None:
     fastq_stats: list[dict[str, Any]]
     if READ_PAIRS_LIMIT is None and SOURCE_MODE == "aws_sra":
         with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(sample_rows))) as pool:
-            nested_stats = list(pool.map(lambda row: download_aws_sra_run(row, SRA_THREADS), sample_rows))
+            list(pool.map(ensure_aws_sra_object, sample_rows))
+        with ThreadPoolExecutor(max_workers=min(SRA_RUN_CONCURRENCY, len(sample_rows))) as pool:
+            nested_stats = list(pool.map(lambda row: convert_aws_sra_run(row, SRA_THREADS), sample_rows))
         download_stats = [stat for run_stats in nested_stats for stat in run_stats]
         fastq_stats = []
         paired_stats = {}

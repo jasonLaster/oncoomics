@@ -64,6 +64,16 @@ class Phase3WgsHelpersTest(unittest.TestCase):
         with patch.object(fetch_phase3, "SRA_AWS_BUCKET", "sra-pub-run-odp"):
             self.assertEqual(fetch_phase3.sra_aws_uri("SRR7890824"), "s3://sra-pub-run-odp/sra/SRR7890824/SRR7890824")
 
+    def test_seqkit_n_fraction_tolerates_missing_sum_n(self):
+        self.assertEqual(fetch_phase3.seqkit_n_fraction({"num_seqs": "2", "sum_len": "300"}, 300), 0)
+        self.assertEqual(fetch_phase3.seqkit_n_fraction({"sum_n": "3"}, 300), 0.01)
+
+    def test_aws_sra_full_scan_validation_method_does_not_claim_provider_md5(self):
+        with patch.object(fetch_phase3, "SOURCE_MODE", "aws_sra"):
+            self.assertEqual(fetch_phase3.full_scan_validation_method(), "seqkit_stats_full_scan_sra_spot_count_check")
+        with patch.object(fetch_phase3, "SOURCE_MODE", "ena_fastq"):
+            self.assertEqual(fetch_phase3.full_scan_validation_method(), "seqkit_stats_full_scan_with_exact_provider_md5")
+
 
 if __name__ == "__main__":
     unittest.main()

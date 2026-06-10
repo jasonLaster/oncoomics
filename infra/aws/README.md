@@ -137,9 +137,13 @@ The default full fetch experiment uses:
 - `--phase3_source_mode aws_sra`
 - `--phase3_fetch_cpus 8`
 - `--phase3_fetch_memory '48 GB'`
-- `--phase3_fetch_concurrency 2`
+- `--phase3_fetch_concurrency 8`
+- `--phase3_s3_range_concurrency 8`
+- `--phase3_sra_run_concurrency 1`
 
-The job downloads public SRA objects fresh from the AWS Open Data bucket, converts them with `fasterq-dump`, gzips split FASTQs, and writes those files to local task storage first. S3 work/results objects are only durable after the task publishes or exits cleanly. Keep `phase3_aria2_split=1` for ENA acceptance-scale data unless a segmented ENA strategy has been proven against provider MD5s and gzip validation.
+The job downloads public SRA objects fresh from the AWS Open Data bucket, converts them with `fasterq-dump`, gzips split FASTQs, and writes those files to local task storage first. S3 work/results objects are only durable after the task publishes or exits cleanly. The `aws_sra` path validates SRA spot counts and full FASTQ scans, not ENA provider MD5s, because the gzip FASTQs are regenerated in AWS. Keep `phase3_aria2_split=1` for ENA acceptance-scale data unless a segmented ENA strategy has been proven against provider MD5s and gzip validation.
+
+The full-WGS stack expects high-throughput gp3 task storage. The Terraform defaults use a 2 TB root volume with 16000 IOPS and 1000 MB/s throughput so future applies do not fall back to the gp3 125 MB/s floor.
 
 ## Full-Source WGS
 
@@ -150,6 +154,8 @@ bun run nf:aws:phase3-wgs:full
 ```
 
 Full-source WGS is the acceptance-scale path and can be expensive.
+
+Cloud Nextflow profiles retry failed Batch processes once by default. Override with `--aws_max_retries 0` for strict fail-fast testing or raise it only when the failure mode is known to be transient.
 
 ## Cost Notes
 

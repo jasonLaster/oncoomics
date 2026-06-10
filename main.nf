@@ -6,10 +6,17 @@ params.workflow = params.workflow ?: 'quick'
 params.phase3_reads = params.phase3_reads ?: null
 params.phase3_fetch_cpus = params.phase3_fetch_cpus ?: 4
 params.phase3_fetch_memory = params.phase3_fetch_memory ?: '16 GB'
+params.phase3_wgs_cpus = params.phase3_wgs_cpus ?: 16
+params.phase3_wgs_memory = params.phase3_wgs_memory ?: '64 GB'
 params.phase3_fetch_concurrency = params.phase3_fetch_concurrency ?: 2
 params.phase3_aria2_split = params.phase3_aria2_split ?: 1
 params.phase3_source_mode = params.phase3_source_mode ?: 'ena_fastq'
 params.phase3_sra_aws_bucket = params.phase3_sra_aws_bucket ?: 'sra-pub-run-odp'
+params.phase3_s3_range_concurrency = params.phase3_s3_range_concurrency ?: 8
+params.phase3_s3_range_bytes = params.phase3_s3_range_bytes ?: 268435456
+params.phase3_include_wes = params.phase3_include_wes ?: false
+params.phase3_prereq_mode = params.phase3_prereq_mode ?: 'minimal'
+params.phase3_sra_run_concurrency = params.phase3_sra_run_concurrency ?: 1
 params.sra_benchmark_runs = params.sra_benchmark_runs ?: 'SRR7890824,SRR7890827'
 params.sra_benchmark_bytes = params.sra_benchmark_bytes ?: 1073741824
 params.sra_benchmark_parts = params.sra_benchmark_parts ?: 1
@@ -173,6 +180,9 @@ process PHASE3_FETCH {
     export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
     export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
     export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
+    export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
+    export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
+    export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan
@@ -402,8 +412,8 @@ JSON
 
 process PHASE3_WGS {
     tag "phase3_wgs_${params.phase3_reads ?: '500000'}"
-    cpus 16
-    memory '64 GB'
+    cpus { params.phase3_wgs_cpus as int }
+    memory { params.phase3_wgs_memory }
     time '72h'
     publishDir "${params.outdir}/phase3_wgs", mode: 'copy', overwrite: true
 
@@ -430,6 +440,9 @@ process PHASE3_WGS {
     export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
     export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
     export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
+    export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
+    export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
+    export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan
@@ -439,28 +452,48 @@ process PHASE3_WGS {
     run "\$PYTHON_BIN" -m diana_omics build:diana-template
     run "\$PYTHON_BIN" -m diana_omics verify:diana-raw
     run "\$PYTHON_BIN" -m diana_omics build:raw-samplesheets
-    run "\$PYTHON_BIN" -m diana_omics smoke:raw
-    run "\$PYTHON_BIN" -m diana_omics build:alignment-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:alignment
-    run "\$PYTHON_BIN" -m diana_omics fetch:human-reference-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:human-reference
+    if [ "${params.phase3_prereq_mode}" = "full" ]; then
+        run "\$PYTHON_BIN" -m diana_omics smoke:raw
+        run "\$PYTHON_BIN" -m diana_omics build:alignment-smoke
+        run "\$PYTHON_BIN" -m diana_omics smoke:alignment
+        run "\$PYTHON_BIN" -m diana_omics fetch:human-reference-smoke
+        run "\$PYTHON_BIN" -m diana_omics smoke:human-reference
+    else
+        echo "==> Skipping raw/alignment/human-reference smoke prerequisites for Phase 3 WGS minimal mode."
+    fi
     run "\$PYTHON_BIN" -m diana_omics fetch:full-reference-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:full-reference
+    if [ "${params.phase3_prereq_mode}" = "full" ]; then
+        run "\$PYTHON_BIN" -m diana_omics smoke:full-reference
+    else
+        echo "==> Skipping full-reference smoke alignment for Phase 3 WGS minimal mode."
+    fi
     run "\$PYTHON_BIN" -m diana_omics fetch:production-somatic
-    run "\$PYTHON_BIN" -m diana_omics smoke:production-somatic
-    run "\$PYTHON_BIN" -m diana_omics fetch:full-wes
-    run "\$PYTHON_BIN" -m diana_omics benchmark:full-wes
+    if [ "${params.phase3_prereq_mode}" = "full" ]; then
+        run "\$PYTHON_BIN" -m diana_omics smoke:production-somatic
+    else
+        echo "==> Skipping production somatic smoke for Phase 3 WGS minimal mode."
+    fi
+    if [ "${params.phase3_include_wes}" = "true" ]; then
+        run "\$PYTHON_BIN" -m diana_omics fetch:full-wes
+        run "\$PYTHON_BIN" -m diana_omics benchmark:full-wes
+    else
+        echo "==> Skipping full WES prerequisite for Phase 3 WGS; use --phase3_include_wes true for orthogonal WES ladder."
+    fi
     run "\$PYTHON_BIN" -m diana_omics fetch:phase3-wgs
     run "\$PYTHON_BIN" -m diana_omics validate:phase3-wgs
-    run "\$PYTHON_BIN" -m diana_omics verify:orthogonal
+    if [ "${params.phase3_include_wes}" = "true" ]; then
+        run "\$PYTHON_BIN" -m diana_omics verify:orthogonal
+    else
+        echo "==> Skipping orthogonal WES verification because --phase3_include_wes is false."
+    fi
     run "\$PYTHON_BIN" -m diana_omics build:panel
     run "\$PYTHON_BIN" -m diana_omics analyze:hrd
     run "\$PYTHON_BIN" -m diana_omics analyze:rna
     run "\$PYTHON_BIN" -m diana_omics build:packet
-    if [ "${params.phase3_reads ?: '500000'}" = "full" ]; then
+    if [ "${params.phase3_reads ?: '500000'}" = "full" ] && [ "${params.phase3_include_wes}" = "true" ]; then
         run "\$PYTHON_BIN" -m diana_omics verify:outputs
     else
-        echo "==> Skipping fatal full output verification for bounded Phase 3 developer run."
+        echo "==> Skipping fatal full output verification for bounded or WGS-only Phase 3 run."
         "\$PYTHON_BIN" -m diana_omics verify:outputs || true
     fi
     """
@@ -504,6 +537,9 @@ process ALL_PUBLIC {
     export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
     export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
     export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
+    export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
+    export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
+    export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics verify:plan

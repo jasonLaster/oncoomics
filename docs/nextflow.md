@@ -57,10 +57,14 @@ nextflow run main.nf \
   --phase3_source_mode aws_sra \
   --phase3_fetch_cpus 8 \
   --phase3_fetch_memory '48 GB' \
-  --phase3_fetch_concurrency 2
+  --phase3_fetch_concurrency 8 \
+  --phase3_s3_range_concurrency 8 \
+  --phase3_sra_run_concurrency 1
 ```
 
-`phase3_fetch` still fetches the small prerequisites needed by `fetch:phase3-wgs`, then downloads and checks the full SEQC2/HCC1395 WGS reads. The default source mode is `ena_fastq`, which downloads the published gzip FASTQs directly from ENA. AWS cloud runs can use `--phase3_source_mode aws_sra` to download public SRA objects from the AWS Open Data bucket `sra-pub-run-odp`, convert them with `fasterq-dump`, gzip the split FASTQs, and leave the existing validation logic unchanged.
+`phase3_fetch` still fetches the small prerequisites needed by `fetch:phase3-wgs`, then downloads and checks the full SEQC2/HCC1395 WGS reads. The default source mode is `ena_fastq`, which downloads the published gzip FASTQs directly from ENA and verifies provider MD5s. AWS cloud runs should use `--phase3_source_mode aws_sra` to range-read public SRA objects from the AWS Open Data bucket `sra-pub-run-odp`, convert them with `fasterq-dump`, gzip the split FASTQs, and leave the existing validation logic unchanged. This path validates SRA spot counts and full FASTQ scans; it does not claim ENA provider-MD5 validation because the FASTQ gzip bytes are regenerated in the task.
+
+Measured from `us-east-1`, ENA direct HTTP was about 4-6 MB/s and did not scale meaningfully with four streams, while SRA Open Data S3 range reads scaled to hundreds of MB/s. Optimize the AWS path around conversion and compression, not around ENA download concurrency.
 
 Use `phase3_sra_benchmark` for cheap network-only experiments before a full download and conversion run:
 
@@ -77,6 +81,8 @@ nextflow run main.nf \
 ```
 
 This range-reads the public SRA objects and reports per-range plus aggregate MB/s without keeping the downloaded bytes. `--sra_benchmark_bytes` is bytes per range and `--sra_benchmark_parts` is ranges per run accession. It tests the AWS S3 path only; full `aws_sra` performance also includes SRA-to-FASTQ conversion and gzip compression. Keep `--phase3_aria2_split 1` for ENA acceptance data unless a segmented transfer strategy has already been proven against provider MD5s and gzip validation.
+
+AWS Batch profiles retry failed processes once by default through `--aws_max_retries 1`. Increase this only for transient cloud failures; deterministic analysis failures should be fixed and relaunched with a new image.
 
 ## Docker Profile
 

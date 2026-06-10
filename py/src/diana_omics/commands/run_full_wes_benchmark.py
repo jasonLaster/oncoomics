@@ -145,6 +145,17 @@ def load_truth_variants(vcf_path: str, variant_type: str) -> list[dict[str, Any]
     return variants
 
 
+def normalize_vcf_for_comparison(vcf_path: str, reference_path: str, output_path: str, log_path: str) -> str:
+    if FORCE or not file_non_empty(output_path):
+        ensure_dir(path_from_root("/".join(output_path.split("/")[:-1])))
+        run_command(
+            f"bcftools norm -m -both -f {quote_shell_arg(reference_path)} -Oz -o {quote_shell_arg(output_path)} {quote_shell_arg(vcf_path)}",
+            log_path,
+        )
+        run_command(f"bcftools index -t -f {quote_shell_arg(output_path)}", f"{log_path}.index")
+    return output_path
+
+
 def write_truth_position_bed(variants: list[dict[str, Any]], output_path: str) -> None:
     ensure_dir(path_from_root("/".join(output_path.split("/")[:-1])))
     write_text(
@@ -429,7 +440,20 @@ def main() -> None:
     brca_depth_summary = parse_depth_summary(brca_depth)
     truth_snv_path = "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz"
     truth_indel_path = "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sINDEL_in_HC_regions_v1.2.1.vcf.gz"
-    truth_variants = load_truth_variants(truth_snv_path, "snv") + load_truth_variants(truth_indel_path, "indel")
+    normalized_truth_snv_path = normalize_vcf_for_comparison(
+        truth_snv_path,
+        tumor["reference_path"],
+        f"{vcf_dir}/seqc2.high_confidence_sSNV.normalized.vcf.gz",
+        f"{RESULTS_DIR}/logs/{reference_id}.truth_snv.norm.log",
+    )
+    normalized_truth_indel_path = normalize_vcf_for_comparison(
+        truth_indel_path,
+        tumor["reference_path"],
+        f"{vcf_dir}/seqc2.high_confidence_sINDEL.normalized.vcf.gz",
+        f"{RESULTS_DIR}/logs/{reference_id}.truth_indel.norm.log",
+    )
+    truth_variants = load_truth_variants(normalized_truth_snv_path, "snv") + load_truth_variants(normalized_truth_indel_path, "indel")
+    all_truth_keys = {str(variant["key"]) for variant in truth_variants}
     write_truth_position_bed(truth_variants, truth_position_bed)
     truth_depth_text = capture_command(
         f"samtools depth -a -b {quote_shell_arg(truth_position_bed)} {quote_shell_arg(tumor['dedup_bam'])} {quote_shell_arg(normal['dedup_bam'])}"
@@ -530,17 +554,25 @@ def main() -> None:
             f"bcftools index -t -f {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.full_wes.filtered_vcf_index.log"
         )
     run_command(f"bcftools stats {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.full_wes.filtered_vcf_stats.txt")
+    normalized_filtered_vcf = normalize_vcf_for_comparison(
+        filtered_vcf,
+        tumor["reference_path"],
+        f"{vcf_dir}/hcc1395.full_wes.mutect2.filtered.normalized.vcf.gz",
+        f"{RESULTS_DIR}/logs/{reference_id}.full_wes.filtered_vcf.norm.log",
+    )
 
-    filtered_calls = variant_keys(filtered_vcf, benchmark_intervals)
+    filtered_calls = variant_keys(normalized_filtered_vcf, benchmark_intervals)
     truth_keys = {str(variant["key"]) for variant in covered_truth_variants}
     pass_truth_matches = [key for key in filtered_calls["passKeys"] if key in truth_keys]
     all_truth_matches = [key for key in filtered_calls["keys"] if key in truth_keys]
-    false_positive_pass = [key for key in filtered_calls["passKeys"] if key not in truth_keys]
+    truth_outside_recall_matches = [key for key in filtered_calls["passKeys"] if key in all_truth_keys and key not in truth_keys]
+    false_positive_pass = [key for key in filtered_calls["passKeys"] if key not in all_truth_keys]
     false_negative_truth = [key for key in truth_keys if key not in filtered_calls["passKeys"]]
     truth_snv_count = len([variant for variant in covered_truth_variants if variant["type"] == "snv"])
     truth_indel_count = len([variant for variant in covered_truth_variants if variant["type"] == "indel"])
     recall = len(pass_truth_matches) / len(truth_keys) if truth_keys else None
-    precision = len(pass_truth_matches) / len(filtered_calls["passKeys"]) if filtered_calls["passKeys"] else None
+    precision_denominator = len(pass_truth_matches) + len(false_positive_pass)
+    precision = len(pass_truth_matches) / precision_denominator if precision_denominator else None
     mutect_status = "passed" if path_from_root(filtered_vcf).exists() and path_from_root(f"{filtered_vcf}.tbi").exists() else "failed"
     ready_for_phase3 = (
         mutect_status == "passed"
@@ -585,10 +617,12 @@ def main() -> None:
             "min_truth_depth": MIN_TRUTH_DEPTH,
             "max_truth_variants": MAX_TRUTH_VARIANTS,
             "filtered_vcf": filtered_vcf,
+            "normalized_filtered_vcf": normalized_filtered_vcf,
             "filtered_records_in_benchmark_intervals": filtered_calls["totalCount"],
             "pass_records_in_benchmark_intervals": filtered_calls["passCount"],
             "exact_pass_truth_matches": len(pass_truth_matches),
             "exact_all_filter_truth_matches": len(all_truth_matches),
+            "pass_truth_matches_outside_recall_subset": len(truth_outside_recall_matches),
             "false_positive_pass_records": len(false_positive_pass),
             "false_negative_truth_records": len(false_negative_truth),
             "exact_pass_recall": round_value(recall, 4),
@@ -647,6 +681,7 @@ def main() -> None:
             "truthVariantsDepthEligible": len(covered_truth_variants),
             "passRecordsInBenchmarkIntervals": filtered_calls["passCount"],
             "exactPassTruthMatches": len(pass_truth_matches),
+            "passTruthMatchesOutsideRecallSubset": len(truth_outside_recall_matches),
             "exactPassRecall": round_value(recall, 4),
             "exactPassPrecision": round_value(precision, 4),
             "contaminationStatus": contamination_status,

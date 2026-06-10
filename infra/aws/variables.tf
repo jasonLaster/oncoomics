@@ -25,7 +25,19 @@ variable "image_tag" {
 variable "batch_root_volume_gb" {
   description = "Encrypted gp3 root volume size for Batch EC2 hosts."
   type        = number
-  default     = 500
+  default     = 2000
+}
+
+variable "batch_root_volume_iops" {
+  description = "Provisioned gp3 IOPS for Batch EC2 host root volumes."
+  type        = number
+  default     = 16000
+}
+
+variable "batch_root_volume_throughput" {
+  description = "Provisioned gp3 throughput in MB/s for Batch EC2 host root volumes."
+  type        = number
+  default     = 1000
 }
 
 variable "spot_max_vcpus" {

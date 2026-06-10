@@ -136,6 +136,17 @@ def load_truth_variants(vcf_path: str, variant_type: str) -> list[dict[str, Any]
     return variants
 
 
+def normalize_vcf_for_comparison(vcf_path: str, reference_path: str, output_path: str, log_path: str) -> str:
+    if FORCE or not existing_output_current([output_path, f"{output_path}.tbi"], [vcf_path, reference_path]):
+        ensure_dir(path_from_root("/".join(output_path.split("/")[:-1])))
+        run_command(
+            f"bcftools norm -m -both -f {quote_shell_arg(reference_path)} -Oz -o {quote_shell_arg(output_path)} {quote_shell_arg(vcf_path)}",
+            log_path,
+        )
+        run_command(f"bcftools index -t -f {quote_shell_arg(output_path)}", f"{log_path}.index")
+    return output_path
+
+
 def write_truth_position_bed(variants: list[dict[str, Any]], output_path: str) -> None:
     ensure_dir(path_from_root("/".join(output_path.split("/")[:-1])))
     write_text(
@@ -627,7 +638,19 @@ def main() -> None:
     build_bins(tumor["reference_fai_path"], bins_path)
     cnv_summary = build_coverage_cnv(tumor, normal, bins_path)
 
-    truth_variants = load_truth_variants(tumor["truth_snv_vcf_path"], "snv") + load_truth_variants(tumor["truth_indel_vcf_path"], "indel")
+    normalized_truth_snv_path = normalize_vcf_for_comparison(
+        tumor["truth_snv_vcf_path"],
+        tumor["reference_path"],
+        f"{vcf_dir}/seqc2.phase3.high_confidence_sSNV.normalized.vcf.gz",
+        f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.truth_snv.norm.log",
+    )
+    normalized_truth_indel_path = normalize_vcf_for_comparison(
+        tumor["truth_indel_vcf_path"],
+        tumor["reference_path"],
+        f"{vcf_dir}/seqc2.phase3.high_confidence_sINDEL.normalized.vcf.gz",
+        f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.truth_indel.norm.log",
+    )
+    truth_variants = load_truth_variants(normalized_truth_snv_path, "snv") + load_truth_variants(normalized_truth_indel_path, "indel")
     write_truth_position_bed(truth_variants, truth_position_bed)
     truth_depth_text = capture_allow_empty(
         f"samtools depth -a -b {quote_shell_arg(truth_position_bed)} {quote_shell_arg(tumor['output_bam'])} {quote_shell_arg(normal['output_bam'])}"
@@ -693,9 +716,15 @@ def main() -> None:
     run_command(f"bcftools stats {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filtered_vcf_stats.txt")
 
     filtered_samples = parse_vcf_sample_names(filtered_vcf)
-    filtered_calls = variant_keys(filtered_vcf, mutect_intervals)
-    truth_snv_active = variant_keys(tumor["truth_snv_vcf_path"], mutect_intervals)
-    truth_indel_active = variant_keys(tumor["truth_indel_vcf_path"], mutect_intervals)
+    normalized_filtered_vcf = normalize_vcf_for_comparison(
+        filtered_vcf,
+        tumor["reference_path"],
+        f"{vcf_dir}/hcc1395.phase3_wgs.mutect2.filtered.normalized.vcf.gz",
+        f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filtered_vcf.norm.log",
+    )
+    filtered_calls = variant_keys(normalized_filtered_vcf, mutect_intervals)
+    truth_snv_active = variant_keys(normalized_truth_snv_path, mutect_intervals)
+    truth_indel_active = variant_keys(normalized_truth_indel_path, mutect_intervals)
     truth_active_keys = set(truth_snv_active["keys"]) | set(truth_indel_active["keys"])
     exact_matches = [key for key in filtered_calls["passKeys"] if key in truth_active_keys]
     mutect_status = (
@@ -821,6 +850,7 @@ def main() -> None:
         "gatk_threads": GATK_THREADS,
         "bam_validation_status": bam_status,
         "mutect2_status": mutect_status,
+        "normalized_filtered_vcf": normalized_filtered_vcf,
         "mutect_interval_count": len(interval_rows),
         "truth_variants_depth_eligible": len(covered_truth),
         "pass_records_in_intervals": filtered_calls["passCount"],
@@ -854,6 +884,7 @@ def main() -> None:
             "gatkThreads": GATK_THREADS,
             "bamValidationStatus": bam_status,
             "mutect2Status": mutect_status,
+            "normalizedFilteredVcf": normalized_filtered_vcf,
             "mutectIntervalCount": len(interval_rows),
             "truthVariantsDepthEligible": len(covered_truth),
             "passRecordsInIntervals": filtered_calls["passCount"],

@@ -31,11 +31,21 @@ data "aws_iam_policy_document" "bootstrap_local_cli" {
     actions = [
       "batch:*",
       "ecr:*",
+      "ec2:DescribeInstances",
+      "ecs:DescribeClusters",
+      "ecs:DescribeContainerInstances",
+      "ecs:DescribeTasks",
+      "ecs:ListContainerInstances",
+      "ecs:ListTasks",
       "kms:*",
       "logs:*",
       "servicequotas:GetServiceQuota",
       "servicequotas:ListServiceQuotas",
       "servicequotas:RequestServiceQuotaIncrease",
+      "ssm:CancelCommand",
+      "ssm:GetCommandInvocation",
+      "ssm:ListCommandInvocations",
+      "ssm:SendCommand",
       "iam:PassRole"
     ]
     resources = ["*"]
@@ -530,6 +540,8 @@ resource "aws_launch_template" "batch" {
     ebs {
       delete_on_termination = true
       encrypted             = true
+      iops                  = var.batch_root_volume_iops
+      throughput            = var.batch_root_volume_throughput
       volume_size           = var.batch_root_volume_gb
       volume_type           = "gp3"
     }
