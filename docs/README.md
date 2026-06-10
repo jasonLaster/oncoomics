@@ -36,6 +36,7 @@ For command, evidence, and domain vocabulary, see [terms.md](terms.md).
 | [clinical/validation-packet-template.md](clinical/validation-packet-template.md) | Draft or review the clinical validation packet structure. |
 | [operations/diana-raw-inputs.md](operations/diana-raw-inputs.md) | Prepare Diana's real raw files for validation and staging. |
 | [operations/diana-public-data-download.md](operations/diana-public-data-download.md) | Download or transfer the public Diana dataset to local, S3, Google Cloud, or Box storage. |
+| [operations/vendor-normalization.md](operations/vendor-normalization.md) | Normalize Personalis/Natera WES/WGS deliverables into the common TCGA format and filter to TCGA standards. |
 | [rosalind/README.md](rosalind/README.md) | Understand how GPT-Rosalind, NGS Analysis, and Life Science Research would integrate with this project. |
 | [rosalind/hrd-workflow.md](rosalind/hrd-workflow.md) | Review the GPT-Rosalind workflow for HRD evidence and score readiness from WGS/WES. |
 | [rosalind/trop2-adc-workflow.md](rosalind/trop2-adc-workflow.md) | Review the GPT-Rosalind workflow for TROP-2 ADC target assessment from bulk WES and scRNA-seq. |
