@@ -17,6 +17,12 @@ class ReportAndAlignmentHelpersTest(unittest.TestCase):
             [{"key": "(blank)", "count": 2}, {"key": "passed", "count": 1}],
         )
 
+    def test_optional_summary_uses_not_staged_default(self):
+        self.assertEqual(
+            build_reviewer_packet.optional_summary("missing.json", {"sampleRows": "not_staged"}),
+            {"status": "not_staged", "sampleRows": "not_staged"},
+        )
+
     def test_parse_header_detects_sort_order_read_group_and_contigs(self):
         header = "@HD\tVN:1.6\tSO:coordinate\n@SQ\tSN:chr13\tLN:10\n@RG\tID:run1\tSM:sample1\n"
         parsed = alignment.parse_header(header, {"read_group_id": "run1", "read_group_sample": "sample1"})

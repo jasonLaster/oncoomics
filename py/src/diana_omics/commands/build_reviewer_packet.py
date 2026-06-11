@@ -25,6 +25,13 @@ def table(rows: Sequence[Mapping[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def optional_summary(relative_path: str, default: Mapping[str, Any]) -> dict[str, Any]:
+    path = path_from_root(relative_path)
+    if path.exists():
+        return read_json(path)
+    return {"status": "not_staged", **dict(default)}
+
+
 def main() -> None:
     panel = parse_csv(read_text(path_from_root("manifests/hrd_reference_panel.csv")))
     predictions = parse_csv(read_text(path_from_root("results/hrd_predictions.csv")))
@@ -34,9 +41,23 @@ def main() -> None:
     cbio_summary = read_json(path_from_root("data/processed/catalog/cbioportal_tcga_brca_summary.json"))
     xena_summary = read_json(path_from_root("data/processed/catalog/xena_tcga_brca_clinical_summary.json"))
     gdc_summary = read_json(path_from_root("data/processed/catalog/gdc_tcga_brca_open_summary.json"))
-    human_reference_summary = read_json(path_from_root("results/human_reference_smoke/human_reference_alignment_summary.json"))
-    full_reference_summary = read_json(path_from_root("results/full_reference_smoke/full_reference_alignment_summary.json"))
-    production_somatic_summary = read_json(path_from_root("results/production_somatic_smoke/production_somatic_summary.json"))
+    human_reference_summary = optional_summary(
+        "results/human_reference_smoke/human_reference_alignment_summary.json",
+        {"sampleRows": "not_staged", "genomeBuilds": []},
+    )
+    full_reference_summary = optional_summary(
+        "results/full_reference_smoke/full_reference_alignment_summary.json",
+        {"referenceId": "not_staged", "callerSmokeStatus": "not_staged"},
+    )
+    production_somatic_summary = optional_summary(
+        "results/production_somatic_smoke/production_somatic_summary.json",
+        {
+            "caller": "not_staged",
+            "status": "not_staged",
+            "readPairsPerEnd": "not_staged",
+            "comparisonStatus": "not_staged",
+        },
+    )
     full_wes_summary_path = path_from_root("results/full_wes_benchmark/full_wes_benchmark_summary.json")
     full_wes_benchmark_summary = (
         read_json(full_wes_summary_path)
