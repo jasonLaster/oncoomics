@@ -4,6 +4,7 @@ import gzip
 import math
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
 
 from ..paths import path_from_root
@@ -36,6 +37,8 @@ AVAILABLE_CPUS = detect_cpu_count()
 TOTAL_THREADS = max(2, int(os.environ.get("PHASE3_WGS_THREADS", str(min(16, AVAILABLE_CPUS)))))
 PARALLEL_ALIGN = os.environ.get("PHASE3_WGS_PARALLEL_ALIGN") != "0"
 PER_SAMPLE_THREADS = max(2, TOTAL_THREADS // 2) if PARALLEL_ALIGN else TOTAL_THREADS
+BAM_VALIDATION_WORKERS = max(1, int(os.environ.get("PHASE3_WGS_BAM_VALIDATION_WORKERS", str(min(2, TOTAL_THREADS)))))
+REUSE_BAM_VALIDATION = os.environ.get("PHASE3_WGS_REUSE_BAM_VALIDATION") == "1"
 GATK_THREADS = max(1, min(int(os.environ.get("PHASE3_WGS_GATK_THREADS", str(TOTAL_THREADS // 2))), 8))
 MIN_TRUTH_DEPTH = int(os.environ.get("PHASE3_WGS_MIN_TRUTH_DEPTH", "1"))
 MAX_TRUTH_VARIANTS = int(os.environ.get("PHASE3_WGS_MAX_TRUTH_VARIANTS", "300"))
@@ -110,6 +113,124 @@ def remove_stale_alignment(row: dict[str, str]) -> None:
         path = path_from_root(relative_path)
         if path.exists():
             path.unlink()
+
+
+def bam_validation_summary_path() -> str:
+    return f"{RESULTS_DIR}/bam_validation_summary.json"
+
+
+def reusable_bam_validation_rows(rows: list[dict[str, str]]) -> Optional[list[dict[str, Any]]]:
+    if FORCE or not REUSE_BAM_VALIDATION:
+        return None
+    summary_path = path_from_root(bam_validation_summary_path())
+    if not summary_path.exists():
+        return None
+    summary = read_json(summary_path)
+    cached_rows = summary.get("rows", [])
+    if summary.get("status") != "passed" or len(cached_rows) != len(rows):
+        return None
+    cached_by_role = {row.get("role"): row for row in cached_rows}
+    reusable_rows: list[dict[str, Any]] = []
+    for row in rows:
+        cached = cached_by_role.get(row["role"])
+        if not cached:
+            return None
+        if cached.get("run_accession") != row["run_accession"] or cached.get("output_bam") != row["output_bam"]:
+            return None
+        bam_path = path_from_root(row["output_bam"])
+        bai_path = path_from_root(row["output_bai"])
+        if not bam_path.exists() or not bai_path.exists() or not quickcheck_bam(row["output_bam"]):
+            return None
+        cached_size = cached.get("bam_size_bytes")
+        if cached_size not in ("", None) and int(cached_size) != bam_path.stat().st_size:
+            return None
+        reusable_rows.append({**cached, "validation_cache": "reused"})
+    return reusable_rows
+
+
+def alignment_flag_counts(reference_id: str, row: dict[str, str]) -> dict[str, int]:
+    flagstat_log = path_from_root(f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt")
+    if flagstat_log.exists() and not FORCE:
+        text = read_text(flagstat_log)
+        counts: dict[str, int] = {}
+        for line in text.splitlines():
+            primary_count = int(line.split(" + ", 1)[0]) if " + " in line and line.split(" + ", 1)[0].isdigit() else None
+            if primary_count is None:
+                continue
+            if " in total " in line:
+                counts["total"] = primary_count
+            elif " mapped (" in line and "primary mapped" not in line:
+                counts["mapped"] = primary_count
+            elif " properly paired (" in line:
+                counts["properly_paired"] = primary_count
+        if {"total", "mapped", "properly_paired"} <= counts.keys():
+            return counts
+    return {
+        "total": count(f"samtools view -c {quote_shell_arg(row['output_bam'])}"),
+        "mapped": count(f"samtools view -c -F 4 {quote_shell_arg(row['output_bam'])}"),
+        "properly_paired": count(f"samtools view -c -f 2 {quote_shell_arg(row['output_bam'])}"),
+    }
+
+
+def validate_bam_row(row: dict[str, str]) -> dict[str, Any]:
+    header = parse_header(capture_command(f"samtools view -H {quote_shell_arg(row['output_bam'])}"), row)
+    flag_counts = alignment_flag_counts(row["reference_id"], row)
+    total_alignments = flag_counts["total"]
+    mapped_alignments = flag_counts["mapped"]
+    properly_paired = flag_counts["properly_paired"]
+    standard_mapped_contigs = count(
+        f"samtools idxstats {quote_shell_arg(row['output_bam'])} | awk '$1 ~ /^chr([1-9]|1[0-9]|2[0-2]|X|Y)$/ && $3 > 0 {{n++}} END {{print n+0}}'"
+    )
+    status = (
+        "passed"
+        if quickcheck_bam(row["output_bam"])
+        and path_from_root(row["output_bai"]).exists()
+        and header["sortOrder"] == "coordinate"
+        and header["readGroupPresent"]
+        and len(header["contigs"]) > 20
+        and mapped_alignments > 0
+        and standard_mapped_contigs > 0
+        else "failed"
+    )
+    return {
+        "pair_id": row["pair_id"],
+        "reference_id": row["reference_id"],
+        "assembly": row["assembly"],
+        "genome_build": row["genome_build"],
+        "role": row["role"],
+        "run_accession": row["run_accession"],
+        "sample": row["sample"],
+        "read_pairs_per_end": row["read_pairs_per_end"],
+        "reference_sha256": row["reference_sha256"],
+        "output_bam": row["output_bam"],
+        "output_bai": row["output_bai"],
+        "bam_exists": "yes" if path_from_root(row["output_bam"]).exists() else "no",
+        "bai_exists": "yes" if path_from_root(row["output_bai"]).exists() else "no",
+        "quickcheck": "passed" if quickcheck_bam(row["output_bam"]) else "failed",
+        "sort_order": header["sortOrder"],
+        "read_group_present": "yes" if header["readGroupPresent"] else "no",
+        "read_group_count": header["readGroupCount"],
+        "reference_contig_count": len(header["contigs"]),
+        "total_alignments": total_alignments,
+        "mapped_alignments": mapped_alignments,
+        "mapped_fraction": round_value(mapped_alignments / total_alignments if total_alignments else None, 4),
+        "properly_paired_alignments": properly_paired,
+        "properly_paired_fraction": round_value(properly_paired / total_alignments if total_alignments else None, 4),
+        "mapped_standard_contigs": standard_mapped_contigs,
+        "bam_size_bytes": path_from_root(row["output_bam"]).stat().st_size if path_from_root(row["output_bam"]).exists() else "",
+        "status": status,
+        "caveat": row["caveat"],
+        "validation_cache": "computed",
+    }
+
+
+def validate_bam_rows(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
+    reusable_rows = reusable_bam_validation_rows(rows)
+    if reusable_rows is not None:
+        print(f"[phase3-wgs] Reusing passed BAM validation summary from {bam_validation_summary_path()}.", flush=True)
+        return reusable_rows
+    with ThreadPoolExecutor(max_workers=min(BAM_VALIDATION_WORKERS, len(rows))) as pool:
+        return list(pool.map(validate_bam_row, rows))
 
 
 def load_truth_variants(vcf_path: str, variant_type: str) -> list[dict[str, Any]]:
@@ -551,80 +672,30 @@ def main() -> None:
             for command, log_path in align_commands:
                 run_command(command, log_path)
 
-    index_commands: list[tuple[str, str]] = []
-    stats_commands: list[tuple[str, str]] = []
-    for row in rows:
-        if FORCE or not existing_output_current([row["output_bai"]], [row["output_bam"]]):
-            index_commands.append(
-                (
-                    f"samtools index -@ {PER_SAMPLE_THREADS} -o {quote_shell_arg(row['output_bai'])} {quote_shell_arg(row['output_bam'])}",
-                    f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.index.log",
+    reusable_bam_rows = reusable_bam_validation_rows(rows)
+    if reusable_bam_rows is None:
+        index_commands: list[tuple[str, str]] = []
+        stats_commands: list[tuple[str, str]] = []
+        for row in rows:
+            if FORCE or not existing_output_current([row["output_bai"]], [row["output_bam"]]):
+                index_commands.append(
+                    (
+                        f"samtools index -@ {PER_SAMPLE_THREADS} -o {quote_shell_arg(row['output_bai'])} {quote_shell_arg(row['output_bam'])}",
+                        f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.index.log",
+                    )
                 )
-            )
-        stats_commands.append(
-            (
-                f"samtools flagstat {quote_shell_arg(row['output_bam'])}",
-                f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt",
-            )
-        )
-        stats_commands.append(
-            (f"samtools stats {quote_shell_arg(row['output_bam'])}", f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.stats.txt")
-        )
-    if index_commands:
-        run_commands_parallel(index_commands, len(index_commands))
-    run_commands_parallel(stats_commands, min(4, len(stats_commands)))
+            flagstat_log = f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt"
+            stats_log = f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.stats.txt"
+            if FORCE or not existing_output_current([flagstat_log], [row["output_bam"]]):
+                stats_commands.append((f"samtools flagstat {quote_shell_arg(row['output_bam'])}", flagstat_log))
+            if FORCE or not existing_output_current([stats_log], [row["output_bam"]]):
+                stats_commands.append((f"samtools stats {quote_shell_arg(row['output_bam'])}", stats_log))
+        if index_commands:
+            run_commands_parallel(index_commands, len(index_commands))
+        if stats_commands:
+            run_commands_parallel(stats_commands, min(4, len(stats_commands)))
 
-    bam_rows: list[dict[str, Any]] = []
-    for row in rows:
-        header = parse_header(capture_command(f"samtools view -H {quote_shell_arg(row['output_bam'])}"), row)
-        total_alignments = count(f"samtools view -c {quote_shell_arg(row['output_bam'])}")
-        mapped_alignments = count(f"samtools view -c -F 4 {quote_shell_arg(row['output_bam'])}")
-        properly_paired = count(f"samtools view -c -f 2 {quote_shell_arg(row['output_bam'])}")
-        standard_mapped_contigs = count(
-            f"samtools idxstats {quote_shell_arg(row['output_bam'])} | awk '$1 ~ /^chr([1-9]|1[0-9]|2[0-2]|X|Y)$/ && $3 > 0 {{n++}} END {{print n+0}}'"
-        )
-        status = (
-            "passed"
-            if quickcheck_bam(row["output_bam"])
-            and path_from_root(row["output_bai"]).exists()
-            and header["sortOrder"] == "coordinate"
-            and header["readGroupPresent"]
-            and len(header["contigs"]) > 20
-            and mapped_alignments > 0
-            and standard_mapped_contigs > 0
-            else "failed"
-        )
-        bam_rows.append(
-            {
-                "pair_id": row["pair_id"],
-                "reference_id": row["reference_id"],
-                "assembly": row["assembly"],
-                "genome_build": row["genome_build"],
-                "role": row["role"],
-                "run_accession": row["run_accession"],
-                "sample": row["sample"],
-                "read_pairs_per_end": row["read_pairs_per_end"],
-                "reference_sha256": row["reference_sha256"],
-                "output_bam": row["output_bam"],
-                "output_bai": row["output_bai"],
-                "bam_exists": "yes" if path_from_root(row["output_bam"]).exists() else "no",
-                "bai_exists": "yes" if path_from_root(row["output_bai"]).exists() else "no",
-                "quickcheck": "passed" if quickcheck_bam(row["output_bam"]) else "failed",
-                "sort_order": header["sortOrder"],
-                "read_group_present": "yes" if header["readGroupPresent"] else "no",
-                "read_group_count": header["readGroupCount"],
-                "reference_contig_count": len(header["contigs"]),
-                "total_alignments": total_alignments,
-                "mapped_alignments": mapped_alignments,
-                "mapped_fraction": round_value(mapped_alignments / total_alignments if total_alignments else None, 4),
-                "properly_paired_alignments": properly_paired,
-                "properly_paired_fraction": round_value(properly_paired / total_alignments if total_alignments else None, 4),
-                "mapped_standard_contigs": standard_mapped_contigs,
-                "bam_size_bytes": path_from_root(row["output_bam"]).stat().st_size if path_from_root(row["output_bam"]).exists() else "",
-                "status": status,
-                "caveat": row["caveat"],
-            }
-        )
+    bam_rows = reusable_bam_rows if reusable_bam_rows is not None else validate_bam_rows(rows)
     bam_status = "passed" if all(row["status"] == "passed" for row in bam_rows) else "failed"
     write_csv(path_from_root(f"{RESULTS_DIR}/bam_validation_summary.csv"), bam_rows)
     write_json(

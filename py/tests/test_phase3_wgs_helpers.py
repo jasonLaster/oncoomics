@@ -53,6 +53,78 @@ class Phase3WgsHelpersTest(unittest.TestCase):
         self.assertEqual([row["key"] for row in rows], ["a"])
         self.assertEqual(rows[0]["minDepth"], 2)
 
+    def test_reusable_bam_validation_rows_accepts_matching_passed_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tumor.bam").write_text("bam", encoding="utf-8")
+            (root / "tumor.bam.bai").write_text("bai", encoding="utf-8")
+            rows = [{"role": "tumor", "run_accession": "SRR1", "output_bam": "tumor.bam", "output_bai": "tumor.bam.bai"}]
+            utils.write_json(
+                root / phase3.bam_validation_summary_path(),
+                {
+                    "status": "passed",
+                    "rows": [
+                        {
+                            "role": "tumor",
+                            "run_accession": "SRR1",
+                            "output_bam": "tumor.bam",
+                            "bam_size_bytes": 3,
+                            "status": "passed",
+                        }
+                    ],
+                },
+            )
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "REUSE_BAM_VALIDATION", True),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "quickcheck_bam", return_value=True),
+            ):
+                reusable = phase3.reusable_bam_validation_rows(rows)
+        self.assertEqual(reusable[0]["validation_cache"], "reused")
+
+    def test_reusable_bam_validation_rows_rejects_wrong_bam(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tumor.bam").write_text("bam", encoding="utf-8")
+            (root / "tumor.bam.bai").write_text("bai", encoding="utf-8")
+            rows = [{"role": "tumor", "run_accession": "SRR1", "output_bam": "tumor.bam", "output_bai": "tumor.bam.bai"}]
+            utils.write_json(
+                root / phase3.bam_validation_summary_path(),
+                {"status": "passed", "rows": [{"role": "tumor", "run_accession": "SRR1", "output_bam": "other.bam", "status": "passed"}]},
+            )
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "REUSE_BAM_VALIDATION", True),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "quickcheck_bam", return_value=True),
+            ):
+                self.assertIsNone(phase3.reusable_bam_validation_rows(rows))
+
+    def test_alignment_flag_counts_reuses_flagstat_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            row = {"reference_id": "ref", "run_accession": "SRR1", "output_bam": "tumor.bam"}
+            utils.write_text(
+                root / "results/phase3_wgs_smoke/logs/ref.SRR1.flagstat.txt",
+                "\n".join(
+                    [
+                        "100 + 0 in total (QC-passed reads + QC-failed reads)",
+                        "100 + 0 primary",
+                        "90 + 0 mapped (90.00% : N/A)",
+                        "90 + 0 primary mapped (90.00% : N/A)",
+                        "80 + 0 properly paired (80.00% : N/A)",
+                    ]
+                ),
+            )
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "count") as count,
+            ):
+                self.assertEqual(phase3.alignment_flag_counts("ref", row), {"total": 100, "mapped": 90, "properly_paired": 80})
+            count.assert_not_called()
+
     def test_phase3_fetch_full_mode_uses_source_spots(self):
         with patch.object(fetch_phase3, "READ_PAIRS_LIMIT", None):
             self.assertEqual(fetch_phase3.expected_read_pairs({"spots": "12345"}), 12345)
