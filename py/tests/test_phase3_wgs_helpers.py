@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from io import StringIO
@@ -171,6 +172,21 @@ class Phase3WgsHelpersTest(unittest.TestCase):
         capture.assert_not_called()
         self.assertEqual(summary["cnv_cache"], "reused")
 
+    def test_build_bins_keeps_current_file_timestamp_when_content_matches(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            utils.write_text(root / "ref.fa.fai", "chr1\t10\t0\t10\t11\nchrUn\t20\t0\t20\t21\n")
+            with (
+                patch.object(phase3, "BIN_SIZE", 5),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+            ):
+                rows = phase3.build_bins("ref.fa.fai", "bins.bed")
+                os.utime(root / "bins.bed", (1000, 1000))
+                phase3.build_bins("ref.fa.fai", "bins.bed")
+                bins_mtime = (root / "bins.bed").stat().st_mtime
+        self.assertEqual(rows, [{"contig": "chr1", "start": 0, "end": 5}, {"contig": "chr1", "start": 5, "end": 10}])
+        self.assertEqual(bins_mtime, 1000)
+
     def test_truth_depth_text_reuses_current_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -187,6 +203,34 @@ class Phase3WgsHelpersTest(unittest.TestCase):
                 depth = phase3.truth_depth_text(tumor, normal, "truth.bed", "ref")
         run.assert_not_called()
         self.assertEqual(depth, "chr1\t10\t2\t3\n")
+
+    def test_build_sbs96_matrix_reuses_current_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path in ["filtered.vcf.gz", "filtered.vcf.gz.tbi", "ref.fa", "ref.fa.fai"]:
+                utils.write_text(root / path, path)
+                os.utime(root / path, (1000, 1000))
+            utils.write_text(root / "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv", "sample,mutation_type,trinucleotide,count\n")
+            utils.write_text(root / "results/phase3_wgs_smoke/signature_assignment_summary.csv", "status,usable_snv_records\npassed,0\n")
+            utils.write_json(
+                root / "results/phase3_wgs_smoke/signature_assignment_summary.json",
+                {"status": "passed", "rows": [{"status": "passed", "usable_snv_records": 0, "sigprofiler_assignment_status": "cached"}]},
+            )
+            for path in [
+                "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
+                "results/phase3_wgs_smoke/signature_assignment_summary.csv",
+                "results/phase3_wgs_smoke/signature_assignment_summary.json",
+            ]:
+                os.utime(root / path, (2000, 2000))
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "capture_allow_empty") as capture,
+            ):
+                summary = phase3.build_sbs96_matrix("filtered.vcf.gz", "ref.fa")
+        capture.assert_not_called()
+        self.assertEqual(summary["sbs96_cache"], "reused")
+        self.assertEqual(summary["sigprofiler_assignment_status"], "cached")
 
     def test_build_sv_evidence_scans_each_bam_once(self):
         class FakeProcess:
@@ -227,6 +271,53 @@ class Phase3WgsHelpersTest(unittest.TestCase):
         self.assertEqual(summary[0]["interchromosomal_pairs"], 1)
         self.assertEqual(summary[0]["large_insert_pairs"], 1)
         self.assertEqual(summary[0]["sv_candidate_rows_written"], 2)
+
+    def test_build_sv_evidence_reuses_current_outputs(self):
+        row = {
+            "sample": "sample",
+            "role": "tumor",
+            "run_accession": "SRR1",
+            "output_bam": "tumor.bam",
+            "output_bai": "tumor.bam.bai",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path in ["tumor.bam", "tumor.bam.bai"]:
+                utils.write_text(root / path, path)
+                os.utime(root / path, (1000, 1000))
+            utils.write_text(root / "results/phase3_wgs_smoke/sv_evidence_candidates.csv", "sample,role\n")
+            utils.write_text(root / "results/phase3_wgs_smoke/sv_evidence_summary.csv", "status,role\npassed,tumor\n")
+            utils.write_json(
+                root / "results/phase3_wgs_smoke/sv_evidence_summary.json",
+                {
+                    "status": "passed",
+                    "rows": [
+                        {
+                            "status": "passed",
+                            "sample": "sample",
+                            "role": "tumor",
+                            "run_accession": "SRR1",
+                            "input_bam": "tumor.bam",
+                        }
+                    ],
+                },
+            )
+            for path in [
+                "results/phase3_wgs_smoke/sv_evidence_candidates.csv",
+                "results/phase3_wgs_smoke/sv_evidence_summary.csv",
+                "results/phase3_wgs_smoke/sv_evidence_summary.json",
+            ]:
+                os.utime(root / path, (2000, 2000))
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "indexed_alignment_count") as indexed,
+                patch.object(phase3.subprocess, "Popen") as popen,
+            ):
+                summary = phase3.build_sv_evidence([row])
+        indexed.assert_not_called()
+        popen.assert_not_called()
+        self.assertEqual(summary[0]["sv_cache"], "reused")
 
     def test_phase3_fetch_full_mode_uses_source_spots(self):
         with patch.object(fetch_phase3, "READ_PAIRS_LIMIT", None):
@@ -349,6 +440,43 @@ class Phase3WgsHelpersTest(unittest.TestCase):
             ):
                 self.assertFalse(fetch_phase3.restore_aws_sra_fastq_cache("/usr/bin/aws", "SRR7890824", r1, r2))
             restore.assert_not_called()
+
+    def test_publish_validated_aws_sra_cache_parallelizes_then_deletes_sra(self):
+        row = {
+            "run_accession": "SRR7890824",
+            "fastq_1": "fastq/SRR7890824_R1.full.fastq.gz",
+            "fastq_2": "fastq/SRR7890824_R2.full.fastq.gz",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path in [row["fastq_1"], row["fastq_2"]]:
+                utils.write_text(root / path, "fastq")
+            sra_path = root / fetch_phase3.SMOKE_ROOT / "sra" / "SRR7890824.sra"
+            utils.write_text(sra_path, "sra")
+            published: list[str] = []
+
+            def publish(_aws, source_path, _uri, label, _expected_bytes=None):
+                self.assertTrue(source_path.exists())
+                published.append(label)
+                return True
+
+            with (
+                patch.object(fetch_phase3, "ASSET_CACHE_URI", "s3://cache/phase3_wgs"),
+                patch.object(fetch_phase3, "ASSET_CACHE_MODE", "readwrite"),
+                patch.object(fetch_phase3, "CACHE_FASTQS", True),
+                patch.object(fetch_phase3, "CACHE_SRA_OBJECTS", True),
+                patch.object(fetch_phase3, "DELETE_SRA_AFTER_CONVERSION", True),
+                patch.object(fetch_phase3, "CACHE_UPLOAD_WORKERS", 3),
+                patch.object(fetch_phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(fetch_phase3, "aws_cli_path", return_value="/usr/bin/aws"),
+                patch.object(fetch_phase3, "publish_cached_asset", side_effect=publish),
+            ):
+                summary = fetch_phase3.publish_validated_aws_sra_cache([row])
+            sra_exists_after = sra_path.exists()
+        self.assertEqual(set(published), {"SRR7890824.R1.fastq.gz", "SRR7890824.R2.fastq.gz", "SRR7890824.sra"})
+        self.assertFalse(sra_exists_after)
+        self.assertEqual(summary["cacheUploadWorkers"], 3)
+        self.assertEqual(summary["deletedLocalSra"], [str(sra_path)])
 
     def test_expected_hrd_bucket_keeps_unknown_labels_separate(self):
         self.assertEqual(analyze_hrd.expected_bucket_for_label("expected_hrd_positive"), "expected_hrd_like")

@@ -146,8 +146,9 @@ The default full fetch experiment uses:
 - `--phase3_fetch_concurrency 8`
 - `--phase3_s3_range_concurrency 8`
 - `--phase3_sra_run_concurrency 2`
+- `--phase3_cache_upload_workers 4`
 
-The job downloads public SRA objects fresh from the AWS Open Data bucket, converts them with `fasterq-dump`, gzips split FASTQs, and writes those files to local task storage first. S3 work/results objects are only durable after the task publishes or exits cleanly. The `aws_sra` path validates SRA spot counts and full FASTQ scans, not ENA provider MD5s, because the gzip FASTQs are regenerated in AWS. Keep `phase3_aria2_split=1` for ENA acceptance-scale data unless a segmented ENA strategy has been proven against provider MD5s and gzip validation.
+The job downloads public SRA objects fresh from the AWS Open Data bucket, converts them with `fasterq-dump`, gzips split FASTQs, and writes those files to local task storage first. R1/R2 compression runs concurrently per SRA run, and validated cache uploads use bounded workers so the Batch node can use available network throughput. S3 work/results objects are only durable after the task publishes or exits cleanly. The `aws_sra` path validates SRA spot counts and full FASTQ scans, not ENA provider MD5s, because the gzip FASTQs are regenerated in AWS. Keep `phase3_aria2_split=1` for ENA acceptance-scale data unless a segmented ENA strategy has been proven against provider MD5s and gzip validation.
 
 The full-WGS stack expects high-throughput gp3 task storage. The Terraform defaults use a 2 TB root volume with 16000 IOPS and 1000 MB/s throughput so future applies do not fall back to the gp3 125 MB/s floor.
 
@@ -166,7 +167,7 @@ This bucket is private, encrypted, and writable by the Batch job role. It is res
 - `bam/<reference>/<read-label>/<role>/...` stores cloud-generated public BAM/BAI alignment derivatives after they pass read-scope validation.
 - Nextflow work-bucket objects store split-stage workspaces for `nextflow -resume`.
 
-Do not upload local `data/raw`, local FASTQ/BAM/VCF files, or local generated artifacts into this cache. Subsequent AWS Batch runs restore cached FASTQs first, cached SRA objects second, and only then re-download from public SRA. Restored FASTQs still go through the full scan/spot-count checks; restored BAMs still go through quickcheck, BAI, and requested read-scope checks.
+Do not upload local `data/raw`, local FASTQ/BAM/VCF files, or local generated artifacts into this cache. Subsequent AWS Batch runs restore cached FASTQs first, cached SRA objects second, and only then re-download from public SRA. Restored FASTQs still go through the full scan/spot-count checks; restored BAMs still go through quickcheck, BAI, and requested read-scope checks. For resume-heavy runs, tune `phase3_alignment_cache_workers` for concurrent BAM/BAI cache writes and leave downstream-only validation to reuse current CNV, SBS96, and SV evidence artifacts when their inputs are unchanged.
 
 After any failed or interrupted AWS run, refresh the local diagnostic report:
 

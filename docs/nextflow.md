@@ -88,10 +88,11 @@ nextflow run main.nf \
   --phase3_fetch_memory '28 GB' \
   --phase3_fetch_concurrency 8 \
   --phase3_s3_range_concurrency 8 \
-  --phase3_sra_run_concurrency 2
+  --phase3_sra_run_concurrency 2 \
+  --phase3_cache_upload_workers 4
 ```
 
-`phase3_fetch` still fetches the small prerequisites needed by `fetch:phase3-wgs`, then downloads and checks the full SEQC2/HCC1395 WGS reads. The default source mode is `ena_fastq`, which downloads the published gzip FASTQs directly from ENA and verifies provider MD5s. AWS cloud runs should use `--phase3_source_mode aws_sra` to range-read public SRA objects from the AWS Open Data bucket `sra-pub-run-odp`, convert them with `fasterq-dump`, gzip the split FASTQs, and leave the existing validation logic unchanged. This path validates SRA spot counts and full FASTQ scans; it does not claim ENA provider-MD5 validation because the FASTQ gzip bytes are regenerated in the task.
+`phase3_fetch` still fetches the small prerequisites needed by `fetch:phase3-wgs`, then downloads and checks the full SEQC2/HCC1395 WGS reads. The default source mode is `ena_fastq`, which downloads the published gzip FASTQs directly from ENA and verifies provider MD5s. AWS cloud runs should use `--phase3_source_mode aws_sra` to range-read public SRA objects from the AWS Open Data bucket `sra-pub-run-odp`, convert them with `fasterq-dump`, gzip the split FASTQs, and leave the existing validation logic unchanged. This path validates SRA spot counts and full FASTQ scans; it does not claim ENA provider-MD5 validation because the FASTQ gzip bytes are regenerated in the task. The SRA converter compresses R1/R2 concurrently, and `--phase3_cache_upload_workers` controls bounded parallel cache publication after validation passes.
 
 Measured from `us-east-1`, ENA direct HTTP was about 4-6 MB/s and did not scale meaningfully with four streams, while SRA Open Data S3 range reads scaled to hundreds of MB/s. Optimize the AWS path around conversion and compression, not around ENA download concurrency.
 
@@ -138,6 +139,8 @@ When `--phase3_source_mode aws_sra` and `--phase3_reads full` are selected, the 
 Cache hits still run through the same full FASTQ scan and spot-count validation. Cache writes happen only after converted FASTQs pass validation, so the cache is an acceleration layer, not a replacement for validation.
 
 Alignment jobs can also publish cloud-generated public BAM/BAI derivatives under the same cache root. Later retries restore them only if `samtools quickcheck`, BAI presence, and requested read-scope checks pass. This is mainly for AWS resume recovery when a Batch job finishes after the local Nextflow launcher has already been interrupted.
+
+Use `--phase3_alignment_cache_workers` to bound concurrent BAM/BAI cache publication in monolith, alignment, and downstream retries. Downstream-only validation no longer runs BWA indexing, and current CNV/SBS96/SV evidence outputs are reused when their source BAM/VCF/reference inputs have not changed.
 
 Nextflow also caches split-stage outputs in the configured work bucket. That work cache is for `nextflow -resume`; the asset cache under `phase3_asset_cache_uri` is for cross-run reuse of expensive public-input derivatives such as regenerated FASTQ gzip files. Do not seed either cache from local raw data.
 

@@ -64,6 +64,8 @@ Existing commands use environment variables such as:
 - `PHASE3_WGS_GATK_THREADS`
 - `PHASE3_WGS_PARALLEL_ALIGN`
 - `PHASE3_WGS_READS`
+- `PHASE3_WGS_CACHE_UPLOAD_WORKERS`
+- `PHASE3_WGS_ALIGNMENT_CACHE_WORKERS`
 
 Use force flags only when intentionally rebuilding expensive outputs.
 
@@ -92,6 +94,13 @@ For full HG008, COLO829, or Diana WGS:
 8. Record wall time, CPU count, thread counts, and tool versions in summary JSON.
 
 On AWS, keep `phase3_asset_cache_uri` enabled for full-source public validation. Fetch jobs cache validated FASTQ derivatives, and alignment jobs cache cloud-generated public BAM/BAI outputs after BAM read-scope validation. That cache is for retry acceleration only; do not seed it from local raw/generated files.
+
+Downstream reruns now avoid touching unrelated expensive work when inputs are current:
+
+- BWA indexing runs only for reference or alignment stages, not downstream-only validation.
+- CNV bin BED files keep their timestamp when the reference/bin content is unchanged, so cached `samtools bedcov` summaries can be reused.
+- `bcftools stats`, SBS96 summaries, and BAM-derived SV evidence are skipped when their outputs are newer than their VCF/BAM/reference inputs.
+- FASTQ/SRA cache publishes and BAM cache publishes use bounded workers so AWS Batch can use available network throughput without changing validation semantics.
 
 ## Bug Risks
 

@@ -26,6 +26,8 @@ params.phase3_prereq_mode = params.phase3_prereq_mode ?: 'minimal'
 params.phase3_sra_run_concurrency = params.phase3_sra_run_concurrency ?: 1
 params.phase3_sra_command_retries = params.phase3_sra_command_retries ?: 2
 params.phase3_fastq_stats_mode = params.phase3_fastq_stats_mode ?: 'seqkit'
+params.phase3_cache_upload_workers = params.containsKey('phase3_cache_upload_workers') ? params.phase3_cache_upload_workers : 4
+params.phase3_alignment_cache_workers = params.containsKey('phase3_alignment_cache_workers') ? params.phase3_alignment_cache_workers : 2
 params.phase3_asset_cache_uri = params.phase3_asset_cache_uri ?: null
 params.phase3_asset_cache_mode = params.phase3_asset_cache_mode ?: 'readwrite'
 params.phase3_delete_sra_after_conversion = params.phase3_delete_sra_after_conversion ?: false
@@ -198,6 +200,7 @@ process PHASE3_FETCH {
     export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
     export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
     export PHASE3_WGS_FASTQ_STATS_MODE="${params.phase3_fastq_stats_mode}"
+    export PHASE3_WGS_CACHE_UPLOAD_WORKERS="${params.phase3_cache_upload_workers}"
     export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
     export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
     export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
@@ -256,6 +259,7 @@ process PHASE3_FETCH_WORKSPACE {
     export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
     export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
     export PHASE3_WGS_FASTQ_STATS_MODE="${params.phase3_fastq_stats_mode}"
+    export PHASE3_WGS_CACHE_UPLOAD_WORKERS="${params.phase3_cache_upload_workers}"
     export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
     export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
     export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
@@ -358,6 +362,7 @@ process PHASE3_ALIGN_SAMPLE {
     export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
     export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
     export PHASE3_WGS_FASTQ_STATS_MODE="${params.phase3_fastq_stats_mode}"
+    export PHASE3_WGS_CACHE_UPLOAD_WORKERS="${params.phase3_cache_upload_workers}"
     export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
     export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
     export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
@@ -367,6 +372,9 @@ process PHASE3_ALIGN_SAMPLE {
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
     export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
     export PHASE3_WGS_PARALLEL_ALIGN=0
+    export PHASE3_WGS_ALIGNMENT_CACHE_WORKERS="${params.phase3_alignment_cache_workers}"
+    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
+    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
     run() { echo "==> \$*"; "\$@"; }
     run "\$PYTHON_BIN" -m diana_omics fetch:phase3-wgs
     run "\$PYTHON_BIN" -m diana_omics validate:phase3-wgs
@@ -440,6 +448,9 @@ process PHASE3_DOWNSTREAM {
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
     export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
     export PHASE3_WGS_PARALLEL_ALIGN=0
+    export PHASE3_WGS_ALIGNMENT_CACHE_WORKERS="${params.phase3_alignment_cache_workers}"
+    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
+    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
     run() { echo "==> \$*"; "\$@"; }
 
     run "\$PYTHON_BIN" -m diana_omics validate:phase3-wgs
@@ -565,6 +576,8 @@ process PHASE3_WGS {
     export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
     export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
     export PHASE3_WGS_FASTQ_STATS_MODE="${params.phase3_fastq_stats_mode}"
+    export PHASE3_WGS_CACHE_UPLOAD_WORKERS="${params.phase3_cache_upload_workers}"
+    export PHASE3_WGS_ALIGNMENT_CACHE_WORKERS="${params.phase3_alignment_cache_workers}"
     export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
     export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
     export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
@@ -676,6 +689,8 @@ process ALL_PUBLIC {
     export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
     export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
     export PHASE3_WGS_FASTQ_STATS_MODE="${params.phase3_fastq_stats_mode}"
+    export PHASE3_WGS_CACHE_UPLOAD_WORKERS="${params.phase3_cache_upload_workers}"
+    export PHASE3_WGS_ALIGNMENT_CACHE_WORKERS="${params.phase3_alignment_cache_workers}"
     export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
     export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
     export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"

@@ -47,6 +47,7 @@ BAM_VALIDATION_WORKERS = max(1, int(os.environ.get("PHASE3_WGS_BAM_VALIDATION_WO
 REUSE_BAM_VALIDATION = os.environ.get("PHASE3_WGS_REUSE_BAM_VALIDATION", "1") != "0"
 GATK_THREADS = max(1, min(int(os.environ.get("PHASE3_WGS_GATK_THREADS", str(TOTAL_THREADS // 2))), 8))
 BAM_SCAN_THREADS = max(1, int(os.environ.get("PHASE3_WGS_BAM_SCAN_THREADS", str(max(1, TOTAL_THREADS // 2)))))
+ALIGNMENT_CACHE_WORKERS = max(1, int(os.environ.get("PHASE3_WGS_ALIGNMENT_CACHE_WORKERS", str(min(2, TOTAL_THREADS)))))
 MIN_TRUTH_DEPTH = int(os.environ.get("PHASE3_WGS_MIN_TRUTH_DEPTH", "1"))
 MAX_TRUTH_VARIANTS = int(os.environ.get("PHASE3_WGS_MAX_TRUTH_VARIANTS", "300"))
 INTERVAL_PADDING = int(os.environ.get("PHASE3_WGS_INTERVAL_PADDING", "100"))
@@ -103,6 +104,16 @@ def existing_output_current(outputs: list[str], inputs: list[str]) -> bool:
         return False
     newest_input = max(input_path.stat().st_mtime for input_path in input_paths)
     return all(output.stat().st_mtime >= newest_input for output in output_paths)
+
+
+def write_text_if_changed(relative_path: str, value: str) -> bool:
+    path = path_from_root(relative_path)
+    text = value if value.endswith("\n") else f"{value}\n"
+    if path.exists() and read_text(path) == text:
+        return False
+    ensure_dir(path.parent)
+    path.write_text(text, encoding="utf-8")
+    return True
 
 
 def indexed_alignment_count(row: dict[str, str]) -> int:
@@ -572,7 +583,7 @@ def build_bins(fai_path: str, output_path: str) -> list[dict[str, Any]]:
         length = int(length_text)
         for start in range(0, length, BIN_SIZE):
             intervals.append({"contig": contig, "start": start, "end": min(length, start + BIN_SIZE)})
-    write_text(path_from_root(output_path), "\n".join(f"{row['contig']}\t{row['start']}\t{row['end']}" for row in intervals))
+    write_text_if_changed(output_path, "\n".join(f"{row['contig']}\t{row['start']}\t{row['end']}" for row in intervals))
     return intervals
 
 
@@ -674,6 +685,16 @@ def all_sbs96_rows() -> list[dict[str, Any]]:
 
 
 def build_sbs96_matrix(filtered_vcf: str, reference_path: str) -> dict[str, Any]:
+    matrix_output = f"{RESULTS_DIR}/wgs_sbs96_matrix.csv"
+    summary_output = f"{RESULTS_DIR}/signature_assignment_summary.csv"
+    summary_json = f"{RESULTS_DIR}/signature_assignment_summary.json"
+    if not FORCE and existing_output_current(
+        [matrix_output, summary_output, summary_json],
+        [filtered_vcf, f"{filtered_vcf}.tbi", reference_path, f"{reference_path}.fai"],
+    ):
+        cached_rows = read_json(path_from_root(summary_json)).get("rows", [])
+        if cached_rows:
+            return {**cached_rows[0], "sbs96_cache": "reused"}
     pass_rows = capture_allow_empty(f"bcftools view -f PASS -v snps -H {quote_shell_arg(filtered_vcf)}")
     all_filtered_rows = capture_allow_empty(f"bcftools view -v snps -H {quote_shell_arg(filtered_vcf)}")
     selected_rows = pass_rows if pass_rows.strip() else all_filtered_rows
@@ -707,7 +728,7 @@ def build_sbs96_matrix(filtered_vcf: str, reference_path: str) -> dict[str, Any]
             row["count"] = int(row["count"]) + 1
             row["source_records"] = int(row["source_records"]) + 1
             usable_snvs += 1
-    write_csv(path_from_root(f"{RESULTS_DIR}/wgs_sbs96_matrix.csv"), matrix_rows)
+    write_csv(path_from_root(matrix_output), matrix_rows)
     summary = {
         "status": "passed",
         "tool": "local_sbs96_matrix_builder",
@@ -718,18 +739,28 @@ def build_sbs96_matrix(filtered_vcf: str, reference_path: str) -> dict[str, Any]
         "skipped_snv_records": skipped_snvs,
         "total_matrix_count": sum(int(row["count"]) for row in matrix_rows),
         "sigprofiler_assignment_status": "input_ready_threshold_met" if usable_snvs >= 50 else "not_assessable_low_mutation_count",
-        "output_matrix": "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
+        "output_matrix": matrix_output,
         "caveat": "SBS96 matrix is built from actual Phase 3 WGS VCF records. Signature assignment is not interpreted unless mutation count is sufficient.",
     }
-    write_csv(path_from_root(f"{RESULTS_DIR}/signature_assignment_summary.csv"), [summary])
+    write_csv(path_from_root(summary_output), [summary])
     write_json(
-        path_from_root(f"{RESULTS_DIR}/signature_assignment_summary.json"),
+        path_from_root(summary_json),
         {"generatedAt": iso_now(), "status": "passed", "rows": [summary]},
     )
     return summary
 
 
 def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
+    candidates_output = f"{RESULTS_DIR}/sv_evidence_candidates.csv"
+    summary_output = f"{RESULTS_DIR}/sv_evidence_summary.csv"
+    summary_json = f"{RESULTS_DIR}/sv_evidence_summary.json"
+    expected_keys = {(row["role"], row["run_accession"], row["output_bam"]) for row in rows}
+    inputs = [path for row in rows for path in [row["output_bam"], row.get("output_bai", "")]]
+    if not FORCE and existing_output_current([candidates_output, summary_output, summary_json], inputs):
+        cached_rows = read_json(path_from_root(summary_json)).get("rows", [])
+        cached_keys = {(row.get("role", ""), row.get("run_accession", ""), row.get("input_bam", "")) for row in cached_rows}
+        if cached_rows and cached_keys == expected_keys and all(row.get("status") == "passed" for row in cached_rows):
+            return [{**row, "sv_cache": "reused"} for row in cached_rows]
     summary_rows: list[dict[str, Any]] = []
     candidate_rows: list[dict[str, Any]] = []
     for row in rows:
@@ -807,10 +838,10 @@ def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
                 "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is WGS SV evidence, not a validated production SV caller VCF.",
             }
         )
-    write_csv(path_from_root(f"{RESULTS_DIR}/sv_evidence_candidates.csv"), candidate_rows)
-    write_csv(path_from_root(f"{RESULTS_DIR}/sv_evidence_summary.csv"), summary_rows)
+    write_csv(path_from_root(candidates_output), candidate_rows)
+    write_csv(path_from_root(summary_output), summary_rows)
     write_json(
-        path_from_root(f"{RESULTS_DIR}/sv_evidence_summary.json"),
+        path_from_root(summary_json),
         {
             "generatedAt": iso_now(),
             "status": "passed" if all(row["status"] == "passed" for row in summary_rows) else "failed",
@@ -885,9 +916,9 @@ def main() -> None:
     for required_path in dict.fromkeys(required_paths):
         if not path_from_root(required_path).exists():
             raise RuntimeError(f"Required Phase 3 WGS input is missing: {required_path}")
-    ensure_bwa_index(reference_id, tumor["reference_path"])
 
     if STAGE == "reference_index":
+        ensure_bwa_index(reference_id, tumor["reference_path"])
         write_stage_marker(
             "reference_index",
             {
@@ -901,6 +932,7 @@ def main() -> None:
         return
 
     if STAGE == "align_sample":
+        ensure_bwa_index(reference_id, tumor["reference_path"])
         align_and_index_sample(reference_id, tumor if SAMPLE_ROLE == "tumor" else normal)
         return
 
@@ -920,6 +952,7 @@ def main() -> None:
         )
         align_commands.append((command, f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.align.log"))
     if align_commands:
+        ensure_bwa_index(reference_id, tumor["reference_path"])
         if PARALLEL_ALIGN:
             run_commands_parallel(align_commands, len(align_commands))
         else:
@@ -949,7 +982,8 @@ def main() -> None:
         if stats_commands:
             run_commands_parallel(stats_commands, min(4, len(stats_commands)))
 
-    alignment_cache_rows = [publish_cached_alignment(row) for row in rows]
+    with ThreadPoolExecutor(max_workers=min(ALIGNMENT_CACHE_WORKERS, len(rows))) as pool:
+        alignment_cache_rows = list(pool.map(publish_cached_alignment, rows))
     bam_rows = reusable_bam_rows if reusable_bam_rows is not None else validate_bam_rows(rows)
     bam_status = "passed" if all(row["status"] == "passed" for row in bam_rows) else "failed"
     write_csv(path_from_root(f"{RESULTS_DIR}/bam_validation_summary.csv"), bam_rows)
@@ -1036,7 +1070,9 @@ def main() -> None:
         run_command(
             f"bcftools index -t -f {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filtered_vcf_index.log"
         )
-    run_command(f"bcftools stats {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filtered_vcf_stats.txt")
+    filtered_vcf_stats_log = f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filtered_vcf_stats.txt"
+    if FORCE or not existing_output_current([filtered_vcf_stats_log], [filtered_vcf]):
+        run_command(f"bcftools stats {quote_shell_arg(filtered_vcf)}", filtered_vcf_stats_log)
 
     filtered_samples = parse_vcf_sample_names(filtered_vcf)
     normalized_filtered_vcf = normalize_vcf_for_comparison(
@@ -1171,6 +1207,7 @@ def main() -> None:
         "parallel_align": "yes" if PARALLEL_ALIGN else "no",
         "per_sample_threads": PER_SAMPLE_THREADS,
         "gatk_threads": GATK_THREADS,
+        "alignment_cache_workers": ALIGNMENT_CACHE_WORKERS,
         "bam_validation_status": bam_status,
         "mutect2_status": mutect_status,
         "normalized_filtered_vcf": normalized_filtered_vcf,
@@ -1206,6 +1243,7 @@ def main() -> None:
             "parallelAlign": PARALLEL_ALIGN,
             "perSampleThreads": PER_SAMPLE_THREADS,
             "gatkThreads": GATK_THREADS,
+            "alignmentCacheWorkers": ALIGNMENT_CACHE_WORKERS,
             "bamValidationStatus": bam_status,
             "mutect2Status": mutect_status,
             "normalizedFilteredVcf": normalized_filtered_vcf,

@@ -43,6 +43,7 @@ S3_RANGE_BYTES = max(8 * 1024 * 1024, int(os.environ.get("PHASE3_WGS_S3_RANGE_BY
 S3_RANGE_RETRIES = max(1, int(os.environ.get("PHASE3_WGS_S3_RANGE_RETRIES", "4")))
 SRA_RUN_CONCURRENCY = max(1, int(os.environ.get("PHASE3_WGS_SRA_RUN_CONCURRENCY", "1")))
 SRA_COMMAND_RETRIES = max(1, int(os.environ.get("PHASE3_WGS_SRA_COMMAND_RETRIES", "2")))
+CACHE_UPLOAD_WORKERS = max(1, int(os.environ.get("PHASE3_WGS_CACHE_UPLOAD_WORKERS", str(min(4, max(1, FETCH_CONCURRENCY))))))
 ASSET_CACHE_URI = os.environ.get("PHASE3_WGS_ASSET_CACHE_URI", "").rstrip("/")
 ASSET_CACHE_MODE = os.environ.get("PHASE3_WGS_ASSET_CACHE_MODE", "readwrite" if ASSET_CACHE_URI else "off").lower()
 CACHE_SRA_OBJECTS = os.environ.get("PHASE3_WGS_CACHE_SRA_OBJECTS", "true").lower() not in {"0", "false", "no"}
@@ -1044,8 +1045,8 @@ def convert_aws_sra_run(row: dict[str, Any], threads: int) -> list[dict[str, Any
     if not produced_r1.exists() or not produced_r2.exists():
         raise RuntimeError(f"fasterq-dump did not produce split FASTQs for {run}.")
     gzip_threads = max(1, threads // 2)
-    gzip_fastq(produced_r1, r1_path, gzip_threads)
-    gzip_fastq(produced_r2, r2_path, gzip_threads)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        list(pool.map(lambda task: gzip_fastq(*task), [(produced_r1, r1_path, gzip_threads), (produced_r2, r2_path, gzip_threads)]))
     produced_r1.unlink()
     produced_r2.unlink()
     if tmp_dir.exists():
@@ -1080,17 +1081,33 @@ def publish_validated_aws_sra_cache(sample_rows: list[dict[str, Any]]) -> dict[s
     aws = aws_cli_path()
     published: list[dict[str, Any]] = []
     deleted_local_sra: list[str] = []
+    publish_tasks: list[tuple[str, str, Path, str, str, int | None]] = []
     for row in sample_rows:
         run, r1_path, r2_path, sra_path, _tmp_dir = aws_sra_run_paths(row)
         if CACHE_FASTQS:
             for read, fastq_path in [("R1", r1_path), ("R2", r2_path)]:
                 uri = cache_uri("fastq", fastq_path.name)
-                if uri and publish_cached_asset(aws, fastq_path, uri, f"{run}.{read}.fastq.gz"):
-                    published.append({"run": run, "kind": f"fastq_{read}", "uri": uri, "bytes": fastq_path.stat().st_size})
+                if uri:
+                    publish_tasks.append((run, f"fastq_{read}", fastq_path, uri, f"{run}.{read}.fastq.gz", None))
         if CACHE_SRA_OBJECTS and sra_path.exists() and sra_path.stat().st_size > 0:
             uri = cache_uri("sra", f"{run}.sra")
-            if uri and publish_cached_asset(aws, sra_path, uri, f"{run}.sra", sra_path.stat().st_size):
-                published.append({"run": run, "kind": "sra", "uri": uri, "bytes": sra_path.stat().st_size})
+            if uri:
+                publish_tasks.append((run, "sra", sra_path, uri, f"{run}.sra", sra_path.stat().st_size))
+
+    def publish_one(task: tuple[str, str, Path, str, str, int | None]) -> dict[str, Any] | None:
+        run, kind, source_path, uri, label, expected_bytes = task
+        if publish_cached_asset(aws, source_path, uri, label, expected_bytes):
+            return {"run": run, "kind": kind, "uri": uri, "bytes": source_path.stat().st_size}
+        return None
+
+    if publish_tasks:
+        with ThreadPoolExecutor(max_workers=min(CACHE_UPLOAD_WORKERS, len(publish_tasks))) as pool:
+            for result in pool.map(publish_one, publish_tasks):
+                if result:
+                    published.append(result)
+
+    for row in sample_rows:
+        run, r1_path, r2_path, sra_path, _tmp_dir = aws_sra_run_paths(row)
         if DELETE_SRA_AFTER_CONVERSION and sra_path.exists() and r1_path.exists() and r2_path.exists():
             deleted_bytes = sra_path.stat().st_size
             sra_path.unlink()
@@ -1102,6 +1119,7 @@ def publish_validated_aws_sra_cache(sample_rows: list[dict[str, Any]]) -> dict[s
         "mode": ASSET_CACHE_MODE,
         "cacheSraObjects": CACHE_SRA_OBJECTS,
         "cacheFastqs": CACHE_FASTQS,
+        "cacheUploadWorkers": CACHE_UPLOAD_WORKERS,
         "deleteSraAfterConversion": DELETE_SRA_AFTER_CONVERSION,
         "published": published,
         "deletedLocalSra": deleted_local_sra,
