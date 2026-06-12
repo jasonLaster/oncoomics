@@ -515,6 +515,10 @@ TASKS: dict[str, Task] = {
             "false",
             "--phase3_prereq_mode",
             "minimal",
+            "--phase3_bwa_threads",
+            "12",
+            "--phase3_sort_threads",
+            "4",
             "--aws_max_retries",
             "0",
         )

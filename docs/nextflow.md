@@ -79,7 +79,7 @@ Use the named On-Demand fail-fast alias for reruns after alignment/I/O experimen
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full:ondemand-failfast
 ```
 
-That alias keeps alignment at 16 CPUs/96 GB and sets `--aws_max_retries 0` so Spot interruptions, manual kills, and weak-scaling experiments stop with one clear trace row instead of launching automatic retry jobs.
+That alias keeps alignment at 16 CPUs/96 GB, splits each alignment job into 12 BWA threads plus 4 samtools sort threads, and sets `--aws_max_retries 0` so Spot interruptions, manual kills, and weak-scaling experiments stop with one clear trace row instead of launching automatic retry jobs.
 
 ## Phase 3 Fetch Experiments
 

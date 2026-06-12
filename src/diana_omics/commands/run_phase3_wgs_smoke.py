@@ -44,6 +44,27 @@ AVAILABLE_CPUS = detect_cpu_count()
 TOTAL_THREADS = max(2, int(os.environ.get("PHASE3_WGS_THREADS", str(min(16, AVAILABLE_CPUS)))))
 PARALLEL_ALIGN = os.environ.get("PHASE3_WGS_PARALLEL_ALIGN") != "0"
 PER_SAMPLE_THREADS = max(2, TOTAL_THREADS // 2) if PARALLEL_ALIGN else TOTAL_THREADS
+
+
+def optional_positive_int_env(name: str, fallback: int) -> int:
+    value = os.environ.get(name, "").strip()
+    if not value or value == "0":
+        return fallback
+    parsed = int(value)
+    if parsed < 1:
+        raise ValueError(f"{name} must be a positive integer, got {value!r}")
+    return parsed
+
+
+def alignment_thread_plan(default_threads: int) -> tuple[int, int]:
+    return (
+        optional_positive_int_env("PHASE3_WGS_BWA_THREADS", default_threads),
+        optional_positive_int_env("PHASE3_WGS_SORT_THREADS", default_threads),
+    )
+
+
+ALIGN_BWA_THREADS, ALIGN_SORT_THREADS = alignment_thread_plan(TOTAL_THREADS)
+PER_SAMPLE_BWA_THREADS, PER_SAMPLE_SORT_THREADS = alignment_thread_plan(PER_SAMPLE_THREADS)
 BAM_VALIDATION_WORKERS = max(1, int(os.environ.get("PHASE3_WGS_BAM_VALIDATION_WORKERS", str(min(2, TOTAL_THREADS)))))
 REUSE_BAM_VALIDATION = os.environ.get("PHASE3_WGS_REUSE_BAM_VALIDATION", "1") != "0"
 GATK_THREADS = max(1, min(int(os.environ.get("PHASE3_WGS_GATK_THREADS", str(TOTAL_THREADS // 2))), 8))
@@ -471,9 +492,9 @@ def align_and_index_sample(reference_id: str, row: dict[str, str]) -> None:
     remove_stale_alignment(row)
     command = (
         "set -o pipefail; "
-        f"bwa mem -t {TOTAL_THREADS} -R {quote_shell_arg(read_group(row))} {quote_shell_arg(row['reference_path'])} "
+        f"bwa mem -t {ALIGN_BWA_THREADS} -R {quote_shell_arg(read_group(row))} {quote_shell_arg(row['reference_path'])} "
         f"{quote_shell_arg(row['fastq_1'])} {quote_shell_arg(row['fastq_2'])} | "
-        f"samtools sort -@ {TOTAL_THREADS} -o {quote_shell_arg(row['output_bam'])} -"
+        f"samtools sort -@ {ALIGN_SORT_THREADS} -o {quote_shell_arg(row['output_bam'])} -"
     )
     run_command(command, f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.align.log")
     run_command(
@@ -506,6 +527,8 @@ def align_and_index_sample(reference_id: str, row: dict[str, str]) -> None:
             "role": row["role"],
             "runAccession": row["run_accession"],
             "threads": TOTAL_THREADS,
+            "bwaThreads": ALIGN_BWA_THREADS,
+            "sortThreads": ALIGN_SORT_THREADS,
             "bam": row["output_bam"],
             "bai": row["output_bai"],
             "cachePublished": published,
@@ -1217,9 +1240,9 @@ def main() -> None:
         remove_stale_alignment(row)
         command = (
             "set -o pipefail; "
-            f"bwa mem -t {PER_SAMPLE_THREADS} -R {quote_shell_arg(read_group(row))} {quote_shell_arg(row['reference_path'])} "
+            f"bwa mem -t {PER_SAMPLE_BWA_THREADS} -R {quote_shell_arg(read_group(row))} {quote_shell_arg(row['reference_path'])} "
             f"{quote_shell_arg(row['fastq_1'])} {quote_shell_arg(row['fastq_2'])} | "
-            f"samtools sort -@ {PER_SAMPLE_THREADS} -o {quote_shell_arg(row['output_bam'])} -"
+            f"samtools sort -@ {PER_SAMPLE_SORT_THREADS} -o {quote_shell_arg(row['output_bam'])} -"
         )
         align_commands.append((command, f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.align.log"))
     if align_commands:
@@ -1478,8 +1501,12 @@ def main() -> None:
         "read_request": asset_summary.get("readRequest", ""),
         "available_cpus": AVAILABLE_CPUS,
         "total_threads": TOTAL_THREADS,
+        "align_bwa_threads": ALIGN_BWA_THREADS,
+        "align_sort_threads": ALIGN_SORT_THREADS,
         "parallel_align": "yes" if PARALLEL_ALIGN else "no",
         "per_sample_threads": PER_SAMPLE_THREADS,
+        "per_sample_bwa_threads": PER_SAMPLE_BWA_THREADS,
+        "per_sample_sort_threads": PER_SAMPLE_SORT_THREADS,
         "gatk_threads": GATK_THREADS,
         "alignment_cache_workers": ALIGNMENT_CACHE_WORKERS,
         "bam_validation_status": bam_status,
@@ -1514,8 +1541,12 @@ def main() -> None:
             "fullSourceFastqs": asset_summary.get("readPairsMode") == "full",
             "availableCpus": AVAILABLE_CPUS,
             "totalThreads": TOTAL_THREADS,
+            "alignBwaThreads": ALIGN_BWA_THREADS,
+            "alignSortThreads": ALIGN_SORT_THREADS,
             "parallelAlign": PARALLEL_ALIGN,
             "perSampleThreads": PER_SAMPLE_THREADS,
+            "perSampleBwaThreads": PER_SAMPLE_BWA_THREADS,
+            "perSampleSortThreads": PER_SAMPLE_SORT_THREADS,
             "gatkThreads": GATK_THREADS,
             "alignmentCacheWorkers": ALIGNMENT_CACHE_WORKERS,
             "bamValidationStatus": bam_status,
@@ -1555,8 +1586,11 @@ Parallelism:
 1. Available CPUs detected: `{AVAILABLE_CPUS}`
 2. Total thread budget: `{TOTAL_THREADS}`
 3. Tumor/normal alignment in parallel: `{"yes" if PARALLEL_ALIGN else "no"}`
-4. Per-sample alignment/sort threads: `{PER_SAMPLE_THREADS}`
-5. GATK PairHMM threads: `{GATK_THREADS}`
+4. Split-process BWA threads: `{ALIGN_BWA_THREADS}`
+5. Split-process samtools sort threads: `{ALIGN_SORT_THREADS}`
+6. Monolith per-sample BWA threads: `{PER_SAMPLE_BWA_THREADS}`
+7. Monolith per-sample samtools sort threads: `{PER_SAMPLE_SORT_THREADS}`
+8. GATK PairHMM threads: `{GATK_THREADS}`
 
 What this validates:
 

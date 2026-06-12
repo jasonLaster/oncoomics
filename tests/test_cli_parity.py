@@ -82,6 +82,8 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("0", argv[argv.index("--aws_max_retries") + 1])
         self.assertEqual("16", argv[argv.index("--phase3_align_cpus") + 1])
         self.assertEqual("96 GB", argv[argv.index("--phase3_align_memory") + 1])
+        self.assertEqual("12", argv[argv.index("--phase3_bwa_threads") + 1])
+        self.assertEqual("4", argv[argv.index("--phase3_sort_threads") + 1])
         self.assertNotIn("64", argv[argv.index("--phase3_align_cpus") + 1])
 
 

@@ -69,6 +69,8 @@ Existing commands use environment variables such as:
 - `PHASE2F_MIN_TRUTH_DEPTH`
 - `PHASE2F_MAX_TRUTH_VARIANTS`
 - `PHASE3_WGS_THREADS`
+- `PHASE3_WGS_BWA_THREADS`
+- `PHASE3_WGS_SORT_THREADS`
 - `PHASE3_WGS_GATK_THREADS`
 - `PHASE3_WGS_PARALLEL_ALIGN`
 - `PHASE3_WGS_READS`
@@ -83,6 +85,8 @@ Current full WGS fetch/run command pattern:
 PHASE3_WGS_FETCH_CONCURRENCY=4 PHASE3_WGS_ARIA2_SPLIT=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
 PHASE3_WGS_THREADS=18 PYTHONPATH=src /usr/bin/python3 -m diana_omics validate:phase3-wgs
 ```
+
+Set `PHASE3_WGS_BWA_THREADS` and `PHASE3_WGS_SORT_THREADS` when alignment and sorting should share one CPU budget explicitly. Leaving either value unset or `0` falls back to the stage thread count.
 
 Keep `PHASE3_WGS_ARIA2_SPLIT=1` for acceptance data unless a segmented run has already been proven against the provider MD5s. A 16-segment ENA transfer reached the expected byte counts for the SEQC2/HCC1395 WGS FASTQs but failed both MD5 and gzip CRC validation, so full-source acceptance now favors checksum-correct single-stream downloads over maximum transfer speed.
 

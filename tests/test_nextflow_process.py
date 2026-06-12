@@ -95,17 +95,34 @@ class NextflowProcessTest(unittest.TestCase):
             task_cpus="16",
             phase3_reads="full",
             phase3_source_mode="aws_sra",
+            phase3_bwa_threads="12",
+            phase3_sort_threads="4",
             phase3_asset_cache_uri="s3://cache/phase3_wgs",
         )
         with patch.dict(os.environ, {"PHASE3_WGS_THREADS": "24"}, clear=False):
             env = nf.process_environment(config, Path("/tmp/workspace"))
         self.assertEqual(env["DIANA_OMICS_ROOT"], "/tmp/workspace")
         self.assertEqual(env["PHASE3_WGS_THREADS"], "24")
+        self.assertEqual(env["PHASE3_WGS_BWA_THREADS"], "12")
+        self.assertEqual(env["PHASE3_WGS_SORT_THREADS"], "4")
         self.assertEqual(env["PHASE3_WGS_SRA_THREADS"], "16")
         self.assertEqual(env["PHASE3_WGS_STAGE"], "align_sample")
         self.assertEqual(env["PHASE3_WGS_FETCH_ONLY_ROLE"], "tumor")
         self.assertEqual(env["PHASE3_WGS_SOURCE_MODE"], "aws_sra")
         self.assertEqual(env["PHASE3_WGS_ASSET_CACHE_URI"], "s3://cache/phase3_wgs")
+
+    def test_phase3_env_sets_alignment_thread_overrides(self):
+        config = nf.ProcessConfig(
+            stage="phase3_align_sample",
+            role="tumor",
+            task_cpus="64",
+            phase3_bwa_threads="48",
+            phase3_sort_threads="8",
+        )
+        env = nf.process_environment(config, Path("/tmp/workspace"))
+        self.assertEqual(env["PHASE3_WGS_THREADS"], "64")
+        self.assertEqual(env["PHASE3_WGS_BWA_THREADS"], "48")
+        self.assertEqual(env["PHASE3_WGS_SORT_THREADS"], "8")
 
     def test_downstream_merge_copies_normal_bam_side_and_reusable_summaries(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -208,7 +208,7 @@ After an alignment/I/O experiment, weak-scaling manual termination, or any run w
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full:ondemand-failfast
 ```
 
-That path keeps alignment at 16 CPUs/96 GB and sets `--aws_max_retries 0`.
+That path keeps alignment at 16 CPUs/96 GB, splits each alignment job into 12 BWA threads plus 4 samtools sort threads, and sets `--aws_max_retries 0`.
 
 Tune fetch/reference/downstream separately rather than over-sizing every stage.
 

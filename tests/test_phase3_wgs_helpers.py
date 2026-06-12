@@ -12,6 +12,17 @@ from diana_omics.commands import run_phase3_wgs_smoke as phase3
 
 
 class Phase3WgsHelpersTest(unittest.TestCase):
+    def test_alignment_thread_plan_defaults_and_overrides(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(phase3.alignment_thread_plan(64), (64, 64))
+        with patch.dict(os.environ, {"PHASE3_WGS_BWA_THREADS": "48", "PHASE3_WGS_SORT_THREADS": "8"}, clear=True):
+            self.assertEqual(phase3.alignment_thread_plan(64), (48, 8))
+        with patch.dict(os.environ, {"PHASE3_WGS_BWA_THREADS": "0", "PHASE3_WGS_SORT_THREADS": "0"}, clear=True):
+            self.assertEqual(phase3.alignment_thread_plan(64), (64, 64))
+        with patch.dict(os.environ, {"PHASE3_WGS_BWA_THREADS": "-1"}, clear=True):
+            with self.assertRaises(ValueError):
+                phase3.alignment_thread_plan(64)
+
     def test_sbs96_rows_cover_expected_matrix(self):
         rows = phase3.all_sbs96_rows()
         self.assertEqual(len(rows), 96)
@@ -35,6 +46,12 @@ class Phase3WgsHelpersTest(unittest.TestCase):
         with patch.object(phase3, "vcf_sample_names", return_value=["tumor", "normal"]), patch.object(phase3, "capture_command") as capture:
             self.assertEqual(phase3.parse_vcf_sample_names("calls.vcf.gz"), ["tumor", "normal"])
         capture.assert_not_called()
+
+    def test_alignment_thread_plan_allows_split_bwa_and_sort_threads(self):
+        with patch.dict(os.environ, {"PHASE3_WGS_BWA_THREADS": "12", "PHASE3_WGS_SORT_THREADS": "4"}, clear=False):
+            self.assertEqual(phase3.alignment_thread_plan(16), (12, 4))
+        with patch.dict(os.environ, {"PHASE3_WGS_BWA_THREADS": "0", "PHASE3_WGS_SORT_THREADS": ""}, clear=False):
+            self.assertEqual(phase3.alignment_thread_plan(16), (16, 16))
 
     def test_write_intervals_merges_and_sorts_by_reference_order(self):
         variants = [
