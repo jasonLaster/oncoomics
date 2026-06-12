@@ -1,0 +1,91 @@
+{
+  "generatedAt": "2026-06-12T21:17:50.065Z",
+  "status": "passed",
+  "errors": [],
+  "summary": {
+    "status": "passed",
+    "benchmark_count": 6,
+    "fixture_count": 6,
+    "dry_run_only_count": 6,
+    "approval_required_count": 6,
+    "clinical_use_allowed_count": 0,
+    "ready_for_benchmark_execution": "no",
+    "ready_for_clinical_interpretation": "no",
+    "next_step": "Wire a local benchmark:known-answer dry-run command that materializes expected output paths without fetching data or running WGS.",
+    "error_count": 0
+  },
+  "rows": [
+    {
+      "benchmark_id": "hg008_small_variant_dry_run",
+      "fixture_id": "hg008_small_variants",
+      "dataset_id": "giab_hg008",
+      "runner_mode": "tumor_normal_wgs",
+      "execution_status": "dry_run_only",
+      "approval_required": "yes",
+      "clinical_use_allowed": "no",
+      "required_output_count": 2,
+      "cache_namespace": "known_answer/hg008/small_variants",
+      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+    },
+    {
+      "benchmark_id": "hg008_sv_cnv_dry_run",
+      "fixture_id": "hg008_sv_cnv",
+      "dataset_id": "giab_hg008",
+      "runner_mode": "tumor_normal_wgs",
+      "execution_status": "dry_run_only",
+      "approval_required": "yes",
+      "clinical_use_allowed": "no",
+      "required_output_count": 2,
+      "cache_namespace": "known_answer/hg008/sv_cnv",
+      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+    },
+    {
+      "benchmark_id": "hg008_signature_qc_dry_run",
+      "fixture_id": "hg008_signature_qc",
+      "dataset_id": "giab_hg008",
+      "runner_mode": "tumor_normal_wgs",
+      "execution_status": "dry_run_only",
+      "approval_required": "yes",
+      "clinical_use_allowed": "no",
+      "required_output_count": 2,
+      "cache_namespace": "known_answer/hg008/signature_qc",
+      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+    },
+    {
+      "benchmark_id": "colo829_driver_signature_dry_run",
+      "fixture_id": "colo829_driver_signature",
+      "dataset_id": "colo829",
+      "runner_mode": "tumor_normal_wgs",
+      "execution_status": "dry_run_only",
+      "approval_required": "yes",
+      "clinical_use_allowed": "no",
+      "required_output_count": 2,
+      "cache_namespace": "known_answer/colo829/driver_signature",
+      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+    },
+    {
+      "benchmark_id": "colo829_sv_cna_dry_run",
+      "fixture_id": "colo829_sv_cna",
+      "dataset_id": "colo829",
+      "runner_mode": "tumor_normal_wgs",
+      "execution_status": "dry_run_only",
+      "approval_required": "yes",
+      "clinical_use_allowed": "no",
+      "required_output_count": 2,
+      "cache_namespace": "known_answer/colo829/sv_cna",
+      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+    },
+    {
+      "benchmark_id": "colo829_purity_series_dry_run",
+      "fixture_id": "colo829_purity_series",
+      "dataset_id": "colo829_purity_series",
+      "runner_mode": "tumor_normal_wgs_dilution",
+      "execution_status": "dry_run_only",
+      "approval_required": "yes",
+      "clinical_use_allowed": "no",
+      "required_output_count": 2,
+      "cache_namespace": "known_answer/colo829/purity_series",
+      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+    }
+  ]
+}

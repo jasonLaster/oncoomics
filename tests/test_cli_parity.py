@@ -25,6 +25,7 @@ class CliParityTest(unittest.TestCase):
             "fetch:phase3-wgs",
             "fetch:production-somatic",
             "fetch:raw-candidates",
+            "plan:known-answer-benchmarks",
             "smoke:alignment",
             "smoke:full-reference",
             "smoke:human-reference",

@@ -70,7 +70,8 @@ The completed Phase 3 public WGS baseline has been locked into the status docs. 
 - Add production SV caller VCF/BEDPE tooling candidates and a validation harness. Started locally with `manifests/sv_caller_tool_candidates.csv` and `verify:sv-caller-readiness`.
 - Add CHORD/HRDetect/scarHRD-style interpretation adapter scaffolding with explicit no-call behavior. Started locally with `manifests/hrd_interpretation_adapters.csv` and `verify:hrd-interpretation-readiness`.
 - Add independent HG008 and COLO829/COLO829BL known-answer fixture scaffolding. Started locally with `manifests/clinical_known_answer_fixtures.csv` and `verify:known-answer-readiness`.
+- Add dry-run HG008 and COLO829/COLO829BL benchmark-runner plans. Started locally with `manifests/known_answer_benchmark_plan.csv` and `plan:known-answer-benchmarks`.
 - Define the clinical assay claim, reportable range, QC gates, and report language boundaries. Started locally with `manifests/clinical_assay_claim_boundaries.csv` and `verify:clinical-assay-boundaries`.
 - Prepare a CLIA/CAP-style validation packet template covering accuracy, precision, LoD, reproducibility, reportable range, failure modes, and change control. Started locally with `manifests/clinical_validation_packet_sections.csv`, `docs/clinical-validation-packet-template.md`, and `verify:clinical-validation-packet`.
 
-The immediate target is now operator review: commit the local clinicalization scaffolds, then decide whether to implement HG008/COLO829 benchmark runners or continue local governance scaffolding. Do not start those benchmark runs without explicit approval.
+The immediate target is now dry-run runner plumbing: wire `benchmark:known-answer --dry-run` so HG008/COLO829 benchmark commands can materialize expected output paths and cache keys without fetching data or running WGS. Do not start those benchmark runs without explicit approval.

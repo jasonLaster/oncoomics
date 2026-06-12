@@ -23,6 +23,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.fetch_phase3_wgs_smoke_assets import main as fetch_phase3_wgs_smoke_assets
     from .commands.fetch_production_somatic_assets import main as fetch_production_somatic_assets
     from .commands.fetch_raw_candidate_metadata import main as fetch_raw_candidate_metadata
+    from .commands.plan_known_answer_benchmarks import main as plan_known_answer_benchmarks
     from .commands.run_alignment_smoke import main as run_alignment_smoke
     from .commands.run_full_reference_smoke import main as run_full_reference_smoke
     from .commands.run_full_wes_benchmark import main as run_full_wes_benchmark
@@ -62,6 +63,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "fetch:phase3-wgs": fetch_phase3_wgs_smoke_assets,
         "fetch:production-somatic": fetch_production_somatic_assets,
         "fetch:raw-candidates": fetch_raw_candidate_metadata,
+        "plan:known-answer-benchmarks": plan_known_answer_benchmarks,
         "smoke:alignment": run_alignment_smoke,
         "smoke:full-reference": run_full_reference_smoke,
         "benchmark:full-wes": run_full_wes_benchmark,

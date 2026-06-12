@@ -43,6 +43,10 @@ class KnownAnswerReadinessTest(unittest.TestCase):
                 root / known.HRD_INTERPRETATION_READINESS_PATH,
                 {"status": "passed", "summary": {"ready_for_clinical_interpretation": "no"}},
             )
+            utils.write_json(
+                root / known.BENCHMARK_PLAN_SUMMARY_PATH,
+                {"status": "passed", "summary": {"ready_for_benchmark_execution": "no"}},
+            )
             with patch.object(known, "path_from_root", lambda relative: root / relative):
                 known.main()
             summary = utils.read_json(root / known.SUMMARY_JSON_PATH)
@@ -50,6 +54,7 @@ class KnownAnswerReadinessTest(unittest.TestCase):
         self.assertEqual(summary["summary"]["fixture_count"], 6)
         self.assertEqual(summary["summary"]["locked_threshold_count"], 0)
         self.assertEqual(summary["summary"]["ready_for_clinical_interpretation"], "no")
+        self.assertEqual(summary["summary"]["benchmark_execution_ready"], "no")
         self.assertEqual({row["clinical_interpretation_allowed"] for row in summary["rows"]}, {"no"})
 
 

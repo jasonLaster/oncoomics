@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-12T19:02:36.677Z",
+  "generatedAt": "2026-06-12T21:17:55.954Z",
   "status": "passed",
   "errors": [],
   "summary": {
@@ -12,7 +12,9 @@
     "phase3_baseline_status": "passed",
     "phase3_complete": true,
     "hrd_interpretation_ready_for_clinical_interpretation": "no",
-    "next_step": "Define the clinical assay claim, reportable range, QC gates, and report language boundaries before any benchmark thresholds are locked.",
+    "benchmark_plan_status": "passed",
+    "benchmark_execution_ready": "no",
+    "next_step": "Wire a local benchmark:known-answer dry-run command that materializes expected output paths without fetching data or running WGS.",
     "error_count": 0
   },
   "rows": [
