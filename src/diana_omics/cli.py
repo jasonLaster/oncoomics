@@ -34,6 +34,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.run_sra_benchmark import main as run_sra_benchmark
     from .commands.stage_diana_raw_analysis import main as stage_diana_raw_analysis
     from .commands.verify_clinical_assay_boundaries import main as verify_clinical_assay_boundaries
+    from .commands.verify_clinical_change_control import main as verify_clinical_change_control
     from .commands.verify_clinical_qc_thresholds import main as verify_clinical_qc_thresholds
     from .commands.verify_clinical_validation_evidence_links import main as verify_clinical_validation_evidence_links
     from .commands.verify_clinical_validation_packet import main as verify_clinical_validation_packet
@@ -80,6 +81,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "smoke:raw": run_raw_smoke,
         "stage:diana-raw": stage_diana_raw_analysis,
         "verify:clinical-assay-boundaries": verify_clinical_assay_boundaries,
+        "verify:clinical-change-control": verify_clinical_change_control,
         "verify:clinical-qc-thresholds": verify_clinical_qc_thresholds,
         "verify:clinical-validation-evidence-links": verify_clinical_validation_evidence_links,
         "verify:clinical-validation-packet": verify_clinical_validation_packet,
