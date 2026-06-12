@@ -1,6 +1,6 @@
 # Nextflow Orchestration
 
-This repository keeps the Python commands as the source of truth and uses Nextflow as a portable runner around those commands. Each selected workflow copies the repo into a task workspace, sets `DIANA_OMICS_ROOT` to that workspace, and runs the existing `python -m diana_omics ...` commands there.
+This repository keeps the Python commands as the source of truth and uses Nextflow as a portable runner around those commands. `main.nf` declares resources, outputs, and split-stage channels; `diana_omics.nextflow_process` owns the process-local workspace setup, environment mapping, workflow step plans, stub outputs, and reusable split-stage merge logic. Each selected workflow copies the repo into a task workspace, sets `DIANA_OMICS_ROOT` to that workspace, and runs the existing `python -m diana_omics ...` commands there.
 
 `phase3_wgs` is now split into resumable checkpoints:
 

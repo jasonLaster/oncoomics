@@ -55,49 +55,13 @@ process QUICK {
     script:
     """
     set -euo pipefail
-    SOURCE_DIR="${params.repo_dir}"
-    rm -rf workspace
-    mkdir -p workspace
-    rsync -a --delete --exclude '.git/' --exclude '.nextflow/' --exclude 'work/' --exclude 'nextflow-out/' "\${SOURCE_DIR%/}/" workspace/
-    cd workspace
-    export DIANA_OMICS_ROOT="\$PWD"
-    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/src"
-    export PYTHON_BIN="${params.python_bin}"
-    run() { echo "==> \$*"; "\$@"; }
-
-    run "\$PYTHON_BIN" -m diana_omics verify:plan
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase1
-    run "\$PYTHON_BIN" -m diana_omics fetch:raw-candidates
-    run "\$PYTHON_BIN" -m diana_omics audit:raw-tools
-    run "\$PYTHON_BIN" -m diana_omics build:diana-template
-    run "\$PYTHON_BIN" -m diana_omics verify:diana-raw
-    run "\$PYTHON_BIN" -m diana_omics build:raw-samplesheets
-    run "\$PYTHON_BIN" -m diana_omics smoke:raw
-    run "\$PYTHON_BIN" -m diana_omics build:alignment-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:alignment
-    run "\$PYTHON_BIN" -m diana_omics fetch:human-reference-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:human-reference
-    run "\$PYTHON_BIN" -m diana_omics fetch:full-reference-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:full-reference
-    run "\$PYTHON_BIN" -m diana_omics fetch:production-somatic
-    run "\$PYTHON_BIN" -m diana_omics smoke:production-somatic
-    run "\$PYTHON_BIN" -m diana_omics build:panel
-    run "\$PYTHON_BIN" -m diana_omics analyze:hrd
-    run "\$PYTHON_BIN" -m diana_omics analyze:rna
-    run "\$PYTHON_BIN" -m diana_omics build:packet
-    if "\$PYTHON_BIN" -m diana_omics verify:outputs; then
-        echo "==> Full output verification passed."
-    else
-        echo "==> Full output verification did not pass; quick does not recompute full-source WGS acceptance artifacts."
-    fi
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process quick --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}"
     """
 
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process quick --stub --workspace workspace --python-bin "${params.python_bin}"
     """
 }
 
@@ -115,53 +79,13 @@ process FULL_WES {
     script:
     """
     set -euo pipefail
-    SOURCE_DIR="${params.repo_dir}"
-    rm -rf workspace
-    mkdir -p workspace
-    rsync -a --delete --exclude '.git/' --exclude '.nextflow/' --exclude 'work/' --exclude 'nextflow-out/' "\${SOURCE_DIR%/}/" workspace/
-    cd workspace
-    export DIANA_OMICS_ROOT="\$PWD"
-    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/src"
-    export PYTHON_BIN="${params.python_bin}"
-    export PHASE2F_THREADS="\${PHASE2F_THREADS:-${task.cpus}}"
-    run() { echo "==> \$*"; "\$@"; }
-
-    run "\$PYTHON_BIN" -m diana_omics verify:plan
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase1
-    run "\$PYTHON_BIN" -m diana_omics fetch:raw-candidates
-    run "\$PYTHON_BIN" -m diana_omics audit:raw-tools
-    run "\$PYTHON_BIN" -m diana_omics build:diana-template
-    run "\$PYTHON_BIN" -m diana_omics verify:diana-raw
-    run "\$PYTHON_BIN" -m diana_omics build:raw-samplesheets
-    run "\$PYTHON_BIN" -m diana_omics smoke:raw
-    run "\$PYTHON_BIN" -m diana_omics build:alignment-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:alignment
-    run "\$PYTHON_BIN" -m diana_omics fetch:human-reference-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:human-reference
-    run "\$PYTHON_BIN" -m diana_omics fetch:full-reference-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:full-reference
-    run "\$PYTHON_BIN" -m diana_omics fetch:production-somatic
-    run "\$PYTHON_BIN" -m diana_omics smoke:production-somatic
-    run "\$PYTHON_BIN" -m diana_omics fetch:full-wes
-    run "\$PYTHON_BIN" -m diana_omics benchmark:full-wes
-    run "\$PYTHON_BIN" -m diana_omics verify:orthogonal
-    run "\$PYTHON_BIN" -m diana_omics build:panel
-    run "\$PYTHON_BIN" -m diana_omics analyze:hrd
-    run "\$PYTHON_BIN" -m diana_omics analyze:rna
-    run "\$PYTHON_BIN" -m diana_omics build:packet
-    if "\$PYTHON_BIN" -m diana_omics verify:outputs; then
-        echo "==> Full output verification passed."
-    else
-        echo "==> Full output verification did not pass; full_wes does not recompute full-source WGS acceptance artifacts."
-    fi
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process full_wes --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}"
     """
 
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process full_wes --stub --workspace workspace --python-bin "${params.python_bin}"
     """
 }
 
@@ -179,50 +103,13 @@ process PHASE3_FETCH {
     script:
     """
     set -euo pipefail
-    SOURCE_DIR="${params.repo_dir}"
-    rm -rf workspace
-    mkdir -p workspace
-    rsync -a --delete --exclude '.git/' --exclude '.nextflow/' --exclude 'work/' --exclude 'nextflow-out/' "\${SOURCE_DIR%/}/" workspace/
-    cd workspace
-    export DIANA_OMICS_ROOT="\$PWD"
-    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/src"
-    export PYTHON_BIN="${params.python_bin}"
-    export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
-    export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
-    export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
-    export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
-    export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
-    export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
-    export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
-    export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
-    export PHASE3_WGS_S3_RANGE_RETRIES="${params.phase3_s3_range_retries}"
-    export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
-    export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
-    export PHASE3_WGS_FASTQ_STATS_MODE="${params.phase3_fastq_stats_mode}"
-    export PHASE3_WGS_CACHE_UPLOAD_WORKERS="${params.phase3_cache_upload_workers}"
-    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
-    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
-    export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
-    run() { echo "==> \$*"; "\$@"; }
-
-    run "\$PYTHON_BIN" -m diana_omics verify:plan
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase1
-    run "\$PYTHON_BIN" -m diana_omics fetch:raw-candidates
-    run "\$PYTHON_BIN" -m diana_omics audit:raw-tools
-    run "\$PYTHON_BIN" -m diana_omics build:diana-template
-    run "\$PYTHON_BIN" -m diana_omics verify:diana-raw
-    run "\$PYTHON_BIN" -m diana_omics build:raw-samplesheets
-    run "\$PYTHON_BIN" -m diana_omics fetch:full-reference-smoke
-    run "\$PYTHON_BIN" -m diana_omics fetch:production-somatic
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase3-wgs
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_fetch --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
     """
 
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_fetch --stub --workspace workspace --python-bin "${params.python_bin}"
     """
 }
 
@@ -238,57 +125,13 @@ process PHASE3_FETCH_WORKSPACE {
     script:
     """
     set -euo pipefail
-    SOURCE_DIR="${params.repo_dir}"
-    rm -rf workspace
-    mkdir -p workspace
-    rsync -a --delete --exclude '.git/' --exclude '.nextflow/' --exclude 'work/' --exclude 'nextflow-out/' "\${SOURCE_DIR%/}/" workspace/
-    cd workspace
-    export DIANA_OMICS_ROOT="\$PWD"
-    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/src"
-    export PYTHON_BIN="${params.python_bin}"
-    export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
-    export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
-    export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
-    export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
-    export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
-    export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
-    export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
-    export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
-    export PHASE3_WGS_S3_RANGE_RETRIES="${params.phase3_s3_range_retries}"
-    export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
-    export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
-    export PHASE3_WGS_FASTQ_STATS_MODE="${params.phase3_fastq_stats_mode}"
-    export PHASE3_WGS_CACHE_UPLOAD_WORKERS="${params.phase3_cache_upload_workers}"
-    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
-    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
-    export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
-    run() { echo "==> \$*"; "\$@"; }
-
-    run "\$PYTHON_BIN" -m diana_omics verify:plan
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase1
-    run "\$PYTHON_BIN" -m diana_omics fetch:raw-candidates
-    run "\$PYTHON_BIN" -m diana_omics audit:raw-tools
-    run "\$PYTHON_BIN" -m diana_omics build:diana-template
-    run "\$PYTHON_BIN" -m diana_omics verify:diana-raw
-    run "\$PYTHON_BIN" -m diana_omics build:raw-samplesheets
-    run "\$PYTHON_BIN" -m diana_omics fetch:full-reference-smoke
-    run "\$PYTHON_BIN" -m diana_omics fetch:production-somatic
-    if [ "${params.phase3_include_wes}" = "true" ]; then
-        run "\$PYTHON_BIN" -m diana_omics fetch:full-wes
-        run "\$PYTHON_BIN" -m diana_omics benchmark:full-wes
-    else
-        echo "==> Skipping full WES prerequisite for split Phase 3 WGS; use --phase3_include_wes true for orthogonal WES ladder."
-    fi
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase3-wgs
-    rm -rf data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/fastq
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_fetch_workspace --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}" --phase3-include-wes "${params.phase3_include_wes}"
     """
 
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_fetch_workspace --stub --workspace workspace --python-bin "${params.python_bin}"
     """
 }
 
@@ -307,25 +150,13 @@ process PHASE3_REFERENCE_INDEX {
     script:
     """
     set -euo pipefail
-    rm -rf workspace
-    rsync -a "${previous_workspace}/" workspace/
-    cd workspace
-    export DIANA_OMICS_ROOT="\$PWD"
-    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/src"
-    export PYTHON_BIN="${params.python_bin}"
-    export PHASE3_WGS_STAGE=reference_index
-    export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
-    export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
-    run() { echo "==> \$*"; "\$@"; }
-    run "\$PYTHON_BIN" -m diana_omics validate:phase3-wgs
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_reference_index --previous-workspace "${previous_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}"
     """
 
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/results/phase3_wgs_smoke/stage_markers
-    echo '{"stub":true,"stage":"reference_index"}' > workspace/results/phase3_wgs_smoke/stage_markers/reference_index.json
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_reference_index --stub --workspace workspace --python-bin "${params.python_bin}"
     """
 }
 
@@ -344,48 +175,13 @@ process PHASE3_ALIGN_SAMPLE {
     script:
     """
     set -euo pipefail
-    rm -rf workspace
-    rsync -a "${previous_workspace}/" workspace/
-    cd workspace
-    export DIANA_OMICS_ROOT="\$PWD"
-    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/src"
-    export PYTHON_BIN="${params.python_bin}"
-    export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
-    export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
-    export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
-    export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
-    export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
-    export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
-    export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
-    export PHASE3_WGS_S3_RANGE_RETRIES="${params.phase3_s3_range_retries}"
-    export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
-    export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
-    export PHASE3_WGS_FASTQ_STATS_MODE="${params.phase3_fastq_stats_mode}"
-    export PHASE3_WGS_CACHE_UPLOAD_WORKERS="${params.phase3_cache_upload_workers}"
-    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
-    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
-    export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
-    export PHASE3_WGS_FETCH_ONLY_ROLE="${role}"
-    export PHASE3_WGS_STAGE=align_sample
-    export PHASE3_WGS_SAMPLE_ROLE="${role}"
-    export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
-    export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
-    export PHASE3_WGS_PARALLEL_ALIGN=0
-    export PHASE3_WGS_ALIGNMENT_CACHE_WORKERS="${params.phase3_alignment_cache_workers}"
-    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
-    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
-    run() { echo "==> \$*"; "\$@"; }
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase3-wgs
-    run "\$PYTHON_BIN" -m diana_omics validate:phase3-wgs
-    rm -rf data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/fastq
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_align_sample --previous-workspace "${previous_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --role "${role}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
     """
 
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/results/phase3_wgs_smoke/stage_markers
-    echo '{"stub":true,"stage":"align_sample","role":"${role}"}' > workspace/results/phase3_wgs_smoke/stage_markers/align_${role}.json
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_align_sample --stub --workspace workspace --python-bin "${params.python_bin}" --role "${role}"
     """
 }
 
@@ -407,79 +203,13 @@ process PHASE3_DOWNSTREAM {
     script:
     """
     set -euo pipefail
-    if [ "${tumor_role}" != "tumor" ] || [ "${normal_role}" != "normal" ]; then
-        echo "Expected tumor then normal workspaces, got ${tumor_role} and ${normal_role}." >&2
-        exit 1
-    fi
-    rm -rf workspace
-    rsync -a "${tumor_workspace}/" workspace/
-    mkdir -p \
-        workspace/data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam \
-        workspace/results/phase3_wgs_smoke/logs \
-        workspace/results/phase3_wgs_smoke/stage_markers
-    rsync -a "${normal_workspace}/data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/" \
-        workspace/data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/
-    rsync -a "${normal_workspace}/results/phase3_wgs_smoke/logs/" workspace/results/phase3_wgs_smoke/logs/
-    rsync -a "${normal_workspace}/results/phase3_wgs_smoke/stage_markers/" workspace/results/phase3_wgs_smoke/stage_markers/
-    for reusable_source in "${tumor_workspace}" "${normal_workspace}"; do
-        for reusable_artifact in \
-            results/phase3_wgs_smoke/bam_validation_summary.csv \
-            results/phase3_wgs_smoke/bam_validation_summary.json \
-            results/phase3_wgs_smoke/coverage_cnv_bins.csv \
-            results/phase3_wgs_smoke/coverage_cnv_summary.csv \
-            results/phase3_wgs_smoke/coverage_cnv_summary.json \
-            results/phase3_wgs_smoke/seqc2_truth_depth.tsv \
-            results/phase3_wgs_smoke/sv_evidence_candidates.csv \
-            results/phase3_wgs_smoke/sv_evidence_summary.csv \
-            results/phase3_wgs_smoke/sv_evidence_summary.json
-        do
-            if [ -f "\${reusable_source}/\${reusable_artifact}" ]; then
-                mkdir -p "workspace/\$(dirname "\${reusable_artifact}")"
-                cp -a "\${reusable_source}/\${reusable_artifact}" "workspace/\${reusable_artifact}"
-            fi
-        done
-    done
-    cd workspace
-    export DIANA_OMICS_ROOT="\$PWD"
-    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/src"
-    export PYTHON_BIN="${params.python_bin}"
-    export PHASE3_WGS_STAGE=downstream
-    export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
-    export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
-    export PHASE3_WGS_PARALLEL_ALIGN=0
-    export PHASE3_WGS_ALIGNMENT_CACHE_WORKERS="${params.phase3_alignment_cache_workers}"
-    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
-    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
-    run() { echo "==> \$*"; "\$@"; }
-
-    run "\$PYTHON_BIN" -m diana_omics validate:phase3-wgs
-    if [ "${params.phase3_include_wes}" = "true" ]; then
-        run "\$PYTHON_BIN" -m diana_omics verify:orthogonal
-    else
-        echo "==> Skipping orthogonal WES verification because --phase3_include_wes is false."
-    fi
-    run "\$PYTHON_BIN" -m diana_omics build:panel
-    run "\$PYTHON_BIN" -m diana_omics analyze:hrd
-    run "\$PYTHON_BIN" -m diana_omics analyze:rna
-    run "\$PYTHON_BIN" -m diana_omics build:packet
-    if [ "${params.phase3_reads ?: '500000'}" = "full" ]; then
-        if [ "${params.phase3_include_wes}" = "true" ]; then
-            run "\$PYTHON_BIN" -m diana_omics verify:outputs
-        else
-            run "\$PYTHON_BIN" -m diana_omics verify:phase3-outputs
-        fi
-    else
-        echo "==> Skipping fatal full output verification for bounded Phase 3 developer run."
-        "\$PYTHON_BIN" -m diana_omics verify:outputs || true
-    fi
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_downstream --tumor-role "${tumor_role}" --normal-role "${normal_role}" --tumor-workspace "${tumor_workspace}" --normal-workspace "${normal_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-include-wes "${params.phase3_include_wes}"
     """
 
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/manifests workspace/results/phase3_wgs_smoke
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_downstream --stub --workspace workspace --python-bin "${params.python_bin}"
     """
 }
 
@@ -496,47 +226,13 @@ process PHASE3_SRA_BENCHMARK {
     script:
     """
     set -euo pipefail
-    SOURCE_DIR="${params.repo_dir}"
-    rm -rf workspace
-    mkdir -p workspace
-    rsync -a --delete --exclude '.git/' --exclude '.nextflow/' --exclude 'work/' --exclude 'nextflow-out/' "\${SOURCE_DIR%/}/" workspace/
-    cd workspace
-    export DIANA_OMICS_ROOT="\$PWD"
-    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/src"
-    export PYTHON_BIN="${params.python_bin}"
-    export AWS_CA_BUNDLE="\${AWS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}"
-    AWS_CLI="\$(command -v aws || true)"
-    S5CMD="\$(command -v s5cmd || true)"
-    if [ -z "\$AWS_CLI" ] && [ -x /opt/diana-aws/bin/aws ]; then
-        AWS_CLI=/opt/diana-aws/bin/aws
-    fi
-    if [ -z "\$AWS_CLI" ]; then
-        echo "AWS CLI is required for phase3_sra_benchmark." >&2
-        exit 1
-    fi
-
-    BYTES="${params.sra_benchmark_bytes}"
-    PARTS="${params.sra_benchmark_parts}"
-    RUNS="${params.sra_benchmark_runs}"
-    BUCKET="${params.phase3_sra_aws_bucket}"
-    CONCURRENCY="${params.phase3_fetch_concurrency}"
-    STRATEGY="${params.sra_benchmark_strategy}"
-    MATRIX="${params.sra_benchmark_matrix ?: ''}"
-    export AWS_CLI S5CMD BYTES PARTS RUNS BUCKET CONCURRENCY STRATEGY MATRIX
-
-    run() { echo "==> \$*"; "\$@"; }
-    run "\$PYTHON_BIN" -m diana_omics benchmark:sra-range
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_sra_benchmark --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --sra-benchmark-runs "${params.sra_benchmark_runs}" --sra-benchmark-bytes "${params.sra_benchmark_bytes}" --sra-benchmark-parts "${params.sra_benchmark_parts}" --sra-benchmark-strategy "${params.sra_benchmark_strategy}" --sra-benchmark-matrix "${params.sra_benchmark_matrix ?: ''}"
     """
 
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/results/phase3_wgs_smoke
-    cat > workspace/results/phase3_wgs_smoke/sra_benchmark.json <<'JSON'
-{"sourceMode":"aws_sra","stub":true}
-JSON
-    touch workspace/results/phase3_wgs_smoke/sra_benchmark.tsv
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_sra_benchmark --stub --workspace workspace --python-bin "${params.python_bin}"
     """
 }
 
@@ -554,101 +250,13 @@ process PHASE3_WGS {
     script:
     """
     set -euo pipefail
-    SOURCE_DIR="${params.repo_dir}"
-    rm -rf workspace
-    mkdir -p workspace
-    rsync -a --delete --exclude '.git/' --exclude '.nextflow/' --exclude 'work/' --exclude 'nextflow-out/' "\${SOURCE_DIR%/}/" workspace/
-    cd workspace
-    export DIANA_OMICS_ROOT="\$PWD"
-    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/src"
-    export PYTHON_BIN="${params.python_bin}"
-    export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
-    export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
-    export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
-    export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
-    export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
-    export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
-    export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
-    export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
-    export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
-    export PHASE3_WGS_S3_RANGE_RETRIES="${params.phase3_s3_range_retries}"
-    export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
-    export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
-    export PHASE3_WGS_FASTQ_STATS_MODE="${params.phase3_fastq_stats_mode}"
-    export PHASE3_WGS_CACHE_UPLOAD_WORKERS="${params.phase3_cache_upload_workers}"
-    export PHASE3_WGS_ALIGNMENT_CACHE_WORKERS="${params.phase3_alignment_cache_workers}"
-    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
-    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
-    export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
-    run() { echo "==> \$*"; "\$@"; }
-
-    run "\$PYTHON_BIN" -m diana_omics verify:plan
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase1
-    run "\$PYTHON_BIN" -m diana_omics fetch:raw-candidates
-    run "\$PYTHON_BIN" -m diana_omics audit:raw-tools
-    run "\$PYTHON_BIN" -m diana_omics build:diana-template
-    run "\$PYTHON_BIN" -m diana_omics verify:diana-raw
-    run "\$PYTHON_BIN" -m diana_omics build:raw-samplesheets
-    if [ "${params.phase3_prereq_mode}" = "full" ]; then
-        run "\$PYTHON_BIN" -m diana_omics smoke:raw
-        run "\$PYTHON_BIN" -m diana_omics build:alignment-smoke
-        run "\$PYTHON_BIN" -m diana_omics smoke:alignment
-        run "\$PYTHON_BIN" -m diana_omics fetch:human-reference-smoke
-        run "\$PYTHON_BIN" -m diana_omics smoke:human-reference
-    else
-        echo "==> Skipping raw/alignment/human-reference smoke prerequisites for Phase 3 WGS minimal mode."
-    fi
-    run "\$PYTHON_BIN" -m diana_omics fetch:full-reference-smoke
-    if [ "${params.phase3_prereq_mode}" = "full" ]; then
-        run "\$PYTHON_BIN" -m diana_omics smoke:full-reference
-    else
-        echo "==> Skipping full-reference smoke alignment for Phase 3 WGS minimal mode."
-    fi
-    run "\$PYTHON_BIN" -m diana_omics fetch:production-somatic
-    if [ "${params.phase3_prereq_mode}" = "full" ]; then
-        run "\$PYTHON_BIN" -m diana_omics smoke:production-somatic
-    else
-        echo "==> Skipping production somatic smoke for Phase 3 WGS minimal mode."
-    fi
-    if [ "${params.phase3_include_wes}" = "true" ]; then
-        run "\$PYTHON_BIN" -m diana_omics fetch:full-wes
-        run "\$PYTHON_BIN" -m diana_omics benchmark:full-wes
-    else
-        echo "==> Skipping full WES prerequisite for Phase 3 WGS; use --phase3_include_wes true for orthogonal WES ladder."
-    fi
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase3-wgs
-    run "\$PYTHON_BIN" -m diana_omics validate:phase3-wgs
-    if [ "${params.phase3_include_wes}" = "true" ]; then
-        run "\$PYTHON_BIN" -m diana_omics verify:orthogonal
-    else
-        echo "==> Skipping orthogonal WES verification because --phase3_include_wes is false."
-    fi
-    run "\$PYTHON_BIN" -m diana_omics build:panel
-    run "\$PYTHON_BIN" -m diana_omics analyze:hrd
-    run "\$PYTHON_BIN" -m diana_omics analyze:rna
-    run "\$PYTHON_BIN" -m diana_omics build:packet
-    if [ "${params.phase3_reads ?: '500000'}" = "full" ]; then
-        if [ "${params.phase3_include_wes}" = "true" ]; then
-            # Full WES ladder ran: the whole-pipeline output set must verify.
-            run "\$PYTHON_BIN" -m diana_omics verify:outputs
-        else
-            # WGS-only full run: the WES/orthogonal artifacts were intentionally
-            # skipped, so gate fatally on the Phase 3 WGS acceptance subset instead
-            # of letting the full verifier pass non-fatally.
-            run "\$PYTHON_BIN" -m diana_omics verify:phase3-outputs
-        fi
-    else
-        echo "==> Skipping fatal full output verification for bounded Phase 3 developer run."
-        "\$PYTHON_BIN" -m diana_omics verify:outputs || true
-    fi
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_wgs --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}" --phase3-include-wes "${params.phase3_include_wes}" --phase3-prereq-mode "${params.phase3_prereq_mode}"
     """
 
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_wgs --stub --workspace workspace --python-bin "${params.python_bin}"
     """
 }
 
@@ -666,74 +274,13 @@ process ALL_PUBLIC {
     script:
     """
     set -euo pipefail
-    SOURCE_DIR="${params.repo_dir}"
-    rm -rf workspace
-    mkdir -p workspace
-    rsync -a --delete --exclude '.git/' --exclude '.nextflow/' --exclude 'work/' --exclude 'nextflow-out/' "\${SOURCE_DIR%/}/" workspace/
-    cd workspace
-    export DIANA_OMICS_ROOT="\$PWD"
-    export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/src"
-    export PYTHON_BIN="${params.python_bin}"
-    export PHASE2F_THREADS="\${PHASE2F_THREADS:-8}"
-    export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
-    export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
-    export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
-    export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
-    export PHASE3_WGS_SOURCE_MODE="${params.phase3_source_mode}"
-    export PHASE3_WGS_SRA_AWS_BUCKET="${params.phase3_sra_aws_bucket}"
-    export PHASE3_WGS_SRA_THREADS="\${PHASE3_WGS_SRA_THREADS:-${task.cpus}}"
-    export PHASE3_WGS_S3_RANGE_CONCURRENCY="${params.phase3_s3_range_concurrency}"
-    export PHASE3_WGS_S3_RANGE_BYTES="${params.phase3_s3_range_bytes}"
-    export PHASE3_WGS_S3_RANGE_RETRIES="${params.phase3_s3_range_retries}"
-    export PHASE3_WGS_SRA_RUN_CONCURRENCY="${params.phase3_sra_run_concurrency}"
-    export PHASE3_WGS_SRA_COMMAND_RETRIES="${params.phase3_sra_command_retries}"
-    export PHASE3_WGS_FASTQ_STATS_MODE="${params.phase3_fastq_stats_mode}"
-    export PHASE3_WGS_CACHE_UPLOAD_WORKERS="${params.phase3_cache_upload_workers}"
-    export PHASE3_WGS_ALIGNMENT_CACHE_WORKERS="${params.phase3_alignment_cache_workers}"
-    export PHASE3_WGS_ASSET_CACHE_URI="${params.phase3_asset_cache_uri ?: ''}"
-    export PHASE3_WGS_ASSET_CACHE_MODE="${params.phase3_asset_cache_mode}"
-    export PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION="${params.phase3_delete_sra_after_conversion}"
-    run() { echo "==> \$*"; "\$@"; }
-
-    run "\$PYTHON_BIN" -m diana_omics verify:plan
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase1
-    run "\$PYTHON_BIN" -m diana_omics fetch:raw-candidates
-    run "\$PYTHON_BIN" -m diana_omics audit:raw-tools
-    run "\$PYTHON_BIN" -m diana_omics build:diana-template
-    run "\$PYTHON_BIN" -m diana_omics verify:diana-raw
-    run "\$PYTHON_BIN" -m diana_omics build:raw-samplesheets
-    run "\$PYTHON_BIN" -m diana_omics smoke:raw
-    run "\$PYTHON_BIN" -m diana_omics build:alignment-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:alignment
-    run "\$PYTHON_BIN" -m diana_omics fetch:human-reference-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:human-reference
-    run "\$PYTHON_BIN" -m diana_omics fetch:full-reference-smoke
-    run "\$PYTHON_BIN" -m diana_omics smoke:full-reference
-    run "\$PYTHON_BIN" -m diana_omics fetch:production-somatic
-    run "\$PYTHON_BIN" -m diana_omics smoke:production-somatic
-    run "\$PYTHON_BIN" -m diana_omics fetch:full-wes
-    run "\$PYTHON_BIN" -m diana_omics benchmark:full-wes
-    run "\$PYTHON_BIN" -m diana_omics fetch:phase3-wgs
-    run "\$PYTHON_BIN" -m diana_omics validate:phase3-wgs
-    run "\$PYTHON_BIN" -m diana_omics verify:orthogonal
-    run "\$PYTHON_BIN" -m diana_omics build:panel
-    run "\$PYTHON_BIN" -m diana_omics analyze:hrd
-    run "\$PYTHON_BIN" -m diana_omics analyze:rna
-    run "\$PYTHON_BIN" -m diana_omics build:packet
-    if [ "${params.phase3_reads ?: '500000'}" = "full" ]; then
-        run "\$PYTHON_BIN" -m diana_omics verify:outputs
-    else
-        echo "==> Skipping fatal full output verification for bounded Phase 3 developer run."
-        "\$PYTHON_BIN" -m diana_omics verify:outputs || true
-    fi
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process all_public --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
     """
 
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process all_public --stub --workspace workspace --python-bin "${params.python_bin}"
     """
 }
 

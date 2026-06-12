@@ -13,6 +13,7 @@ src/diana_omics/
   types.py               typed dictionaries and aliases
   utils.py               CSV/JSON/files/download/subprocess helpers
   alignment.py           alignment-oriented helpers
+  nextflow_process.py    testable Nextflow process plans and workspace glue
   commands/              one module per workflow command
 ```
 
@@ -24,7 +25,7 @@ The package can be run directly:
 PYTHONPATH=src python3 -m diana_omics verify:outputs
 ```
 
-Local, Docker, AWS, and deploy task aliases live in `diana_omics.workflow_tasks`, so they stay on the Python CLI surface instead of a separate JavaScript task runner.
+Local, Docker, AWS, and deploy task aliases live in `diana_omics.workflow_tasks`, so they stay on the Python CLI surface instead of a separate JavaScript task runner. Nextflow process sequencing lives in `diana_omics.nextflow_process`, which keeps workflow conditionals and workspace merge behavior unit-testable instead of buried in inline process scripts.
 
 ## Command Families
 
