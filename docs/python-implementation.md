@@ -114,6 +114,18 @@ External command-line tools do the bioinformatics heavy lifting:
 - `java`: runtime for GATK.
 - `gatk`: MarkDuplicates, Mutect2, FilterMutectCalls, contamination steps.
 
+## Observability
+
+Long-running commands should emit durable run artifacts, not just terminal text. The shared telemetry helper writes:
+
+- `events.jsonl` for stage events, cache hits/misses, command starts/ends, and heartbeat updates.
+- `otel_spans.jsonl` with trace IDs, span IDs, parent span IDs, start/end nanoseconds, duration, status, and attributes.
+- `resource_samples.jsonl` with load average, disk usage, and command process-tree CPU/RSS samples.
+- `heartbeat.json` with the latest stage and data-level progress.
+- `run_manifest.json` with the run ID, trace ID, status, and artifact paths.
+
+For `benchmark:full-wes`, these live under `results/full_wes_benchmark/logs/telemetry/<run-id>/`. Set `DIANA_OMICS_LOG_UPLOAD_URI=s3://bucket/prefix` to sync the telemetry directory to S3 after success or failure. A local path also works for a filesystem mirror. Set `DIANA_OMICS_TRACE_HEARTBEAT_SECONDS` to control command resource-sample cadence and `DIANA_OMICS_TELEMETRY=0` only for intentionally quiet developer runs.
+
 ## Why Not More Python Packages Yet
 
 The current implementation keeps the orchestration transparent and avoids adding heavy dependencies before the workflow stabilizes. That is useful for auditing, but it has limits:

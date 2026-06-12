@@ -4,17 +4,23 @@ import gzip
 import os
 import re
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
+from pathlib import Path
 from typing import Any, Optional
 
 from ..paths import path_from_root
+from ..telemetry import RunTelemetry, run_traced_command
 from ..utils import (
     bcftools_norm_ref_mismatch_count,
     capture_command,
     ensure_dir,
+    existing_output_current,
     iso_now,
     md5_file,
     parse_csv,
     quote_shell_arg,
+    read_json,
     read_text,
     round_value,
     run_command,
@@ -24,8 +30,14 @@ from ..utils import (
 )
 
 RESULTS_DIR = "results/full_wes_benchmark"
+VALIDATION_CACHE_KEY = "_validation_cache"
 FORCE = os.environ.get("PHASE2F_FORCE") == "1"
 THREADS = int(os.environ.get("PHASE2F_THREADS", "8"))
+BAM_SCAN_THREADS = max(1, int(os.environ.get("PHASE2F_BAM_SCAN_THREADS", str(max(1, THREADS // 2)))))
+FASTQ_VALIDATION_WORKERS = max(1, int(os.environ.get("PHASE2F_FASTQ_VALIDATION_WORKERS", str(min(4, THREADS)))))
+BAM_VALIDATION_WORKERS = max(1, int(os.environ.get("PHASE2F_BAM_VALIDATION_WORKERS", str(min(2, THREADS)))))
+REUSE_FASTQ_VALIDATION = os.environ.get("PHASE2F_REUSE_FASTQ_VALIDATION", "1") != "0"
+REUSE_BAM_VALIDATION = os.environ.get("PHASE2F_REUSE_BAM_VALIDATION", "1") != "0"
 MIN_TRUTH_DEPTH = int(os.environ.get("PHASE2F_MIN_TRUTH_DEPTH", "10"))
 MAX_TRUTH_VARIANTS = int(os.environ.get("PHASE2F_MAX_TRUTH_VARIANTS", "5000"))
 INTERVAL_PADDING = int(os.environ.get("PHASE2F_INTERVAL_PADDING", "100"))
@@ -149,7 +161,26 @@ def load_truth_variants(vcf_path: str, variant_type: str) -> list[dict[str, Any]
     return variants
 
 
-def normalize_vcf_for_comparison(vcf_path: str, reference_path: str, output_path: str, log_path: str) -> str:
+def run_tool_command(
+    command: str,
+    log_path: str,
+    telemetry: Optional[RunTelemetry],
+    span_name: str,
+    attributes: Optional[dict[str, Any]] = None,
+    parent_span_id: Optional[str] = None,
+) -> str:
+    if telemetry:
+        return run_traced_command(command, log_path, telemetry, span_name, attributes or {}, parent_span_id=parent_span_id)
+    return run_command(command, log_path)
+
+
+def normalize_vcf_for_comparison(
+    vcf_path: str,
+    reference_path: str,
+    output_path: str,
+    log_path: str,
+    telemetry: Optional[RunTelemetry] = None,
+) -> str:
     if FORCE or not file_non_empty(output_path):
         ensure_dir(path_from_root("/".join(output_path.split("/")[:-1])))
         # --check-ref x excludes records whose REF allele does not match the
@@ -157,11 +188,20 @@ def normalize_vcf_for_comparison(vcf_path: str, reference_path: str, output_path
         # (bcftools defaults to --check-ref e, which exits 255). A handful of
         # discordant sites outside the compared region are tolerated; a flood
         # means the wrong reference, so we fail closed below.
-        run_command(
+        run_tool_command(
             f"bcftools norm -m -both --check-ref x -f {quote_shell_arg(reference_path)} -Oz -o {quote_shell_arg(output_path)} {quote_shell_arg(vcf_path)}",
             log_path,
+            telemetry,
+            "vcf.normalize",
+            {"vcfPath": vcf_path, "outputPath": output_path},
         )
-        run_command(f"bcftools index -t -f {quote_shell_arg(output_path)}", f"{log_path}.index")
+        run_tool_command(
+            f"bcftools index -t -f {quote_shell_arg(output_path)}",
+            f"{log_path}.index",
+            telemetry,
+            "vcf.index",
+            {"vcfPath": output_path},
+        )
         mismatches = bcftools_norm_ref_mismatch_count(read_text(path_from_root(log_path)))
         if mismatches:
             print(f"[norm] {output_path}: bcftools norm excluded {mismatches} REF-mismatch record(s) vs {reference_path}", flush=True)
@@ -175,10 +215,12 @@ def normalize_vcf_for_comparison(vcf_path: str, reference_path: str, output_path
 
 def write_truth_position_bed(variants: list[dict[str, Any]], output_path: str) -> None:
     ensure_dir(path_from_root("/".join(output_path.split("/")[:-1])))
-    write_text(
-        path_from_root(output_path),
-        "\n".join(f"{variant['contig']}\t{int(variant['position']) - 1}\t{variant['position']}\t{variant['key']}" for variant in variants),
-    )
+    value = "\n".join(f"{variant['contig']}\t{int(variant['position']) - 1}\t{variant['position']}\t{variant['key']}" for variant in variants)
+    path = Path(path_from_root(output_path))
+    normalized = value if value.endswith("\n") else f"{value}\n"
+    if path.exists() and read_text(path) == normalized:
+        return
+    write_text(path, value)
 
 
 def read_reference_order(fai_path: str) -> dict[str, int]:
@@ -233,7 +275,11 @@ def write_benchmark_intervals(variants: list[dict[str, Any]], reference_order: d
         else:
             last["end"] = max(int(last["end"]), int(interval["end"]))
     ensure_dir(path_from_root("/".join(output_path.split("/")[:-1])))
-    write_text(path_from_root(output_path), "\n".join(f"{row['contig']}\t{row['start']}\t{row['end']}" for row in merged))
+    value = "\n".join(f"{row['contig']}\t{row['start']}\t{row['end']}" for row in merged)
+    path = Path(path_from_root(output_path))
+    normalized = value if value.endswith("\n") else f"{value}\n"
+    if not path.exists() or read_text(path) != normalized:
+        write_text(path, value)
     return merged
 
 
@@ -289,7 +335,290 @@ def tool_version(tool: str) -> str:
     return f"{result.stdout}{result.stderr}".strip()
 
 
-def main() -> None:
+def fastq_validation_outputs() -> list[str]:
+    return [f"{RESULTS_DIR}/full_wes_fastq_validation.csv", f"{RESULTS_DIR}/full_wes_fastq_validation.json"]
+
+
+def bam_validation_outputs() -> list[str]:
+    return [f"{RESULTS_DIR}/full_wes_bam_validation.csv", f"{RESULTS_DIR}/full_wes_bam_validation.json"]
+
+
+def brca_depth_path() -> str:
+    return f"{RESULTS_DIR}/logs/cache/brca_interval_depth.tsv"
+
+
+def truth_depth_path() -> str:
+    return f"{RESULTS_DIR}/logs/cache/seqc2_truth_depth.tsv"
+
+
+def validation_cache_status(row: dict[str, Any]) -> str:
+    return str(row.get(VALIDATION_CACHE_KEY, ""))
+
+
+def strip_internal_keys(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {key: value for key, value in row.items() if not key.startswith("_") and key != "validation_cache"}
+        for row in rows
+    ]
+
+
+def variant_key_sort_value(key: str) -> tuple[int, int, str, str]:
+    contig, position_text, ref, alt = key.split(":", 3)
+    contig_suffix = contig.removeprefix("chr")
+    if contig_suffix.isdigit():
+        contig_order = int(contig_suffix)
+    elif contig_suffix == "X":
+        contig_order = 23
+    elif contig_suffix == "Y":
+        contig_order = 24
+    else:
+        contig_order = 999
+    return (contig_order, int(position_text), ref, alt)
+
+
+def parse_flagstat_counts(text: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for line in text.splitlines():
+        primary = line.split(" + ", 1)[0]
+        if not primary.isdigit():
+            continue
+        count_value = int(primary)
+        if " in total " in line:
+            counts["total"] = count_value
+        elif " mapped (" in line and "primary mapped" not in line:
+            counts["mapped"] = count_value
+        elif " properly paired (" in line:
+            counts["properly_paired"] = count_value
+        elif " duplicates" in line and "primary duplicates" not in line:
+            counts["duplicates"] = count_value
+    return counts
+
+
+def validate_fastq_entry(row: dict[str, str], read: str) -> dict[str, Any]:
+    path = row[f"fastq_{read}"]
+    expected_md5 = row[f"fastq_{read}_md5"]
+    expected_bytes = int(row[f"fastq_{read}_bytes"])
+    actual_md5 = md5_file(path)
+    actual_bytes = path_from_root(path).stat().st_size
+    if actual_md5 != expected_md5 or actual_bytes != expected_bytes:
+        raise RuntimeError(f"{path} failed md5/byte validation.")
+    return {
+        "pair_id": row["pair_id"],
+        "sample": row["sample"],
+        "role": row["role"],
+        "run_accession": row["run_accession"],
+        "read": read,
+        "fastq_path": path,
+        "expected_md5": expected_md5,
+        "actual_md5": actual_md5,
+        "expected_bytes": expected_bytes,
+        "actual_bytes": actual_bytes,
+        "source_read_pairs": row["source_read_pairs"],
+        "status": "passed",
+        VALIDATION_CACHE_KEY: "computed",
+    }
+
+
+def reusable_fastq_rows(rows: list[dict[str, str]], telemetry: Optional[RunTelemetry]) -> Optional[list[dict[str, Any]]]:
+    if FORCE or not REUSE_FASTQ_VALIDATION:
+        return None
+    inputs = [row[f"fastq_{read}"] for row in rows for read in ("1", "2")]
+    if not existing_output_current(fastq_validation_outputs(), inputs):
+        return None
+    summary = read_json(path_from_root(f"{RESULTS_DIR}/full_wes_fastq_validation.json"))
+    cached_rows = summary.get("rows", [])
+    if summary.get("status") != "passed" or len(cached_rows) != len(inputs):
+        return None
+    expected_by_path = {row[f"fastq_{read}"]: (row[f"fastq_{read}_md5"], int(row[f"fastq_{read}_bytes"])) for row in rows for read in ("1", "2")}
+    reusable_rows: list[dict[str, Any]] = []
+    for cached in cached_rows:
+        path = str(cached.get("fastq_path", ""))
+        if path not in expected_by_path:
+            return None
+        expected_md5, expected_bytes = expected_by_path[path]
+        actual_path = path_from_root(path)
+        if not actual_path.exists() or actual_path.stat().st_size != expected_bytes:
+            return None
+        if cached.get("actual_md5") != expected_md5 or int(cached.get("actual_bytes") or 0) != expected_bytes:
+            return None
+        reusable_rows.append({**cached, VALIDATION_CACHE_KEY: "reused"})
+    if telemetry:
+        telemetry.event("cache.reuse", {"stage": "fastq_validation", "rows": len(reusable_rows)})
+    return reusable_rows
+
+
+def validate_fastqs(rows: list[dict[str, str]], telemetry: Optional[RunTelemetry]) -> list[dict[str, Any]]:
+    cached = reusable_fastq_rows(rows, telemetry)
+    if cached is not None:
+        return cached
+    entries = [(row, read) for row in rows for read in ("1", "2")]
+    if telemetry:
+        telemetry.event("cache.miss", {"stage": "fastq_validation", "files": len(entries)})
+    with ThreadPoolExecutor(max_workers=min(FASTQ_VALIDATION_WORKERS, len(entries))) as pool:
+        return list(pool.map(lambda item: validate_fastq_entry(item[0], item[1]), entries))
+
+
+def command_text_current(
+    command: str,
+    output_path: str,
+    log_path: str,
+    inputs: list[str],
+    telemetry: Optional[RunTelemetry],
+    span_name: str,
+    attributes: Optional[dict[str, Any]] = None,
+) -> str:
+    if not FORCE and existing_output_current([output_path], inputs):
+        if telemetry:
+            telemetry.event("cache.reuse", {"stage": span_name, "outputPath": output_path})
+        return read_text(path_from_root(output_path))
+    stdout = run_tool_command(command, log_path, telemetry, span_name, attributes)
+    write_text(path_from_root(output_path), stdout)
+    return stdout
+
+
+def log_text_current(
+    command: str,
+    log_path: str,
+    inputs: list[str],
+    telemetry: Optional[RunTelemetry],
+    span_name: str,
+    attributes: Optional[dict[str, Any]] = None,
+    parent_span_id: Optional[str] = None,
+) -> str:
+    if not FORCE and existing_output_current([log_path], inputs):
+        if telemetry:
+            telemetry.event("cache.reuse", {"stage": span_name, "logPath": log_path})
+        return read_text(path_from_root(log_path))
+    return run_tool_command(command, log_path, telemetry, span_name, attributes, parent_span_id=parent_span_id)
+
+
+def alignment_flag_counts(
+    reference_id: str,
+    row: dict[str, str],
+    telemetry: Optional[RunTelemetry],
+    parent_span_id: Optional[str] = None,
+) -> dict[str, int]:
+    flagstat_log = f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.dedup_flagstat.txt"
+    text = log_text_current(
+        f"samtools flagstat -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['dedup_bam'])}",
+        flagstat_log,
+        [row["dedup_bam"], row["dedup_bai"]],
+        telemetry,
+        "bam.flagstat",
+        {"role": row["role"], "runAccession": row["run_accession"]},
+        parent_span_id=parent_span_id,
+    )
+    counts = parse_flagstat_counts(text)
+    if {"total", "mapped", "properly_paired", "duplicates"} <= counts.keys():
+        return counts
+    raise RuntimeError(f"Could not parse samtools flagstat counts for {row['dedup_bam']}")
+
+
+def reusable_bam_validation_rows(rows: list[dict[str, str]], telemetry: Optional[RunTelemetry]) -> Optional[list[dict[str, Any]]]:
+    if FORCE or not REUSE_BAM_VALIDATION:
+        return None
+    inputs = [path for row in rows for path in [row["dedup_bam"], row.get("dedup_bai", ""), row.get("duplicate_metrics_path", "")]]
+    if not existing_output_current(bam_validation_outputs(), inputs):
+        return None
+    summary = read_json(path_from_root(f"{RESULTS_DIR}/full_wes_bam_validation.json"))
+    cached_rows = summary.get("rows", [])
+    if summary.get("status") != "passed" or len(cached_rows) != len(rows):
+        return None
+    cached_by_role = {row.get("role"): row for row in cached_rows}
+    reusable_rows: list[dict[str, Any]] = []
+    for row in rows:
+        cached = cached_by_role.get(row["role"])
+        if not cached:
+            return None
+        if cached.get("run_accession") != row["run_accession"] or cached.get("dedup_bam") != row["dedup_bam"]:
+            return None
+        bam_path = path_from_root(row["dedup_bam"])
+        bai_path = path_from_root(row["dedup_bai"])
+        if not bam_path.exists() or not bai_path.exists() or not quickcheck(row["dedup_bam"]):
+            return None
+        cached_size = cached.get("bam_size_bytes")
+        if cached_size not in ("", None) and int(cached_size) != bam_path.stat().st_size:
+            return None
+        reusable_rows.append({**cached, VALIDATION_CACHE_KEY: "reused"})
+    if telemetry:
+        telemetry.event("cache.reuse", {"stage": "bam_validation", "rows": len(reusable_rows)})
+    return reusable_rows
+
+
+def validate_bam_row(
+    reference_id: str,
+    row: dict[str, str],
+    telemetry: Optional[RunTelemetry],
+    parent_span_id: Optional[str] = None,
+) -> dict[str, Any]:
+    header_state = parse_header(capture_command(f"samtools view -H {quote_shell_arg(row['dedup_bam'])}"), row)
+    flag_counts = alignment_flag_counts(reference_id, row, telemetry, parent_span_id)
+    total_alignments = flag_counts["total"]
+    mapped_alignments = flag_counts["mapped"]
+    properly_paired_alignments = flag_counts["properly_paired"]
+    duplicate_alignments = flag_counts["duplicates"]
+    brca_interval_alignments = count(
+        f"samtools view -@ {BAM_SCAN_THREADS} -c -L {quote_shell_arg(row['brca_interval_bed_path'])} {quote_shell_arg(row['dedup_bam'])}"
+    )
+    duplicate_metrics = parse_duplicate_metrics(row["duplicate_metrics_path"])
+    status = (
+        "passed"
+        if quickcheck(row["dedup_bam"])
+        and path_from_root(row["dedup_bai"]).exists()
+        and header_state["sortOrder"] == "coordinate"
+        and header_state["readGroupPresent"]
+        and mapped_alignments > 0
+        and brca_interval_alignments > 0
+        else "failed"
+    )
+    return {
+        "pair_id": row["pair_id"],
+        "reference_id": row["reference_id"],
+        "assembly": row["assembly"],
+        "genome_build": row["genome_build"],
+        "role": row["role"],
+        "run_accession": row["run_accession"],
+        "sample": row["sample"],
+        "source_read_pairs": row["source_read_pairs"],
+        "raw_bam": row["raw_bam"],
+        "dedup_bam": row["dedup_bam"],
+        "dedup_bai": row["dedup_bai"],
+        "dedup_bam_exists": "yes" if path_from_root(row["dedup_bam"]).exists() else "no",
+        "dedup_bai_exists": "yes" if path_from_root(row["dedup_bai"]).exists() else "no",
+        "quickcheck": "passed" if quickcheck(row["dedup_bam"]) else "failed",
+        "sort_order": header_state["sortOrder"],
+        "read_group_present": "yes" if header_state["readGroupPresent"] else "no",
+        "read_group_count": header_state["readGroupCount"],
+        "reference_contig_count": len(header_state["contigs"]),
+        "total_alignments": total_alignments,
+        "mapped_alignments": mapped_alignments,
+        "mapped_fraction": round_value(mapped_alignments / total_alignments if total_alignments else None, 4),
+        "properly_paired_alignments": properly_paired_alignments,
+        "properly_paired_fraction": round_value(properly_paired_alignments / total_alignments if total_alignments else None, 4),
+        "duplicate_alignments": duplicate_alignments,
+        "duplicate_fraction": round_value(duplicate_alignments / total_alignments if total_alignments else None, 4),
+        "picard_percent_duplication": duplicate_metrics.get("PERCENT_DUPLICATION", ""),
+        "brca_interval_alignments": brca_interval_alignments,
+        "bam_size_bytes": path_from_root(row["dedup_bam"]).stat().st_size,
+        "duplicate_metrics_path": row["duplicate_metrics_path"],
+        "status": status,
+        "caveat": row["caveat"],
+        VALIDATION_CACHE_KEY: "computed",
+    }
+
+
+def validate_bam_rows(rows: list[dict[str, str]], reference_id: str, telemetry: Optional[RunTelemetry]) -> list[dict[str, Any]]:
+    cached = reusable_bam_validation_rows(rows, telemetry)
+    if cached is not None:
+        return cached
+    if telemetry:
+        telemetry.event("cache.miss", {"stage": "bam_validation", "rows": len(rows)})
+    parent_span_id = telemetry.current_span_id() if telemetry else None
+    with ThreadPoolExecutor(max_workers=min(BAM_VALIDATION_WORKERS, len(rows))) as pool:
+        return list(pool.map(lambda row: validate_bam_row(reference_id, row, telemetry, parent_span_id), rows))
+
+
+def run_benchmark(telemetry: Optional[RunTelemetry] = None) -> dict[str, Any]:
     ensure_dir(path_from_root(RESULTS_DIR))
     ensure_dir(path_from_root(f"{RESULTS_DIR}/logs"))
     rows = parse_csv(read_text(path_from_root("manifests/full_wes_benchmark_samplesheet.csv")))
@@ -312,149 +641,134 @@ def main() -> None:
     tumor_pileups = f"{metrics_dir}/{tumor['run_accession']}.tumor.getpileupsummaries.table"
     normal_pileups = f"{metrics_dir}/{normal['run_accession']}.normal.getpileupsummaries.table"
     contamination_table = f"{metrics_dir}/hcc1395.calculate_contamination.table"
+    if telemetry:
+        telemetry.heartbeat(
+            "setup",
+            {
+                "referenceId": reference_id,
+                "pairId": tumor["pair_id"],
+                "threads": THREADS,
+                "bamScanThreads": BAM_SCAN_THREADS,
+                "fastqValidationWorkers": FASTQ_VALIDATION_WORKERS,
+                "bamValidationWorkers": BAM_VALIDATION_WORKERS,
+                "force": FORCE,
+            },
+        )
 
-    fastq_rows: list[dict[str, Any]] = []
-    for row in rows:
-        for read in ("1", "2"):
-            path = row[f"fastq_{read}"]
-            expected_md5 = row[f"fastq_{read}_md5"]
-            expected_bytes = int(row[f"fastq_{read}_bytes"])
-            actual_md5 = md5_file(path)
-            actual_bytes = path_from_root(path).stat().st_size
-            if actual_md5 != expected_md5 or actual_bytes != expected_bytes:
-                raise RuntimeError(f"{path} failed md5/byte validation.")
-            fastq_rows.append(
+    with telemetry.span("fastq.validation", {"files": 4}) if telemetry else nullcontext():
+        fastq_rows = validate_fastqs(rows, telemetry)
+        if telemetry:
+            telemetry.heartbeat(
+                "fastq.validation",
                 {
-                    "pair_id": row["pair_id"],
-                    "sample": row["sample"],
-                    "role": row["role"],
-                    "run_accession": row["run_accession"],
-                    "read": read,
-                    "fastq_path": path,
-                    "expected_md5": expected_md5,
-                    "actual_md5": actual_md5,
-                    "expected_bytes": expected_bytes,
-                    "actual_bytes": actual_bytes,
-                    "source_read_pairs": row["source_read_pairs"],
                     "status": "passed",
-                }
+                    "files": len(fastq_rows),
+                    "bytes": sum(int(row.get("actual_bytes") or 0) for row in fastq_rows),
+                    "cacheRows": sum(1 for row in fastq_rows if validation_cache_status(row) == "reused"),
+                },
             )
-    write_csv(path_from_root(f"{RESULTS_DIR}/full_wes_fastq_validation.csv"), fastq_rows)
+    fastq_artifact_rows = strip_internal_keys(fastq_rows)
+    write_csv(path_from_root(f"{RESULTS_DIR}/full_wes_fastq_validation.csv"), fastq_artifact_rows)
     write_json(
-        path_from_root(f"{RESULTS_DIR}/full_wes_fastq_validation.json"), {"generatedAt": iso_now(), "status": "passed", "rows": fastq_rows}
+        path_from_root(f"{RESULTS_DIR}/full_wes_fastq_validation.json"),
+        {"generatedAt": iso_now(), "status": "passed", "rows": fastq_artifact_rows},
     )
 
-    for row in rows:
-        ensure_dir(path_from_root("/".join(row["raw_bam"].split("/")[:-1])))
-        ensure_dir(path_from_root("/".join(row["duplicate_metrics_path"].split("/")[:-1])))
-        if FORCE or not quickcheck(row["raw_bam"]):
-            align_command = (
-                "set -o pipefail; "
-                f"bwa mem -t {THREADS} -R {quote_shell_arg(read_group(row))} {quote_shell_arg(row['reference_path'])} "
-                f"{quote_shell_arg(row['fastq_1'])} {quote_shell_arg(row['fastq_2'])} | "
-                f"samtools sort -@ {THREADS} -o {quote_shell_arg(row['raw_bam'])} -"
+    with telemetry.span("bam.prepare", {"samples": len(rows)}) if telemetry else nullcontext():
+        for row in rows:
+            ensure_dir(path_from_root("/".join(row["raw_bam"].split("/")[:-1])))
+            ensure_dir(path_from_root("/".join(row["duplicate_metrics_path"].split("/")[:-1])))
+            if FORCE or not quickcheck(row["raw_bam"]):
+                align_command = (
+                    "set -o pipefail; "
+                    f"bwa mem -t {THREADS} -R {quote_shell_arg(read_group(row))} {quote_shell_arg(row['reference_path'])} "
+                    f"{quote_shell_arg(row['fastq_1'])} {quote_shell_arg(row['fastq_2'])} | "
+                    f"samtools sort -@ {THREADS} -o {quote_shell_arg(row['raw_bam'])} -"
+                )
+                run_tool_command(
+                    align_command,
+                    f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.full_wes_align.log",
+                    telemetry,
+                    "bam.align",
+                    {"role": row["role"], "runAccession": row["run_accession"]},
+                )
+            should_mark_duplicates = FORCE or not quickcheck(row["dedup_bam"]) or not path_from_root(row["duplicate_metrics_path"]).exists()
+            if should_mark_duplicates:
+                run_tool_command(
+                    " ".join(
+                        [
+                            f"{quote_shell_arg(row['java_path'])} -Xmx12g -jar {quote_shell_arg(row['gatk_jar_path'])} MarkDuplicates",
+                            f"-I {quote_shell_arg(row['raw_bam'])}",
+                            f"-O {quote_shell_arg(row['dedup_bam'])}",
+                            f"-M {quote_shell_arg(row['duplicate_metrics_path'])}",
+                            "--VALIDATION_STRINGENCY SILENT",
+                        ]
+                    ),
+                    f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.mark_duplicates.log",
+                    telemetry,
+                    "bam.mark_duplicates",
+                    {"role": row["role"], "runAccession": row["run_accession"]},
+                )
+                run_tool_command(
+                    f"samtools index -@ {THREADS} -o {quote_shell_arg(row['dedup_bai'])} {quote_shell_arg(row['dedup_bam'])}",
+                    f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.dedup_index.log",
+                    telemetry,
+                    "bam.index",
+                    {"role": row["role"], "runAccession": row["run_accession"]},
+                )
+            elif not path_from_root(row["dedup_bai"]).exists():
+                run_tool_command(
+                    f"samtools index -@ {THREADS} -o {quote_shell_arg(row['dedup_bai'])} {quote_shell_arg(row['dedup_bam'])}",
+                    f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.dedup_index.log",
+                    telemetry,
+                    "bam.index",
+                    {"role": row["role"], "runAccession": row["run_accession"]},
+                )
+            log_text_current(
+                f"samtools stats -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['dedup_bam'])}",
+                f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.dedup_stats.txt",
+                [row["dedup_bam"], row["dedup_bai"]],
+                telemetry,
+                "bam.stats",
+                {"role": row["role"], "runAccession": row["run_accession"]},
             )
-            run_command(align_command, f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.full_wes_align.log")
-        should_mark_duplicates = FORCE or not quickcheck(row["dedup_bam"]) or not path_from_root(row["duplicate_metrics_path"]).exists()
-        if should_mark_duplicates:
-            run_command(
-                " ".join(
-                    [
-                        f"{quote_shell_arg(row['java_path'])} -Xmx12g -jar {quote_shell_arg(row['gatk_jar_path'])} MarkDuplicates",
-                        f"-I {quote_shell_arg(row['raw_bam'])}",
-                        f"-O {quote_shell_arg(row['dedup_bam'])}",
-                        f"-M {quote_shell_arg(row['duplicate_metrics_path'])}",
-                        "--VALIDATION_STRINGENCY SILENT",
-                    ]
-                ),
-                f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.mark_duplicates.log",
-            )
-            run_command(
-                f"samtools index -@ {THREADS} -o {quote_shell_arg(row['dedup_bai'])} {quote_shell_arg(row['dedup_bam'])}",
-                f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.dedup_index.log",
-            )
-        elif not path_from_root(row["dedup_bai"]).exists():
-            run_command(
-                f"samtools index -@ {THREADS} -o {quote_shell_arg(row['dedup_bai'])} {quote_shell_arg(row['dedup_bam'])}",
-                f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.dedup_index.log",
-            )
-        run_command(
-            f"samtools flagstat {quote_shell_arg(row['dedup_bam'])}",
-            f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.dedup_flagstat.txt",
-        )
-        run_command(
-            f"samtools stats {quote_shell_arg(row['dedup_bam'])}",
-            f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.dedup_stats.txt",
-        )
 
-    bam_rows: list[dict[str, Any]] = []
-    for row in rows:
-        header_state = parse_header(capture_command(f"samtools view -H {quote_shell_arg(row['dedup_bam'])}"), row)
-        total_alignments = count(f"samtools view -c {quote_shell_arg(row['dedup_bam'])}")
-        mapped_alignments = count(f"samtools view -c -F 4 {quote_shell_arg(row['dedup_bam'])}")
-        properly_paired_alignments = count(f"samtools view -c -f 2 {quote_shell_arg(row['dedup_bam'])}")
-        duplicate_alignments = count(f"samtools view -c -f 1024 {quote_shell_arg(row['dedup_bam'])}")
-        brca_interval_alignments = count(
-            f"samtools view -c -L {quote_shell_arg(row['brca_interval_bed_path'])} {quote_shell_arg(row['dedup_bam'])}"
-        )
-        duplicate_metrics = parse_duplicate_metrics(row["duplicate_metrics_path"])
-        status = (
-            "passed"
-            if quickcheck(row["dedup_bam"])
-            and path_from_root(row["dedup_bai"]).exists()
-            and header_state["sortOrder"] == "coordinate"
-            and header_state["readGroupPresent"]
-            and mapped_alignments > 0
-            and brca_interval_alignments > 0
-            else "failed"
-        )
-        bam_rows.append(
-            {
-                "pair_id": row["pair_id"],
-                "reference_id": row["reference_id"],
-                "assembly": row["assembly"],
-                "genome_build": row["genome_build"],
-                "role": row["role"],
-                "run_accession": row["run_accession"],
-                "sample": row["sample"],
-                "source_read_pairs": row["source_read_pairs"],
-                "raw_bam": row["raw_bam"],
-                "dedup_bam": row["dedup_bam"],
-                "dedup_bai": row["dedup_bai"],
-                "dedup_bam_exists": "yes" if path_from_root(row["dedup_bam"]).exists() else "no",
-                "dedup_bai_exists": "yes" if path_from_root(row["dedup_bai"]).exists() else "no",
-                "quickcheck": "passed" if quickcheck(row["dedup_bam"]) else "failed",
-                "sort_order": header_state["sortOrder"],
-                "read_group_present": "yes" if header_state["readGroupPresent"] else "no",
-                "read_group_count": header_state["readGroupCount"],
-                "reference_contig_count": len(header_state["contigs"]),
-                "total_alignments": total_alignments,
-                "mapped_alignments": mapped_alignments,
-                "mapped_fraction": round_value(mapped_alignments / total_alignments if total_alignments else None, 4),
-                "properly_paired_alignments": properly_paired_alignments,
-                "properly_paired_fraction": round_value(properly_paired_alignments / total_alignments if total_alignments else None, 4),
-                "duplicate_alignments": duplicate_alignments,
-                "duplicate_fraction": round_value(duplicate_alignments / total_alignments if total_alignments else None, 4),
-                "picard_percent_duplication": duplicate_metrics.get("PERCENT_DUPLICATION", ""),
-                "brca_interval_alignments": brca_interval_alignments,
-                "bam_size_bytes": path_from_root(row["dedup_bam"]).stat().st_size,
-                "duplicate_metrics_path": row["duplicate_metrics_path"],
-                "status": status,
-                "caveat": row["caveat"],
-            }
-        )
+    with telemetry.span("bam.validation", {"samples": len(rows)}) if telemetry else nullcontext():
+        bam_rows = validate_bam_rows(rows, reference_id, telemetry)
+        if telemetry:
+            telemetry.heartbeat(
+                "bam.validation",
+                {
+                    "status": "passed" if all(row["status"] == "passed" for row in bam_rows) else "failed",
+                    "samples": len(bam_rows),
+                    "cacheRows": sum(1 for row in bam_rows if validation_cache_status(row) == "reused"),
+                    "totalAlignments": sum(int(row.get("total_alignments") or 0) for row in bam_rows),
+                },
+            )
     bam_status = "passed" if all(row["status"] == "passed" for row in bam_rows) else "failed"
-    write_csv(path_from_root(f"{RESULTS_DIR}/full_wes_bam_validation.csv"), bam_rows)
+    bam_artifact_rows = strip_internal_keys(bam_rows)
+    write_csv(path_from_root(f"{RESULTS_DIR}/full_wes_bam_validation.csv"), bam_artifact_rows)
     write_json(
-        path_from_root(f"{RESULTS_DIR}/full_wes_bam_validation.json"), {"generatedAt": iso_now(), "status": bam_status, "rows": bam_rows}
+        path_from_root(f"{RESULTS_DIR}/full_wes_bam_validation.json"),
+        {"generatedAt": iso_now(), "status": bam_status, "rows": bam_artifact_rows},
     )
     if bam_status != "passed":
         raise RuntimeError("Full WES BAM validation failed.")
 
-    brca_depth = capture_command(
-        f"samtools depth -a -b {quote_shell_arg(tumor['brca_interval_bed_path'])} {quote_shell_arg(tumor['dedup_bam'])} {quote_shell_arg(normal['dedup_bam'])}"
-    )
-    brca_depth_summary = parse_depth_summary(brca_depth)
+    with telemetry.span("depth.brca_interval", {"intervalBed": tumor["brca_interval_bed_path"]}) if telemetry else nullcontext():
+        brca_depth = command_text_current(
+            f"samtools depth -@ {BAM_SCAN_THREADS} -a -b {quote_shell_arg(tumor['brca_interval_bed_path'])} "
+            f"{quote_shell_arg(tumor['dedup_bam'])} {quote_shell_arg(normal['dedup_bam'])}",
+            brca_depth_path(),
+            f"{RESULTS_DIR}/logs/{reference_id}.brca_interval_depth.log",
+            [tumor["brca_interval_bed_path"], tumor["dedup_bam"], tumor["dedup_bai"], normal["dedup_bam"], normal["dedup_bai"]],
+            telemetry,
+            "depth.brca_interval",
+            {"intervalBed": tumor["brca_interval_bed_path"]},
+        )
+        brca_depth_summary = parse_depth_summary(brca_depth)
+        if telemetry:
+            telemetry.heartbeat("depth.brca_interval", brca_depth_summary)
     truth_snv_path = "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz"
     truth_indel_path = "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sINDEL_in_HC_regions_v1.2.1.vcf.gz"
     normalized_truth_snv_path = normalize_vcf_for_comparison(
@@ -462,20 +776,39 @@ def main() -> None:
         tumor["reference_path"],
         f"{vcf_dir}/seqc2.high_confidence_sSNV.normalized.vcf.gz",
         f"{RESULTS_DIR}/logs/{reference_id}.truth_snv.norm.log",
+        telemetry,
     )
     normalized_truth_indel_path = normalize_vcf_for_comparison(
         truth_indel_path,
         tumor["reference_path"],
         f"{vcf_dir}/seqc2.high_confidence_sINDEL.normalized.vcf.gz",
         f"{RESULTS_DIR}/logs/{reference_id}.truth_indel.norm.log",
+        telemetry,
     )
     truth_variants = load_truth_variants(normalized_truth_snv_path, "snv") + load_truth_variants(normalized_truth_indel_path, "indel")
     all_truth_keys = {str(variant["key"]) for variant in truth_variants}
     write_truth_position_bed(truth_variants, truth_position_bed)
-    truth_depth_text = capture_command(
-        f"samtools depth -a -b {quote_shell_arg(truth_position_bed)} {quote_shell_arg(tumor['dedup_bam'])} {quote_shell_arg(normal['dedup_bam'])}"
-    )
-    covered_truth_variants = pick_covered_truth_variants(truth_variants, truth_depth_text)
+    with telemetry.span("depth.truth_positions", {"truthVariants": len(truth_variants)}) if telemetry else nullcontext():
+        truth_depth_text = command_text_current(
+            f"samtools depth -@ {BAM_SCAN_THREADS} -a -b {quote_shell_arg(truth_position_bed)} "
+            f"{quote_shell_arg(tumor['dedup_bam'])} {quote_shell_arg(normal['dedup_bam'])}",
+            truth_depth_path(),
+            f"{RESULTS_DIR}/logs/{reference_id}.truth_depth.log",
+            [truth_position_bed, tumor["dedup_bam"], tumor["dedup_bai"], normal["dedup_bam"], normal["dedup_bai"]],
+            telemetry,
+            "depth.truth_positions",
+            {"truthVariantPositions": len(truth_variants)},
+        )
+        covered_truth_variants = pick_covered_truth_variants(truth_variants, truth_depth_text)
+        if telemetry:
+            telemetry.heartbeat(
+                "depth.truth_positions",
+                {
+                    "truthVariants": len(truth_variants),
+                    "coveredTruthVariants": len(covered_truth_variants),
+                    "minTruthDepth": MIN_TRUTH_DEPTH,
+                },
+            )
     if not covered_truth_variants:
         raise RuntimeError("No covered truth variants passed the Phase 2F depth threshold.")
     benchmark_interval_rows = write_benchmark_intervals(
@@ -517,79 +850,128 @@ def main() -> None:
     )
     contamination_status = "not_run"
     contamination_reason = ""
-    if contamination_inputs_ready:
-        try:
-            if FORCE or not file_non_empty(tumor_pileups):
-                run_command(
-                    f"{quote_shell_arg(tumor['java_path'])} -Xmx8g -jar {quote_shell_arg(tumor['gatk_jar_path'])} GetPileupSummaries -R {quote_shell_arg(tumor['reference_path'])} -I {quote_shell_arg(tumor['dedup_bam'])} -V {quote_shell_arg(tumor['common_biallelic_resource_path'])} -L {quote_shell_arg(contamination_intervals)} -O {quote_shell_arg(tumor_pileups)}",
-                    f"{RESULTS_DIR}/logs/{reference_id}.{tumor['run_accession']}.tumor.get_pileup_summaries.log",
-                )
-            if FORCE or not file_non_empty(normal_pileups):
-                run_command(
-                    f"{quote_shell_arg(normal['java_path'])} -Xmx8g -jar {quote_shell_arg(normal['gatk_jar_path'])} GetPileupSummaries -R {quote_shell_arg(normal['reference_path'])} -I {quote_shell_arg(normal['dedup_bam'])} -V {quote_shell_arg(normal['common_biallelic_resource_path'])} -L {quote_shell_arg(contamination_intervals)} -O {quote_shell_arg(normal_pileups)}",
-                    f"{RESULTS_DIR}/logs/{reference_id}.{normal['run_accession']}.normal.get_pileup_summaries.log",
-                )
-            if FORCE or not file_non_empty(contamination_table):
-                run_command(
-                    f"{quote_shell_arg(tumor['java_path'])} -Xmx8g -jar {quote_shell_arg(tumor['gatk_jar_path'])} CalculateContamination -I {quote_shell_arg(tumor_pileups)} -matched {quote_shell_arg(normal_pileups)} -O {quote_shell_arg(contamination_table)}",
-                    f"{RESULTS_DIR}/logs/{reference_id}.calculate_contamination.log",
-                )
-            contamination_status = "passed" if file_non_empty(contamination_table) else "failed"
-        except RuntimeError as error:
+    with telemetry.span("contamination", {"inputsReady": contamination_inputs_ready}) if telemetry else nullcontext():
+        if contamination_inputs_ready:
+            try:
+                if FORCE or not file_non_empty(tumor_pileups):
+                    run_tool_command(
+                        f"{quote_shell_arg(tumor['java_path'])} -Xmx8g -jar {quote_shell_arg(tumor['gatk_jar_path'])} GetPileupSummaries -R {quote_shell_arg(tumor['reference_path'])} -I {quote_shell_arg(tumor['dedup_bam'])} -V {quote_shell_arg(tumor['common_biallelic_resource_path'])} -L {quote_shell_arg(contamination_intervals)} -O {quote_shell_arg(tumor_pileups)}",
+                        f"{RESULTS_DIR}/logs/{reference_id}.{tumor['run_accession']}.tumor.get_pileup_summaries.log",
+                        telemetry,
+                        "contamination.tumor_pileups",
+                        {"runAccession": tumor["run_accession"]},
+                    )
+                if FORCE or not file_non_empty(normal_pileups):
+                    run_tool_command(
+                        f"{quote_shell_arg(normal['java_path'])} -Xmx8g -jar {quote_shell_arg(normal['gatk_jar_path'])} GetPileupSummaries -R {quote_shell_arg(normal['reference_path'])} -I {quote_shell_arg(normal['dedup_bam'])} -V {quote_shell_arg(normal['common_biallelic_resource_path'])} -L {quote_shell_arg(contamination_intervals)} -O {quote_shell_arg(normal_pileups)}",
+                        f"{RESULTS_DIR}/logs/{reference_id}.{normal['run_accession']}.normal.get_pileup_summaries.log",
+                        telemetry,
+                        "contamination.normal_pileups",
+                        {"runAccession": normal["run_accession"]},
+                    )
+                if FORCE or not file_non_empty(contamination_table):
+                    run_tool_command(
+                        f"{quote_shell_arg(tumor['java_path'])} -Xmx8g -jar {quote_shell_arg(tumor['gatk_jar_path'])} CalculateContamination -I {quote_shell_arg(tumor_pileups)} -matched {quote_shell_arg(normal_pileups)} -O {quote_shell_arg(contamination_table)}",
+                        f"{RESULTS_DIR}/logs/{reference_id}.calculate_contamination.log",
+                        telemetry,
+                        "contamination.calculate",
+                        {"tumorPileups": tumor_pileups, "normalPileups": normal_pileups},
+                    )
+                contamination_status = "passed" if file_non_empty(contamination_table) else "failed"
+            except RuntimeError as error:
+                contamination_status = "not_assessable"
+                contamination_reason = str(error)
+        else:
             contamination_status = "not_assessable"
-            contamination_reason = str(error)
-    else:
-        contamination_status = "not_assessable"
-        contamination_reason = "Common-biallelic resource, index, or contamination intervals were unavailable."
+            contamination_reason = "Common-biallelic resource, index, or contamination intervals were unavailable."
+        if telemetry:
+            telemetry.heartbeat("contamination", {"status": contamination_status, "reason": contamination_reason})
     contamination_estimate = parse_contamination_table(contamination_table)
 
     ensure_dir(path_from_root(vcf_dir))
-    mutect2_ready = not FORCE and path_from_root(filtered_vcf).exists() and path_from_root(f"{filtered_vcf}.tbi").exists()
-    if not mutect2_ready:
-        run_command(
-            " ".join(
-                [
-                    f"{quote_shell_arg(tumor['java_path'])} -Xmx12g -jar {quote_shell_arg(tumor['gatk_jar_path'])} Mutect2",
-                    f"-R {quote_shell_arg(tumor['reference_path'])}",
-                    f"-L {quote_shell_arg(benchmark_intervals)}",
-                    f"-I {quote_shell_arg(tumor['dedup_bam'])} -tumor {quote_shell_arg(tumor['sample'])}",
-                    f"-I {quote_shell_arg(normal['dedup_bam'])} -normal {quote_shell_arg(normal['sample'])}",
-                    f"--panel-of-normals {quote_shell_arg(tumor['mutect2_panel_of_normals_path'])}",
-                    f"--native-pair-hmm-threads {max(1, min(THREADS, 8))}",
-                    f"--f1r2-tar-gz {quote_shell_arg(f1r2_path)}",
-                    f"-O {quote_shell_arg(unfiltered_vcf)}",
-                ]
-            ),
-            f"{RESULTS_DIR}/logs/{reference_id}.full_wes.resource_aware.mutect2.log",
+    with telemetry.span("variant_calling", {"caller": tumor["production_caller"]}) if telemetry else nullcontext():
+        mutect2_ready = not FORCE and path_from_root(filtered_vcf).exists() and path_from_root(f"{filtered_vcf}.tbi").exists()
+        if telemetry:
+            telemetry.event("cache.reuse" if mutect2_ready else "cache.miss", {"stage": "variant_calling", "filteredVcf": filtered_vcf})
+        if not mutect2_ready:
+            run_tool_command(
+                " ".join(
+                    [
+                        f"{quote_shell_arg(tumor['java_path'])} -Xmx12g -jar {quote_shell_arg(tumor['gatk_jar_path'])} Mutect2",
+                        f"-R {quote_shell_arg(tumor['reference_path'])}",
+                        f"-L {quote_shell_arg(benchmark_intervals)}",
+                        f"-I {quote_shell_arg(tumor['dedup_bam'])} -tumor {quote_shell_arg(tumor['sample'])}",
+                        f"-I {quote_shell_arg(normal['dedup_bam'])} -normal {quote_shell_arg(normal['sample'])}",
+                        f"--panel-of-normals {quote_shell_arg(tumor['mutect2_panel_of_normals_path'])}",
+                        f"--native-pair-hmm-threads {max(1, min(THREADS, 8))}",
+                        f"--f1r2-tar-gz {quote_shell_arg(f1r2_path)}",
+                        f"-O {quote_shell_arg(unfiltered_vcf)}",
+                    ]
+                ),
+                f"{RESULTS_DIR}/logs/{reference_id}.full_wes.resource_aware.mutect2.log",
+                telemetry,
+                "variant_calling.mutect2",
+                {"intervalBed": benchmark_intervals},
+            )
+            contamination_arg = f"--contamination-table {quote_shell_arg(contamination_table)}" if contamination_status == "passed" else ""
+            run_tool_command(
+                f"{quote_shell_arg(tumor['java_path'])} -Xmx8g -jar {quote_shell_arg(tumor['gatk_jar_path'])} FilterMutectCalls -R {quote_shell_arg(tumor['reference_path'])} -V {quote_shell_arg(unfiltered_vcf)} {contamination_arg} -O {quote_shell_arg(filtered_vcf)}",
+                f"{RESULTS_DIR}/logs/{reference_id}.full_wes.resource_aware.filter_mutect_calls.log",
+                telemetry,
+                "variant_calling.filter_mutect_calls",
+                {"unfilteredVcf": unfiltered_vcf, "filteredVcf": filtered_vcf},
+            )
+            run_tool_command(
+                f"bcftools index -t -f {quote_shell_arg(filtered_vcf)}",
+                f"{RESULTS_DIR}/logs/{reference_id}.full_wes.filtered_vcf_index.log",
+                telemetry,
+                "variant_calling.index",
+                {"filteredVcf": filtered_vcf},
+            )
+        log_text_current(
+            f"bcftools stats {quote_shell_arg(filtered_vcf)}",
+            f"{RESULTS_DIR}/logs/{reference_id}.full_wes.filtered_vcf_stats.txt",
+            [filtered_vcf, f"{filtered_vcf}.tbi"],
+            telemetry,
+            "variant_calling.stats",
+            {"filteredVcf": filtered_vcf},
         )
-        contamination_arg = f"--contamination-table {quote_shell_arg(contamination_table)}" if contamination_status == "passed" else ""
-        run_command(
-            f"{quote_shell_arg(tumor['java_path'])} -Xmx8g -jar {quote_shell_arg(tumor['gatk_jar_path'])} FilterMutectCalls -R {quote_shell_arg(tumor['reference_path'])} -V {quote_shell_arg(unfiltered_vcf)} {contamination_arg} -O {quote_shell_arg(filtered_vcf)}",
-            f"{RESULTS_DIR}/logs/{reference_id}.full_wes.resource_aware.filter_mutect_calls.log",
-        )
-        run_command(
-            f"bcftools index -t -f {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.full_wes.filtered_vcf_index.log"
-        )
-    run_command(f"bcftools stats {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.full_wes.filtered_vcf_stats.txt")
     normalized_filtered_vcf = normalize_vcf_for_comparison(
         filtered_vcf,
         tumor["reference_path"],
         f"{vcf_dir}/hcc1395.full_wes.mutect2.filtered.normalized.vcf.gz",
         f"{RESULTS_DIR}/logs/{reference_id}.full_wes.filtered_vcf.norm.log",
+        telemetry,
     )
 
-    filtered_calls = variant_keys(normalized_filtered_vcf, benchmark_intervals)
-    truth_keys = {str(variant["key"]) for variant in covered_truth_variants}
-    pass_truth_matches = [key for key in filtered_calls["passKeys"] if key in truth_keys]
-    all_truth_matches = [key for key in filtered_calls["keys"] if key in truth_keys]
-    truth_outside_recall_matches = [key for key in filtered_calls["passKeys"] if key in all_truth_keys and key not in truth_keys]
-    false_positive_pass = [key for key in filtered_calls["passKeys"] if key not in all_truth_keys]
-    false_negative_truth = [key for key in truth_keys if key not in filtered_calls["passKeys"]]
-    truth_snv_count = len([variant for variant in covered_truth_variants if variant["type"] == "snv"])
-    truth_indel_count = len([variant for variant in covered_truth_variants if variant["type"] == "indel"])
-    recall = len(pass_truth_matches) / len(truth_keys) if truth_keys else None
-    precision_denominator = len(pass_truth_matches) + len(false_positive_pass)
-    precision = len(pass_truth_matches) / precision_denominator if precision_denominator else None
+    with telemetry.span("truth_overlap", {"benchmarkIntervalCount": len(benchmark_interval_rows)}) if telemetry else nullcontext():
+        filtered_calls = variant_keys(normalized_filtered_vcf, benchmark_intervals)
+        truth_keys = {str(variant["key"]) for variant in covered_truth_variants}
+        pass_truth_matches = sorted((key for key in filtered_calls["passKeys"] if key in truth_keys), key=variant_key_sort_value)
+        all_truth_matches = sorted((key for key in filtered_calls["keys"] if key in truth_keys), key=variant_key_sort_value)
+        truth_outside_recall_matches = sorted(
+            (key for key in filtered_calls["passKeys"] if key in all_truth_keys and key not in truth_keys), key=variant_key_sort_value
+        )
+        false_positive_pass = sorted((key for key in filtered_calls["passKeys"] if key not in all_truth_keys), key=variant_key_sort_value)
+        false_negative_truth = sorted((key for key in truth_keys if key not in filtered_calls["passKeys"]), key=variant_key_sort_value)
+        truth_snv_count = len([variant for variant in covered_truth_variants if variant["type"] == "snv"])
+        truth_indel_count = len([variant for variant in covered_truth_variants if variant["type"] == "indel"])
+        recall = len(pass_truth_matches) / len(truth_keys) if truth_keys else None
+        precision_denominator = len(pass_truth_matches) + len(false_positive_pass)
+        precision = len(pass_truth_matches) / precision_denominator if precision_denominator else None
+        if telemetry:
+            telemetry.heartbeat(
+                "truth_overlap",
+                {
+                    "filteredRecordsInBenchmarkIntervals": filtered_calls["totalCount"],
+                    "passRecordsInBenchmarkIntervals": filtered_calls["passCount"],
+                    "exactPassTruthMatches": len(pass_truth_matches),
+                    "falsePositivePassRecords": len(false_positive_pass),
+                    "falseNegativeTruthRecords": len(false_negative_truth),
+                    "exactPassRecall": round_value(recall, 4),
+                    "exactPassPrecision": round_value(precision, 4),
+                },
+            )
     mutect_status = "passed" if path_from_root(filtered_vcf).exists() and path_from_root(f"{filtered_vcf}.tbi").exists() else "failed"
     ready_for_phase3 = (
         mutect_status == "passed"
@@ -770,6 +1152,40 @@ Boundary: this closes Phase 2 raw WES readiness; Phase 3 is WGS HRD signature, C
     print(
         f"Full WES benchmark {mutect_status}: {len(covered_truth_variants)} depth-eligible truth variants, {len(pass_truth_matches)} exact PASS truth matches."
     )
+    return {
+        "status": mutect_status,
+        "readyForPhase3": ready_for_phase3,
+        "truthVariantsDepthEligible": len(covered_truth_variants),
+        "exactPassTruthMatches": len(pass_truth_matches),
+        "exactPassRecall": round_value(recall, 4),
+        "exactPassPrecision": round_value(precision, 4),
+        "fastqCacheRows": sum(1 for row in fastq_rows if validation_cache_status(row) == "reused"),
+        "bamCacheRows": sum(1 for row in bam_rows if validation_cache_status(row) == "reused"),
+        "telemetryRunId": telemetry.run_id if telemetry else "",
+    }
+
+
+def main() -> None:
+    telemetry = RunTelemetry(
+        "phase2f_full_wes_benchmark",
+        RESULTS_DIR,
+        {
+            "threads": THREADS,
+            "bamScanThreads": BAM_SCAN_THREADS,
+            "fastqValidationWorkers": FASTQ_VALIDATION_WORKERS,
+            "bamValidationWorkers": BAM_VALIDATION_WORKERS,
+            "force": FORCE,
+            "reuseFastqValidation": REUSE_FASTQ_VALIDATION,
+            "reuseBamValidation": REUSE_BAM_VALIDATION,
+        },
+    )
+    try:
+        with telemetry.span("benchmark.full_wes", {"phase": "2F"}):
+            result = run_benchmark(telemetry)
+        telemetry.finalize("passed", result)
+    except Exception as error:
+        telemetry.finalize("failed", {"error": str(error)})
+        raise
 
 
 if __name__ == "__main__":

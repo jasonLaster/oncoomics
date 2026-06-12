@@ -59,6 +59,8 @@ Inspect recent pipeline run artifacts and speed diagnostics:
 PYTHONPATH=src /usr/bin/python3 -m diana_omics diagnose:pipeline
 ```
 
+Full-WES benchmark runs now write structured telemetry under `results/full_wes_benchmark/logs/telemetry/<run-id>/`, including `events.jsonl`, OTEL-shaped `otel_spans.jsonl`, `resource_samples.jsonl`, `heartbeat.json`, and `run_manifest.json`. Set `DIANA_OMICS_LOG_UPLOAD_URI=s3://bucket/prefix` to sync those logs after the run, or set it to a local path for a filesystem mirror.
+
 For local stage-by-stage Phase 3 work, use `phase3:stage:fetch:tumor`, `phase3:stage:fetch:normal`, `phase3:stage:ref`, `phase3:stage:align:tumor`, `phase3:stage:align:normal`, and `phase3:stage:downstream`.
 
 Prepare for Diana's actual files:

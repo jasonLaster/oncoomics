@@ -178,6 +178,17 @@ def file_non_empty(relative_path: Union[str, Path]) -> bool:
     return path.is_file() and path.stat().st_size > 0
 
 
+def existing_output_current(outputs: Sequence[Union[str, Path]], inputs: Sequence[Union[str, Path]]) -> bool:
+    output_paths = [path_from_root(output) for output in outputs]
+    input_paths = [path_from_root(input_path) for input_path in inputs if str(input_path)]
+    if not output_paths or any(not output.exists() for output in output_paths):
+        return False
+    if not input_paths or any(not input_path.exists() for input_path in input_paths):
+        return False
+    newest_input = max(input_path.stat().st_mtime for input_path in input_paths)
+    return all(output.stat().st_mtime >= newest_input for output in output_paths)
+
+
 def run_command(command: str, log_path: Optional[str] = None, max_buffer: Optional[int] = None) -> str:
     heartbeat_seconds = int(os.environ.get("DIANA_OMICS_COMMAND_HEARTBEAT_SECONDS", "300"))
     started_at = time.monotonic()

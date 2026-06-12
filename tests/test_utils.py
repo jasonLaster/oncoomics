@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from io import StringIO
@@ -28,6 +29,18 @@ class UtilsTest(unittest.TestCase):
             path.write_text("x")
             self.assertTrue(utils.file_non_empty(path))
             self.assertFalse(utils.file_non_empty(Path(tmp)))
+
+    def test_existing_output_current_uses_input_and_output_mtimes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            input_path = root / "input.txt"
+            output_path = root / "output.txt"
+            input_path.write_text("input", encoding="utf-8")
+            output_path.write_text("output", encoding="utf-8")
+            with patch("diana_omics.paths.ROOT", root):
+                self.assertTrue(utils.existing_output_current(["output.txt"], ["input.txt"]))
+                os.utime(input_path, (output_path.stat().st_mtime + 10, output_path.stat().st_mtime + 10))
+                self.assertFalse(utils.existing_output_current(["output.txt"], ["input.txt"]))
 
     def test_run_command_writes_heartbeat_for_long_command(self):
         output = StringIO()

@@ -87,6 +87,20 @@ class AuditAndProductionHelpersTest(unittest.TestCase):
         self.assertEqual(intervals, [{"contig": "chr17", "start": 0, "end": 110}])
         self.assertEqual(calls["value"], "chr17\t0\t110")
 
+    def test_full_wes_flagstat_parser_uses_single_scan_counts(self):
+        flagstat = "\n".join(
+            [
+                "123 + 0 in total (QC-passed reads + QC-failed reads)",
+                "120 + 0 mapped (97.56% : N/A)",
+                "110 + 0 properly paired (89.43% : N/A)",
+                "7 + 0 duplicates",
+            ]
+        )
+        self.assertEqual(
+            run_full_wes_benchmark.parse_flagstat_counts(flagstat),
+            {"total": 123, "mapped": 120, "properly_paired": 110, "duplicates": 7},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T06:43:32.585Z",
+  "generatedAt": "2026-06-12T18:16:51.992Z",
   "status": "passed",
   "phase": "2F",
   "caller": "GATK Mutect2 + FilterMutectCalls with hg38 PoN; common-biallelic gnomAD for contamination pileups",
@@ -13,6 +13,7 @@
   "truthVariantsDepthEligible": 1307,
   "passRecordsInBenchmarkIntervals": 1140,
   "exactPassTruthMatches": 1122,
+  "passTruthMatchesOutsideRecallSubset": 0,
   "exactPassRecall": 0.8585,
   "exactPassPrecision": 0.9842,
   "contaminationStatus": "passed",

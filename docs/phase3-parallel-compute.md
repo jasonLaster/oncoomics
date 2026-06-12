@@ -54,10 +54,18 @@ CNV/SV/signature:
 Existing commands use environment variables such as:
 
 - `PYTHON_BIN`
+- `DIANA_OMICS_LOG_UPLOAD_URI`
+- `DIANA_OMICS_TRACE_HEARTBEAT_SECONDS`
+- `DIANA_OMICS_COMMAND_HEARTBEAT_SECONDS`
 - `PHASE3_WGS_FETCH_CONCURRENCY`
 - `PHASE3_WGS_ARIA2_SPLIT`
 - `PHASE2F_THREADS`
 - `PHASE2F_FORCE`
+- `PHASE2F_BAM_SCAN_THREADS`
+- `PHASE2F_FASTQ_VALIDATION_WORKERS`
+- `PHASE2F_BAM_VALIDATION_WORKERS`
+- `PHASE2F_REUSE_FASTQ_VALIDATION`
+- `PHASE2F_REUSE_BAM_VALIDATION`
 - `PHASE2F_MIN_TRUTH_DEPTH`
 - `PHASE2F_MAX_TRUTH_VARIANTS`
 - `PHASE3_WGS_THREADS`
@@ -97,10 +105,24 @@ On AWS, keep `phase3_asset_cache_uri` enabled for full-source public validation.
 
 Downstream reruns now avoid touching unrelated expensive work when inputs are current:
 
+- Phase 2F FASTQ and BAM validation summaries are reused when the summaries are newer than their FASTQ/BAM/BAI/metrics inputs and BAMs still pass `samtools quickcheck`.
+- Phase 2F BAM validation parses threaded `samtools flagstat` output for total, mapped, properly paired, and duplicate counts instead of launching separate whole-BAM `samtools view -c` scans for each counter.
+- Phase 2F BRCA-interval and truth-position depth outputs are written to reusable TSVs, and generated BED files keep their timestamps when content is unchanged so depth reruns are not forced by identical metadata rewrites.
 - BWA indexing runs only for reference or alignment stages, not downstream-only validation.
 - CNV bin BED files keep their timestamp when the reference/bin content is unchanged, so cached `samtools bedcov` summaries can be reused.
 - `bcftools stats`, SBS96 summaries, and BAM-derived SV evidence are skipped when their outputs are newer than their VCF/BAM/reference inputs.
 - FASTQ/SRA cache publishes and BAM cache publishes use bounded workers so AWS Batch can use available network throughput without changing validation semantics.
+
+## Logging and Spans
+
+Treat logs as first-class outputs. Full-WES benchmark telemetry is written under `results/full_wes_benchmark/logs/telemetry/<run-id>/`:
+
+- `otel_spans.jsonl` shows nested spans such as FASTQ validation, BAM preparation, BAM validation, depth, contamination, variant calling, and truth-overlap scoring.
+- `events.jsonl` records cache reuse/miss decisions and command lifecycle events.
+- `resource_samples.jsonl` records system load/disk state and command process-tree CPU/RSS samples.
+- `heartbeat.json` is the latest in-run state with data-level progress such as validated FASTQ bytes, total alignments, covered truth variants, and truth-overlap counts.
+
+Use `DIANA_OMICS_LOG_UPLOAD_URI=s3://bucket/prefix` for S3 sync after the run, or point it at a local directory for an artifact mirror. Upload failure is logged as `logs.upload_failed` and does not turn a successful benchmark into a failed benchmark.
 
 ## Bug Risks
 
