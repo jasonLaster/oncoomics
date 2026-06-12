@@ -89,6 +89,8 @@ class ProcessConfig:
     phase3_fastq_stats_mode: str = "seqkit"
     phase3_cache_upload_workers: str = "4"
     phase3_alignment_cache_workers: str = "2"
+    phase3_bwa_threads: str = "0"
+    phase3_sort_threads: str = "0"
     phase3_asset_cache_uri: str = ""
     phase3_asset_cache_mode: str = "readwrite"
     phase3_delete_sra_after_conversion: str = "false"
@@ -374,6 +376,8 @@ def phase3_stage_environment(config: ProcessConfig, env: dict[str, str]) -> dict
     values = {
         "PHASE3_WGS_READS": config.phase3_reads,
         "PHASE3_WGS_THREADS": inherited_or_default(env, "PHASE3_WGS_THREADS", config.task_cpus or "1"),
+        "PHASE3_WGS_BWA_THREADS": inherited_or_default(env, "PHASE3_WGS_BWA_THREADS", config.phase3_bwa_threads),
+        "PHASE3_WGS_SORT_THREADS": inherited_or_default(env, "PHASE3_WGS_SORT_THREADS", config.phase3_sort_threads),
         "PHASE3_WGS_ALIGNMENT_CACHE_WORKERS": config.phase3_alignment_cache_workers,
         "PHASE3_WGS_ASSET_CACHE_URI": config.phase3_asset_cache_uri,
         "PHASE3_WGS_ASSET_CACHE_MODE": config.phase3_asset_cache_mode,
@@ -600,6 +604,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--phase3-fastq-stats-mode", default="seqkit")
     parser.add_argument("--phase3-cache-upload-workers", default="4")
     parser.add_argument("--phase3-alignment-cache-workers", default="2")
+    parser.add_argument("--phase3-bwa-threads", default="0")
+    parser.add_argument("--phase3-sort-threads", default="0")
     parser.add_argument("--phase3-asset-cache-uri", default="")
     parser.add_argument("--phase3-asset-cache-mode", default="readwrite")
     parser.add_argument("--phase3-delete-sra-after-conversion", default="false")
@@ -644,6 +650,8 @@ def config_from_args(args: argparse.Namespace) -> ProcessConfig:
         phase3_fastq_stats_mode=args.phase3_fastq_stats_mode,
         phase3_cache_upload_workers=args.phase3_cache_upload_workers,
         phase3_alignment_cache_workers=args.phase3_alignment_cache_workers,
+        phase3_bwa_threads=args.phase3_bwa_threads,
+        phase3_sort_threads=args.phase3_sort_threads,
         phase3_asset_cache_uri=args.phase3_asset_cache_uri,
         phase3_asset_cache_mode=args.phase3_asset_cache_mode,
         phase3_delete_sra_after_conversion=args.phase3_delete_sra_after_conversion,
