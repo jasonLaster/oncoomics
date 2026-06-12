@@ -1,0 +1,7 @@
+benchmark_id,fixture_id,dataset_id,input_reference_builds,truth_reference_builds,reference_compatibility_status,checksum_status,benchmark_execution_ready,clinical_use_allowed,next_action
+hg008_small_variant_dry_run,hg008_small_variants,giab_hg008,GRCh38,GRCh38,passed,pending_remote_checksum,no,no,Record source-published checksums or verified local checksums before approved benchmark execution.
+hg008_sv_cnv_dry_run,hg008_sv_cnv,giab_hg008,GRCh38,GRCh38,passed,pending_remote_checksum,no,no,Record source-published checksums or verified local checksums before approved benchmark execution.
+hg008_signature_qc_dry_run,hg008_signature_qc,giab_hg008,GRCh38,GRCh38,passed,pending_remote_checksum,no,no,Record source-published checksums or verified local checksums before approved benchmark execution.
+colo829_driver_signature_dry_run,colo829_driver_signature,colo829,GRCh38,GRCh38,passed,pending_remote_checksum,no,no,Record source-published checksums or verified local checksums before approved benchmark execution.
+colo829_sv_cna_dry_run,colo829_sv_cna,colo829,GRCh38,GRCh38,passed,pending_remote_checksum,no,no,Record source-published checksums or verified local checksums before approved benchmark execution.
+colo829_purity_series_dry_run,colo829_purity_series,colo829_purity_series,GRCh38,GRCh38,passed,pending_remote_checksum,no,no,Record source-published checksums or verified local checksums before approved benchmark execution.
