@@ -1,0 +1,17 @@
+link_id,section_id,validation_domain,readiness_summary_count,required_status,blocking_signal,packet_section_unblocked,clinical_use_allowed,signoff_status,next_action
+intended_use_boundaries,intended_use,scope,1,passed,candidate_definition_only_no_clinical_reporting,no,no,not_approved,Approve intended-use boundaries only after validation evidence and reviewer signoff.
+workflow_traceability,workflow_overview,workflow,2,passed,production_workflow_and_asset_execution_not_approved,no,no,not_approved,Link frozen workflow/container provenance after benchmark execution is approved and completed.
+input_acceptance_gates,input_acceptance,preanalytic_qc,2,passed,input_identity_pairing_and_checksum_thresholds_not_locked,no,no,not_approved,Populate input acceptance evidence after approved assets and threshold validation.
+small_variant_accuracy_evidence,accuracy_small_variants,accuracy,2,passed,HG008_small_variant_benchmark_not_executed,no,no,not_approved,Attach recall precision and normalization evidence after approved HG008 small-variant benchmark execution.
+cnv_loh_accuracy_evidence,accuracy_cnv_loh,accuracy,3,passed,allele_specific_CNV_LOH_validation_not_complete,no,no,not_approved,Attach allele-specific CNV/LOH overlap and purity/ploidy evidence after primary CNV tool validation.
+sv_accuracy_evidence,accuracy_sv,accuracy,3,passed,production_SV_caller_validation_not_complete,no,no,not_approved,Attach reciprocal-overlap evidence after production SV caller validation.
+signature_model_evidence,signature_model_accuracy,accuracy,2,passed,HRD_interpretation_adapters_remain_no_call,no,no,not_approved,Attach signature and integrated HRD model calibration evidence after adapter validation.
+precision_evidence,precision_repeatability,precision,2,passed,replicate_precision_study_not_started,no,no,not_approved,Define and attach repeatability evidence after approved replicate fixture execution.
+reproducibility_evidence,reproducibility,reproducibility,2,passed,cross_run_reproducibility_not_executed,no,no,not_approved,Attach reproducibility evidence after frozen workflow and approved benchmark reruns.
+lod_evidence,lod,lod,3,passed,COLO829_purity_series_not_executed,no,no,not_approved,Attach purity-series sensitivity evidence after approved dilution benchmark execution.
+reportable_range_evidence,reportable_range,reportable_range,2,passed,reportable_range_and_thresholds_not_locked,no,no,not_approved,Lock reportable range only after thresholds and known-answer performance are approved.
+limitations_evidence,interferences_limitations,limitations,2,passed,failure_mode_fixtures_not_validated,no,no,not_approved,Attach validated failure-mode evidence for mismatched references low coverage missing inputs and unsupported feature classes.
+qc_gate_evidence,qc_gates,qc,1,passed,QC_thresholds_draft_not_locked,no,no,not_approved,Populate acceptance thresholds only after validation evidence and signoff.
+report_template_evidence,report_template,reporting,2,passed,report_language_not_approved_and_adapters_no_call,no,no,not_approved,Attach approved report language and no-call examples after reviewer signoff.
+change_control_evidence,change_control,change_control,2,passed,release_governance_and_revalidation_policy_not_implemented,no,no,not_approved,Define version-lock and revalidation triggers before clinical release.
+approval_signoff_evidence,approval_signoff,signoff,2,passed,validation_packet_template_only_no_signoff,no,no,not_approved,Attach named reviewer and lab-director approval only after evidence sections are complete.
