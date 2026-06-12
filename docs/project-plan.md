@@ -42,11 +42,11 @@ Primary artifacts:
 Verifier:
 
 ```sh
-bun run build:panel
-bun run analyze:hrd
-bun run analyze:rna
-bun run build:packet
-bun run verify:outputs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:panel
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics analyze:hrd
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics analyze:rna
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:packet
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 Main limitation:
@@ -80,9 +80,9 @@ Latest evidence:
 Verifier:
 
 ```sh
-bun run fetch:full-wes
-bun run benchmark:full-wes
-bun run verify:outputs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:full-wes
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics benchmark:full-wes
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 Main limitation:
@@ -115,9 +115,9 @@ Latest evidence:
 Verifier:
 
 ```sh
-bun run fetch:phase3-wgs
-bun run validate:phase3-wgs
-bun run verify:outputs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 Main limitation:
@@ -155,7 +155,7 @@ Primary planning artifacts:
 Verifier:
 
 ```sh
-bun run verify:orthogonal
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:orthogonal
 ```
 
 ## Phase 4: Diana Raw-Data Recompute
@@ -178,9 +178,9 @@ Required inputs:
 Verifier:
 
 ```sh
-bun run build:diana-template
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run verify:diana-raw
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run stage:diana-raw
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:diana-template
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics stage:diana-raw
 ```
 
 Exit criteria:
@@ -196,12 +196,12 @@ Exit criteria:
 Run before committing changes:
 
 ```sh
-bun run py:format
-bun run py:lint
-bun run py:format:check
-bun run py:typecheck
-bun run py:test
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:format
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:lint
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:format:check
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:typecheck
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:test
 python3 -m compileall -q py/src py/tests
-bun run verify:outputs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
 git diff --check
 ```

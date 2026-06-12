@@ -62,7 +62,7 @@ The strongest Diana analysis would include tumor-normal WGS plus RNA-seq. WES is
 Generate the template:
 
 ```sh
-bun run build:diana-template
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:diana-template
 ```
 
 Copy it:
@@ -91,7 +91,7 @@ Each row should identify:
 ## Validate The Files
 
 ```sh
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run verify:diana-raw
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
 ```
 
 Strict validation checks:
@@ -108,7 +108,7 @@ Strict validation checks:
 ## Stage A Recompute Packet
 
 ```sh
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run stage:diana-raw
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics stage:diana-raw
 ```
 
 The stage command writes:
@@ -153,7 +153,7 @@ Artifacts:
 3. `results/diana_raw_intake/input_contract.json`
 4. `results/diana_raw_intake/intake_readiness_summary.csv`
 
-The project can now accept Diana raw FASTQ, BAM, or CRAM paths through `manifests/diana_raw_inputs.csv` and validate them with `bun run verify:diana-raw`.
+The project can now accept Diana raw FASTQ, BAM, or CRAM paths through `manifests/diana_raw_inputs.csv` and validate them with `PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw`.
 """,
     )
     print(f"Diana raw input template ready: {DIANA_RAW_TEMPLATE}")

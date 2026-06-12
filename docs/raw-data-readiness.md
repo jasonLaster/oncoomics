@@ -9,9 +9,9 @@ This project validates raw-data mechanics before Diana's files arrive. The curre
 Command:
 
 ```sh
-bun run fetch:raw-candidates
-bun run build:raw-samplesheets
-bun run smoke:raw
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:raw-candidates
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:raw-samplesheets
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics smoke:raw
 ```
 
 Purpose:
@@ -31,8 +31,8 @@ Primary outputs:
 Command:
 
 ```sh
-bun run build:alignment-smoke
-bun run smoke:alignment
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:alignment-smoke
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics smoke:alignment
 ```
 
 Purpose:
@@ -50,10 +50,10 @@ Primary outputs:
 Command:
 
 ```sh
-bun run fetch:human-reference-smoke
-bun run smoke:human-reference
-bun run fetch:full-reference-smoke
-bun run smoke:full-reference
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:human-reference-smoke
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics smoke:human-reference
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:full-reference-smoke
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics smoke:full-reference
 ```
 
 Purpose:
@@ -74,8 +74,8 @@ Primary outputs:
 Command:
 
 ```sh
-bun run fetch:production-somatic
-bun run smoke:production-somatic
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:production-somatic
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics smoke:production-somatic
 ```
 
 Purpose:
@@ -93,8 +93,8 @@ Primary outputs:
 Command:
 
 ```sh
-bun run fetch:full-wes
-bun run benchmark:full-wes
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:full-wes
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics benchmark:full-wes
 ```
 
 Purpose:
@@ -122,8 +122,8 @@ Primary outputs:
 Command:
 
 ```sh
-bun run fetch:phase3-wgs
-bun run validate:phase3-wgs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs
 ```
 
 Purpose:
@@ -146,8 +146,8 @@ Primary outputs:
 Developer subset mode:
 
 ```sh
-PHASE3_WGS_READS=500000 bun run fetch:phase3-wgs
-PHASE3_WGS_READS=500000 bun run validate:phase3-wgs
+PHASE3_WGS_READS=500000 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
+PHASE3_WGS_READS=500000 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs
 ```
 
 The developer subset mode uses the same workflow for quick plumbing checks. It is not accepted as completed Phase 3 orthogonal validation.
@@ -157,7 +157,7 @@ The developer subset mode uses the same workflow for quick plumbing checks. It i
 Command:
 
 ```sh
-bun run verify:orthogonal
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:orthogonal
 ```
 
 Purpose:
@@ -185,9 +185,9 @@ See [orthogonal-validation-samples.md](/Users/jasonlaster/src/projects/diana-omi
 When Diana's files arrive:
 
 ```sh
-bun run build:diana-template
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run verify:diana-raw
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 bun run stage:diana-raw
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:diana-template
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics stage:diana-raw
 ```
 
 Do not skip the public validation sidecar. It is the guardrail that tells us whether the system is still behaving on known inputs.

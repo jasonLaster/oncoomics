@@ -1,10 +1,13 @@
 {
-  "generatedAt": "2026-06-07T14:23:34.792Z",
-  "status": "passed",
+  "generatedAt": "2026-06-12T05:32:58.874Z",
+  "status": "failed",
   "implementedExamples": 2,
   "plannedExamples": 4,
   "blockedExamples": 1,
-  "errors": [],
+  "errors": [
+    "Phase 3 SEQC2/HCC1395 public WGS example must be a full-source run, not a bounded smoke.",
+    "Phase 3 SEQC2/HCC1395 public WGS example must mark fullSourceFastqs=true."
+  ],
   "warnings": [],
   "rows": [
     {
@@ -17,7 +20,7 @@
       "artifact_exists": "yes",
       "artifact_status": "passed",
       "pass_gate": "status passed and readyForPhase3 true",
-      "full_data_command": "bun run fetch:full-wes && bun run benchmark:full-wes",
+      "full_data_command": "PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:full-wes && PYTHONPATH=py/src /usr/bin/python3 -m diana_omics benchmark:full-wes",
       "documentation": "docs/raw-data-readiness.md"
     },
     {
@@ -25,12 +28,12 @@
       "status": "implemented",
       "public_access": "yes",
       "modality": "tumor_normal_wgs",
-      "source_scope": "full public WGS source FASTQs with bounded default and full-source mode",
+      "source_scope": "full public WGS source FASTQs",
       "completion_artifact": "results/phase3_wgs_smoke/phase3_wgs_summary.json",
       "artifact_exists": "yes",
       "artifact_status": "passed",
-      "pass_gate": "status passed and phase3Complete true",
-      "full_data_command": "PHASE3_WGS_READS=full bun run fetch:phase3-wgs && bun run smoke:phase3-wgs",
+      "pass_gate": "status passed phase3Complete true and readPairsMode full",
+      "full_data_command": "PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs && PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs",
       "documentation": "docs/raw-data-readiness.md"
     },
     {

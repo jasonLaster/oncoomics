@@ -70,11 +70,13 @@ Use force flags only when intentionally rebuilding expensive outputs.
 Current full WGS fetch/run command pattern:
 
 ```sh
-PHASE3_WGS_FETCH_CONCURRENCY=4 PHASE3_WGS_ARIA2_SPLIT=1 bun run fetch:phase3-wgs
-PHASE3_WGS_THREADS=18 bun run validate:phase3-wgs
+PHASE3_WGS_FETCH_CONCURRENCY=4 PHASE3_WGS_ARIA2_SPLIT=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
+PHASE3_WGS_THREADS=18 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs
 ```
 
 Keep `PHASE3_WGS_ARIA2_SPLIT=1` for acceptance data unless a segmented run has already been proven against the provider MD5s. A 16-segment ENA transfer reached the expected byte counts for the SEQC2/HCC1395 WGS FASTQs but failed both MD5 and gzip CRC validation, so full-source acceptance now favors checksum-correct single-stream downloads over maximum transfer speed.
+
+Use `PYTHONPATH=py/src /usr/bin/python3 -m diana_omics diagnose:pipeline` after local or AWS experiments. It parses Nextflow traces, heartbeat logs, and result summaries into `results/pipeline_diagnostics.md`, including the best completed stage timings and known failure signatures.
 
 ## Full-Depth Recommendation
 
@@ -88,6 +90,8 @@ For full HG008, COLO829, or Diana WGS:
 6. Merge and index VCFs deterministically.
 7. Run CNV/SV/signature tools with tool-specific parallelism.
 8. Record wall time, CPU count, thread counts, and tool versions in summary JSON.
+
+On AWS, keep `phase3_asset_cache_uri` enabled for full-source public validation. Fetch jobs cache validated FASTQ derivatives, and alignment jobs cache cloud-generated public BAM/BAI outputs after BAM read-scope validation. That cache is for retry acceleration only; do not seed it from local raw/generated files.
 
 ## Bug Risks
 

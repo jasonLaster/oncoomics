@@ -28,7 +28,6 @@ Phase 3 optional signature runtime available: **yes**
 
 Required for: Phase 2A direct FASTQ metadata and tiny read-subset smoke
 
-- bun: /Users/jasonlaster/.bun/bin/bun
 - curl: /usr/bin/curl
 - gunzip: /usr/bin/gunzip
 - gzip: /usr/bin/gzip

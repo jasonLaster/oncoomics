@@ -23,7 +23,7 @@ PYTHONPATH=py/src python3 -m diana_omics verify:outputs
 Task alias:
 
 ```sh
-bun run verify:outputs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 List available commands:
@@ -35,11 +35,11 @@ PYTHONPATH=py/src python3 -m diana_omics --help
 ## Test And Typecheck
 
 ```sh
-bun run py:format
-bun run py:lint
-bun run py:format:check
-bun run py:typecheck
-bun run py:test
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:format
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:lint
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:format:check
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:typecheck
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:test
 python3 -m compileall -q py/src py/tests
 ```
 

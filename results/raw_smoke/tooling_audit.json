@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-08T20:50:16.814Z",
+  "generatedAt": "2026-06-12T05:32:59.182Z",
   "phase2aReady": true,
   "alignmentReady": true,
   "humanReferenceSmokeReady": true,
@@ -22,11 +22,6 @@
       "group": "baseline_streaming",
       "requiredFor": "Phase 2A direct FASTQ metadata and tiny read-subset smoke",
       "tools": [
-        {
-          "tool": "bun",
-          "path": "/Users/jasonlaster/.bun/bin/bun",
-          "available": true
-        },
         {
           "tool": "curl",
           "path": "/usr/bin/curl",

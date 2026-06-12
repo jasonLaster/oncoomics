@@ -24,7 +24,7 @@ The package can be run directly:
 PYTHONPATH=py/src python3 -m diana_omics verify:outputs
 ```
 
-Most commands also have a `bun run ...` alias in `package.json`.
+Local, Docker, AWS, and deploy task aliases live in `diana_omics.workflow_tasks`, so they stay on the Python CLI surface instead of a separate JavaScript task runner.
 
 ## Command Families
 
@@ -34,6 +34,7 @@ Plan and verification:
 - `verify:outputs`
 - `verify:diana-raw`
 - `verify:orthogonal`
+- `diagnose:pipeline`
 
 Public data and processed-panel analysis:
 
@@ -67,15 +68,27 @@ WGS validation:
 
 - `fetch:phase3-wgs`
 - `validate:phase3-wgs`
+- `benchmark:sra-range`
 
 Phase 3 full-source mode:
 
 ```sh
-bun run fetch:phase3-wgs
-bun run validate:phase3-wgs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs
 ```
 
 This streams each complete SEQC2/HCC1395 public source FASTQ. Set `PHASE3_WGS_READS` to an integer only for developer plumbing checks; bounded runs do not satisfy `verify:outputs`.
+
+Stage-local Phase 3 loops are exposed as package aliases around the same Python commands:
+
+- `phase3:stage:fetch:tumor`
+- `phase3:stage:fetch:normal`
+- `phase3:stage:ref`
+- `phase3:stage:align:tumor`
+- `phase3:stage:align:normal`
+- `phase3:stage:downstream`
+
+`benchmark:sra-range` owns the SRA Open Data range-read benchmark that Nextflow uses for cheap AWS network experiments. Keep benchmark parsing and summary behavior covered in local tests before changing cloud command lines.
 
 Diana intake:
 
@@ -132,13 +145,13 @@ Commands should fail loudly when required files, columns, or status fields are m
 ## Quality Commands
 
 ```sh
-bun run py:format
-bun run py:lint
-bun run py:format:check
-bun run py:typecheck
-bun run py:test
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:format
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:lint
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:format:check
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:typecheck
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:test
 python3 -m compileall -q py/src py/tests
-bun run verify:outputs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
 git diff --check
 ```
 

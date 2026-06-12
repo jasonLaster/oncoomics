@@ -1,25 +1,43 @@
-import json
 import unittest
 
 from diana_omics.cli import _load_commands
-from diana_omics.paths import ROOT
+from diana_omics.workflow_tasks import TASKS
 
 
 class CliParityTest(unittest.TestCase):
-    def test_python_cli_registers_all_bun_workflow_commands(self):
-        package_json = json.loads((ROOT / "package.json").read_text())
-        excluded = {
-            "typecheck",
-            "test",
-            "py:lint",
-            "py:format",
-            "py:format:check",
-            "py:typecheck",
-            "py:test",
-            "run:all",
-            "verify:plan:online",
+    def test_python_cli_registers_core_workflow_commands(self):
+        expected = {
+            "analyze:hrd",
+            "analyze:rna",
+            "audit:raw-tools",
+            "benchmark:full-wes",
+            "benchmark:sra-range",
+            "build:alignment-smoke",
+            "build:diana-template",
+            "build:packet",
+            "build:panel",
+            "build:raw-samplesheets",
+            "diagnose:pipeline",
+            "fetch:full-reference-smoke",
+            "fetch:full-wes",
+            "fetch:human-reference-smoke",
+            "fetch:phase1",
+            "fetch:phase3-wgs",
+            "fetch:production-somatic",
+            "fetch:raw-candidates",
+            "smoke:alignment",
+            "smoke:full-reference",
+            "smoke:human-reference",
+            "smoke:production-somatic",
+            "smoke:raw",
+            "stage:diana-raw",
+            "validate:phase3-wgs",
+            "verify:diana-raw",
+            "verify:orthogonal",
+            "verify:outputs",
+            "verify:phase3-outputs",
+            "verify:plan",
         }
-        expected = {name for name, command in package_json["scripts"].items() if name not in excluded and "-m diana_omics" in command}
         commands = _load_commands()
         self.assertEqual(expected, set(commands))
 
@@ -31,6 +49,19 @@ class CliParityTest(unittest.TestCase):
     def test_registered_commands_are_callable(self):
         for name, command in _load_commands().items():
             self.assertTrue(callable(command), name)
+
+    def test_python_task_runner_owns_workflow_aliases(self):
+        self.assertIn("run:all", TASKS)
+        self.assertIn("nf:aws:sra-bench:tiny", TASKS)
+        self.assertIn("phase3:stage:align:tumor", TASKS)
+        forbidden = "b" + "un"
+        for name, task in TASKS.items():
+            for step in task.steps:
+                self.assertNotIn(forbidden, step.argv, name)
+
+    def test_test_task_accepts_pytest_arguments(self):
+        self.assertTrue(TASKS["py:test"].accepts_args)
+        self.assertTrue(TASKS["py:test"].steps[0].append_args)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,301 @@
+{
+  "traceRowCount": 27,
+  "statusCounts": {
+    "FAILED": 18,
+    "COMPLETED": 5,
+    "ABORTED": 2,
+    "CACHED": 2
+  },
+  "bestCompletedByStage": {
+    "phase3_fetch": {
+      "stage": "phase3_fetch",
+      "status": "COMPLETED",
+      "durationSeconds": 728.0,
+      "realtimeSeconds": 588.0,
+      "duration": "12m 8s",
+      "realtime": "9m 48s",
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-granular-full-20260610T165947Z.trace.tsv",
+      "name": "PHASE3_WGS_SPLIT:PHASE3_FETCH_WORKSPACE (phase3_fetch_workspace_full_aws_sra_c8_s1)",
+      "nativeId": "1689b965-93c4-4c0d-9d33-23cdc3d584a3"
+    },
+    "reference_index": {
+      "stage": "reference_index",
+      "status": "COMPLETED",
+      "durationSeconds": 128.0,
+      "realtimeSeconds": 10.7,
+      "duration": "2m 8s",
+      "realtime": "11s",
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-stagefix-full-20260610T174106Z.trace.tsv",
+      "name": "PHASE3_WGS_SPLIT:PHASE3_REFERENCE_INDEX (phase3_reference_index_full)",
+      "nativeId": "ed1752e1-7473-4d3f-a8f9-410dd7195004"
+    }
+  },
+  "logSummaries": [
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-phase3fix-full-20260610T033453Z.log",
+      "failedDurationSeconds": null,
+      "failedDuration": "",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "WARN: Killing running tasks (1)",
+          "lineNumber": "6"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-full-20260610T155813Z.log",
+      "failedDurationSeconds": null,
+      "failedDuration": "",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "superseded by metadata-mode split run 52e02de2-81bf-4602-aa71-050f72a4b9f2",
+          "lineNumber": "9"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-full-20260610T160301Z.log",
+      "failedDurationSeconds": null,
+      "failedDuration": "",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "superseded by metadata-mode split run 52e02de2-81bf-4602-aa71-050f72a4b9f2",
+          "lineNumber": "9"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-metafast-full-20260610T162733Z.log",
+      "failedDurationSeconds": null,
+      "failedDuration": "",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "superseded by granular split artifact implementation",
+          "lineNumber": "10"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-stagefix-full-20260610T174106Z.log",
+      "failedDurationSeconds": null,
+      "failedDuration": "",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "WARN: Killing running tasks (2)",
+          "lineNumber": "7"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3split-stagefix-resume-20260611T094700Z.log",
+      "failedDurationSeconds": null,
+      "failedDuration": "",
+      "signals": [
+        {
+          "label": "duplicate_alignment_resume",
+          "line": "Terminate duplicate normal alignment retry submitted by resume after prior AWS job already SUCCEEDED",
+          "lineNumber": "14"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/nextflow-out/aws/phase3-wgs-full-20260608-145948-heartbeat/nextflow.log",
+      "failedDurationSeconds": 0.0,
+      "failedDuration": "0s",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "Jun-08 15:21:09.251 [SIGTERM handler] WARN  n.processor.TaskPollingMonitor - Killing running tasks (1)",
+          "lineNumber": "78"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/nextflow-out/aws/phase3-wgs-full-20260608-152125-heartbeat-spot/nextflow.log",
+      "failedDurationSeconds": 9294.0,
+      "failedDuration": "2h 34m 54s",
+      "signals": [
+        {
+          "label": "spot_or_host_interruption",
+          "line": "Jun-08 15:32:58.909 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 1; name: PHASE3_WGS (phase3_wgs_full); status: COMPLETED; exit: -; error: nextflow.exception.ProcessException: Host EC2 (instance i-08eb973607bdc928d) terminated.; workDir: s3://diana-omics-work-172630973301-us-west-1/work/e5/11ee18efcabebfb9f56911e03e8483]",
+          "lineNumber": "74"
+        },
+        {
+          "label": "aws_credentials_metadata",
+          "line": "Error when retrieving credentials from container-role: Error retrieving metadata: Received error when attempting to retrieve ECS metadata: Could not connect to the endpoint URL: \"http://169.254.170.2/v2/credentials/f067d0d1-3706-46c8-9126-7060d386c67e\"",
+          "lineNumber": "178"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/nextflow-out/aws/phase3-wgs-full-20260608-145948-heartbeat/launcher.out",
+      "failedDurationSeconds": null,
+      "failedDuration": "",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "WARN: Killing running tasks (1)",
+          "lineNumber": "4"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/nextflow-out/aws/phase3-wgs-full-20260608-152125-heartbeat-spot/launcher.out",
+      "failedDurationSeconds": null,
+      "failedDuration": "",
+      "signals": [
+        {
+          "label": "spot_or_host_interruption",
+          "line": "Host EC2 (instance i-08eb973607bdc928d) terminated.",
+          "lineNumber": "7"
+        },
+        {
+          "label": "aws_credentials_metadata",
+          "line": "Error when retrieving credentials from container-role: Error retrieving metadata: Received error when attempting to retrieve ECS metadata: Could not connect to the endpoint URL: \"http://169.254.170.2/v2/credentials/f067d0d1-3706-46c8-9126-7060d386c67e\"",
+          "lineNumber": "102"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/.nextflow.log",
+      "failedDurationSeconds": 0.0,
+      "failedDuration": "0s",
+      "signals": []
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.1",
+      "failedDurationSeconds": 20.7,
+      "failedDuration": "21s",
+      "signals": [
+        {
+          "label": "duplicate_alignment_resume",
+          "line": "Jun-11 02:47:55.046 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 4; name: PHASE3_WGS_SPLIT:PHASE3_ALIGN_SAMPLE (phase3_align_normal_full); status: COMPLETED; exit: -; error: nextflow.exception.ProcessException: Terminate duplicate normal alignment submitted by resume after prior AWS job already SUCCEEDED; workDir: s3://diana-omics-work-172630973301-us-east-1/work/d8/b6f2256a73ebf696134be159dedf7c]",
+          "lineNumber": "88"
+        },
+        {
+          "label": "report_overwrite",
+          "line": "nextflow.exception.AbortOperationException: Report file already exists: logs/phase3split-stagefix-resume-20260611T094700Z.report.html -- enable the 'report.overwrite' option in your config file to overwrite existing files",
+          "lineNumber": "188"
+        },
+        {
+          "label": "missing_cloudwatch_stream",
+          "line": "Jun-11 02:47:55.044 [Task monitor] DEBUG n.cloud.aws.batch.AwsBatchHelper - Unable to find CloudWatch log stream for batch job id=13f2ea5e-59be-4a7c-8f41-a8ae73277c2f",
+          "lineNumber": "87"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.2",
+      "failedDurationSeconds": 0.0,
+      "failedDuration": "0s",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "Jun-10 21:07:05.690 [AWSBatch-executor-3741] WARN  n.processor.TaskPollingMonitor - Killing running tasks (2)",
+          "lineNumber": "469"
+        },
+        {
+          "label": "report_overwrite",
+          "line": "nextflow.exception.AbortOperationException: Report file already exists: logs/phase3-wgs-split-stagefix-full-20260610T174106Z.report.html -- enable the 'report.overwrite' option in your config file to overwrite existing files",
+          "lineNumber": "484"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.3",
+      "failedDurationSeconds": 0.0,
+      "failedDuration": "0s",
+      "signals": []
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.4",
+      "failedDurationSeconds": 1782.0,
+      "failedDuration": "29m 42s",
+      "signals": [
+        {
+          "label": "report_overwrite",
+          "line": "nextflow.exception.AbortOperationException: Report file already exists: logs/phase3-wgs-split-granular-full-20260610T171521Z.report.html -- enable the 'report.overwrite' option in your config file to overwrite existing files",
+          "lineNumber": "151"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.5",
+      "failedDurationSeconds": 0.0,
+      "failedDuration": "0s",
+      "signals": []
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.6",
+      "failedDurationSeconds": 1941.0,
+      "failedDuration": "32m 21s",
+      "signals": [
+        {
+          "label": "report_overwrite",
+          "line": "nextflow.exception.AbortOperationException: Report file already exists: logs/phase3-wgs-split-granular-full-20260610T165947Z.report.html -- enable the 'report.overwrite' option in your config file to overwrite existing files",
+          "lineNumber": "150"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.7",
+      "failedDurationSeconds": 0.0,
+      "failedDuration": "0s",
+      "signals": []
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.8",
+      "failedDurationSeconds": 6102.0,
+      "failedDuration": "1h 41m 42s",
+      "signals": [
+        {
+          "label": "spot_or_host_interruption",
+          "line": "Jun-10 09:50:38.798 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 2; name: PHASE3_WGS_SPLIT:PHASE3_REFERENCE_INDEX (phase3_reference_index_full); status: COMPLETED; exit: -; error: nextflow.exception.ProcessException: Host EC2 (instance i-04ffa6c47e2f67eed) terminated.; workDir: s3://diana-omics-work-172630973301-us-east-1/work/3e/fdec46ce75d9e67bcd140b62d5fe5a]",
+          "lineNumber": "95"
+        },
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "Jun-10 09:56:28.636 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 3; name: PHASE3_WGS_SPLIT:PHASE3_REFERENCE_INDEX (phase3_reference_index_full); status: COMPLETED; exit: 143; error: nextflow.exception.ProcessException: superseded by granular split artifact implementation; workDir: s3://diana-omics-work-172630973301-us-east-1/work/15/0f4d52051112f89deaab38fbd7ce66]",
+          "lineNumber": "104"
+        },
+        {
+          "label": "report_overwrite",
+          "line": "nextflow.exception.AbortOperationException: Report file already exists: logs/phase3-wgs-split-metafast-full-20260610T162733Z.report.html -- enable the 'report.overwrite' option in your config file to overwrite existing files",
+          "lineNumber": "160"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.9",
+      "failedDurationSeconds": 0.0,
+      "failedDuration": "0s",
+      "signals": []
+    }
+  ],
+  "speedupEstimate": {
+    "available": true,
+    "baselineSeconds": 9294.0,
+    "baseline": "2h 34m 54s",
+    "splitCheckpointSeconds": 856.0,
+    "splitCheckpoint": "14m 16s",
+    "speedup": 10.86,
+    "scope": "through fetch plus reference-index checkpoints"
+  },
+  "recommendations": [
+    "Persist cloud-generated alignment BAM/BAI outputs in the asset cache so launcher interruptions do not force alignment rework.",
+    "Keep AWS smoke tests split and short; credential or host failures should burn minutes, not multi-hour monolithic runs.",
+    "Enable Nextflow report/timeline overwrite or use unique report names for resume loops.",
+    "The next optimization target is alignment checkpoint durability; fetch and reference-index already complete quickly."
+  ],
+  "currentResultStatuses": {
+    "results/phase3_wgs_smoke/fastq_summary.json": "passed",
+    "results/phase3_wgs_smoke/phase3_wgs_summary.json": "passed",
+    "results/full_wes_benchmark/full_wes_benchmark_summary.json": "passed",
+    "results/orthogonal_validation/public_examples_summary.json": "failed"
+  }
+}

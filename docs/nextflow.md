@@ -17,13 +17,14 @@ The old one-process runner is still available as `phase3_wgs_monolith` for fallb
 Install Nextflow, then run one of the task aliases:
 
 ```sh
-bun run nf:quick
-bun run nf:full-wes
-bun run nf:phase3-fetch:dev
-bun run nf:phase3-fetch:full
-bun run nf:phase3-wgs:dev
-bun run nf:phase3-wgs:full
-bun run nf:all-public
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:quick
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-wgs:stub
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:full-wes
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-fetch:dev
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-fetch:full
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-wgs:dev
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-wgs:full
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:all-public
 ```
 
 Direct Nextflow equivalents:
@@ -97,6 +98,12 @@ Measured from `us-east-1`, ENA direct HTTP was about 4-6 MB/s and did not scale 
 Use `phase3_sra_benchmark` for cheap network-only experiments before a full download and conversion run:
 
 ```sh
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:sra-bench:tiny
+```
+
+or at the larger default size:
+
+```sh
 nextflow run main.nf \
   -profile awsbatch_ondemand \
   -params-file infra/aws/nextflow.aws.json \
@@ -109,6 +116,8 @@ nextflow run main.nf \
 ```
 
 This range-reads the public SRA objects and reports per-range plus aggregate MB/s without keeping the downloaded bytes. `--sra_benchmark_bytes` is bytes per range and `--sra_benchmark_parts` is ranges per run accession. It tests the AWS S3 path only; full `aws_sra` performance also includes SRA-to-FASTQ conversion and gzip compression. Keep `--phase3_aria2_split 1` for ENA acceptance data unless a segmented transfer strategy has already been proven against provider MD5s and gzip validation.
+
+The benchmark implementation lives in the Python command `benchmark:sra-range`, so matrix parsing and throughput summary contracts are covered by local tests instead of being trapped in an inline Nextflow heredoc.
 
 AWS Batch profiles retry failed processes once by default through `--aws_max_retries 1`. Increase this only for transient cloud failures; deterministic analysis failures should be fixed and relaunched with a new image.
 
@@ -127,6 +136,8 @@ When `--phase3_source_mode aws_sra` and `--phase3_reads full` are selected, the 
 - fresh range reads from the AWS Open Data bucket
 
 Cache hits still run through the same full FASTQ scan and spot-count validation. Cache writes happen only after converted FASTQs pass validation, so the cache is an acceleration layer, not a replacement for validation.
+
+Alignment jobs can also publish cloud-generated public BAM/BAI derivatives under the same cache root. Later retries restore them only if `samtools quickcheck`, BAI presence, and requested read-scope checks pass. This is mainly for AWS resume recovery when a Batch job finishes after the local Nextflow launcher has already been interrupted.
 
 Nextflow also caches split-stage outputs in the configured work bucket. That work cache is for `nextflow -resume`; the asset cache under `phase3_asset_cache_uri` is for cross-run reuse of expensive public-input derivatives such as regenerated FASTQ gzip files. Do not seed either cache from local raw data.
 
@@ -157,6 +168,7 @@ Use `-stub-run` for a fast container wiring check that does not fetch data or ru
 
 ```sh
 nextflow run main.nf -profile docker --workflow quick -stub-run
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:docker:phase3-wgs:stub
 ```
 
 The Docker image includes the repo skeleton, manifests, docs, result summaries, Python package, Java 17, BWA, samtools, bcftools, seqkit, sra-tools, pigz, aria2, curl, unzip, and rsync. It does not bake bulky `data/raw` files into the image; fetch commands recreate raw inputs inside the task workspace.

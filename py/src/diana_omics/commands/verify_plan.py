@@ -142,9 +142,6 @@ def main() -> None:
         errors.append("python3 is not available.")
     if not command_version("R", ["--version"]):
         warnings.append("R is not available locally; R-native tools should use a container or later R setup.")
-    bun_version = command_version("bun", ["--version"])
-    if not bun_version:
-        warnings.append("Bun is not available on PATH; package.json task aliases require Bun, but Python commands can still run directly.")
 
     if manifest and os.environ.get("CHECK_URLS") == "1":
         for source in manifest.get("sources", []):
@@ -162,8 +159,6 @@ def main() -> None:
     print("Plan verification passed.")
     if python_version:
         print(f"Python: {python_version}")
-    if bun_version:
-        print(f"Bun: {bun_version}")
 
 
 if __name__ == "__main__":

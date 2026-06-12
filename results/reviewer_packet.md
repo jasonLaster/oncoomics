@@ -26,10 +26,12 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 - Full WES benchmark intervals: 1277
 - Full WES depth-eligible truth variants: 1307
 - Full WES contamination status: passed
-- Phase 3 WGS smoke status: passed
+- Phase 3 WGS mechanics status: passed
+- Phase 3 WGS full-source acceptance: pending_full_source
 - Phase 3 WGS complete: yes
-- Phase 3 ready for Phase 4 setup: yes
+- Phase 3 ready for Phase 4 setup: no
 - Phase 3 WGS read pairs/end: 500000
+- Phase 3 WGS read-pair mode: unknown
 - Phase 3 coverage-CNV bins: 631
 - Phase 3 SBS96 usable SNVs: 0
 
@@ -62,7 +64,7 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 
 ## What Passed
 
-1. Public source fetches are reproducible with Bun.
+1. Public source fetches are reproducible through the Python CLI.
 2. Sample identifiers cross cBioPortal and Xena without truncation in the selected clinical subset.
 3. The reference panel includes positive, mechanistic, ambiguous, and negative controls.
 4. HRR events, copy-loss proxies, scar proxies, and RNA context are written as separate evidence tables.
@@ -71,7 +73,7 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 7. Full-reference smoke validates one full hg38 analysis-set reference, BRCA interval metadata, caller-ready BAM contracts, and indexed VCF generation.
 8. Production somatic smoke validates GATK Mutect2/FilterMutectCalls execution on a larger downsampled HCC1395 WES tumor-normal pair.
 9. Full WES benchmark validates complete ENA FASTQ files, full-reference BAM contracts, duplicate marking, contamination estimation, PoN-aware Mutect2, and SEQC2 truth-overlap metrics.
-10. Phase 3 WGS smoke validates representative WGS FASTQ access, full-reference WGS BAM contracts, Mutect2 WGS-smoke output, coverage-CNV bins, SBS96 matrix generation, and BAM-derived SV evidence lanes.
+10. Phase 3 bounded WGS developer validation has exercised the full-reference BAM, Mutect2, coverage-CNV, SBS96, and SV evidence lanes; full-source acceptance remains pending.
 
 ## Main Limitations
 
@@ -79,7 +81,7 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 2. Fraction genome altered and aneuploidy are scar proxies, not scarHRD.
 3. SBS3, SV signatures, CHORD, and HRDetect are not assessable from the current processed phase-1 inputs.
 4. The Phase 2F Mutect2 VCF is WES small-variant benchmark evidence, not WGS HRD signature evidence.
-5. The Phase 3 WGS lane is a representative WGS smoke, not full-depth WGS sensitivity or a final HRD classifier.
+5. The current Phase 3 WGS artifact is a bounded developer subset, not the full-source WGS acceptance run or a final HRD classifier.
 6. The Phase 2F local gate uses the Broad 1000g PoN and common-biallelic contamination resource, but the full multi-GB af-only gnomAD resource remains documented as a production/cloud input rather than a local gating download.
 7. BQSR, orientation-bias modeling, vendor capture intervals, allele-specific copy-number, validated SV calling, full-depth WGS scaling, and WGS signature calling remain Phase 4 or Diana-specific production decisions.
 8. Clinical action still requires clinician-owned validation, companion diagnostics, or orthogonal confirmation.

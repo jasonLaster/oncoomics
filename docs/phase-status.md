@@ -16,7 +16,7 @@ This file is the current operational status. It intentionally distinguishes pass
 
 ## Latest Full-Run Evidence
 
-The latest `bun run run:all` completed with these key outputs:
+The latest `PYTHONPATH=py/src /usr/bin/python3 -m diana_omics run:all` completed with these key outputs:
 
 - `results/full_wes_benchmark/full_wes_benchmark_summary.json`
 - `results/phase3_wgs_smoke/phase3_wgs_summary.json`
@@ -57,11 +57,11 @@ What this does not prove:
 Verifier:
 
 ```sh
-bun run build:panel
-bun run analyze:hrd
-bun run analyze:rna
-bun run build:packet
-bun run verify:outputs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:panel
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics analyze:hrd
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics analyze:rna
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:packet
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 ## Phase 2
@@ -86,9 +86,9 @@ Known risks:
 Verifier:
 
 ```sh
-bun run fetch:full-wes
-bun run benchmark:full-wes
-bun run verify:outputs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:full-wes
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics benchmark:full-wes
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 ## Phase 3
@@ -111,10 +111,10 @@ Known risks:
 Verifier:
 
 ```sh
-bun run fetch:phase3-wgs
-bun run validate:phase3-wgs
-bun run verify:orthogonal
-bun run verify:outputs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:orthogonal
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 ## Orthogonal Validation
@@ -148,8 +148,8 @@ Status: ready, waiting on actual files.
 Ready-now commands:
 
 ```sh
-bun run build:diana-template
-bun run verify:diana-raw
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:diana-template
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
 ```
 
 Strict validation when files arrive:
@@ -157,7 +157,7 @@ Strict validation when files arrive:
 ```sh
 DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
 DIANA_RAW_REQUIRE_DATA=1 \
-bun run verify:diana-raw
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
 ```
 
 Stage a Diana-specific recompute packet:
@@ -166,7 +166,7 @@ Stage a Diana-specific recompute packet:
 DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
 DIANA_RAW_REQUIRE_DATA=1 \
 DIANA_RAW_ANALYSIS_ID=diana_initial_raw_recompute \
-bun run stage:diana-raw
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics stage:diana-raw
 ```
 
 Blocked items:

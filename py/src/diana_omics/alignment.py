@@ -91,7 +91,8 @@ def align_and_validate(row: dict[str, str], results_dir: str, required_contigs: 
     )
     run_command(command, f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.align.log")
     run_command(
-        f"samtools index -@ {threads} {quote_shell_arg(row['output_bam'])}", f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.index.log"
+        f"samtools index -@ {threads} {quote_shell_arg(row['output_bam'])}",
+        f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.index.log",
     )
     flagstat_log = f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.flagstat.txt"
     run_command(
@@ -99,7 +100,8 @@ def align_and_validate(row: dict[str, str], results_dir: str, required_contigs: 
         flagstat_log,
     )
     run_command(
-        f"samtools stats -@ {threads} {quote_shell_arg(row['output_bam'])}", f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.stats.txt"
+        f"samtools stats -@ {threads} {quote_shell_arg(row['output_bam'])}",
+        f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.stats.txt",
     )
     quickcheck = subprocess.run(
         ["samtools", "quickcheck", "-v", str(path_from_root(row["output_bam"]))],

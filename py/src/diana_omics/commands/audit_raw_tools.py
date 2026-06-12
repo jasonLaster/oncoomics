@@ -12,7 +12,7 @@ TOOL_GROUPS = [
     {
         "group": "baseline_streaming",
         "requiredFor": "Phase 2A direct FASTQ metadata and tiny read-subset smoke",
-        "tools": ["bun", "curl", "gunzip", "gzip", "python3"],
+        "tools": ["curl", "gunzip", "gzip", "python3"],
     },
     {
         "group": "sra_conversion",

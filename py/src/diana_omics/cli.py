@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable
 
+from .workflow_tasks import TASKS, run_task
+
 
 def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.analyze_hrd import main as analyze_hrd
@@ -13,6 +15,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.build_reference_panel import main as build_reference_panel
     from .commands.build_reviewer_packet import main as build_reviewer_packet
     from .commands.build_rna_context import main as build_rna_context
+    from .commands.diagnose_pipeline import main as diagnose_pipeline
     from .commands.fetch_full_reference_smoke_assets import main as fetch_full_reference_smoke_assets
     from .commands.fetch_full_wes_benchmark_assets import main as fetch_full_wes_benchmark_assets
     from .commands.fetch_human_reference_smoke_assets import main as fetch_human_reference_smoke_assets
@@ -27,6 +30,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.run_phase3_wgs_smoke import main as run_phase3_wgs_smoke
     from .commands.run_production_somatic_smoke import main as run_production_somatic_smoke
     from .commands.run_raw_smoke import main as run_raw_smoke
+    from .commands.run_sra_benchmark import main as run_sra_benchmark
     from .commands.stage_diana_raw_analysis import main as stage_diana_raw_analysis
     from .commands.verify_diana_raw import main as verify_diana_raw
     from .commands.verify_orthogonal_validation import main as verify_orthogonal_validation
@@ -43,6 +47,8 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "build:packet": build_reviewer_packet,
         "build:panel": build_reference_panel,
         "build:raw-samplesheets": build_raw_samplesheets,
+        "benchmark:sra-range": run_sra_benchmark,
+        "diagnose:pipeline": diagnose_pipeline,
         "fetch:full-reference-smoke": fetch_full_reference_smoke_assets,
         "fetch:full-wes": fetch_full_wes_benchmark_assets,
         "fetch:human-reference-smoke": fetch_human_reference_smoke_assets,
@@ -69,9 +75,19 @@ def _load_commands() -> dict[str, Callable[[], None]]:
 def main() -> None:
     commands = _load_commands()
     parser = argparse.ArgumentParser(description="Run Python Diana omics workflow commands.")
-    parser.add_argument("command", choices=sorted(commands))
+    command_names = sorted(set(commands) | set(TASKS))
+    parser.add_argument("command", nargs="?", choices=command_names)
+    parser.add_argument("args", nargs=argparse.REMAINDER)
     args = parser.parse_args()
-    commands[args.command]()
+    if args.command is None:
+        parser.print_help()
+        return
+    if args.command in commands:
+        if args.args:
+            parser.error(f"{args.command} does not accept extra arguments")
+        commands[args.command]()
+    else:
+        run_task(args.command, args.args)
 
 
 if __name__ == "__main__":

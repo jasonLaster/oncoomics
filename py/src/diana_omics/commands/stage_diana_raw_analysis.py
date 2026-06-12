@@ -7,6 +7,8 @@ from ..paths import path_from_root
 from ..utils import ensure_dir, iso_now, parse_csv, read_text, write_csv, write_json, write_text
 from .verify_diana_raw import check_files, selected_samplesheet, validate_rows
 
+PY_COMMAND = "PYTHONPATH=py/src /usr/bin/python3 -m diana_omics"
+
 
 def analysis_id() -> str:
     return os.environ.get("DIANA_RAW_ANALYSIS_ID", "diana_raw_initial")
@@ -33,19 +35,19 @@ def main() -> None:
         {
             "step": 1,
             "name": "validate_public_reference_ladder",
-            "command": "bun run run:all",
+            "command": f"{PY_COMMAND} run:all",
             "purpose": "Recompute the public validation ladder alongside Diana-specific staging.",
         },
         {
             "step": 2,
             "name": "validate_diana_inputs",
-            "command": f"DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 bun run verify:diana-raw",
+            "command": f"DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 {PY_COMMAND} verify:diana-raw",
             "purpose": "Fail fast if Diana raw paths, pair roles, or reference metadata are incomplete.",
         },
         {
             "step": 3,
             "name": "stage_diana_analysis_packet",
-            "command": f"DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 DIANA_RAW_ANALYSIS_ID={analysis_id()} bun run stage:diana-raw",
+            "command": f"DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 DIANA_RAW_ANALYSIS_ID={analysis_id()} {PY_COMMAND} stage:diana-raw",
             "purpose": "Write the Diana-specific run packet, input manifest, and reviewer boundary.",
         },
     ]
@@ -83,9 +85,9 @@ def main() -> None:
             "dnaRows": dna_rows,
             "rnaRows": rna_rows,
             "validationSidecar": {
-                "publicValidationCommand": "bun run run:all",
-                "dianaInputValidationCommand": f"DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 bun run verify:diana-raw",
-                "outputVerifier": "bun run verify:outputs",
+                "publicValidationCommand": f"{PY_COMMAND} run:all",
+                "dianaInputValidationCommand": f"DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 {PY_COMMAND} verify:diana-raw",
+                "outputVerifier": f"{PY_COMMAND} verify:outputs",
             },
             "interpretationBoundary": "Staged Diana raw-data analysis is ready for computation, but clinical interpretation still requires final CNV/SV/signature policy, reviewer sign-off, and clinician-owned validation.",
         },
@@ -108,9 +110,9 @@ Matched DNA pair IDs: `{";".join(summary["matchedPairIds"])}`
 
 ## Run Alongside Validation
 
-1. `bun run run:all`
-2. `DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 bun run verify:diana-raw`
-3. `DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 DIANA_RAW_ANALYSIS_ID={analysis_id()} bun run stage:diana-raw`
+1. `{PY_COMMAND} run:all`
+2. `DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 {PY_COMMAND} verify:diana-raw`
+3. `DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 DIANA_RAW_ANALYSIS_ID={analysis_id()} {PY_COMMAND} stage:diana-raw`
 
 The staged packet records Diana raw inputs and the exact validation sidecar. It is designed so Diana's HRD recompute can be compared against the public SEQC2/HCC1395 validation outputs in the same repository.
 

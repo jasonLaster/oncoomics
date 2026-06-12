@@ -1,10 +1,12 @@
 # Diana Raw Inputs
 
-This is the contract for plugging Diana's real files into the project.
+Use this document when Diana's real files arrive and you need to tell the project where they are.
 
-## Expected Files
+## What This Does
 
-The workflow can stage these input types:
+This contract validates and stages file paths. It does not interpret HRD by itself.
+
+Supported input types:
 
 - Tumor DNA FASTQ pairs.
 - Matched normal DNA FASTQ pairs.
@@ -14,29 +16,21 @@ The workflow can stage these input types:
 
 The strongest Diana analysis would include tumor-normal WGS plus RNA-seq. WES is still useful for coding variants, but it is weaker for genome-wide HRD signatures, CNVs, and SVs.
 
-## Template
+## How To Fill The Samplesheet
 
 Generate the template:
 
 ```sh
-bun run build:diana-template
+PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:diana-template
 ```
 
-This writes:
+Copy it:
 
-- `manifests/diana_raw_inputs.template.csv`
-- `results/diana_raw_intake/input_contract.json`
-- `results/diana_raw_intake/intake_readiness_summary.json`
-
-Copy the template structure into:
-
-```text
-manifests/diana_raw_inputs.csv
+```sh
+cp manifests/diana_raw_inputs.template.csv manifests/diana_raw_inputs.csv
 ```
 
-Do not put placeholder paths into the strict samplesheet. Strict mode requires actual files.
-
-## Required Metadata
+Fill `manifests/diana_raw_inputs.csv` with actual local paths and metadata. Do not leave placeholder paths in strict mode.
 
 Each row should identify:
 
@@ -53,22 +47,10 @@ Each row should identify:
 - tumor purity or tumor content when known
 - source/vendor notes
 
-The exact column set is defined by the generated template and `diana_omics.diana_raw`.
-
-## Validation
-
-Waiting-state validation:
+## Validate The Files
 
 ```sh
-bun run verify:diana-raw
-```
-
-Strict validation with real files:
-
-```sh
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
-DIANA_RAW_REQUIRE_DATA=1 \
-bun run verify:diana-raw
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
 ```
 
 Strict validation checks:
@@ -85,10 +67,7 @@ Strict validation checks:
 ## Stage A Recompute Packet
 
 ```sh
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
-DIANA_RAW_REQUIRE_DATA=1 \
-DIANA_RAW_ANALYSIS_ID=diana_initial_raw_recompute \
-bun run stage:diana-raw
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics stage:diana-raw
 ```
 
 The stage command writes:
@@ -97,7 +76,14 @@ The stage command writes:
 results/diana_raw_analysis/<analysis_id>/
 ```
 
-That packet is the handoff point for running the public validation workflow beside Diana-specific analysis.
+## Supported Input Shapes
+
+| data_type | Required path columns |
+| --- | --- |
+| `FASTQ` | `fastq_1`, `fastq_2` |
+| `BAM` | `bam`, `bai` |
+| `CRAM` | `cram`, `crai` |
+| `RNA_FASTQ` | `rna_fastq_1`, `rna_fastq_2` |
 
 ## Common Mistakes
 

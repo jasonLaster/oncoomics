@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any, Optional
 
 from ..paths import path_from_root
@@ -32,6 +33,7 @@ from ..utils import (
     write_json,
     write_text,
 )
+from . import fetch_phase3_wgs_smoke_assets as phase3_assets
 
 RESULTS_DIR = "results/phase3_wgs_smoke"
 FORCE = os.environ.get("PHASE3_WGS_FORCE") == "1"
@@ -251,6 +253,68 @@ def write_stage_marker(stage: str, payload: dict[str, Any]) -> None:
     write_json(marker_path, {"generatedAt": iso_now(), "stage": stage, **payload})
 
 
+def read_label_from_fastq(row: dict[str, str]) -> str:
+    match = re.search(r"_R1\.([^.]+)\.fastq(?:\.gz)?$", Path(row["fastq_1"]).name)
+    return match.group(1) if match else str(row["read_pairs_per_end"])
+
+
+def alignment_cache_uris(row: dict[str, str]) -> tuple[str, str]:
+    read_label = read_label_from_fastq(row)
+    prefix = phase3_assets.cache_uri("bam", row["reference_id"], read_label, row["role"])
+    if not prefix:
+        return "", ""
+    return f"{prefix}/{Path(row['output_bam']).name}", f"{prefix}/{Path(row['output_bai']).name}"
+
+
+def restore_cached_alignment(row: dict[str, str]) -> bool:
+    if FORCE or not phase3_assets.cache_reads_enabled():
+        return False
+    bam_uri, bai_uri = alignment_cache_uris(row)
+    if not bam_uri or not bai_uri:
+        return False
+    aws = phase3_assets.aws_cli_path()
+    if phase3_assets.s3_object_size(aws, bam_uri) is None or phase3_assets.s3_object_size(aws, bai_uri) is None:
+        print(f"[cache-miss] label={row['role']}.alignment uri={bam_uri.rsplit('/', 1)[0]}", flush=True)
+        return False
+    for relative_path in [row["output_bam"], row["output_bai"]]:
+        path_from_root(relative_path).unlink(missing_ok=True)
+    try:
+        phase3_assets.restore_cached_asset(aws, bam_uri, path_from_root(row["output_bam"]), None, f"{row['role']}.bam")
+        phase3_assets.restore_cached_asset(aws, bai_uri, path_from_root(row["output_bai"]), None, f"{row['role']}.bai")
+    except Exception:
+        remove_stale_alignment(row)
+        raise
+    if bam_satisfies_read_scope(row):
+        write_stage_marker(
+            f"align_{row['role']}",
+            {
+                "status": "restored_cache",
+                "role": row["role"],
+                "runAccession": row["run_accession"],
+                "bam": row["output_bam"],
+                "bai": row["output_bai"],
+                "cacheUri": bam_uri.rsplit("/", 1)[0],
+            },
+        )
+        return True
+    print(f"[cache-skip] label={row['role']}.alignment reason=restored_bam_failed_scope_check", flush=True)
+    remove_stale_alignment(row)
+    return False
+
+
+def publish_cached_alignment(row: dict[str, str]) -> list[dict[str, Any]]:
+    if not phase3_assets.cache_writes_enabled() or not bam_satisfies_read_scope(row):
+        return []
+    aws = phase3_assets.aws_cli_path()
+    bam_uri, bai_uri = alignment_cache_uris(row)
+    published: list[dict[str, Any]] = []
+    for kind, relative_path, uri in [("bam", row["output_bam"], bam_uri), ("bai", row["output_bai"], bai_uri)]:
+        source_path = path_from_root(relative_path)
+        if uri and phase3_assets.publish_cached_asset(aws, source_path, uri, f"{row['role']}.{kind}", source_path.stat().st_size):
+            published.append({"kind": kind, "uri": uri, "bytes": source_path.stat().st_size})
+    return published
+
+
 def ensure_bwa_index(reference_id: str, reference_path: str) -> None:
     if FORCE or not path_from_root(f"{reference_path}.bwt").exists():
         run_command(f"bwa index {quote_shell_arg(reference_path)}", f"{RESULTS_DIR}/logs/{reference_id}.bwa_index.log")
@@ -269,6 +333,8 @@ def align_and_index_sample(reference_id: str, row: dict[str, str]) -> None:
                 "bai": row["output_bai"],
             },
         )
+        return
+    if restore_cached_alignment(row):
         return
     remove_stale_alignment(row)
     command = (
@@ -292,6 +358,7 @@ def align_and_index_sample(reference_id: str, row: dict[str, str]) -> None:
     )
     if not bam_satisfies_read_scope(row):
         raise RuntimeError(f"Aligned BAM for {row['role']} did not satisfy requested read scope: {row['output_bam']}")
+    published = publish_cached_alignment(row)
     write_stage_marker(
         f"align_{row['role']}",
         {
@@ -301,6 +368,7 @@ def align_and_index_sample(reference_id: str, row: dict[str, str]) -> None:
             "threads": TOTAL_THREADS,
             "bam": row["output_bam"],
             "bai": row["output_bai"],
+            "cachePublished": published,
         },
     )
 
@@ -693,7 +761,15 @@ def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
                     large_insert_pairs += 1
                 if candidate_count >= 100:
                     continue
-                read_name, chrom1, pos1, chrom2, pos2, mapq, cigar = fields[0], fields[2], fields[3], fields[6], fields[7], fields[4], fields[5]
+                read_name, chrom1, pos1, chrom2, pos2, mapq, cigar = (
+                    fields[0],
+                    fields[2],
+                    fields[3],
+                    fields[6],
+                    fields[7],
+                    fields[4],
+                    fields[5],
+                )
                 candidate_rows.append(
                     {
                         "sample": row["sample"],
@@ -833,6 +909,8 @@ def main() -> None:
         ensure_dir(path_from_root("/".join(row["output_bam"].split("/")[:-1])))
         if not FORCE and bam_satisfies_read_scope(row):
             continue
+        if restore_cached_alignment(row):
+            continue
         remove_stale_alignment(row)
         command = (
             "set -o pipefail; "
@@ -871,6 +949,7 @@ def main() -> None:
         if stats_commands:
             run_commands_parallel(stats_commands, min(4, len(stats_commands)))
 
+    alignment_cache_rows = [publish_cached_alignment(row) for row in rows]
     bam_rows = reusable_bam_rows if reusable_bam_rows is not None else validate_bam_rows(rows)
     bam_status = "passed" if all(row["status"] == "passed" for row in bam_rows) else "failed"
     write_csv(path_from_root(f"{RESULTS_DIR}/bam_validation_summary.csv"), bam_rows)
@@ -1104,6 +1183,7 @@ def main() -> None:
         "sbs96_matrix_status": signature_summary["status"],
         "sbs96_usable_snv_records": signature_summary["usable_snv_records"],
         "sv_evidence_status": "passed" if all(row["status"] == "passed" for row in sv_rows) else "failed",
+        "alignment_cache_events": sum(len(row) for row in alignment_cache_rows),
         "phase3_complete": "yes" if phase3_complete else "no",
         "ready_for_phase4_when_diana_raw_arrives": "yes" if phase3_complete else "no",
         "boundary": "Phase 3 validates WGS-capable mechanics with real representative WGS FASTQ, BAM, small-variant VCF, coverage-CNV bins, SBS96 matrix, and SV evidence outputs. Full-depth Diana interpretation still needs Diana raw data and production CNV/SV/signature policy.",
@@ -1138,6 +1218,7 @@ def main() -> None:
             "sbs96MatrixStatus": signature_summary["status"],
             "sbs96UsableSnvRecords": signature_summary["usable_snv_records"],
             "svEvidenceStatus": summary_row["sv_evidence_status"],
+            "alignmentCacheEvents": summary_row["alignment_cache_events"],
             "phase3Complete": phase3_complete,
             "readyForPhase4WhenDianaRawArrives": phase3_complete,
             "boundary": summary_row["boundary"],

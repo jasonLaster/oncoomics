@@ -1,1 +1,1 @@
-"""Runnable Python command implementations mirroring package.json scripts."""
+"""Runnable Python command implementations."""

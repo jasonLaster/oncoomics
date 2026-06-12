@@ -82,6 +82,8 @@ class Phase3WgsHelpersTest(unittest.TestCase):
                 patch.object(phase3, "quickcheck_bam", return_value=True),
             ):
                 reusable = phase3.reusable_bam_validation_rows(rows)
+        self.assertIsNotNone(reusable)
+        assert reusable is not None
         self.assertEqual(reusable[0]["validation_cache"], "reused")
 
     def test_reusable_bam_validation_rows_rejects_wrong_bam(self):
@@ -254,6 +256,79 @@ class Phase3WgsHelpersTest(unittest.TestCase):
                 fetch_phase3.cache_uri("/fastq/", "SRR7890824_R1.full.fastq.gz"),
                 "s3://diana-omics-raw/cache/phase3_wgs/fastq/SRR7890824_R1.full.fastq.gz",
             )
+
+    def test_alignment_cache_uri_uses_reference_read_label_and_role(self):
+        row = {
+            "fastq_1": "data/raw/phase3/fastq/SRR7890824_R1.full.fastq.gz",
+            "reference_id": "ucsc_hg38_analysis_set_full",
+            "role": "tumor",
+            "output_bam": "data/raw/phase3/ref/full/bam/SRR7890824.tumor.bam",
+            "output_bai": "data/raw/phase3/ref/full/bam/SRR7890824.tumor.bam.bai",
+            "read_pairs_per_end": "568040077",
+        }
+        with patch.object(fetch_phase3, "ASSET_CACHE_URI", "s3://diana-omics-raw/cache/phase3_wgs"):
+            self.assertEqual(
+                phase3.alignment_cache_uris(row),
+                (
+                    "s3://diana-omics-raw/cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/tumor/SRR7890824.tumor.bam",
+                    "s3://diana-omics-raw/cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/tumor/SRR7890824.tumor.bam.bai",
+                ),
+            )
+
+    def test_restore_cached_alignment_requires_bam_and_bai(self):
+        row = {
+            "fastq_1": "data/raw/phase3/fastq/SRR7890824_R1.full.fastq.gz",
+            "reference_id": "ucsc_hg38_analysis_set_full",
+            "role": "tumor",
+            "run_accession": "SRR7890824",
+            "output_bam": "bam/SRR7890824.tumor.bam",
+            "output_bai": "bam/SRR7890824.tumor.bam.bai",
+            "read_pairs_per_end": "568040077",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(fetch_phase3, "cache_reads_enabled", return_value=True),
+                patch.object(fetch_phase3, "aws_cli_path", return_value="/usr/bin/aws"),
+                patch.object(fetch_phase3, "s3_object_size", side_effect=[10, None]),
+                patch.object(fetch_phase3, "restore_cached_asset") as restore,
+            ):
+                self.assertFalse(phase3.restore_cached_alignment(row))
+            restore.assert_not_called()
+
+    def test_restore_cached_alignment_writes_stage_marker(self):
+        row = {
+            "fastq_1": "data/raw/phase3/fastq/SRR7890824_R1.full.fastq.gz",
+            "reference_id": "ucsc_hg38_analysis_set_full",
+            "role": "tumor",
+            "run_accession": "SRR7890824",
+            "output_bam": "bam/SRR7890824.tumor.bam",
+            "output_bai": "bam/SRR7890824.tumor.bam.bai",
+            "read_pairs_per_end": "568040077",
+        }
+
+        def restore(_aws, _uri, target_path, _expected_bytes, _label):
+            utils.write_text(target_path, "restored")
+            return True
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "bam_satisfies_read_scope", return_value=True),
+                patch.object(fetch_phase3, "ASSET_CACHE_URI", "s3://cache/phase3_wgs"),
+                patch.object(fetch_phase3, "cache_reads_enabled", return_value=True),
+                patch.object(fetch_phase3, "aws_cli_path", return_value="/usr/bin/aws"),
+                patch.object(fetch_phase3, "s3_object_size", return_value=10),
+                patch.object(fetch_phase3, "restore_cached_asset", side_effect=restore),
+            ):
+                self.assertTrue(phase3.restore_cached_alignment(row))
+            marker = utils.read_json(root / "results/phase3_wgs_smoke/stage_markers/align_tumor.json")
+        self.assertEqual(marker["status"], "restored_cache")
+        self.assertEqual(marker["runAccession"], "SRR7890824")
 
     def test_parse_s3_uri_requires_bucket_and_key(self):
         self.assertEqual(fetch_phase3.parse_s3_uri("s3://bucket/path/to/object"), ("bucket", "path/to/object"))
