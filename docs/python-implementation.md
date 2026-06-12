@@ -5,7 +5,7 @@ The project is implemented as a small Python package plus shell-invoked bioinfor
 ## Package Layout
 
 ```text
-py/src/diana_omics/
+src/diana_omics/
   cli.py                 command router
   diana_raw.py           Diana raw-data manifest contract
   domain.py              shared domain helpers
@@ -16,12 +16,12 @@ py/src/diana_omics/
   commands/              one module per workflow command
 ```
 
-Tests live in `py/tests/`.
+Tests live in `tests/`.
 
 The package can be run directly:
 
 ```sh
-PYTHONPATH=py/src python3 -m diana_omics verify:outputs
+PYTHONPATH=src python3 -m diana_omics verify:outputs
 ```
 
 Local, Docker, AWS, and deploy task aliases live in `diana_omics.workflow_tasks`, so they stay on the Python CLI surface instead of a separate JavaScript task runner.
@@ -73,8 +73,8 @@ WGS validation:
 Phase 3 full-source mode:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics validate:phase3-wgs
 ```
 
 This streams each complete SEQC2/HCC1395 public source FASTQ. Set `PHASE3_WGS_READS` to an integer only for developer plumbing checks; bounded runs do not satisfy `verify:outputs`.
@@ -145,13 +145,13 @@ Commands should fail loudly when required files, columns, or status fields are m
 ## Quality Commands
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:format
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:lint
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:format:check
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:typecheck
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:test
-python3 -m compileall -q py/src py/tests
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics py:format
+PYTHONPATH=src /usr/bin/python3 -m diana_omics py:lint
+PYTHONPATH=src /usr/bin/python3 -m diana_omics py:format:check
+PYTHONPATH=src /usr/bin/python3 -m diana_omics py:typecheck
+PYTHONPATH=src /usr/bin/python3 -m diana_omics py:test
+python3 -m compileall -q src tests
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 git diff --check
 ```
 

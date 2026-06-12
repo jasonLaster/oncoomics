@@ -17,14 +17,14 @@ The old one-process runner is still available as `phase3_wgs_monolith` for fallb
 Install Nextflow, then run one of the task aliases:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:quick
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-wgs:stub
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:full-wes
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-fetch:dev
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-fetch:full
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-wgs:dev
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-wgs:full
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:all-public
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:quick
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:stub
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:full-wes
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-fetch:dev
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-fetch:full
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:dev
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:full
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:all-public
 ```
 
 Direct Nextflow equivalents:
@@ -99,7 +99,7 @@ Measured from `us-east-1`, ENA direct HTTP was about 4-6 MB/s and did not scale 
 Use `phase3_sra_benchmark` for cheap network-only experiments before a full download and conversion run:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:sra-bench:tiny
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:sra-bench:tiny
 ```
 
 or at the larger default size:
@@ -171,7 +171,7 @@ Use `-stub-run` for a fast container wiring check that does not fetch data or ru
 
 ```sh
 nextflow run main.nf -profile docker --workflow quick -stub-run
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:docker:phase3-wgs:stub
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:docker:phase3-wgs:stub
 ```
 
 The Docker image includes the repo skeleton, manifests, docs, result summaries, Python package, Java 17, BWA, samtools, bcftools, seqkit, sra-tools, pigz, aria2, curl, unzip, and rsync. It does not bake bulky `data/raw` files into the image; fetch commands recreate raw inputs inside the task workspace.

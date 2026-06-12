@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Union
 
-ROOT = Path(os.environ["DIANA_OMICS_ROOT"]).resolve() if os.environ.get("DIANA_OMICS_ROOT") else Path(__file__).resolve().parents[3]
+ROOT = Path(os.environ["DIANA_OMICS_ROOT"]).resolve() if os.environ.get("DIANA_OMICS_ROOT") else Path(__file__).resolve().parents[2]
 WIKI_ROOT = Path(os.environ.get("DIANA_OMICS_WIKI_ROOT", "/Users/jasonlaster/src/projects/diana-tnbc/obsidian/wiki/omics"))
 
 

@@ -41,7 +41,7 @@ Truth sets are known-answer datasets. They are the only way to show that a pipel
 ## New Reader Path
 
 1. Read this file.
-2. Run `PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs` to confirm generated artifacts are internally complete.
+2. Run `PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs` to confirm generated artifacts are internally complete.
 3. Read [phase-status.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase-status.md) to see what has actually passed.
 4. Read [bug-audit.md](/Users/jasonlaster/src/projects/diana-omics/docs/bug-audit.md) before trusting any biological interpretation.
 5. Read [diana-raw-inputs.md](/Users/jasonlaster/src/projects/diana-omics/docs/diana-raw-inputs.md) before plugging in Diana's files.
@@ -51,13 +51,13 @@ Truth sets are known-answer datasets. They are the only way to show that a pipel
 Every workflow command is available through Python:
 
 ```sh
-PYTHONPATH=py/src python3 -m diana_omics verify:outputs
+PYTHONPATH=src python3 -m diana_omics verify:outputs
 ```
 
 Task aliases use the same Python entry point:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 There is no separate JavaScript task runner in this repository.

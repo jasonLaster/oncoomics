@@ -182,7 +182,7 @@ Status: **{status}**.
 
 Expected samplesheet: `{samplesheet}`
 
-Run `PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:diana-template` to refresh the template and documentation.
+Run `PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-template` to refresh the template and documentation.
 """,
         )
         if errors:

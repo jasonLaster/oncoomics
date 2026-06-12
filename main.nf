@@ -62,7 +62,7 @@ process QUICK {
     cd workspace
     export DIANA_OMICS_ROOT="\$PWD"
     export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/py/src"
+    export PYTHONPATH="\$PWD/src"
     export PYTHON_BIN="${params.python_bin}"
     run() { echo "==> \$*"; "\$@"; }
 
@@ -97,7 +97,7 @@ process QUICK {
     """
     set -euo pipefail
     mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/py/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
     """
 }
 
@@ -122,7 +122,7 @@ process FULL_WES {
     cd workspace
     export DIANA_OMICS_ROOT="\$PWD"
     export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/py/src"
+    export PYTHONPATH="\$PWD/src"
     export PYTHON_BIN="${params.python_bin}"
     export PHASE2F_THREADS="\${PHASE2F_THREADS:-${task.cpus}}"
     run() { echo "==> \$*"; "\$@"; }
@@ -161,7 +161,7 @@ process FULL_WES {
     """
     set -euo pipefail
     mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/py/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
     """
 }
 
@@ -186,7 +186,7 @@ process PHASE3_FETCH {
     cd workspace
     export DIANA_OMICS_ROOT="\$PWD"
     export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/py/src"
+    export PYTHONPATH="\$PWD/src"
     export PYTHON_BIN="${params.python_bin}"
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
     export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
@@ -222,7 +222,7 @@ process PHASE3_FETCH {
     """
     set -euo pipefail
     mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/py/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
     """
 }
 
@@ -245,7 +245,7 @@ process PHASE3_FETCH_WORKSPACE {
     cd workspace
     export DIANA_OMICS_ROOT="\$PWD"
     export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/py/src"
+    export PYTHONPATH="\$PWD/src"
     export PYTHON_BIN="${params.python_bin}"
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
     export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
@@ -288,7 +288,7 @@ process PHASE3_FETCH_WORKSPACE {
     """
     set -euo pipefail
     mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/py/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
     """
 }
 
@@ -312,7 +312,7 @@ process PHASE3_REFERENCE_INDEX {
     cd workspace
     export DIANA_OMICS_ROOT="\$PWD"
     export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/py/src"
+    export PYTHONPATH="\$PWD/src"
     export PYTHON_BIN="${params.python_bin}"
     export PHASE3_WGS_STAGE=reference_index
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
@@ -349,7 +349,7 @@ process PHASE3_ALIGN_SAMPLE {
     cd workspace
     export DIANA_OMICS_ROOT="\$PWD"
     export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/py/src"
+    export PYTHONPATH="\$PWD/src"
     export PYTHON_BIN="${params.python_bin}"
     export PHASE3_WGS_FETCH_CONCURRENCY="${params.phase3_fetch_concurrency}"
     export PHASE3_WGS_ARIA2_SPLIT="${params.phase3_aria2_split}"
@@ -442,7 +442,7 @@ process PHASE3_DOWNSTREAM {
     cd workspace
     export DIANA_OMICS_ROOT="\$PWD"
     export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/py/src"
+    export PYTHONPATH="\$PWD/src"
     export PYTHON_BIN="${params.python_bin}"
     export PHASE3_WGS_STAGE=downstream
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
@@ -479,7 +479,7 @@ process PHASE3_DOWNSTREAM {
     """
     set -euo pipefail
     mkdir -p workspace/manifests workspace/results/phase3_wgs_smoke
-    PYTHONPATH="${params.repo_dir}/py/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
     """
 }
 
@@ -503,7 +503,7 @@ process PHASE3_SRA_BENCHMARK {
     cd workspace
     export DIANA_OMICS_ROOT="\$PWD"
     export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/py/src"
+    export PYTHONPATH="\$PWD/src"
     export PYTHON_BIN="${params.python_bin}"
     export AWS_CA_BUNDLE="\${AWS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}"
     AWS_CLI="\$(command -v aws || true)"
@@ -561,7 +561,7 @@ process PHASE3_WGS {
     cd workspace
     export DIANA_OMICS_ROOT="\$PWD"
     export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/py/src"
+    export PYTHONPATH="\$PWD/src"
     export PYTHON_BIN="${params.python_bin}"
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
     export PHASE3_WGS_THREADS="\${PHASE3_WGS_THREADS:-${task.cpus}}"
@@ -648,7 +648,7 @@ process PHASE3_WGS {
     """
     set -euo pipefail
     mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/py/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
     """
 }
 
@@ -673,7 +673,7 @@ process ALL_PUBLIC {
     cd workspace
     export DIANA_OMICS_ROOT="\$PWD"
     export DIANA_OMICS_SKIP_WIKI_CHECKS="${params.skip_wiki_checks}"
-    export PYTHONPATH="\$PWD/py/src"
+    export PYTHONPATH="\$PWD/src"
     export PYTHON_BIN="${params.python_bin}"
     export PHASE2F_THREADS="\${PHASE2F_THREADS:-8}"
     export PHASE3_WGS_READS="${params.phase3_reads ?: '500000'}"
@@ -733,7 +733,7 @@ process ALL_PUBLIC {
     """
     set -euo pipefail
     mkdir -p workspace/manifests workspace/results
-    PYTHONPATH="${params.repo_dir}/py/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/nextflow_stub_help.txt
     """
 }
 

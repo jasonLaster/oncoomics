@@ -23,31 +23,31 @@ brew install hashicorp/tap/terraform
 Initialize and validate:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics infra:aws:init
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics infra:aws:fmt:check
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics infra:aws:validate
+PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:init
+PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:fmt:check
+PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:validate
 ```
 
 The preferred cloud stack for public SRA work is `us-east-1`, because the `sra-pub-run-odp` AWS Open Data bucket is in `us-east-1`. Use the `sra-use1` Terraform workspace and the `prod-use1` environment name for this stack:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics infra:aws:use1
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics infra:aws:plan:use1
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics infra:aws:apply:use1
+PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:use1
+PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use1
+PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:apply:use1
 ```
 
 Generic plan/apply commands operate on the currently selected Terraform workspace:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics infra:aws:plan
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics infra:aws:apply
+PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan
+PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:apply
 ```
 
 To point Terraform at a specific immutable ECR tag:
 
 ```sh
-AWS_IMAGE_TAG=24d8a65-awswrap2 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics infra:aws:plan:use1
-AWS_IMAGE_TAG=24d8a65-awswrap2 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics infra:aws:apply:use1
+AWS_IMAGE_TAG=24d8a65-awswrap2 PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use1
+AWS_IMAGE_TAG=24d8a65-awswrap2 PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:apply:use1
 ```
 
 The active SRA stack uses account-local AWS credentials and `us-east-1`. It writes `infra/aws/nextflow.aws.json`, which is ignored by git and used by the AWS Nextflow scripts. The original `us-west-1` stack is legacy for this workload because cross-region SRA reads benchmarked much slower.
@@ -57,7 +57,7 @@ The active SRA stack uses account-local AWS credentials and `us-east-1`. It writ
 After the ECR repository exists:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics aws:ecr:push
+PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:ecr:push
 ```
 
 The image push defaults to `us-east-1` and the current git SHA. Override it with `AWS_REGION=...` or `AWS_IMAGE_TAG=...` when testing an image before a commit. Because the ECR repository uses immutable tags, use a new tag for every pushed cloud image.
@@ -69,8 +69,8 @@ AWS Batch mounts the host-side AWS CLI path configured in `nextflow.config` into
 Run a cloud-side stub only. This submits a real AWS Batch job but does not fetch data or run analysis:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:quick:stub
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:stub
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:quick:stub
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:stub
 ```
 
 Confirm:
@@ -85,19 +85,19 @@ Confirm:
 Get the AWS Batch job id from Nextflow output or from `nextflow.log`, then poll status and recent logs:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:monitor -- JOB_ID
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:monitor -- JOB_ID
 ```
 
 For a one-time snapshot:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:monitor -- JOB_ID --once
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:monitor -- JOB_ID --once
 ```
 
 For live CloudWatch log following:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:monitor -- JOB_ID --follow
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:monitor -- JOB_ID --follow
 ```
 
 The monitor prints Batch job state, queue compute environment capacity, active Batch EC2 hosts, and the assigned CloudWatch stream. By default it targets `us-east-1` and repeats every 60 seconds until the job reaches `SUCCEEDED` or `FAILED`; override with `AWS_REGION=...`, `AWS_BATCH_LOG_GROUP=...`, `AWS_MONITOR_INTERVAL=...`, or `--interval ...`. Use it during long WGS runs; when a run finishes or fails, also confirm Batch compute returns to `desired: 0` and no `diana-omics-prod-use1-batch` EC2 instances are still running.
@@ -107,9 +107,9 @@ The monitor prints Batch job state, queue compute environment capacity, active B
 Only after the stub succeeds:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:sra-bench:tiny
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:phase3-fetch:tiny
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:dev
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:sra-bench:tiny
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-fetch:tiny
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:dev
 ```
 
 This uses `--phase3_reads 500000` and is still a developer plumbing check. It downloads public/reference inputs in AWS.
@@ -121,8 +121,8 @@ The default `phase3_wgs` workflow is split into fetch, reference-index, tumor-al
 Use the SRA benchmark workflow to test AWS Open Data throughput on smaller Batch jobs without running conversion or the full validation ladder:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:sra-bench:tiny
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:phase3-sra-benchmark
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:sra-bench:tiny
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-sra-benchmark
 ```
 
 The tiny benchmark range-reads one 16 MiB range from each HCC1395 SRA object; the default benchmark range-reads four 256 MiB ranges. Both write throughput summaries to the configured results bucket. Increase `--sra_benchmark_bytes`, `--sra_benchmark_parts`, or `--phase3_fetch_concurrency` once the basic path is working.
@@ -135,7 +135,7 @@ Observed benchmark results:
 Use the fetch-only workflow to test the full SRA download and FASTQ conversion path without running the full validation ladder:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:phase3-fetch:full
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-fetch:full
 ```
 
 The default full fetch experiment uses:
@@ -172,7 +172,7 @@ Do not upload local `data/raw`, local FASTQ/BAM/VCF files, or local generated ar
 After any failed or interrupted AWS run, refresh the local diagnostic report:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics diagnose:pipeline
+PYTHONPATH=src /usr/bin/python3 -m diana_omics diagnose:pipeline
 ```
 
 If a running AWS Batch host has already generated validated public FASTQs, preserve them from that host with SSM or the task container AWS CLI into the private `raw-inputs` cache. This is still cloud-side generation; do not copy from the developer laptop.
@@ -185,7 +185,7 @@ Run full WGS only by explicit command. The default script uses the Spot queue wi
 current 32-vCPU Spot quota:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full
 ```
 
 Full-source WGS is the acceptance-scale path and can be expensive.
@@ -199,7 +199,7 @@ That script requests memory-rich split alignment jobs through:
 After EC2 quota approval, use the larger On-Demand shape if interruption risk is unacceptable:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full:ondemand-large
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full:ondemand-large
 ```
 
 Tune fetch/reference/downstream separately rather than over-sizing every stage.

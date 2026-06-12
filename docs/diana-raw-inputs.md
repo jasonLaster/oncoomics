@@ -21,7 +21,7 @@ The strongest Diana analysis would include tumor-normal WGS plus RNA-seq. WES is
 Generate the template:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:diana-template
+PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-template
 ```
 
 Copy it:
@@ -50,7 +50,7 @@ Each row should identify:
 ## Validate The Files
 
 ```sh
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw
 ```
 
 Strict validation checks:
@@ -67,7 +67,7 @@ Strict validation checks:
 ## Stage A Recompute Packet
 
 ```sh
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics stage:diana-raw
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw
 ```
 
 The stage command writes:

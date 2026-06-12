@@ -33,7 +33,7 @@ def _python_bin() -> str:
 
 
 def _python_env(extra: Optional[Mapping[str, str]] = None) -> dict[str, str]:
-    path_entries = [str(ROOT / "py" / "src")]
+    path_entries = [str(ROOT / "src")]
     current = os.environ.get("PYTHONPATH")
     if current:
         path_entries.append(current)
@@ -88,26 +88,24 @@ def _task(*steps: TaskStep, accepts_args: bool = False, description: str = "") -
 
 TASKS: dict[str, Task] = {
     "verify:plan:online": _task(_py("verify:plan", {"CHECK_URLS": "1"})),
-    "py:lint": _task(_tool(_python_bin(), "-m", "ruff", "check", "py/src", "py/tests")),
-    "py:format": _task(_tool(_python_bin(), "-m", "ruff", "format", "py/src", "py/tests")),
-    "py:format:check": _task(_tool(_python_bin(), "-m", "ruff", "format", "--check", "py/src", "py/tests")),
+    "py:lint": _task(_tool(_python_bin(), "-m", "ruff", "check", "src", "tests")),
+    "py:format": _task(_tool(_python_bin(), "-m", "ruff", "format", "src", "tests")),
+    "py:format:check": _task(_tool(_python_bin(), "-m", "ruff", "format", "--check", "src", "tests")),
     "py:typecheck": _task(
         _tool(
             _python_bin(),
             "-m",
             "mypy",
             "--config-file",
-            "py/pyproject.toml",
-            "py/src",
-            "py/tests",
-            env={"MYPYPATH": "py/src"},
+            "pyproject.toml",
+            "src",
+            "tests",
+            env={"MYPYPATH": "src"},
         )
     ),
-    "py:test": _task(_tool(_python_bin(), "-m", "pytest", "py/tests", env=_python_env(), append_args=True), accepts_args=True),
-    "typecheck": _task(
-        _tool(_python_bin(), "-m", "mypy", "--config-file", "py/pyproject.toml", "py/src", "py/tests", env={"MYPYPATH": "py/src"})
-    ),
-    "test": _task(_tool(_python_bin(), "-m", "pytest", "py/tests", env=_python_env(), append_args=True), accepts_args=True),
+    "py:test": _task(_tool(_python_bin(), "-m", "pytest", "tests", env=_python_env(), append_args=True), accepts_args=True),
+    "typecheck": _task(_tool(_python_bin(), "-m", "mypy", "--config-file", "pyproject.toml", "src", "tests", env={"MYPYPATH": "src"})),
+    "test": _task(_tool(_python_bin(), "-m", "pytest", "tests", env=_python_env(), append_args=True), accepts_args=True),
     "run:all": _task(
         _py("verify:plan"),
         _py("fetch:phase1"),

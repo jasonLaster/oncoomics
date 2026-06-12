@@ -72,13 +72,13 @@ Use force flags only when intentionally rebuilding expensive outputs.
 Current full WGS fetch/run command pattern:
 
 ```sh
-PHASE3_WGS_FETCH_CONCURRENCY=4 PHASE3_WGS_ARIA2_SPLIT=1 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
-PHASE3_WGS_THREADS=18 PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs
+PHASE3_WGS_FETCH_CONCURRENCY=4 PHASE3_WGS_ARIA2_SPLIT=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
+PHASE3_WGS_THREADS=18 PYTHONPATH=src /usr/bin/python3 -m diana_omics validate:phase3-wgs
 ```
 
 Keep `PHASE3_WGS_ARIA2_SPLIT=1` for acceptance data unless a segmented run has already been proven against the provider MD5s. A 16-segment ENA transfer reached the expected byte counts for the SEQC2/HCC1395 WGS FASTQs but failed both MD5 and gzip CRC validation, so full-source acceptance now favors checksum-correct single-stream downloads over maximum transfer speed.
 
-Use `PYTHONPATH=py/src /usr/bin/python3 -m diana_omics diagnose:pipeline` after local or AWS experiments. It parses Nextflow traces, heartbeat logs, and result summaries into `results/pipeline_diagnostics.md`, including the best completed stage timings and known failure signatures.
+Use `PYTHONPATH=src /usr/bin/python3 -m diana_omics diagnose:pipeline` after local or AWS experiments. It parses Nextflow traces, heartbeat logs, and result summaries into `results/pipeline_diagnostics.md`, including the best completed stage timings and known failure signatures.
 
 ## Full-Depth Recommendation
 

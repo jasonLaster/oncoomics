@@ -12,15 +12,15 @@ The machine-readable public examples live in:
 Verify them with:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:orthogonal
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:orthogonal
 ```
 
 Current implemented examples:
 
 | Example | What it proves | Default command | Full-source command |
 | --- | --- | --- | --- |
-| `seqc2_hcc1395_full_wes` | Full public WES FASTQs can be validated, aligned, called with GATK Mutect2, and compared with SEQC2/HCC1395 truth-overlap variants. | `PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:full-wes && PYTHONPATH=py/src /usr/bin/python3 -m diana_omics benchmark:full-wes` | Same command; Phase 2F already uses the full public WES FASTQs. |
-| `seqc2_hcc1395_phase3_wgs` | The TypeScript-era public WGS example is preserved in Python: full-source SEQC2/HCC1395 WGS FASTQs flow through FASTQ validation, BAM, VCF, CNV bins, SBS96, and SV evidence outputs. | `PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs && PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs` | Same command; full-source WGS is now the required Phase 3 acceptance gate. |
+| `seqc2_hcc1395_full_wes` | Full public WES FASTQs can be validated, aligned, called with GATK Mutect2, and compared with SEQC2/HCC1395 truth-overlap variants. | `PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:full-wes && PYTHONPATH=src /usr/bin/python3 -m diana_omics benchmark:full-wes` | Same command; Phase 2F already uses the full public WES FASTQs. |
+| `seqc2_hcc1395_phase3_wgs` | The TypeScript-era public WGS example is preserved in Python: full-source SEQC2/HCC1395 WGS FASTQs flow through FASTQ validation, BAM, VCF, CNV bins, SBS96, and SV evidence outputs. | `PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:phase3-wgs && PYTHONPATH=src /usr/bin/python3 -m diana_omics validate:phase3-wgs` | Same command; full-source WGS is now the required Phase 3 acceptance gate. |
 
 Bounded Phase 3 WGS runs are available only by setting `PHASE3_WGS_READS` to an integer for developer plumbing checks. They do not satisfy the orthogonal validation gate.
 

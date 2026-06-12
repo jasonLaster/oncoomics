@@ -6,7 +6,7 @@ This file is the current operational status. It intentionally distinguishes pass
 
 | Area | Status | Meaning |
 | --- | --- | --- |
-| Python rewrite | Passed | Workflow logic lives in `py/src/diana_omics`; JS/TS scripts were removed. |
+| Python rewrite | Passed | Workflow logic lives in `src/diana_omics`; JS/TS scripts were removed. |
 | Phase 1 processed HRD/RNA panel | Passed | Public processed data generate review tables for 28 samples. |
 | Phase 2 raw WES benchmark | Passed | Full SEQC2/HCC1395 WES FASTQs, alignment, GATK Mutect2, and truth overlap run. |
 | Phase 3 WGS validation | In progress for full-source run | Full SEQC2/HCC1395 WGS FASTQs are the acceptance gate; bounded subsets are developer checks only. |
@@ -16,7 +16,7 @@ This file is the current operational status. It intentionally distinguishes pass
 
 ## Latest Full-Run Evidence
 
-The latest `PYTHONPATH=py/src /usr/bin/python3 -m diana_omics run:all` completed with these key outputs:
+The latest `PYTHONPATH=src /usr/bin/python3 -m diana_omics run:all` completed with these key outputs:
 
 - `results/full_wes_benchmark/full_wes_benchmark_summary.json`
 - `results/phase3_wgs_smoke/phase3_wgs_summary.json`
@@ -57,11 +57,11 @@ What this does not prove:
 Verifier:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:panel
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics analyze:hrd
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics analyze:rna
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:packet
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics build:panel
+PYTHONPATH=src /usr/bin/python3 -m diana_omics analyze:hrd
+PYTHONPATH=src /usr/bin/python3 -m diana_omics analyze:rna
+PYTHONPATH=src /usr/bin/python3 -m diana_omics build:packet
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 ## Phase 2
@@ -86,9 +86,9 @@ Known risks:
 Verifier:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:full-wes
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics benchmark:full-wes
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:full-wes
+PYTHONPATH=src /usr/bin/python3 -m diana_omics benchmark:full-wes
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 ## Phase 3
@@ -111,10 +111,10 @@ Known risks:
 Verifier:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics validate:phase3-wgs
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:orthogonal
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:phase3-wgs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics validate:phase3-wgs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:orthogonal
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 ## Orthogonal Validation
@@ -148,8 +148,8 @@ Status: ready, waiting on actual files.
 Ready-now commands:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:diana-template
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
+PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-template
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw
 ```
 
 Strict validation when files arrive:
@@ -157,7 +157,7 @@ Strict validation when files arrive:
 ```sh
 DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
 DIANA_RAW_REQUIRE_DATA=1 \
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw
 ```
 
 Stage a Diana-specific recompute packet:
@@ -166,7 +166,7 @@ Stage a Diana-specific recompute packet:
 DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
 DIANA_RAW_REQUIRE_DATA=1 \
 DIANA_RAW_ANALYSIS_ID=diana_initial_raw_recompute \
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics stage:diana-raw
+PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw
 ```
 
 Blocked items:

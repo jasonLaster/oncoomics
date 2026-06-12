@@ -275,7 +275,7 @@ def main() -> None:
         path_from_root("manifests/file_manifest.json"),
         {
             "fetchedAt": started_at,
-            "generatedBy": "py/src/diana_omics/commands/fetch_phase1.py",
+            "generatedBy": "src/diana_omics/commands/fetch_phase1.py",
             "sources": [
                 {
                     "id": "cbioportal-brca-pan-cancer",

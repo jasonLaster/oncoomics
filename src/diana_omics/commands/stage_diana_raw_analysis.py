@@ -7,7 +7,7 @@ from ..paths import path_from_root
 from ..utils import ensure_dir, iso_now, parse_csv, read_text, write_csv, write_json, write_text
 from .verify_diana_raw import check_files, selected_samplesheet, validate_rows
 
-PY_COMMAND = "PYTHONPATH=py/src /usr/bin/python3 -m diana_omics"
+PY_COMMAND = "PYTHONPATH=src /usr/bin/python3 -m diana_omics"
 
 
 def analysis_id() -> str:

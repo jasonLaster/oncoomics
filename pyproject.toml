@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "diana-omics-py"
+name = "diana-omics"
 version = "0.1.0"
-description = "Python rewrite of the Diana HRD omics orchestration scripts"
+description = "Diana HRD omics orchestration workflow"
 requires-python = ">=3.9"
 dependencies = []
 
@@ -34,7 +34,7 @@ ignore = ["E501", "SIM117", "SIM118", "UP006", "UP007", "UP022", "UP035", "UP045
 python_version = "3.9"
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = "py/src"
+mypy_path = "src"
 warn_unused_configs = true
 warn_return_any = true
 warn_unreachable = true

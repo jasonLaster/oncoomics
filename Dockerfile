@@ -2,7 +2,7 @@ FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/opt/diana-omics/py/src
+ENV PYTHONPATH=/opt/diana-omics/src
 ENV DIANA_OMICS_ROOT=/opt/diana-omics
 ARG S5CMD_VERSION=2.3.0
 
@@ -47,6 +47,6 @@ RUN mkdir -p /opt/diana-aws/bin \
 WORKDIR /opt/diana-omics
 COPY . /opt/diana-omics
 
-RUN python3 -m pip install --break-system-packages -e 'py[dev]'
+RUN python3 -m pip install --break-system-packages -e '.[dev]'
 
 CMD ["python3", "-m", "diana_omics", "--help"]

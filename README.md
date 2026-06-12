@@ -11,7 +11,7 @@ It does not make treatment recommendations. It produces evidence tables, quality
 
 ## Current State
 
-The implementation is Python-only. From a checkout, run commands with `PYTHONPATH=py/src /usr/bin/python3 -m diana_omics ...`; installed environments can use the `diana-omics` console script.
+The implementation is Python-only. From a checkout, run commands with `PYTHONPATH=src /usr/bin/python3 -m diana_omics ...`; installed environments can use the `diana-omics` console script.
 
 The latest full run passed:
 
@@ -26,27 +26,27 @@ The latest full run passed:
 Run the lightweight checks:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:plan
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:lint
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:format:check
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:typecheck
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics py:test
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:orthogonal
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:outputs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:plan
+PYTHONPATH=src /usr/bin/python3 -m diana_omics py:lint
+PYTHONPATH=src /usr/bin/python3 -m diana_omics py:format:check
+PYTHONPATH=src /usr/bin/python3 -m diana_omics py:typecheck
+PYTHONPATH=src /usr/bin/python3 -m diana_omics py:test
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:orthogonal
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
 Run the whole public validation workflow:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics run:all
+PYTHONPATH=src /usr/bin/python3 -m diana_omics run:all
 ```
 
 Run through Nextflow:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:quick
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-wgs:stub
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics nf:phase3-wgs:dev
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:quick
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:stub
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:dev
 ```
 
 `nf:phase3-wgs:*` uses the resumable split Nextflow DAG: fetch, reference index, tumor BAM, normal BAM, and downstream validation are separate checkpoints. Use `nextflow -resume` after transient cloud failures. The legacy one-process runner is available as `nf:phase3-wgs:monolith:full` for fallback comparisons.
@@ -56,7 +56,7 @@ See [docs/nextflow.md](/Users/jasonlaster/src/projects/diana-omics/docs/nextflow
 Inspect recent pipeline run artifacts and speed diagnostics:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics diagnose:pipeline
+PYTHONPATH=src /usr/bin/python3 -m diana_omics diagnose:pipeline
 ```
 
 For local stage-by-stage Phase 3 work, use `phase3:stage:fetch:tumor`, `phase3:stage:fetch:normal`, `phase3:stage:ref`, `phase3:stage:align:tumor`, `phase3:stage:align:normal`, and `phase3:stage:downstream`.
@@ -64,8 +64,8 @@ For local stage-by-stage Phase 3 work, use `phase3:stage:fetch:tumor`, `phase3:s
 Prepare for Diana's actual files:
 
 ```sh
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics build:diana-template
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
+PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-template
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw
 ```
 
 When the real samplesheet exists:
@@ -73,11 +73,11 @@ When the real samplesheet exists:
 ```sh
 DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
 DIANA_RAW_REQUIRE_DATA=1 \
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics verify:diana-raw
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw
 
 DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
 DIANA_RAW_REQUIRE_DATA=1 \
-PYTHONPATH=py/src /usr/bin/python3 -m diana_omics stage:diana-raw
+PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw
 ```
 
 ## Documentation Guide
@@ -101,9 +101,9 @@ Start with [docs/readme.md](/Users/jasonlaster/src/projects/diana-omics/docs/rea
 
 Main code:
 
-- [py/src/diana_omics](/Users/jasonlaster/src/projects/diana-omics/py/src/diana_omics): Python package.
-- [py/tests](/Users/jasonlaster/src/projects/diana-omics/py/tests): unit and integration-style contract tests.
-- [py/src/diana_omics/workflow_tasks.py](/Users/jasonlaster/src/projects/diana-omics/py/src/diana_omics/workflow_tasks.py): Python task aliases for local, Docker, AWS, and deploy loops.
+- [src/diana_omics](/Users/jasonlaster/src/projects/diana-omics/src/diana_omics): Python package.
+- [tests](/Users/jasonlaster/src/projects/diana-omics/tests): unit and integration-style contract tests.
+- [src/diana_omics/workflow_tasks.py](/Users/jasonlaster/src/projects/diana-omics/src/diana_omics/workflow_tasks.py): Python task aliases for local, Docker, AWS, and deploy loops.
 
 Main data contracts:
 
