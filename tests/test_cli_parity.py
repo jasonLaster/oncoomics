@@ -36,6 +36,7 @@ class CliParityTest(unittest.TestCase):
             "verify:clinical-assay-boundaries",
             "verify:clinical-change-control",
             "verify:clinical-qc-thresholds",
+            "verify:clinical-signoff-workflow",
             "verify:clinical-validation-evidence-links",
             "verify:clinical-validation-packet",
             "verify:cnv-loh-readiness",

@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-06-12T23:22:12.934Z",
+  "status": "passed",
+  "errors": [],
+  "summary": {
+    "status": "passed",
+    "signoff_step_count": 5,
+    "required_role_count": 5,
+    "required_evidence_reference_count": 11,
+    "pending_decision_count": 5,
+    "approved_decision_count": 0,
+    "release_allowed_count": 0,
+    "clinical_use_allowed_count": 0,
+    "ready_for_clinical_release": "no",
+    "ready_for_clinical_interpretation": "no",
+    "next_step": "Convert pending signoff steps into named reviewer records only after validation evidence sections are complete.",
+    "error_count": 0
+  },
+  "rows": [
+    {
+      "signoff_id": "assay_owner_scope_review",
+      "review_role": "assay_owner",
+      "review_domain": "scope_and_intended_use",
+      "required_evidence_count": 2,
+      "decision_status": "pending",
+      "release_allowed": "no",
+      "clinical_use_allowed": "no",
+      "signoff_required": "yes",
+      "blocking_condition": "intended_use_and_report_language_not_approved",
+      "next_action": "Assign assay owner only after validation evidence package is complete."
+    },
+    {
+      "signoff_id": "bioinformatics_owner_review",
+      "review_role": "bioinformatics_owner",
+      "review_domain": "workflow_and_reproducibility",
+      "required_evidence_count": 2,
+      "decision_status": "pending",
+      "release_allowed": "no",
+      "clinical_use_allowed": "no",
+      "signoff_required": "yes",
+      "blocking_condition": "workflow_reproducibility_and_change_control_not_validated",
+      "next_action": "Assign bioinformatics owner review after approved benchmark execution and frozen workflow evidence."
+    },
+    {
+      "signoff_id": "clinical_scientist_accuracy_review",
+      "review_role": "clinical_scientist",
+      "review_domain": "accuracy_and_reportable_range",
+      "required_evidence_count": 2,
+      "decision_status": "pending",
+      "release_allowed": "no",
+      "clinical_use_allowed": "no",
+      "signoff_required": "yes",
+      "blocking_condition": "accuracy_thresholds_and_reportable_range_not_locked",
+      "next_action": "Assign clinical scientist review after known-answer concordance and thresholds are locked."
+    },
+    {
+      "signoff_id": "quality_reviewer_review",
+      "review_role": "quality_reviewer",
+      "review_domain": "validation_packet_and_change_control",
+      "required_evidence_count": 2,
+      "decision_status": "pending",
+      "release_allowed": "no",
+      "clinical_use_allowed": "no",
+      "signoff_required": "yes",
+      "blocking_condition": "validation_packet_template_only_and_change_control_not_released",
+      "next_action": "Assign quality review after validation packet sections are evidence-complete."
+    },
+    {
+      "signoff_id": "laboratory_director_release",
+      "review_role": "laboratory_director",
+      "review_domain": "final_release_decision",
+      "required_evidence_count": 3,
+      "decision_status": "pending",
+      "release_allowed": "no",
+      "clinical_use_allowed": "no",
+      "signoff_required": "yes",
+      "blocking_condition": "no_completed_validation_packet_or_prior_role_approvals",
+      "next_action": "Do not request lab-director release until all prerequisite reviews are approved."
+    }
+  ]
+}

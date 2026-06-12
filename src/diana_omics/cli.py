@@ -36,6 +36,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.verify_clinical_assay_boundaries import main as verify_clinical_assay_boundaries
     from .commands.verify_clinical_change_control import main as verify_clinical_change_control
     from .commands.verify_clinical_qc_thresholds import main as verify_clinical_qc_thresholds
+    from .commands.verify_clinical_signoff_workflow import main as verify_clinical_signoff_workflow
     from .commands.verify_clinical_validation_evidence_links import main as verify_clinical_validation_evidence_links
     from .commands.verify_clinical_validation_packet import main as verify_clinical_validation_packet
     from .commands.verify_cnv_loh_readiness import main as verify_cnv_loh_readiness
@@ -83,6 +84,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "verify:clinical-assay-boundaries": verify_clinical_assay_boundaries,
         "verify:clinical-change-control": verify_clinical_change_control,
         "verify:clinical-qc-thresholds": verify_clinical_qc_thresholds,
+        "verify:clinical-signoff-workflow": verify_clinical_signoff_workflow,
         "verify:clinical-validation-evidence-links": verify_clinical_validation_evidence_links,
         "verify:clinical-validation-packet": verify_clinical_validation_packet,
         "verify:cnv-loh-readiness": verify_cnv_loh_readiness,
