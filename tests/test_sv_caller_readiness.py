@@ -50,6 +50,12 @@ class SvCallerReadinessTest(unittest.TestCase):
         ]
         self.assertIn("must support VCF output", "\n".join(sv.validate_manifest(rows)))
 
+    def test_chord_status_accepts_low_depth_full_depth_sv_caller_vcf_no_call(self):
+        self.assertTrue(
+            sv.chord_status_requires_validated_sv_vcf("not_assessable_low_depth_smoke_requires_full_depth_sv_caller_vcf")
+        )
+        self.assertFalse(sv.chord_status_requires_validated_sv_vcf("ready_for_chord"))
+
     def test_main_writes_not_clinical_readiness_summary(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

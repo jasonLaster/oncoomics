@@ -96,11 +96,13 @@ def current_phase3_sv_state() -> dict[str, Any]:
     }
 
 
+def chord_status_requires_validated_sv_vcf(chord_status: str) -> bool:
+    return "not_assessable" in chord_status and "sv_caller_vcf" in chord_status
+
+
 def readiness_row(rows: list[dict[str, str]], errors: list[str], sv_state: dict[str, Any]) -> dict[str, Any]:
     chord_status = str(sv_state.get("chord_input_status", ""))
-    current_evidence_not_validated_vcf = "not_assessable_requires_validated_sv_caller_vcf" in chord_status and _int(
-        sv_state.get("discordant_mapped_pairs")
-    ) > 0
+    current_evidence_not_validated_vcf = chord_status_requires_validated_sv_vcf(chord_status) and _int(sv_state.get("discordant_mapped_pairs")) > 0
     return {
         "status": "passed" if not errors and current_evidence_not_validated_vcf else "failed",
         "candidate_count": len(rows),
@@ -130,7 +132,7 @@ def main() -> None:
         errors.append(f"{PHASE3_SV_SUMMARY_PATH} must report passed SV evidence rows.")
     if _int(sv_state.get("discordant_mapped_pairs")) <= 0:
         errors.append(f"{PHASE3_SV_SUMMARY_PATH} does not report positive discordant mapped pairs.")
-    if "not_assessable_requires_validated_sv_caller_vcf" not in str(sv_state.get("chord_input_status", "")):
+    if not chord_status_requires_validated_sv_vcf(str(sv_state.get("chord_input_status", ""))):
         errors.append(f"{PHASE3_SV_SUMMARY_PATH} must keep CHORD not assessable until validated SV caller VCF exists.")
     summary = readiness_row(rows, errors, sv_state)
     ensure_dir(path_from_root("results/clinicalization"))
