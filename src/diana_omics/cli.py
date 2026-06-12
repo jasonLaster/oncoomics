@@ -38,6 +38,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.verify_cnv_loh_readiness import main as verify_cnv_loh_readiness
     from .commands.verify_diana_raw import main as verify_diana_raw
     from .commands.verify_hrd_interpretation_readiness import main as verify_hrd_interpretation_readiness
+    from .commands.verify_known_answer_asset_acquisition import main as verify_known_answer_asset_acquisition
     from .commands.verify_known_answer_asset_integrity import main as verify_known_answer_asset_integrity
     from .commands.verify_known_answer_benchmark_manifests import main as verify_known_answer_benchmark_manifests
     from .commands.verify_known_answer_checksum_policy import main as verify_known_answer_checksum_policy
@@ -80,6 +81,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "verify:cnv-loh-readiness": verify_cnv_loh_readiness,
         "verify:diana-raw": verify_diana_raw,
         "verify:hrd-interpretation-readiness": verify_hrd_interpretation_readiness,
+        "verify:known-answer-asset-acquisition": verify_known_answer_asset_acquisition,
         "verify:known-answer-asset-integrity": verify_known_answer_asset_integrity,
         "verify:known-answer-benchmark-manifests": verify_known_answer_benchmark_manifests,
         "verify:known-answer-checksum-policy": verify_known_answer_checksum_policy,

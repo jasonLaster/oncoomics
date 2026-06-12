@@ -38,6 +38,7 @@ class CliParityTest(unittest.TestCase):
             "verify:cnv-loh-readiness",
             "verify:diana-raw",
             "verify:hrd-interpretation-readiness",
+            "verify:known-answer-asset-acquisition",
             "verify:known-answer-asset-integrity",
             "verify:known-answer-benchmark-manifests",
             "verify:known-answer-checksum-policy",
