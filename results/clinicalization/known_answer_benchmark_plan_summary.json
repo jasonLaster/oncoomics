@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-12T21:17:50.065Z",
+  "generatedAt": "2026-06-12T21:28:45.899Z",
   "status": "passed",
   "errors": [],
   "summary": {
@@ -11,7 +11,7 @@
     "clinical_use_allowed_count": 0,
     "ready_for_benchmark_execution": "no",
     "ready_for_clinical_interpretation": "no",
-    "next_step": "Wire a local benchmark:known-answer dry-run command that materializes expected output paths without fetching data or running WGS.",
+    "next_step": "Run benchmark:known-answer --fixture <fixture_id> --dry-run for each known-answer fixture, then add input/truth manifest schema validation.",
     "error_count": 0
   },
   "rows": [
@@ -25,7 +25,7 @@
       "clinical_use_allowed": "no",
       "required_output_count": 2,
       "cache_namespace": "known_answer/hg008/small_variants",
-      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+      "next_action": "Run benchmark:known-answer --fixture <fixture_id> --dry-run before adding local input/truth manifest validation."
     },
     {
       "benchmark_id": "hg008_sv_cnv_dry_run",
@@ -37,7 +37,7 @@
       "clinical_use_allowed": "no",
       "required_output_count": 2,
       "cache_namespace": "known_answer/hg008/sv_cnv",
-      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+      "next_action": "Run benchmark:known-answer --fixture <fixture_id> --dry-run before adding local input/truth manifest validation."
     },
     {
       "benchmark_id": "hg008_signature_qc_dry_run",
@@ -49,7 +49,7 @@
       "clinical_use_allowed": "no",
       "required_output_count": 2,
       "cache_namespace": "known_answer/hg008/signature_qc",
-      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+      "next_action": "Run benchmark:known-answer --fixture <fixture_id> --dry-run before adding local input/truth manifest validation."
     },
     {
       "benchmark_id": "colo829_driver_signature_dry_run",
@@ -61,7 +61,7 @@
       "clinical_use_allowed": "no",
       "required_output_count": 2,
       "cache_namespace": "known_answer/colo829/driver_signature",
-      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+      "next_action": "Run benchmark:known-answer --fixture <fixture_id> --dry-run before adding local input/truth manifest validation."
     },
     {
       "benchmark_id": "colo829_sv_cna_dry_run",
@@ -73,7 +73,7 @@
       "clinical_use_allowed": "no",
       "required_output_count": 2,
       "cache_namespace": "known_answer/colo829/sv_cna",
-      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+      "next_action": "Run benchmark:known-answer --fixture <fixture_id> --dry-run before adding local input/truth manifest validation."
     },
     {
       "benchmark_id": "colo829_purity_series_dry_run",
@@ -85,7 +85,7 @@
       "clinical_use_allowed": "no",
       "required_output_count": 2,
       "cache_namespace": "known_answer/colo829/purity_series",
-      "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution."
+      "next_action": "Run benchmark:known-answer --fixture <fixture_id> --dry-run before adding local input/truth manifest validation."
     }
   ]
 }

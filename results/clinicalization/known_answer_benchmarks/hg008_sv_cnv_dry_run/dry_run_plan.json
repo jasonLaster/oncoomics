@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-06-12T21:28:46.289Z",
+  "status": "passed",
+  "mode": "dry_run_only",
+  "plan": {
+    "benchmark_id": "hg008_sv_cnv_dry_run",
+    "fixture_id": "hg008_sv_cnv",
+    "dataset_id": "giab_hg008",
+    "runner_mode": "tumor_normal_wgs",
+    "input_manifest_path": "manifests/benchmarks/hg008_wgs_inputs.csv",
+    "truth_asset_manifest": "manifests/benchmarks/hg008_sv_cnv_truth_assets.csv",
+    "planned_command": "benchmark:known-answer --fixture hg008_sv_cnv --dry-run",
+    "required_outputs": "sv_reciprocal_overlap_summary.json;cnv_reciprocal_overlap_summary.json",
+    "cache_namespace": "known_answer/hg008/sv_cnv",
+    "execution_status": "dry_run_only",
+    "approval_required": "yes",
+    "cost_class": "high",
+    "clinical_use_allowed": "no",
+    "no_call_policy": "No-call if SV/CNV truth files caller outputs or reciprocal-overlap denominator regions are missing."
+  },
+  "summary_row": {
+    "benchmark_id": "hg008_sv_cnv_dry_run",
+    "fixture_id": "hg008_sv_cnv",
+    "dataset_id": "giab_hg008",
+    "runner_mode": "tumor_normal_wgs",
+    "dry_run_status": "passed",
+    "required_output_count": 2,
+    "cache_namespace": "known_answer/hg008/sv_cnv",
+    "input_manifest_path": "manifests/benchmarks/hg008_wgs_inputs.csv",
+    "truth_asset_manifest": "manifests/benchmarks/hg008_sv_cnv_truth_assets.csv",
+    "approval_required": "yes",
+    "clinical_use_allowed": "no",
+    "next_action": "Add local input and truth manifest schema validation before approved benchmark execution."
+  },
+  "expectedOutputs": [
+    {
+      "benchmark_id": "hg008_sv_cnv_dry_run",
+      "fixture_id": "hg008_sv_cnv",
+      "output_name": "sv_reciprocal_overlap_summary.json",
+      "planned_path": "results/clinicalization/known_answer_benchmarks/hg008_sv_cnv_dry_run/expected/sv_reciprocal_overlap_summary.json",
+      "materialized": "no",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "benchmark_id": "hg008_sv_cnv_dry_run",
+      "fixture_id": "hg008_sv_cnv",
+      "output_name": "cnv_reciprocal_overlap_summary.json",
+      "planned_path": "results/clinicalization/known_answer_benchmarks/hg008_sv_cnv_dry_run/expected/cnv_reciprocal_overlap_summary.json",
+      "materialized": "no",
+      "clinical_use_allowed": "no"
+    }
+  ],
+  "clinicalUseAllowed": "no",
+  "executionAllowed": "no",
+  "approvalRequired": "yes",
+  "noCallPolicy": "No-call if SV/CNV truth files caller outputs or reciprocal-overlap denominator regions are missing."
+}

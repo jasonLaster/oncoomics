@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-06-12T21:28:47.140Z",
+  "status": "passed",
+  "mode": "dry_run_only",
+  "plan": {
+    "benchmark_id": "colo829_purity_series_dry_run",
+    "fixture_id": "colo829_purity_series",
+    "dataset_id": "colo829_purity_series",
+    "runner_mode": "tumor_normal_wgs_dilution",
+    "input_manifest_path": "manifests/benchmarks/colo829_purity_series_inputs.csv",
+    "truth_asset_manifest": "manifests/benchmarks/colo829_purity_series_truth_assets.csv",
+    "planned_command": "benchmark:known-answer --fixture colo829_purity_series --dry-run",
+    "required_outputs": "purity_recall_table.csv;purity_monotonicity_summary.json",
+    "cache_namespace": "known_answer/colo829/purity_series",
+    "execution_status": "dry_run_only",
+    "approval_required": "yes",
+    "cost_class": "high",
+    "clinical_use_allowed": "no",
+    "no_call_policy": "No-call if dilution labels tumor purity ordering driver truth or sample provenance are incomplete."
+  },
+  "summary_row": {
+    "benchmark_id": "colo829_purity_series_dry_run",
+    "fixture_id": "colo829_purity_series",
+    "dataset_id": "colo829_purity_series",
+    "runner_mode": "tumor_normal_wgs_dilution",
+    "dry_run_status": "passed",
+    "required_output_count": 2,
+    "cache_namespace": "known_answer/colo829/purity_series",
+    "input_manifest_path": "manifests/benchmarks/colo829_purity_series_inputs.csv",
+    "truth_asset_manifest": "manifests/benchmarks/colo829_purity_series_truth_assets.csv",
+    "approval_required": "yes",
+    "clinical_use_allowed": "no",
+    "next_action": "Add local input and truth manifest schema validation before approved benchmark execution."
+  },
+  "expectedOutputs": [
+    {
+      "benchmark_id": "colo829_purity_series_dry_run",
+      "fixture_id": "colo829_purity_series",
+      "output_name": "purity_recall_table.csv",
+      "planned_path": "results/clinicalization/known_answer_benchmarks/colo829_purity_series_dry_run/expected/purity_recall_table.csv",
+      "materialized": "no",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "benchmark_id": "colo829_purity_series_dry_run",
+      "fixture_id": "colo829_purity_series",
+      "output_name": "purity_monotonicity_summary.json",
+      "planned_path": "results/clinicalization/known_answer_benchmarks/colo829_purity_series_dry_run/expected/purity_monotonicity_summary.json",
+      "materialized": "no",
+      "clinical_use_allowed": "no"
+    }
+  ],
+  "clinicalUseAllowed": "no",
+  "executionAllowed": "no",
+  "approvalRequired": "yes",
+  "noCallPolicy": "No-call if dilution labels tumor purity ordering driver truth or sample provenance are incomplete."
+}

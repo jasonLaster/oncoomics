@@ -106,6 +106,10 @@ TASKS: dict[str, Task] = {
     "py:test": _task(_tool(_python_bin(), "-m", "pytest", "tests", env=_python_env(), append_args=True), accepts_args=True),
     "typecheck": _task(_tool(_python_bin(), "-m", "mypy", "--config-file", "pyproject.toml", "src", "tests", env={"MYPYPATH": "src"})),
     "test": _task(_tool(_python_bin(), "-m", "pytest", "tests", env=_python_env(), append_args=True), accepts_args=True),
+    "benchmark:known-answer": _task(
+        _tool(_python_bin(), "-m", "diana_omics.commands.run_known_answer_benchmark", env=_python_env(), append_args=True),
+        accepts_args=True,
+    ),
     "run:all": _task(
         _py("verify:plan"),
         _py("fetch:phase1"),

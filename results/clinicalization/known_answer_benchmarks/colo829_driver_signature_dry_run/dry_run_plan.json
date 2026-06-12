@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-06-12T21:28:46.715Z",
+  "status": "passed",
+  "mode": "dry_run_only",
+  "plan": {
+    "benchmark_id": "colo829_driver_signature_dry_run",
+    "fixture_id": "colo829_driver_signature",
+    "dataset_id": "colo829",
+    "runner_mode": "tumor_normal_wgs",
+    "input_manifest_path": "manifests/benchmarks/colo829_wgs_inputs.csv",
+    "truth_asset_manifest": "manifests/benchmarks/colo829_driver_signature_truth_assets.csv",
+    "planned_command": "benchmark:known-answer --fixture colo829_driver_signature --dry-run",
+    "required_outputs": "driver_recovery_summary.json;uv_signature_guardrail_summary.json",
+    "cache_namespace": "known_answer/colo829/driver_signature",
+    "execution_status": "dry_run_only",
+    "approval_required": "yes",
+    "cost_class": "high",
+    "clinical_use_allowed": "no",
+    "no_call_policy": "No-call if driver truth signature expectations tumor-normal pairing or melanoma guardrail annotations are unavailable."
+  },
+  "summary_row": {
+    "benchmark_id": "colo829_driver_signature_dry_run",
+    "fixture_id": "colo829_driver_signature",
+    "dataset_id": "colo829",
+    "runner_mode": "tumor_normal_wgs",
+    "dry_run_status": "passed",
+    "required_output_count": 2,
+    "cache_namespace": "known_answer/colo829/driver_signature",
+    "input_manifest_path": "manifests/benchmarks/colo829_wgs_inputs.csv",
+    "truth_asset_manifest": "manifests/benchmarks/colo829_driver_signature_truth_assets.csv",
+    "approval_required": "yes",
+    "clinical_use_allowed": "no",
+    "next_action": "Add local input and truth manifest schema validation before approved benchmark execution."
+  },
+  "expectedOutputs": [
+    {
+      "benchmark_id": "colo829_driver_signature_dry_run",
+      "fixture_id": "colo829_driver_signature",
+      "output_name": "driver_recovery_summary.json",
+      "planned_path": "results/clinicalization/known_answer_benchmarks/colo829_driver_signature_dry_run/expected/driver_recovery_summary.json",
+      "materialized": "no",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "benchmark_id": "colo829_driver_signature_dry_run",
+      "fixture_id": "colo829_driver_signature",
+      "output_name": "uv_signature_guardrail_summary.json",
+      "planned_path": "results/clinicalization/known_answer_benchmarks/colo829_driver_signature_dry_run/expected/uv_signature_guardrail_summary.json",
+      "materialized": "no",
+      "clinical_use_allowed": "no"
+    }
+  ],
+  "clinicalUseAllowed": "no",
+  "executionAllowed": "no",
+  "approvalRequired": "yes",
+  "noCallPolicy": "No-call if driver truth signature expectations tumor-normal pairing or melanoma guardrail annotations are unavailable."
+}

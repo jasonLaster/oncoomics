@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-06-12T21:28:46.514Z",
+  "status": "passed",
+  "mode": "dry_run_only",
+  "plan": {
+    "benchmark_id": "hg008_signature_qc_dry_run",
+    "fixture_id": "hg008_signature_qc",
+    "dataset_id": "giab_hg008",
+    "runner_mode": "tumor_normal_wgs",
+    "input_manifest_path": "manifests/benchmarks/hg008_wgs_inputs.csv",
+    "truth_asset_manifest": "manifests/benchmarks/hg008_signature_truth_assets.csv",
+    "planned_command": "benchmark:known-answer --fixture hg008_signature_qc --dry-run",
+    "required_outputs": "signature_matrix_qc_summary.json;signature_no_call_summary.json",
+    "cache_namespace": "known_answer/hg008/signature_qc",
+    "execution_status": "dry_run_only",
+    "approval_required": "yes",
+    "cost_class": "high",
+    "clinical_use_allowed": "no",
+    "no_call_policy": "No-call if usable SNV count signature matrix reconstruction QC or reference trinucleotide context is insufficient."
+  },
+  "summary_row": {
+    "benchmark_id": "hg008_signature_qc_dry_run",
+    "fixture_id": "hg008_signature_qc",
+    "dataset_id": "giab_hg008",
+    "runner_mode": "tumor_normal_wgs",
+    "dry_run_status": "passed",
+    "required_output_count": 2,
+    "cache_namespace": "known_answer/hg008/signature_qc",
+    "input_manifest_path": "manifests/benchmarks/hg008_wgs_inputs.csv",
+    "truth_asset_manifest": "manifests/benchmarks/hg008_signature_truth_assets.csv",
+    "approval_required": "yes",
+    "clinical_use_allowed": "no",
+    "next_action": "Add local input and truth manifest schema validation before approved benchmark execution."
+  },
+  "expectedOutputs": [
+    {
+      "benchmark_id": "hg008_signature_qc_dry_run",
+      "fixture_id": "hg008_signature_qc",
+      "output_name": "signature_matrix_qc_summary.json",
+      "planned_path": "results/clinicalization/known_answer_benchmarks/hg008_signature_qc_dry_run/expected/signature_matrix_qc_summary.json",
+      "materialized": "no",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "benchmark_id": "hg008_signature_qc_dry_run",
+      "fixture_id": "hg008_signature_qc",
+      "output_name": "signature_no_call_summary.json",
+      "planned_path": "results/clinicalization/known_answer_benchmarks/hg008_signature_qc_dry_run/expected/signature_no_call_summary.json",
+      "materialized": "no",
+      "clinical_use_allowed": "no"
+    }
+  ],
+  "clinicalUseAllowed": "no",
+  "executionAllowed": "no",
+  "approvalRequired": "yes",
+  "noCallPolicy": "No-call if usable SNV count signature matrix reconstruction QC or reference trinucleotide context is insufficient."
+}

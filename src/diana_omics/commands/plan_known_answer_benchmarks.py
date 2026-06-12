@@ -103,7 +103,7 @@ def summary_rows(plans: list[dict[str, str]]) -> list[dict[str, Any]]:
             "clinical_use_allowed": row["clinical_use_allowed"],
             "required_output_count": len([value for value in row["required_outputs"].split(";") if value.strip()]),
             "cache_namespace": row["cache_namespace"],
-            "next_action": "Implement dry-run command plumbing and local manifest validation before any approved benchmark execution.",
+            "next_action": "Run benchmark:known-answer --fixture <fixture_id> --dry-run before adding local input/truth manifest validation.",
         }
         for row in plans
     ]
@@ -123,7 +123,7 @@ def main() -> None:
         "clinical_use_allowed_count": sum(1 for row in plans if row.get("clinical_use_allowed") == "yes"),
         "ready_for_benchmark_execution": "no",
         "ready_for_clinical_interpretation": "no",
-        "next_step": "Wire a local benchmark:known-answer dry-run command that materializes expected output paths without fetching data or running WGS.",
+        "next_step": "Run benchmark:known-answer --fixture <fixture_id> --dry-run for each known-answer fixture, then add input/truth manifest schema validation.",
         "error_count": len(errors),
     }
     ensure_dir(path_from_root("results/clinicalization"))
