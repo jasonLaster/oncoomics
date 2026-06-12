@@ -43,13 +43,13 @@ variable "batch_root_volume_throughput" {
 variable "spot_max_vcpus" {
   description = "Maximum vCPUs for the Spot compute environment."
   type        = number
-  default     = 64
+  default     = 128
 }
 
 variable "ondemand_max_vcpus" {
   description = "Maximum vCPUs for the On-Demand compute environment."
   type        = number
-  default     = 64
+  default     = 128
 }
 
 variable "batch_arm_instance_families" {

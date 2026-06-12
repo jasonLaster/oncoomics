@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 from ..paths import path_from_root
 from ..utils import (
+    bcftools_norm_ref_mismatch_count,
     capture_command,
     ensure_dir,
     iso_now,
@@ -28,6 +29,9 @@ THREADS = int(os.environ.get("PHASE2F_THREADS", "8"))
 MIN_TRUTH_DEPTH = int(os.environ.get("PHASE2F_MIN_TRUTH_DEPTH", "10"))
 MAX_TRUTH_VARIANTS = int(os.environ.get("PHASE2F_MAX_TRUTH_VARIANTS", "5000"))
 INTERVAL_PADDING = int(os.environ.get("PHASE2F_INTERVAL_PADDING", "100"))
+# Cap on REF-mismatch records bcftools norm may drop before we treat it as a
+# wrong-reference misconfiguration rather than a few benign discordances.
+NORM_MAX_REF_MISMATCH = int(os.environ.get("PHASE2F_NORM_MAX_REF_MISMATCH", "1000"))
 
 
 def file_non_empty(relative_path: str) -> bool:
@@ -148,11 +152,24 @@ def load_truth_variants(vcf_path: str, variant_type: str) -> list[dict[str, Any]
 def normalize_vcf_for_comparison(vcf_path: str, reference_path: str, output_path: str, log_path: str) -> str:
     if FORCE or not file_non_empty(output_path):
         ensure_dir(path_from_root("/".join(output_path.split("/")[:-1])))
+        # --check-ref x excludes records whose REF allele does not match the
+        # reference instead of aborting the whole benchmark on the first one
+        # (bcftools defaults to --check-ref e, which exits 255). A handful of
+        # discordant sites outside the compared region are tolerated; a flood
+        # means the wrong reference, so we fail closed below.
         run_command(
-            f"bcftools norm -m -both -f {quote_shell_arg(reference_path)} -Oz -o {quote_shell_arg(output_path)} {quote_shell_arg(vcf_path)}",
+            f"bcftools norm -m -both --check-ref x -f {quote_shell_arg(reference_path)} -Oz -o {quote_shell_arg(output_path)} {quote_shell_arg(vcf_path)}",
             log_path,
         )
         run_command(f"bcftools index -t -f {quote_shell_arg(output_path)}", f"{log_path}.index")
+        mismatches = bcftools_norm_ref_mismatch_count(read_text(path_from_root(log_path)))
+        if mismatches:
+            print(f"[norm] {output_path}: bcftools norm excluded {mismatches} REF-mismatch record(s) vs {reference_path}", flush=True)
+        if mismatches > NORM_MAX_REF_MISMATCH:
+            raise RuntimeError(
+                f"bcftools norm excluded {mismatches} REF-mismatch records from {vcf_path} "
+                f"(cap {NORM_MAX_REF_MISMATCH}); reference {reference_path} likely does not match this VCF build."
+            )
     return output_path
 
 

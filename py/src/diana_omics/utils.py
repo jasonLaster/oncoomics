@@ -323,3 +323,47 @@ def tool_version(tool: str) -> str:
         ["bash", "-lc", f"{tool} 2>&1 | head -n 8"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
     )
     return f"{result.stdout}{result.stderr}".strip()
+
+
+def parse_bcftools_norm_summary(log_text: str) -> dict[str, int]:
+    """Parse the ``Lines   total/split/.../skipped:	a/b/.../z`` summary that
+    ``bcftools norm`` prints to stderr.
+
+    The field set changed across bcftools versions (newer builds add
+    ``joined``/``mismatch_removed``/``dup_removed``), so labels are zipped to their
+    counts positionally rather than read by a fixed index. Returns an empty dict
+    when no summary line is present (e.g. a cached run that skipped normalization).
+    """
+    for line in log_text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("Lines") or ":" not in stripped:
+            continue
+        label_part, _, number_part = stripped.partition(":")
+        tokens = label_part.split()
+        if len(tokens) < 2:
+            continue
+        labels = tokens[-1].split("/")
+        numbers = number_part.strip().split("/")
+        if len(labels) != len(numbers):
+            continue
+        summary: dict[str, int] = {}
+        for label, number in zip(labels, numbers):
+            try:
+                summary[label] = int(number)
+            except ValueError:
+                continue
+        return summary
+    return {}
+
+
+def bcftools_norm_ref_mismatch_count(log_text: str) -> int:
+    """Number of records ``bcftools norm`` dropped because their REF allele did not
+    match the reference (i.e. records excluded by ``--check-ref x``).
+
+    Reads ``mismatch_removed`` on modern bcftools; older builds fold these into
+    ``skipped``, so fall back to that. Returns 0 when no summary is found.
+    """
+    summary = parse_bcftools_norm_summary(log_text)
+    if "mismatch_removed" in summary:
+        return summary["mismatch_removed"]
+    return summary.get("skipped", 0)

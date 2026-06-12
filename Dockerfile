@@ -16,6 +16,7 @@ RUN apt-get update \
         curl \
         gzip \
         openjdk-17-jre-headless \
+        procps \
         python3 \
         python3-pip \
         pigz \

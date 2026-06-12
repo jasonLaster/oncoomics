@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -124,6 +125,106 @@ class Phase3WgsHelpersTest(unittest.TestCase):
             ):
                 self.assertEqual(phase3.alignment_flag_counts("ref", row), {"total": 100, "mapped": 90, "properly_paired": 80})
             count.assert_not_called()
+
+    def test_alignment_flag_counts_uses_threaded_flagstat_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            row = {"reference_id": "ref", "run_accession": "SRR1", "output_bam": "tumor.bam"}
+            flagstat = "\n".join(
+                [
+                    "100 + 0 in total (QC-passed reads + QC-failed reads)",
+                    "90 + 0 mapped (90.00% : N/A)",
+                    "80 + 0 properly paired (80.00% : N/A)",
+                ]
+            )
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "BAM_SCAN_THREADS", 8),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "capture_command", return_value=flagstat) as capture,
+            ):
+                self.assertEqual(phase3.alignment_flag_counts("ref", row), {"total": 100, "mapped": 90, "properly_paired": 80})
+            capture.assert_called_once_with("samtools flagstat -@ 8 'tumor.bam'")
+            self.assertIn("properly paired", utils.read_text(root / "results/phase3_wgs_smoke/logs/ref.SRR1.flagstat.txt"))
+
+    def test_build_coverage_cnv_reuses_current_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path in ["bins.bed", "tumor.bam", "tumor.bam.bai", "normal.bam", "normal.bam.bai"]:
+                utils.write_text(root / path, path)
+            utils.write_text(root / "results/phase3_wgs_smoke/coverage_cnv_bins.csv", "contig,start,end\nchr1,0,10\n")
+            utils.write_text(root / "results/phase3_wgs_smoke/coverage_cnv_summary.csv", "status,bin_count\npassed,1\n")
+            utils.write_json(
+                root / "results/phase3_wgs_smoke/coverage_cnv_summary.json",
+                {"status": "passed", "rows": [{"status": "passed", "bin_count": 1}]},
+            )
+            tumor = {"output_bam": "tumor.bam", "output_bai": "tumor.bam.bai"}
+            normal = {"output_bam": "normal.bam", "output_bai": "normal.bam.bai"}
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "capture_allow_empty") as capture,
+            ):
+                summary = phase3.build_coverage_cnv(tumor, normal, "bins.bed")
+        capture.assert_not_called()
+        self.assertEqual(summary["cnv_cache"], "reused")
+
+    def test_truth_depth_text_reuses_current_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path in ["truth.bed", "tumor.bam", "tumor.bam.bai", "normal.bam", "normal.bam.bai"]:
+                utils.write_text(root / path, path)
+            utils.write_text(root / phase3.truth_depth_path(), "chr1\t10\t2\t3\n")
+            tumor = {"output_bam": "tumor.bam", "output_bai": "tumor.bam.bai"}
+            normal = {"output_bam": "normal.bam", "output_bai": "normal.bam.bai"}
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "run_command") as run,
+            ):
+                depth = phase3.truth_depth_text(tumor, normal, "truth.bed", "ref")
+        run.assert_not_called()
+        self.assertEqual(depth, "chr1\t10\t2\t3\n")
+
+    def test_build_sv_evidence_scans_each_bam_once(self):
+        class FakeProcess:
+            def __init__(self, output: str):
+                self.stdout = StringIO(output)
+                self.stderr = StringIO("")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def wait(self):
+                return 0
+
+        sam_lines = "\n".join(
+            [
+                "read1\t2048\tchr1\t10\t60\t50M\t=\t20\t10\tACGT\tFFFF",
+                "read2\t1\tchr1\t20\t60\t50M\tchr2\t30\t0\tACGT\tFFFF",
+                "read3\t1\tchr1\t30\t60\t50M\t=\t40\t100001\tACGT\tFFFF",
+                "read4\t15\tchr1\t40\t60\t50M\t=\t50\t10\tACGT\tFFFF",
+            ]
+        )
+        row = {"sample": "sample", "role": "tumor", "run_accession": "SRR1", "output_bam": "tumor.bam"}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with (
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "indexed_alignment_count", return_value=4),
+                patch.object(phase3.subprocess, "Popen", return_value=FakeProcess(sam_lines)) as popen,
+            ):
+                summary = phase3.build_sv_evidence([row])
+        popen.assert_called_once()
+        self.assertEqual(summary[0]["total_alignments"], 4)
+        self.assertEqual(summary[0]["supplementary_alignments"], 1)
+        self.assertEqual(summary[0]["discordant_mapped_pairs"], 2)
+        self.assertEqual(summary[0]["interchromosomal_pairs"], 1)
+        self.assertEqual(summary[0]["large_insert_pairs"], 1)
+        self.assertEqual(summary[0]["sv_candidate_rows_written"], 2)
 
     def test_phase3_fetch_full_mode_uses_source_spots(self):
         with patch.object(fetch_phase3, "READ_PAIRS_LIMIT", None):

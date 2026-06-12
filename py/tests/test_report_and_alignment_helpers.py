@@ -30,6 +30,16 @@ class ReportAndAlignmentHelpersTest(unittest.TestCase):
         self.assertTrue(parsed["readGroupPresent"])
         self.assertEqual(parsed["contigs"], ["chr13"])
 
+    def test_parse_flagstat_counts(self):
+        text = "\n".join(
+            [
+                "100 + 0 in total (QC-passed reads + QC-failed reads)",
+                "90 + 0 mapped (90.00% : N/A)",
+                "80 + 0 properly paired (80.00% : N/A)",
+            ]
+        )
+        self.assertEqual(alignment.parse_flagstat_counts(text), {"total": 100, "mapped": 90, "properly_paired": 80})
+
     def test_parse_vcf_stats(self):
         stats = "SN\t0\tnumber of records:\t3\nSN\t0\tnumber of SNPs:\t2\nSN\t0\tnumber of indels:\t1\n"
         self.assertEqual(run_full_reference_smoke.parse_vcf_stats(stats), {"records": 3, "snps": 2, "indels": 1})

@@ -31,6 +31,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.verify_diana_raw import main as verify_diana_raw
     from .commands.verify_orthogonal_validation import main as verify_orthogonal_validation
     from .commands.verify_outputs import main as verify_outputs
+    from .commands.verify_outputs import verify_phase3_outputs
     from .commands.verify_plan import main as verify_plan
 
     return {
@@ -60,6 +61,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "verify:diana-raw": verify_diana_raw,
         "verify:orthogonal": verify_orthogonal_validation,
         "verify:outputs": verify_outputs,
+        "verify:phase3-outputs": verify_phase3_outputs,
         "verify:plan": verify_plan,
     }
 

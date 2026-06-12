@@ -48,6 +48,8 @@ bun run nf:quick
 bun run nf:phase3-wgs:dev
 ```
 
+`nf:phase3-wgs:*` uses the resumable split Nextflow DAG: fetch, reference index, tumor BAM, normal BAM, and downstream validation are separate checkpoints. Use `nextflow -resume` after transient cloud failures. The legacy one-process runner is available as `nf:phase3-wgs:monolith:full` for fallback comparisons.
+
 See [docs/nextflow.md](/Users/jasonlaster/src/projects/diana-omics/docs/nextflow.md) for Docker, AWS Batch, S3, and full-source WGS options.
 
 Prepare for Diana's actual files:

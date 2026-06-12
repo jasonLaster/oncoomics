@@ -55,6 +55,21 @@ def count(command: str) -> int:
     return int(output or "0")
 
 
+def parse_flagstat_counts(text: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for line in text.splitlines():
+        primary_count = int(line.split(" + ", 1)[0]) if " + " in line and line.split(" + ", 1)[0].isdigit() else None
+        if primary_count is None:
+            continue
+        if " in total " in line:
+            counts["total"] = primary_count
+        elif " mapped (" in line and "primary mapped" not in line:
+            counts["mapped"] = primary_count
+        elif " properly paired (" in line:
+            counts["properly_paired"] = primary_count
+    return counts
+
+
 def parse_idxstats(text: str) -> list[dict[str, Any]]:
     rows = []
     for line in text.splitlines():
@@ -76,14 +91,15 @@ def align_and_validate(row: dict[str, str], results_dir: str, required_contigs: 
     )
     run_command(command, f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.align.log")
     run_command(
-        f"samtools index {quote_shell_arg(row['output_bam'])}", f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.index.log"
+        f"samtools index -@ {threads} {quote_shell_arg(row['output_bam'])}", f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.index.log"
+    )
+    flagstat_log = f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.flagstat.txt"
+    run_command(
+        f"samtools flagstat -@ {threads} {quote_shell_arg(row['output_bam'])}",
+        flagstat_log,
     )
     run_command(
-        f"samtools flagstat {quote_shell_arg(row['output_bam'])}",
-        f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.flagstat.txt",
-    )
-    run_command(
-        f"samtools stats {quote_shell_arg(row['output_bam'])}", f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.stats.txt"
+        f"samtools stats -@ {threads} {quote_shell_arg(row['output_bam'])}", f"{results_dir}/logs/{row['reference_id']}.{row['run_accession']}.stats.txt"
     )
     quickcheck = subprocess.run(
         ["samtools", "quickcheck", "-v", str(path_from_root(row["output_bam"]))],
@@ -93,9 +109,10 @@ def align_and_validate(row: dict[str, str], results_dir: str, required_contigs: 
         check=False,
     )
     header_state = parse_header(capture_command(f"samtools view -H {quote_shell_arg(row['output_bam'])}"), row)
-    total_alignments = count(f"samtools view -c {quote_shell_arg(row['output_bam'])}")
-    mapped_alignments = count(f"samtools view -c -F 4 {quote_shell_arg(row['output_bam'])}")
-    properly_paired_alignments = count(f"samtools view -c -f 2 {quote_shell_arg(row['output_bam'])}")
+    flag_counts = parse_flagstat_counts(path_from_root(flagstat_log).read_text(encoding="utf-8"))
+    total_alignments = flag_counts["total"]
+    mapped_alignments = flag_counts["mapped"]
+    properly_paired_alignments = flag_counts["properly_paired"]
     idxstats_rows = parse_idxstats(capture_command(f"samtools idxstats {quote_shell_arg(row['output_bam'])}"))
     required_contigs = required_contigs or []
     expected_contigs_present = all(contig in header_state["contigs"] for contig in required_contigs)

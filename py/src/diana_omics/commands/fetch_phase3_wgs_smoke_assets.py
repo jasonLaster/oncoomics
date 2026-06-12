@@ -48,6 +48,8 @@ ASSET_CACHE_MODE = os.environ.get("PHASE3_WGS_ASSET_CACHE_MODE", "readwrite" if 
 CACHE_SRA_OBJECTS = os.environ.get("PHASE3_WGS_CACHE_SRA_OBJECTS", "true").lower() not in {"0", "false", "no"}
 CACHE_FASTQS = os.environ.get("PHASE3_WGS_CACHE_FASTQS", "true").lower() not in {"0", "false", "no"}
 DELETE_SRA_AFTER_CONVERSION = os.environ.get("PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION", "false").lower() in {"1", "true", "yes"}
+FASTQ_STATS_MODE = os.environ.get("PHASE3_WGS_FASTQ_STATS_MODE", "seqkit").lower().replace("-", "_")
+FETCH_ONLY_ROLE = os.environ.get("PHASE3_WGS_FETCH_ONLY_ROLE", "").lower()
 RESULTS_DIR = "results/phase3_wgs_smoke"
 SMOKE_ROOT = "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full"
 SEQC2_TRUTH_ROOT = "data/raw/reference/seqc2_hcc1395_truth/latest"
@@ -341,7 +343,63 @@ def summarize_paired_fastqs_with_seqkit(row: dict[str, Any], source: str) -> tup
     return r1_summary, r2_summary, paired_summary
 
 
+def manifest_read_length(row: dict[str, Any]) -> float:
+    read_pairs = int(row["read_pairs_per_end"])
+    source_bases = int(row.get("source_bases") or 0)
+    if read_pairs > 0 and source_bases > 0:
+        return source_bases / read_pairs / 2
+    return 0.0
+
+
+def summarize_paired_fastqs_with_metadata(row: dict[str, Any], source: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    run = row["run_accession"]
+    expected_records = int(row["read_pairs_per_end"])
+    read_length = manifest_read_length(row)
+    r1_id = first_fastq_id(row["fastq_1"], f"{run} R1")
+    r2_id = first_fastq_id(row["fastq_2"], f"{run} R2")
+    if r1_id != r2_id:
+        raise RuntimeError(f"{run} R1/R2 first read-id mismatch: {r1_id} vs {r2_id}")
+
+    def summary_for(read: str, path: str, source_url: str) -> dict[str, Any]:
+        return {
+            "run": run,
+            "read": read,
+            "sourceUrl": source_url,
+            "outputPath": str(path_from_root(path)),
+            "records": expected_records,
+            "minLength": read_length,
+            "maxLength": read_length,
+            "meanLength": read_length,
+            "gcFraction": "",
+            "nFraction": "",
+            "qualityAsciiMin": "",
+            "qualityAsciiMax": "",
+            "firstReadId": r1_id,
+            "lastReadId": "not_collected_metadata_mode",
+            "ids": [],
+            "idsStored": False,
+            "source": source,
+            "validationMethod": "metadata_byte_count_and_fastq_head",
+        }
+
+    paired_summary = {
+        "run": run,
+        "records": expected_records,
+        "firstReadId": r1_id,
+        "lastReadId": "not_collected_metadata_mode",
+        "pairedIdCheck": "passed",
+        "validationMethod": "metadata_byte_count_and_fastq_head",
+    }
+    return (
+        summary_for("R1", row["fastq_1"], row["source_fastq_1"]),
+        summary_for("R2", row["fastq_2"], row["source_fastq_2"]),
+        paired_summary,
+    )
+
+
 def summarize_paired_fastqs(row: dict[str, Any], source: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    if READ_PAIRS_LIMIT is None and FASTQ_STATS_MODE in {"metadata", "manifest", "head"}:
+        return summarize_paired_fastqs_with_metadata(row, source)
     if READ_PAIRS_LIMIT is None and command_path("seqkit"):
         return summarize_paired_fastqs_with_seqkit(row, source)
 
@@ -863,6 +921,12 @@ def ensure_aws_sra_object(row: dict[str, Any]) -> dict[str, Any]:
     if r1_path.exists() and r1_path.stat().st_size > 0 and r2_path.exists() and r2_path.stat().st_size > 0:
         return {"run": run, "source": "existing_fastq", "path": str(sra_path), "downloaded": False}
     aws = aws_cli_path()
+    if CACHE_FASTQS:
+        r1_uri = cache_uri("fastq", r1_path.name)
+        r2_uri = cache_uri("fastq", r2_path.name)
+        if r1_uri and r2_uri and s3_object_size(aws, r1_uri) is not None and s3_object_size(aws, r2_uri) is not None:
+            print(f"[cache-hit] label={run}.fastq-pair uri={cache_uri('fastq')}", flush=True)
+            return {"run": run, "source": "cache_aws_sra_fastq", "path": str(sra_path), "downloaded": False}
     write_aws_s3_transfer_config(S3_MAX_CONCURRENT_REQUESTS)
     ensure_dir(sra_path.parent)
     if not sra_path.exists() or sra_path.stat().st_size == 0:
@@ -1222,14 +1286,20 @@ def main() -> None:
             }
         )
 
+    if FETCH_ONLY_ROLE and FETCH_ONLY_ROLE not in {"tumor", "normal"}:
+        raise RuntimeError("PHASE3_WGS_FETCH_ONLY_ROLE must be tumor, normal, or unset.")
+    active_sample_rows = [row for row in sample_rows if not FETCH_ONLY_ROLE or row["role"] == FETCH_ONLY_ROLE]
+    if not active_sample_rows:
+        raise RuntimeError(f"No Phase 3 WGS sample rows matched PHASE3_WGS_FETCH_ONLY_ROLE={FETCH_ONLY_ROLE!r}.")
+
     fastq_stats: list[dict[str, Any]]
     paired_stats: dict[str, dict[str, Any]]
     asset_cache_summary: dict[str, Any] = {"enabled": bool(ASSET_CACHE_URI), "uri": ASSET_CACHE_URI, "mode": ASSET_CACHE_MODE}
     if READ_PAIRS_LIMIT is None and SOURCE_MODE == "aws_sra":
-        with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(sample_rows))) as pool:
-            list(pool.map(ensure_aws_sra_object, sample_rows))
-        with ThreadPoolExecutor(max_workers=min(SRA_RUN_CONCURRENCY, len(sample_rows))) as pool:
-            nested_stats = list(pool.map(lambda row: convert_aws_sra_run(row, SRA_THREADS), sample_rows))
+        with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(active_sample_rows))) as pool:
+            list(pool.map(ensure_aws_sra_object, active_sample_rows))
+        with ThreadPoolExecutor(max_workers=min(SRA_RUN_CONCURRENCY, len(active_sample_rows))) as pool:
+            nested_stats = list(pool.map(lambda row: convert_aws_sra_run(row, SRA_THREADS), active_sample_rows))
         download_stats = [stat for run_stats in nested_stats for stat in run_stats]
         fastq_stats = []
         paired_stats = {}
@@ -1244,15 +1314,15 @@ def main() -> None:
             )
             return summarize_paired_fastqs(row, source)
 
-        with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(sample_rows))) as pool:
-            paired_results = list(pool.map(summarize_full_row, sample_rows))
+        with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(active_sample_rows))) as pool:
+            paired_results = list(pool.map(summarize_full_row, active_sample_rows))
         for r1_summary, r2_summary, paired_summary in paired_results:
             fastq_stats.extend([r1_summary, r2_summary])
             paired_stats[r1_summary["run"]] = paired_summary
-        asset_cache_summary = publish_validated_aws_sra_cache(sample_rows)
+        asset_cache_summary = publish_validated_aws_sra_cache(active_sample_rows)
     elif READ_PAIRS_LIMIT is None:
         full_tasks: list[tuple[str, str, str, str, int, int, str]] = []
-        for row in sample_rows:
+        for row in active_sample_rows:
             full_tasks.append(
                 (
                     row["run_accession"],
@@ -1290,27 +1360,27 @@ def main() -> None:
             )
             return summarize_paired_fastqs(row, source)
 
-        with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(sample_rows))) as pool:
-            paired_results = list(pool.map(summarize_full_row, sample_rows))
+        with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(active_sample_rows))) as pool:
+            paired_results = list(pool.map(summarize_full_row, active_sample_rows))
         for r1_summary, r2_summary, paired_summary in paired_results:
             fastq_stats.extend([r1_summary, r2_summary])
             paired_stats[r1_summary["run"]] = paired_summary
     else:
         subset_tasks: list[tuple[str, str, str, str, int]] = []
-        for row in sample_rows:
+        for row in active_sample_rows:
             subset_tasks.append((row["run_accession"], "R1", row["source_fastq_1"], row["fastq_1"], int(row["read_pairs_per_end"])))
             subset_tasks.append((row["run_accession"], "R2", row["source_fastq_2"], row["fastq_2"], int(row["read_pairs_per_end"])))
         with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(subset_tasks))) as pool:
             fastq_stats = list(pool.map(lambda task: stream_fastq_subset(*task), subset_tasks))
 
         paired_stats = {}
-        for row in sample_rows:
+        for row in active_sample_rows:
             r1 = next(stat for stat in fastq_stats if stat["run"] == row["run_accession"] and stat["read"] == "R1")
             r2 = next(stat for stat in fastq_stats if stat["run"] == row["run_accession"] and stat["read"] == "R2")
             assert_paired(r1, r2)
 
     fastq_rows: list[dict[str, Any]] = []
-    for row in sample_rows:
+    for row in active_sample_rows:
         r1 = next(stat for stat in fastq_stats if stat["run"] == row["run_accession"] and stat["read"] == "R1")
         r2 = next(stat for stat in fastq_stats if stat["run"] == row["run_accession"] and stat["read"] == "R2")
         fastq_rows.append(
@@ -1355,6 +1425,7 @@ def main() -> None:
             "fetchConcurrency": FETCH_CONCURRENCY,
             "sourceMode": SOURCE_MODE,
             "assetCache": asset_cache_summary,
+            "fetchOnlyRole": FETCH_ONLY_ROLE or None,
             "rows": fastq_rows,
         },
     )
@@ -1369,6 +1440,8 @@ def main() -> None:
             "readPairsMode": "full" if READ_PAIRS_LIMIT is None else "bounded",
             "sourceMode": SOURCE_MODE,
             "sampleRows": len(sample_rows),
+            "fetchedSampleRows": len(active_sample_rows),
+            "fetchOnlyRole": FETCH_ONLY_ROLE or None,
             "source": "SEQC2/HCC1395 public HiSeq X Ten WGS tumor-normal FASTQ pair",
             "reference": {
                 "referenceId": reference["reference_id"],
@@ -1412,7 +1485,7 @@ Boundary: this validates WGS-capable mechanics on full-source public data. It is
 """,
     )
     mode_label = "full source FASTQs" if READ_PAIRS_LIMIT is None else f"{READ_PAIRS_LIMIT} read pairs/end developer subset"
-    print(f"Phase 3 WGS validation assets ready: {len(sample_rows)} samples, {mode_label}.")
+    print(f"Phase 3 WGS validation assets ready: {len(active_sample_rows)} fetched sample(s), {mode_label}.")
 
 
 if __name__ == "__main__":

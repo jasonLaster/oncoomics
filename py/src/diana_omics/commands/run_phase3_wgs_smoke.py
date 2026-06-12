@@ -4,11 +4,13 @@ import gzip
 import math
 import os
 import re
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
 
 from ..paths import path_from_root
 from ..utils import (
+    bcftools_norm_ref_mismatch_count,
     capture_allow_empty,
     capture_command,
     detect_cpu_count,
@@ -33,6 +35,8 @@ from ..utils import (
 
 RESULTS_DIR = "results/phase3_wgs_smoke"
 FORCE = os.environ.get("PHASE3_WGS_FORCE") == "1"
+STAGE = os.environ.get("PHASE3_WGS_STAGE", "all").lower().replace("-", "_")
+SAMPLE_ROLE = os.environ.get("PHASE3_WGS_SAMPLE_ROLE", "").lower()
 AVAILABLE_CPUS = detect_cpu_count()
 TOTAL_THREADS = max(2, int(os.environ.get("PHASE3_WGS_THREADS", str(min(16, AVAILABLE_CPUS)))))
 PARALLEL_ALIGN = os.environ.get("PHASE3_WGS_PARALLEL_ALIGN") != "0"
@@ -40,11 +44,15 @@ PER_SAMPLE_THREADS = max(2, TOTAL_THREADS // 2) if PARALLEL_ALIGN else TOTAL_THR
 BAM_VALIDATION_WORKERS = max(1, int(os.environ.get("PHASE3_WGS_BAM_VALIDATION_WORKERS", str(min(2, TOTAL_THREADS)))))
 REUSE_BAM_VALIDATION = os.environ.get("PHASE3_WGS_REUSE_BAM_VALIDATION", "1") != "0"
 GATK_THREADS = max(1, min(int(os.environ.get("PHASE3_WGS_GATK_THREADS", str(TOTAL_THREADS // 2))), 8))
+BAM_SCAN_THREADS = max(1, int(os.environ.get("PHASE3_WGS_BAM_SCAN_THREADS", str(max(1, TOTAL_THREADS // 2)))))
 MIN_TRUTH_DEPTH = int(os.environ.get("PHASE3_WGS_MIN_TRUTH_DEPTH", "1"))
 MAX_TRUTH_VARIANTS = int(os.environ.get("PHASE3_WGS_MAX_TRUTH_VARIANTS", "300"))
 INTERVAL_PADDING = int(os.environ.get("PHASE3_WGS_INTERVAL_PADDING", "100"))
 BIN_SIZE = int(os.environ.get("PHASE3_WGS_CNV_BIN_SIZE", "5000000"))
 MATRIX_RECORD_POLICY = os.environ.get("PHASE3_WGS_MATRIX_RECORD_POLICY", "pass_preferred_all_filtered_fallback")
+# Cap on REF-mismatch records bcftools norm may drop before we treat it as a
+# wrong-reference misconfiguration rather than a few benign discordances.
+NORM_MAX_REF_MISMATCH = int(os.environ.get("PHASE3_WGS_NORM_MAX_REF_MISMATCH", "1000"))
 
 MUTATION_TYPES = ["C>A", "C>G", "C>T", "T>A", "T>C", "T>G"]
 BASES = ["A", "C", "G", "T"]
@@ -119,6 +127,21 @@ def bam_validation_summary_path() -> str:
     return f"{RESULTS_DIR}/bam_validation_summary.json"
 
 
+def parse_flagstat_counts(text: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for line in text.splitlines():
+        primary_count = int(line.split(" + ", 1)[0]) if " + " in line and line.split(" + ", 1)[0].isdigit() else None
+        if primary_count is None:
+            continue
+        if " in total " in line:
+            counts["total"] = primary_count
+        elif " mapped (" in line and "primary mapped" not in line:
+            counts["mapped"] = primary_count
+        elif " properly paired (" in line:
+            counts["properly_paired"] = primary_count
+    return counts
+
+
 def reusable_bam_validation_rows(rows: list[dict[str, str]]) -> Optional[list[dict[str, Any]]]:
     if FORCE or not REUSE_BAM_VALIDATION:
         return None
@@ -151,25 +174,15 @@ def reusable_bam_validation_rows(rows: list[dict[str, str]]) -> Optional[list[di
 def alignment_flag_counts(reference_id: str, row: dict[str, str]) -> dict[str, int]:
     flagstat_log = path_from_root(f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt")
     if flagstat_log.exists() and not FORCE:
-        text = read_text(flagstat_log)
-        counts: dict[str, int] = {}
-        for line in text.splitlines():
-            primary_count = int(line.split(" + ", 1)[0]) if " + " in line and line.split(" + ", 1)[0].isdigit() else None
-            if primary_count is None:
-                continue
-            if " in total " in line:
-                counts["total"] = primary_count
-            elif " mapped (" in line and "primary mapped" not in line:
-                counts["mapped"] = primary_count
-            elif " properly paired (" in line:
-                counts["properly_paired"] = primary_count
+        counts = parse_flagstat_counts(read_text(flagstat_log))
         if {"total", "mapped", "properly_paired"} <= counts.keys():
             return counts
-    return {
-        "total": count(f"samtools view -c {quote_shell_arg(row['output_bam'])}"),
-        "mapped": count(f"samtools view -c -F 4 {quote_shell_arg(row['output_bam'])}"),
-        "properly_paired": count(f"samtools view -c -f 2 {quote_shell_arg(row['output_bam'])}"),
-    }
+    text = capture_command(f"samtools flagstat -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}")
+    write_text(flagstat_log, text)
+    counts = parse_flagstat_counts(text)
+    if {"total", "mapped", "properly_paired"} <= counts.keys():
+        return counts
+    raise RuntimeError(f"Could not parse samtools flagstat counts for {row['output_bam']}")
 
 
 def validate_bam_row(row: dict[str, str]) -> dict[str, Any]:
@@ -233,6 +246,65 @@ def validate_bam_rows(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
         return list(pool.map(validate_bam_row, rows))
 
 
+def write_stage_marker(stage: str, payload: dict[str, Any]) -> None:
+    marker_path = path_from_root(f"{RESULTS_DIR}/stage_markers/{stage}.json")
+    write_json(marker_path, {"generatedAt": iso_now(), "stage": stage, **payload})
+
+
+def ensure_bwa_index(reference_id: str, reference_path: str) -> None:
+    if FORCE or not path_from_root(f"{reference_path}.bwt").exists():
+        run_command(f"bwa index {quote_shell_arg(reference_path)}", f"{RESULTS_DIR}/logs/{reference_id}.bwa_index.log")
+
+
+def align_and_index_sample(reference_id: str, row: dict[str, str]) -> None:
+    ensure_dir(path_from_root("/".join(row["output_bam"].split("/")[:-1])))
+    if not FORCE and bam_satisfies_read_scope(row):
+        write_stage_marker(
+            f"align_{row['role']}",
+            {
+                "status": "skipped_existing",
+                "role": row["role"],
+                "runAccession": row["run_accession"],
+                "bam": row["output_bam"],
+                "bai": row["output_bai"],
+            },
+        )
+        return
+    remove_stale_alignment(row)
+    command = (
+        "set -o pipefail; "
+        f"bwa mem -t {TOTAL_THREADS} -R {quote_shell_arg(read_group(row))} {quote_shell_arg(row['reference_path'])} "
+        f"{quote_shell_arg(row['fastq_1'])} {quote_shell_arg(row['fastq_2'])} | "
+        f"samtools sort -@ {TOTAL_THREADS} -o {quote_shell_arg(row['output_bam'])} -"
+    )
+    run_command(command, f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.align.log")
+    run_command(
+        f"samtools index -@ {TOTAL_THREADS} -o {quote_shell_arg(row['output_bai'])} {quote_shell_arg(row['output_bam'])}",
+        f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.index.log",
+    )
+    run_command(
+        f"samtools flagstat -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}",
+        f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt",
+    )
+    run_command(
+        f"samtools stats -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}",
+        f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.stats.txt",
+    )
+    if not bam_satisfies_read_scope(row):
+        raise RuntimeError(f"Aligned BAM for {row['role']} did not satisfy requested read scope: {row['output_bam']}")
+    write_stage_marker(
+        f"align_{row['role']}",
+        {
+            "status": "passed",
+            "role": row["role"],
+            "runAccession": row["run_accession"],
+            "threads": TOTAL_THREADS,
+            "bam": row["output_bam"],
+            "bai": row["output_bai"],
+        },
+    )
+
+
 def load_truth_variants(vcf_path: str, variant_type: str) -> list[dict[str, Any]]:
     variants: list[dict[str, Any]] = []
     with gzip.open(path_from_root(vcf_path), "rt", encoding="utf-8") as handle:
@@ -260,11 +332,24 @@ def load_truth_variants(vcf_path: str, variant_type: str) -> list[dict[str, Any]
 def normalize_vcf_for_comparison(vcf_path: str, reference_path: str, output_path: str, log_path: str) -> str:
     if FORCE or not existing_output_current([output_path, f"{output_path}.tbi"], [vcf_path, reference_path]):
         ensure_dir(path_from_root("/".join(output_path.split("/")[:-1])))
+        # --check-ref x excludes records whose REF allele does not match the
+        # reference instead of aborting the whole validation on the first one
+        # (bcftools defaults to --check-ref e, which exits 255). A handful of
+        # discordant sites outside the compared region are tolerated; a flood
+        # means the wrong reference, so we fail closed below.
         run_command(
-            f"bcftools norm -m -both -f {quote_shell_arg(reference_path)} -Oz -o {quote_shell_arg(output_path)} {quote_shell_arg(vcf_path)}",
+            f"bcftools norm -m -both --check-ref x -f {quote_shell_arg(reference_path)} -Oz -o {quote_shell_arg(output_path)} {quote_shell_arg(vcf_path)}",
             log_path,
         )
         run_command(f"bcftools index -t -f {quote_shell_arg(output_path)}", f"{log_path}.index")
+        mismatches = bcftools_norm_ref_mismatch_count(read_text(path_from_root(log_path)))
+        if mismatches:
+            print(f"[norm] {output_path}: bcftools norm excluded {mismatches} REF-mismatch record(s) vs {reference_path}", flush=True)
+        if mismatches > NORM_MAX_REF_MISMATCH:
+            raise RuntimeError(
+                f"bcftools norm excluded {mismatches} REF-mismatch records from {vcf_path} "
+                f"(cap {NORM_MAX_REF_MISMATCH}); reference {reference_path} likely does not match this VCF build."
+            )
     return output_path
 
 
@@ -297,6 +382,24 @@ def pick_covered_truth_variants(variants: list[dict[str, Any]], depth_text: str)
             enriched["minDepth"] = min(tumor_depth, normal_depth)
             unique[str(enriched["key"])] = enriched
     return sorted(unique.values(), key=lambda row: (-int(row["minDepth"]), str(row["contig"]), int(row["position"])))[:MAX_TRUTH_VARIANTS]
+
+
+def truth_depth_path() -> str:
+    return f"{RESULTS_DIR}/seqc2_truth_depth.tsv"
+
+
+def truth_depth_text(tumor: dict[str, str], normal: dict[str, str], truth_position_bed: str, reference_id: str) -> str:
+    output_path = truth_depth_path()
+    if FORCE or not existing_output_current(
+        [output_path],
+        [truth_position_bed, tumor["output_bam"], tumor["output_bai"], normal["output_bam"], normal["output_bai"]],
+    ):
+        run_command(
+            f"samtools depth -@ {BAM_SCAN_THREADS} -a -b {quote_shell_arg(truth_position_bed)} "
+            f"{quote_shell_arg(tumor['output_bam'])} {quote_shell_arg(normal['output_bam'])} > {quote_shell_arg(output_path)}",
+            f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.truth_depth.log",
+        )
+    return read_text(path_from_root(output_path))
 
 
 def read_reference_order(fai_path: str) -> dict[str, int]:
@@ -406,6 +509,16 @@ def build_bins(fai_path: str, output_path: str) -> list[dict[str, Any]]:
 
 
 def build_coverage_cnv(tumor: dict[str, str], normal: dict[str, str], bins_path: str) -> dict[str, Any]:
+    bins_output = f"{RESULTS_DIR}/coverage_cnv_bins.csv"
+    summary_output = f"{RESULTS_DIR}/coverage_cnv_summary.csv"
+    summary_json = f"{RESULTS_DIR}/coverage_cnv_summary.json"
+    if not FORCE and existing_output_current(
+        [bins_output, summary_output, summary_json],
+        [bins_path, tumor["output_bam"], tumor["output_bai"], normal["output_bam"], normal["output_bai"]],
+    ):
+        cached_rows = read_json(path_from_root(summary_json)).get("rows", [])
+        if cached_rows:
+            return {**cached_rows[0], "cnv_cache": "reused"}
     rows: list[dict[str, Any]] = []
     bedcov = capture_allow_empty(
         f"samtools bedcov {quote_shell_arg(bins_path)} {quote_shell_arg(tumor['output_bam'])} {quote_shell_arg(normal['output_bam'])}"
@@ -436,7 +549,7 @@ def build_coverage_cnv(tumor: dict[str, str], normal: dict[str, str], bins_path:
                 else "neutral_or_low_signal",
             }
         )
-    write_csv(path_from_root(f"{RESULTS_DIR}/coverage_cnv_bins.csv"), rows)
+    write_csv(path_from_root(bins_output), rows)
     log2_values = [float(row["log2_tumor_normal"]) for row in rows if row["log2_tumor_normal"] != ""]
     summary = {
         "status": "passed" if rows else "failed",
@@ -450,9 +563,9 @@ def build_coverage_cnv(tumor: dict[str, str], normal: dict[str, str], bins_path:
         "scarhrd_input_status": "not_assessable_without_allele_specific_segments",
         "caveat": "Real WGS BAM coverage-derived CNV bins from samtools bedcov. This validates CNV feature plumbing but is not allele-specific segmentation or scarHRD.",
     }
-    write_csv(path_from_root(f"{RESULTS_DIR}/coverage_cnv_summary.csv"), [summary])
+    write_csv(path_from_root(summary_output), [summary])
     write_json(
-        path_from_root(f"{RESULTS_DIR}/coverage_cnv_summary.json"),
+        path_from_root(summary_json),
         {"generatedAt": iso_now(), "status": summary["status"], "rows": [summary]},
     )
     return summary
@@ -552,38 +665,54 @@ def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
     summary_rows: list[dict[str, Any]] = []
     candidate_rows: list[dict[str, Any]] = []
     for row in rows:
-        total_alignments = count(f"samtools view -c {quote_shell_arg(row['output_bam'])}")
-        supplementary = count(f"samtools view -c -f 2048 {quote_shell_arg(row['output_bam'])}")
-        discordant_mapped_pairs = count(f"samtools view -c -f 1 -F 14 {quote_shell_arg(row['output_bam'])}")
-        interchromosomal_pairs = count(
-            f'samtools view -f 1 -F 14 {quote_shell_arg(row["output_bam"])} | awk \'$7!="=" && $7!="*" {{n++}} END {{print n+0}}\''
-        )
-        large_insert_pairs = count(
-            f"samtools view -f 1 -F 14 {quote_shell_arg(row['output_bam'])} | awk '$7==\"=\" && ($9>100000 || $9<-100000) {{n++}} END {{print n+0}}'"
-        )
-        candidates = capture_allow_empty(
-            f"samtools view -f 1 -F 14 {quote_shell_arg(row['output_bam'])} | awk 'BEGIN{{OFS=\"\\t\"}} NR<=100 {{print $1,$3,$4,$7,$8,$9,$5,$6}}'"
-        )
-        for line in candidates.splitlines():
-            fields = line.split("\t")
-            if len(fields) != 8:
-                continue
-            read_name, chrom1, pos1, chrom2, pos2, template_length, mapq, cigar = fields
-            candidate_rows.append(
-                {
-                    "sample": row["sample"],
-                    "role": row["role"],
-                    "run_accession": row["run_accession"],
-                    "read_name": read_name,
-                    "chrom1": chrom1,
-                    "pos1": pos1,
-                    "chrom2": chrom2,
-                    "pos2": pos2,
-                    "template_length": template_length,
-                    "mapq": mapq,
-                    "cigar": cigar,
-                }
-            )
+        total_alignments = indexed_alignment_count(row)
+        supplementary = 0
+        discordant_mapped_pairs = 0
+        interchromosomal_pairs = 0
+        large_insert_pairs = 0
+        candidate_count = 0
+        command = ["samtools", "view", "-@", str(BAM_SCAN_THREADS), row["output_bam"]]
+        with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                fields = line.rstrip("\n").split("\t")
+                if len(fields) < 9:
+                    continue
+                flag = int(fields[1])
+                if flag & 2048:
+                    supplementary += 1
+                is_discordant_mapped_pair = (flag & 1) and not (flag & 14)
+                if not is_discordant_mapped_pair:
+                    continue
+                discordant_mapped_pairs += 1
+                mate_ref = fields[6]
+                template_length = int(fields[8]) if fields[8].lstrip("-").isdigit() else 0
+                if mate_ref not in ("=", "*"):
+                    interchromosomal_pairs += 1
+                if mate_ref == "=" and abs(template_length) > 100000:
+                    large_insert_pairs += 1
+                if candidate_count >= 100:
+                    continue
+                read_name, chrom1, pos1, chrom2, pos2, mapq, cigar = fields[0], fields[2], fields[3], fields[6], fields[7], fields[4], fields[5]
+                candidate_rows.append(
+                    {
+                        "sample": row["sample"],
+                        "role": row["role"],
+                        "run_accession": row["run_accession"],
+                        "read_name": read_name,
+                        "chrom1": chrom1,
+                        "pos1": pos1,
+                        "chrom2": chrom2,
+                        "pos2": pos2,
+                        "template_length": str(template_length),
+                        "mapq": mapq,
+                        "cigar": cigar,
+                    }
+                )
+                candidate_count += 1
+            stderr = proc.stderr.read() if proc.stderr is not None else ""
+            if proc.wait() != 0:
+                raise RuntimeError(f"samtools view failed for {row['output_bam']}: {stderr}")
         summary_rows.append(
             {
                 "status": "passed",
@@ -597,7 +726,7 @@ def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
                 "discordant_mapped_pairs": discordant_mapped_pairs,
                 "interchromosomal_pairs": interchromosomal_pairs,
                 "large_insert_pairs": large_insert_pairs,
-                "sv_candidate_rows_written": min(100, len(candidates.splitlines())),
+                "sv_candidate_rows_written": candidate_count,
                 "chord_input_status": "not_assessable_requires_validated_sv_caller_vcf",
                 "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is WGS SV evidence, not a validated production SV caller VCF.",
             }
@@ -616,6 +745,9 @@ def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
 
 
 def main() -> None:
+    allowed_stages = {"all", "reference_index", "align_sample", "downstream"}
+    if STAGE not in allowed_stages:
+        raise RuntimeError(f"Unsupported PHASE3_WGS_STAGE={STAGE!r}; choose one of {sorted(allowed_stages)}.")
     ensure_dir(path_from_root(RESULTS_DIR))
     ensure_dir(path_from_root(f"{RESULTS_DIR}/logs"))
     asset_summary = read_json(path_from_root(f"{RESULTS_DIR}/asset_summary.json"))
@@ -638,19 +770,63 @@ def main() -> None:
     filtered_vcf = f"{vcf_dir}/hcc1395.phase3_wgs.mutect2.filtered.vcf.gz"
     f1r2_path = f"{vcf_dir}/hcc1395.phase3_wgs.mutect2.f1r2.tar.gz"
 
-    for row in rows:
-        for required_path in [
-            row["fastq_1"],
-            row["fastq_2"],
-            row["reference_path"],
-            row["reference_fai_path"],
-            row["reference_dict_path"],
-            row["gatk_jar_path"],
-        ]:
-            if not path_from_root(required_path).exists():
-                raise RuntimeError(f"Required Phase 3 WGS input is missing: {required_path}")
-    if not path_from_root(f"{tumor['reference_path']}.bwt").exists():
-        run_command(f"bwa index {quote_shell_arg(tumor['reference_path'])}", f"{RESULTS_DIR}/logs/{reference_id}.bwa_index.log")
+    common_required_paths = [
+        tumor["reference_path"],
+        tumor["reference_fai_path"],
+        tumor["reference_dict_path"],
+    ]
+    if STAGE == "reference_index":
+        required_paths = common_required_paths
+    elif STAGE == "align_sample":
+        if SAMPLE_ROLE not in {"tumor", "normal"}:
+            raise RuntimeError("PHASE3_WGS_STAGE=align_sample requires PHASE3_WGS_SAMPLE_ROLE=tumor or normal.")
+        selected_row = tumor if SAMPLE_ROLE == "tumor" else normal
+        required_paths = common_required_paths + [selected_row["fastq_1"], selected_row["fastq_2"]]
+    elif STAGE == "downstream":
+        required_paths = common_required_paths + [
+            tumor["gatk_jar_path"],
+            tumor["truth_snv_vcf_path"],
+            tumor["truth_indel_vcf_path"],
+            tumor["truth_high_confidence_bed_path"],
+            tumor["output_bam"],
+            tumor["output_bai"],
+            normal["output_bam"],
+            normal["output_bai"],
+        ]
+    else:
+        required_paths = []
+        for row in rows:
+            required_paths.extend(
+                [
+                    row["fastq_1"],
+                    row["fastq_2"],
+                    row["reference_path"],
+                    row["reference_fai_path"],
+                    row["reference_dict_path"],
+                    row["gatk_jar_path"],
+                ]
+            )
+    for required_path in dict.fromkeys(required_paths):
+        if not path_from_root(required_path).exists():
+            raise RuntimeError(f"Required Phase 3 WGS input is missing: {required_path}")
+    ensure_bwa_index(reference_id, tumor["reference_path"])
+
+    if STAGE == "reference_index":
+        write_stage_marker(
+            "reference_index",
+            {
+                "status": "passed",
+                "referenceId": reference_id,
+                "referencePath": tumor["reference_path"],
+                "threads": TOTAL_THREADS,
+            },
+        )
+        print(f"Phase 3 WGS reference index is ready for {reference_id}.")
+        return
+
+    if STAGE == "align_sample":
+        align_and_index_sample(reference_id, tumor if SAMPLE_ROLE == "tumor" else normal)
+        return
 
     align_commands: list[tuple[str, str]] = []
     for row in rows:
@@ -687,9 +863,9 @@ def main() -> None:
             flagstat_log = f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt"
             stats_log = f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.stats.txt"
             if FORCE or not existing_output_current([flagstat_log], [row["output_bam"]]):
-                stats_commands.append((f"samtools flagstat {quote_shell_arg(row['output_bam'])}", flagstat_log))
+                stats_commands.append((f"samtools flagstat -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}", flagstat_log))
             if FORCE or not existing_output_current([stats_log], [row["output_bam"]]):
-                stats_commands.append((f"samtools stats {quote_shell_arg(row['output_bam'])}", stats_log))
+                stats_commands.append((f"samtools stats -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}", stats_log))
         if index_commands:
             run_commands_parallel(index_commands, len(index_commands))
         if stats_commands:
@@ -723,10 +899,7 @@ def main() -> None:
     )
     truth_variants = load_truth_variants(normalized_truth_snv_path, "snv") + load_truth_variants(normalized_truth_indel_path, "indel")
     write_truth_position_bed(truth_variants, truth_position_bed)
-    truth_depth_text = capture_allow_empty(
-        f"samtools depth -a -b {quote_shell_arg(truth_position_bed)} {quote_shell_arg(tumor['output_bam'])} {quote_shell_arg(normal['output_bam'])}"
-    )
-    covered_truth = pick_covered_truth_variants(truth_variants, truth_depth_text)
+    covered_truth = pick_covered_truth_variants(truth_variants, truth_depth_text(tumor, normal, truth_position_bed, reference_id))
     reference_order = read_reference_order(tumor["reference_fai_path"])
     interval_rows = (
         write_intervals(covered_truth, reference_order, mutect_intervals)

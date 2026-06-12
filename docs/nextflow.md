@@ -1,6 +1,16 @@
 # Nextflow Orchestration
 
-This repository keeps the Python commands as the source of truth and uses Nextflow as a portable runner around those commands. The first Nextflow layer is command-stage based: each selected workflow copies the repo into a task workspace, sets `DIANA_OMICS_ROOT` to that workspace, and runs the existing `python -m diana_omics ...` commands there.
+This repository keeps the Python commands as the source of truth and uses Nextflow as a portable runner around those commands. Each selected workflow copies the repo into a task workspace, sets `DIANA_OMICS_ROOT` to that workspace, and runs the existing `python -m diana_omics ...` commands there.
+
+`phase3_wgs` is now split into resumable checkpoints:
+
+1. Fetch/prerequisites and validated FASTQ generation.
+2. Full-reference BWA index.
+3. Tumor BAM alignment, sort, index, and stats.
+4. Normal BAM alignment, sort, index, and stats.
+5. Downstream BAM validation, Mutect2, CNV bins, SBS96, SV evidence, packet build, and output verification.
+
+The old one-process runner is still available as `phase3_wgs_monolith` for fallback comparisons. Prefer the split workflow for cloud runs because `-resume` can restart after the last completed expensive boundary instead of replaying the whole WGS job.
 
 ## Local Runs
 
@@ -25,6 +35,7 @@ nextflow run main.nf -profile local --workflow phase3_fetch --phase3_reads 50000
 nextflow run main.nf -profile local --workflow phase3_fetch --phase3_reads full --phase3_fetch_concurrency 4 --phase3_aria2_split 1
 nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads 500000
 nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads full
+nextflow run main.nf -profile local --workflow phase3_wgs_monolith --phase3_reads full
 nextflow run main.nf -profile local --workflow all_public --phase3_reads 500000
 ```
 
@@ -44,6 +55,23 @@ Outputs are published under `nextflow-out/<workflow>/`.
 
 Bounded Phase 3 runs are developer plumbing checks. They may run `verify:outputs` for visibility, but a failing full-output verifier is non-fatal unless `--phase3_reads full` is selected. Full-source runs keep `verify:outputs` fatal because that verifier is the acceptance gate for Diana-readiness evidence.
 
+## Phase 3 Split Sizing
+
+The split workflow has separate resource knobs so AWS Batch can place each stage on the right instance type. Under
+the current 32-vCPU Spot quota, keep fetch/reference below the memory level that forces a 32-vCPU instance:
+
+```sh
+--phase3_fetch_cpus 8 --phase3_fetch_memory '28 GB'
+--phase3_ref_cpus 16 --phase3_ref_memory '28 GB'
+--phase3_align_cpus 16 --phase3_align_memory '96 GB'
+--phase3_downstream_cpus 16 --phase3_downstream_memory '64 GB'
+```
+
+Local defaults are intentionally smaller so `-stub-run` works on a workstation. AWS full-run scripts override them.
+Alignment runs tumor and normal as separate Batch jobs; each job gives all requested alignment CPUs to one
+`bwa mem | samtools sort` pipeline. After the EC2 quota increase is approved, the alignment stage can move to
+`--phase3_align_cpus 32 --phase3_align_memory '96 GB'`.
+
 ## Phase 3 Fetch Experiments
 
 Use `phase3_fetch` to benchmark WGS FASTQ download strategies without running the full WES benchmark or WGS validation ladder:
@@ -56,10 +84,10 @@ nextflow run main.nf \
   --phase3_reads full \
   --phase3_source_mode aws_sra \
   --phase3_fetch_cpus 8 \
-  --phase3_fetch_memory '48 GB' \
+  --phase3_fetch_memory '28 GB' \
   --phase3_fetch_concurrency 8 \
   --phase3_s3_range_concurrency 8 \
-  --phase3_sra_run_concurrency 1
+  --phase3_sra_run_concurrency 2
 ```
 
 `phase3_fetch` still fetches the small prerequisites needed by `fetch:phase3-wgs`, then downloads and checks the full SEQC2/HCC1395 WGS reads. The default source mode is `ena_fastq`, which downloads the published gzip FASTQs directly from ENA and verifies provider MD5s. AWS cloud runs should use `--phase3_source_mode aws_sra` to range-read public SRA objects from the AWS Open Data bucket `sra-pub-run-odp`, convert them with `fasterq-dump`, gzip the split FASTQs, and leave the existing validation logic unchanged. This path validates SRA spot counts and full FASTQ scans; it does not claim ENA provider-MD5 validation because the FASTQ gzip bytes are regenerated in the task.
@@ -99,6 +127,8 @@ When `--phase3_source_mode aws_sra` and `--phase3_reads full` are selected, the 
 - fresh range reads from the AWS Open Data bucket
 
 Cache hits still run through the same full FASTQ scan and spot-count validation. Cache writes happen only after converted FASTQs pass validation, so the cache is an acceleration layer, not a replacement for validation.
+
+Nextflow also caches split-stage outputs in the configured work bucket. That work cache is for `nextflow -resume`; the asset cache under `phase3_asset_cache_uri` is for cross-run reuse of expensive public-input derivatives such as regenerated FASTQ gzip files. Do not seed either cache from local raw data.
 
 Terraform writes this URI into `infra/aws/nextflow.aws.json` as the private encrypted `raw-inputs` bucket path. Local and Docker profiles leave it unset by default. Do not seed this cache from local data; let AWS Batch jobs populate it from public cloud-side downloads.
 

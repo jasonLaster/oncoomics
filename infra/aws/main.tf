@@ -640,6 +640,11 @@ resource "aws_batch_job_queue" "spot" {
     order               = 1
     compute_environment = aws_batch_compute_environment.spot.arn
   }
+
+  compute_environment_order {
+    order               = 2
+    compute_environment = aws_batch_compute_environment.ondemand.arn
+  }
 }
 
 resource "aws_batch_job_queue" "ondemand" {

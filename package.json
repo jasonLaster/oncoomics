@@ -29,6 +29,7 @@
     "analyze:rna": "PYTHONPATH=py/src ${PYTHON_BIN:-/usr/bin/python3} -m diana_omics analyze:rna",
     "build:packet": "PYTHONPATH=py/src ${PYTHON_BIN:-/usr/bin/python3} -m diana_omics build:packet",
     "verify:outputs": "PYTHONPATH=py/src ${PYTHON_BIN:-/usr/bin/python3} -m diana_omics verify:outputs",
+    "verify:phase3-outputs": "PYTHONPATH=py/src ${PYTHON_BIN:-/usr/bin/python3} -m diana_omics verify:phase3-outputs",
     "verify:plan": "PYTHONPATH=py/src ${PYTHON_BIN:-/usr/bin/python3} -m diana_omics verify:plan",
     "verify:plan:online": "CHECK_URLS=1 PYTHONPATH=py/src ${PYTHON_BIN:-/usr/bin/python3} -m diana_omics verify:plan",
     "py:lint": "${PYTHON_BIN:-/usr/bin/python3} -m ruff check py/src py/tests",
@@ -46,6 +47,7 @@
     "nf:phase3-sra-benchmark": "nextflow run main.nf -profile local --workflow phase3_sra_benchmark",
     "nf:phase3-wgs:dev": "nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads 500000",
     "nf:phase3-wgs:full": "nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads full",
+    "nf:phase3-wgs:monolith:full": "nextflow run main.nf -profile local --workflow phase3_wgs_monolith --phase3_reads full",
     "nf:all-public": "nextflow run main.nf -profile local --workflow all_public --phase3_reads 500000",
     "infra:aws:init": "terraform -chdir=infra/aws init",
     "infra:aws:fmt": "terraform -chdir=infra/aws fmt",
@@ -63,8 +65,10 @@
     "nf:aws:phase3-sra-benchmark": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_sra_benchmark --phase3_fetch_cpus 4 --phase3_fetch_memory '16 GB' --phase3_fetch_concurrency 8 --sra_benchmark_bytes 268435456 --sra_benchmark_parts 4",
     "nf:aws:sra-bench:matrix:2cpu": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_sra_benchmark --phase3_fetch_cpus 2 --phase3_fetch_memory '8 GB' --sra_benchmark_matrix 'aws_s3api_range:4:268435456:4:aws-range-c4,aws_s3api_range:8:268435456:4:aws-range-c8,aws_s3api_range:16:134217728:4:aws-range-c16,s5cmd_cat:4:268435456:4:s5cat-c4,s5cmd_cat:8:268435456:4:s5cat-c8'",
     "nf:aws:sra-bench:matrix:4cpu": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_sra_benchmark --phase3_fetch_cpus 4 --phase3_fetch_memory '16 GB' --sra_benchmark_matrix 'aws_s3api_range:4:268435456:4:aws-range-c4,aws_s3api_range:8:268435456:4:aws-range-c8,aws_s3api_range:16:134217728:4:aws-range-c16,s5cmd_cat:4:268435456:4:s5cat-c4,s5cmd_cat:8:268435456:4:s5cat-c8'",
-    "nf:aws:phase3-fetch:full": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_fetch --phase3_reads full --phase3_source_mode aws_sra --phase3_fetch_cpus 8 --phase3_fetch_memory '48 GB' --phase3_fetch_concurrency 8 --phase3_s3_range_concurrency 8",
+    "nf:aws:phase3-fetch:full": "nextflow run main.nf -profile awsbatch_spot -params-file infra/aws/nextflow.aws.json --workflow phase3_fetch --phase3_reads full --phase3_source_mode aws_sra --phase3_fetch_cpus 8 --phase3_fetch_memory '28 GB' --phase3_fetch_concurrency 8 --phase3_s3_range_concurrency 8 --phase3_sra_run_concurrency 2 --phase3_fastq_stats_mode metadata",
     "nf:aws:phase3-wgs:dev": "nextflow run main.nf -profile awsbatch_spot -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs --phase3_reads 500000",
-    "nf:aws:phase3-wgs:full": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs --phase3_reads full --phase3_source_mode aws_sra --phase3_fetch_concurrency 8 --phase3_s3_range_concurrency 8 --phase3_sra_run_concurrency 1 --phase3_wgs_cpus 16 --phase3_wgs_memory '28 GB' --phase3_include_wes false --phase3_prereq_mode minimal"
+    "nf:aws:phase3-wgs:full": "nextflow run main.nf -profile awsbatch_spot -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs --phase3_reads full --phase3_source_mode aws_sra --phase3_fetch_cpus 8 --phase3_fetch_memory '28 GB' --phase3_ref_cpus 16 --phase3_ref_memory '28 GB' --phase3_align_cpus 16 --phase3_align_memory '96 GB' --phase3_downstream_cpus 16 --phase3_downstream_memory '64 GB' --phase3_fetch_concurrency 8 --phase3_s3_range_concurrency 8 --phase3_sra_run_concurrency 2 --phase3_fastq_stats_mode metadata --phase3_include_wes false --phase3_prereq_mode minimal",
+    "nf:aws:phase3-wgs:full:ondemand-large": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs --phase3_reads full --phase3_source_mode aws_sra --phase3_fetch_cpus 8 --phase3_fetch_memory '48 GB' --phase3_ref_cpus 16 --phase3_ref_memory '32 GB' --phase3_align_cpus 32 --phase3_align_memory '96 GB' --phase3_downstream_cpus 16 --phase3_downstream_memory '64 GB' --phase3_fetch_concurrency 8 --phase3_s3_range_concurrency 8 --phase3_sra_run_concurrency 1 --phase3_fastq_stats_mode metadata --phase3_include_wes false --phase3_prereq_mode minimal",
+    "nf:aws:phase3-wgs:monolith:full": "nextflow run main.nf -profile awsbatch_ondemand -params-file infra/aws/nextflow.aws.json --workflow phase3_wgs_monolith --phase3_reads full --phase3_source_mode aws_sra --phase3_fetch_concurrency 8 --phase3_s3_range_concurrency 8 --phase3_sra_run_concurrency 1 --phase3_wgs_cpus 16 --phase3_wgs_memory '28 GB' --phase3_include_wes false --phase3_prereq_mode minimal"
   }
 }

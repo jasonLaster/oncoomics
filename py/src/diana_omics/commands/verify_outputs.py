@@ -171,163 +171,58 @@ def require_all_rows_pass(errors: list[str], relative_path: str, rows: list[dict
             errors.append(f"{relative_path} contains non-passing row: {row}")
 
 
-def main() -> None:
-    errors: list[str] = []
-    warnings: list[str] = []
+# Acceptance artifacts a full-source Phase 3 WGS run produces on its own (without the
+# WES ladder). verify:phase3-outputs gates exactly these so a WGS-only run still has a
+# fatal output verifier; the full verify:outputs reuses the same checks via
+# verify_phase3_wgs_outputs.
+PHASE3_WGS_REQUIRED_FILES = [
+    "manifests/phase3_wgs_smoke_samplesheet.csv",
+    "results/phase3_wgs_smoke/README.md",
+    "results/phase3_wgs_smoke/asset_summary.json",
+    "results/phase3_wgs_smoke/tool_versions.json",
+    "results/phase3_wgs_smoke/fastq_summary.csv",
+    "results/phase3_wgs_smoke/fastq_summary.json",
+    "results/phase3_wgs_smoke/bam_validation_summary.csv",
+    "results/phase3_wgs_smoke/bam_validation_summary.json",
+    "results/phase3_wgs_smoke/mutect2_wgs_summary.csv",
+    "results/phase3_wgs_smoke/mutect2_wgs_summary.json",
+    "results/phase3_wgs_smoke/coverage_cnv_bins.csv",
+    "results/phase3_wgs_smoke/coverage_cnv_summary.csv",
+    "results/phase3_wgs_smoke/coverage_cnv_summary.json",
+    "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
+    "results/phase3_wgs_smoke/signature_assignment_summary.csv",
+    "results/phase3_wgs_smoke/signature_assignment_summary.json",
+    "results/phase3_wgs_smoke/sv_evidence_candidates.csv",
+    "results/phase3_wgs_smoke/sv_evidence_summary.csv",
+    "results/phase3_wgs_smoke/sv_evidence_summary.json",
+    "results/phase3_wgs_smoke/hrd_tool_readiness_summary.csv",
+    "results/phase3_wgs_smoke/hrd_tool_readiness_summary.json",
+    "results/phase3_wgs_smoke/covered_truth_variants.csv",
+    "results/phase3_wgs_smoke/phase3_wgs_summary.csv",
+    "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+]
 
-    for relative_path in REQUIRED_FILES:
+
+def verify_phase3_wgs_outputs(errors: list[str]) -> None:
+    """Fatal contract checks for the Phase 3 WGS acceptance artifacts.
+
+    Shared by the full verify:outputs gate and the WGS-only verify:phase3-outputs
+    gate so a full-source WGS run that skips the WES ladder still fails hard on a
+    malformed output set (validate:phase3-wgs already fails on bad internal status;
+    this adds the cross-artifact contract that verify:outputs otherwise owns).
+    """
+    for relative_path in PHASE3_WGS_REQUIRED_FILES:
         if not path_from_root(relative_path).exists():
             errors.append(f"Missing {relative_path}")
 
-    panel = require_rows(errors, "manifests/hrd_reference_panel.csv", 16)
+    phase3_bam_rows = require_rows(errors, "results/phase3_wgs_smoke/bam_validation_summary.csv", 1)
     require_columns(
         errors,
-        "manifests/hrd_reference_panel.csv",
-        panel,
-        ["sample_id", "panel_category", "expected_hrd_label", "label_source", "second_hit_proxy", "caveat"],
-    )
-    panel_categories = {row.get("panel_category") for row in panel}
-    for category in ["positive_control", "ambiguous_control", "negative_control"]:
-        if category not in panel_categories:
-            errors.append(f"Reference panel is missing category {category}.")
-
-    table_contracts = [
-        ("results/hrd_event_table.csv", len(panel) or 1, ["sample_id", "source", "tool", "gene", "event_class", "confidence", "caveat"]),
-        ("results/allele_state_table.csv", len(panel) or 1, ["sample_id", "source", "tool", "gene", "second_hit_status", "caveat"]),
-        (
-            "results/scar_signature_table.csv",
-            len(panel) or 1,
-            [
-                "sample_id",
-                "source",
-                "tool",
-                "sbs3_signature_status",
-                "structural_variant_signature_status",
-                "predicted_hrd_class",
-                "caveat",
-            ],
-        ),
-        ("results/hrd_predictions.csv", len(panel) or 1, ["sample_id", "expected_hrd_label", "predicted_hrd_class", "predicted_bucket"]),
-        ("results/hrd_confusion_matrix.csv", 1, ["expected_bucket", "predicted_bucket", "count"]),
-        ("results/rna_subtype_context.csv", len(panel) or 1, ["sample_id", "source", "tool", "inferred_context", "confidence", "caveat"]),
-        (
-            "results/rna_module_context.csv",
-            len(panel) or 1,
-            ["sample_id", "source", "tool", "basal_marker_z", "immune_inflammation_marker_z", "caveat"],
-        ),
-    ]
-    for path, minimum, columns in table_contracts:
-        rows = require_rows(errors, path, minimum)
-        require_columns(errors, path, rows, columns)
-
-    raw_panel = require_rows(errors, "manifests/raw_representative_panel.csv", 8)
-    require_columns(
-        errors,
-        "manifests/raw_representative_panel.csv",
-        raw_panel,
-        ["pair_id", "role", "run", "assay", "fastq_1_url", "fastq_2_url", "consent", "caveat"],
-    )
-    roles_by_pair: dict[str, set[str]] = {}
-    for row in raw_panel:
-        roles_by_pair.setdefault(row.get("pair_id", ""), set()).add(row.get("role", ""))
-        if row.get("consent") != "public":
-            errors.append(f"Raw representative run is not public: {row.get('run')}")
-        if not row.get("fastq_1_url", "").startswith("https://") or not row.get("fastq_2_url", "").startswith("https://"):
-            errors.append(f"Raw representative run is missing HTTPS FASTQ URLs: {row.get('run')}")
-    for pair_id, roles in roles_by_pair.items():
-        if "tumor" not in roles or "normal" not in roles:
-            errors.append(f"Raw representative pair {pair_id} does not have both tumor and normal roles.")
-
-    for path in [
-        "results/alignment_smoke/bam_validation_summary.csv",
-        "results/human_reference_smoke/bam_validation_summary.csv",
-        "results/full_reference_smoke/bam_validation_summary.csv",
-        "results/production_somatic_smoke/bam_validation_summary.csv",
         "results/phase3_wgs_smoke/bam_validation_summary.csv",
-    ]:
-        rows = require_rows(errors, path, 1)
-        require_columns(
-            errors, path, rows, ["status", "output_bam", "output_bai", "quickcheck", "sort_order", "read_group_present", "caveat"]
-        )
-        require_all_rows_pass(errors, path, rows)
-
-    full_wes_bam_rows = require_rows(errors, "results/full_wes_benchmark/full_wes_bam_validation.csv", 2)
-    require_columns(
-        errors,
-        "results/full_wes_benchmark/full_wes_bam_validation.csv",
-        full_wes_bam_rows,
-        [
-            "status",
-            "dedup_bam",
-            "dedup_bai",
-            "quickcheck",
-            "sort_order",
-            "read_group_present",
-            "mapped_alignments",
-            "brca_interval_alignments",
-            "caveat",
-        ],
+        phase3_bam_rows,
+        ["status", "output_bam", "output_bai", "quickcheck", "sort_order", "read_group_present", "caveat"],
     )
-    require_all_rows_pass(errors, "results/full_wes_benchmark/full_wes_bam_validation.csv", full_wes_bam_rows)
-
-    for json_path, expected in [
-        ("results/raw_smoke/fastq_smoke_summary.json", "passed"),
-        ("results/alignment_smoke/alignment_smoke_summary.json", "passed"),
-        ("results/human_reference_smoke/human_reference_alignment_summary.json", "passed"),
-        ("results/human_reference_smoke/reference_comparison_summary.json", "passed"),
-        ("results/full_reference_smoke/full_reference_alignment_summary.json", "passed"),
-        ("results/full_reference_smoke/caller_smoke_summary.json", "passed"),
-        ("results/production_somatic_smoke/fastq_summary.json", "passed"),
-        ("results/production_somatic_smoke/production_somatic_summary.json", "passed"),
-        ("results/production_somatic_smoke/mutect2_smoke_summary.json", "passed"),
-        ("results/full_wes_benchmark/full_wes_fastq_validation.json", "passed"),
-        ("results/full_wes_benchmark/full_wes_bam_validation.json", "passed"),
-        ("results/full_wes_benchmark/truth_overlap_benchmark_summary.json", "passed"),
-        ("results/full_wes_benchmark/full_wes_benchmark_summary.json", "passed"),
-        ("results/phase3_wgs_smoke/fastq_summary.json", "passed"),
-        ("results/phase3_wgs_smoke/bam_validation_summary.json", "passed"),
-        ("results/phase3_wgs_smoke/mutect2_wgs_summary.json", "passed"),
-        ("results/phase3_wgs_smoke/coverage_cnv_summary.json", "passed"),
-        ("results/phase3_wgs_smoke/signature_assignment_summary.json", "passed"),
-        ("results/phase3_wgs_smoke/sv_evidence_summary.json", "passed"),
-        ("results/phase3_wgs_smoke/hrd_tool_readiness_summary.json", "passed"),
-        ("results/phase3_wgs_smoke/phase3_wgs_summary.json", "passed"),
-        ("results/orthogonal_validation/public_examples_summary.json", "passed"),
-    ]:
-        require_status(errors, json_path, expected)
-
-    raw_audit = read_json_if_exists(errors, "results/raw_smoke/tooling_audit.json")
-    for key in ["fullWesBenchmarkReady", "phase3WgsToolReady", "phase3WgsSmokeReady"]:
-        if raw_audit.get(key) is not True:
-            errors.append(f"Raw tooling audit says {key} is not ready.")
-
-    full_wes_samplesheet = require_rows(errors, "manifests/full_wes_benchmark_samplesheet.csv", 2)
-    require_columns(
-        errors,
-        "manifests/full_wes_benchmark_samplesheet.csv",
-        full_wes_samplesheet,
-        [
-            "pair_id",
-            "sample",
-            "role",
-            "run_accession",
-            "fastq_1",
-            "fastq_2",
-            "reference_id",
-            "mutect2_panel_of_normals_path",
-            "common_biallelic_resource_path",
-            "dedup_bam",
-            "dedup_bai",
-            "caveat",
-        ],
-    )
-    if {row.get("role") for row in full_wes_samplesheet} != {"tumor", "normal"}:
-        errors.append("Full WES benchmark samplesheet must include tumor and normal rows.")
-    for row in full_wes_samplesheet:
-        if row.get("reference_id") != "ucsc_hg38_analysis_set_full":
-            errors.append(f"Full WES benchmark samplesheet must use ucsc_hg38_analysis_set_full, not {row.get('reference_id')}.")
-        if "full SEQC2/HCC1395 WES FASTQs" not in row.get("caveat", ""):
-            errors.append(f"Full WES caveat must preserve full-WES boundary for {row.get('run_accession')}.")
+    require_all_rows_pass(errors, "results/phase3_wgs_smoke/bam_validation_summary.csv", phase3_bam_rows)
 
     phase3_samplesheet = require_rows(errors, "manifests/phase3_wgs_smoke_samplesheet.csv", 2)
     require_columns(
@@ -420,6 +315,198 @@ def main() -> None:
     if int(phase3_summary.get("coverageCnvBins") or 0) <= 0:
         errors.append("Phase 3 WGS summary must include non-empty coverage CNV bins.")
 
+    sbs96_rows = require_rows(errors, "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv", 96)
+    require_columns(
+        errors,
+        "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
+        sbs96_rows,
+        ["sample", "mutation_type", "trinucleotide", "count", "source_records", "source_vcf_policy"],
+    )
+    if len(sbs96_rows) != 96:
+        errors.append(f"Phase 3 SBS96 matrix must have exactly 96 rows, found {len(sbs96_rows)}.")
+
+    tool_rows = require_rows(errors, "results/phase3_wgs_smoke/hrd_tool_readiness_summary.csv", 3)
+    require_columns(
+        errors,
+        "results/phase3_wgs_smoke/hrd_tool_readiness_summary.csv",
+        tool_rows,
+        ["tool", "evidence_input", "real_output_status", "interpretability_status", "caveat"],
+    )
+    for tool in ["SigProfilerAssignment", "scarHRD", "CHORD"]:
+        if not any(row.get("tool") == tool for row in tool_rows):
+            errors.append(f"Phase 3 HRD tool readiness summary is missing {tool}.")
+
+
+def verify_phase3_outputs() -> None:
+    errors: list[str] = []
+    verify_phase3_wgs_outputs(errors)
+    if errors:
+        for error in errors:
+            print(f"error: {error}", file=sys.stderr)
+        raise SystemExit(1)
+    print("Phase 3 WGS output verification passed.")
+
+
+def main() -> None:
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    for relative_path in REQUIRED_FILES:
+        if not path_from_root(relative_path).exists():
+            errors.append(f"Missing {relative_path}")
+
+    panel = require_rows(errors, "manifests/hrd_reference_panel.csv", 16)
+    require_columns(
+        errors,
+        "manifests/hrd_reference_panel.csv",
+        panel,
+        ["sample_id", "panel_category", "expected_hrd_label", "label_source", "second_hit_proxy", "caveat"],
+    )
+    panel_categories = {row.get("panel_category") for row in panel}
+    for category in ["positive_control", "ambiguous_control", "negative_control"]:
+        if category not in panel_categories:
+            errors.append(f"Reference panel is missing category {category}.")
+
+    table_contracts = [
+        ("results/hrd_event_table.csv", len(panel) or 1, ["sample_id", "source", "tool", "gene", "event_class", "confidence", "caveat"]),
+        ("results/allele_state_table.csv", len(panel) or 1, ["sample_id", "source", "tool", "gene", "second_hit_status", "caveat"]),
+        (
+            "results/scar_signature_table.csv",
+            len(panel) or 1,
+            [
+                "sample_id",
+                "source",
+                "tool",
+                "sbs3_signature_status",
+                "structural_variant_signature_status",
+                "predicted_hrd_class",
+                "caveat",
+            ],
+        ),
+        ("results/hrd_predictions.csv", len(panel) or 1, ["sample_id", "expected_hrd_label", "predicted_hrd_class", "predicted_bucket"]),
+        ("results/hrd_confusion_matrix.csv", 1, ["expected_bucket", "predicted_bucket", "count"]),
+        ("results/rna_subtype_context.csv", len(panel) or 1, ["sample_id", "source", "tool", "inferred_context", "confidence", "caveat"]),
+        (
+            "results/rna_module_context.csv",
+            len(panel) or 1,
+            ["sample_id", "source", "tool", "basal_marker_z", "immune_inflammation_marker_z", "caveat"],
+        ),
+    ]
+    for path, minimum, columns in table_contracts:
+        rows = require_rows(errors, path, minimum)
+        require_columns(errors, path, rows, columns)
+
+    raw_panel = require_rows(errors, "manifests/raw_representative_panel.csv", 8)
+    require_columns(
+        errors,
+        "manifests/raw_representative_panel.csv",
+        raw_panel,
+        ["pair_id", "role", "run", "assay", "fastq_1_url", "fastq_2_url", "consent", "caveat"],
+    )
+    roles_by_pair: dict[str, set[str]] = {}
+    for row in raw_panel:
+        roles_by_pair.setdefault(row.get("pair_id", ""), set()).add(row.get("role", ""))
+        if row.get("consent") != "public":
+            errors.append(f"Raw representative run is not public: {row.get('run')}")
+        if not row.get("fastq_1_url", "").startswith("https://") or not row.get("fastq_2_url", "").startswith("https://"):
+            errors.append(f"Raw representative run is missing HTTPS FASTQ URLs: {row.get('run')}")
+    for pair_id, roles in roles_by_pair.items():
+        if "tumor" not in roles or "normal" not in roles:
+            errors.append(f"Raw representative pair {pair_id} does not have both tumor and normal roles.")
+
+    for path in [
+        "results/alignment_smoke/bam_validation_summary.csv",
+        "results/human_reference_smoke/bam_validation_summary.csv",
+        "results/full_reference_smoke/bam_validation_summary.csv",
+        "results/production_somatic_smoke/bam_validation_summary.csv",
+        # results/phase3_wgs_smoke/bam_validation_summary.csv is checked by verify_phase3_wgs_outputs.
+    ]:
+        rows = require_rows(errors, path, 1)
+        require_columns(
+            errors, path, rows, ["status", "output_bam", "output_bai", "quickcheck", "sort_order", "read_group_present", "caveat"]
+        )
+        require_all_rows_pass(errors, path, rows)
+
+    full_wes_bam_rows = require_rows(errors, "results/full_wes_benchmark/full_wes_bam_validation.csv", 2)
+    require_columns(
+        errors,
+        "results/full_wes_benchmark/full_wes_bam_validation.csv",
+        full_wes_bam_rows,
+        [
+            "status",
+            "dedup_bam",
+            "dedup_bai",
+            "quickcheck",
+            "sort_order",
+            "read_group_present",
+            "mapped_alignments",
+            "brca_interval_alignments",
+            "caveat",
+        ],
+    )
+    require_all_rows_pass(errors, "results/full_wes_benchmark/full_wes_bam_validation.csv", full_wes_bam_rows)
+
+    for json_path, expected in [
+        ("results/raw_smoke/fastq_smoke_summary.json", "passed"),
+        ("results/alignment_smoke/alignment_smoke_summary.json", "passed"),
+        ("results/human_reference_smoke/human_reference_alignment_summary.json", "passed"),
+        ("results/human_reference_smoke/reference_comparison_summary.json", "passed"),
+        ("results/full_reference_smoke/full_reference_alignment_summary.json", "passed"),
+        ("results/full_reference_smoke/caller_smoke_summary.json", "passed"),
+        ("results/production_somatic_smoke/fastq_summary.json", "passed"),
+        ("results/production_somatic_smoke/production_somatic_summary.json", "passed"),
+        ("results/production_somatic_smoke/mutect2_smoke_summary.json", "passed"),
+        ("results/full_wes_benchmark/full_wes_fastq_validation.json", "passed"),
+        ("results/full_wes_benchmark/full_wes_bam_validation.json", "passed"),
+        ("results/full_wes_benchmark/truth_overlap_benchmark_summary.json", "passed"),
+        ("results/full_wes_benchmark/full_wes_benchmark_summary.json", "passed"),
+        ("results/phase3_wgs_smoke/fastq_summary.json", "passed"),
+        ("results/phase3_wgs_smoke/bam_validation_summary.json", "passed"),
+        ("results/phase3_wgs_smoke/mutect2_wgs_summary.json", "passed"),
+        ("results/phase3_wgs_smoke/coverage_cnv_summary.json", "passed"),
+        ("results/phase3_wgs_smoke/signature_assignment_summary.json", "passed"),
+        ("results/phase3_wgs_smoke/sv_evidence_summary.json", "passed"),
+        ("results/phase3_wgs_smoke/hrd_tool_readiness_summary.json", "passed"),
+        ("results/phase3_wgs_smoke/phase3_wgs_summary.json", "passed"),
+        ("results/orthogonal_validation/public_examples_summary.json", "passed"),
+    ]:
+        require_status(errors, json_path, expected)
+
+    raw_audit = read_json_if_exists(errors, "results/raw_smoke/tooling_audit.json")
+    for key in ["fullWesBenchmarkReady", "phase3WgsToolReady", "phase3WgsSmokeReady"]:
+        if raw_audit.get(key) is not True:
+            errors.append(f"Raw tooling audit says {key} is not ready.")
+
+    full_wes_samplesheet = require_rows(errors, "manifests/full_wes_benchmark_samplesheet.csv", 2)
+    require_columns(
+        errors,
+        "manifests/full_wes_benchmark_samplesheet.csv",
+        full_wes_samplesheet,
+        [
+            "pair_id",
+            "sample",
+            "role",
+            "run_accession",
+            "fastq_1",
+            "fastq_2",
+            "reference_id",
+            "mutect2_panel_of_normals_path",
+            "common_biallelic_resource_path",
+            "dedup_bam",
+            "dedup_bai",
+            "caveat",
+        ],
+    )
+    if {row.get("role") for row in full_wes_samplesheet} != {"tumor", "normal"}:
+        errors.append("Full WES benchmark samplesheet must include tumor and normal rows.")
+    for row in full_wes_samplesheet:
+        if row.get("reference_id") != "ucsc_hg38_analysis_set_full":
+            errors.append(f"Full WES benchmark samplesheet must use ucsc_hg38_analysis_set_full, not {row.get('reference_id')}.")
+        if "full SEQC2/HCC1395 WES FASTQs" not in row.get("caveat", ""):
+            errors.append(f"Full WES caveat must preserve full-WES boundary for {row.get('run_accession')}.")
+
+    verify_phase3_wgs_outputs(errors)
+
     orthogonal_examples = require_rows(errors, "manifests/orthogonal_public_examples.csv", 7)
     require_columns(
         errors,
@@ -458,27 +545,6 @@ def main() -> None:
         errors.append("Orthogonal public examples summary must include at least two implemented public examples.")
     if int(orthogonal_summary.get("plannedExamples") or 0) < 4:
         errors.append("Orthogonal public examples summary must keep the HG008/COLO829 known-answer examples visible.")
-
-    sbs96_rows = require_rows(errors, "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv", 96)
-    require_columns(
-        errors,
-        "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
-        sbs96_rows,
-        ["sample", "mutation_type", "trinucleotide", "count", "source_records", "source_vcf_policy"],
-    )
-    if len(sbs96_rows) != 96:
-        errors.append(f"Phase 3 SBS96 matrix must have exactly 96 rows, found {len(sbs96_rows)}.")
-
-    tool_rows = require_rows(errors, "results/phase3_wgs_smoke/hrd_tool_readiness_summary.csv", 3)
-    require_columns(
-        errors,
-        "results/phase3_wgs_smoke/hrd_tool_readiness_summary.csv",
-        tool_rows,
-        ["tool", "evidence_input", "real_output_status", "interpretability_status", "caveat"],
-    )
-    for tool in ["SigProfilerAssignment", "scarHRD", "CHORD"]:
-        if not any(row.get("tool") == tool for row in tool_rows):
-            errors.append(f"Phase 3 HRD tool readiness summary is missing {tool}.")
 
     diana_template = require_rows(errors, "manifests/diana_raw_inputs.template.csv", 3)
     require_columns(
