@@ -1,0 +1,82 @@
+{
+  "generatedAt": "2026-06-12T23:35:57.471Z",
+  "status": "passed",
+  "errors": [],
+  "summary": {
+    "status": "passed",
+    "rollup_area_count": 7,
+    "dependency_count": 7,
+    "passing_dependency_count": 7,
+    "active_blocker_count": 68,
+    "clinical_release_allowed": "no",
+    "ready_for_clinical_interpretation": "no",
+    "ready_for_benchmark_execution": "no",
+    "next_step": "Monitor this rollup; the first true approval boundary remains known-answer asset owner review and checksum capture before benchmark execution.",
+    "error_count": 0
+  },
+  "rows": [
+    {
+      "rollup_area": "known_answer_assets",
+      "dependency_status": "passed",
+      "scaffold_status": "approval_packet_ready_for_owner_review",
+      "active_blocker_count": 18,
+      "clinical_release_allowed": "no",
+      "ready_for_clinical_interpretation": "no",
+      "next_action": "Owner review must approve access terms and checksums before any known-answer asset acquisition or benchmark execution."
+    },
+    {
+      "rollup_area": "known_answer_benchmark_execution",
+      "dependency_status": "passed",
+      "scaffold_status": "dry_run_plans_present",
+      "active_blocker_count": 6,
+      "clinical_release_allowed": "no",
+      "ready_for_clinical_interpretation": "no",
+      "next_action": "Do not run HG008/COLO829 benchmarks until asset approval and checksum gates are satisfied."
+    },
+    {
+      "rollup_area": "qc_thresholds",
+      "dependency_status": "passed",
+      "scaffold_status": "draft_thresholds_defined",
+      "active_blocker_count": 10,
+      "clinical_release_allowed": "no",
+      "ready_for_clinical_interpretation": "no",
+      "next_action": "Populate and lock threshold values only after known-answer validation evidence and reviewer signoff."
+    },
+    {
+      "rollup_area": "validation_packet",
+      "dependency_status": "passed",
+      "scaffold_status": "sections_linked_to_readiness_evidence",
+      "active_blocker_count": 16,
+      "clinical_release_allowed": "no",
+      "ready_for_clinical_interpretation": "no",
+      "next_action": "Keep packet sections locked until linked readiness summaries become approved validation evidence."
+    },
+    {
+      "rollup_area": "change_control",
+      "dependency_status": "passed",
+      "scaffold_status": "revalidation_triggers_defined",
+      "active_blocker_count": 12,
+      "clinical_release_allowed": "no",
+      "ready_for_clinical_interpretation": "no",
+      "next_action": "Keep every change trigger review-required until validation packet evidence and signoff are complete."
+    },
+    {
+      "rollup_area": "signoff",
+      "dependency_status": "passed",
+      "scaffold_status": "required_roles_defined",
+      "active_blocker_count": 5,
+      "clinical_release_allowed": "no",
+      "ready_for_clinical_interpretation": "no",
+      "next_action": "Convert pending role scaffolds into named reviewer records only after validation evidence sections are complete."
+    },
+    {
+      "rollup_area": "clinical_reporting_boundaries",
+      "dependency_status": "passed",
+      "scaffold_status": "candidate_only_boundaries_defined",
+      "active_blocker_count": 1,
+      "clinical_release_allowed": "no",
+      "ready_for_clinical_interpretation": "no",
+      "next_action": "Keep reporting candidate-only until reportable range, thresholds, packet evidence, and signoff are approved."
+    }
+  ]
+}

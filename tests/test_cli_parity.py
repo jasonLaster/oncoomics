@@ -39,6 +39,7 @@ class CliParityTest(unittest.TestCase):
             "verify:clinical-signoff-workflow",
             "verify:clinical-validation-evidence-links",
             "verify:clinical-validation-packet",
+            "verify:clinicalization-readiness-rollup",
             "verify:cnv-loh-readiness",
             "verify:diana-raw",
             "verify:hrd-interpretation-readiness",

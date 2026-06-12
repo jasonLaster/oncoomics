@@ -39,6 +39,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.verify_clinical_signoff_workflow import main as verify_clinical_signoff_workflow
     from .commands.verify_clinical_validation_evidence_links import main as verify_clinical_validation_evidence_links
     from .commands.verify_clinical_validation_packet import main as verify_clinical_validation_packet
+    from .commands.verify_clinicalization_readiness_rollup import main as verify_clinicalization_readiness_rollup
     from .commands.verify_cnv_loh_readiness import main as verify_cnv_loh_readiness
     from .commands.verify_diana_raw import main as verify_diana_raw
     from .commands.verify_hrd_interpretation_readiness import main as verify_hrd_interpretation_readiness
@@ -87,6 +88,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "verify:clinical-signoff-workflow": verify_clinical_signoff_workflow,
         "verify:clinical-validation-evidence-links": verify_clinical_validation_evidence_links,
         "verify:clinical-validation-packet": verify_clinical_validation_packet,
+        "verify:clinicalization-readiness-rollup": verify_clinicalization_readiness_rollup,
         "verify:cnv-loh-readiness": verify_cnv_loh_readiness,
         "verify:diana-raw": verify_diana_raw,
         "verify:hrd-interpretation-readiness": verify_hrd_interpretation_readiness,
