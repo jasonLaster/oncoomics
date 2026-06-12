@@ -39,6 +39,7 @@ class CliParityTest(unittest.TestCase):
             "verify:diana-raw",
             "verify:hrd-interpretation-readiness",
             "verify:known-answer-asset-acquisition",
+            "verify:known-answer-asset-approval-packet",
             "verify:known-answer-asset-integrity",
             "verify:known-answer-benchmark-manifests",
             "verify:known-answer-checksum-policy",
