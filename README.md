@@ -125,7 +125,7 @@ Python orchestrates everything. The current workflow uses:
 - Java plus GATK Mutect2, FilterMutectCalls, and MarkDuplicates for production-style somatic smoke tests.
 - Local Python evidence builders for HRD tables, RNA context tables, WGS SBS96 summaries, coverage-CNV bins, and SV evidence summaries.
 
-Future full-depth work should add native-backed libraries where they reduce bug risk: `pysam` for BAM/VCF IO, `polars` for larger tabular joins, `pyfaidx` for reference sequence access, `truvari` for SV benchmarking, and SigProfiler/CHORD/scarHRD/FACETS/ASCAT/PURPLE-compatible adapters for real HRD interpretation.
+Full-depth work now starts native-backed integration through optional extras: `pysam` for BAM/VCF IO, `pyfaidx` for reference sequence access, `polars` for larger tabular joins, `truvari` for SV benchmarking, and SigProfiler-compatible signature assignment support. The Phase 3 runner uses native VCF/reference adapters when installed and falls back to existing `bcftools`/`samtools` paths otherwise. CHORD, scarHRD, and FACETS/ASCAT/PURPLE-compatible interpretation remain gated on validated full-depth feature inputs.
 
 ## Boundaries
 

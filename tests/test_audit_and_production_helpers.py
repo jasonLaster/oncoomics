@@ -16,6 +16,45 @@ class AuditAndProductionHelpersTest(unittest.TestCase):
         self.assertEqual(audit_raw_tools.available_tools("x", groups), ["a"])
         self.assertEqual(audit_raw_tools.available_tools("missing", groups), [])
 
+    def test_native_readiness_is_recorded_in_tooling_audit(self):
+        written = {}
+
+        def fake_write_json(path, value):
+            written[str(path)] = value
+
+        with (
+            patch.object(audit_raw_tools, "ensure_dir", lambda path: None),
+            patch.object(audit_raw_tools, "path_from_root", lambda relative: relative),
+            patch.object(audit_raw_tools, "write_json", fake_write_json),
+            patch.object(audit_raw_tools, "write_text", lambda path, value: written.update({str(path): value})),
+            patch.object(audit_raw_tools, "tool_path", lambda tool: f"/usr/bin/{tool}"),
+            patch.object(
+                audit_raw_tools,
+                "optional_integration_rows",
+                return_value=[
+                    {"name": "pysam", "available": "yes", "version": "1", "purpose": "vcf", "package": "pysam"},
+                    {"name": "pyfaidx", "available": "yes", "version": "2", "purpose": "ref", "package": "pyfaidx"},
+                    {"name": "polars", "available": "yes", "version": "3", "purpose": "joins", "package": "polars"},
+                    {"name": "truvari", "available": "no", "version": "", "purpose": "sv", "package": "truvari"},
+                    {
+                        "name": "SigProfilerAssignment",
+                        "available": "no",
+                        "version": "",
+                        "purpose": "signatures",
+                        "package": "SigProfilerAssignment",
+                    },
+                ],
+            ),
+        ):
+            audit_raw_tools.main()
+
+        audit = written["results/raw_smoke/tooling_audit.json"]
+        self.assertTrue(audit["nativeFoundationReady"])
+        self.assertFalse(audit["svBenchmarkReady"])
+        self.assertFalse(audit["sigProfilerReady"])
+        self.assertEqual(len(audit["nativeIntegrations"]), 5)
+        self.assertIn("Native Python HRD foundation ready: **yes**", written["results/raw_smoke/tooling_audit.md"])
+
     def test_java17_path_uses_path_java_before_homebrew(self):
         calls = []
 

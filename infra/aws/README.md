@@ -202,6 +202,14 @@ After EC2 quota approval, use the larger On-Demand shape if interruption risk is
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full:ondemand-large
 ```
 
+After an alignment/I/O experiment, weak-scaling manual termination, or any run where automatic retry would blur the evidence, use the conservative On-Demand fail-fast alias instead:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full:ondemand-failfast
+```
+
+That path keeps alignment at 16 CPUs/96 GB and sets `--aws_max_retries 0`.
+
 Tune fetch/reference/downstream separately rather than over-sizing every stage.
 
 Cloud Nextflow profiles retry failed Batch processes once by default. Override with `--aws_max_retries 0` for strict fail-fast testing or raise it only when the failure mode is known to be transient.

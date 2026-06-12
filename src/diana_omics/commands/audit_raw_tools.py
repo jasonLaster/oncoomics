@@ -5,6 +5,7 @@ import re
 import subprocess
 from typing import Any, cast
 
+from ..native import optional_integration_rows
 from ..paths import path_from_root
 from ..utils import command_path, ensure_dir, iso_now, write_json, write_text
 
@@ -115,6 +116,10 @@ def main() -> None:
     phase3_optional_signature_runtime_ready = any(
         tool["available"] for group in groups if group["group"] == "phase3_wgs_optional_signature_callers" for tool in group["tools"]
     )
+    native_integrations = optional_integration_rows()
+    native_foundation_ready = all(row["available"] == "yes" for row in native_integrations if row["name"] in {"pysam", "pyfaidx", "polars"})
+    sv_benchmark_ready = any(row["name"] == "truvari" and row["available"] == "yes" for row in native_integrations)
+    sigprofiler_ready = any(row["name"] == "SigProfilerAssignment" and row["available"] == "yes" for row in native_integrations)
     conclusion = (
         "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, Phase 2F full WES benchmark mechanics, and Phase 3 full-source WGS validation mechanics. Final HRD interpretation still requires Diana data and reviewer-approved CNV/SV/signature policy."
         if phase3_wgs_validation_ready
@@ -145,11 +150,15 @@ def main() -> None:
         "phase3WgsSmokeReady": phase3_wgs_validation_ready,
         "phase3WgsValidationReady": phase3_wgs_validation_ready,
         "phase3OptionalSignatureRuntimeReady": phase3_optional_signature_runtime_ready,
+        "nativeFoundationReady": native_foundation_ready,
+        "svBenchmarkReady": sv_benchmark_ready,
+        "sigProfilerReady": sigprofiler_ready,
         "fullAlignmentToolboxReady": full_alignment_toolbox_ready,
         "workflowReady": workflow_ready,
         "fullWorkflowReady": full_workflow_ready,
         "alignmentReadyDefinition": "At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.",
         "groups": groups,
+        "nativeIntegrations": native_integrations,
         "conclusion": conclusion,
     }
     write_json(path_from_root("results/raw_smoke/tooling_audit.json"), audit)
@@ -159,6 +168,12 @@ def main() -> None:
         rows = "\n".join(f"- {tool['tool']}: {tool['path'] if tool['available'] else 'missing'}" for tool in tools)
         group_sections.append(f"## {group['group']}\n\nRequired for: {group['requiredFor']}\n\n{rows}")
     group_markdown = "\n\n".join(group_sections)
+    native_markdown_rows = []
+    for row in native_integrations:
+        version = f" ({row['version']})" if row["version"] else ""
+        status = "available" if row["available"] == "yes" else "missing"
+        native_markdown_rows.append(f"- {row['name']}: {status}{version} - {row['purpose']}")
+    native_rows = "\n".join(native_markdown_rows)
     write_text(
         path_from_root("results/raw_smoke/tooling_audit.md"),
         f"""# Raw Tooling Audit
@@ -187,7 +202,19 @@ Phase 3 WGS validation toolchain ready: **{"yes" if phase3_wgs_validation_ready 
 
 Phase 3 optional signature runtime available: **{"yes" if phase3_optional_signature_runtime_ready else "no"}**
 
+Native Python HRD foundation ready: **{"yes" if native_foundation_ready else "no"}**
+
+SV benchmark comparator ready: **{"yes" if sv_benchmark_ready else "no"}**
+
+SigProfilerAssignment ready: **{"yes" if sigprofiler_ready else "no"}**
+
 {group_markdown}
+
+## native_python_integrations
+
+Optional extras are staged in `pyproject.toml`; missing packages do not block fallback-safe smoke validation.
+
+{native_rows}
 
 ## Conclusion
 

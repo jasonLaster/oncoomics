@@ -31,6 +31,11 @@ class Phase3WgsHelpersTest(unittest.TestCase):
         )
         self.assertIsNone(phase3.normalized_context("NNN", "C", "A"))
 
+    def test_parse_vcf_sample_names_uses_native_adapter_when_available(self):
+        with patch.object(phase3, "vcf_sample_names", return_value=["tumor", "normal"]), patch.object(phase3, "capture_command") as capture:
+            self.assertEqual(phase3.parse_vcf_sample_names("calls.vcf.gz"), ["tumor", "normal"])
+        capture.assert_not_called()
+
     def test_write_intervals_merges_and_sorts_by_reference_order(self):
         variants = [
             {"contig": "chr17", "position": 200},
@@ -317,10 +322,10 @@ class Phase3WgsHelpersTest(unittest.TestCase):
             with (
                 patch.object(phase3, "FORCE", False),
                 patch.object(phase3, "path_from_root", lambda relative: root / relative),
-                patch.object(phase3, "capture_allow_empty") as capture,
+                patch.object(phase3, "reference_context") as context,
             ):
                 summary = phase3.build_sbs96_matrix("filtered.vcf.gz", "ref.fa")
-        capture.assert_not_called()
+        context.assert_not_called()
         self.assertEqual(summary["sbs96_cache"], "reused")
         self.assertEqual(summary["sigprofiler_assignment_status"], "cached")
 

@@ -1,33 +1,33 @@
 {
-  "traceRowCount": 27,
+  "traceRowCount": 47,
   "statusCounts": {
-    "FAILED": 18,
-    "COMPLETED": 5,
-    "ABORTED": 2,
+    "FAILED": 27,
+    "COMPLETED": 11,
+    "ABORTED": 7,
     "CACHED": 2
   },
   "bestCompletedByStage": {
     "phase3_fetch": {
       "stage": "phase3_fetch",
       "status": "COMPLETED",
-      "durationSeconds": 728.0,
-      "realtimeSeconds": 588.0,
-      "duration": "12m 8s",
-      "realtime": "9m 48s",
-      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-granular-full-20260610T165947Z.trace.tsv",
+      "durationSeconds": 559.0,
+      "realtimeSeconds": 489.0,
+      "duration": "9m 19s",
+      "realtime": "8m 9s",
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3opt_align64_20260612T200806Z/trace.tsv",
       "name": "PHASE3_WGS_SPLIT:PHASE3_FETCH_WORKSPACE (phase3_fetch_workspace_full_aws_sra_c8_s1)",
-      "nativeId": "1689b965-93c4-4c0d-9d33-23cdc3d584a3"
+      "nativeId": "6c173551-5571-4945-a9f5-fc40a110e88d"
     },
     "reference_index": {
       "stage": "reference_index",
       "status": "COMPLETED",
-      "durationSeconds": 128.0,
-      "realtimeSeconds": 10.7,
-      "duration": "2m 8s",
-      "realtime": "11s",
-      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-stagefix-full-20260610T174106Z.trace.tsv",
+      "durationSeconds": 119.0,
+      "realtimeSeconds": 10.2,
+      "duration": "1m 59s",
+      "realtime": "10s",
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3opt_align64_20260612T200806Z/trace.tsv",
       "name": "PHASE3_WGS_SPLIT:PHASE3_REFERENCE_INDEX (phase3_reference_index_full)",
-      "nativeId": "ed1752e1-7473-4d3f-a8f9-410dd7195004"
+      "nativeId": "730abe99-7fb7-4f20-8050-2144e4c28365"
     }
   },
   "logSummaries": [
@@ -87,25 +87,9 @@
     },
     {
       "source": "/Users/jasonlaster/src/projects/diana-omics/logs/nextflow.log.9",
-      "failedDurationSeconds": 20.7,
-      "failedDuration": "21s",
-      "signals": [
-        {
-          "label": "duplicate_alignment_resume",
-          "line": "Jun-11 02:47:55.046 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 4; name: PHASE3_WGS_SPLIT:PHASE3_ALIGN_SAMPLE (phase3_align_normal_full); status: COMPLETED; exit: -; error: nextflow.exception.ProcessException: Terminate duplicate normal alignment submitted by resume after prior AWS job already SUCCEEDED; workDir: s3://diana-omics-work-172630973301-us-east-1/work/d8/b6f2256a73ebf696134be159dedf7c]",
-          "lineNumber": "88"
-        },
-        {
-          "label": "report_overwrite",
-          "line": "nextflow.exception.AbortOperationException: Report file already exists: logs/phase3split-stagefix-resume-20260611T094700Z.report.html -- enable the 'report.overwrite' option in your config file to overwrite existing files",
-          "lineNumber": "188"
-        },
-        {
-          "label": "missing_cloudwatch_stream",
-          "line": "Jun-11 02:47:55.044 [Task monitor] DEBUG n.cloud.aws.batch.AwsBatchHelper - Unable to find CloudWatch log stream for batch job id=13f2ea5e-59be-4a7c-8f41-a8ae73277c2f",
-          "lineNumber": "87"
-        }
-      ]
+      "failedDurationSeconds": 0.0,
+      "failedDuration": "0s",
+      "signals": []
     },
     {
       "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-phase3fix-full-20260610T033453Z.log",
@@ -168,6 +152,54 @@
       ]
     },
     {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3opt_align32_20260612T192540Z/nextflow.log",
+      "failedDurationSeconds": 103532.0,
+      "failedDuration": "28h 45m 32s",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "Jun-12 13:18:19.685 [SIGTERM handler] WARN  n.processor.TaskPollingMonitor - Killing running tasks (2)",
+          "lineNumber": "149"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3opt_align64_20260612T200806Z/nextflow.log",
+      "failedDurationSeconds": 202001.0,
+      "failedDuration": "56h 6m 41s",
+      "signals": [
+        {
+          "label": "spot_or_host_interruption",
+          "line": "Jun-12 13:50:12.974 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 6; name: PHASE3_WGS_SPLIT:PHASE3_ALIGN_SAMPLE (phase3_align_tumor_full); status: COMPLETED; exit: -; error: nextflow.exception.ProcessException: Host EC2 (instance i-045dd2401e29da2fb) terminated.; workDir: s3://diana-omics-work-172630973301-us-east-1/work/cd/d2571d2f9d503e063dff4071fad4bf]",
+          "lineNumber": "128"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3opt_align64_20260612T200806Z/review.log",
+      "failedDurationSeconds": 202001.0,
+      "failedDuration": "56h 6m 41s",
+      "signals": [
+        {
+          "label": "spot_or_host_interruption",
+          "line": "Jun-12 13:50:12.974 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 6; name: PHASE3_WGS_SPLIT:PHASE3_ALIGN_SAMPLE (phase3_align_tumor_full); status: COMPLETED; exit: -; error: nextflow.exception.ProcessException: Host EC2 (instance i-045dd2401e29da2fb) terminated.; workDir: s3://diana-omics-work-172630973301-us-east-1/work/cd/d2571d2f9d503e063dff4071fad4bf]",
+          "lineNumber": "1205"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3opt_full_20260612T184427Z/nextflow.log",
+      "failedDurationSeconds": 44529.0,
+      "failedDuration": "12h 22m 9s",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "Jun-12 12:26:49.246 [SIGHUP handler] WARN  n.processor.TaskPollingMonitor - Killing running tasks (2)",
+          "lineNumber": "143"
+        }
+      ]
+    },
+    {
       "source": "/Users/jasonlaster/src/projects/diana-omics/logs/phase3split-stagefix-resume-20260611T094700Z.log",
       "failedDurationSeconds": null,
       "failedDuration": "",
@@ -176,6 +208,23 @@
           "label": "duplicate_alignment_resume",
           "line": "Terminate duplicate normal alignment retry submitted by resume after prior AWS job already SUCCEEDED",
           "lineNumber": "14"
+        }
+      ]
+    },
+    {
+      "source": "/Users/jasonlaster/src/projects/diana-omics/logs/test_launch_trace/nextflow.log",
+      "failedDurationSeconds": 3.4,
+      "failedDuration": "3s",
+      "signals": [
+        {
+          "label": "manual_or_superseded_termination",
+          "line": "Jun-12 11:41:19.070 [SIGTERM handler] WARN  n.processor.TaskPollingMonitor - Killing running tasks (1)",
+          "lineNumber": "110"
+        },
+        {
+          "label": "missing_cloudwatch_stream",
+          "line": "Jun-12 11:41:17.620 [Task monitor] DEBUG n.cloud.aws.batch.AwsBatchHelper - Unable to find CloudWatch log stream for batch job id=53551d65-63fe-4e06-9f89-729217848d95",
+          "lineNumber": "83"
         }
       ]
     },
@@ -240,17 +289,16 @@
   ],
   "speedupEstimate": {
     "available": true,
-    "baselineSeconds": 9294.0,
-    "baseline": "2h 34m 54s",
-    "splitCheckpointSeconds": 856.0,
-    "splitCheckpoint": "14m 16s",
-    "speedup": 10.86,
+    "baselineSeconds": 202001.0,
+    "baseline": "56h 6m 41s",
+    "splitCheckpointSeconds": 678.0,
+    "splitCheckpoint": "11m 18s",
+    "speedup": 297.94,
     "scope": "through fetch plus reference-index checkpoints"
   },
   "recommendations": [
     "Persist cloud-generated alignment BAM/BAI outputs in the asset cache so launcher interruptions do not force alignment rework.",
     "Keep AWS smoke tests split and short; credential or host failures should burn minutes, not multi-hour monolithic runs.",
-    "Enable Nextflow report/timeline overwrite or use unique report names for resume loops.",
     "The next optimization target is alignment checkpoint durability; fetch and reference-index already complete quickly."
   ],
   "currentResultStatuses": {

@@ -73,6 +73,14 @@ Alignment runs tumor and normal as separate Batch jobs; each job gives all reque
 `bwa mem | samtools sort` pipeline. After the EC2 quota increase is approved, the alignment stage can move to
 `--phase3_align_cpus 32 --phase3_align_memory '96 GB'`.
 
+Use the named On-Demand fail-fast alias for reruns after alignment/I/O experiments or manual terminations:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full:ondemand-failfast
+```
+
+That alias keeps alignment at 16 CPUs/96 GB and sets `--aws_max_retries 0` so Spot interruptions, manual kills, and weak-scaling experiments stop with one clear trace row instead of launching automatic retry jobs.
+
 ## Phase 3 Fetch Experiments
 
 Use `phase3_fetch` to benchmark WGS FASTQ download strategies without running the full WES benchmark or WGS validation ladder:

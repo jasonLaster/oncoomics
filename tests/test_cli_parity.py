@@ -75,6 +75,15 @@ class CliParityTest(unittest.TestCase):
         self.assertTrue(TASKS["py:test"].accepts_args)
         self.assertTrue(TASKS["py:test"].steps[0].append_args)
 
+    def test_phase3_aws_failfast_task_is_conservative(self):
+        argv = TASKS["nf:aws:phase3-wgs:full:ondemand-failfast"].steps[0].argv
+        self.assertIn("awsbatch_ondemand", argv)
+        self.assertIn("--aws_max_retries", argv)
+        self.assertEqual("0", argv[argv.index("--aws_max_retries") + 1])
+        self.assertEqual("16", argv[argv.index("--phase3_align_cpus") + 1])
+        self.assertEqual("96 GB", argv[argv.index("--phase3_align_memory") + 1])
+        self.assertNotIn("64", argv[argv.index("--phase3_align_cpus") + 1])
+
 
 if __name__ == "__main__":
     unittest.main()

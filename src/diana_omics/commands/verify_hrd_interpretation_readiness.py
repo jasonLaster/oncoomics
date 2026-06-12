@@ -80,7 +80,8 @@ def _summary_row(summary: dict[str, Any]) -> dict[str, Any]:
     rows = summary.get("rows", [])
     if not rows:
         return {}
-    return rows[0]
+    row = rows[0]
+    return row if isinstance(row, dict) else {}
 
 
 def current_interpretation_state() -> dict[str, Any]:

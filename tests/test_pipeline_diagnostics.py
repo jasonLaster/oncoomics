@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from diana_omics import pipeline_diagnostics as diagnostics
+from diana_omics.commands import diagnose_pipeline
 
 
 class PipelineDiagnosticsTest(unittest.TestCase):
@@ -45,6 +46,19 @@ class PipelineDiagnosticsTest(unittest.TestCase):
             summary = diagnostics.build_diagnostics([trace], [log])
         self.assertEqual(summary["speedupEstimate"]["speedup"], 10.86)
         self.assertIn("spot_or_host_interruption", {signal["label"] for item in summary["logSummaries"] for signal in item["signals"]})
+
+    def test_collectors_include_nested_run_logs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run_dir = root / "logs" / "phase3opt_align64_20260612T200806Z"
+            run_dir.mkdir(parents=True)
+            trace = run_dir / "trace.tsv"
+            review = run_dir / "review.log"
+            trace.write_text("task_id\n", encoding="utf-8")
+            review.write_text("Host EC2 (instance i-123) terminated.\n", encoding="utf-8")
+
+            self.assertEqual([trace], diagnose_pipeline.collect_trace_paths(root))
+            self.assertEqual([review], diagnose_pipeline.collect_log_paths(root))
 
 
 if __name__ == "__main__":

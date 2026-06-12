@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-12T05:32:59.182Z",
+  "generatedAt": "2026-06-12T20:05:33.382Z",
   "phase2aReady": true,
   "alignmentReady": true,
   "humanReferenceSmokeReady": true,
@@ -13,6 +13,9 @@
   "phase3WgsSmokeReady": true,
   "phase3WgsValidationReady": true,
   "phase3OptionalSignatureRuntimeReady": true,
+  "nativeFoundationReady": false,
+  "svBenchmarkReady": false,
+  "sigProfilerReady": false,
   "fullAlignmentToolboxReady": false,
   "workflowReady": true,
   "fullWorkflowReady": true,
@@ -307,6 +310,43 @@
         }
       ],
       "allAvailable": false
+    }
+  ],
+  "nativeIntegrations": [
+    {
+      "name": "pysam",
+      "package": "pysam",
+      "available": "no",
+      "version": "",
+      "purpose": "native BAM/VCF/BCF parsing for full-depth variant and alignment checks"
+    },
+    {
+      "name": "pyfaidx",
+      "package": "pyfaidx",
+      "available": "no",
+      "version": "",
+      "purpose": "indexed reference-sequence lookup for SBS96 and normalization features"
+    },
+    {
+      "name": "polars",
+      "package": "polars",
+      "available": "no",
+      "version": "",
+      "purpose": "larger manifest and result joins once multi-sample validation scales"
+    },
+    {
+      "name": "truvari",
+      "package": "truvari",
+      "available": "no",
+      "version": "",
+      "purpose": "SV truth-set comparison for HG008 and COLO829 orthogonal validation"
+    },
+    {
+      "name": "SigProfilerAssignment",
+      "package": "SigProfilerAssignment",
+      "available": "no",
+      "version": "",
+      "purpose": "SBS signature assignment once full WGS mutation counts are adequate"
     }
   ],
   "conclusion": "Local machine can run Phase 2A direct-FASTQ smoke tests, Phase 2B local BAM alignment smoke tests, Phase 2C partial human-reference alignment smoke tests, Phase 2D full-reference caller-readiness smoke tests, Phase 2E GATK Mutect2 production-style somatic smoke tests, Phase 2F full WES benchmark mechanics, and Phase 3 full-source WGS validation mechanics. Final HRD interpretation still requires Diana data and reviewer-approved CNV/SV/signature policy."

@@ -24,6 +24,12 @@ Phase 3 WGS validation toolchain ready: **yes**
 
 Phase 3 optional signature runtime available: **yes**
 
+Native Python HRD foundation ready: **no**
+
+SV benchmark comparator ready: **no**
+
+SigProfilerAssignment ready: **no**
+
 ## baseline_streaming
 
 Required for: Phase 2A direct FASTQ metadata and tiny read-subset smoke
@@ -117,6 +123,16 @@ Required for: nf-core/sarek or containerized raw-data workflow execution
 - apptainer: missing
 - conda: missing
 - micromamba: missing
+
+## native_python_integrations
+
+Optional extras are staged in `pyproject.toml`; missing packages do not block fallback-safe smoke validation.
+
+- pysam: missing - native BAM/VCF/BCF parsing for full-depth variant and alignment checks
+- pyfaidx: missing - indexed reference-sequence lookup for SBS96 and normalization features
+- polars: missing - larger manifest and result joins once multi-sample validation scales
+- truvari: missing - SV truth-set comparison for HG008 and COLO829 orthogonal validation
+- SigProfilerAssignment: missing - SBS signature assignment once full WGS mutation counts are adequate
 
 ## Conclusion
 

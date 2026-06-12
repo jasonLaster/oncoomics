@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Optional
 
+from ..native import native_tool_versions, reference_context, vcf_sample_names
 from ..paths import path_from_root
 from ..utils import (
     bcftools_norm_ref_mismatch_count,
@@ -747,6 +748,9 @@ def write_fallback_mapped_intervals(rows: list[dict[str, str]], reference_order:
 
 
 def parse_vcf_sample_names(vcf_path: str) -> list[str]:
+    native_samples = vcf_sample_names(vcf_path)
+    if native_samples is not None:
+        return native_samples
     header = capture_command(f"bcftools view -h {quote_shell_arg(vcf_path)}")
     sample_line = next((line for line in header.splitlines() if line.startswith("#CHROM")), "")
     return sample_line.split("\t")[9:]
@@ -936,9 +940,7 @@ def build_sbs96_matrix(filtered_vcf: str, reference_path: str) -> dict[str, Any]
             if len(alt) != 1 or ref.upper() not in BASES or alt.upper() not in BASES:
                 skipped_snvs += 1
                 continue
-            context = capture_allow_empty(
-                f"samtools faidx {quote_shell_arg(reference_path)} {quote_shell_arg(f'{contig}:{position - 1}-{position + 1}')} | awk 'NR>1 {{printf \"%s\", $0}}'"
-            )
+            context = reference_context(reference_path, contig, position)
             normalized = normalized_context(context, ref, alt)
             if not normalized or normalized["mutationType"] not in MUTATION_TYPES:
                 skipped_snvs += 1
@@ -1455,6 +1457,7 @@ def main() -> None:
                     f"{quote_shell_arg(tumor['java_path'])} -jar {quote_shell_arg(tumor['gatk_jar_path'])} --version 2>&1 | head -n 1"
                 ),
             },
+            "optionalNativeIntegrations": native_tool_versions(),
         },
     )
 

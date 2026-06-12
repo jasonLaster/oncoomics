@@ -126,22 +126,22 @@ Long-running commands should emit durable run artifacts, not just terminal text.
 
 For `benchmark:full-wes`, these live under `results/full_wes_benchmark/logs/telemetry/<run-id>/`. Set `DIANA_OMICS_LOG_UPLOAD_URI=s3://bucket/prefix` to sync the telemetry directory to S3 after success or failure. A local path also works for a filesystem mirror. Set `DIANA_OMICS_TRACE_HEARTBEAT_SECONDS` to control command resource-sample cadence and `DIANA_OMICS_TELEMETRY=0` only for intentionally quiet developer runs.
 
-## Why Not More Python Packages Yet
+## Native Package Integration
 
-The current implementation keeps the orchestration transparent and avoids adding heavy dependencies before the workflow stabilizes. That is useful for auditing, but it has limits:
+The current implementation keeps the orchestration transparent and avoids requiring heavy dependencies before the workflow stabilizes. That is useful for auditing, but it has limits:
 
 - Hand-parsed VCF/BED/BAM summaries are easier to get subtly wrong than `pysam`.
 - CSV joins will not scale as well as `polars`.
 - Reference sequence operations are safer with `pyfaidx` or htslib-backed tools.
 - SV comparison should use `truvari` instead of local interval approximations.
 
-Recommended future package additions:
+The first integration tranche is optional rather than mandatory:
 
-- `pysam` for BAM/VCF/BCF access.
-- `polars` for larger manifests and result joins.
-- `pyfaidx` for reference sequence lookup.
-- `truvari` as an external or Python-invoked SV truth comparator.
-- SigProfiler, CHORD, scarHRD, FACETS/ASCAT/PURPLE-compatible adapters when full-depth HRD interpretation starts.
+- `native`: `pysam`, `pyfaidx`, and `polars`.
+- `sv`: `truvari`.
+- `hrd`: the native/SV foundation plus `SigProfilerAssignment`.
+
+Phase 3 uses native VCF sample parsing and reference sequence lookup when those packages are installed, while preserving the existing `bcftools`/`samtools` fallbacks. CHORD, scarHRD, and FACETS/ASCAT/PURPLE-compatible interpretation should wait until full-depth SNV/indel, allele-specific CNV, SV, signature, purity, and orthogonal validation gates are met.
 
 ## Error Philosophy
 

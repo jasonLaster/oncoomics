@@ -8,13 +8,17 @@ from ..utils import ensure_dir, read_json, write_json, write_text
 
 
 def collect_trace_paths(root: Path) -> list[Path]:
-    return sorted((root / "logs").glob("*.trace.tsv"))
+    paths = set((root / "logs").glob("*.trace.tsv"))
+    paths.update((root / "logs").glob("*/trace.tsv"))
+    return sorted(path for path in paths if path.is_file())
 
 
 def collect_log_paths(root: Path) -> list[Path]:
     paths: list[Path] = []
     paths.extend(sorted((root / "logs").glob("*.log")))
     paths.extend(sorted((root / "logs").glob("nextflow.log*")))
+    paths.extend(sorted((root / "logs").glob("*/review.log")))
+    paths.extend(sorted((root / "logs").glob("*/nextflow.log*")))
     paths.extend(sorted((root / "nextflow-out/aws").glob("**/nextflow.log")))
     paths.extend(sorted((root / "nextflow-out/aws").glob("**/launcher.out")))
     return sorted({path for path in paths if path.is_file()})

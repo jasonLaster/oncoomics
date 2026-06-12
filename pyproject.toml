@@ -11,6 +11,15 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["mypy>=1.19", "pytest>=8.0", "ruff>=0.14"]
+native = ["pysam>=0.22", "pyfaidx>=0.8", "polars>=1.0"]
+sv = ["truvari>=4.0"]
+hrd = [
+  "pysam>=0.22",
+  "pyfaidx>=0.8",
+  "polars>=1.0",
+  "truvari>=4.0",
+  "SigProfilerAssignment>=0.2",
+]
 
 [project.scripts]
 diana-omics = "diana_omics.cli:main"
