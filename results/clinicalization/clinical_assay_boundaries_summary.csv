@@ -1,0 +1,13 @@
+boundary_id,boundary_type,current_status,signoff_status,clinical_reporting_allowed,reportable_range_locked,permitted_report_language,prohibited_language
+intended_use_candidate,assay_claim,candidate_definition_only,not_approved,no,,This assay candidate is under validation and is not ready for clinical interpretation.,Clinically diagnostic HRD positive; PARP inhibitor eligible; treatment recommendation
+reportable_range_wgs_hrd,reportable_range,not_locked,not_approved,no,no,Reportable range is not established; unsupported feature classes must be no-called.,Genome-wide HRD score reported as validated; companion diagnostic equivalent
+qc_raw_fastq,qc_gate,gate_defined_not_validated,not_approved,no,,Raw-data QC must pass before interpretation is attempted.,Proceed despite missing raw provenance or failed sample pairing
+qc_alignment_bam,qc_gate,gate_defined_not_validated,not_approved,no,,Alignment and coverage QC must pass before downstream feature interpretation.,Interpret with failed BAM validation or reference-build mismatch
+qc_small_variant,qc_gate,gate_defined_not_validated,not_approved,no,,Small-variant feature extraction is not clinically locked.,Validated pathogenic small-variant result from this candidate pipeline
+qc_cnv_loh,qc_gate,gate_defined_not_validated,not_approved,no,,CNV/LOH and scarHRD must be no-called until allele-specific segments are validated.,scarHRD score or biallelic loss call from coverage bins alone
+qc_sv,qc_gate,gate_defined_not_validated,not_approved,no,,SV signatures and CHORD/HRDetect SV features must be no-called until SV caller validation passes.,Validated SV signature or CHORD call from BAM evidence counters alone
+qc_signature,qc_gate,gate_defined_not_validated,not_approved,no,,Signature interpretation must be no-called when mutation count or reconstruction QC is below locked thresholds.,Validated SBS3 or HRD signature call before threshold validation
+report_no_call_language,report_language,language_defined_not_approved,not_approved,no,,No call: required validated input or QC threshold is missing; no clinical conclusion should be drawn.,Negative for HRD because feature was not assessed
+report_candidate_language,report_language,language_defined_not_approved,not_approved,no,,Research candidate evidence only; clinical interpretation is not established.,HRD positive; HRD deficient; clinically actionable
+prohibit_treatment_recommendation,exclusion,active_exclusion,not_approved,no,,Treatment decisions require clinician-owned review and validated clinical assay context.,Eligible for PARP inhibitor; recommend platinum; companion diagnostic result
+reviewer_signoff,signoff,not_signed_off,not_approved,no,,Not signed off for clinical reporting.,Approved clinical report

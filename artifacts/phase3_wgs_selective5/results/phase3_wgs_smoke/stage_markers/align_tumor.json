@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-06-11T09:41:58.870Z",
+  "stage": "align_tumor",
+  "status": "passed",
+  "role": "tumor",
+  "runAccession": "SRR7890824",
+  "threads": 16,
+  "bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/SRR7890824.tumor.bam",
+  "bai": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/SRR7890824.tumor.bam.bai"
+}

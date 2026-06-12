@@ -1,0 +1,180 @@
+{
+  "generatedAt": "2026-06-12T19:17:54.674Z",
+  "status": "passed",
+  "errors": [],
+  "summary": {
+    "status": "passed",
+    "section_count": 16,
+    "domain_count": 13,
+    "template_only_section_count": 16,
+    "approved_section_count": 0,
+    "clinical_reporting_allowed": "no",
+    "reportable_range_locked": "no",
+    "packet_status": "template_only",
+    "ready_for_clinical_packet": "no",
+    "next_step": "Pause for operator review/commit, then decide whether to implement HG008/COLO829 benchmark runners or continue local governance scaffolding.",
+    "error_count": 0
+  },
+  "rows": [
+    {
+      "section_id": "intended_use",
+      "section_title": "Intended use and assay claim",
+      "validation_domain": "scope",
+      "current_evidence_status": "scaffolded_not_approved",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "clinical assay boundary approval"
+    },
+    {
+      "section_id": "workflow_overview",
+      "section_title": "End-to-end workflow and traceability",
+      "validation_domain": "workflow",
+      "current_evidence_status": "partially_scaffolded",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "containerized production workflow and version lock"
+    },
+    {
+      "section_id": "input_acceptance",
+      "section_title": "Specimen and input acceptance criteria",
+      "validation_domain": "preanalytic_qc",
+      "current_evidence_status": "defined_not_validated",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "Diana-independent raw-input validation fixtures and reviewer thresholds"
+    },
+    {
+      "section_id": "accuracy_small_variants",
+      "section_title": "Accuracy for SNV/indel features",
+      "validation_domain": "accuracy",
+      "current_evidence_status": "planned_not_run",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "HG008 small-variant benchmark execution"
+    },
+    {
+      "section_id": "accuracy_cnv_loh",
+      "section_title": "Accuracy for CNV/LOH and scar features",
+      "validation_domain": "accuracy",
+      "current_evidence_status": "planned_not_run",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "HG008 and COLO829 CNV/LOH fixtures plus primary CNV tool validation"
+    },
+    {
+      "section_id": "accuracy_sv",
+      "section_title": "Accuracy for SV and rearrangement features",
+      "validation_domain": "accuracy",
+      "current_evidence_status": "planned_not_run",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "HG008 and COLO829 SV fixtures plus primary SV caller validation"
+    },
+    {
+      "section_id": "signature_model_accuracy",
+      "section_title": "Signature and integrated HRD model accuracy",
+      "validation_domain": "accuracy",
+      "current_evidence_status": "planned_not_run",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "SigProfiler/CHORD/HRDetect/scarHRD adapter validation and locked thresholds"
+    },
+    {
+      "section_id": "precision_repeatability",
+      "section_title": "Repeatability precision",
+      "validation_domain": "precision",
+      "current_evidence_status": "not_started",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "replicate fixture design and approved local/cloud execution"
+    },
+    {
+      "section_id": "reproducibility",
+      "section_title": "Reproducibility across runs and environments",
+      "validation_domain": "reproducibility",
+      "current_evidence_status": "not_started",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "container lock and reproducibility fixture execution"
+    },
+    {
+      "section_id": "lod",
+      "section_title": "Limit of detection and tumor fraction sensitivity",
+      "validation_domain": "lod",
+      "current_evidence_status": "planned_not_run",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "COLO829 purity series or approved dilution material execution"
+    },
+    {
+      "section_id": "reportable_range",
+      "section_title": "Reportable range",
+      "validation_domain": "reportable_range",
+      "current_evidence_status": "not_locked",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "known-answer validation and clinical boundary approval"
+    },
+    {
+      "section_id": "interferences_limitations",
+      "section_title": "Interferences limitations and failure modes",
+      "validation_domain": "limitations",
+      "current_evidence_status": "scaffolded_not_validated",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "validated failure-mode fixtures and reviewer policy"
+    },
+    {
+      "section_id": "qc_gates",
+      "section_title": "QC gates and acceptance thresholds",
+      "validation_domain": "qc",
+      "current_evidence_status": "defined_not_validated",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "known-answer benchmarks plus reviewer threshold approval"
+    },
+    {
+      "section_id": "report_template",
+      "section_title": "Report template and no-call language",
+      "validation_domain": "reporting",
+      "current_evidence_status": "scaffolded_not_approved",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "clinical reviewer and laboratory director approval"
+    },
+    {
+      "section_id": "change_control",
+      "section_title": "Change control and versioning",
+      "validation_domain": "change_control",
+      "current_evidence_status": "not_started",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "production release and validation governance process"
+    },
+    {
+      "section_id": "approval_signoff",
+      "section_title": "Review approval and release signoff",
+      "validation_domain": "signoff",
+      "current_evidence_status": "not_started",
+      "packet_status": "template_only",
+      "signoff_status": "not_approved",
+      "ready_for_clinical_packet": "no",
+      "blocking_dependency": "completed validation evidence and formal signoff"
+    }
+  ]
+}

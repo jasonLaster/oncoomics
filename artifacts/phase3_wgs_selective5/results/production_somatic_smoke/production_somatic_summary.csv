@@ -1,0 +1,2 @@
+status,caller,reference_id,read_pairs_per_end,active_interval_count,mutect_records,mutect_pass_records,comparison_status,boundary
+passed,GATK Mutect2 + FilterMutectCalls,ucsc_hg38_analysis_set_full,50000,500,0,0,not_assessed_in_smoke,"Production-style somatic smoke only; not full-depth WES/WGS, not production-resource-filtered clinical analysis, and not HRD signature evidence."

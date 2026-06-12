@@ -1,0 +1,2 @@
+status,reference_id,assembly,genome_build,sample_rows,tumor_rows,normal_rows,caller_smoke_status,boundary
+passed,ucsc_hg38_analysis_set_full,hg38,GRCh38,2,1,1,passed,Full hg38 analysis-set reference smoke with BRCA intervals and bcftools VCF contract check; not full-depth WES/WGS or clinical somatic calling.

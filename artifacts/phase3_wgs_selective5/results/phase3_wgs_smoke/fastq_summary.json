@@ -1,0 +1,48 @@
+{
+  "generatedAt": "2026-06-10T23:13:04.200Z",
+  "status": "passed",
+  "pairId": "seqc2_hcc1395_wgs_hiseqx_full",
+  "readRequest": "full",
+  "readPairsMode": "full",
+  "fetchConcurrency": 8,
+  "sourceMode": "aws_sra",
+  "assetCache": {
+    "enabled": true,
+    "uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/cache/phase3_wgs",
+    "mode": "readwrite",
+    "cacheSraObjects": true,
+    "cacheFastqs": true,
+    "deleteSraAfterConversion": true,
+    "published": [],
+    "deletedLocalSra": []
+  },
+  "fetchOnlyRole": "tumor",
+  "rows": [
+    {
+      "pair_id": "seqc2_hcc1395_wgs_hiseqx_full",
+      "sample": "HCC1395",
+      "role": "tumor",
+      "run_accession": "SRR7890824",
+      "assay": "WGS",
+      "source_read_pairs": "568040077",
+      "source_read_pairs_available": "568040077",
+      "reads_per_end": 568040077,
+      "read_scope": "full_source_fastq",
+      "local_fastq_1": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/fastq/SRR7890824_R1.full.fastq.gz",
+      "local_fastq_2": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/fastq/SRR7890824_R2.full.fastq.gz",
+      "compressed_fastq_1_bytes": 47988004291,
+      "compressed_fastq_2_bytes": 53593712696,
+      "r1_mean_length": 150.0,
+      "r2_mean_length": 150.0,
+      "r1_gc_fraction": "",
+      "r2_gc_fraction": "",
+      "r1_n_fraction": "",
+      "r2_n_fraction": "",
+      "first_read_id": "SRR7890824.1",
+      "last_read_id": "not_collected_metadata_mode",
+      "paired_id_check": "passed",
+      "fetch_state": "cache_aws_sra_fastq/cache_aws_sra_fastq/cache_aws_sra_fastq/cache_aws_sra_fastq",
+      "caveat": "Real WGS FASTQ validation from the public SEQC2/HCC1395 source pair. Full-source validation checks complete compressed FASTQs, expected MD5/bytes, FASTQ records, and paired read IDs."
+    }
+  ]
+}

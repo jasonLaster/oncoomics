@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-06-12T16:29:53.716Z",
+  "status": "passed",
+  "rows": [
+    {
+      "status": "passed",
+      "phase": "3",
+      "caller": "GATK Mutect2 + FilterMutectCalls",
+      "reference_id": "ucsc_hg38_analysis_set_full",
+      "pair_id": "seqc2_hcc1395_wgs_hiseqx_full",
+      "tumor_sample": "HCC1395",
+      "normal_sample": "HCC1395BL",
+      "tumor_run": "SRR7890824",
+      "normal_run": "SRR7890827",
+      "read_pairs_per_end": "568040077",
+      "interval_strategy": "covered_seqc2_truth_variants",
+      "mutect_interval_bed_path": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/intervals/phase3_wgs_mutect2_intervals.bed",
+      "mutect_interval_count": 295,
+      "truth_variants_total": 41072,
+      "truth_variants_depth_eligible": 300,
+      "truth_snv_records_in_intervals": 298,
+      "truth_indel_records_in_intervals": 5,
+      "filtered_vcf": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/vcf/hcc1395.phase3_wgs.mutect2.filtered.vcf.gz",
+      "filtered_tbi": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/vcf/hcc1395.phase3_wgs.mutect2.filtered.vcf.gz.tbi",
+      "filtered_records_in_intervals": 363,
+      "pass_records_in_intervals": 273,
+      "exact_pass_truth_matches": 268,
+      "comparison_status": "assessed_exact_key_overlap",
+      "panel_of_normals_used": "",
+      "caveat": "Real GATK Mutect2 WGS small-variant output over covered SEQC2 truth intervals. Genome-wide HRD interpretation still needs production caller policy."
+    }
+  ]
+}

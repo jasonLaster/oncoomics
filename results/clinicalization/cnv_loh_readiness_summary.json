@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-06-12T18:33:14.934Z",
+  "status": "passed",
+  "errors": [],
+  "rows": [
+    {
+      "status": "passed",
+      "candidate_count": 4,
+      "primary_candidate_count": 1,
+      "phase3_cnv_status": "passed",
+      "phase3_cnv_bins": 631,
+      "phase3_cnv_tool": "samtools bedcov",
+      "phase3_scarhrd_input_status": "not_assessable_without_allele_specific_segments",
+      "current_bins_are_not_allele_specific_segments": "yes",
+      "ready_for_clinical_interpretation": "no",
+      "next_step": "Containerize the primary candidate and run HG008/COLO829 CNV/LOH truth-overlap fixtures before enabling scarHRD interpretation.",
+      "error_count": 0
+    }
+  ]
+}

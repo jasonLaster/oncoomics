@@ -134,9 +134,13 @@ Purpose:
 
 Latest evidence:
 
-- Full-source SEQC2/HCC1395 HiSeq X Ten WGS FASTQs are the acceptance gate.
+- Full-source SEQC2/HCC1395 HiSeq X Ten WGS FASTQs passed the acceptance gate.
+- `readPairsMode=full`, `fullSourceFastqs=true`, and `readPairsPerEnd=568040077`.
+- `mutectIntervalCount=295`, `passRecordsInIntervals=273`, and `exactPassTruthMatches=268`.
+- `coverageCnvBins=631`, `sbs96UsableSnvRecords=265`, and `svEvidenceStatus=passed`.
+- `readyForPhase4WhenDianaRawArrives=true`.
 - Bounded read subsets are developer checks only and fail the final Phase 3 verifier.
-- The completion summary records `readPairsMode=full` and `fullSourceFastqs=true` when the full run has passed.
+- The completion summary records these values in `results/phase3_wgs_smoke/phase3_wgs_summary.json`.
 
 Primary outputs:
 

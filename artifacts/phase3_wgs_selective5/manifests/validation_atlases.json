@@ -1,0 +1,381 @@
+{
+  "schema_version": "0.1.0",
+  "generated_from": "docs/project-plan.md",
+  "sources": [
+    {
+      "id": "tcga-brca-gdc",
+      "title": "TCGA-BRCA / GDC publication freeze",
+      "kind": "dataset",
+      "priority": "phase-1",
+      "primary_use": "Breast multi-omics benchmark for mutation, copy number, RNA, subtype labels, and clinical cross-checks.",
+      "access": "open processed data; controlled raw data",
+      "urls": [
+        "https://gdc.cancer.gov/about-data/publications/brca_2012",
+        "https://docs.gdc.cancer.gov/API/Users_Guide/Downloading_Files/"
+      ],
+      "expected_artifacts": [
+        "open MAF",
+        "RNA expression matrices",
+        "PAM50/subtype labels",
+        "copy-number segments",
+        "clinical files"
+      ],
+      "verifier": "Check access level, file size or checksum, TCGA barcode format, sample counts, and source freeze."
+    },
+    {
+      "id": "cbioportal-brca-pan-cancer",
+      "title": "cBioPortal Breast Invasive Carcinoma PanCancer Atlas",
+      "kind": "dataset",
+      "priority": "phase-1",
+      "primary_use": "Fast mutation, CNA, clinical, and sample-list cross-checks.",
+      "access": "open",
+      "urls": [
+        "https://www.cbioportal.org/datasets",
+        "https://docs.cbioportal.org/downloads/",
+        "https://docs.cbioportal.org/web-api-and-clients/"
+      ],
+      "expected_artifacts": [
+        "study metadata",
+        "sample lists",
+        "mutation profiles",
+        "CNA profiles",
+        "clinical data"
+      ],
+      "verifier": "API smoke test must return expected study metadata and sample count before downstream use."
+    },
+    {
+      "id": "ucsc-xena-tcga-brca",
+      "title": "UCSC Xena TCGA-BRCA matrices",
+      "kind": "dataset",
+      "priority": "phase-1",
+      "primary_use": "Fast processed expression and phenotype matrix access.",
+      "access": "open",
+      "urls": [
+        "https://xena.ucsc.edu/"
+      ],
+      "expected_artifacts": [
+        "expression matrix metadata",
+        "phenotype matrix metadata",
+        "sample ID crosswalk"
+      ],
+      "verifier": "Verify hub, dataset ID, dimensions, and sample ID intersection with TCGA/cBioPortal."
+    },
+    {
+      "id": "brca-eu-560-wgs",
+      "title": "560 breast cancer whole-genome sequencing cohort",
+      "kind": "dataset",
+      "priority": "phase-1-candidate",
+      "primary_use": "HRD mutational-signature and WGS positive-control backbone.",
+      "access": "publication plus ICGC access routes",
+      "urls": [
+        "https://www.nature.com/articles/nature17676"
+      ],
+      "expected_artifacts": [
+        "sample IDs",
+        "somatic mutation catalogs",
+        "signature labels or derived labels",
+        "HRD-positive and HRD-negative controls"
+      ],
+      "verifier": "Freeze a small panel and verify labels against publication or public repository metadata."
+    },
+    {
+      "id": "metabric-synapse",
+      "title": "METABRIC / Synapse",
+      "kind": "dataset",
+      "priority": "phase-2",
+      "primary_use": "Independent breast expression and CNV validation.",
+      "access": "registered or controlled depending on file",
+      "urls": [
+        "https://www.synapse.org/Synapse%3Asyn1688369/wiki/"
+      ],
+      "expected_artifacts": [
+        "expression data",
+        "copy-number data",
+        "clinical labels"
+      ],
+      "verifier": "Record access state; do not assume data is fetchable without registered access."
+    },
+    {
+      "id": "cptac-breast-gdc",
+      "title": "CPTAC Breast via GDC/PDC",
+      "kind": "dataset",
+      "priority": "phase-2",
+      "primary_use": "Proteogenomic context for breast validation.",
+      "access": "mixed open and controlled",
+      "urls": [
+        "https://gdc.cancer.gov/about-gdc/contributed-genomic-data-cancer-research/clinical-proteomic-tumor-analysis-consortium-cptac"
+      ],
+      "expected_artifacts": [
+        "gene expression quantification",
+        "masked somatic mutations",
+        "proteomic metadata"
+      ],
+      "verifier": "Confirm breast project, file access level, and data type before adding to runnable benchmark."
+    },
+    {
+      "id": "hartwig-medical-database",
+      "title": "Hartwig Medical Database",
+      "kind": "dataset",
+      "priority": "phase-3",
+      "primary_use": "Metastatic tumor-normal WGS/RNA validation and HMF tool ecosystem context.",
+      "access": "access request",
+      "urls": [
+        "https://www.hartwigmedicalfoundation.nl/en/data/database/"
+      ],
+      "expected_artifacts": [
+        "WGS metadata",
+        "RNA metadata",
+        "clinical outcome metadata",
+        "access-request status"
+      ],
+      "verifier": "Record access-request state; do not put Hartwig in the phase-1 runnable source list."
+    },
+    {
+      "id": "depmap-ccle",
+      "title": "DepMap / CCLE",
+      "kind": "dataset",
+      "priority": "phase-2-context",
+      "primary_use": "TNBC cell-line technical controls for RNA and marker sanity checks.",
+      "access": "open",
+      "urls": [
+        "https://depmap.org/portal/ccle/"
+      ],
+      "expected_artifacts": [
+        "cell-line metadata",
+        "RNA expression",
+        "copy-number profiles",
+        "mutation calls"
+      ],
+      "verifier": "Verify lineage filter, matrix dimensions, and known TNBC marker behavior."
+    },
+    {
+      "id": "seqc2-hcc1395-sra",
+      "title": "SEQC2/HCC1395 raw tumor-normal SRA benchmark",
+      "kind": "dataset",
+      "priority": "phase-2-raw-readiness",
+      "primary_use": "Representative raw FASTQ/SRA tumor-normal breast/TNBC benchmark before Diana FASTQ/BAM/CRAM files arrive.",
+      "access": "open SRA runs; full WGS is large",
+      "urls": [
+        "https://www.ncbi.nlm.nih.gov/sra/?term=SRP162370",
+        "https://trace.ncbi.nlm.nih.gov/Traces/sra-db-be/runinfo?acc=SRP162370"
+      ],
+      "expected_artifacts": [
+        "public tumor-normal WES runs",
+        "public tumor-normal WGS runs",
+        "SRA run metadata",
+        "FASTQ conversion and QC smoke outputs"
+      ],
+      "verifier": "Refresh raw representative panel metadata, confirm public tumor and normal roles for each pair, then run a downsampled or regional FASTQ smoke test before full WGS."
+    },
+    {
+      "id": "seqc2-hcc1395-reference-materials",
+      "title": "SEQC2/HCC1395 reference materials FTP",
+      "kind": "dataset",
+      "priority": "phase-2-truthset",
+      "primary_use": "Benchmark/truth-set materials for HCC1395 somatic variant comparison after raw-data smoke tests work.",
+      "access": "open FTP",
+      "urls": [
+        "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/"
+      ],
+      "expected_artifacts": [
+        "high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz",
+        "high-confidence_sINDEL_in_HC_regions_v1.2.1.vcf.gz",
+        "High-Confidence_Regions_v1.2.bed",
+        "analysis files",
+        "technical/reference files",
+        "versioned benchmark documentation"
+      ],
+      "verifier": "Record exact truth-set file/version and genome build before comparing any caller output."
+    },
+    {
+      "id": "ucsc-human-reference-chromosomes",
+      "title": "UCSC hg38/hg19 per-chromosome FASTA references",
+      "kind": "reference",
+      "priority": "phase-2c-human-reference-smoke",
+      "primary_use": "Partial real-human-reference validation for GRCh38/hg38 and GRCh37/hg19 alignment handling before full reference bundles are configured.",
+      "access": "open",
+      "urls": [
+        "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/",
+        "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/chromosomes/"
+      ],
+      "expected_artifacts": [
+        "chr13 FASTA",
+        "chr17 FASTA",
+        "md5sum.txt",
+        "FAI indexes",
+        "BWA indexes",
+        "partial-reference BAM smoke outputs"
+      ],
+      "verifier": "Download chr13/chr17 for hg38 and hg19, validate md5 values, index FASTA/BWA references, align HCC1395 tumor-normal FASTQ subset, and verify BAM contracts across both builds."
+    },
+    {
+      "id": "ucsc-hg38-analysis-set-full-reference",
+      "title": "UCSC hg38 analysisSet full reference",
+      "kind": "reference",
+      "priority": "phase-2d-full-reference-smoke",
+      "primary_use": "Full GRCh38/hg38 analysis-set reference for caller-readiness validation before Diana raw DNA files arrive.",
+      "access": "open",
+      "urls": [
+        "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/analysisSet/",
+        "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/analysisSet/hg38.analysisSet.fa.gz"
+      ],
+      "expected_artifacts": [
+        "hg38.analysisSet.fa.gz",
+        "md5sum.txt",
+        "FAI index",
+        "BWA index",
+        "BRCA interval BED",
+        "caller-ready BAM smoke outputs",
+        "indexed VCF caller smoke output"
+      ],
+      "verifier": "Download hg38.analysisSet.fa.gz, validate md5, build FAI/BWA indexes, align HCC1395 tumor-normal FASTQ subset, validate BAM contracts, and produce an indexed bcftools VCF smoke."
+    },
+    {
+      "id": "gatk-mutect2-4-6-2-0",
+      "title": "GATK Mutect2 4.6.2.0",
+      "kind": "tool",
+      "priority": "phase-2e-phase-2f-production-somatic",
+      "primary_use": "Pinned production-style tumor-normal somatic SNV/indel caller for the HCC1395 WES smoke and full WES benchmark.",
+      "access": "open source release",
+      "urls": [
+        "https://gatk.broadinstitute.org/hc/en-us/articles/360036733771-Mutect2",
+        "https://github.com/broadinstitute/gatk/releases/tag/4.6.2.0"
+      ],
+      "expected_artifacts": [
+        "gatk-package-4.6.2.0-local.jar",
+        "reference sequence dictionary",
+        "Mutect2 unfiltered VCF",
+        "FilterMutectCalls filtered VCF",
+        "filtered VCF index",
+        "truth-overlap comparison summary"
+      ],
+      "verifier": "Run fetch:production-somatic, smoke:production-somatic, fetch:full-wes, and benchmark:full-wes; confirm Java 17 execution, sequence dictionary, tumor-normal sample columns, indexed filtered VCF, PoN/resource policy, contamination status, and explicit WES-versus-WGS boundary."
+    },
+    {
+      "id": "broad-gatk-somatic-hg38-resources",
+      "title": "Broad GATK somatic hg38 resources",
+      "kind": "reference",
+      "priority": "phase-2f-full-wes-benchmark",
+      "primary_use": "Mutect2 production-resource policy for the hg38 1000g panel of normals and full af-only gnomAD germline resource.",
+      "access": "open Google Cloud Storage files; full germline resource is multi-GB",
+      "urls": [
+        "https://storage.googleapis.com/gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz",
+        "https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz"
+      ],
+      "expected_artifacts": [
+        "1000g_pon.hg38.vcf.gz",
+        "1000g_pon.hg38.vcf.gz.tbi",
+        "documented af-only-gnomad.hg38.vcf.gz production URL"
+      ],
+      "verifier": "Phase 2F downloads and indexes the PoN locally, records hashes, documents the full af-only gnomAD production URL, and uses explicit caveats when the multi-GB resource is not downloaded for the local gate."
+    },
+    {
+      "id": "mutect2-common-biallelic-gnomad",
+      "title": "mutect2_data common-biallelic gnomAD resource",
+      "kind": "reference",
+      "priority": "phase-2f-contamination",
+      "primary_use": "Common germline sites for bounded GATK GetPileupSummaries and CalculateContamination in the full WES benchmark.",
+      "access": "open SourceForge files",
+      "urls": [
+        "https://sourceforge.net/projects/mutect2-data/files/common_biallelic/",
+        "https://downloads.sourceforge.net/project/mutect2-data/common_biallelic/af-only-gnomad.hg38.common_biallelic.chr1-22XY.vcf.gz",
+        "https://downloads.sourceforge.net/project/mutect2-data/common_biallelic/af-only-gnomad.hg38.common_biallelic.chr1-22XY.vcf.idx"
+      ],
+      "expected_artifacts": [
+        "af-only-gnomad.hg38.common_biallelic.chr1-22XY.vcf.gz",
+        "af-only-gnomad.hg38.common_biallelic.chr1-22XY.vcf.idx",
+        "tumor and matched-normal GetPileupSummaries tables",
+        "CalculateContamination table"
+      ],
+      "verifier": "Phase 2F validates the VCF/index assets, runs GetPileupSummaries for tumor and matched normal, and requires a contamination table before readyForPhase3 can be true."
+    },
+    {
+      "id": "nf-core-sarek",
+      "title": "nf-core/sarek",
+      "kind": "tool",
+      "priority": "raw-data-adapter",
+      "primary_use": "Tumor-normal WGS/WES raw-data workflow for variant calling and annotation.",
+      "access": "open source",
+      "urls": [
+        "https://nf-co.re/sarek"
+      ],
+      "expected_artifacts": [
+        "samplesheet",
+        "VCFs",
+        "copy-number outputs",
+        "MultiQC report"
+      ],
+      "verifier": "Run profile test or a tiny fixture before any real raw sample analysis."
+    },
+    {
+      "id": "chord",
+      "title": "CHORD",
+      "kind": "tool",
+      "priority": "hrd-classifier",
+      "primary_use": "HRD classifier from somatic mutation contexts, including BRCA1-like versus BRCA2-like evidence when inputs support it.",
+      "access": "open source R package; migrated to HMF tools ecosystem",
+      "urls": [
+        "https://github.com/UMCUGenetics/CHORD",
+        "https://www.nature.com/articles/s41467-020-19406-4"
+      ],
+      "expected_artifacts": [
+        "mutation context matrix",
+        "HRD class",
+        "BRCA1/BRCA2 type probability"
+      ],
+      "verifier": "Require PASS somatic variants, supported SV parsing, reference-genome label, and positive-control recovery."
+    },
+    {
+      "id": "scarhrd",
+      "title": "scarHRD",
+      "kind": "tool",
+      "priority": "hrd-scar",
+      "primary_use": "Copy-number scar score from WES/WGS-derived segments.",
+      "access": "open source R package",
+      "urls": [
+        "https://github.com/sztup/scarHRD"
+      ],
+      "expected_artifacts": [
+        "LOH",
+        "LST",
+        "TAI",
+        "summed HRD scar score"
+      ],
+      "verifier": "Reproduce a known fixture in containerized R before interpreting scores."
+    },
+    {
+      "id": "sigprofiler-assignment",
+      "title": "SigProfilerAssignment",
+      "kind": "tool",
+      "priority": "signature-assignment",
+      "primary_use": "Known mutational-signature assignment including SBS3-like signal.",
+      "access": "open source Python package",
+      "urls": [
+        "https://github.com/SigProfilerSuite/SigProfilerAssignment"
+      ],
+      "expected_artifacts": [
+        "signature activities",
+        "reconstruction metrics",
+        "SBS3 contribution"
+      ],
+      "verifier": "Record genome build, matrix type, mutation counts, and reconstruction metrics for every sample."
+    },
+    {
+      "id": "hrdetect-paper",
+      "title": "HRDetect paper",
+      "kind": "paper",
+      "priority": "conceptual-benchmark",
+      "primary_use": "Integrated mutational-signature HRD detection frame for breast cancer.",
+      "access": "publication",
+      "urls": [
+        "https://www.nature.com/articles/nm.4292"
+      ],
+      "expected_artifacts": [
+        "six-feature HRD evidence model",
+        "benchmark expectations",
+        "validation-cohort context"
+      ],
+      "verifier": "Do not collapse HRDetect-style evidence into a single clinical claim unless all required input classes exist."
+    }
+  ]
+}

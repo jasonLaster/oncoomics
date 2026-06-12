@@ -1,0 +1,17 @@
+section_id,section_title,validation_domain,current_evidence_status,packet_status,signoff_status,ready_for_clinical_packet,blocking_dependency
+intended_use,Intended use and assay claim,scope,scaffolded_not_approved,template_only,not_approved,no,clinical assay boundary approval
+workflow_overview,End-to-end workflow and traceability,workflow,partially_scaffolded,template_only,not_approved,no,containerized production workflow and version lock
+input_acceptance,Specimen and input acceptance criteria,preanalytic_qc,defined_not_validated,template_only,not_approved,no,Diana-independent raw-input validation fixtures and reviewer thresholds
+accuracy_small_variants,Accuracy for SNV/indel features,accuracy,planned_not_run,template_only,not_approved,no,HG008 small-variant benchmark execution
+accuracy_cnv_loh,Accuracy for CNV/LOH and scar features,accuracy,planned_not_run,template_only,not_approved,no,HG008 and COLO829 CNV/LOH fixtures plus primary CNV tool validation
+accuracy_sv,Accuracy for SV and rearrangement features,accuracy,planned_not_run,template_only,not_approved,no,HG008 and COLO829 SV fixtures plus primary SV caller validation
+signature_model_accuracy,Signature and integrated HRD model accuracy,accuracy,planned_not_run,template_only,not_approved,no,SigProfiler/CHORD/HRDetect/scarHRD adapter validation and locked thresholds
+precision_repeatability,Repeatability precision,precision,not_started,template_only,not_approved,no,replicate fixture design and approved local/cloud execution
+reproducibility,Reproducibility across runs and environments,reproducibility,not_started,template_only,not_approved,no,container lock and reproducibility fixture execution
+lod,Limit of detection and tumor fraction sensitivity,lod,planned_not_run,template_only,not_approved,no,COLO829 purity series or approved dilution material execution
+reportable_range,Reportable range,reportable_range,not_locked,template_only,not_approved,no,known-answer validation and clinical boundary approval
+interferences_limitations,Interferences limitations and failure modes,limitations,scaffolded_not_validated,template_only,not_approved,no,validated failure-mode fixtures and reviewer policy
+qc_gates,QC gates and acceptance thresholds,qc,defined_not_validated,template_only,not_approved,no,known-answer benchmarks plus reviewer threshold approval
+report_template,Report template and no-call language,reporting,scaffolded_not_approved,template_only,not_approved,no,clinical reviewer and laboratory director approval
+change_control,Change control and versioning,change_control,not_started,template_only,not_approved,no,production release and validation governance process
+approval_signoff,Review approval and release signoff,signoff,not_started,template_only,not_approved,no,completed validation evidence and formal signoff

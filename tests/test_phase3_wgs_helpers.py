@@ -209,6 +209,93 @@ class Phase3WgsHelpersTest(unittest.TestCase):
         run.assert_not_called()
         self.assertEqual(depth, "chr1\t10\t2\t3\n")
 
+    def test_run_mutect2_call_reuses_current_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path in ["tumor.bam", "tumor.bam.bai", "normal.bam", "normal.bam.bai", "ref.fa", "intervals.bed"]:
+                utils.write_text(root / path, path)
+                os.utime(root / path, (1000, 1000))
+            for path in ["unfiltered.vcf.gz", "unfiltered.vcf.gz.tbi"]:
+                utils.write_text(root / path, path)
+                os.utime(root / path, (2000, 2000))
+            tumor = {
+                "output_bam": "tumor.bam",
+                "output_bai": "tumor.bam.bai",
+                "reference_path": "ref.fa",
+                "reference_id": "ref",
+                "read_pairs_per_end": "100",
+                "role": "tumor",
+                "pair_id": "pair",
+            }
+            normal = {
+                "output_bam": "normal.bam",
+                "output_bai": "normal.bam.bai",
+                "reference_id": "ref",
+                "read_pairs_per_end": "100",
+                "role": "normal",
+                "pair_id": "pair",
+            }
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "restore_cached_outputs") as restore,
+                patch.object(phase3, "run_command") as run,
+            ):
+                phase3.run_mutect2_call(tumor, normal, "intervals.bed", "unfiltered.vcf.gz", "f1r2.tar.gz", "ref", "")
+        restore.assert_not_called()
+        run.assert_not_called()
+
+    def test_run_filter_mutect_calls_reuses_current_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path in ["unfiltered.vcf.gz", "unfiltered.vcf.gz.tbi", "ref.fa"]:
+                utils.write_text(root / path, path)
+                os.utime(root / path, (1000, 1000))
+            for path in ["filtered.vcf.gz", "filtered.vcf.gz.tbi"]:
+                utils.write_text(root / path, path)
+                os.utime(root / path, (2000, 2000))
+            tumor = {
+                "java_path": "java",
+                "gatk_jar_path": "gatk.jar",
+                "reference_path": "ref.fa",
+                "reference_id": "ref",
+                "read_pairs_per_end": "100",
+                "role": "tumor",
+                "pair_id": "pair",
+            }
+            normal = {"reference_id": "ref", "read_pairs_per_end": "100", "role": "normal", "pair_id": "pair"}
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(phase3, "restore_cached_outputs") as restore,
+                patch.object(phase3, "run_command") as run,
+            ):
+                phase3.run_filter_mutect_calls(tumor, normal, "unfiltered.vcf.gz", "filtered.vcf.gz", "ref")
+        restore.assert_not_called()
+        run.assert_not_called()
+
+    def test_write_filtered_vcf_stats_uses_pair_cache(self):
+        tumor = {"reference_id": "ref", "read_pairs_per_end": "100", "role": "tumor", "pair_id": "pair"}
+        normal = {"reference_id": "ref", "read_pairs_per_end": "100", "role": "normal", "pair_id": "pair"}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path in ["filtered.vcf.gz", "filtered.vcf.gz.tbi"]:
+                utils.write_text(root / path, path)
+            with (
+                patch.object(phase3, "FORCE", False),
+                patch.object(phase3, "path_from_root", lambda relative: root / relative),
+                patch.object(fetch_phase3, "ASSET_CACHE_URI", "s3://cache/phase3_wgs"),
+                patch.object(phase3, "run_cached_command") as run,
+            ):
+                phase3.write_filtered_vcf_stats(tumor, normal, "filtered.vcf.gz", "results/phase3_wgs_smoke/logs/ref.stats.txt")
+        run.assert_called_once_with(
+            "bcftools stats 'filtered.vcf.gz'",
+            "results/phase3_wgs_smoke/logs/ref.stats.txt",
+            ["filtered.vcf.gz", "filtered.vcf.gz.tbi"],
+            "s3://cache/phase3_wgs/validation/ref/100/pair/pair/filter_mutect_calls/results__phase3_wgs_smoke__logs__ref.stats.txt",
+            "pair.filter_mutect_calls.stats",
+        )
+
     def test_build_sbs96_matrix_reuses_current_outputs(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -32,11 +32,17 @@ class CliParityTest(unittest.TestCase):
             "smoke:raw",
             "stage:diana-raw",
             "validate:phase3-wgs",
+            "verify:clinical-assay-boundaries",
+            "verify:clinical-validation-packet",
+            "verify:cnv-loh-readiness",
             "verify:diana-raw",
+            "verify:hrd-interpretation-readiness",
+            "verify:known-answer-readiness",
             "verify:orthogonal",
             "verify:outputs",
             "verify:phase3-outputs",
             "verify:plan",
+            "verify:sv-caller-readiness",
         }
         commands = _load_commands()
         self.assertEqual(expected, set(commands))

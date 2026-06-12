@@ -11,6 +11,13 @@ def command_names(steps):
     return [step.command for step in steps if step.kind in {"python", "optional_python"}]
 
 
+def write_post_validation_context(root: Path) -> None:
+    for artifact in nf.POST_VALIDATION_CONTEXT_ARTIFACTS:
+        path = root / artifact
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}\n" if artifact.endswith(".json") else "header\n", encoding="utf-8")
+
+
 class NextflowProcessTest(unittest.TestCase):
     def test_quick_plan_keeps_nonfatal_full_output_verifier(self):
         steps = nf.workflow_steps(nf.ProcessConfig(stage="quick"))
@@ -40,6 +47,46 @@ class NextflowProcessTest(unittest.TestCase):
         self.assertIn("benchmark:full-wes", command_names(steps))
         self.assertIn("verify:outputs", command_names(steps))
         self.assertNotIn("verify:phase3-outputs", command_names(steps))
+
+    def test_phase3_post_validation_continues_without_rerunning_validation(self):
+        config = nf.ProcessConfig(stage="phase3_post_validation", phase3_reads="full", phase3_include_wes=False)
+        steps = nf.workflow_steps(config)
+        commands = command_names(steps)
+        self.assertEqual(commands[0], "verify:phase3-outputs")
+        self.assertNotIn("validate:phase3-wgs", commands)
+        self.assertEqual(commands[-1], "verify:phase3-outputs")
+        self.assertIn("build:packet", commands)
+
+    def test_phase3_post_validation_uses_previous_workspace(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            previous = root / "previous"
+            source = root / "source"
+            workspace = root / "workspace"
+            (previous / "results/phase3_wgs_smoke").mkdir(parents=True)
+            (previous / "results/phase3_wgs_smoke/phase3_wgs_summary.json").write_text('{"status":"passed"}\n', encoding="utf-8")
+            write_post_validation_context(source)
+
+            config = nf.ProcessConfig(stage="phase3_post_validation", workspace=workspace, previous_workspace=previous, source_dir=source)
+            prepared = nf.prepare_workspace(config)
+
+            self.assertEqual(prepared, workspace.resolve())
+            self.assertEqual(
+                (workspace / "results/phase3_wgs_smoke/phase3_wgs_summary.json").read_text(encoding="utf-8"),
+                '{"status":"passed"}\n',
+            )
+            self.assertTrue((workspace / "data/processed/catalog/cbioportal_tcga_brca_summary.json").is_file())
+
+    def test_phase3_post_validation_fails_when_context_is_missing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            previous = root / "previous"
+            workspace = root / "workspace"
+            (previous / "results/phase3_wgs_smoke").mkdir(parents=True)
+            config = nf.ProcessConfig(stage="phase3_post_validation", workspace=workspace, previous_workspace=previous)
+
+            with self.assertRaisesRegex(RuntimeError, "requires staged cBioPortal/Xena/GDC context artifacts"):
+                nf.prepare_workspace(config)
 
     def test_phase3_env_preserves_inherited_thread_overrides(self):
         config = nf.ProcessConfig(

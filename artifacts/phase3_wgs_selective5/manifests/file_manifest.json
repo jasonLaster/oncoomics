@@ -1,0 +1,37 @@
+{
+  "fetchedAt": "2026-06-07T06:34:32.220Z",
+  "generatedBy": "py/src/diana_omics/commands/fetch_phase1.py",
+  "sources": [
+    {
+      "id": "cbioportal-brca-pan-cancer",
+      "studyId": "brca_tcga_pan_can_atlas_2018",
+      "access": "open",
+      "files": [
+        "data/raw/cbioportal/study.json",
+        "data/raw/cbioportal/molecular_profiles.json",
+        "data/raw/cbioportal/sample_lists.json",
+        "data/raw/cbioportal/sample_ids_by_list.json",
+        "data/raw/cbioportal/genes.json",
+        "data/raw/cbioportal/mutations_hrr.json",
+        "data/raw/cbioportal/cna_hrr_gistic.json",
+        "data/raw/cbioportal/expression_marker_genes.json",
+        "data/raw/cbioportal/clinical_sample_selected.json",
+        "data/raw/cbioportal/clinical_patient_selected.json"
+      ]
+    },
+    {
+      "id": "gdc-tcga-brca-open-catalog",
+      "access": "open metadata only",
+      "files": [
+        "data/raw/gdc/tcga_brca_open_files_first100.json"
+      ]
+    },
+    {
+      "id": "ucsc-xena-tcga-brca-clinical",
+      "access": "open",
+      "files": [
+        "data/raw/xena/brca_clinical_matrix.tsv"
+      ]
+    }
+  ]
+}

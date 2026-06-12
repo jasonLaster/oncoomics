@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-06-12T17:32:20.010Z",
+  "selectedSampleCount": 28,
+  "availableCandidatesByCategory": {
+    "background": 701,
+    "ambiguous_control": 104,
+    "negative_control": 169,
+    "mechanistic_control": 8,
+    "positive_control": 12
+  },
+  "selectedByCategory": {
+    "ambiguous_control": 8,
+    "mechanistic_control": 4,
+    "negative_control": 8,
+    "positive_control": 8
+  },
+  "validationRules": [
+    "Positive controls require damaging BRCA1/2 event plus GISTIC copy-loss proxy and high fraction genome altered.",
+    "Negative controls require no fetched HRR mutation, neutral BRCA1/2 GISTIC calls, low fraction genome altered, and modest mutation count.",
+    "Ambiguous controls are explicitly allowed and should not be forced into binary HRD labels.",
+    "No sample is treated as WGS-signature validated in this phase-1 panel."
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-06-07T06:35:42.374Z",
+  "status": "passed",
+  "caller": "GATK Mutect2 + FilterMutectCalls",
+  "referenceId": "ucsc_hg38_analysis_set_full",
+  "readPairsPerEnd": 50000,
+  "activeIntervalCount": 500,
+  "comparisonStatus": "not_assessed_in_smoke",
+  "boundary": "Production-style somatic smoke only; not full-depth WES/WGS, not production-resource-filtered clinical analysis, and not HRD signature evidence."
+}

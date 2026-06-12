@@ -1,0 +1,64 @@
+sample_id,failure_mode,severity,detail
+TCGA-3C-AALI-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-3C-AALI-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-3C-AALI-01,second_hit_not_proven,sample_specific_limitation,CHEK2 event lacks GISTIC copy-loss proxy in this phase-1 evidence table.
+TCGA-A1-A0SO-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-A1-A0SO-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-A1-A0SO-01,second_hit_not_proven,sample_specific_limitation,BRCA1 event lacks GISTIC copy-loss proxy in this phase-1 evidence table.
+TCGA-A2-A0T0-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-A2-A0T0-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-A2-A0T0-01,second_hit_not_proven,sample_specific_limitation,BRCA2 event lacks GISTIC copy-loss proxy in this phase-1 evidence table.
+TCGA-A7-A26H-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-A7-A26H-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-A7-A26H-01,second_hit_not_proven,sample_specific_limitation,BRCA1 event lacks GISTIC copy-loss proxy in this phase-1 evidence table.
+TCGA-A8-A085-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-A8-A085-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-B6-A0X1-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-B6-A0X1-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-B6-A0X1-01,second_hit_not_proven,sample_specific_limitation,BRCA1 event lacks GISTIC copy-loss proxy in this phase-1 evidence table.
+TCGA-D8-A1XL-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-D8-A1XL-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-D8-A1XL-01,second_hit_not_proven,sample_specific_limitation,BRCA2 event lacks GISTIC copy-loss proxy in this phase-1 evidence table.
+TCGA-LL-A8F5-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-LL-A8F5-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-LL-A8F5-01,second_hit_not_proven,sample_specific_limitation,BRCA1 event lacks GISTIC copy-loss proxy in this phase-1 evidence table.
+TCGA-A8-A06R-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-A8-A06R-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-AO-A129-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-AO-A129-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-AR-A255-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-AR-A255-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-BH-A203-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-BH-A203-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-A2-A0EP-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-A2-A0EP-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-AC-A2FK-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-AC-A2FK-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-AO-A12H-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-AO-A12H-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-AO-A1KO-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-AO-A1KO-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-AR-A2LH-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-AR-A2LH-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-AR-A2LQ-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-AR-A2LQ-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-BH-A42U-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-BH-A42U-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-E2-A1IK-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-E2-A1IK-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-A2-A25B-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-A2-A25B-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-A7-A6VW-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-A7-A6VW-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-A8-A06X-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-A8-A06X-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-A8-A08L-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-A8-A08L-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-AR-A0U4-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-AR-A0U4-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-BH-A0WA-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-BH-A0WA-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-D8-A1JP-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-D8-A1JP-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.
+TCGA-E9-A1NC-01,no_wgs_signature_inputs,expected_phase1_limitation,"SBS3, rearrangement signatures, CHORD, and HRDetect-style outputs are not assessable from this processed cBioPortal phase-1 data alone."
+TCGA-E9-A1NC-01,no_allele_specific_purity_ploidy,expected_phase1_limitation,GISTIC copy loss is only a second-hit proxy; biallelic status needs allele-specific copy number and purity/ploidy.

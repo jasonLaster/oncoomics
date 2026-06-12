@@ -32,11 +32,17 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.run_raw_smoke import main as run_raw_smoke
     from .commands.run_sra_benchmark import main as run_sra_benchmark
     from .commands.stage_diana_raw_analysis import main as stage_diana_raw_analysis
+    from .commands.verify_clinical_assay_boundaries import main as verify_clinical_assay_boundaries
+    from .commands.verify_clinical_validation_packet import main as verify_clinical_validation_packet
+    from .commands.verify_cnv_loh_readiness import main as verify_cnv_loh_readiness
     from .commands.verify_diana_raw import main as verify_diana_raw
+    from .commands.verify_hrd_interpretation_readiness import main as verify_hrd_interpretation_readiness
+    from .commands.verify_known_answer_readiness import main as verify_known_answer_readiness
     from .commands.verify_orthogonal_validation import main as verify_orthogonal_validation
     from .commands.verify_outputs import main as verify_outputs
     from .commands.verify_outputs import verify_phase3_outputs
     from .commands.verify_plan import main as verify_plan
+    from .commands.verify_sv_caller_readiness import main as verify_sv_caller_readiness
 
     return {
         "analyze:hrd": analyze_hrd,
@@ -64,11 +70,17 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "smoke:production-somatic": run_production_somatic_smoke,
         "smoke:raw": run_raw_smoke,
         "stage:diana-raw": stage_diana_raw_analysis,
+        "verify:clinical-assay-boundaries": verify_clinical_assay_boundaries,
+        "verify:clinical-validation-packet": verify_clinical_validation_packet,
+        "verify:cnv-loh-readiness": verify_cnv_loh_readiness,
         "verify:diana-raw": verify_diana_raw,
+        "verify:hrd-interpretation-readiness": verify_hrd_interpretation_readiness,
+        "verify:known-answer-readiness": verify_known_answer_readiness,
         "verify:orthogonal": verify_orthogonal_validation,
         "verify:outputs": verify_outputs,
         "verify:phase3-outputs": verify_phase3_outputs,
         "verify:plan": verify_plan,
+        "verify:sv-caller-readiness": verify_sv_caller_readiness,
     }
 
 

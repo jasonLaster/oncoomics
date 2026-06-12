@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-06-12T17:22:24.935Z",
+  "status": "passed",
+  "rows": [
+    {
+      "tool": "SigProfilerAssignment",
+      "evidence_input": "results/phase3_wgs_smoke/wgs_sbs96_matrix.csv",
+      "local_phase3_output": "results/phase3_wgs_smoke/signature_assignment_summary.csv",
+      "real_output_status": "real_sbs96_matrix_output",
+      "interpretability_status": "input_ready_threshold_met",
+      "caveat": "Classification is deferred for low mutation count; the matrix is a real VCF-derived output, not a proxy."
+    },
+    {
+      "tool": "scarHRD",
+      "evidence_input": "results/phase3_wgs_smoke/coverage_cnv_bins.csv",
+      "local_phase3_output": "results/phase3_wgs_smoke/coverage_cnv_summary.csv",
+      "real_output_status": "real_coverage_cnv_bin_output",
+      "interpretability_status": "not_assessable_without_allele_specific_segments",
+      "caveat": "scarHRD needs allele-specific segmented CN calls; this run validates WGS coverage-bin plumbing only."
+    },
+    {
+      "tool": "CHORD",
+      "evidence_input": "results/phase3_wgs_smoke/sv_evidence_summary.csv",
+      "local_phase3_output": "results/phase3_wgs_smoke/sv_evidence_summary.csv",
+      "real_output_status": "real_bam_sv_evidence_output",
+      "interpretability_status": "not_assessable_requires_validated_sv_caller_vcf",
+      "caveat": "CHORD-style interpretation needs full-depth SNV/indel/SV/CNV feature inputs; this validates the feature lanes."
+    }
+  ]
+}

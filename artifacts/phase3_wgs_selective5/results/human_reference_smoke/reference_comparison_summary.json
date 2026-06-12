@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-06-07T06:35:08.815Z",
+  "status": "passed",
+  "comparisons": [
+    {
+      "run_accession": "SRR7890851",
+      "sample": "HCC1395BL",
+      "role": "normal",
+      "tested_builds": "hg19;hg38",
+      "passed_builds": "hg19;hg38",
+      "mapped_alignment_range": "743-751",
+      "status": "passed",
+      "caveat": "Build comparison validates that the same HCC1395 FASTQ subset can align to two partial human references; it is not build-liftover validation."
+    },
+    {
+      "run_accession": "SRR7890850",
+      "sample": "HCC1395",
+      "role": "tumor",
+      "tested_builds": "hg19;hg38",
+      "passed_builds": "hg19;hg38",
+      "mapped_alignment_range": "698-701",
+      "status": "passed",
+      "caveat": "Build comparison validates that the same HCC1395 FASTQ subset can align to two partial human references; it is not build-liftover validation."
+    }
+  ]
+}

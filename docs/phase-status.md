@@ -9,7 +9,7 @@ This file is the current operational status. It intentionally distinguishes pass
 | Python rewrite | Passed | Workflow logic lives in `src/diana_omics`; JS/TS scripts were removed. |
 | Phase 1 processed HRD/RNA panel | Passed | Public processed data generate review tables for 28 samples. |
 | Phase 2 raw WES benchmark | Passed | Full SEQC2/HCC1395 WES FASTQs, alignment, GATK Mutect2, and truth overlap run. |
-| Phase 3 WGS validation | In progress for full-source run | Full SEQC2/HCC1395 WGS FASTQs are the acceptance gate; bounded subsets are developer checks only. |
+| Phase 3 WGS validation | Passed for full-source public WGS | Full SEQC2/HCC1395 WGS FASTQs passed the acceptance gate; bounded subsets remain developer checks only. |
 | Diana raw-data intake | Ready, waiting | Template and strict validation exist; actual Diana files are not present. |
 | Orthogonal known-answer WGS validation | Partially implemented | SEQC2/HCC1395 public WES and WGS examples are verified; HG008 and COLO829 remain planned known-answer gates. |
 | Clinical interpretation | Blocked | Requires Diana files, full-depth analysis policy, and reviewer/clinical sign-off. |
@@ -31,9 +31,11 @@ Important values:
 - Full WES exact PASS truth matches: `1122`.
 - Full WES exact PASS recall: `0.8585`.
 - Full WES exact PASS precision: `0.9842`.
-- Phase 3 WGS validation status: pending full-source rerun in the current pass.
-- Phase 3 WGS completion requires `readPairsMode=full` and `fullSourceFastqs=true`.
-- Phase 3 WGS ready for Phase 4 only after the full-source gate passes.
+- Phase 3 WGS validation status: `passed`.
+- Phase 3 WGS completion evidence: `readPairsMode=full`, `fullSourceFastqs=true`, and `readPairsPerEnd=568040077`.
+- Phase 3 WGS truth overlap: `mutectIntervalCount=295`, `passRecordsInIntervals=273`, and `exactPassTruthMatches=268`.
+- Phase 3 WGS feature outputs: `coverageCnvBins=631`, `sbs96UsableSnvRecords=265`, and `svEvidenceStatus=passed`.
+- Phase 3 WGS ready for Phase 4 when Diana raw arrives: `true`.
 - Orthogonal public examples verified: `2` implemented, `5` planned or request-only.
 - Diana raw intake status: `template_ready`.
 - Diana raw intake ready to interpret: `false`.
@@ -93,20 +95,20 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 
 ## Phase 3
 
-Status: in progress for full-source public WGS validation.
+Status: complete for full-source public WGS validation.
 
 What passed:
 
-- Full-source WGS FASTQ fetch and validation are the active gate.
+- Full-source WGS FASTQ fetch and validation passed.
 - Parallel alignment path is configured.
-- Bounded developer subsets have exercised BAM, Mutect2, coverage-CNV, SBS96, SV evidence, and HRD tool readiness outputs.
+- The full-source run exercised BAM validation, Mutect2, coverage-CNV, SBS96, SV evidence, and HRD tool readiness outputs.
 
 Known risks:
 
 - Bounded WGS subsets can prove mechanics but do not satisfy Phase 3 completion.
 - Old bounded BAM/VCF outputs must not be reused for the full-source gate; the runner checks indexed alignment counts and output timestamps before reusing expensive artifacts.
 - Current CNV/SV/signature outputs are feature evidence, not final clinical-grade callers.
-- Truth-overlap status must be read from the full-source `phase3_wgs_summary.json` after the run.
+- The SEQC2/HCC1395 public WGS pass proves WGS-scale mechanics, not a clinical HRD assay.
 
 Verifier:
 

@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-06-07T06:35:42.374Z",
+  "status": "passed",
+  "rows": [
+    {
+      "caller": "GATK Mutect2 + FilterMutectCalls",
+      "reference_id": "ucsc_hg38_analysis_set_full",
+      "active_interval_count": 500,
+      "output_vcf": "data/raw/smoke/seqc2_hcc1395_production_somatic_smoke/ucsc_hg38_analysis_set_full/vcf/mutect2.filtered.vcf.gz",
+      "records": 0,
+      "pass_records": 0,
+      "samples": "HCC1395;HCC1395BL",
+      "status": "passed",
+      "caveat": "Downsampled public WES smoke; validates execution and VCF contracts, not sensitivity or clinical interpretation."
+    }
+  ]
+}

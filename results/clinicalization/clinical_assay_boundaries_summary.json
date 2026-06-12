@@ -1,0 +1,141 @@
+{
+  "generatedAt": "2026-06-12T19:14:19.268Z",
+  "status": "passed",
+  "errors": [],
+  "summary": {
+    "status": "passed",
+    "boundary_count": 12,
+    "qc_gate_count": 6,
+    "report_language_count": 2,
+    "clinical_reporting_allowed": "no",
+    "assay_claim_status": "candidate_definition_only",
+    "reportable_range_locked": "no",
+    "clinical_signoff_status": "not_approved",
+    "known_answer_ready_for_clinical_interpretation": "no",
+    "locked_threshold_count": 0,
+    "next_step": "Prepare the CLIA/CAP validation packet template for accuracy, precision, LoD, reproducibility, reportable range, failure modes, and change control.",
+    "error_count": 0
+  },
+  "rows": [
+    {
+      "boundary_id": "intended_use_candidate",
+      "boundary_type": "assay_claim",
+      "current_status": "candidate_definition_only",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "This assay candidate is under validation and is not ready for clinical interpretation.",
+      "prohibited_language": "Clinically diagnostic HRD positive; PARP inhibitor eligible; treatment recommendation"
+    },
+    {
+      "boundary_id": "reportable_range_wgs_hrd",
+      "boundary_type": "reportable_range",
+      "current_status": "not_locked",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "no",
+      "permitted_report_language": "Reportable range is not established; unsupported feature classes must be no-called.",
+      "prohibited_language": "Genome-wide HRD score reported as validated; companion diagnostic equivalent"
+    },
+    {
+      "boundary_id": "qc_raw_fastq",
+      "boundary_type": "qc_gate",
+      "current_status": "gate_defined_not_validated",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "Raw-data QC must pass before interpretation is attempted.",
+      "prohibited_language": "Proceed despite missing raw provenance or failed sample pairing"
+    },
+    {
+      "boundary_id": "qc_alignment_bam",
+      "boundary_type": "qc_gate",
+      "current_status": "gate_defined_not_validated",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "Alignment and coverage QC must pass before downstream feature interpretation.",
+      "prohibited_language": "Interpret with failed BAM validation or reference-build mismatch"
+    },
+    {
+      "boundary_id": "qc_small_variant",
+      "boundary_type": "qc_gate",
+      "current_status": "gate_defined_not_validated",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "Small-variant feature extraction is not clinically locked.",
+      "prohibited_language": "Validated pathogenic small-variant result from this candidate pipeline"
+    },
+    {
+      "boundary_id": "qc_cnv_loh",
+      "boundary_type": "qc_gate",
+      "current_status": "gate_defined_not_validated",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "CNV/LOH and scarHRD must be no-called until allele-specific segments are validated.",
+      "prohibited_language": "scarHRD score or biallelic loss call from coverage bins alone"
+    },
+    {
+      "boundary_id": "qc_sv",
+      "boundary_type": "qc_gate",
+      "current_status": "gate_defined_not_validated",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "SV signatures and CHORD/HRDetect SV features must be no-called until SV caller validation passes.",
+      "prohibited_language": "Validated SV signature or CHORD call from BAM evidence counters alone"
+    },
+    {
+      "boundary_id": "qc_signature",
+      "boundary_type": "qc_gate",
+      "current_status": "gate_defined_not_validated",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "Signature interpretation must be no-called when mutation count or reconstruction QC is below locked thresholds.",
+      "prohibited_language": "Validated SBS3 or HRD signature call before threshold validation"
+    },
+    {
+      "boundary_id": "report_no_call_language",
+      "boundary_type": "report_language",
+      "current_status": "language_defined_not_approved",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "No call: required validated input or QC threshold is missing; no clinical conclusion should be drawn.",
+      "prohibited_language": "Negative for HRD because feature was not assessed"
+    },
+    {
+      "boundary_id": "report_candidate_language",
+      "boundary_type": "report_language",
+      "current_status": "language_defined_not_approved",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "Research candidate evidence only; clinical interpretation is not established.",
+      "prohibited_language": "HRD positive; HRD deficient; clinically actionable"
+    },
+    {
+      "boundary_id": "prohibit_treatment_recommendation",
+      "boundary_type": "exclusion",
+      "current_status": "active_exclusion",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "Treatment decisions require clinician-owned review and validated clinical assay context.",
+      "prohibited_language": "Eligible for PARP inhibitor; recommend platinum; companion diagnostic result"
+    },
+    {
+      "boundary_id": "reviewer_signoff",
+      "boundary_type": "signoff",
+      "current_status": "not_signed_off",
+      "signoff_status": "not_approved",
+      "clinical_reporting_allowed": "no",
+      "reportable_range_locked": "",
+      "permitted_report_language": "Not signed off for clinical reporting.",
+      "prohibited_language": "Approved clinical report"
+    }
+  ]
+}

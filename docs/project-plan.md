@@ -91,7 +91,7 @@ This is WES small-variant readiness, not full WGS HRD interpretation.
 
 ## Phase 3: Full Public WGS Validation
 
-Status: in progress for full-source WGS validation.
+Status: complete for full-source public WGS validation.
 
 Purpose:
 
@@ -108,7 +108,9 @@ Primary artifacts:
 
 Latest evidence:
 
-- Completion now requires `readPairsMode=full`.
+- Completion evidence: `status=passed`, `readPairsMode=full`, `fullSourceFastqs=true`, and `readPairsPerEnd=568040077`.
+- Small-variant truth overlap: `mutectIntervalCount=295`, `passRecordsInIntervals=273`, and `exactPassTruthMatches=268`.
+- Feature outputs: `coverageCnvBins=631`, `sbs96UsableSnvRecords=265`, and `svEvidenceStatus=passed`.
 - Bounded subsets are developer checks and fail final verification.
 - Full-run values are recorded in `results/phase3_wgs_smoke/phase3_wgs_summary.json`.
 

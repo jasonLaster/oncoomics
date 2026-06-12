@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-06-07T06:34:58.743Z",
+  "source": "https://trace.ncbi.nlm.nih.gov/Traces/sra-db-be/runinfo?acc=SRR7890850,SRR7890851,SRR7890945,SRR7890963,SRR7890824,SRR7890827,SRR7890905,SRR7890943",
+  "study": "SRP162370",
+  "truthSetRoot": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/",
+  "pairCount": 4,
+  "runCount": 8,
+  "allPublic": true,
+  "phases": [
+    "phase-2a-local-smoke",
+    "phase-2b-ffpe-stress",
+    "phase-2c-wgs-full"
+  ],
+  "boundaries": [
+    "These are representative raw-data candidates, not Diana data.",
+    "SRA paths may point to SRA Lite objects; verify quality handling before sensitivity benchmarking.",
+    "Use small regional/downsampled smoke runs locally before full WGS.",
+    "Use SEQC2 truth-set FTP outputs for caller comparison when full raw calling is attempted."
+  ]
+}

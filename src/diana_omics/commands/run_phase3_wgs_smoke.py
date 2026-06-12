@@ -614,6 +614,83 @@ def truth_depth_text(tumor: dict[str, str], normal: dict[str, str], truth_positi
     return read_text(path_from_root(output_path))
 
 
+def run_mutect2_call(
+    tumor: dict[str, str],
+    normal: dict[str, str],
+    mutect_intervals: str,
+    unfiltered_vcf: str,
+    f1r2_path: str,
+    reference_id: str,
+    pon_part: str,
+) -> None:
+    outputs = [unfiltered_vcf, f"{unfiltered_vcf}.tbi"]
+    inputs = [
+        tumor["output_bam"],
+        tumor["output_bai"],
+        normal["output_bam"],
+        normal["output_bai"],
+        tumor["reference_path"],
+        mutect_intervals,
+    ]
+    cache_uris = {output: pair_validation_cache_uri(tumor, normal, "mutect2", output) for output in outputs}
+    if not FORCE and (existing_output_current(outputs, inputs) or restore_cached_outputs(outputs, cache_uris, inputs, "pair.mutect2")):
+        return
+    run_command(
+        " ".join(
+            [
+                f"{quote_shell_arg(tumor['java_path'])} -Xmx10g -jar {quote_shell_arg(tumor['gatk_jar_path'])} Mutect2",
+                f"-R {quote_shell_arg(tumor['reference_path'])}",
+                f"-L {quote_shell_arg(mutect_intervals)}",
+                f"-I {quote_shell_arg(tumor['output_bam'])} -tumor {quote_shell_arg(tumor['sample'])}",
+                f"-I {quote_shell_arg(normal['output_bam'])} -normal {quote_shell_arg(normal['sample'])}",
+                pon_part,
+                f"--native-pair-hmm-threads {GATK_THREADS}",
+                f"--f1r2-tar-gz {quote_shell_arg(f1r2_path)}",
+                f"-O {quote_shell_arg(unfiltered_vcf)}",
+            ]
+        ),
+        f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.mutect2.log",
+    )
+    publish_cached_outputs(outputs, cache_uris, "pair.mutect2")
+    if path_from_root(f1r2_path).exists():
+        publish_cached_output(f1r2_path, pair_validation_cache_uri(tumor, normal, "mutect2", f1r2_path), "pair.mutect2.f1r2")
+
+
+def run_filter_mutect_calls(
+    tumor: dict[str, str],
+    normal: dict[str, str],
+    unfiltered_vcf: str,
+    filtered_vcf: str,
+    reference_id: str,
+) -> None:
+    outputs = [filtered_vcf, f"{filtered_vcf}.tbi"]
+    inputs = [unfiltered_vcf, f"{unfiltered_vcf}.tbi", tumor["reference_path"]]
+    cache_uris = {output: pair_validation_cache_uri(tumor, normal, "filter_mutect_calls", output) for output in outputs}
+    if not FORCE and (existing_output_current(outputs, inputs) or restore_cached_outputs(outputs, cache_uris, inputs, "pair.filter_mutect_calls")):
+        return
+    run_command(
+        f"{quote_shell_arg(tumor['java_path'])} -Xmx6g -jar {quote_shell_arg(tumor['gatk_jar_path'])} "
+        f"FilterMutectCalls -R {quote_shell_arg(tumor['reference_path'])} -V {quote_shell_arg(unfiltered_vcf)} -O {quote_shell_arg(filtered_vcf)}",
+        f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filter_mutect_calls.log",
+    )
+    run_command(
+        f"bcftools index -t -f {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filtered_vcf_index.log"
+    )
+    publish_cached_outputs(outputs, cache_uris, "pair.filter_mutect_calls")
+
+
+def write_filtered_vcf_stats(tumor: dict[str, str], normal: dict[str, str], filtered_vcf: str, filtered_vcf_stats_log: str) -> None:
+    if not FORCE and existing_output_current([filtered_vcf_stats_log], [filtered_vcf, f"{filtered_vcf}.tbi"]):
+        return
+    run_cached_command(
+        f"bcftools stats {quote_shell_arg(filtered_vcf)}",
+        filtered_vcf_stats_log,
+        [filtered_vcf, f"{filtered_vcf}.tbi"],
+        pair_validation_cache_uri(tumor, normal, "filter_mutect_calls", filtered_vcf_stats_log),
+        "pair.filter_mutect_calls.stats",
+    )
+
+
 def read_reference_order(fai_path: str) -> dict[str, int]:
     order: dict[str, int] = {}
     for index, line in enumerate(read_text(path_from_root(fai_path)).splitlines()):
@@ -1263,37 +1340,10 @@ def main() -> None:
         if file_non_empty(tumor["mutect2_panel_of_normals_path"])
         else ""
     )
-    if FORCE or not existing_output_current(
-        [unfiltered_vcf, f"{unfiltered_vcf}.tbi"],
-        [tumor["output_bam"], normal["output_bam"], mutect_intervals],
-    ):
-        run_command(
-            " ".join(
-                [
-                    f"{quote_shell_arg(tumor['java_path'])} -Xmx10g -jar {quote_shell_arg(tumor['gatk_jar_path'])} Mutect2",
-                    f"-R {quote_shell_arg(tumor['reference_path'])}",
-                    f"-L {quote_shell_arg(mutect_intervals)}",
-                    f"-I {quote_shell_arg(tumor['output_bam'])} -tumor {quote_shell_arg(tumor['sample'])}",
-                    f"-I {quote_shell_arg(normal['output_bam'])} -normal {quote_shell_arg(normal['sample'])}",
-                    pon_part,
-                    f"--native-pair-hmm-threads {GATK_THREADS}",
-                    f"--f1r2-tar-gz {quote_shell_arg(f1r2_path)}",
-                    f"-O {quote_shell_arg(unfiltered_vcf)}",
-                ]
-            ),
-            f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.mutect2.log",
-        )
-    if FORCE or not existing_output_current([filtered_vcf, f"{filtered_vcf}.tbi"], [unfiltered_vcf]):
-        run_command(
-            f"{quote_shell_arg(tumor['java_path'])} -Xmx6g -jar {quote_shell_arg(tumor['gatk_jar_path'])} FilterMutectCalls -R {quote_shell_arg(tumor['reference_path'])} -V {quote_shell_arg(unfiltered_vcf)} -O {quote_shell_arg(filtered_vcf)}",
-            f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filter_mutect_calls.log",
-        )
-        run_command(
-            f"bcftools index -t -f {quote_shell_arg(filtered_vcf)}", f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filtered_vcf_index.log"
-        )
+    run_mutect2_call(tumor, normal, mutect_intervals, unfiltered_vcf, f1r2_path, reference_id, pon_part)
+    run_filter_mutect_calls(tumor, normal, unfiltered_vcf, filtered_vcf, reference_id)
     filtered_vcf_stats_log = f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.filtered_vcf_stats.txt"
-    if FORCE or not existing_output_current([filtered_vcf_stats_log], [filtered_vcf]):
-        run_command(f"bcftools stats {quote_shell_arg(filtered_vcf)}", filtered_vcf_stats_log)
+    write_filtered_vcf_stats(tumor, normal, filtered_vcf, filtered_vcf_stats_log)
 
     filtered_samples = parse_vcf_sample_names(filtered_vcf)
     normalized_filtered_vcf = normalize_vcf_for_comparison(

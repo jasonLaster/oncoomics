@@ -1,0 +1,92 @@
+{
+  "generatedAt": "2026-06-12T19:02:36.677Z",
+  "status": "passed",
+  "errors": [],
+  "summary": {
+    "status": "passed",
+    "fixture_count": 6,
+    "dataset_count": 3,
+    "planned_fixture_count": 6,
+    "locked_threshold_count": 0,
+    "ready_for_clinical_interpretation": "no",
+    "phase3_baseline_status": "passed",
+    "phase3_complete": true,
+    "hrd_interpretation_ready_for_clinical_interpretation": "no",
+    "next_step": "Define the clinical assay claim, reportable range, QC gates, and report language boundaries before any benchmark thresholds are locked.",
+    "error_count": 0
+  },
+  "rows": [
+    {
+      "fixture_id": "hg008_small_variants",
+      "dataset_id": "giab_hg008",
+      "sample_pair": "HG008-T/HG008-N-D",
+      "truth_scope": "small_variant_snv_indel",
+      "clinicalization_gate": "small_variant_feature_validation",
+      "fixture_status": "planned_not_run",
+      "threshold_status": "not_locked",
+      "required_output": "small-variant recall precision and reference-compatibility summary",
+      "clinical_interpretation_allowed": "no",
+      "next_action": "Implement fetch and benchmark commands only after runtime/cost approval."
+    },
+    {
+      "fixture_id": "hg008_sv_cnv",
+      "dataset_id": "giab_hg008",
+      "sample_pair": "HG008-T/HG008-N-D",
+      "truth_scope": "sv_cnv",
+      "clinicalization_gate": "sv_cnv_feature_validation",
+      "fixture_status": "planned_not_run",
+      "threshold_status": "not_locked",
+      "required_output": "SV reciprocal-overlap and CNV reciprocal-overlap summaries",
+      "clinical_interpretation_allowed": "no",
+      "next_action": "Implement fetch and benchmark commands only after runtime/cost approval."
+    },
+    {
+      "fixture_id": "hg008_signature_qc",
+      "dataset_id": "giab_hg008",
+      "sample_pair": "HG008-T/HG008-N-D",
+      "truth_scope": "signature_qc",
+      "clinicalization_gate": "signature_adapter_validation",
+      "fixture_status": "planned_not_run",
+      "threshold_status": "not_locked",
+      "required_output": "SBS matrix QC and no-call/threshold decision summary",
+      "clinical_interpretation_allowed": "no",
+      "next_action": "Implement fetch and benchmark commands only after runtime/cost approval."
+    },
+    {
+      "fixture_id": "colo829_driver_signature",
+      "dataset_id": "colo829",
+      "sample_pair": "COLO829/COLO829BL",
+      "truth_scope": "driver_signature_guardrail",
+      "clinicalization_gate": "negative_guardrail_validation",
+      "fixture_status": "planned_not_run",
+      "threshold_status": "not_locked",
+      "required_output": "driver recovery and UV-signature guardrail summary",
+      "clinical_interpretation_allowed": "no",
+      "next_action": "Implement fetch and benchmark commands only after runtime/cost approval."
+    },
+    {
+      "fixture_id": "colo829_sv_cna",
+      "dataset_id": "colo829",
+      "sample_pair": "COLO829/COLO829BL",
+      "truth_scope": "sv_cna",
+      "clinicalization_gate": "sv_cnv_feature_validation",
+      "fixture_status": "planned_not_run",
+      "threshold_status": "not_locked",
+      "required_output": "SV/CNA reciprocal-overlap summary",
+      "clinical_interpretation_allowed": "no",
+      "next_action": "Implement fetch and benchmark commands only after runtime/cost approval."
+    },
+    {
+      "fixture_id": "colo829_purity_series",
+      "dataset_id": "colo829_purity_series",
+      "sample_pair": "COLO829 purity dilution series",
+      "truth_scope": "dilution_sensitivity",
+      "clinicalization_gate": "limit_of_detection_stress_validation",
+      "fixture_status": "planned_not_run",
+      "threshold_status": "not_locked",
+      "required_output": "purity-level recall table and monotonicity summary",
+      "clinical_interpretation_allowed": "no",
+      "next_action": "Implement fetch and benchmark commands only after runtime/cost approval."
+    }
+  ]
+}

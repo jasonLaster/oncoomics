@@ -27,6 +27,18 @@ DOWNSTREAM_REUSABLE_ARTIFACTS = (
     "results/phase3_wgs_smoke/sv_evidence_summary.csv",
     "results/phase3_wgs_smoke/sv_evidence_summary.json",
 )
+POST_VALIDATION_CONTEXT_ARTIFACTS = (
+    "data/raw/cbioportal/sample_ids_by_list.json",
+    "data/raw/cbioportal/mutations_hrr.json",
+    "data/raw/cbioportal/cna_hrr_gistic.json",
+    "data/raw/cbioportal/expression_marker_genes.json",
+    "data/raw/cbioportal/clinical_sample_selected.json",
+    "data/raw/cbioportal/clinical_patient_selected.json",
+    "data/raw/xena/brca_clinical_matrix.tsv",
+    "data/processed/catalog/cbioportal_tcga_brca_summary.json",
+    "data/processed/catalog/gdc_tcga_brca_open_summary.json",
+    "data/processed/catalog/xena_tcga_brca_clinical_summary.json",
+)
 SOURCE_WORKSPACE_STAGES = {
     "quick",
     "full_wes",
@@ -36,7 +48,7 @@ SOURCE_WORKSPACE_STAGES = {
     "phase3_wgs",
     "all_public",
 }
-PREVIOUS_WORKSPACE_STAGES = {"phase3_reference_index", "phase3_align_sample"}
+PREVIOUS_WORKSPACE_STAGES = {"phase3_reference_index", "phase3_align_sample", "phase3_post_validation"}
 STAGES = tuple(sorted(SOURCE_WORKSPACE_STAGES | PREVIOUS_WORKSPACE_STAGES | {"phase3_downstream"}))
 
 
@@ -236,6 +248,10 @@ def phase3_downstream_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
     )
 
 
+def phase3_post_validation_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
+    return (python_step("verify:phase3-outputs"),) + orthogonal_steps(config) + python_steps(FINAL_ANALYSIS) + phase3_output_gate_steps(config)
+
+
 def phase3_wgs_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
     return (
         phase3_prerequisite_steps(config)
@@ -283,6 +299,8 @@ def workflow_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
         return phase3_align_sample_steps()
     if config.stage == "phase3_downstream":
         return phase3_downstream_steps(config)
+    if config.stage == "phase3_post_validation":
+        return phase3_post_validation_steps(config)
     if config.stage == "phase3_sra_benchmark":
         return (python_step("benchmark:sra-range"),)
     if config.stage == "phase3_wgs":
@@ -469,6 +487,32 @@ def merge_downstream_workspaces(config: ProcessConfig) -> None:
                 shutil.copy2(source, destination)
 
 
+def stage_post_validation_context(source_dir: Path, workspace: Path) -> None:
+    missing: list[str] = []
+    for artifact in POST_VALIDATION_CONTEXT_ARTIFACTS:
+        source = source_dir / artifact
+        if not source.is_file():
+            missing.append(artifact)
+            continue
+        destination = workspace / artifact
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    if missing:
+        raise RuntimeError(
+            "phase3_post_validation source workspace is missing required public context artifacts: " + ", ".join(missing)
+        )
+
+
+def require_post_validation_context(workspace: Path) -> None:
+    missing = [artifact for artifact in POST_VALIDATION_CONTEXT_ARTIFACTS if not (workspace / artifact).is_file()]
+    if missing:
+        raise RuntimeError(
+            "phase3_post_validation requires staged cBioPortal/Xena/GDC context artifacts. "
+            "Pass --source-dir from a repo workspace with fetch:phase1 outputs, or include these files in --previous-workspace: "
+            + ", ".join(missing)
+        )
+
+
 def require_path(path: Optional[Path], flag_name: str) -> Path:
     if path is None:
         raise RuntimeError(f"{flag_name} is required for this Nextflow process stage.")
@@ -481,6 +525,10 @@ def prepare_workspace(config: ProcessConfig) -> Path:
         prepare_source_workspace(require_path(config.source_dir, "--source-dir"), workspace)
     elif config.stage in PREVIOUS_WORKSPACE_STAGES:
         prepare_previous_workspace(require_path(config.previous_workspace, "--previous-workspace"), workspace)
+        if config.stage == "phase3_post_validation":
+            if config.source_dir is not None:
+                stage_post_validation_context(config.source_dir.resolve(), workspace)
+            require_post_validation_context(workspace)
     elif config.stage == "phase3_downstream":
         merge_downstream_workspaces(config)
         workspace = config.workspace.resolve()

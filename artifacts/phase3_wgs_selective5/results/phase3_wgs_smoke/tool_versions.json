@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-06-12T17:22:24.935Z",
+  "bwa": {
+    "path": "/usr/bin/bwa",
+    "version": "Program: bwa (alignment via Burrows-Wheeler transformation)\nVersion: 0.7.17-r1188\nContact: Heng Li <lh3@sanger.ac.uk>\n\nUsage:   bwa <command> [options]\n\nCommand: index         index sequences in the FASTA format"
+  },
+  "samtools": {
+    "path": "/usr/bin/samtools",
+    "version": "Program: samtools (Tools for alignments in the SAM format)\nVersion: 1.16.1 (using htslib 1.16)\n\nUsage:   samtools <command> [options]\n\nCommands:\n  -- Indexing"
+  },
+  "bcftools": {
+    "path": "/usr/bin/bcftools",
+    "version": "Program: bcftools (Tools for variant calling and manipulating VCFs and BCFs)\nVersion: 1.16 (using htslib 1.16)\n\nUsage:   bcftools [--version|--version-only] [--help] <command> <argument>\n\nCommands:"
+  },
+  "java": {
+    "path": "/usr/bin/java",
+    "version": "openjdk version \"17.0.19\" 2026-04-21"
+  },
+  "gatk": {
+    "jarPath": "data/raw/tools/gatk/gatk-4.6.2.0/gatk-package-4.6.2.0-local.jar",
+    "version": "The Genome Analysis Toolkit (GATK) v4.6.2.0"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-06-12T17:32:20.312Z",
+  "panelSampleCount": 28,
+  "expressionRecordCount": 20558,
+  "moduleDefinitions": {
+    "basal_marker": [
+      "KRT5",
+      "KRT14",
+      "KRT17",
+      "EGFR",
+      "FOXC1"
+    ],
+    "lar_luminal_marker": [
+      "AR",
+      "FOXA1",
+      "GATA3",
+      "ESR1"
+    ],
+    "proliferation_marker": [
+      "MKI67"
+    ],
+    "immune_inflammation_marker": [
+      "CD8A",
+      "CD274",
+      "CXCL9",
+      "IFNG"
+    ],
+    "epithelial_marker": [
+      "EPCAM",
+      "MUC1"
+    ],
+    "stromal_emt_marker": [
+      "VIM"
+    ]
+  },
+  "boundary": "RNA context is a small marker-module lane and does not reproduce TNBCtype, TNBC-DX, or Reveal."
+}

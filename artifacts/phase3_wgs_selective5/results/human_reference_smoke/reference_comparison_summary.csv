@@ -1,0 +1,3 @@
+run_accession,sample,role,tested_builds,passed_builds,mapped_alignment_range,status,caveat
+SRR7890851,HCC1395BL,normal,hg19;hg38,hg19;hg38,743-751,passed,Build comparison validates that the same HCC1395 FASTQ subset can align to two partial human references; it is not build-liftover validation.
+SRR7890850,HCC1395,tumor,hg19;hg38,hg19;hg38,698-701,passed,Build comparison validates that the same HCC1395 FASTQ subset can align to two partial human references; it is not build-liftover validation.
