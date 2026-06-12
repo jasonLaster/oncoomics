@@ -1,0 +1,11 @@
+threshold_id,threshold_domain,feature_class,threshold_kind,proposed_threshold,lock_status,clinical_use_allowed,signoff_status,no_call_if_unmet,ready_for_clinical_interpretation,next_action
+raw_input_identity,preanalytic_qc,input,qualitative,validation_required,draft_not_locked,no,not_approved,yes,no,Populate validated identity/checksum acceptance criteria after approved known-answer/input validation.
+sample_pairing_qc,preanalytic_qc,input,qualitative,validation_required,draft_not_locked,no,not_approved,yes,no,Define sample-pairing failure modes and acceptance checks after validation fixtures are reviewed.
+bam_reference_compatibility,alignment_qc,alignment,qualitative,GRCh38_compatible_required,draft_not_locked,no,not_approved,yes,no,Lock accepted reference build and contig policies after benchmark execution.
+bam_coverage_acceptance,alignment_qc,alignment,quantitative,validation_required,draft_not_locked,no,not_approved,yes,no,Estimate minimum coverage/breadth thresholds from HG008/COLO829 and replicate validation evidence.
+small_variant_concordance,accuracy_qc,small_variant,quantitative,validation_required,draft_not_locked,no,not_approved,yes,no,Lock recall/precision and normalization acceptance criteria after HG008 truth benchmark execution.
+allele_specific_cnv_loh_overlap,accuracy_qc,cnv_loh,quantitative,validation_required,draft_not_locked,no,not_approved,yes,no,Lock CNV/LOH overlap purity and ploidy thresholds after primary CNV tool validation.
+sv_caller_overlap,accuracy_qc,sv,quantitative,validation_required,draft_not_locked,no,not_approved,yes,no,Lock reciprocal-overlap and breakpoint tolerance thresholds after production SV caller validation.
+signature_mutation_count,signature_qc,signature,quantitative,validation_required,draft_not_locked,no,not_approved,yes,no,Lock mutation-count and reconstruction QC thresholds after signature adapter validation.
+integrated_hrd_model_inputs,model_qc,integrated_hrd,qualitative,validation_required,draft_not_locked,no,not_approved,yes,no,Lock integrated model input requirements and no-call propagation after component validation.
+report_generation_gate,reporting_qc,reporting,qualitative,validation_required,draft_not_locked,no,not_approved,yes,no,Lock report-generation gate only after validation packet and reviewer signoff are complete.

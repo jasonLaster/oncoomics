@@ -34,6 +34,7 @@ class CliParityTest(unittest.TestCase):
             "stage:diana-raw",
             "validate:phase3-wgs",
             "verify:clinical-assay-boundaries",
+            "verify:clinical-qc-thresholds",
             "verify:clinical-validation-packet",
             "verify:cnv-loh-readiness",
             "verify:diana-raw",
