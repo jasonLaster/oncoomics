@@ -40,6 +40,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.verify_hrd_interpretation_readiness import main as verify_hrd_interpretation_readiness
     from .commands.verify_known_answer_asset_integrity import main as verify_known_answer_asset_integrity
     from .commands.verify_known_answer_benchmark_manifests import main as verify_known_answer_benchmark_manifests
+    from .commands.verify_known_answer_checksum_policy import main as verify_known_answer_checksum_policy
     from .commands.verify_known_answer_readiness import main as verify_known_answer_readiness
     from .commands.verify_orthogonal_validation import main as verify_orthogonal_validation
     from .commands.verify_outputs import main as verify_outputs
@@ -81,6 +82,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "verify:hrd-interpretation-readiness": verify_hrd_interpretation_readiness,
         "verify:known-answer-asset-integrity": verify_known_answer_asset_integrity,
         "verify:known-answer-benchmark-manifests": verify_known_answer_benchmark_manifests,
+        "verify:known-answer-checksum-policy": verify_known_answer_checksum_policy,
         "verify:known-answer-readiness": verify_known_answer_readiness,
         "verify:orthogonal": verify_orthogonal_validation,
         "verify:outputs": verify_outputs,

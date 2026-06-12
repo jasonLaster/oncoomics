@@ -1,0 +1,117 @@
+{
+  "generatedAt": "2026-06-12T22:20:19.392Z",
+  "status": "passed",
+  "errors": [],
+  "summary": {
+    "status": "passed",
+    "policy_count": 9,
+    "planned_manifest_count": 9,
+    "checksum_captured_count": 0,
+    "checksum_pending_count": 9,
+    "benchmark_execution_ready": "no",
+    "ready_for_clinical_interpretation": "no",
+    "next_step": "Populate source-published checksums or verified local checksums only after approved asset acquisition.",
+    "error_count": 0
+  },
+  "rows": [
+    {
+      "policy_id": "hg008_wgs_input_checksums",
+      "manifest_path": "manifests/benchmarks/hg008_wgs_inputs.csv",
+      "asset_kind": "input",
+      "checksum_source_status": "checksum_not_captured",
+      "capture_required_before_execution": "yes",
+      "execution_allowed": "no",
+      "clinical_use_allowed": "no",
+      "no_call_if_unverified": "yes",
+      "next_action": "Record source-published checksums or verified local checksums after approved asset acquisition."
+    },
+    {
+      "policy_id": "colo829_wgs_input_checksums",
+      "manifest_path": "manifests/benchmarks/colo829_wgs_inputs.csv",
+      "asset_kind": "input",
+      "checksum_source_status": "checksum_not_captured",
+      "capture_required_before_execution": "yes",
+      "execution_allowed": "no",
+      "clinical_use_allowed": "no",
+      "no_call_if_unverified": "yes",
+      "next_action": "Record source-published checksums or verified local checksums after approved asset acquisition."
+    },
+    {
+      "policy_id": "colo829_purity_input_checksums",
+      "manifest_path": "manifests/benchmarks/colo829_purity_series_inputs.csv",
+      "asset_kind": "input",
+      "checksum_source_status": "checksum_not_captured",
+      "capture_required_before_execution": "yes",
+      "execution_allowed": "no",
+      "clinical_use_allowed": "no",
+      "no_call_if_unverified": "yes",
+      "next_action": "Record source-published checksums or verified local checksums after approved asset acquisition."
+    },
+    {
+      "policy_id": "hg008_small_variant_truth_checksums",
+      "manifest_path": "manifests/benchmarks/hg008_small_variant_truth_assets.csv",
+      "asset_kind": "truth",
+      "checksum_source_status": "checksum_not_captured",
+      "capture_required_before_execution": "yes",
+      "execution_allowed": "no",
+      "clinical_use_allowed": "no",
+      "no_call_if_unverified": "yes",
+      "next_action": "Record source-published checksums or verified local checksums after approved truth asset acquisition."
+    },
+    {
+      "policy_id": "hg008_sv_cnv_truth_checksums",
+      "manifest_path": "manifests/benchmarks/hg008_sv_cnv_truth_assets.csv",
+      "asset_kind": "truth",
+      "checksum_source_status": "checksum_not_captured",
+      "capture_required_before_execution": "yes",
+      "execution_allowed": "no",
+      "clinical_use_allowed": "no",
+      "no_call_if_unverified": "yes",
+      "next_action": "Record source-published checksums or verified local checksums after approved truth asset acquisition."
+    },
+    {
+      "policy_id": "hg008_signature_truth_checksums",
+      "manifest_path": "manifests/benchmarks/hg008_signature_truth_assets.csv",
+      "asset_kind": "truth",
+      "checksum_source_status": "checksum_not_captured",
+      "capture_required_before_execution": "yes",
+      "execution_allowed": "no",
+      "clinical_use_allowed": "no",
+      "no_call_if_unverified": "yes",
+      "next_action": "Record source-published checksums or verified local checksums after approved truth asset acquisition."
+    },
+    {
+      "policy_id": "colo829_driver_signature_truth_checksums",
+      "manifest_path": "manifests/benchmarks/colo829_driver_signature_truth_assets.csv",
+      "asset_kind": "truth",
+      "checksum_source_status": "checksum_not_captured",
+      "capture_required_before_execution": "yes",
+      "execution_allowed": "no",
+      "clinical_use_allowed": "no",
+      "no_call_if_unverified": "yes",
+      "next_action": "Record source-published checksums or verified local checksums after approved truth asset acquisition."
+    },
+    {
+      "policy_id": "colo829_sv_cna_truth_checksums",
+      "manifest_path": "manifests/benchmarks/colo829_sv_cna_truth_assets.csv",
+      "asset_kind": "truth",
+      "checksum_source_status": "checksum_not_captured",
+      "capture_required_before_execution": "yes",
+      "execution_allowed": "no",
+      "clinical_use_allowed": "no",
+      "no_call_if_unverified": "yes",
+      "next_action": "Record source-published checksums or verified local checksums after approved truth asset acquisition."
+    },
+    {
+      "policy_id": "colo829_purity_truth_checksums",
+      "manifest_path": "manifests/benchmarks/colo829_purity_series_truth_assets.csv",
+      "asset_kind": "truth",
+      "checksum_source_status": "checksum_not_captured",
+      "capture_required_before_execution": "yes",
+      "execution_allowed": "no",
+      "clinical_use_allowed": "no",
+      "no_call_if_unverified": "yes",
+      "next_action": "Record source-published checksums or verified local checksums after approved truth asset acquisition."
+    }
+  ]
+}

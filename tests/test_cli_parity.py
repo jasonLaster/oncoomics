@@ -40,6 +40,7 @@ class CliParityTest(unittest.TestCase):
             "verify:hrd-interpretation-readiness",
             "verify:known-answer-asset-integrity",
             "verify:known-answer-benchmark-manifests",
+            "verify:known-answer-checksum-policy",
             "verify:known-answer-readiness",
             "verify:orthogonal",
             "verify:outputs",
