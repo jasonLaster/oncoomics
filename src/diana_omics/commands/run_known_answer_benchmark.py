@@ -57,7 +57,7 @@ def dry_run_summary_row(plan: dict[str, str]) -> dict[str, Any]:
         "truth_asset_manifest": plan["truth_asset_manifest"],
         "approval_required": plan["approval_required"],
         "clinical_use_allowed": "no",
-        "next_action": "Add local input and truth manifest schema validation before approved benchmark execution.",
+        "next_action": "Add checksum and reference-build compatibility checks before approved benchmark execution.",
     }
 
 
@@ -82,7 +82,7 @@ def write_aggregate_summary(rows: list[dict[str, Any]]) -> None:
         "clinical_use_allowed_count": sum(1 for row in sorted_rows if row.get("clinical_use_allowed") == "yes"),
         "ready_for_benchmark_execution": "no",
         "ready_for_clinical_interpretation": "no",
-        "next_step": "Add input and truth asset manifest schema validation before any approved benchmark execution.",
+        "next_step": "Add checksum and reference-build compatibility checks before any approved benchmark execution.",
         "error_count": 0,
     }
     write_csv(path_from_root(DRY_RUN_SUMMARY_CSV_PATH), sorted_rows)

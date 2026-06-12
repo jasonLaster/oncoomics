@@ -1,0 +1,89 @@
+{
+  "generatedAt": "2026-06-12T21:38:48.811Z",
+  "status": "passed",
+  "errors": [],
+  "summary": {
+    "status": "passed",
+    "benchmark_count": 6,
+    "input_manifest_count": 3,
+    "truth_manifest_count": 6,
+    "benchmark_execution_ready": "no",
+    "ready_for_clinical_interpretation": "no",
+    "next_step": "Add checksum and reference-build compatibility checks before any approved benchmark execution.",
+    "error_count": 0
+  },
+  "rows": [
+    {
+      "benchmark_id": "hg008_small_variant_dry_run",
+      "fixture_id": "hg008_small_variants",
+      "dataset_id": "giab_hg008",
+      "input_manifest_path": "manifests/benchmarks/hg008_wgs_inputs.csv",
+      "truth_asset_manifest": "manifests/benchmarks/hg008_small_variant_truth_assets.csv",
+      "input_manifest_status": "passed",
+      "truth_manifest_status": "passed",
+      "benchmark_execution_ready": "no",
+      "clinical_use_allowed": "no",
+      "next_action": "Add checksum and reference-build compatibility checks before approved benchmark execution."
+    },
+    {
+      "benchmark_id": "hg008_sv_cnv_dry_run",
+      "fixture_id": "hg008_sv_cnv",
+      "dataset_id": "giab_hg008",
+      "input_manifest_path": "manifests/benchmarks/hg008_wgs_inputs.csv",
+      "truth_asset_manifest": "manifests/benchmarks/hg008_sv_cnv_truth_assets.csv",
+      "input_manifest_status": "passed",
+      "truth_manifest_status": "passed",
+      "benchmark_execution_ready": "no",
+      "clinical_use_allowed": "no",
+      "next_action": "Add checksum and reference-build compatibility checks before approved benchmark execution."
+    },
+    {
+      "benchmark_id": "hg008_signature_qc_dry_run",
+      "fixture_id": "hg008_signature_qc",
+      "dataset_id": "giab_hg008",
+      "input_manifest_path": "manifests/benchmarks/hg008_wgs_inputs.csv",
+      "truth_asset_manifest": "manifests/benchmarks/hg008_signature_truth_assets.csv",
+      "input_manifest_status": "passed",
+      "truth_manifest_status": "passed",
+      "benchmark_execution_ready": "no",
+      "clinical_use_allowed": "no",
+      "next_action": "Add checksum and reference-build compatibility checks before approved benchmark execution."
+    },
+    {
+      "benchmark_id": "colo829_driver_signature_dry_run",
+      "fixture_id": "colo829_driver_signature",
+      "dataset_id": "colo829",
+      "input_manifest_path": "manifests/benchmarks/colo829_wgs_inputs.csv",
+      "truth_asset_manifest": "manifests/benchmarks/colo829_driver_signature_truth_assets.csv",
+      "input_manifest_status": "passed",
+      "truth_manifest_status": "passed",
+      "benchmark_execution_ready": "no",
+      "clinical_use_allowed": "no",
+      "next_action": "Add checksum and reference-build compatibility checks before approved benchmark execution."
+    },
+    {
+      "benchmark_id": "colo829_sv_cna_dry_run",
+      "fixture_id": "colo829_sv_cna",
+      "dataset_id": "colo829",
+      "input_manifest_path": "manifests/benchmarks/colo829_wgs_inputs.csv",
+      "truth_asset_manifest": "manifests/benchmarks/colo829_sv_cna_truth_assets.csv",
+      "input_manifest_status": "passed",
+      "truth_manifest_status": "passed",
+      "benchmark_execution_ready": "no",
+      "clinical_use_allowed": "no",
+      "next_action": "Add checksum and reference-build compatibility checks before approved benchmark execution."
+    },
+    {
+      "benchmark_id": "colo829_purity_series_dry_run",
+      "fixture_id": "colo829_purity_series",
+      "dataset_id": "colo829_purity_series",
+      "input_manifest_path": "manifests/benchmarks/colo829_purity_series_inputs.csv",
+      "truth_asset_manifest": "manifests/benchmarks/colo829_purity_series_truth_assets.csv",
+      "input_manifest_status": "passed",
+      "truth_manifest_status": "passed",
+      "benchmark_execution_ready": "no",
+      "clinical_use_allowed": "no",
+      "next_action": "Add checksum and reference-build compatibility checks before approved benchmark execution."
+    }
+  ]
+}

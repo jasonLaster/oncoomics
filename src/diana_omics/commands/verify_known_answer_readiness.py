@@ -14,6 +14,10 @@ HRD_INTERPRETATION_READINESS_PATH = os.environ.get(
 BENCHMARK_PLAN_SUMMARY_PATH = os.environ.get(
     "KNOWN_ANSWER_BENCHMARK_PLAN_SUMMARY", "results/clinicalization/known_answer_benchmark_plan_summary.json"
 )
+BENCHMARK_MANIFEST_SCHEMA_SUMMARY_PATH = os.environ.get(
+    "KNOWN_ANSWER_BENCHMARK_MANIFEST_SCHEMA_SUMMARY",
+    "results/clinicalization/known_answer_benchmark_manifest_schema_summary.json",
+)
 SUMMARY_CSV_PATH = "results/clinicalization/known_answer_fixture_readiness_summary.csv"
 SUMMARY_JSON_PATH = "results/clinicalization/known_answer_fixture_readiness_summary.json"
 REQUIRED_COLUMNS = {
@@ -136,6 +140,7 @@ def main() -> None:
     phase3_summary = _read_json_or_missing(PHASE3_SUMMARY_PATH)
     hrd_summary = _read_json_or_missing(HRD_INTERPRETATION_READINESS_PATH)
     benchmark_plan_summary = _read_json_or_missing(BENCHMARK_PLAN_SUMMARY_PATH)
+    benchmark_manifest_schema_summary = _read_json_or_missing(BENCHMARK_MANIFEST_SCHEMA_SUMMARY_PATH)
     if phase3_summary.get("status") != "passed":
         errors.append(f"{PHASE3_SUMMARY_PATH} must report a passed Phase 3 WGS baseline.")
     if phase3_summary.get("phase3Complete") is not True:
@@ -146,6 +151,10 @@ def main() -> None:
         errors.append(f"{BENCHMARK_PLAN_SUMMARY_PATH} must pass when present.")
     if _benchmark_plan_status(benchmark_plan_summary) not in {"", "no"}:
         errors.append(f"{BENCHMARK_PLAN_SUMMARY_PATH} must keep benchmark execution disabled before approval.")
+    if benchmark_manifest_schema_summary.get("status") not in {"passed", "missing"}:
+        errors.append(f"{BENCHMARK_MANIFEST_SCHEMA_SUMMARY_PATH} must pass when present.")
+    if _benchmark_plan_status(benchmark_manifest_schema_summary) not in {"", "no"}:
+        errors.append(f"{BENCHMARK_MANIFEST_SCHEMA_SUMMARY_PATH} must keep benchmark execution disabled before approval.")
     output_rows = readiness_rows(rows)
     summary = {
         "status": "passed" if not errors else "failed",
@@ -159,7 +168,9 @@ def main() -> None:
         "hrd_interpretation_ready_for_clinical_interpretation": _hrd_ready_status(hrd_summary),
         "benchmark_plan_status": benchmark_plan_summary.get("status", ""),
         "benchmark_execution_ready": _benchmark_plan_status(benchmark_plan_summary),
-        "next_step": "Wire a local benchmark:known-answer dry-run command that materializes expected output paths without fetching data or running WGS.",
+        "benchmark_manifest_schema_status": benchmark_manifest_schema_summary.get("status", ""),
+        "benchmark_manifest_execution_ready": _benchmark_plan_status(benchmark_manifest_schema_summary),
+        "next_step": "Add checksum and reference-build compatibility checks before any approved benchmark execution.",
         "error_count": len(errors),
     }
     ensure_dir(path_from_root("results/clinicalization"))

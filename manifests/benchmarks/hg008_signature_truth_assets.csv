@@ -1,0 +1,3 @@
+truth_asset_id,dataset_id,fixture_id,truth_scope,reference_build,asset_status,source_url,expected_file_type,required_for_execution,clinical_use_allowed,no_call_if_missing,caveat
+hg008_signature_matrix_expectation,giab_hg008,hg008_signature_qc,signature_qc,GRCh38,planned_not_downloaded,https://www.nist.gov/programs-projects/cancer-genome-bottle,signature_qc_spec,yes,no,yes,Required matrix QC expectation; no-call if variant count or trinucleotide context is insufficient.
+hg008_signature_no_call_policy,giab_hg008,hg008_signature_qc,signature_qc,GRCh38,planned_not_downloaded,https://www.nist.gov/programs-projects/cancer-genome-bottle,no_call_policy,yes,no,yes,Required explicit signature-adapter no-call policy.

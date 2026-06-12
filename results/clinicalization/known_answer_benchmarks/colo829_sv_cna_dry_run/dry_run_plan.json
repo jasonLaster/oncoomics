@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-12T21:28:46.951Z",
+  "generatedAt": "2026-06-12T21:38:50.675Z",
   "status": "passed",
   "mode": "dry_run_only",
   "plan": {
@@ -30,7 +30,7 @@
     "truth_asset_manifest": "manifests/benchmarks/colo829_sv_cna_truth_assets.csv",
     "approval_required": "yes",
     "clinical_use_allowed": "no",
-    "next_action": "Add local input and truth manifest schema validation before approved benchmark execution."
+    "next_action": "Add checksum and reference-build compatibility checks before approved benchmark execution."
   },
   "expectedOutputs": [
     {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-12T21:17:55.954Z",
+  "generatedAt": "2026-06-12T21:38:51.263Z",
   "status": "passed",
   "errors": [],
   "summary": {
@@ -14,7 +14,9 @@
     "hrd_interpretation_ready_for_clinical_interpretation": "no",
     "benchmark_plan_status": "passed",
     "benchmark_execution_ready": "no",
-    "next_step": "Wire a local benchmark:known-answer dry-run command that materializes expected output paths without fetching data or running WGS.",
+    "benchmark_manifest_schema_status": "passed",
+    "benchmark_manifest_execution_ready": "",
+    "next_step": "Add checksum and reference-build compatibility checks before any approved benchmark execution.",
     "error_count": 0
   },
   "rows": [

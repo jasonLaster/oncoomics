@@ -1,0 +1,3 @@
+input_id,dataset_id,sample_id,sample_role,sample_pair,reference_build,source_status,local_path_required,source_url,expected_file_type,clinical_use_allowed,caveat
+colo829_tumor_wgs,colo829,COLO829,tumor,COLO829/COLO829BL,GRCh38,planned_not_downloaded,no,https://www.ebi.ac.uk/ena/browser/view/PRJEB27698,tumor_bam_or_fastq,no,Public benchmark input metadata only; do not fetch or run without approval.
+colo829_normal_wgs,colo829,COLO829BL,normal,COLO829/COLO829BL,GRCh38,planned_not_downloaded,no,https://www.ebi.ac.uk/ena/browser/view/PRJEB27698,normal_bam_or_fastq,no,Public benchmark input metadata only; do not fetch or run without approval.

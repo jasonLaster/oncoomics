@@ -1,0 +1,3 @@
+truth_asset_id,dataset_id,fixture_id,truth_scope,reference_build,asset_status,source_url,expected_file_type,required_for_execution,clinical_use_allowed,no_call_if_missing,caveat
+colo829_purity_truth,colo829_purity_series,colo829_purity_series,dilution_sensitivity,GRCh38,planned_not_downloaded,https://www.ebi.ac.uk/ena/browser/view/PRJEB27698,purity_series_truth_table,yes,no,yes,Required for dilution recall monotonicity; no-call if purity labels are unavailable.
+colo829_purity_driver_truth,colo829_purity_series,colo829_purity_series,dilution_sensitivity,GRCh38,planned_not_downloaded,https://www.ebi.ac.uk/ena/browser/view/PRJEB27698,driver_expectation,yes,no,yes,Required for driver sensitivity stress validation.

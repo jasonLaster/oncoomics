@@ -1,0 +1,3 @@
+truth_asset_id,dataset_id,fixture_id,truth_scope,reference_build,asset_status,source_url,expected_file_type,required_for_execution,clinical_use_allowed,no_call_if_missing,caveat
+colo829_sv_truth,colo829,colo829_sv_cna,sv_cna,GRCh38,planned_not_downloaded,https://zenodo.org/records/7515830,vcf_or_bedpe,yes,no,yes,Required for independent SV reciprocal-overlap.
+colo829_cna_truth,colo829,colo829_sv_cna,sv_cna,GRCh38,planned_not_downloaded,https://zenodo.org/records/7515830,cna_table,yes,no,yes,Required for independent CNA reciprocal-overlap.
