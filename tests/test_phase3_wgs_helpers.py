@@ -132,7 +132,7 @@ class Phase3WgsHelpersTest(unittest.TestCase):
     def test_alignment_flag_counts_uses_threaded_flagstat_fallback(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            row = {"reference_id": "ref", "run_accession": "SRR1", "output_bam": "tumor.bam"}
+            row = {"reference_id": "ref", "role": "tumor", "run_accession": "SRR1", "output_bam": "tumor.bam", "output_bai": "tumor.bam.bai"}
             flagstat = "\n".join(
                 [
                     "100 + 0 in total (QC-passed reads + QC-failed reads)",
@@ -144,11 +144,16 @@ class Phase3WgsHelpersTest(unittest.TestCase):
                 patch.object(phase3, "FORCE", False),
                 patch.object(phase3, "BAM_SCAN_THREADS", 8),
                 patch.object(phase3, "path_from_root", lambda relative: root / relative),
-                patch.object(phase3, "capture_command", return_value=flagstat) as capture,
+                patch.object(phase3, "run_cached_command", return_value=flagstat) as run,
             ):
                 self.assertEqual(phase3.alignment_flag_counts("ref", row), {"total": 100, "mapped": 90, "properly_paired": 80})
-            capture.assert_called_once_with("samtools flagstat -@ 8 'tumor.bam'")
-            self.assertIn("properly paired", utils.read_text(root / "results/phase3_wgs_smoke/logs/ref.SRR1.flagstat.txt"))
+            run.assert_called_once_with(
+                "samtools flagstat -@ 8 'tumor.bam'",
+                "results/phase3_wgs_smoke/logs/ref.SRR1.flagstat.txt",
+                ["tumor.bam", "tumor.bam.bai"],
+                "",
+                "tumor.flagstat",
+            )
 
     def test_build_coverage_cnv_reuses_current_outputs(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -364,6 +369,25 @@ class Phase3WgsHelpersTest(unittest.TestCase):
                     "s3://diana-omics-raw/cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/tumor/SRR7890824.tumor.bam",
                     "s3://diana-omics-raw/cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/tumor/SRR7890824.tumor.bam.bai",
                 ),
+            )
+
+    def test_validation_cache_uris_scope_sample_and_pair_outputs(self):
+        tumor = {
+            "fastq_1": "data/raw/phase3/fastq/SRR7890824_R1.full.fastq.gz",
+            "reference_id": "ucsc_hg38_analysis_set_full",
+            "role": "tumor",
+            "pair_id": "hcc1395",
+            "run_accession": "SRR7890824",
+        }
+        normal = {**tumor, "role": "normal", "run_accession": "SRR7890827"}
+        with patch.object(fetch_phase3, "ASSET_CACHE_URI", "s3://cache/phase3_wgs"):
+            self.assertEqual(
+                phase3.sample_validation_cache_uri(tumor, "results/phase3_wgs_smoke/logs/ref.SRR7890824.stats.txt"),
+                "s3://cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/tumor/results__phase3_wgs_smoke__logs__ref.SRR7890824.stats.txt",
+            )
+            self.assertEqual(
+                phase3.pair_validation_cache_uri(tumor, normal, "coverage_cnv", "results/phase3_wgs_smoke/coverage_cnv_bedcov.tsv"),
+                "s3://cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/hcc1395/coverage_cnv/results__phase3_wgs_smoke__coverage_cnv_bedcov.tsv",
             )
 
     def test_restore_cached_alignment_requires_bam_and_bai(self):

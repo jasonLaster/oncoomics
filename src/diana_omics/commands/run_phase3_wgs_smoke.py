@@ -60,6 +60,35 @@ NORM_MAX_REF_MISMATCH = int(os.environ.get("PHASE3_WGS_NORM_MAX_REF_MISMATCH", "
 MUTATION_TYPES = ["C>A", "C>G", "C>T", "T>A", "T>C", "T>G"]
 BASES = ["A", "C", "G", "T"]
 COMPLEMENT = {"A": "T", "C": "G", "G": "C", "T": "A"}
+SV_CANDIDATE_COLUMNS = [
+    "sample",
+    "role",
+    "run_accession",
+    "read_name",
+    "chrom1",
+    "pos1",
+    "chrom2",
+    "pos2",
+    "template_length",
+    "mapq",
+    "cigar",
+]
+SV_SUMMARY_COLUMNS = [
+    "status",
+    "tool",
+    "sample",
+    "role",
+    "run_accession",
+    "input_bam",
+    "total_alignments",
+    "supplementary_alignments",
+    "discordant_mapped_pairs",
+    "interchromosomal_pairs",
+    "large_insert_pairs",
+    "sv_candidate_rows_written",
+    "chord_input_status",
+    "caveat",
+]
 
 
 def read_group(row: dict[str, str]) -> str:
@@ -114,6 +143,92 @@ def write_text_if_changed(relative_path: str, value: str) -> bool:
     ensure_dir(path.parent)
     path.write_text(text, encoding="utf-8")
     return True
+
+
+def cache_safe_name(relative_path: str) -> str:
+    return relative_path.strip("/").replace("/", "__")
+
+
+def sample_validation_cache_uri(row: dict[str, str], relative_path: str) -> str:
+    read_label = read_label_from_fastq(row) if row.get("fastq_1") else str(row.get("read_pairs_per_end", "unknownreads"))
+    return phase3_assets.cache_uri("validation", row.get("reference_id", "unknown_reference"), read_label, row["role"], cache_safe_name(relative_path))
+
+
+def pair_validation_cache_uri(tumor: dict[str, str], normal: dict[str, str], group: str, relative_path: str) -> str:
+    read_label = read_label_from_fastq(tumor) if tumor.get("fastq_1") else str(tumor.get("read_pairs_per_end", "unknownreads"))
+    pair_id = tumor.get("pair_id") or f"{tumor.get('run_accession', 'tumor')}_{normal.get('run_accession', 'normal')}"
+    return phase3_assets.cache_uri("validation", tumor.get("reference_id", "unknown_reference"), read_label, "pair", pair_id, group, cache_safe_name(relative_path))
+
+
+def restore_cached_output(relative_path: str, uri: str, inputs: list[str], label: str) -> bool:
+    if FORCE or not uri or not phase3_assets.cache_reads_enabled():
+        return False
+    if existing_output_current([relative_path], inputs):
+        return True
+    aws = phase3_assets.aws_cli_path()
+    if phase3_assets.s3_object_size(aws, uri) is None:
+        print(f"[cache-miss] label={label} uri={uri}", flush=True)
+        return False
+    phase3_assets.restore_cached_asset(aws, uri, path_from_root(relative_path), None, label)
+    if existing_output_current([relative_path], inputs):
+        print(f"[cache-reuse] label={label} path={relative_path}", flush=True)
+        return True
+    path_from_root(relative_path).unlink(missing_ok=True)
+    print(f"[cache-skip] label={label} reason=restored_output_not_current path={relative_path}", flush=True)
+    return False
+
+
+def publish_cached_output(relative_path: str, uri: str, label: str) -> bool:
+    if not uri or not phase3_assets.cache_writes_enabled():
+        return False
+    return phase3_assets.publish_cached_asset(phase3_assets.aws_cli_path(), path_from_root(relative_path), uri, label)
+
+
+def restore_cached_outputs(outputs: list[str], uri_by_output: dict[str, str], inputs: list[str], label: str) -> bool:
+    if FORCE or not phase3_assets.cache_reads_enabled() or existing_output_current(outputs, inputs):
+        return not FORCE and existing_output_current(outputs, inputs)
+    aws = phase3_assets.aws_cli_path()
+    if any(not uri_by_output.get(output) or phase3_assets.s3_object_size(aws, uri_by_output[output]) is None for output in outputs):
+        print(f"[cache-miss] label={label} outputs={len(outputs)}", flush=True)
+        return False
+    for output in outputs:
+        phase3_assets.restore_cached_asset(aws, uri_by_output[output], path_from_root(output), None, f"{label}.{Path(output).name}")
+    if existing_output_current(outputs, inputs):
+        print(f"[cache-reuse] label={label} outputs={len(outputs)}", flush=True)
+        return True
+    for output in outputs:
+        path_from_root(output).unlink(missing_ok=True)
+    print(f"[cache-skip] label={label} reason=restored_outputs_not_current outputs={len(outputs)}", flush=True)
+    return False
+
+
+def publish_cached_outputs(outputs: list[str], uri_by_output: dict[str, str], label: str) -> int:
+    published = 0
+    for output in outputs:
+        if publish_cached_output(output, uri_by_output.get(output, ""), f"{label}.{Path(output).name}"):
+            published += 1
+    return published
+
+
+def run_cached_command(command: str, output_path: str, inputs: list[str], uri: str, label: str) -> str:
+    if restore_cached_output(output_path, uri, inputs, label):
+        return read_text(path_from_root(output_path))
+    output = run_command(command, output_path)
+    publish_cached_output(output_path, uri, label)
+    return output
+
+
+def run_cached_output_command(command: str, output_path: str, log_path: str, inputs: list[str], uri: str, label: str) -> None:
+    if restore_cached_output(output_path, uri, inputs, label):
+        return
+    run_command(command, log_path)
+    publish_cached_output(output_path, uri, label)
+    publish_cached_output(log_path, uri.rsplit("/", 1)[0] + f"/{cache_safe_name(log_path)}" if uri else "", f"{label}.log")
+
+
+def run_cached_commands_parallel(commands: list[tuple[str, str, list[str], str, str]], workers: int) -> list[str]:
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        return list(pool.map(lambda item: run_cached_command(item[0], item[1], item[2], item[3], item[4]), commands))
 
 
 def indexed_alignment_count(row: dict[str, str]) -> int:
@@ -185,13 +300,18 @@ def reusable_bam_validation_rows(rows: list[dict[str, str]]) -> Optional[list[di
 
 
 def alignment_flag_counts(reference_id: str, row: dict[str, str]) -> dict[str, int]:
-    flagstat_log = path_from_root(f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt")
-    if flagstat_log.exists() and not FORCE:
-        counts = parse_flagstat_counts(read_text(flagstat_log))
+    flagstat_log = f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt"
+    if path_from_root(flagstat_log).exists() and not FORCE:
+        counts = parse_flagstat_counts(read_text(path_from_root(flagstat_log)))
         if {"total", "mapped", "properly_paired"} <= counts.keys():
             return counts
-    text = capture_command(f"samtools flagstat -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}")
-    write_text(flagstat_log, text)
+    text = run_cached_command(
+        f"samtools flagstat -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}",
+        flagstat_log,
+        [row["output_bam"], row.get("output_bai", "")],
+        sample_validation_cache_uri(row, flagstat_log),
+        f"{row['role']}.flagstat",
+    )
     counts = parse_flagstat_counts(text)
     if {"total", "mapped", "properly_paired"} <= counts.keys():
         return counts
@@ -359,13 +479,21 @@ def align_and_index_sample(reference_id: str, row: dict[str, str]) -> None:
         f"samtools index -@ {TOTAL_THREADS} -o {quote_shell_arg(row['output_bai'])} {quote_shell_arg(row['output_bam'])}",
         f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.index.log",
     )
-    run_command(
+    flagstat_log = f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt"
+    stats_log = f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.stats.txt"
+    run_cached_command(
         f"samtools flagstat -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}",
-        f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt",
+        flagstat_log,
+        [row["output_bam"], row["output_bai"]],
+        sample_validation_cache_uri(row, flagstat_log),
+        f"{row['role']}.flagstat",
     )
-    run_command(
+    run_cached_command(
         f"samtools stats -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}",
-        f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.stats.txt",
+        stats_log,
+        [row["output_bam"], row["output_bai"]],
+        sample_validation_cache_uri(row, stats_log),
+        f"{row['role']}.stats",
     )
     if not bam_satisfies_read_scope(row):
         raise RuntimeError(f"Aligned BAM for {row['role']} did not satisfy requested read scope: {row['output_bam']}")
@@ -469,14 +597,19 @@ def truth_depth_path() -> str:
 
 def truth_depth_text(tumor: dict[str, str], normal: dict[str, str], truth_position_bed: str, reference_id: str) -> str:
     output_path = truth_depth_path()
+    inputs = [truth_position_bed, tumor["output_bam"], tumor["output_bai"], normal["output_bam"], normal["output_bai"]]
     if FORCE or not existing_output_current(
         [output_path],
-        [truth_position_bed, tumor["output_bam"], tumor["output_bai"], normal["output_bam"], normal["output_bai"]],
+        inputs,
     ):
-        run_command(
+        run_cached_output_command(
             f"samtools depth -@ {BAM_SCAN_THREADS} -a -b {quote_shell_arg(truth_position_bed)} "
             f"{quote_shell_arg(tumor['output_bam'])} {quote_shell_arg(normal['output_bam'])} > {quote_shell_arg(output_path)}",
+            output_path,
             f"{RESULTS_DIR}/logs/{reference_id}.phase3_wgs.truth_depth.log",
+            inputs,
+            pair_validation_cache_uri(tumor, normal, "truth_depth", output_path),
+            "pair.truth_depth",
         )
     return read_text(path_from_root(output_path))
 
@@ -588,20 +721,31 @@ def build_bins(fai_path: str, output_path: str) -> list[dict[str, Any]]:
 
 
 def build_coverage_cnv(tumor: dict[str, str], normal: dict[str, str], bins_path: str) -> dict[str, Any]:
+    bedcov_output = f"{RESULTS_DIR}/coverage_cnv_bedcov.tsv"
     bins_output = f"{RESULTS_DIR}/coverage_cnv_bins.csv"
     summary_output = f"{RESULTS_DIR}/coverage_cnv_summary.csv"
     summary_json = f"{RESULTS_DIR}/coverage_cnv_summary.json"
-    if not FORCE and existing_output_current(
-        [bins_output, summary_output, summary_json],
-        [bins_path, tumor["output_bam"], tumor["output_bai"], normal["output_bam"], normal["output_bai"]],
+    inputs = [bins_path, tumor["output_bam"], tumor["output_bai"], normal["output_bam"], normal["output_bai"]]
+    final_outputs = [bins_output, summary_output, summary_json]
+    final_cache_uris = {output: pair_validation_cache_uri(tumor, normal, "coverage_cnv", output) for output in final_outputs}
+    if not FORCE and (
+        existing_output_current(final_outputs, inputs) or restore_cached_outputs(final_outputs, final_cache_uris, inputs, "pair.coverage_cnv")
     ):
         cached_rows = read_json(path_from_root(summary_json)).get("rows", [])
         if cached_rows:
             return {**cached_rows[0], "cnv_cache": "reused"}
+    if FORCE or not existing_output_current([bedcov_output], inputs):
+        run_cached_output_command(
+            f"samtools bedcov {quote_shell_arg(bins_path)} {quote_shell_arg(tumor['output_bam'])} "
+            f"{quote_shell_arg(normal['output_bam'])} > {quote_shell_arg(bedcov_output)}",
+            bedcov_output,
+            f"{RESULTS_DIR}/logs/{tumor.get('reference_id', 'unknown_reference')}.phase3_wgs.coverage_cnv_bedcov.log",
+            inputs,
+            pair_validation_cache_uri(tumor, normal, "coverage_cnv", bedcov_output),
+            "pair.coverage_cnv.bedcov",
+        )
     rows: list[dict[str, Any]] = []
-    bedcov = capture_allow_empty(
-        f"samtools bedcov {quote_shell_arg(bins_path)} {quote_shell_arg(tumor['output_bam'])} {quote_shell_arg(normal['output_bam'])}"
-    )
+    bedcov = read_text(path_from_root(bedcov_output)).strip()
     for line in bedcov.splitlines():
         contig, start_text, end_text, tumor_sum_text, normal_sum_text = line.split("\t")
         start = int(start_text)
@@ -647,6 +791,7 @@ def build_coverage_cnv(tumor: dict[str, str], normal: dict[str, str], bins_path:
         path_from_root(summary_json),
         {"generatedAt": iso_now(), "status": summary["status"], "rows": [summary]},
     )
+    publish_cached_outputs(final_outputs, final_cache_uris, "pair.coverage_cnv")
     return summary
 
 
@@ -750,13 +895,51 @@ def build_sbs96_matrix(filtered_vcf: str, reference_path: str) -> dict[str, Any]
     return summary
 
 
+def sv_role_cache_paths(row: dict[str, str]) -> tuple[str, str]:
+    role = row["role"]
+    return f"{RESULTS_DIR}/sv_evidence_cache/{role}.candidates.csv", f"{RESULTS_DIR}/sv_evidence_cache/{role}.summary.json"
+
+
+def restore_cached_sv_role(row: dict[str, str]) -> Optional[tuple[list[dict[str, Any]], dict[str, Any]]]:
+    candidates_path, summary_path = sv_role_cache_paths(row)
+    inputs = [row["output_bam"], row.get("output_bai", "")]
+    outputs = [candidates_path, summary_path]
+    uris = {output: sample_validation_cache_uri(row, output) for output in outputs}
+    if FORCE or not restore_cached_outputs(outputs, uris, inputs, f"{row['role']}.sv_evidence"):
+        return None
+    summary = read_json(path_from_root(summary_path)).get("row", {})
+    expected = (row["role"], row["run_accession"], row["output_bam"])
+    actual = (summary.get("role"), summary.get("run_accession"), summary.get("input_bam"))
+    if actual != expected or summary.get("status") != "passed":
+        print(f"[cache-skip] label={row['role']}.sv_evidence reason=metadata_mismatch", flush=True)
+        return None
+    candidates = parse_csv(read_text(path_from_root(candidates_path)))
+    return candidates, {**summary, "sv_cache": "reused_role"}
+
+
+def publish_cached_sv_role(row: dict[str, str], candidate_rows: list[dict[str, Any]], summary_row: dict[str, Any]) -> None:
+    candidates_path, summary_path = sv_role_cache_paths(row)
+    write_csv(path_from_root(candidates_path), candidate_rows, SV_CANDIDATE_COLUMNS)
+    write_json(path_from_root(summary_path), {"generatedAt": iso_now(), "status": summary_row["status"], "row": summary_row})
+    outputs = [candidates_path, summary_path]
+    publish_cached_outputs(outputs, {output: sample_validation_cache_uri(row, output) for output in outputs}, f"{row['role']}.sv_evidence")
+
+
 def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
     candidates_output = f"{RESULTS_DIR}/sv_evidence_candidates.csv"
     summary_output = f"{RESULTS_DIR}/sv_evidence_summary.csv"
     summary_json = f"{RESULTS_DIR}/sv_evidence_summary.json"
     expected_keys = {(row["role"], row["run_accession"], row["output_bam"]) for row in rows}
     inputs = [path for row in rows for path in [row["output_bam"], row.get("output_bai", "")]]
-    if not FORCE and existing_output_current([candidates_output, summary_output, summary_json], inputs):
+    final_outputs = [candidates_output, summary_output, summary_json]
+    final_cache_uris = (
+        {output: pair_validation_cache_uri(rows[0], rows[1] if len(rows) > 1 else rows[0], "sv_evidence", output) for output in final_outputs}
+        if rows
+        else {}
+    )
+    if not FORCE and (
+        existing_output_current(final_outputs, inputs) or restore_cached_outputs(final_outputs, final_cache_uris, inputs, "pair.sv_evidence")
+    ):
         cached_rows = read_json(path_from_root(summary_json)).get("rows", [])
         cached_keys = {(row.get("role", ""), row.get("run_accession", ""), row.get("input_bam", "")) for row in cached_rows}
         if cached_rows and cached_keys == expected_keys and all(row.get("status") == "passed" for row in cached_rows):
@@ -764,12 +947,19 @@ def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
     summary_rows: list[dict[str, Any]] = []
     candidate_rows: list[dict[str, Any]] = []
     for row in rows:
+        cached_role = restore_cached_sv_role(row)
+        if cached_role is not None:
+            cached_candidates, cached_summary = cached_role
+            candidate_rows.extend(cached_candidates)
+            summary_rows.append(cached_summary)
+            continue
         total_alignments = indexed_alignment_count(row)
         supplementary = 0
         discordant_mapped_pairs = 0
         interchromosomal_pairs = 0
         large_insert_pairs = 0
         candidate_count = 0
+        role_candidate_rows: list[dict[str, Any]] = []
         command = ["samtools", "view", "-@", str(BAM_SCAN_THREADS), row["output_bam"]]
         with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
             assert proc.stdout is not None
@@ -816,30 +1006,31 @@ def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
                         "cigar": cigar,
                     }
                 )
+                role_candidate_rows.append(candidate_rows[-1])
                 candidate_count += 1
             stderr = proc.stderr.read() if proc.stderr is not None else ""
             if proc.wait() != 0:
                 raise RuntimeError(f"samtools view failed for {row['output_bam']}: {stderr}")
-        summary_rows.append(
-            {
-                "status": "passed",
-                "tool": "samtools view flag/evidence counters",
-                "sample": row["sample"],
-                "role": row["role"],
-                "run_accession": row["run_accession"],
-                "input_bam": row["output_bam"],
-                "total_alignments": total_alignments,
-                "supplementary_alignments": supplementary,
-                "discordant_mapped_pairs": discordant_mapped_pairs,
-                "interchromosomal_pairs": interchromosomal_pairs,
-                "large_insert_pairs": large_insert_pairs,
-                "sv_candidate_rows_written": candidate_count,
-                "chord_input_status": "not_assessable_requires_validated_sv_caller_vcf",
-                "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is WGS SV evidence, not a validated production SV caller VCF.",
-            }
-        )
-    write_csv(path_from_root(candidates_output), candidate_rows)
-    write_csv(path_from_root(summary_output), summary_rows)
+        summary_row = {
+            "status": "passed",
+            "tool": "samtools view flag/evidence counters",
+            "sample": row["sample"],
+            "role": row["role"],
+            "run_accession": row["run_accession"],
+            "input_bam": row["output_bam"],
+            "total_alignments": total_alignments,
+            "supplementary_alignments": supplementary,
+            "discordant_mapped_pairs": discordant_mapped_pairs,
+            "interchromosomal_pairs": interchromosomal_pairs,
+            "large_insert_pairs": large_insert_pairs,
+            "sv_candidate_rows_written": candidate_count,
+            "chord_input_status": "not_assessable_requires_validated_sv_caller_vcf",
+            "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is WGS SV evidence, not a validated production SV caller VCF.",
+        }
+        summary_rows.append(summary_row)
+        publish_cached_sv_role(row, role_candidate_rows, summary_row)
+    write_csv(path_from_root(candidates_output), candidate_rows, SV_CANDIDATE_COLUMNS)
+    write_csv(path_from_root(summary_output), summary_rows, SV_SUMMARY_COLUMNS)
     write_json(
         path_from_root(summary_json),
         {
@@ -848,6 +1039,7 @@ def build_sv_evidence(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
             "rows": summary_rows,
         },
     )
+    publish_cached_outputs(final_outputs, final_cache_uris, "pair.sv_evidence")
     return summary_rows
 
 
@@ -959,10 +1151,18 @@ def main() -> None:
             for command, log_path in align_commands:
                 run_command(command, log_path)
 
+    bam_summary_outputs = [f"{RESULTS_DIR}/bam_validation_summary.csv", f"{RESULTS_DIR}/bam_validation_summary.json"]
+    bam_summary_inputs = [path for row in rows for path in [row["output_bam"], row.get("output_bai", "")]]
+    restore_cached_outputs(
+        bam_summary_outputs,
+        {output: pair_validation_cache_uri(tumor, normal, "bam_validation", output) for output in bam_summary_outputs},
+        bam_summary_inputs,
+        "pair.bam_validation",
+    )
     reusable_bam_rows = reusable_bam_validation_rows(rows)
     if reusable_bam_rows is None:
         index_commands: list[tuple[str, str]] = []
-        stats_commands: list[tuple[str, str]] = []
+        stats_commands: list[tuple[str, str, list[str], str, str]] = []
         for row in rows:
             if FORCE or not existing_output_current([row["output_bai"]], [row["output_bam"]]):
                 index_commands.append(
@@ -974,13 +1174,29 @@ def main() -> None:
             flagstat_log = f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.flagstat.txt"
             stats_log = f"{RESULTS_DIR}/logs/{reference_id}.{row['run_accession']}.stats.txt"
             if FORCE or not existing_output_current([flagstat_log], [row["output_bam"]]):
-                stats_commands.append((f"samtools flagstat -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}", flagstat_log))
+                stats_commands.append(
+                    (
+                        f"samtools flagstat -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}",
+                        flagstat_log,
+                        [row["output_bam"], row["output_bai"]],
+                        sample_validation_cache_uri(row, flagstat_log),
+                        f"{row['role']}.flagstat",
+                    )
+                )
             if FORCE or not existing_output_current([stats_log], [row["output_bam"]]):
-                stats_commands.append((f"samtools stats -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}", stats_log))
+                stats_commands.append(
+                    (
+                        f"samtools stats -@ {BAM_SCAN_THREADS} {quote_shell_arg(row['output_bam'])}",
+                        stats_log,
+                        [row["output_bam"], row["output_bai"]],
+                        sample_validation_cache_uri(row, stats_log),
+                        f"{row['role']}.stats",
+                    )
+                )
         if index_commands:
             run_commands_parallel(index_commands, len(index_commands))
         if stats_commands:
-            run_commands_parallel(stats_commands, min(4, len(stats_commands)))
+            run_cached_commands_parallel(stats_commands, min(4, len(stats_commands)))
 
     with ThreadPoolExecutor(max_workers=min(ALIGNMENT_CACHE_WORKERS, len(rows))) as pool:
         alignment_cache_rows = list(pool.map(publish_cached_alignment, rows))
@@ -989,6 +1205,11 @@ def main() -> None:
     write_csv(path_from_root(f"{RESULTS_DIR}/bam_validation_summary.csv"), bam_rows)
     write_json(
         path_from_root(f"{RESULTS_DIR}/bam_validation_summary.json"), {"generatedAt": iso_now(), "status": bam_status, "rows": bam_rows}
+    )
+    publish_cached_outputs(
+        bam_summary_outputs,
+        {output: pair_validation_cache_uri(tumor, normal, "bam_validation", output) for output in bam_summary_outputs},
+        "pair.bam_validation",
     )
     if bam_status != "passed":
         raise RuntimeError("Phase 3 WGS BAM validation failed.")
