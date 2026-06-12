@@ -59,6 +59,12 @@ class CliParityTest(unittest.TestCase):
             for step in task.steps:
                 self.assertNotIn(forbidden, step.argv, name)
 
+    def test_nextflow_tasks_write_logs_under_logs(self):
+        for name, task in TASKS.items():
+            for step in task.steps:
+                if step.argv and step.argv[0] == "nextflow":
+                    self.assertEqual(("nextflow", "-log", "logs/nextflow.log", "run", "main.nf"), step.argv[:5], name)
+
     def test_test_task_accepts_pytest_arguments(self):
         self.assertTrue(TASKS["py:test"].accepts_args)
         self.assertTrue(TASKS["py:test"].steps[0].append_args)

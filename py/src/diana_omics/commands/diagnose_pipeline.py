@@ -14,10 +14,10 @@ def collect_trace_paths(root: Path) -> list[Path]:
 def collect_log_paths(root: Path) -> list[Path]:
     paths: list[Path] = []
     paths.extend(sorted((root / "logs").glob("*.log")))
+    paths.extend(sorted((root / "logs").glob("nextflow.log*")))
     paths.extend(sorted((root / "nextflow-out/aws").glob("**/nextflow.log")))
     paths.extend(sorted((root / "nextflow-out/aws").glob("**/launcher.out")))
-    paths.extend(sorted(root.glob(".nextflow.log*")))
-    return [path for path in paths if path.is_file()]
+    return sorted({path for path in paths if path.is_file()})
 
 
 def current_result_statuses() -> dict[str, str]:

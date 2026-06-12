@@ -15,21 +15,17 @@
 
 ## Failure Signals
 
+- `/Users/jasonlaster/src/projects/diana-omics/logs/nextflow.log.9`: duplicate_alignment_resume, report_overwrite, missing_cloudwatch_stream
 - `/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-phase3fix-full-20260610T033453Z.log`: manual_or_superseded_termination
 - `/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-full-20260610T155813Z.log`: manual_or_superseded_termination
 - `/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-full-20260610T160301Z.log`: manual_or_superseded_termination
 - `/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-metafast-full-20260610T162733Z.log`: manual_or_superseded_termination
 - `/Users/jasonlaster/src/projects/diana-omics/logs/phase3-wgs-split-stagefix-full-20260610T174106Z.log`: manual_or_superseded_termination
 - `/Users/jasonlaster/src/projects/diana-omics/logs/phase3split-stagefix-resume-20260611T094700Z.log`: duplicate_alignment_resume
-- `/Users/jasonlaster/src/projects/diana-omics/nextflow-out/aws/phase3-wgs-full-20260608-145948-heartbeat/nextflow.log`: manual_or_superseded_termination
-- `/Users/jasonlaster/src/projects/diana-omics/nextflow-out/aws/phase3-wgs-full-20260608-152125-heartbeat-spot/nextflow.log`: spot_or_host_interruption, aws_credentials_metadata
 - `/Users/jasonlaster/src/projects/diana-omics/nextflow-out/aws/phase3-wgs-full-20260608-145948-heartbeat/launcher.out`: manual_or_superseded_termination
+- `/Users/jasonlaster/src/projects/diana-omics/nextflow-out/aws/phase3-wgs-full-20260608-145948-heartbeat/nextflow.log`: manual_or_superseded_termination
 - `/Users/jasonlaster/src/projects/diana-omics/nextflow-out/aws/phase3-wgs-full-20260608-152125-heartbeat-spot/launcher.out`: spot_or_host_interruption, aws_credentials_metadata
-- `/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.1`: duplicate_alignment_resume, report_overwrite, missing_cloudwatch_stream
-- `/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.2`: manual_or_superseded_termination, report_overwrite
-- `/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.4`: report_overwrite
-- `/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.6`: report_overwrite
-- `/Users/jasonlaster/src/projects/diana-omics/.nextflow.log.8`: spot_or_host_interruption, manual_or_superseded_termination, report_overwrite
+- `/Users/jasonlaster/src/projects/diana-omics/nextflow-out/aws/phase3-wgs-full-20260608-152125-heartbeat-spot/nextflow.log`: spot_or_host_interruption, aws_credentials_metadata
 
 ## Recommendations
 

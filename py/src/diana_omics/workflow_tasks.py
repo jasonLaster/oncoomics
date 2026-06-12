@@ -10,6 +10,8 @@ from typing import Optional
 
 from .paths import ROOT
 
+NEXTFLOW_LOG_PATH = Path("logs") / "nextflow.log"
+
 
 @dataclass(frozen=True)
 class TaskStep:
@@ -66,7 +68,7 @@ def _tool(*argv: str, env: Optional[Mapping[str, str]] = None, append_args: bool
 
 
 def _nextflow(*args: str) -> TaskStep:
-    return _tool("nextflow", "run", "main.nf", *args)
+    return _tool("nextflow", "-log", str(NEXTFLOW_LOG_PATH), "run", "main.nf", *args)
 
 
 def _terraform(*args: str, env: Optional[Mapping[str, str]] = None) -> TaskStep:
@@ -518,5 +520,10 @@ def run_task(name: str, extra_args: Sequence[str] = ()) -> None:
         if step.env:
             env.update(step.env)
         argv = step.argv + (passthrough if step.append_args else ())
+        if len(argv) >= 3 and argv[0] == "nextflow" and argv[1] == "-log":
+            log_path = Path(argv[2])
+            if not log_path.is_absolute():
+                log_path = step.cwd / log_path
+            log_path.parent.mkdir(parents=True, exist_ok=True)
         print("+ " + " ".join(argv), flush=True)
         subprocess.run(argv, cwd=step.cwd, env=env, check=True)
