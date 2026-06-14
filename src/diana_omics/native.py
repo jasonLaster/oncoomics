@@ -92,7 +92,7 @@ def reference_context(reference_path: str, contig: str, position: int, flank: in
     expected_length = flank * 2 + 1
     if optional_module_available("pyfaidx"):
         try:
-            from pyfaidx import Fasta  # type: ignore[import-not-found]
+            from pyfaidx import Fasta  # type: ignore[import-not-found,import-untyped]
 
             fasta = Fasta(str(path_from_root(reference_path)), rebuild=False, as_raw=True, sequence_always_upper=True)
             start = max(0, position - 1 - flank)

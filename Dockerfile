@@ -5,6 +5,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/opt/diana-omics/src
 ENV DIANA_OMICS_ROOT=/opt/diana-omics
 ARG S5CMD_VERSION=2.3.0
+ARG MICROMAMBA_VERSION=latest
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -12,6 +13,7 @@ RUN apt-get update \
         awscli \
         bcftools \
         bwa \
+        bzip2 \
         ca-certificates \
         curl \
         gzip \
@@ -26,6 +28,25 @@ RUN apt-get update \
         sra-toolkit \
         unzip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN aria2c --version
+
+RUN set -eux; \
+    arch="$(dpkg --print-architecture)"; \
+    case "$arch" in \
+        amd64) mamba_arch="64" ;; \
+        arm64) mamba_arch="aarch64" ;; \
+        *) echo "Unsupported micromamba architecture: $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fSL --retry 5 --retry-all-errors --retry-delay 5 "https://micro.mamba.pm/api/micromamba/linux-${mamba_arch}/${MICROMAMBA_VERSION}" \
+        | tar -xj -C /usr/local/bin --strip-components=1 bin/micromamba; \
+    MAMBA_ROOT_PREFIX=/opt/micromamba micromamba install -y -n base -c conda-forge -c bioconda bwa-mem2 minimap2; \
+    for exe in /opt/micromamba/bin/bwa-mem2* /opt/micromamba/bin/minimap2; do \
+        ln -sf "$exe" "/usr/local/bin/$(basename "$exe")"; \
+    done; \
+    MAMBA_ROOT_PREFIX=/opt/micromamba micromamba clean --all --yes; \
+    bwa-mem2 version; \
+    minimap2 --version
 
 RUN set -eux; \
     arch="$(dpkg --print-architecture)"; \

@@ -104,6 +104,7 @@ def _build_valid_phase3_tree(root: Path) -> None:
                 "readyForPhase4WhenDianaRawArrives": True,
                 "readPairsMode": "full",
                 "fullSourceFastqs": True,
+                "coverageCnvMode": "full",
                 "coverageCnvBins": 600,
             }
         ),
@@ -200,12 +201,59 @@ class VerifyPhase3OutputsTest(unittest.TestCase):
                     "readyForPhase4WhenDianaRawArrives": True,
                     "readPairsMode": "bounded",
                     "fullSourceFastqs": False,
+                    "coverageCnvMode": "full",
                     "coverageCnvBins": 600,
                 }
             ),
         )
         errors = self._errors(root)
         self.assertTrue(any("must be from full-source FASTQs" in error for error in errors), errors)
+
+    def test_metadata_coverage_cnv_mode_rejects_zero_bins(self):
+        root = self._root()
+        _build_valid_phase3_tree(root)
+        boundary = "Full-depth Diana interpretation still requires reviewer sign-off."
+        _write(
+            root,
+            "results/phase3_wgs_smoke/phase3_wgs_summary.csv",
+            f"{_SUMMARY_HEADER}\npassed,3,1000,full,full,passed,skipped_public_bam_timing,passed,skipped_public_bam_timing,passed,yes,yes,{boundary}\n",
+        )
+        _write(
+            root,
+            "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+            json.dumps(
+                {
+                    "phase3Complete": True,
+                    "readyForPhase4WhenDianaRawArrives": True,
+                    "readPairsMode": "full",
+                    "fullSourceFastqs": True,
+                    "coverageCnvMode": "metadata",
+                    "coverageCnvBins": 0,
+                }
+            ),
+        )
+        errors = self._errors(root)
+        self.assertTrue(any("non-empty coverage CNV bins" in error for error in errors), errors)
+
+    def test_full_coverage_cnv_mode_rejects_zero_bins(self):
+        root = self._root()
+        _build_valid_phase3_tree(root)
+        _write(
+            root,
+            "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+            json.dumps(
+                {
+                    "phase3Complete": True,
+                    "readyForPhase4WhenDianaRawArrives": True,
+                    "readPairsMode": "full",
+                    "fullSourceFastqs": True,
+                    "coverageCnvMode": "full",
+                    "coverageCnvBins": 0,
+                }
+            ),
+        )
+        errors = self._errors(root)
+        self.assertTrue(any("non-empty coverage CNV bins" in error for error in errors), errors)
 
     def test_entry_command_raises_on_broken_and_passes_on_valid(self):
         broken = self._root()  # empty tree -> many missing files

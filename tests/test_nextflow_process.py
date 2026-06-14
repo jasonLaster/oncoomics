@@ -35,6 +35,107 @@ class NextflowProcessTest(unittest.TestCase):
         self.assertNotIn("benchmark:full-wes", command_names(steps))
         self.assertEqual(steps[-1], nf.remove_path_step(nf.PHASE3_FASTQ_DIR))
 
+    def test_split_fetch_workspace_can_skip_public_context_setup_for_speed_experiments(self):
+        steps = nf.workflow_steps(nf.ProcessConfig(stage="phase3_fetch_workspace", phase3_prereq_mode="none"))
+        messages = [step.message for step in steps if step.kind == "message"]
+        commands = command_names(steps)
+        self.assertIn("Skipping public context setup for split Phase 3 WGS alignment-speed experiment.", messages)
+        self.assertIn("Skipping production somatic prerequisites for split Phase 3 WGS minimal mode.", messages)
+        self.assertNotIn("fetch:phase1", commands)
+        self.assertIn("fetch:full-reference-smoke", commands)
+        self.assertNotIn("fetch:production-somatic", commands)
+        self.assertIn("fetch:phase3-wgs", commands)
+
+    def test_split_fetch_workspace_minimal_skips_production_somatic_downloads(self):
+        steps = nf.workflow_steps(nf.ProcessConfig(stage="phase3_fetch_workspace", phase3_prereq_mode="minimal"))
+        messages = [step.message for step in steps if step.kind == "message"]
+        commands = command_names(steps)
+        self.assertIn("fetch:full-reference-smoke", commands)
+        self.assertNotIn("fetch:production-somatic", commands)
+        self.assertNotIn("smoke:production-somatic", commands)
+        self.assertIn("Skipping production somatic prerequisites for split Phase 3 WGS minimal mode.", messages)
+
+    def test_cache_stream_align_sample_skips_repeated_fastq_fetch(self):
+        steps = nf.workflow_steps(nf.ProcessConfig(stage="phase3_align_sample", phase3_align_input_mode="cache_stream"))
+        commands = command_names(steps)
+        self.assertNotIn("fetch:phase3-wgs", commands)
+        self.assertIn("validate:phase3-wgs", commands)
+        self.assertEqual(steps[-2], nf.remove_path_step(nf.PHASE3_FASTQ_DIR))
+        self.assertEqual(steps[-1], nf.remove_path_step(nf.PHASE3_BAM_DIR))
+
+    def test_cache_stream_fetch_workspace_uses_cache_manifest_fastq_mode(self):
+        config = nf.ProcessConfig(
+            stage="phase3_fetch_workspace",
+            phase3_align_input_mode="cache_stream",
+            phase3_asset_cache_uri="s3://cache/phase3_wgs",
+        )
+        env = nf.process_environment(config, Path("/tmp/workspace"))
+        self.assertEqual(env["PHASE3_WGS_FASTQ_LOCAL_MODE"], "cache_manifest")
+
+    def test_source_reference_index_prepares_cache_stream_manifest_and_reference(self):
+        config = nf.ProcessConfig(
+            stage="phase3_reference_index",
+            source_dir=Path("/tmp/source"),
+            phase3_align_input_mode="cache_stream",
+            phase3_asset_cache_uri="s3://cache/phase3_wgs",
+        )
+        commands = command_names(nf.workflow_steps(config))
+        env = nf.process_environment(config, Path("/tmp/workspace"))
+
+        self.assertIn("fetch:full-reference-smoke", commands)
+        self.assertIn("fetch:phase3-wgs", commands)
+        self.assertEqual(commands[-1], "validate:phase3-wgs")
+        self.assertEqual(env["PHASE3_WGS_FASTQ_LOCAL_MODE"], "cache_manifest")
+        self.assertEqual(env["PHASE3_WGS_STAGE"], "reference_index")
+
+    def test_source_reference_index_prepares_from_source_without_previous_workspace(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source = root / "source"
+            workspace = root / "workspace"
+            (source / "src").mkdir(parents=True)
+            (source / "src/example.txt").write_text("source\n", encoding="utf-8")
+
+            config = nf.ProcessConfig(stage="phase3_reference_index", source_dir=source, workspace=workspace)
+            prepared = nf.prepare_workspace(config)
+
+            self.assertEqual(prepared, workspace.resolve())
+            self.assertEqual((workspace / "src/example.txt").read_text(encoding="utf-8"), "source\n")
+
+    def test_minimal_fetch_marks_gatk_optional_for_full_source_timing(self):
+        config = nf.ProcessConfig(
+            stage="phase3_fetch_workspace",
+            phase3_source_mode="aws_sra",
+            phase3_prereq_mode="minimal",
+        )
+        env = nf.process_environment(config, Path("/tmp/workspace"))
+        self.assertEqual(env["PHASE3_WGS_REQUIRE_GATK"], "0")
+
+        config = nf.ProcessConfig(
+            stage="phase3_fetch_workspace",
+            phase3_source_mode="public_bam",
+            phase3_prereq_mode="minimal",
+        )
+        env = nf.process_environment(config, Path("/tmp/workspace"))
+        self.assertEqual(env["PHASE3_WGS_REQUIRE_GATK"], "0")
+
+    def test_full_prereq_fetch_keeps_gatk_required(self):
+        config = nf.ProcessConfig(
+            stage="phase3_fetch_workspace",
+            phase3_source_mode="aws_sra",
+            phase3_prereq_mode="full",
+        )
+        env = nf.process_environment(config, Path("/tmp/workspace"))
+        self.assertEqual(env["PHASE3_WGS_REQUIRE_GATK"], "1")
+
+        config = nf.ProcessConfig(
+            stage="phase3_fetch_workspace",
+            phase3_source_mode="public_bam",
+            phase3_prereq_mode="full",
+        )
+        env = nf.process_environment(config, Path("/tmp/workspace"))
+        self.assertEqual(env["PHASE3_WGS_REQUIRE_GATK"], "1")
+
     def test_phase3_full_wgs_without_wes_uses_phase3_output_gate(self):
         config = nf.ProcessConfig(stage="phase3_wgs", phase3_reads="full", phase3_include_wes=False)
         steps = nf.workflow_steps(config)
@@ -95,8 +196,15 @@ class NextflowProcessTest(unittest.TestCase):
             task_cpus="16",
             phase3_reads="full",
             phase3_source_mode="aws_sra",
+            phase3_aligner="bwa-mem2",
             phase3_bwa_threads="12",
             phase3_sort_threads="4",
+            phase3_align_input_mode="cache_stream",
+            phase3_align_profile_mode="mem_only",
+            phase3_scatter_output_mode="shard_manifest",
+            phase3_shard_input_mode="sra_spot_range",
+            phase3_bam_validation_mode="flagstat_only",
+            phase3_coverage_cnv_mode="metadata",
             phase3_asset_cache_uri="s3://cache/phase3_wgs",
         )
         with patch.dict(os.environ, {"PHASE3_WGS_THREADS": "24"}, clear=False):
@@ -109,6 +217,13 @@ class NextflowProcessTest(unittest.TestCase):
         self.assertEqual(env["PHASE3_WGS_STAGE"], "align_sample")
         self.assertEqual(env["PHASE3_WGS_FETCH_ONLY_ROLE"], "tumor")
         self.assertEqual(env["PHASE3_WGS_SOURCE_MODE"], "aws_sra")
+        self.assertEqual(env["PHASE3_WGS_ALIGNER"], "bwa-mem2")
+        self.assertEqual(env["PHASE3_WGS_ALIGN_INPUT_MODE"], "cache_stream")
+        self.assertEqual(env["PHASE3_WGS_ALIGN_PROFILE_MODE"], "mem_only")
+        self.assertEqual(env["PHASE3_WGS_SCATTER_OUTPUT_MODE"], "shard_manifest")
+        self.assertEqual(env["PHASE3_WGS_SHARD_INPUT_MODE"], "sra_spot_range")
+        self.assertEqual(env["PHASE3_WGS_BAM_VALIDATION_MODE"], "flagstat_only")
+        self.assertEqual(env["PHASE3_WGS_COVERAGE_CNV_MODE"], "metadata")
         self.assertEqual(env["PHASE3_WGS_ASSET_CACHE_URI"], "s3://cache/phase3_wgs")
 
     def test_phase3_env_sets_alignment_thread_overrides(self):
@@ -123,6 +238,41 @@ class NextflowProcessTest(unittest.TestCase):
         self.assertEqual(env["PHASE3_WGS_THREADS"], "64")
         self.assertEqual(env["PHASE3_WGS_BWA_THREADS"], "48")
         self.assertEqual(env["PHASE3_WGS_SORT_THREADS"], "8")
+
+    def test_phase3_shard_stages_set_role_and_shard_environment(self):
+        config = nf.ProcessConfig(
+            stage="phase3_align_shard",
+            role="tumor",
+            task_cpus="32",
+            phase3_align_input_mode="cache_stream",
+            phase3_aligner="minimap2",
+            phase3_bwa_threads="24",
+            phase3_sort_threads="8",
+            phase3_shard_count="8",
+            phase3_shard_index="3",
+            phase3_force="true",
+            phase3_force_shard_alignment="true",
+            phase3_asset_cache_uri="s3://cache/phase3_wgs",
+        )
+        steps = nf.workflow_steps(config)
+        env = nf.process_environment(config, Path("/tmp/workspace"))
+        self.assertEqual(command_names(steps), ["validate:phase3-wgs"])
+        self.assertEqual(steps[-2], nf.remove_path_step(nf.PHASE3_FASTQ_DIR))
+        self.assertEqual(steps[-1], nf.remove_path_step(nf.PHASE3_BAM_DIR))
+        self.assertEqual(env["PHASE3_WGS_STAGE"], "align_shard")
+        self.assertEqual(env["PHASE3_WGS_SAMPLE_ROLE"], "tumor")
+        self.assertEqual(env["PHASE3_WGS_SHARD_COUNT"], "8")
+        self.assertEqual(env["PHASE3_WGS_SHARD_INDEX"], "3")
+        self.assertEqual(env["PHASE3_WGS_ALIGNER"], "minimap2")
+        self.assertEqual(env["PHASE3_WGS_BWA_THREADS"], "24")
+        self.assertEqual(env["PHASE3_WGS_SORT_THREADS"], "8")
+        self.assertEqual(env["PHASE3_WGS_FORCE"], "1")
+        self.assertEqual(env["PHASE3_WGS_FORCE_SHARD_ALIGNMENT"], "1")
+
+    def test_phase3_gather_stage_keeps_bam_outputs(self):
+        steps = nf.workflow_steps(nf.ProcessConfig(stage="phase3_gather_shards", role="tumor", phase3_shard_count="8"))
+        self.assertEqual(command_names(steps), ["validate:phase3-wgs"])
+        self.assertNotIn(nf.remove_path_step(nf.PHASE3_BAM_DIR), steps)
 
     def test_downstream_merge_copies_normal_bam_side_and_reusable_summaries(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -157,6 +307,34 @@ class NextflowProcessTest(unittest.TestCase):
             self.assertTrue((workspace / nf.PHASE3_BAM_DIR / "normal.bam").is_file())
             self.assertTrue((workspace / nf.PHASE3_LOG_DIR / "normal.log").is_file())
             self.assertEqual((workspace / artifact).read_text(encoding="utf-8"), "status\npassed\n")
+
+    def test_downstream_merge_accepts_pruned_align_workspaces(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            tumor = root / "tumor"
+            normal = root / "normal"
+            workspace = root / "workspace"
+            (tumor / nf.PHASE3_LOG_DIR).mkdir(parents=True)
+            (tumor / nf.PHASE3_STAGE_MARKER_DIR).mkdir(parents=True)
+            (normal / nf.PHASE3_LOG_DIR).mkdir(parents=True)
+            (normal / nf.PHASE3_STAGE_MARKER_DIR).mkdir(parents=True)
+            (tumor / nf.PHASE3_LOG_DIR / "tumor.log").write_text("tumor log\n", encoding="utf-8")
+            (normal / nf.PHASE3_LOG_DIR / "normal.log").write_text("normal log\n", encoding="utf-8")
+
+            config = nf.ProcessConfig(
+                stage="phase3_downstream",
+                workspace=workspace,
+                tumor_workspace=tumor,
+                normal_workspace=normal,
+                tumor_role="tumor",
+                normal_role="normal",
+            )
+            nf.merge_downstream_workspaces(config)
+
+            self.assertTrue((workspace / nf.PHASE3_LOG_DIR / "tumor.log").is_file())
+            self.assertTrue((workspace / nf.PHASE3_LOG_DIR / "normal.log").is_file())
+            self.assertTrue((workspace / nf.PHASE3_BAM_DIR).is_dir())
+            self.assertEqual(list((workspace / nf.PHASE3_BAM_DIR).iterdir()), [])
 
 
 if __name__ == "__main__":

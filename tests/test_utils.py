@@ -53,6 +53,19 @@ class UtilsTest(unittest.TestCase):
         self.assertIn("[heartbeat] command still running", output.getvalue())
         self.assertIn("sleep 2; printf done", output.getvalue())
 
+    def test_run_command_heartbeat_includes_running_output_tail(self):
+        output = StringIO()
+        with (
+            patch.dict(
+                utils.os.environ,
+                {"DIANA_OMICS_COMMAND_HEARTBEAT_SECONDS": "1", "DIANA_OMICS_COMMAND_HEARTBEAT_TAIL_CHARS": "200"},
+            ),
+            patch("sys.stdout", output),
+        ):
+            self.assertEqual(utils.run_command("printf progress >&2; sleep 2; printf done"), "done")
+
+        self.assertIn("stderr_tail='progress'", output.getvalue())
+
     def test_run_command_honors_max_buffer(self):
         self.assertEqual(utils.run_command("printf 123456", max_buffer=3), "456")
 

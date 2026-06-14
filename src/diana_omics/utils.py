@@ -189,6 +189,32 @@ def existing_output_current(outputs: Sequence[Union[str, Path]], inputs: Sequenc
     return all(output.stat().st_mtime >= newest_input for output in output_paths)
 
 
+def _running_output_tail(path: Path, max_chars: int) -> str:
+    if max_chars <= 0 or not path.exists():
+        return ""
+    size = path.stat().st_size
+    if size <= 0:
+        return ""
+    with path.open("rb") as handle:
+        handle.seek(max(0, size - max_chars))
+        return handle.read().decode("utf-8", errors="replace").strip()
+
+
+def _format_command_heartbeat(command: str, elapsed: int, log_path: Optional[str], stdout_path: Path, stderr_path: Path) -> str:
+    tail_chars = int(os.environ.get("DIANA_OMICS_COMMAND_HEARTBEAT_TAIL_CHARS", "1200"))
+    parts = [f"[heartbeat] command still running elapsed={elapsed}s"]
+    if log_path:
+        parts.append(f"log={log_path}")
+    stderr_tail = _running_output_tail(stderr_path, tail_chars)
+    stdout_tail = _running_output_tail(stdout_path, tail_chars)
+    if stderr_tail:
+        parts.append(f"stderr_tail={stderr_tail!r}")
+    if stdout_tail:
+        parts.append(f"stdout_tail={stdout_tail!r}")
+    parts.append(f": {command}")
+    return " ".join(parts)
+
+
 def run_command(command: str, log_path: Optional[str] = None, max_buffer: Optional[int] = None) -> str:
     heartbeat_seconds = int(os.environ.get("DIANA_OMICS_COMMAND_HEARTBEAT_SECONDS", "300"))
     started_at = time.monotonic()
@@ -211,8 +237,7 @@ def run_command(command: str, log_path: Optional[str] = None, max_buffer: Option
                 now = time.monotonic()
                 if heartbeat_seconds > 0 and now >= next_heartbeat:
                     elapsed = int(now - started_at)
-                    log_suffix = f" log={log_path}" if log_path else ""
-                    print(f"[heartbeat] command still running elapsed={elapsed}s{log_suffix}: {command}", flush=True)
+                    print(_format_command_heartbeat(command, elapsed, log_path, stdout_path, stderr_path), flush=True)
                     next_heartbeat = now + heartbeat_seconds
                 time.sleep(1)
 

@@ -50,11 +50,52 @@ CACHE_SRA_OBJECTS = os.environ.get("PHASE3_WGS_CACHE_SRA_OBJECTS", "true").lower
 CACHE_FASTQS = os.environ.get("PHASE3_WGS_CACHE_FASTQS", "true").lower() not in {"0", "false", "no"}
 DELETE_SRA_AFTER_CONVERSION = os.environ.get("PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION", "false").lower() in {"1", "true", "yes"}
 FASTQ_STATS_MODE = os.environ.get("PHASE3_WGS_FASTQ_STATS_MODE", "seqkit").lower().replace("-", "_")
+FASTQ_LOCAL_MODE = os.environ.get("PHASE3_WGS_FASTQ_LOCAL_MODE", "hydrate").lower().replace("-", "_")
+REQUIRE_GATK_MODE = os.environ.get("PHASE3_WGS_REQUIRE_GATK", "auto").lower().replace("-", "_")
 FETCH_ONLY_ROLE = os.environ.get("PHASE3_WGS_FETCH_ONLY_ROLE", "").lower()
 RESULTS_DIR = "results/phase3_wgs_smoke"
 SMOKE_ROOT = "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full"
 SEQC2_TRUTH_ROOT = "data/raw/reference/seqc2_hcc1395_truth/latest"
 STORE_IDS_LIMIT = 1_000_000
+PUBLIC_BAM_ROOT = "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/data/WGS"
+PUBLIC_BAM_SOURCES = [
+    {
+        "pair_id": PAIR_ID,
+        "role": "tumor",
+        "run": "SRR7890833",
+        "experiment": "SRX4728535",
+        "library_name": "WGS_EA_T_1",
+        "sample_name": "HCC1395",
+        "bam_sample_name": "WGS_EA_T_1",
+        "spots": "942559447",
+        "bases": "284652952994",
+        "size_mb": "120356",
+        "bam_name": "WGS_EA_T_1.bwa.dedup.bam",
+        "bai_name": "WGS_EA_T_1.bwa.dedup.bai",
+        "bam_md5": "a6e2018f0b84620ff501cdad6c6fd063",
+        "bai_md5": "2fa50a74146c0a4ae127e6b2d009de95",
+        "bam_bytes": "114553695301",
+        "bai_bytes": "9781896",
+    },
+    {
+        "pair_id": PAIR_ID,
+        "role": "normal",
+        "run": "SRR7890832",
+        "experiment": "SRX4728536",
+        "library_name": "WGS_EA_N_1",
+        "sample_name": "HCC1395BL",
+        "bam_sample_name": "WGS_EA_N_1",
+        "spots": "870155991",
+        "bases": "262787109282",
+        "size_mb": "103606",
+        "bam_name": "WGS_EA_N_1.bwa.dedup.bam",
+        "bai_name": "WGS_EA_N_1.bwa.dedup.bai",
+        "bam_md5": "2ca4996809be50fb84b20d94b97e91f4",
+        "bai_md5": "37f35919f488e587513b3394c478e22c",
+        "bam_bytes": "101418600848",
+        "bai_bytes": "9762480",
+    },
+]
 
 
 def sra_aws_uri(run: str) -> str:
@@ -258,7 +299,19 @@ def seqkit_n_fraction(stats: dict[str, str], bases: int) -> float:
 def full_scan_validation_method() -> str:
     if SOURCE_MODE == "aws_sra":
         return "seqkit_stats_full_scan_sra_spot_count_check"
+    if SOURCE_MODE == "public_bam":
+        return "public_bwa_mem_bam_manifest_sra_spot_count_check"
     return "seqkit_stats_full_scan_with_exact_provider_md5"
+
+
+def require_gatk_assets() -> bool:
+    if REQUIRE_GATK_MODE in {"1", "true", "yes", "full", "required"}:
+        return True
+    if REQUIRE_GATK_MODE in {"0", "false", "no", "skip", "optional"}:
+        return False
+    if REQUIRE_GATK_MODE != "auto":
+        raise RuntimeError("PHASE3_WGS_REQUIRE_GATK must be auto, true, or false.")
+    return SOURCE_MODE != "public_bam"
 
 
 def first_fastq_id(path: str, label: str) -> str:
@@ -398,6 +451,59 @@ def summarize_paired_fastqs_with_metadata(row: dict[str, Any], source: str) -> t
     )
 
 
+def summarize_paired_fastqs_from_cache_manifest(row: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    aws = aws_cli_path()
+    run = row["run_accession"]
+    expected_records = int(row["read_pairs_per_end"])
+    read_length = manifest_read_length(row)
+    r1_uri = cache_uri("fastq", Path(row["fastq_1"]).name)
+    r2_uri = cache_uri("fastq", Path(row["fastq_2"]).name)
+    r1_bytes = s3_object_size(aws, r1_uri) if r1_uri else None
+    r2_bytes = s3_object_size(aws, r2_uri) if r2_uri else None
+    missing = [uri for uri, size in [(r1_uri, r1_bytes), (r2_uri, r2_bytes)] if not uri or size is None]
+    if missing:
+        raise RuntimeError(f"PHASE3_WGS_FASTQ_LOCAL_MODE=cache_manifest missing cached FASTQ object(s): {', '.join(missing)}")
+    print(f"[cache-manifest] label={run}.fastq-pair uri={cache_uri('fastq')}", flush=True)
+
+    def summary_for(read: str, path: str, source_url: str, uri: str, byte_count: int | None) -> dict[str, Any]:
+        return {
+            "run": run,
+            "read": read,
+            "sourceUrl": source_url,
+            "outputPath": str(path_from_root(path)),
+            "records": expected_records,
+            "minLength": read_length,
+            "maxLength": read_length,
+            "meanLength": read_length,
+            "gcFraction": "",
+            "nFraction": "",
+            "qualityAsciiMin": "",
+            "qualityAsciiMax": "",
+            "firstReadId": "not_collected_cache_manifest",
+            "lastReadId": "not_collected_cache_manifest",
+            "ids": [],
+            "idsStored": False,
+            "source": "cache_manifest",
+            "cacheUri": uri,
+            "bytes": byte_count or "",
+            "validationMethod": "cache_manifest_s3_object_size_and_manifest_metadata",
+        }
+
+    paired_summary = {
+        "run": run,
+        "records": expected_records,
+        "firstReadId": "not_collected_cache_manifest",
+        "lastReadId": "not_collected_cache_manifest",
+        "pairedIdCheck": "not_checked_cache_manifest",
+        "validationMethod": "cache_manifest_s3_object_size_and_manifest_metadata",
+    }
+    return (
+        summary_for("R1", row["fastq_1"], row["source_fastq_1"], r1_uri, r1_bytes),
+        summary_for("R2", row["fastq_2"], row["source_fastq_2"], r2_uri, r2_bytes),
+        paired_summary,
+    )
+
+
 def summarize_paired_fastqs(row: dict[str, Any], source: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     if READ_PAIRS_LIMIT is None and FASTQ_STATS_MODE in {"metadata", "manifest", "head"}:
         return summarize_paired_fastqs_with_metadata(row, source)
@@ -448,6 +554,104 @@ def summarize_paired_fastqs(row: dict[str, Any], source: str) -> tuple[dict[str,
         "pairedIdCheck": "passed",
     }
     return r1_summary, r2_summary, paired_summary
+
+
+def public_bam_panel_rows() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for row in PUBLIC_BAM_SOURCES:
+        rows.append(
+            {
+                "pair_id": row["pair_id"],
+                "role": row["role"],
+                "run": row["run"],
+                "assay": "WGS",
+                "phase": "phase-3-public-bam",
+                "priority": "3",
+                "sra_study": "SRP162370",
+                "bioproject": "PRJNA489865",
+                "experiment": row["experiment"],
+                "library_name": row["library_name"],
+                "library_strategy": "WGS",
+                "library_layout": "PAIRED",
+                "sample_name": row["sample_name"],
+                "bam_sample_name": row["bam_sample_name"],
+                "biosample": "SAMN10102573" if row["role"] == "tumor" else "SAMN10102574",
+                "platform": "ILLUMINA",
+                "model": "HiSeq X Ten",
+                "spots": row["spots"],
+                "bases": row["bases"],
+                "avg_length": "302",
+                "size_mb": row["size_mb"],
+                "consent": "public",
+                "download_path": sra_aws_uri(row["run"]),
+                "fastq_1_url": f"{sra_aws_uri(row['run'])}#R1",
+                "fastq_2_url": f"{sra_aws_uri(row['run'])}#R2",
+                "fastq_1_md5": "",
+                "fastq_2_md5": "",
+                "fastq_1_bytes": "",
+                "fastq_2_bytes": "",
+                "source_bam_url": f"{PUBLIC_BAM_ROOT}/{row['bam_name']}",
+                "source_bai_url": f"{PUBLIC_BAM_ROOT}/{row['bai_name']}",
+                "source_bam_md5": row["bam_md5"],
+                "source_bai_md5": row["bai_md5"],
+                "source_bam_bytes": row["bam_bytes"],
+                "source_bai_bytes": row["bai_bytes"],
+                "use_case": "Public SEQC2/HCC1395 full-source WGS BWA MEM BAM for Phase 3 WGS validation.",
+                "caveat": "Public BWA MEM aligned BAM/BAI from SEQC2; raw SRA source remains full public WGS.",
+            }
+        )
+    return rows
+
+
+def summarize_paired_fastqs_from_public_bam(row: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    run = row["run_accession"]
+    expected_records = int(row["read_pairs_per_end"])
+    read_length = manifest_read_length(row)
+
+    def summary_for(read: str, path: str, source_url: str) -> dict[str, Any]:
+        return {
+            "run": run,
+            "read": read,
+            "sourceUrl": source_url,
+            "outputPath": str(path_from_root(path)),
+            "records": expected_records,
+            "minLength": read_length,
+            "maxLength": read_length,
+            "meanLength": read_length,
+            "gcFraction": "",
+            "nFraction": "",
+            "qualityAsciiMin": "",
+            "qualityAsciiMax": "",
+            "firstReadId": "not_collected_public_bam",
+            "lastReadId": "not_collected_public_bam",
+            "ids": [],
+            "idsStored": False,
+            "source": "public_bwa_mem_bam",
+            "validationMethod": full_scan_validation_method(),
+        }
+
+    paired_summary = {
+        "run": run,
+        "records": expected_records,
+        "firstReadId": "not_collected_public_bam",
+        "lastReadId": "not_collected_public_bam",
+        "pairedIdCheck": "not_checked_public_bam",
+        "validationMethod": full_scan_validation_method(),
+    }
+    return (
+        summary_for("R1", row["fastq_1"], row["source_fastq_1"]),
+        summary_for("R2", row["fastq_2"], row["source_fastq_2"]),
+        paired_summary,
+    )
+
+
+def compressed_fastq_bytes(summary: dict[str, Any], relative_path: str) -> Any:
+    if summary.get("bytes") not in {None, ""}:
+        return summary["bytes"]
+    path = path_from_root(relative_path)
+    if relative_path.endswith(".gz") and path.exists():
+        return path.stat().st_size
+    return ""
 
 
 def download_full_fastq(
@@ -1205,10 +1409,12 @@ def assert_paired_files(run: str, r1_path: str, r2_path: str, expected_records: 
 
 
 def main() -> None:
+    if FASTQ_LOCAL_MODE not in {"hydrate", "cache_manifest"}:
+        raise RuntimeError("PHASE3_WGS_FASTQ_LOCAL_MODE must be hydrate or cache_manifest.")
     ensure_dir(path_from_root(RESULTS_DIR))
     ensure_dir(path_from_root(f"{RESULTS_DIR}/logs"))
 
-    raw_panel = parse_csv(read_text(path_from_root("manifests/raw_representative_panel.csv")))
+    raw_panel = public_bam_panel_rows() if SOURCE_MODE == "public_bam" else parse_csv(read_text(path_from_root("manifests/raw_representative_panel.csv")))
     selected = sorted([row for row in raw_panel if row["pair_id"] == PAIR_ID], key=lambda row: 0 if row["role"] == "tumor" else 1)
     if len(selected) != 2 or {row["role"] for row in selected} != {"tumor", "normal"}:
         raise RuntimeError(f"Expected tumor and normal raw panel rows for {PAIR_ID}.")
@@ -1229,19 +1435,46 @@ def main() -> None:
     full_wes_resource = full_wes_rows[0] if full_wes_rows else {}
     java_path = find_java(full_wes_resource.get("java_path", ""))
     gatk_jar = full_wes_resource.get("gatk_jar_path") or "data/raw/tools/gatk/gatk-4.6.2.0/gatk-package-4.6.2.0-local.jar"
-    if not path_from_root(gatk_jar).exists():
+    gatk_required = require_gatk_assets()
+    gatk_available = path_from_root(gatk_jar).exists()
+    if gatk_required and not gatk_available:
         raise RuntimeError(f"GATK jar is missing: {gatk_jar}. Run fetch:production-somatic or fetch:full-wes first.")
+    if not gatk_available:
+        print(
+            f"Skipping GATK jar requirement for PHASE3_WGS_SOURCE_MODE={SOURCE_MODE} "
+            f"PHASE3_WGS_REQUIRE_GATK={REQUIRE_GATK_MODE}.",
+            flush=True,
+        )
+        gatk_jar = ""
+        java_path = ""
+    gatk_status = "ready" if gatk_available else "skipped_missing_allowed"
+    production_caller = "GATK Mutect2 + FilterMutectCalls" if gatk_available else "skipped_for_minimal_timing"
 
     truth_snv_path = f"{SEQC2_TRUTH_ROOT}/high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz"
     truth_indel_path = f"{SEQC2_TRUTH_ROOT}/high-confidence_sINDEL_in_HC_regions_v1.2.1.vcf.gz"
     truth_high_confidence_bed_path = f"{SEQC2_TRUTH_ROOT}/High-Confidence_Regions_v1.2.bed"
+    truth_required = gatk_required
+    missing_truth_paths: list[str] = []
     for relative_path in [truth_snv_path, truth_indel_path, truth_high_confidence_bed_path]:
         if not path_from_root(relative_path).exists():
-            raise RuntimeError(f"SEQC2 truth asset is missing: {relative_path}. Run fetch:production-somatic first.")
+            missing_truth_paths.append(relative_path)
+    if truth_required and missing_truth_paths:
+        raise RuntimeError(f"SEQC2 truth asset is missing: {missing_truth_paths[0]}. Run fetch:production-somatic first.")
+    if missing_truth_paths:
+        print(
+            f"Skipping SEQC2 truth asset requirement for PHASE3_WGS_SOURCE_MODE={SOURCE_MODE} "
+            f"PHASE3_WGS_REQUIRE_GATK={REQUIRE_GATK_MODE}.",
+            flush=True,
+        )
+        truth_snv_path = ""
+        truth_indel_path = ""
+        truth_high_confidence_bed_path = ""
+    truth_status = "ready" if not missing_truth_paths else "skipped_missing_allowed"
 
     sample_rows: list[dict[str, Any]] = []
     for row in selected:
-        sample_name = "HCC1395" if row["role"] == "tumor" else "HCC1395BL"
+        source_sample_name = "HCC1395" if row["role"] == "tumor" else "HCC1395BL"
+        sample_name = row.get("bam_sample_name") or source_sample_name
         row_read_pairs = expected_read_pairs(row)
         row_read_label = read_count_label(row_read_pairs)
         sample_rows.append(
@@ -1249,6 +1482,7 @@ def main() -> None:
                 "pair_id": row["pair_id"],
                 "patient": "HCC1395",
                 "sample": sample_name,
+                "source_sample": source_sample_name,
                 "role": row["role"],
                 "status": "tumor" if row["role"] == "tumor" else "matched_normal",
                 "run_accession": row["run"],
@@ -1265,6 +1499,12 @@ def main() -> None:
                 "source_fastq_2_md5": row["fastq_2_md5"],
                 "source_fastq_1_bytes": row["fastq_1_bytes"],
                 "source_fastq_2_bytes": row["fastq_2_bytes"],
+                "source_bam_url": row.get("source_bam_url", ""),
+                "source_bai_url": row.get("source_bai_url", ""),
+                "source_bam_md5": row.get("source_bam_md5", ""),
+                "source_bai_md5": row.get("source_bai_md5", ""),
+                "source_bam_bytes": row.get("source_bam_bytes", ""),
+                "source_bai_bytes": row.get("source_bai_bytes", ""),
                 "read_pairs_per_end": row_read_pairs,
                 "fastq_1": f"{SMOKE_ROOT}/fastq/{row['run']}_R1.{row_read_label}.fastq.gz"
                 if READ_PAIRS_LIMIT is None
@@ -1288,15 +1528,17 @@ def main() -> None:
                 "gatk_jar_path": gatk_jar,
                 "java_path": java_path,
                 "mutect2_panel_of_normals_path": full_wes_resource.get("mutect2_panel_of_normals_path", ""),
-                "production_caller": "GATK Mutect2 + FilterMutectCalls",
-                "read_group_id": f"{row['run']}.{row['role']}.phase3wgs",
+                "production_caller": production_caller,
+                "read_group_id": row.get("bam_sample_name") or f"{row['run']}.{row['role']}.phase3wgs",
                 "read_group_sample": sample_name,
-                "read_group_library": row["run"],
+                "read_group_library": row.get("library_name") or row["run"],
                 "read_group_platform": "ILLUMINA",
-                "read_group_platform_unit": row["run"],
-                "output_bam": f"{SMOKE_ROOT}/{reference['reference_id']}/{row_read_label}/bam/{row['run']}.{row['role']}.bam",
-                "output_bai": f"{SMOKE_ROOT}/{reference['reference_id']}/{row_read_label}/bam/{row['run']}.{row['role']}.bam.bai",
-                "caller_interval_strategy": "covered SEQC2 WGS truth loci from tumor and normal full-source BAM depth, fallback to mapped-read intervals if needed",
+                "read_group_platform_unit": row.get("library_name") or row["run"],
+                "output_bam": f"{SMOKE_ROOT}/{reference['reference_id']}/{row_read_label}/bam/{sample_name}.{row['role']}.bam",
+                "output_bai": f"{SMOKE_ROOT}/{reference['reference_id']}/{row_read_label}/bam/{sample_name}.{row['role']}.bam.bai",
+                "caller_interval_strategy": "covered SEQC2 WGS truth loci from tumor and normal full-source BAM depth, fallback to mapped-read intervals if needed"
+                if truth_status == "ready"
+                else "skipped_for_minimal_timing",
                 "cnv_strategy": "samtools bedcov over fixed-width standard-contig bins with tumor/normal log2 coverage ratios",
                 "sv_strategy": "samtools split-read, supplementary-read, discordant-pair, and interchromosomal-pair evidence counts",
                 "signature_strategy": "local SBS96 mutation matrix from actual filtered WGS VCF records; signature classification deferred unless mutation count is sufficient",
@@ -1313,7 +1555,29 @@ def main() -> None:
     fastq_stats: list[dict[str, Any]]
     paired_stats: dict[str, dict[str, Any]]
     asset_cache_summary: dict[str, Any] = {"enabled": bool(ASSET_CACHE_URI), "uri": ASSET_CACHE_URI, "mode": ASSET_CACHE_MODE}
-    if READ_PAIRS_LIMIT is None and SOURCE_MODE == "aws_sra":
+    if READ_PAIRS_LIMIT is None and SOURCE_MODE == "public_bam":
+        fastq_stats = []
+        paired_stats = {}
+        for r1_summary, r2_summary, paired_summary in map(summarize_paired_fastqs_from_public_bam, active_sample_rows):
+            fastq_stats.extend([r1_summary, r2_summary])
+            paired_stats[r1_summary["run"]] = paired_summary
+        asset_cache_summary.update(
+            {
+                "publicBamSource": True,
+                "bamRoot": PUBLIC_BAM_ROOT,
+                "validationMethod": full_scan_validation_method(),
+            }
+        )
+    elif READ_PAIRS_LIMIT is None and SOURCE_MODE == "aws_sra" and FASTQ_LOCAL_MODE == "cache_manifest":
+        fastq_stats = []
+        paired_stats = {}
+        with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(active_sample_rows))) as pool:
+            paired_results = list(pool.map(summarize_paired_fastqs_from_cache_manifest, active_sample_rows))
+        for r1_summary, r2_summary, paired_summary in paired_results:
+            fastq_stats.extend([r1_summary, r2_summary])
+            paired_stats[r1_summary["run"]] = paired_summary
+        asset_cache_summary["fastqLocalMode"] = FASTQ_LOCAL_MODE
+    elif READ_PAIRS_LIMIT is None and SOURCE_MODE == "aws_sra":
         with ThreadPoolExecutor(max_workers=min(FETCH_CONCURRENCY, len(active_sample_rows))) as pool:
             list(pool.map(ensure_aws_sra_object, active_sample_rows))
         with ThreadPoolExecutor(max_workers=min(SRA_RUN_CONCURRENCY, len(active_sample_rows))) as pool:
@@ -1414,8 +1678,8 @@ def main() -> None:
                 "read_scope": "full_source_fastq" if READ_PAIRS_LIMIT is None else "bounded_public_fastq_subset",
                 "local_fastq_1": row["fastq_1"],
                 "local_fastq_2": row["fastq_2"],
-                "compressed_fastq_1_bytes": path_from_root(row["fastq_1"]).stat().st_size if row["fastq_1"].endswith(".gz") else "",
-                "compressed_fastq_2_bytes": path_from_root(row["fastq_2"]).stat().st_size if row["fastq_2"].endswith(".gz") else "",
+                "compressed_fastq_1_bytes": compressed_fastq_bytes(r1, row["fastq_1"]),
+                "compressed_fastq_2_bytes": compressed_fastq_bytes(r2, row["fastq_2"]),
                 "r1_mean_length": round_value(r1["meanLength"], 2),
                 "r2_mean_length": round_value(r2["meanLength"], 2),
                 "r1_gc_fraction": round_value(r1["gcFraction"], 4),
@@ -1442,6 +1706,7 @@ def main() -> None:
             "readPairsMode": "full" if READ_PAIRS_LIMIT is None else "bounded",
             "fetchConcurrency": FETCH_CONCURRENCY,
             "sourceMode": SOURCE_MODE,
+            "fastqLocalMode": FASTQ_LOCAL_MODE,
             "assetCache": asset_cache_summary,
             "fetchOnlyRole": FETCH_ONLY_ROLE or None,
             "rows": fastq_rows,
@@ -1457,10 +1722,13 @@ def main() -> None:
             "readRequest": READS_REQUEST,
             "readPairsMode": "full" if READ_PAIRS_LIMIT is None else "bounded",
             "sourceMode": SOURCE_MODE,
+            "fastqLocalMode": FASTQ_LOCAL_MODE,
             "sampleRows": len(sample_rows),
             "fetchedSampleRows": len(active_sample_rows),
             "fetchOnlyRole": FETCH_ONLY_ROLE or None,
-            "source": "SEQC2/HCC1395 public HiSeq X Ten WGS tumor-normal FASTQ pair",
+            "source": "SEQC2/HCC1395 public HiSeq X Ten WGS tumor-normal FASTQ pair"
+            if SOURCE_MODE != "public_bam"
+            else "SEQC2/HCC1395 public HiSeq X Ten WGS tumor-normal BWA MEM BAM/BAI pair",
             "reference": {
                 "referenceId": reference["reference_id"],
                 "assembly": reference["assembly"],
@@ -1469,8 +1737,16 @@ def main() -> None:
                 "faiPath": reference["fasta_fai_path"],
                 "dictPath": reference_dict_path(reference["fasta_path"]),
             },
-            "gatk": {"jarPath": gatk_jar, "javaPath": java_path},
+            "gatk": {
+                "status": gatk_status,
+                "required": gatk_required,
+                "requireMode": REQUIRE_GATK_MODE,
+                "jarPath": gatk_jar,
+                "javaPath": java_path,
+            },
             "seqc2Truth": {
+                "status": truth_status,
+                "required": truth_required,
                 "snvVcfPath": truth_snv_path,
                 "indelVcfPath": truth_indel_path,
                 "highConfidenceBedPath": truth_high_confidence_bed_path,
@@ -1484,7 +1760,7 @@ def main() -> None:
                 "default": "Full-source public WGS validation.",
                 "bounded_developer_check": "Set PHASE3_WGS_READS to an integer only for developer plumbing checks; bounded mode does not satisfy the Phase 3 acceptance gate.",
             },
-            "boundary": "Full-source runs prepare complete SEQC2/HCC1395 public WGS FASTQs for Phase 3 validation. Bounded subsets are optional developer checks and are not accepted as completed orthogonal validation.",
+            "boundary": "Full-source runs prepare complete SEQC2/HCC1395 public WGS inputs for Phase 3 validation. Bounded subsets are optional developer checks and are not accepted as completed orthogonal validation.",
         },
     )
     write_text(

@@ -28,8 +28,20 @@ params.phase3_sra_command_retries = params.phase3_sra_command_retries ?: 2
 params.phase3_fastq_stats_mode = params.phase3_fastq_stats_mode ?: 'seqkit'
 params.phase3_cache_upload_workers = params.containsKey('phase3_cache_upload_workers') ? params.phase3_cache_upload_workers : 4
 params.phase3_alignment_cache_workers = params.containsKey('phase3_alignment_cache_workers') ? params.phase3_alignment_cache_workers : 2
+params.phase3_aligner = params.containsKey('phase3_aligner') ? params.phase3_aligner : 'bwa'
 params.phase3_bwa_threads = params.containsKey('phase3_bwa_threads') ? params.phase3_bwa_threads : 0
 params.phase3_sort_threads = params.containsKey('phase3_sort_threads') ? params.phase3_sort_threads : 0
+params.phase3_align_input_mode = params.containsKey('phase3_align_input_mode') ? params.phase3_align_input_mode : 'local_fastq'
+params.phase3_align_profile_mode = params.containsKey('phase3_align_profile_mode') ? params.phase3_align_profile_mode : 'pipe'
+params.phase3_scatter_output_mode = params.containsKey('phase3_scatter_output_mode') ? params.phase3_scatter_output_mode : 'merged_bam'
+params.phase3_shard_input_mode = params.containsKey('phase3_shard_input_mode') ? params.phase3_shard_input_mode : 'fastq_cache'
+params.phase3_force = params.containsKey('phase3_force') ? params.phase3_force : false
+params.phase3_force_shard_alignment = params.containsKey('phase3_force_shard_alignment') ? params.phase3_force_shard_alignment : false
+params.phase3_scatter_role = params.containsKey('phase3_scatter_role') ? params.phase3_scatter_role : 'tumor'
+params.phase3_shard_count = params.containsKey('phase3_shard_count') ? params.phase3_shard_count : 8
+params.phase3_bam_validation_mode = params.containsKey('phase3_bam_validation_mode') ? params.phase3_bam_validation_mode : 'full'
+params.phase3_coverage_cnv_mode = params.containsKey('phase3_coverage_cnv_mode') ? params.phase3_coverage_cnv_mode : 'full'
+params.phase3_allow_metadata_cnv_timing = params.containsKey('phase3_allow_metadata_cnv_timing') ? params.phase3_allow_metadata_cnv_timing : false
 params.phase3_asset_cache_uri = params.phase3_asset_cache_uri ?: null
 params.phase3_asset_cache_mode = params.phase3_asset_cache_mode ?: 'readwrite'
 params.phase3_delete_sra_after_conversion = params.phase3_delete_sra_after_conversion ?: false
@@ -127,7 +139,7 @@ process PHASE3_FETCH_WORKSPACE {
     script:
     """
     set -euo pipefail
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_fetch_workspace --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}" --phase3-include-wes "${params.phase3_include_wes}"
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_fetch_workspace --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-align-input-mode "${params.phase3_align_input_mode}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}" --phase3-include-wes "${params.phase3_include_wes}" --phase3-prereq-mode "${params.phase3_prereq_mode}"
     """
 
     stub:
@@ -152,7 +164,29 @@ process PHASE3_REFERENCE_INDEX {
     script:
     """
     set -euo pipefail
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_reference_index --previous-workspace "${previous_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}"
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_reference_index --previous-workspace "${previous_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-aligner "${params.phase3_aligner}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}"
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_reference_index --stub --workspace workspace --python-bin "${params.python_bin}"
+    """
+}
+
+process PHASE3_REFERENCE_INDEX_SOURCE {
+    tag "phase3_reference_index_source_${params.phase3_reads ?: '500000'}_${params.phase3_source_mode}_${params.phase3_aligner}"
+    cpus { params.phase3_ref_cpus as int }
+    memory { params.phase3_ref_memory }
+    time '8h'
+
+    output:
+    path 'workspace'
+
+    script:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_reference_index --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-align-input-mode "${params.phase3_align_input_mode}" --phase3-aligner "${params.phase3_aligner}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}" --phase3-include-wes "${params.phase3_include_wes}" --phase3-prereq-mode "${params.phase3_prereq_mode}"
     """
 
     stub:
@@ -163,7 +197,7 @@ process PHASE3_REFERENCE_INDEX {
 }
 
 process PHASE3_ALIGN_SAMPLE {
-    tag "phase3_align_${role}_${params.phase3_reads ?: '500000'}"
+    tag "phase3_align_${role}_${params.phase3_reads ?: '500000'}_${params.phase3_align_input_mode}_${params.phase3_align_profile_mode}_${params.phase3_aligner}"
     cpus { params.phase3_align_cpus as int }
     memory { params.phase3_align_memory }
     time '48h'
@@ -177,13 +211,91 @@ process PHASE3_ALIGN_SAMPLE {
     script:
     """
     set -euo pipefail
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_align_sample --previous-workspace "${previous_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --role "${role}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-bwa-threads "${params.phase3_bwa_threads}" --phase3-sort-threads "${params.phase3_sort_threads}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_align_sample --previous-workspace "${previous_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --role "${role}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-aligner "${params.phase3_aligner}" --phase3-bwa-threads "${params.phase3_bwa_threads}" --phase3-sort-threads "${params.phase3_sort_threads}" --phase3-align-input-mode "${params.phase3_align_input_mode}" --phase3-align-profile-mode "${params.phase3_align_profile_mode}" --phase3-force "${params.phase3_force}" --phase3-bam-validation-mode "${params.phase3_bam_validation_mode}" --phase3-coverage-cnv-mode "${params.phase3_coverage_cnv_mode}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
     """
 
     stub:
     """
     set -euo pipefail
     PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_align_sample --stub --workspace workspace --python-bin "${params.python_bin}" --role "${role}"
+    """
+}
+
+process PHASE3_PREPARE_FASTQ_SHARDS {
+    tag "phase3_prepare_shards_${role}_${params.phase3_shard_count}way_${params.phase3_reads ?: '500000'}"
+    cpus { params.phase3_fetch_cpus as int }
+    memory { params.phase3_fetch_memory }
+    time '24h'
+
+    input:
+    tuple val(role), path(previous_workspace, stageAs: 'previous_workspace')
+
+    output:
+    tuple val(role), path('workspace')
+
+    script:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_prepare_fastq_shards --previous-workspace "${previous_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --role "${role}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-aligner "${params.phase3_aligner}" --phase3-bwa-threads "${params.phase3_bwa_threads}" --phase3-sort-threads "${params.phase3_sort_threads}" --phase3-align-input-mode "${params.phase3_align_input_mode}" --phase3-align-profile-mode "${params.phase3_align_profile_mode}" --phase3-scatter-output-mode "${params.phase3_scatter_output_mode}" --phase3-shard-input-mode "${params.phase3_shard_input_mode}" --phase3-force "${params.phase3_force}" --phase3-force-shard-alignment "${params.phase3_force_shard_alignment}" --phase3-shard-count "${params.phase3_shard_count}" --phase3-bam-validation-mode "${params.phase3_bam_validation_mode}" --phase3-coverage-cnv-mode "${params.phase3_coverage_cnv_mode}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_prepare_fastq_shards --stub --workspace workspace --python-bin "${params.python_bin}" --role "${role}" --phase3-shard-count "${params.phase3_shard_count}"
+    """
+}
+
+process PHASE3_ALIGN_SHARD {
+    tag "phase3_align_${role}_shard${shard_index}_${params.phase3_shard_count}way_${params.phase3_aligner}"
+    cpus { params.phase3_align_cpus as int }
+    memory { params.phase3_align_memory }
+    time '24h'
+
+    input:
+    tuple val(role), val(shard_index), path(previous_workspace, stageAs: 'previous_workspace')
+
+    output:
+    tuple val(role), val(shard_index), path('workspace')
+
+    script:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_align_shard --previous-workspace "${previous_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --role "${role}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-aligner "${params.phase3_aligner}" --phase3-bwa-threads "${params.phase3_bwa_threads}" --phase3-sort-threads "${params.phase3_sort_threads}" --phase3-align-input-mode "${params.phase3_align_input_mode}" --phase3-align-profile-mode "${params.phase3_align_profile_mode}" --phase3-scatter-output-mode "${params.phase3_scatter_output_mode}" --phase3-shard-input-mode "${params.phase3_shard_input_mode}" --phase3-force "${params.phase3_force}" --phase3-force-shard-alignment "${params.phase3_force_shard_alignment}" --phase3-shard-count "${params.phase3_shard_count}" --phase3-shard-index "${shard_index}" --phase3-bam-validation-mode "${params.phase3_bam_validation_mode}" --phase3-coverage-cnv-mode "${params.phase3_coverage_cnv_mode}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_align_shard --stub --workspace workspace --python-bin "${params.python_bin}" --role "${role}" --phase3-shard-count "${params.phase3_shard_count}" --phase3-shard-index "${shard_index}"
+    """
+}
+
+process PHASE3_GATHER_SHARDS {
+    tag "phase3_gather_${role}_${params.phase3_shard_count}way"
+    cpus { params.phase3_downstream_cpus as int }
+    memory { params.phase3_downstream_memory }
+    time '24h'
+    publishDir "${params.outdir}/phase3_wgs_scatter", mode: 'copy', overwrite: true
+
+    input:
+    tuple val(role), path(previous_workspace, stageAs: 'previous_workspace')
+    path shard_workspaces, stageAs: 'shard_workspaces/shard??/*'
+
+    output:
+    path 'workspace/manifests', optional: true
+    path 'workspace/results', optional: true
+
+    script:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_gather_shards --previous-workspace "${previous_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --role "${role}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-aligner "${params.phase3_aligner}" --phase3-bwa-threads "${params.phase3_bwa_threads}" --phase3-sort-threads "${params.phase3_sort_threads}" --phase3-align-input-mode "${params.phase3_align_input_mode}" --phase3-align-profile-mode "${params.phase3_align_profile_mode}" --phase3-scatter-output-mode "${params.phase3_scatter_output_mode}" --phase3-shard-input-mode "${params.phase3_shard_input_mode}" --phase3-force "${params.phase3_force}" --phase3-force-shard-alignment "${params.phase3_force_shard_alignment}" --phase3-shard-count "${params.phase3_shard_count}" --phase3-bam-validation-mode "${params.phase3_bam_validation_mode}" --phase3-coverage-cnv-mode "${params.phase3_coverage_cnv_mode}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_gather_shards --stub --workspace workspace --python-bin "${params.python_bin}" --role "${role}" --phase3-shard-count "${params.phase3_shard_count}"
     """
 }
 
@@ -205,7 +317,7 @@ process PHASE3_DOWNSTREAM {
     script:
     """
     set -euo pipefail
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_downstream --tumor-role "${tumor_role}" --normal-role "${normal_role}" --tumor-workspace "${tumor_workspace}" --normal-workspace "${normal_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-include-wes "${params.phase3_include_wes}"
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_downstream --tumor-role "${tumor_role}" --normal-role "${normal_role}" --tumor-workspace "${tumor_workspace}" --normal-workspace "${normal_workspace}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-bam-validation-mode "${params.phase3_bam_validation_mode}" --phase3-coverage-cnv-mode "${params.phase3_coverage_cnv_mode}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-include-wes "${params.phase3_include_wes}"
     """
 
     stub:
@@ -252,7 +364,7 @@ process PHASE3_WGS {
     script:
     """
     set -euo pipefail
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_wgs --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-bwa-threads "${params.phase3_bwa_threads}" --phase3-sort-threads "${params.phase3_sort_threads}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}" --phase3-include-wes "${params.phase3_include_wes}" --phase3-prereq-mode "${params.phase3_prereq_mode}"
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_wgs --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-aligner "${params.phase3_aligner}" --phase3-bwa-threads "${params.phase3_bwa_threads}" --phase3-sort-threads "${params.phase3_sort_threads}" --phase3-bam-validation-mode "${params.phase3_bam_validation_mode}" --phase3-coverage-cnv-mode "${params.phase3_coverage_cnv_mode}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}" --phase3-include-wes "${params.phase3_include_wes}" --phase3-prereq-mode "${params.phase3_prereq_mode}"
     """
 
     stub:
@@ -276,7 +388,7 @@ process ALL_PUBLIC {
     script:
     """
     set -euo pipefail
-    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process all_public --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-bwa-threads "${params.phase3_bwa_threads}" --phase3-sort-threads "${params.phase3_sort_threads}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process all_public --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-aligner "${params.phase3_aligner}" --phase3-bwa-threads "${params.phase3_bwa_threads}" --phase3-sort-threads "${params.phase3_sort_threads}" --phase3-bam-validation-mode "${params.phase3_bam_validation_mode}" --phase3-coverage-cnv-mode "${params.phase3_coverage_cnv_mode}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
     """
 
     stub:
@@ -301,11 +413,43 @@ workflow PHASE3_WGS_SPLIT {
     PHASE3_DOWNSTREAM(tumor_workspace, normal_workspace)
 }
 
+workflow PHASE3_WGS_ALIGN_ONLY {
+    PHASE3_REFERENCE_INDEX_SOURCE()
+
+    align_inputs = Channel
+        .of('tumor', 'normal')
+        .combine(PHASE3_REFERENCE_INDEX_SOURCE.out)
+
+    PHASE3_ALIGN_SAMPLE(align_inputs)
+}
+
+workflow PHASE3_WGS_ALIGN_SCATTER {
+    PHASE3_REFERENCE_INDEX_SOURCE()
+
+    shard_role = params.phase3_scatter_role.toString()
+    prepare_input = Channel
+        .of(shard_role)
+        .combine(PHASE3_REFERENCE_INDEX_SOURCE.out)
+
+    PHASE3_PREPARE_FASTQ_SHARDS(prepare_input)
+
+    shard_inputs = Channel
+        .fromList((0..<(params.phase3_shard_count as int)).toList())
+        .combine(PHASE3_PREPARE_FASTQ_SHARDS.out)
+        .map { shard_index, role, workspace -> tuple(role, shard_index, workspace) }
+
+    PHASE3_ALIGN_SHARD(shard_inputs)
+
+    gather_input = PHASE3_PREPARE_FASTQ_SHARDS.out
+    shard_workspaces = PHASE3_ALIGN_SHARD.out.map { role, shard_index, workspace -> workspace }.collect()
+    PHASE3_GATHER_SHARDS(gather_input, shard_workspaces)
+}
+
 workflow {
     selectedWorkflow = params.workflow.toString()
     effectivePhase3Reads = params.phase3_reads ? params.phase3_reads.toString() : '500000'
     allowFullWgs = params.allow_full_wgs.toString() == 'true'
-    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_sra_benchmark', 'phase3_wgs', 'phase3_wgs_monolith', 'all_public']
+    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_sra_benchmark', 'phase3_wgs', 'phase3_wgs_align_only', 'phase3_wgs_align_scatter', 'phase3_wgs_monolith', 'all_public']
 
     if (!workflows.contains(selectedWorkflow)) {
         error "Unknown workflow '${selectedWorkflow}'. Choose one of: ${workflows.join(', ')}."
@@ -319,6 +463,11 @@ workflow {
         error "Full-source WGS in all_public requires --phase3_reads full --allow_full_wgs true."
     }
 
+    allowMetadataCnvTiming = params.phase3_allow_metadata_cnv_timing.toString() == 'true'
+    if (selectedWorkflow == 'phase3_wgs' && effectivePhase3Reads == 'full' && params.phase3_coverage_cnv_mode.toString().replace('-', '_') == 'metadata' && !allowMetadataCnvTiming) {
+        error 'Full-source Phase 3 WGS acceptance requires real coverage CNV bins; use --phase3_coverage_cnv_mode full or --phase3_allow_metadata_cnv_timing true for bounded developer timing runs.'
+    }
+
     if (selectedWorkflow == 'quick') {
         QUICK()
     } else if (selectedWorkflow == 'full_wes') {
@@ -329,6 +478,10 @@ workflow {
         PHASE3_SRA_BENCHMARK()
     } else if (selectedWorkflow == 'phase3_wgs') {
         PHASE3_WGS_SPLIT()
+    } else if (selectedWorkflow == 'phase3_wgs_align_only') {
+        PHASE3_WGS_ALIGN_ONLY()
+    } else if (selectedWorkflow == 'phase3_wgs_align_scatter') {
+        PHASE3_WGS_ALIGN_SCATTER()
     } else if (selectedWorkflow == 'phase3_wgs_monolith') {
         PHASE3_WGS()
     } else {

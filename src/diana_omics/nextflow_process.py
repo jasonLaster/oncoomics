@@ -48,7 +48,14 @@ SOURCE_WORKSPACE_STAGES = {
     "phase3_wgs",
     "all_public",
 }
-PREVIOUS_WORKSPACE_STAGES = {"phase3_reference_index", "phase3_align_sample", "phase3_post_validation"}
+PREVIOUS_WORKSPACE_STAGES = {
+    "phase3_reference_index",
+    "phase3_align_sample",
+    "phase3_prepare_fastq_shards",
+    "phase3_align_shard",
+    "phase3_gather_shards",
+    "phase3_post_validation",
+}
 STAGES = tuple(sorted(SOURCE_WORKSPACE_STAGES | PREVIOUS_WORKSPACE_STAGES | {"phase3_downstream"}))
 
 
@@ -89,8 +96,19 @@ class ProcessConfig:
     phase3_fastq_stats_mode: str = "seqkit"
     phase3_cache_upload_workers: str = "4"
     phase3_alignment_cache_workers: str = "2"
+    phase3_aligner: str = "bwa"
     phase3_bwa_threads: str = "0"
     phase3_sort_threads: str = "0"
+    phase3_align_input_mode: str = "local_fastq"
+    phase3_align_profile_mode: str = "pipe"
+    phase3_scatter_output_mode: str = "merged_bam"
+    phase3_shard_input_mode: str = "fastq_cache"
+    phase3_force: str = "false"
+    phase3_force_shard_alignment: str = "false"
+    phase3_shard_count: str = "1"
+    phase3_shard_index: str = "0"
+    phase3_bam_validation_mode: str = "full"
+    phase3_coverage_cnv_mode: str = "full"
     phase3_asset_cache_uri: str = ""
     phase3_asset_cache_mode: str = "readwrite"
     phase3_delete_sra_after_conversion: str = "false"
@@ -193,19 +211,58 @@ def phase3_wes_prerequisite_steps(config: ProcessConfig, split_workflow: bool) -
 
 
 def phase3_fetch_workspace_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
+    setup_steps: tuple[WorkflowStep, ...]
+    if config.phase3_prereq_mode == "none":
+        setup_steps = (message_step("Skipping public context setup for split Phase 3 WGS alignment-speed experiment."),)
+    else:
+        setup_steps = python_steps(CORE_SETUP)
+    production_somatic_steps: tuple[WorkflowStep, ...]
+    if config.phase3_prereq_mode == "full":
+        production_somatic_steps = python_steps(PRODUCTION_SOMATIC)
+    else:
+        production_somatic_steps = (
+            message_step("Skipping production somatic prerequisites for split Phase 3 WGS minimal mode."),
+        )
     return (
-        python_steps(CORE_SETUP + ("fetch:full-reference-smoke", "fetch:production-somatic"))
+        setup_steps
+        + python_steps(("fetch:full-reference-smoke",))
+        + production_somatic_steps
         + phase3_wes_prerequisite_steps(config, split_workflow=True)
         + (python_step("fetch:phase3-wgs"), remove_path_step(PHASE3_FASTQ_DIR))
     )
 
 
-def phase3_reference_index_steps() -> tuple[WorkflowStep, ...]:
+def reference_index_from_source(config: ProcessConfig) -> bool:
+    return config.stage == "phase3_reference_index" and config.previous_workspace is None
+
+
+def phase3_reference_index_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
+    if reference_index_from_source(config):
+        return phase3_fetch_workspace_steps(config) + (python_step("validate:phase3-wgs"),)
     return (python_step("validate:phase3-wgs"),)
 
 
-def phase3_align_sample_steps() -> tuple[WorkflowStep, ...]:
-    return (python_step("fetch:phase3-wgs"), python_step("validate:phase3-wgs"), remove_path_step(PHASE3_FASTQ_DIR))
+def phase3_align_sample_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
+    if config.phase3_align_input_mode == "cache_stream":
+        return (python_step("validate:phase3-wgs"), remove_path_step(PHASE3_FASTQ_DIR), remove_path_step(PHASE3_BAM_DIR))
+    return (
+        python_step("fetch:phase3-wgs"),
+        python_step("validate:phase3-wgs"),
+        remove_path_step(PHASE3_FASTQ_DIR),
+        remove_path_step(PHASE3_BAM_DIR),
+    )
+
+
+def phase3_prepare_fastq_shards_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
+    return (python_step("validate:phase3-wgs"), remove_path_step(PHASE3_FASTQ_DIR))
+
+
+def phase3_align_shard_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
+    return (python_step("validate:phase3-wgs"), remove_path_step(PHASE3_FASTQ_DIR), remove_path_step(PHASE3_BAM_DIR))
+
+
+def phase3_gather_shards_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
+    return (python_step("validate:phase3-wgs"),)
 
 
 def phase3_prerequisite_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
@@ -219,11 +276,10 @@ def phase3_prerequisite_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]
         steps += (python_step("smoke:full-reference"),)
     else:
         steps += (message_step("Skipping full-reference smoke alignment for Phase 3 WGS minimal mode."),)
-    steps += (python_step("fetch:production-somatic"),)
     if config.phase3_prereq_mode == "full":
-        steps += (python_step("smoke:production-somatic"),)
+        steps += python_steps(PRODUCTION_SOMATIC)
     else:
-        steps += (message_step("Skipping production somatic smoke for Phase 3 WGS minimal mode."),)
+        steps += (message_step("Skipping production somatic prerequisites for Phase 3 WGS minimal mode."),)
     return steps
 
 
@@ -296,9 +352,15 @@ def workflow_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
     if config.stage == "phase3_fetch_workspace":
         return phase3_fetch_workspace_steps(config)
     if config.stage == "phase3_reference_index":
-        return phase3_reference_index_steps()
+        return phase3_reference_index_steps(config)
     if config.stage == "phase3_align_sample":
-        return phase3_align_sample_steps()
+        return phase3_align_sample_steps(config)
+    if config.stage == "phase3_prepare_fastq_shards":
+        return phase3_prepare_fastq_shards_steps(config)
+    if config.stage == "phase3_align_shard":
+        return phase3_align_shard_steps(config)
+    if config.stage == "phase3_gather_shards":
+        return phase3_gather_shards_steps(config)
     if config.stage == "phase3_downstream":
         return phase3_downstream_steps(config)
     if config.stage == "phase3_post_validation":
@@ -334,11 +396,29 @@ def process_environment(config: ProcessConfig, workspace: Path) -> dict[str, str
         env["PHASE2F_THREADS"] = inherited_or_default(env, "PHASE2F_THREADS", config.task_cpus or "8")
     if config.stage == "all_public":
         env["PHASE2F_THREADS"] = inherited_or_default(env, "PHASE2F_THREADS", "8")
-    if config.stage in {"phase3_fetch", "phase3_fetch_workspace", "phase3_align_sample", "phase3_wgs", "all_public"}:
+    if config.stage in {
+        "phase3_fetch",
+        "phase3_fetch_workspace",
+        "phase3_align_sample",
+        "phase3_prepare_fastq_shards",
+        "phase3_align_shard",
+        "phase3_gather_shards",
+        "phase3_wgs",
+        "all_public",
+    } or reference_index_from_source(config):
         env.update(phase3_fetch_environment(config, env))
-    if config.stage in {"phase3_reference_index", "phase3_align_sample", "phase3_downstream", "phase3_wgs", "all_public"}:
+    if config.stage in {
+        "phase3_reference_index",
+        "phase3_align_sample",
+        "phase3_prepare_fastq_shards",
+        "phase3_align_shard",
+        "phase3_gather_shards",
+        "phase3_downstream",
+        "phase3_wgs",
+        "all_public",
+    }:
         env.update(phase3_stage_environment(config, env))
-    if config.stage == "phase3_align_sample":
+    if config.stage in {"phase3_align_sample", "phase3_prepare_fastq_shards", "phase3_align_shard", "phase3_gather_shards"}:
         env["PHASE3_WGS_FETCH_ONLY_ROLE"] = config.role
         env["PHASE3_WGS_SAMPLE_ROLE"] = config.role
     if config.stage == "phase3_sra_benchmark":
@@ -347,6 +427,9 @@ def process_environment(config: ProcessConfig, workspace: Path) -> dict[str, str
 
 
 def phase3_fetch_environment(config: ProcessConfig, env: dict[str, str]) -> dict[str, str]:
+    manifest_only_stage = config.stage == "phase3_fetch_workspace" or reference_index_from_source(config)
+    fastq_local_mode = "cache_manifest" if manifest_only_stage and config.phase3_align_input_mode == "cache_stream" else "hydrate"
+    require_gatk = "1" if config.phase3_prereq_mode == "full" else "0"
     return {
         "PHASE3_WGS_READS": config.phase3_reads,
         "PHASE3_WGS_FETCH_CONCURRENCY": config.phase3_fetch_concurrency,
@@ -360,10 +443,12 @@ def phase3_fetch_environment(config: ProcessConfig, env: dict[str, str]) -> dict
         "PHASE3_WGS_SRA_RUN_CONCURRENCY": config.phase3_sra_run_concurrency,
         "PHASE3_WGS_SRA_COMMAND_RETRIES": config.phase3_sra_command_retries,
         "PHASE3_WGS_FASTQ_STATS_MODE": config.phase3_fastq_stats_mode,
+        "PHASE3_WGS_FASTQ_LOCAL_MODE": inherited_or_default(env, "PHASE3_WGS_FASTQ_LOCAL_MODE", fastq_local_mode),
         "PHASE3_WGS_CACHE_UPLOAD_WORKERS": config.phase3_cache_upload_workers,
         "PHASE3_WGS_ASSET_CACHE_URI": config.phase3_asset_cache_uri,
         "PHASE3_WGS_ASSET_CACHE_MODE": config.phase3_asset_cache_mode,
         "PHASE3_WGS_DELETE_SRA_AFTER_CONVERSION": config.phase3_delete_sra_after_conversion,
+        "PHASE3_WGS_REQUIRE_GATK": inherited_or_default(env, "PHASE3_WGS_REQUIRE_GATK", require_gatk),
     }
 
 
@@ -371,20 +456,48 @@ def phase3_stage_environment(config: ProcessConfig, env: dict[str, str]) -> dict
     stage_by_process = {
         "phase3_reference_index": "reference_index",
         "phase3_align_sample": "align_sample",
+        "phase3_prepare_fastq_shards": "prepare_fastq_shards",
+        "phase3_align_shard": "align_shard",
+        "phase3_gather_shards": "gather_shards",
         "phase3_downstream": "downstream",
     }
     values = {
         "PHASE3_WGS_READS": config.phase3_reads,
         "PHASE3_WGS_THREADS": inherited_or_default(env, "PHASE3_WGS_THREADS", config.task_cpus or "1"),
+        "PHASE3_WGS_ALIGNER": inherited_or_default(env, "PHASE3_WGS_ALIGNER", config.phase3_aligner),
         "PHASE3_WGS_BWA_THREADS": inherited_or_default(env, "PHASE3_WGS_BWA_THREADS", config.phase3_bwa_threads),
         "PHASE3_WGS_SORT_THREADS": inherited_or_default(env, "PHASE3_WGS_SORT_THREADS", config.phase3_sort_threads),
+        "PHASE3_WGS_ALIGN_INPUT_MODE": inherited_or_default(
+            env, "PHASE3_WGS_ALIGN_INPUT_MODE", config.phase3_align_input_mode
+        ),
+        "PHASE3_WGS_ALIGN_PROFILE_MODE": inherited_or_default(
+            env, "PHASE3_WGS_ALIGN_PROFILE_MODE", config.phase3_align_profile_mode
+        ),
+        "PHASE3_WGS_SCATTER_OUTPUT_MODE": inherited_or_default(
+            env, "PHASE3_WGS_SCATTER_OUTPUT_MODE", config.phase3_scatter_output_mode
+        ),
+        "PHASE3_WGS_SHARD_INPUT_MODE": inherited_or_default(env, "PHASE3_WGS_SHARD_INPUT_MODE", config.phase3_shard_input_mode),
+        "PHASE3_WGS_FORCE": "1" if as_bool(config.phase3_force) else inherited_or_default(env, "PHASE3_WGS_FORCE", "0"),
+        "PHASE3_WGS_FORCE_SHARD_ALIGNMENT": (
+            "1"
+            if as_bool(config.phase3_force_shard_alignment)
+            else inherited_or_default(env, "PHASE3_WGS_FORCE_SHARD_ALIGNMENT", "0")
+        ),
+        "PHASE3_WGS_SHARD_COUNT": inherited_or_default(env, "PHASE3_WGS_SHARD_COUNT", config.phase3_shard_count),
+        "PHASE3_WGS_SHARD_INDEX": inherited_or_default(env, "PHASE3_WGS_SHARD_INDEX", config.phase3_shard_index),
+        "PHASE3_WGS_BAM_VALIDATION_MODE": inherited_or_default(
+            env, "PHASE3_WGS_BAM_VALIDATION_MODE", config.phase3_bam_validation_mode
+        ),
+        "PHASE3_WGS_COVERAGE_CNV_MODE": inherited_or_default(
+            env, "PHASE3_WGS_COVERAGE_CNV_MODE", config.phase3_coverage_cnv_mode
+        ),
         "PHASE3_WGS_ALIGNMENT_CACHE_WORKERS": config.phase3_alignment_cache_workers,
         "PHASE3_WGS_ASSET_CACHE_URI": config.phase3_asset_cache_uri,
         "PHASE3_WGS_ASSET_CACHE_MODE": config.phase3_asset_cache_mode,
     }
     if config.stage in stage_by_process:
         values["PHASE3_WGS_STAGE"] = stage_by_process[config.stage]
-    if config.stage in {"phase3_align_sample", "phase3_downstream"}:
+    if config.stage in {"phase3_align_sample", "phase3_prepare_fastq_shards", "phase3_align_shard", "phase3_gather_shards", "phase3_downstream"}:
         values["PHASE3_WGS_PARALLEL_ALIGN"] = "0"
     return values
 
@@ -450,6 +563,13 @@ def remove_path(path: Path) -> None:
         shutil.rmtree(path)
 
 
+def copy_optional_tree(source: Path, destination: Path) -> None:
+    if not source.exists():
+        return
+    destination.mkdir(parents=True, exist_ok=True)
+    run_rsync(["-a", f"{source.resolve()}/", f"{destination.resolve()}/"])
+
+
 def run_rsync(args: Sequence[str]) -> None:
     subprocess.run(["rsync", *args], check=True)
 
@@ -479,9 +599,9 @@ def merge_downstream_workspaces(config: ProcessConfig) -> None:
     prepare_previous_workspace(tumor_workspace, workspace)
     for relative_path in (PHASE3_BAM_DIR, PHASE3_LOG_DIR, PHASE3_STAGE_MARKER_DIR):
         (workspace / relative_path).mkdir(parents=True, exist_ok=True)
-    run_rsync(["-a", f"{normal_workspace.resolve() / PHASE3_BAM_DIR}/", f"{workspace.resolve() / PHASE3_BAM_DIR}/"])
-    run_rsync(["-a", f"{normal_workspace.resolve() / PHASE3_LOG_DIR}/", f"{workspace.resolve() / PHASE3_LOG_DIR}/"])
-    run_rsync(["-a", f"{normal_workspace.resolve() / PHASE3_STAGE_MARKER_DIR}/", f"{workspace.resolve() / PHASE3_STAGE_MARKER_DIR}/"])
+    copy_optional_tree(normal_workspace.resolve() / PHASE3_BAM_DIR, workspace.resolve() / PHASE3_BAM_DIR)
+    copy_optional_tree(normal_workspace.resolve() / PHASE3_LOG_DIR, workspace.resolve() / PHASE3_LOG_DIR)
+    copy_optional_tree(normal_workspace.resolve() / PHASE3_STAGE_MARKER_DIR, workspace.resolve() / PHASE3_STAGE_MARKER_DIR)
     for reusable_source in (tumor_workspace, normal_workspace):
         for artifact in DOWNSTREAM_REUSABLE_ARTIFACTS:
             source = reusable_source / artifact
@@ -525,7 +645,9 @@ def require_path(path: Optional[Path], flag_name: str) -> Path:
 
 def prepare_workspace(config: ProcessConfig) -> Path:
     workspace = config.workspace.resolve()
-    if config.stage in SOURCE_WORKSPACE_STAGES:
+    if reference_index_from_source(config):
+        prepare_source_workspace(require_path(config.source_dir, "--source-dir"), workspace)
+    elif config.stage in SOURCE_WORKSPACE_STAGES:
         prepare_source_workspace(require_path(config.source_dir, "--source-dir"), workspace)
     elif config.stage in PREVIOUS_WORKSPACE_STAGES:
         prepare_previous_workspace(require_path(config.previous_workspace, "--previous-workspace"), workspace)
@@ -557,6 +679,33 @@ def write_stub_outputs(config: ProcessConfig) -> None:
     if config.stage == "phase3_align_sample":
         role = config.role or "unknown"
         write_json_stub(workspace / PHASE3_STAGE_MARKER_DIR / f"align_{role}.json", {"stub": True, "stage": "align_sample", "role": role})
+        return
+    if config.stage == "phase3_prepare_fastq_shards":
+        role = config.role or "unknown"
+        write_json_stub(
+            workspace / PHASE3_STAGE_MARKER_DIR / f"shard_fastq_{role}.json",
+            {"stub": True, "stage": "prepare_fastq_shards", "role": role, "shards": config.phase3_shard_count},
+        )
+        return
+    if config.stage == "phase3_align_shard":
+        role = config.role or "unknown"
+        write_json_stub(
+            workspace / PHASE3_STAGE_MARKER_DIR / f"align_{role}_shard{int(config.phase3_shard_index):02d}of{int(config.phase3_shard_count):02d}.json",
+            {
+                "stub": True,
+                "stage": "align_shard",
+                "role": role,
+                "shardIndex": config.phase3_shard_index,
+                "shardCount": config.phase3_shard_count,
+            },
+        )
+        return
+    if config.stage == "phase3_gather_shards":
+        role = config.role or "unknown"
+        write_json_stub(
+            workspace / PHASE3_STAGE_MARKER_DIR / f"gather_{role}_{config.phase3_shard_count}way.json",
+            {"stub": True, "stage": "gather_shards", "role": role, "shards": config.phase3_shard_count},
+        )
         return
     if config.stage == "phase3_sra_benchmark":
         result_dir = workspace / "results/phase3_wgs_smoke"
@@ -604,8 +753,19 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--phase3-fastq-stats-mode", default="seqkit")
     parser.add_argument("--phase3-cache-upload-workers", default="4")
     parser.add_argument("--phase3-alignment-cache-workers", default="2")
+    parser.add_argument("--phase3-aligner", default="bwa")
     parser.add_argument("--phase3-bwa-threads", default="0")
     parser.add_argument("--phase3-sort-threads", default="0")
+    parser.add_argument("--phase3-align-input-mode", default="local_fastq")
+    parser.add_argument("--phase3-align-profile-mode", default="pipe")
+    parser.add_argument("--phase3-scatter-output-mode", default="merged_bam")
+    parser.add_argument("--phase3-shard-input-mode", default="fastq_cache")
+    parser.add_argument("--phase3-force", default="false")
+    parser.add_argument("--phase3-force-shard-alignment", default="false")
+    parser.add_argument("--phase3-shard-count", default="1")
+    parser.add_argument("--phase3-shard-index", default="0")
+    parser.add_argument("--phase3-bam-validation-mode", default="full")
+    parser.add_argument("--phase3-coverage-cnv-mode", default="full")
     parser.add_argument("--phase3-asset-cache-uri", default="")
     parser.add_argument("--phase3-asset-cache-mode", default="readwrite")
     parser.add_argument("--phase3-delete-sra-after-conversion", default="false")
@@ -650,8 +810,19 @@ def config_from_args(args: argparse.Namespace) -> ProcessConfig:
         phase3_fastq_stats_mode=args.phase3_fastq_stats_mode,
         phase3_cache_upload_workers=args.phase3_cache_upload_workers,
         phase3_alignment_cache_workers=args.phase3_alignment_cache_workers,
+        phase3_aligner=args.phase3_aligner,
         phase3_bwa_threads=args.phase3_bwa_threads,
         phase3_sort_threads=args.phase3_sort_threads,
+        phase3_align_input_mode=args.phase3_align_input_mode,
+        phase3_align_profile_mode=args.phase3_align_profile_mode,
+        phase3_scatter_output_mode=args.phase3_scatter_output_mode,
+        phase3_shard_input_mode=args.phase3_shard_input_mode,
+        phase3_force=args.phase3_force,
+        phase3_force_shard_alignment=args.phase3_force_shard_alignment,
+        phase3_shard_count=args.phase3_shard_count,
+        phase3_shard_index=args.phase3_shard_index,
+        phase3_bam_validation_mode=args.phase3_bam_validation_mode,
+        phase3_coverage_cnv_mode=args.phase3_coverage_cnv_mode,
         phase3_asset_cache_uri=args.phase3_asset_cache_uri,
         phase3_asset_cache_mode=args.phase3_asset_cache_mode,
         phase3_delete_sra_after_conversion=args.phase3_delete_sra_after_conversion,
