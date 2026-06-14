@@ -299,6 +299,39 @@ process PHASE3_GATHER_SHARDS {
     """
 }
 
+process PHASE3_GATHER_SHARD_MANIFEST {
+    tag "phase3_gather_manifest_${role}_${params.phase3_shard_count}way"
+    cpus { params.phase3_downstream_cpus as int }
+    memory { params.phase3_downstream_memory }
+    time '24h'
+    publishDir "${params.outdir}/phase3_wgs_scatter", mode: 'copy', overwrite: true
+
+    input:
+    tuple val(role), path(src_dir, stageAs: 'gather_inputs/src'), path(samplesheet, stageAs: 'gather_inputs/phase3_wgs_smoke_samplesheet.csv'), path(asset_summary, stageAs: 'gather_inputs/asset_summary.json'), path(shards_dir, stageAs: 'gather_inputs/shards')
+    val completed_shards
+
+    output:
+    path 'workspace/manifests', optional: true
+    path 'workspace/results', optional: true
+
+    script:
+    """
+    set -euo pipefail
+    mkdir -p workspace/src workspace/manifests workspace/results/phase3_wgs_smoke/shards
+    cp -a gather_inputs/src/. workspace/src/
+    cp gather_inputs/phase3_wgs_smoke_samplesheet.csv workspace/manifests/phase3_wgs_smoke_samplesheet.csv
+    cp gather_inputs/asset_summary.json workspace/results/phase3_wgs_smoke/asset_summary.json
+    cp -a gather_inputs/shards/. workspace/results/phase3_wgs_smoke/shards/
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_gather_shards --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}" --role "${role}" --phase3-reads "${params.phase3_reads ?: '500000'}" --phase3-fetch-concurrency "${params.phase3_fetch_concurrency}" --phase3-aria2-split "${params.phase3_aria2_split}" --phase3-source-mode "${params.phase3_source_mode}" --phase3-sra-aws-bucket "${params.phase3_sra_aws_bucket}" --phase3-s3-range-concurrency "${params.phase3_s3_range_concurrency}" --phase3-s3-range-bytes "${params.phase3_s3_range_bytes}" --phase3-s3-range-retries "${params.phase3_s3_range_retries}" --phase3-sra-run-concurrency "${params.phase3_sra_run_concurrency}" --phase3-sra-command-retries "${params.phase3_sra_command_retries}" --phase3-fastq-stats-mode "${params.phase3_fastq_stats_mode}" --phase3-cache-upload-workers "${params.phase3_cache_upload_workers}" --phase3-alignment-cache-workers "${params.phase3_alignment_cache_workers}" --phase3-aligner "${params.phase3_aligner}" --phase3-bwa-threads "${params.phase3_bwa_threads}" --phase3-sort-threads "${params.phase3_sort_threads}" --phase3-align-input-mode "${params.phase3_align_input_mode}" --phase3-align-profile-mode "${params.phase3_align_profile_mode}" --phase3-scatter-output-mode "${params.phase3_scatter_output_mode}" --phase3-shard-input-mode "${params.phase3_shard_input_mode}" --phase3-force "${params.phase3_force}" --phase3-force-shard-alignment "${params.phase3_force_shard_alignment}" --phase3-shard-count "${params.phase3_shard_count}" --phase3-bam-validation-mode "${params.phase3_bam_validation_mode}" --phase3-coverage-cnv-mode "${params.phase3_coverage_cnv_mode}" --phase3-asset-cache-uri "${params.phase3_asset_cache_uri ?: ''}" --phase3-asset-cache-mode "${params.phase3_asset_cache_mode}" --phase3-delete-sra-after-conversion "${params.phase3_delete_sra_after_conversion}"
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process phase3_gather_shards --stub --workspace workspace --python-bin "${params.python_bin}" --role "${role}" --phase3-shard-count "${params.phase3_shard_count}"
+    """
+}
+
 process PHASE3_DOWNSTREAM {
     tag "phase3_downstream_${params.phase3_reads ?: '500000'}"
     cpus { params.phase3_downstream_cpus as int }
@@ -440,9 +473,23 @@ workflow PHASE3_WGS_ALIGN_SCATTER {
 
     PHASE3_ALIGN_SHARD(shard_inputs)
 
-    gather_input = PHASE3_PREPARE_FASTQ_SHARDS.out
-    shard_workspaces = PHASE3_ALIGN_SHARD.out.map { role, shard_index, workspace -> workspace }.collect()
-    PHASE3_GATHER_SHARDS(gather_input, shard_workspaces)
+    completed_shards = PHASE3_ALIGN_SHARD.out.map { role, shard_index, workspace -> shard_index }.collect()
+    if (params.phase3_scatter_output_mode.toString().replace('-', '_') == 'shard_manifest') {
+        gather_manifest_input = PHASE3_PREPARE_FASTQ_SHARDS.out.map { role, workspace ->
+            tuple(
+                role,
+                file("${workspace}/src"),
+                file("${workspace}/manifests/phase3_wgs_smoke_samplesheet.csv"),
+                file("${workspace}/results/phase3_wgs_smoke/asset_summary.json"),
+                file("${workspace}/results/phase3_wgs_smoke/shards")
+            )
+        }
+        PHASE3_GATHER_SHARD_MANIFEST(gather_manifest_input, completed_shards)
+    } else {
+        gather_input = PHASE3_PREPARE_FASTQ_SHARDS.out
+        shard_workspaces = PHASE3_ALIGN_SHARD.out.map { role, shard_index, workspace -> workspace }.collect()
+        PHASE3_GATHER_SHARDS(gather_input, shard_workspaces)
+    }
 }
 
 workflow {

@@ -2296,7 +2296,10 @@ def main() -> None:
         shard_count = require_shard_count()
         if STAGE == "align_shard":
             require_shard_index(shard_count)
-        required_paths = common_required_paths
+        if STAGE == "gather_shards" and SCATTER_OUTPUT_MODE == "shard_manifest":
+            required_paths = []
+        else:
+            required_paths = common_required_paths
     elif STAGE == "downstream":
         skip_bam_hydration = downstream_can_skip_bam_hydration(tumor)
         if skip_bam_hydration:

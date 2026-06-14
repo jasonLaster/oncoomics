@@ -649,6 +649,12 @@ def prepare_workspace(config: ProcessConfig) -> Path:
         prepare_source_workspace(require_path(config.source_dir, "--source-dir"), workspace)
     elif config.stage in SOURCE_WORKSPACE_STAGES:
         prepare_source_workspace(require_path(config.source_dir, "--source-dir"), workspace)
+    elif (
+        config.stage == "phase3_gather_shards"
+        and config.previous_workspace is None
+        and config.phase3_scatter_output_mode == "shard_manifest"
+    ):
+        workspace.mkdir(parents=True, exist_ok=True)
     elif config.stage in PREVIOUS_WORKSPACE_STAGES:
         prepare_previous_workspace(require_path(config.previous_workspace, "--previous-workspace"), workspace)
         if config.stage == "phase3_post_validation":
@@ -682,6 +688,11 @@ def write_stub_outputs(config: ProcessConfig) -> None:
         return
     if config.stage == "phase3_prepare_fastq_shards":
         role = config.role or "unknown"
+        (workspace / "src").mkdir(parents=True, exist_ok=True)
+        (workspace / "manifests").mkdir(parents=True, exist_ok=True)
+        (workspace / "manifests/phase3_wgs_smoke_samplesheet.csv").write_text("role,run_accession,sample,read_pairs_per_end\n", encoding="utf-8")
+        (workspace / "results/phase3_wgs_smoke/shards").mkdir(parents=True, exist_ok=True)
+        write_json_stub(workspace / "results/phase3_wgs_smoke/asset_summary.json", {"status": "ready", "stub": True})
         write_json_stub(
             workspace / PHASE3_STAGE_MARKER_DIR / f"shard_fastq_{role}.json",
             {"stub": True, "stage": "prepare_fastq_shards", "role": role, "shards": config.phase3_shard_count},

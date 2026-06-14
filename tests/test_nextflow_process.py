@@ -102,6 +102,25 @@ class NextflowProcessTest(unittest.TestCase):
             self.assertEqual(prepared, workspace.resolve())
             self.assertEqual((workspace / "src/example.txt").read_text(encoding="utf-8"), "source\n")
 
+    def test_shard_manifest_gather_can_use_preseeded_minimal_workspace(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            workspace = root / "workspace"
+            sentinel = workspace / "results/phase3_wgs_smoke/asset_summary.json"
+            sentinel.parent.mkdir(parents=True)
+            sentinel.write_text('{"status":"ready"}\n', encoding="utf-8")
+
+            config = nf.ProcessConfig(
+                stage="phase3_gather_shards",
+                workspace=workspace,
+                role="tumor",
+                phase3_scatter_output_mode="shard_manifest",
+            )
+            prepared = nf.prepare_workspace(config)
+
+            self.assertEqual(prepared, workspace.resolve())
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), '{"status":"ready"}\n')
+
     def test_minimal_fetch_marks_gatk_optional_for_full_source_timing(self):
         config = nf.ProcessConfig(
             stage="phase3_fetch_workspace",
