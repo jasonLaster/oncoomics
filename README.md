@@ -95,6 +95,7 @@ Most readers do not need to run the project. For run instructions, see [docs/ope
 Start here:
 
 - [docs/README.md](docs/README.md): short documentation map.
+- [docs/terms.md](docs/terms.md): command, evidence, and domain vocabulary.
 - [docs/status/current-state.md](docs/status/current-state.md): what has passed, what is partial, what is blocked.
 - [docs/validation/known-answer-datasets.md](docs/validation/known-answer-datasets.md): public validation samples and dataset priorities.
 - [docs/operations/analytics-sequence.md](docs/operations/analytics-sequence.md): systems architecture for analytics orchestration and OSS tool calls.
@@ -103,6 +104,8 @@ Start here:
 
 Directory guides:
 
-- [src/README.md](src/README.md): implementation map.
+- [src/README.md](src/README.md): implementation map and command families.
+- [src/diana_omics/README.md](src/diana_omics/README.md): package module map and execution flow.
+- [src/diana_omics/commands/README.md](src/diana_omics/commands/README.md): command-family folder map.
 - [results/README.md](results/README.md): generated evidence map.
 - [scripts/README.md](scripts/README.md): shell utilities.

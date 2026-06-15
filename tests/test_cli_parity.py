@@ -1,6 +1,9 @@
 import unittest
+from pathlib import Path
 
-from diana_omics.cli import _load_commands
+import diana_omics.commands as command_package
+from diana_omics.cli import _format_command_families, _load_commands
+from diana_omics.commands.registry import COMMAND_FAMILIES, COMMAND_SPECS, FAMILY_PACKAGES, TASK_ONLY_MODULES
 from diana_omics.workflow_tasks import TASKS
 
 
@@ -72,6 +75,52 @@ class CliParityTest(unittest.TestCase):
     def test_registered_commands_are_callable(self):
         for name, command in _load_commands().items():
             self.assertTrue(callable(command), name)
+
+    def test_registered_commands_have_specs(self):
+        self.assertEqual(set(COMMAND_SPECS), set(_load_commands()))
+
+    def test_command_package_exports_registered_modules(self):
+        module_names = {spec.module.rsplit(".", 1)[-1] for spec in COMMAND_SPECS.values()}
+        module_names.update(module.rsplit(".", 1)[-1] for module in TASK_ONLY_MODULES)
+        self.assertEqual(module_names, set(command_package.__all__))
+
+    def test_command_specs_point_to_family_modules(self):
+        for name, spec in COMMAND_SPECS.items():
+            module_parts = spec.module.split(".")
+            self.assertEqual(["diana_omics", "commands"], module_parts[:2], name)
+            self.assertIn(module_parts[2], FAMILY_PACKAGES, name)
+            self.assertGreaterEqual(len(module_parts), 4, name)
+
+    def test_task_only_modules_point_to_family_modules(self):
+        for module in TASK_ONLY_MODULES:
+            module_parts = module.split(".")
+            self.assertEqual(["diana_omics", "commands"], module_parts[:2], module)
+            self.assertIn(module_parts[2], FAMILY_PACKAGES, module)
+            self.assertGreaterEqual(len(module_parts), 4, module)
+
+    def test_command_modules_are_grouped_in_family_directories(self):
+        commands_dir = Path(__file__).parents[1] / "src" / "diana_omics" / "commands"
+        flat_modules = sorted(path.name for path in commands_dir.glob("*.py"))
+        self.assertEqual(["__init__.py", "registry.py"], flat_modules)
+
+    def test_command_families_cover_cli_surface(self):
+        command_names = set(_load_commands()) | set(TASKS)
+        family_names = [name for family in COMMAND_FAMILIES for name in family.commands]
+        self.assertEqual(command_names, set(family_names))
+        self.assertEqual(len(family_names), len(set(family_names)))
+
+    def test_command_families_have_descriptions(self):
+        for family in COMMAND_FAMILIES:
+            self.assertGreaterEqual(len(family.description.split()), 6, family.title)
+
+    def test_help_formats_commands_by_family(self):
+        help_text = _format_command_families(set(_load_commands()) | set(TASKS))
+        self.assertIn("Command families:", help_text)
+        self.assertIn("HRD and RNA context:", help_text)
+        self.assertIn("Build processed public context", help_text)
+        self.assertIn("Phase 3 WGS:", help_text)
+        self.assertIn("AWS and deployment:", help_text)
+        self.assertNotIn("Other:", help_text)
 
     def test_python_task_runner_owns_workflow_aliases(self):
         self.assertIn("run:all", TASKS)

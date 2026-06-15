@@ -11,6 +11,15 @@ from typing import Optional
 from .paths import ROOT
 
 NEXTFLOW_LOG_PATH = Path("logs") / "nextflow.log"
+SRA_BENCH_RANGE_MATRIX = ",".join(
+    (
+        "aws_s3api_range:4:268435456:4:aws-range-c4",
+        "aws_s3api_range:8:268435456:4:aws-range-c8",
+        "aws_s3api_range:16:134217728:4:aws-range-c16",
+        "s5cmd_cat:4:268435456:4:s5cat-c4",
+        "s5cmd_cat:8:268435456:4:s5cat-c8",
+    )
+)
 
 
 @dataclass(frozen=True)
@@ -107,7 +116,7 @@ TASKS: dict[str, Task] = {
     "typecheck": _task(_tool(_python_bin(), "-m", "mypy", "--config-file", "pyproject.toml", "src", "tests", env={"MYPYPATH": "src"})),
     "test": _task(_tool(_python_bin(), "-m", "pytest", "tests", env=_python_env(), append_args=True), accepts_args=True),
     "benchmark:known-answer": _task(
-        _tool(_python_bin(), "-m", "diana_omics.commands.run_known_answer_benchmark", env=_python_env(), append_args=True),
+        _tool(_python_bin(), "-m", "diana_omics.commands.known_answer.run_known_answer_benchmark", env=_python_env(), append_args=True),
         accepts_args=True,
     ),
     "run:all": _task(
@@ -376,7 +385,7 @@ TASKS: dict[str, Task] = {
             "--phase3_fetch_memory",
             "8 GB",
             "--sra_benchmark_matrix",
-            "aws_s3api_range:4:268435456:4:aws-range-c4,aws_s3api_range:8:268435456:4:aws-range-c8,aws_s3api_range:16:134217728:4:aws-range-c16,s5cmd_cat:4:268435456:4:s5cat-c4,s5cmd_cat:8:268435456:4:s5cat-c8",
+            SRA_BENCH_RANGE_MATRIX,
         )
     ),
     "nf:aws:sra-bench:matrix:4cpu": _task(
@@ -392,7 +401,7 @@ TASKS: dict[str, Task] = {
             "--phase3_fetch_memory",
             "16 GB",
             "--sra_benchmark_matrix",
-            "aws_s3api_range:4:268435456:4:aws-range-c4,aws_s3api_range:8:268435456:4:aws-range-c8,aws_s3api_range:16:134217728:4:aws-range-c16,s5cmd_cat:4:268435456:4:s5cat-c4,s5cmd_cat:8:268435456:4:s5cat-c8",
+            SRA_BENCH_RANGE_MATRIX,
         )
     ),
     "nf:aws:phase3-fetch:full": _task(

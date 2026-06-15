@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from diana_omics.commands.verify_diana_raw import validate_rows
+from diana_omics.commands.diana_intake.verify_diana_raw import validate_rows
 from diana_omics.diana_raw import DIANA_RAW_COLUMNS, template_rows
 
 
