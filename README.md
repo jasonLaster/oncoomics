@@ -46,29 +46,29 @@ Python owns orchestration and evidence generation. The bioinformatics work is do
 ```mermaid
 gantt
     title HRD Evidence Computation Path
-    dateFormat YYYY-MM-DD
-    axisFormat %b %d
+    dateFormat HH:mm
+    axisFormat %H:%M
 
     section Inputs
-    Manifest and metadata load               :inputs_meta, 2026-01-01, 1d
-    Omics input validation                   :inputs_validate, 2026-01-02, 1d
+    Manifest and metadata load               :inputs_meta, 00:00, 5m
+    Omics input validation                   :inputs_validate, 00:05, 5m
 
     section DNA Processing
-    Tumor normal read alignment              :dna_align, 2026-01-03, 3d
-    Somatic SNV and indel calling            :dna_call, 2026-01-06, 2d
-    VCF normalization and scoring            :dna_score, 2026-01-08, 1d
+    Tumor normal read alignment              :dna_align, 00:10, 30m
+    Somatic SNV and indel calling            :dna_call, 00:40, 20m
+    VCF normalization and scoring            :dna_score, 01:00, 10m
 
     section HRD Evidence
-    HRR and allele state tables              :hrd_events, 2026-01-09, 1d
-    CNV SV SBS96 signature surfaces          :hrd_surfaces, 2026-01-09, 2d
-    TNBC subtype and RNA context             :rna_context, 2026-01-10, 1d
+    HRR and allele state tables              :hrd_events, 01:10, 10m
+    CNV SV SBS96 signature surfaces          :hrd_surfaces, 01:10, 20m
+    TNBC subtype and RNA context             :rna_context, 01:20, 10m
 
     section Validation
-    Known answer comparison                  :known_answers, 2026-01-11, 2d
-    Verifier gates and no call boundaries    :verify, 2026-01-13, 1d
+    Known answer comparison                  :known_answers, 01:30, 20m
+    Verifier gates and no call boundaries    :verify, 01:50, 10m
 
     section Output
-    Reviewer packet and readiness summaries  :outputs, 2026-01-14, 1d
+    Reviewer packet and readiness summaries  :outputs, 02:00, 5m
 ```
 
 Commands all use the same entry point:
