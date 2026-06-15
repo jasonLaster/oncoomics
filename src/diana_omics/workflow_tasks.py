@@ -183,6 +183,8 @@ TASKS: dict[str, Task] = {
         )
     ),
     "nf:phase3-sra-benchmark": _task(_nextflow("-profile", "local", "--workflow", "phase3_sra_benchmark")),
+    "nf:known-answer-public-findings": _task(_nextflow("-profile", "local", "--workflow", "known_answer_public_findings")),
+    "nf:known-answer-bounded-non-dry": _task(_nextflow("-profile", "local", "--workflow", "known_answer_bounded_non_dry")),
     "nf:phase3-wgs:dev": _task(_nextflow("-profile", "local", "--workflow", "phase3_wgs", "--phase3_reads", "500000")),
     "nf:phase3-wgs:full": _task(_nextflow("-profile", "local", "--workflow", "phase3_wgs", "--phase3_reads", "full")),
     "nf:phase3-wgs:monolith:full": _task(_nextflow("-profile", "local", "--workflow", "phase3_wgs_monolith", "--phase3_reads", "full")),
@@ -310,6 +312,38 @@ TASKS: dict[str, Task] = {
             "268435456",
             "--sra_benchmark_parts",
             "4",
+        )
+    ),
+    "nf:aws:known-answer-public-findings": _task(
+        _nextflow(
+            "-profile",
+            "awsbatch_ondemand",
+            "-params-file",
+            "infra/aws/nextflow.aws.json",
+            "--workflow",
+            "known_answer_public_findings",
+            "--phase3_fetch_cpus",
+            "2",
+            "--phase3_fetch_memory",
+            "8 GB",
+            "--aws_max_retries",
+            "0",
+        )
+    ),
+    "nf:aws:known-answer-bounded-non-dry": _task(
+        _nextflow(
+            "-profile",
+            "awsbatch_ondemand",
+            "-params-file",
+            "infra/aws/nextflow.aws.json",
+            "--workflow",
+            "known_answer_bounded_non_dry",
+            "--phase3_fetch_cpus",
+            "2",
+            "--phase3_fetch_memory",
+            "8 GB",
+            "--aws_max_retries",
+            "0",
         )
     ),
     "nf:aws:sra-bench:matrix:2cpu": _task(

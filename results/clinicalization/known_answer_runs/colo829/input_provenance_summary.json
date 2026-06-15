@@ -1,0 +1,105 @@
+{
+  "generatedAt": "2026-06-15T00:57:15.470Z",
+  "status": "bounded_non_dry_passed",
+  "executionMode": "bounded_non_dry_public_remote_read_analysis",
+  "pipelineConfirmation": "bounded_confirmed",
+  "clinicalUseAllowed": "no",
+  "artifactPath": "results/clinicalization/known_answer_runs/colo829/input_provenance_summary.json",
+  "checkIds": [
+    "colo829_tumor_wgs_input",
+    "colo829_normal_wgs_input"
+  ],
+  "pullIds": [
+    "colo829_tumor_wgs",
+    "colo829_normal_wgs"
+  ],
+  "sampleOrAssetIds": [
+    "COLO829",
+    "COLO829BL"
+  ],
+  "datasetIds": [
+    "colo829"
+  ],
+  "publicFindings": [
+    "COLO829 is a metastatic melanoma tumor cell line in a documented matched tumor-normal reference standard and should be analyzed as the tumor member.",
+    "COLO829BL is the matched lymphoblastoid normal line for COLO829 and should be analyzed as the normal member."
+  ],
+  "evidenceType": "remote_indexed_bam_pileup",
+  "publicFindingResult": "COLO829 tumor has BRAF V600E ALT support while COLO829R normal remains reference-like at the same locus.",
+  "evidence": {
+    "brafV600EProbe": {
+      "region": "7:140453136-140453136",
+      "build": "GRCh37/hg19-style numeric contigs",
+      "expectedRef": "A",
+      "expectedAlt": "T",
+      "tumorBam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752450/COLO829T_dedup.realigned.bam",
+      "normalBam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752449/COLO829R_dedup.realigned.bam",
+      "pileup": {
+        "command": "samtools mpileup -r 7:140453136-140453136 https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752450/COLO829T_dedup.realigned.bam https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752449/COLO829R_dedup.realigned.bam",
+        "returnCode": 0,
+        "stderr": "[mpileup] 2 samples in 2 input files",
+        "elapsedSeconds": 6.125,
+        "status": "passed",
+        "chrom": "7",
+        "pos": 140453136,
+        "pileupRef": "N",
+        "samples": [
+          {
+            "depthInformative": 155,
+            "refCount": 51,
+            "altCount": 104,
+            "otherCount": 0,
+            "deletionCount": 0,
+            "skipCount": 0,
+            "baseCounts": {
+              "A": 51,
+              "C": 0,
+              "G": 0,
+              "T": 104,
+              "N": 0
+            },
+            "altFraction": 0.670968,
+            "sampleIndex": 0,
+            "bam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752450/COLO829T_dedup.realigned.bam",
+            "depth": 155
+          },
+          {
+            "depthInformative": 34,
+            "refCount": 34,
+            "altCount": 0,
+            "otherCount": 0,
+            "deletionCount": 0,
+            "skipCount": 0,
+            "baseCounts": {
+              "A": 34,
+              "C": 0,
+              "G": 0,
+              "T": 0,
+              "N": 0
+            },
+            "altFraction": 0.0,
+            "sampleIndex": 1,
+            "bam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752449/COLO829R_dedup.realigned.bam",
+            "depth": 34
+          }
+        ],
+        "attempts": [
+          {
+            "attempt": 1,
+            "status": "passed",
+            "returnCode": 0,
+            "elapsedSeconds": 6.125,
+            "stderr": "[mpileup] 2 samples in 2 input files"
+          }
+        ]
+      },
+      "tumorAltFraction": 0.670968,
+      "normalAltFraction": 0.0,
+      "passedBrafGuardrail": true
+    }
+  },
+  "blockers": [],
+  "nextAction": "Run full COLO829 tumor-normal calling and signature analysis before strict pipeline confirmation.",
+  "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+  "previousStatus": "not_confirmed_input_metadata_only"
+}

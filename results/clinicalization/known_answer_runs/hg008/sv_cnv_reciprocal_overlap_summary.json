@@ -1,0 +1,95 @@
+{
+  "generatedAt": "2026-06-15T00:57:15.469Z",
+  "status": "bounded_non_dry_partial",
+  "executionMode": "bounded_non_dry_public_remote_read_analysis",
+  "pipelineConfirmation": "bounded_partial_cnv_depth_only",
+  "clinicalUseAllowed": "no",
+  "artifactPath": "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
+  "checkIds": [
+    "hg008_sv_cnv_concordance"
+  ],
+  "pullIds": [
+    "hg008_sv_cnv_truth"
+  ],
+  "sampleOrAssetIds": [
+    "HG008-T_somatic_stvar_cnv_v0.5"
+  ],
+  "datasetIds": [
+    "giab_hg008"
+  ],
+  "publicFindings": [
+    "NIST HG008-T v0.5 somatic SV and CNV benchmark should support reciprocal-overlap SV and CNV correctness summaries."
+  ],
+  "evidenceType": "truth_cnv_remote_bam_depth",
+  "publicFindingResult": "HG008 CNV truth loss shows reduced tumor-normal depth after neutral-region normalization; SV reciprocal-overlap remains unrun.",
+  "evidence": {
+    "cnvDepthProbe": {
+      "truthBed": "data/raw/known_answer_public/hg008/sv_cnv_truth/GRCh38_HG008-T-V0.5_somatic-CNV_PASS.draftbenchmark.calls.bed",
+      "lossInterval": {
+        "chrom": "chr1",
+        "start": 23272628,
+        "end": 72195288,
+        "copyTotal": "1",
+        "eventId": "CNA_2"
+      },
+      "neutralInterval": {
+        "chrom": "chr2",
+        "start": 0,
+        "end": 39789308,
+        "copyTotal": "2",
+        "eventId": "noCNV"
+      },
+      "lossDepth": {
+        "region": "chr1:24272629-24273629",
+        "command": "samtools depth -r chr1:24272629-24273629 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+        "returnCode": 0,
+        "stderr": "",
+        "elapsedSeconds": 0.423,
+        "status": "passed",
+        "positions": 1001,
+        "tumorMeanDepth": 83.6274,
+        "normalMeanDepth": 116.0,
+        "tumorNormalRatio": 0.720926,
+        "attempts": [
+          {
+            "attempt": 1,
+            "status": "passed",
+            "returnCode": 0,
+            "elapsedSeconds": 0.423,
+            "stderr": ""
+          }
+        ]
+      },
+      "neutralDepth": {
+        "region": "chr2:1000001-1001001",
+        "command": "samtools depth -r chr2:1000001-1001001 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+        "returnCode": 0,
+        "stderr": "",
+        "elapsedSeconds": 0.345,
+        "status": "passed",
+        "positions": 1001,
+        "tumorMeanDepth": 162.0549,
+        "normalMeanDepth": 98.6334,
+        "tumorNormalRatio": 1.643003,
+        "attempts": [
+          {
+            "attempt": 1,
+            "status": "passed",
+            "returnCode": 0,
+            "elapsedSeconds": 0.345,
+            "stderr": ""
+          }
+        ]
+      },
+      "normalizedLossTumorNormalRatio": 0.438786,
+      "passedCnvDepthSignal": true,
+      "remainingSvGap": "No Diana-generated SV/CNV callset or reciprocal-overlap caller output was produced in this bounded run."
+    }
+  },
+  "blockers": [
+    "No Diana-generated SV/CNV callset exists for HG008 in this bounded run."
+  ],
+  "nextAction": "Run SV/CNV callers and reciprocal-overlap comparison against HG008 v0.5 truth.",
+  "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+  "previousStatus": "not_confirmed_truth_assets_verified"
+}

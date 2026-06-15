@@ -137,6 +137,10 @@ Purpose:
 
 Prove correctness on one or more full public truth sets before Diana data arrives.
 
+The first acquisition-facing expansion is now a 10-target pull plan covering raw inputs and truth assets. It is not a downloader; it keeps owner review, checksums, execution, and clinical-use gates explicit before any high-cost transfer.
+
+The matching public-finding confirmation report currently records `0/10` confirmed targets. That is the correct status until approved HG008/COLO829/Seraseq inputs and truth assets have been downloaded, checksum-verified, and run.
+
 Recommended order:
 
 1. HG008 tumor/normal WGS from NIST Cancer Genome in a Bottle.
@@ -156,11 +160,16 @@ Primary planning artifacts:
 - `docs/orthogonal-validation-samples.md`
 - `manifests/orthogonal_public_examples.csv`
 - `manifests/orthogonal_validation_candidates.csv`
+- `manifests/known_answer_sample_pull_plan.csv`
+- `manifests/known_answer_public_finding_checks.csv`
+- `results/clinicalization/known_answer_public_finding_confirmation.md`
 
 Verifier:
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:orthogonal
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-sample-pull-plan
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-public-findings
 ```
 
 ## Phase 4: Diana Raw-Data Recompute

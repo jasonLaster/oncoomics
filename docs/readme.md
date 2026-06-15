@@ -31,7 +31,7 @@ Truth sets are known-answer datasets. They are the only way to show that a pipel
 | [bug-audit.md](/Users/jasonlaster/src/projects/diana-omics/docs/bug-audit.md) | Review likely bugs before trusting results. |
 | [diana-raw-inputs.md](/Users/jasonlaster/src/projects/diana-omics/docs/diana-raw-inputs.md) | Prepare Diana's real raw files for validation and staging. |
 | [raw-data-readiness.md](/Users/jasonlaster/src/projects/diana-omics/docs/raw-data-readiness.md) | See the public FASTQ/WES/WGS readiness ladder. |
-| [orthogonal-validation-samples.md](/Users/jasonlaster/src/projects/diana-omics/docs/orthogonal-validation-samples.md) | Choose additional known-answer datasets. |
+| [orthogonal-validation-samples.md](/Users/jasonlaster/src/projects/diana-omics/docs/orthogonal-validation-samples.md) | Choose additional known-answer datasets and inspect the 10-target pull plan. |
 | [phase3-parallel-compute.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase3-parallel-compute.md) | Tune CPU/thread usage for large WGS runs. |
 | [python-implementation.md](/Users/jasonlaster/src/projects/diana-omics/docs/python-implementation.md) | Work on Python commands, tests, and verifier contracts. |
 | [source-map.md](/Users/jasonlaster/src/projects/diana-omics/docs/source-map.md) | Audit dataset, tool, truth-set, and vendor-context sources. |

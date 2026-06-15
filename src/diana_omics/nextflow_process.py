@@ -46,6 +46,8 @@ SOURCE_WORKSPACE_STAGES = {
     "phase3_fetch_workspace",
     "phase3_sra_benchmark",
     "phase3_wgs",
+    "known_answer_bounded_non_dry",
+    "known_answer_public_findings",
     "all_public",
 }
 PREVIOUS_WORKSPACE_STAGES = {
@@ -307,7 +309,9 @@ def phase3_downstream_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
 
 
 def phase3_post_validation_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
-    return (python_step("verify:phase3-outputs"),) + orthogonal_steps(config) + python_steps(FINAL_ANALYSIS) + phase3_output_gate_steps(config)
+    return (
+        (python_step("verify:phase3-outputs"),) + orthogonal_steps(config) + python_steps(FINAL_ANALYSIS) + phase3_output_gate_steps(config)
+    )
 
 
 def phase3_wgs_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
@@ -342,6 +346,37 @@ def all_public_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
     )
 
 
+def known_answer_public_finding_steps() -> tuple[WorkflowStep, ...]:
+    return (
+        python_step("run:known-answer-public-findings"),
+        python_step("verify:known-answer-public-findings"),
+        optional_python_step(
+            "verify:clinicalization-readiness-rollup",
+            success_message="Clinicalization readiness rollup passed.",
+            failure_message=(
+                "Clinicalization readiness rollup did not pass in this isolated cloud job; "
+                "the known-answer public finding artifacts were still generated and verified."
+            ),
+        ),
+    )
+
+
+def known_answer_bounded_non_dry_steps() -> tuple[WorkflowStep, ...]:
+    return (
+        python_step("run:known-answer-public-findings"),
+        python_step("run:known-answer-bounded-non-dry"),
+        python_step("verify:known-answer-public-findings"),
+        optional_python_step(
+            "verify:clinicalization-readiness-rollup",
+            success_message="Clinicalization readiness rollup passed.",
+            failure_message=(
+                "Clinicalization readiness rollup did not pass in this isolated cloud job; "
+                "the known-answer bounded non-dry artifacts were still generated and verified."
+            ),
+        ),
+    )
+
+
 def workflow_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
     if config.stage == "quick":
         return quick_steps()
@@ -369,6 +404,10 @@ def workflow_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
         return (python_step("benchmark:sra-range"),)
     if config.stage == "phase3_wgs":
         return phase3_wgs_steps(config)
+    if config.stage == "known_answer_bounded_non_dry":
+        return known_answer_bounded_non_dry_steps()
+    if config.stage == "known_answer_public_findings":
+        return known_answer_public_finding_steps()
     if config.stage == "all_public":
         return all_public_steps(config)
     raise ValueError(f"Unknown Nextflow process stage: {config.stage}")
@@ -622,9 +661,7 @@ def stage_post_validation_context(source_dir: Path, workspace: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
     if missing:
-        raise RuntimeError(
-            "phase3_post_validation source workspace is missing required public context artifacts: " + ", ".join(missing)
-        )
+        raise RuntimeError("phase3_post_validation source workspace is missing required public context artifacts: " + ", ".join(missing))
 
 
 def require_post_validation_context(workspace: Path) -> None:
@@ -723,6 +760,36 @@ def write_stub_outputs(config: ProcessConfig) -> None:
         result_dir.mkdir(parents=True, exist_ok=True)
         (result_dir / "sra_benchmark.json").write_text(json.dumps({"sourceMode": "aws_sra", "stub": True}) + "\n", encoding="utf-8")
         (result_dir / "sra_benchmark.tsv").touch()
+        return
+    if config.stage == "known_answer_public_findings":
+        result_dir = workspace / "results/clinicalization"
+        result_dir.mkdir(parents=True, exist_ok=True)
+        (result_dir / "known_answer_public_finding_execution.json").write_text(
+            json.dumps({"status": "stub", "stub": True}) + "\n", encoding="utf-8"
+        )
+        (result_dir / "known_answer_public_finding_execution.csv").touch()
+        (result_dir / "known_answer_public_finding_execution.md").write_text("# Stub\n", encoding="utf-8")
+        (result_dir / "clinicalization_readiness_rollup.json").write_text(
+            json.dumps({"status": "stub", "stub": True}) + "\n", encoding="utf-8"
+        )
+        (result_dir / "clinicalization_readiness_rollup.csv").touch()
+        return
+    if config.stage == "known_answer_bounded_non_dry":
+        result_dir = workspace / "results/clinicalization"
+        result_dir.mkdir(parents=True, exist_ok=True)
+        (result_dir / "known_answer_bounded_non_dry_execution.json").write_text(
+            json.dumps({"status": "stub", "stub": True}) + "\n", encoding="utf-8"
+        )
+        (result_dir / "known_answer_bounded_non_dry_execution.csv").touch()
+        (result_dir / "known_answer_bounded_non_dry_execution.md").write_text("# Stub\n", encoding="utf-8")
+        (result_dir / "known_answer_public_finding_confirmation.json").write_text(
+            json.dumps({"status": "stub", "stub": True}) + "\n", encoding="utf-8"
+        )
+        (result_dir / "known_answer_public_finding_confirmation.csv").touch()
+        (result_dir / "clinicalization_readiness_rollup.json").write_text(
+            json.dumps({"status": "stub", "stub": True}) + "\n", encoding="utf-8"
+        )
+        (result_dir / "clinicalization_readiness_rollup.csv").touch()
         return
     (workspace / "manifests").mkdir(parents=True, exist_ok=True)
     (workspace / "results").mkdir(parents=True, exist_ok=True)

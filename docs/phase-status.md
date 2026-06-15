@@ -11,7 +11,7 @@ This file is the current operational status. It intentionally distinguishes pass
 | Phase 2 raw WES benchmark | Passed | Full SEQC2/HCC1395 WES FASTQs, alignment, GATK Mutect2, and truth overlap run. |
 | Phase 3 WGS validation | Passed for full-source public WGS | Full SEQC2/HCC1395 WGS FASTQs passed the acceptance gate; bounded subsets remain developer checks only. |
 | Diana raw-data intake | Ready, waiting | Template and strict validation exist; actual Diana files are not present. |
-| Orthogonal known-answer WGS validation | Partially implemented | SEQC2/HCC1395 public WES and WGS examples are verified; HG008 and COLO829 remain planned known-answer gates. |
+| Orthogonal known-answer WGS validation | Partially implemented | SEQC2/HCC1395 public WES and WGS examples are verified; a 10-target HG008/COLO829/Seraseq pull plan is staged for owner review. |
 | Clinical interpretation | Blocked | Requires Diana files, full-depth analysis policy, and reviewer/clinical sign-off. |
 
 ## Latest Full-Run Evidence
@@ -37,6 +37,8 @@ Important values:
 - Phase 3 WGS feature outputs: `coverageCnvBins=631`, `sbs96UsableSnvRecords=265`, and `svEvidenceStatus=passed`.
 - Phase 3 WGS ready for Phase 4 when Diana raw arrives: `true`.
 - Orthogonal public examples verified: `2` implemented, `5` planned or request-only.
+- Expanded known-answer pull targets staged for review: `10`.
+- Expanded known-answer public findings confirmed by current analysis: `0/10`.
 - Diana raw intake status: `template_ready`.
 - Diana raw intake ready to interpret: `false`.
 
@@ -143,6 +145,18 @@ Planning artifacts:
 
 - `docs/orthogonal-validation-samples.md`
 - `manifests/orthogonal_validation_candidates.csv`
+- `manifests/known_answer_sample_pull_plan.csv`
+- `manifests/known_answer_public_finding_checks.csv`
+- `results/clinicalization/known_answer_public_finding_execution.md`
+- `results/clinicalization/known_answer_public_finding_confirmation.md`
+
+Verifier:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-sample-pull-plan
+PYTHONPATH=src /usr/bin/python3 -m diana_omics run:known-answer-public-findings
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-public-findings
+```
 
 ## Diana Intake
 

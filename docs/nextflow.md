@@ -205,6 +205,12 @@ nextflow run main.nf \
 
 Use an ECR image built from this `Dockerfile`, an AWS Batch compute environment with enough local disk for FASTQ/BAM/VCF work, and an S3 work bucket in the same region as the compute. Prefer Spot for repeatable public validation runs and On-Demand for precious Diana recomputes.
 
+The known-answer public-finding suite has its own bounded cloud workflow. It fetches public metadata and small truth assets inside AWS Batch, publishes the generated clinicalization reports, and still reports no-call until raw HG008/COLO829 runs and comparison adapters exist:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:known-answer-public-findings
+```
+
 ## Blob Storage Rule
 
 Blob stores are good for durable inputs, references, logs, and final outputs. They are not a substitute for local task scratch when the tools do heavy BAM/VCF IO.

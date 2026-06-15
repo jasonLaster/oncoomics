@@ -27,6 +27,8 @@ class CliParityTest(unittest.TestCase):
             "fetch:production-somatic",
             "fetch:raw-candidates",
             "plan:known-answer-benchmarks",
+            "run:known-answer-bounded-non-dry",
+            "run:known-answer-public-findings",
             "smoke:alignment",
             "smoke:full-reference",
             "smoke:human-reference",
@@ -49,7 +51,9 @@ class CliParityTest(unittest.TestCase):
             "verify:known-answer-asset-integrity",
             "verify:known-answer-benchmark-manifests",
             "verify:known-answer-checksum-policy",
+            "verify:known-answer-public-findings",
             "verify:known-answer-readiness",
+            "verify:known-answer-sample-pull-plan",
             "verify:orthogonal",
             "verify:outputs",
             "verify:phase3-outputs",
@@ -72,6 +76,7 @@ class CliParityTest(unittest.TestCase):
         self.assertIn("run:all", TASKS)
         self.assertIn("benchmark:known-answer", TASKS)
         self.assertIn("nf:aws:sra-bench:tiny", TASKS)
+        self.assertIn("nf:aws:known-answer-bounded-non-dry", TASKS)
         self.assertIn("phase3:stage:align:tumor", TASKS)
         forbidden = "b" + "un"
         for name, task in TASKS.items():

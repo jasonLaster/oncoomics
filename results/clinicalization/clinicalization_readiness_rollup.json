@@ -1,77 +1,104 @@
 {
-  "generatedAt": "2026-06-12T23:35:57.471Z",
-  "status": "passed",
-  "errors": [],
+  "generatedAt": "2026-06-15T00:57:15.653Z",
+  "status": "failed",
+  "errors": [
+    "results/clinicalization/clinical_assay_boundaries_summary.json must have status passed.",
+    "results/clinicalization/clinical_qc_threshold_lock_summary.json must have status passed.",
+    "results/clinicalization/known_answer_sample_pull_plan_summary.json must have status passed.",
+    "results/clinicalization/known_answer_asset_approval_packet_summary.json must have status passed.",
+    "results/clinicalization/known_answer_benchmark_plan_summary.json must have status passed.",
+    "results/clinicalization/clinical_validation_evidence_link_summary.json must have status passed.",
+    "results/clinicalization/clinical_change_control_summary.json must have status passed.",
+    "results/clinicalization/clinical_signoff_workflow_summary.json must have status passed."
+  ],
   "summary": {
-    "status": "passed",
-    "rollup_area_count": 7,
-    "dependency_count": 7,
-    "passing_dependency_count": 7,
-    "active_blocker_count": 68,
+    "status": "failed",
+    "rollup_area_count": 9,
+    "dependency_count": 9,
+    "passing_dependency_count": 1,
+    "active_blocker_count": 11,
     "clinical_release_allowed": "no",
     "ready_for_clinical_interpretation": "no",
     "ready_for_benchmark_execution": "no",
     "next_step": "Monitor this rollup; the first true approval boundary remains known-answer asset owner review and checksum capture before benchmark execution.",
-    "error_count": 0
+    "error_count": 8
   },
   "rows": [
     {
-      "rollup_area": "known_answer_assets",
+      "rollup_area": "known_answer_sample_pull_plan",
+      "dependency_status": "missing",
+      "scaffold_status": "ten_target_pull_plan_present",
+      "active_blocker_count": 0,
+      "clinical_release_allowed": "no",
+      "ready_for_clinical_interpretation": "no",
+      "next_action": "Owner review must approve source terms transfer costs and checksums before downloading the expanded known-answer sample suite."
+    },
+    {
+      "rollup_area": "known_answer_public_finding_confirmation",
       "dependency_status": "passed",
+      "scaffold_status": "ten_target_confirmation_report_present",
+      "active_blocker_count": 10,
+      "clinical_release_allowed": "no",
+      "ready_for_clinical_interpretation": "no",
+      "next_action": "Run approved known-answer inputs against public findings before claiming HG008 COLO829 or Seraseq confirmation."
+    },
+    {
+      "rollup_area": "known_answer_assets",
+      "dependency_status": "missing",
       "scaffold_status": "approval_packet_ready_for_owner_review",
-      "active_blocker_count": 18,
+      "active_blocker_count": 0,
       "clinical_release_allowed": "no",
       "ready_for_clinical_interpretation": "no",
       "next_action": "Owner review must approve access terms and checksums before any known-answer asset acquisition or benchmark execution."
     },
     {
       "rollup_area": "known_answer_benchmark_execution",
-      "dependency_status": "passed",
+      "dependency_status": "missing",
       "scaffold_status": "dry_run_plans_present",
-      "active_blocker_count": 6,
+      "active_blocker_count": 0,
       "clinical_release_allowed": "no",
       "ready_for_clinical_interpretation": "no",
       "next_action": "Do not run HG008/COLO829 benchmarks until asset approval and checksum gates are satisfied."
     },
     {
       "rollup_area": "qc_thresholds",
-      "dependency_status": "passed",
+      "dependency_status": "missing",
       "scaffold_status": "draft_thresholds_defined",
-      "active_blocker_count": 10,
+      "active_blocker_count": 0,
       "clinical_release_allowed": "no",
       "ready_for_clinical_interpretation": "no",
       "next_action": "Populate and lock threshold values only after known-answer validation evidence and reviewer signoff."
     },
     {
       "rollup_area": "validation_packet",
-      "dependency_status": "passed",
+      "dependency_status": "missing",
       "scaffold_status": "sections_linked_to_readiness_evidence",
-      "active_blocker_count": 16,
+      "active_blocker_count": 0,
       "clinical_release_allowed": "no",
       "ready_for_clinical_interpretation": "no",
       "next_action": "Keep packet sections locked until linked readiness summaries become approved validation evidence."
     },
     {
       "rollup_area": "change_control",
-      "dependency_status": "passed",
+      "dependency_status": "missing",
       "scaffold_status": "revalidation_triggers_defined",
-      "active_blocker_count": 12,
+      "active_blocker_count": 0,
       "clinical_release_allowed": "no",
       "ready_for_clinical_interpretation": "no",
       "next_action": "Keep every change trigger review-required until validation packet evidence and signoff are complete."
     },
     {
       "rollup_area": "signoff",
-      "dependency_status": "passed",
+      "dependency_status": "missing",
       "scaffold_status": "required_roles_defined",
-      "active_blocker_count": 5,
+      "active_blocker_count": 0,
       "clinical_release_allowed": "no",
       "ready_for_clinical_interpretation": "no",
       "next_action": "Convert pending role scaffolds into named reviewer records only after validation evidence sections are complete."
     },
     {
       "rollup_area": "clinical_reporting_boundaries",
-      "dependency_status": "passed",
+      "dependency_status": "missing",
       "scaffold_status": "candidate_only_boundaries_defined",
       "active_blocker_count": 1,
       "clinical_release_allowed": "no",

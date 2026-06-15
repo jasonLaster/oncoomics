@@ -29,6 +29,8 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.run_full_reference_smoke import main as run_full_reference_smoke
     from .commands.run_full_wes_benchmark import main as run_full_wes_benchmark
     from .commands.run_human_reference_smoke import main as run_human_reference_smoke
+    from .commands.run_known_answer_bounded_non_dry import main as run_known_answer_bounded_non_dry
+    from .commands.run_known_answer_public_findings import main as run_known_answer_public_findings
     from .commands.run_phase3_wgs_smoke import main as run_phase3_wgs_smoke
     from .commands.run_production_somatic_smoke import main as run_production_somatic_smoke
     from .commands.run_raw_smoke import main as run_raw_smoke
@@ -49,7 +51,9 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.verify_known_answer_asset_integrity import main as verify_known_answer_asset_integrity
     from .commands.verify_known_answer_benchmark_manifests import main as verify_known_answer_benchmark_manifests
     from .commands.verify_known_answer_checksum_policy import main as verify_known_answer_checksum_policy
+    from .commands.verify_known_answer_public_findings import main as verify_known_answer_public_findings
     from .commands.verify_known_answer_readiness import main as verify_known_answer_readiness
+    from .commands.verify_known_answer_sample_pull_plan import main as verify_known_answer_sample_pull_plan
     from .commands.verify_orthogonal_validation import main as verify_orthogonal_validation
     from .commands.verify_outputs import main as verify_outputs
     from .commands.verify_outputs import verify_phase3_outputs
@@ -76,6 +80,8 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "fetch:production-somatic": fetch_production_somatic_assets,
         "fetch:raw-candidates": fetch_raw_candidate_metadata,
         "plan:known-answer-benchmarks": plan_known_answer_benchmarks,
+        "run:known-answer-bounded-non-dry": run_known_answer_bounded_non_dry,
+        "run:known-answer-public-findings": run_known_answer_public_findings,
         "smoke:alignment": run_alignment_smoke,
         "smoke:full-reference": run_full_reference_smoke,
         "benchmark:full-wes": run_full_wes_benchmark,
@@ -99,7 +105,9 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "verify:known-answer-asset-integrity": verify_known_answer_asset_integrity,
         "verify:known-answer-benchmark-manifests": verify_known_answer_benchmark_manifests,
         "verify:known-answer-checksum-policy": verify_known_answer_checksum_policy,
+        "verify:known-answer-public-findings": verify_known_answer_public_findings,
         "verify:known-answer-readiness": verify_known_answer_readiness,
+        "verify:known-answer-sample-pull-plan": verify_known_answer_sample_pull_plan,
         "verify:orthogonal": verify_orthogonal_validation,
         "verify:outputs": verify_outputs,
         "verify:phase3-outputs": verify_phase3_outputs,

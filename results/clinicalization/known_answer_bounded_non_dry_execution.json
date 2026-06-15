@@ -1,0 +1,1013 @@
+{
+  "generatedAt": "2026-06-15T00:57:15.472Z",
+  "status": "completed_with_bounded_results_and_gaps",
+  "summary": {
+    "status": "completed_with_bounded_results_and_gaps",
+    "target_count": 10,
+    "artifact_count": 8,
+    "bounded_confirmed_count": 5,
+    "bounded_partial_count": 1,
+    "gap_identified_count": 2,
+    "blocked_count": 2,
+    "strict_full_pipeline_confirmed_count": 0,
+    "clinical_use_allowed_count": 0,
+    "ready_for_clinical_interpretation": "no",
+    "next_step": "Promote bounded confirmations into strict pipeline confirmations only after approved full input transfer, caller execution, and truth-set concordance artifacts exist."
+  },
+  "rows": [
+    {
+      "check_id": "hg008_tumor_wgs_input",
+      "pull_id": "hg008_tumor_wgs",
+      "dataset_id": "giab_hg008",
+      "sample_or_asset_id": "HG008-T",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/hg008/input_provenance_summary.json",
+      "bounded_status": "bounded_non_dry_passed",
+      "pipeline_confirmation": "bounded_confirmed",
+      "evidence_type": "remote_indexed_bam_pileup",
+      "public_finding_result": "HG008-T carries truth ALT alleles while HG008-N-D remains reference-like across the bounded SNV panel.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "hg008_normal_wgs_input",
+      "pull_id": "hg008_normal_wgs",
+      "dataset_id": "giab_hg008",
+      "sample_or_asset_id": "HG008-N-D",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/hg008/input_provenance_summary.json",
+      "bounded_status": "bounded_non_dry_passed",
+      "pipeline_confirmation": "bounded_confirmed",
+      "evidence_type": "remote_indexed_bam_pileup",
+      "public_finding_result": "HG008-T carries truth ALT alleles while HG008-N-D remains reference-like across the bounded SNV panel.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "hg008_tumor_rna_qc",
+      "pull_id": "hg008_tumor_rna",
+      "dataset_id": "giab_hg008",
+      "sample_or_asset_id": "HG008-T_bulk",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/hg008/rna_qc_summary.json",
+      "bounded_status": "bounded_non_dry_gap_identified",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_type": "public_fastq_stats_only",
+      "public_finding_result": "HG008 RNA stats are present and paired, but no RNA quantification or truth target was run.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "hg008_small_variant_concordance",
+      "pull_id": "hg008_small_variant_truth",
+      "dataset_id": "giab_hg008",
+      "sample_or_asset_id": "HG008-T_somatic_smvar_v0.3",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/hg008/small_variant_concordance_summary.json",
+      "bounded_status": "bounded_non_dry_passed",
+      "pipeline_confirmation": "bounded_confirmed",
+      "evidence_type": "truth_vcf_remote_bam_pileup",
+      "public_finding_result": "10/10 HG008 truth SNVs had tumor ALT support and normal REF support.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "hg008_sv_cnv_concordance",
+      "pull_id": "hg008_sv_cnv_truth",
+      "dataset_id": "giab_hg008",
+      "sample_or_asset_id": "HG008-T_somatic_stvar_cnv_v0.5",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
+      "bounded_status": "bounded_non_dry_partial",
+      "pipeline_confirmation": "bounded_partial_cnv_depth_only",
+      "evidence_type": "truth_cnv_remote_bam_depth",
+      "public_finding_result": "HG008 CNV truth loss shows reduced tumor-normal depth after neutral-region normalization; SV reciprocal-overlap remains unrun.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "colo829_tumor_wgs_input",
+      "pull_id": "colo829_tumor_wgs",
+      "dataset_id": "colo829",
+      "sample_or_asset_id": "COLO829",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/colo829/input_provenance_summary.json",
+      "bounded_status": "bounded_non_dry_passed",
+      "pipeline_confirmation": "bounded_confirmed",
+      "evidence_type": "remote_indexed_bam_pileup",
+      "public_finding_result": "COLO829 tumor has BRAF V600E ALT support while COLO829R normal remains reference-like at the same locus.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "colo829_normal_wgs_input",
+      "pull_id": "colo829_normal_wgs",
+      "dataset_id": "colo829",
+      "sample_or_asset_id": "COLO829BL",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/colo829/input_provenance_summary.json",
+      "bounded_status": "bounded_non_dry_passed",
+      "pipeline_confirmation": "bounded_confirmed",
+      "evidence_type": "remote_indexed_bam_pileup",
+      "public_finding_result": "COLO829 tumor has BRAF V600E ALT support while COLO829R normal remains reference-like at the same locus.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "colo829_sv_cna_concordance",
+      "pull_id": "colo829_sv_cna_truth",
+      "dataset_id": "colo829",
+      "sample_or_asset_id": "COLO829_sv_cna_truth",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json",
+      "bounded_status": "bounded_non_dry_gap_identified",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_type": "truth_assets_only_with_driver_pileup_context",
+      "public_finding_result": "COLO829 SV/CNA truth assets are present, but no SV/CNA caller output or reciprocal-overlap result was generated.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "colo829_purity_monotonicity",
+      "pull_id": "colo829_purity_series",
+      "dataset_id": "colo829_purity_series",
+      "sample_or_asset_id": "COLO829_purity_selected_levels",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json",
+      "bounded_status": "bounded_non_dry_blocked_remote_index_missing",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_type": "ena_metadata_and_failed_remote_region_probe",
+      "public_finding_result": "COLO829 dilution BAMs are public but cannot be remotely region-sliced because ENA does not expose submitted BAI files for selected levels.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "seraseq_mrd_positive_negative",
+      "pull_id": "seraseq_ctdna_mrd_panel",
+      "dataset_id": "seraseq_ctdna_mrd",
+      "sample_or_asset_id": "Seraseq_ctDNA_MRD_Panel_Mix",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/seraseq_mrd/positive_negative_summary.json",
+      "bounded_status": "blocked_request_or_purchase",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_type": "source_access_blocker",
+      "public_finding_result": "Seraseq ctDNA MRD material or variant files are not freely downloadable for non-dry analysis.",
+      "clinical_use_allowed": "no"
+    }
+  ],
+  "artifacts": [
+    {
+      "generatedAt": "2026-06-15T00:57:15.468Z",
+      "status": "bounded_non_dry_passed",
+      "executionMode": "bounded_non_dry_public_remote_read_analysis",
+      "pipelineConfirmation": "bounded_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/hg008/input_provenance_summary.json",
+      "checkIds": [
+        "hg008_tumor_wgs_input",
+        "hg008_normal_wgs_input"
+      ],
+      "pullIds": [
+        "hg008_tumor_wgs",
+        "hg008_normal_wgs"
+      ],
+      "sampleOrAssetIds": [
+        "HG008-T",
+        "HG008-N-D"
+      ],
+      "datasetIds": [
+        "giab_hg008"
+      ],
+      "publicFindings": [
+        "HG008-T is the first Cancer GIAB tumor sample and should be analyzed as the tumor member of the HG008 tumor-normal WGS pair.",
+        "HG008-N-D is a paired normal sample for the HG008 tumor and should be analyzed as the normal member of the HG008 tumor-normal WGS pair."
+      ],
+      "evidenceType": "remote_indexed_bam_pileup",
+      "publicFindingResult": "HG008-T carries truth ALT alleles while HG008-N-D remains reference-like across the bounded SNV panel.",
+      "evidence": {
+        "variantPanel": {
+          "truthVcf": "data/raw/known_answer_public/hg008/small_variant_truth/HG008-T_somatic_smvar_benchmark_v0.3_tumorvariants.vcf.gz",
+          "tumorBam": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam",
+          "normalBam": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+          "variantLimit": 10,
+          "evaluatedVariantCount": 10,
+          "passedVariantCount": 10,
+          "failedVariantCount": 0,
+          "allVariantsPassed": true,
+          "rows": [
+            {
+              "chrom": "chr1",
+              "pos": 1334073,
+              "ref": "G",
+              "alt": "A",
+              "pileupStatus": "passed",
+              "tumorDepth": 222,
+              "tumorAltCount": 222,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 105,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.485,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 2003623,
+              "ref": "C",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 180,
+              "tumorAltCount": 180,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 123,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.406,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 2166083,
+              "ref": "A",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 198,
+              "tumorAltCount": 198,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 129,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.391,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 2289168,
+              "ref": "G",
+              "alt": "A",
+              "pileupStatus": "passed",
+              "tumorDepth": 171,
+              "tumorAltCount": 170,
+              "tumorAltFraction": 0.994152,
+              "normalDepth": 112,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.48,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 2820415,
+              "ref": "C",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 165,
+              "tumorAltCount": 91,
+              "tumorAltFraction": 0.551515,
+              "normalDepth": 142,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.363,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 3018685,
+              "ref": "G",
+              "alt": "A",
+              "pileupStatus": "passed",
+              "tumorDepth": 177,
+              "tumorAltCount": 177,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 110,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.395,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 3100206,
+              "ref": "C",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 204,
+              "tumorAltCount": 103,
+              "tumorAltFraction": 0.504902,
+              "normalDepth": 161,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.379,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 3776793,
+              "ref": "C",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 209,
+              "tumorAltCount": 209,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 161,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.441,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 4278254,
+              "ref": "C",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 145,
+              "tumorAltCount": 145,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 127,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.372,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 4474406,
+              "ref": "T",
+              "alt": "A",
+              "pileupStatus": "passed",
+              "tumorDepth": 127,
+              "tumorAltCount": 110,
+              "tumorAltFraction": 0.866142,
+              "normalDepth": 108,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.347,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            }
+          ]
+        }
+      },
+      "blockers": [],
+      "nextAction": "Run full HG008 tumor-normal WGS through the caller before upgrading this to strict pipeline confirmation.",
+      "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "previousStatus": "not_confirmed_input_metadata_only"
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:15.469Z",
+      "status": "bounded_non_dry_passed",
+      "executionMode": "bounded_non_dry_public_remote_read_analysis",
+      "pipelineConfirmation": "bounded_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/hg008/small_variant_concordance_summary.json",
+      "checkIds": [
+        "hg008_small_variant_concordance"
+      ],
+      "pullIds": [
+        "hg008_small_variant_truth"
+      ],
+      "sampleOrAssetIds": [
+        "HG008-T_somatic_smvar_v0.3"
+      ],
+      "datasetIds": [
+        "giab_hg008"
+      ],
+      "publicFindings": [
+        "NIST HG008-T v0.3 somatic small-variant benchmark should support SNV indel recall and precision measurement inside callable regions."
+      ],
+      "evidenceType": "truth_vcf_remote_bam_pileup",
+      "publicFindingResult": "10/10 HG008 truth SNVs had tumor ALT support and normal REF support.",
+      "evidence": {
+        "variantPanel": {
+          "truthVcf": "data/raw/known_answer_public/hg008/small_variant_truth/HG008-T_somatic_smvar_benchmark_v0.3_tumorvariants.vcf.gz",
+          "tumorBam": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam",
+          "normalBam": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+          "variantLimit": 10,
+          "evaluatedVariantCount": 10,
+          "passedVariantCount": 10,
+          "failedVariantCount": 0,
+          "allVariantsPassed": true,
+          "rows": [
+            {
+              "chrom": "chr1",
+              "pos": 1334073,
+              "ref": "G",
+              "alt": "A",
+              "pileupStatus": "passed",
+              "tumorDepth": 222,
+              "tumorAltCount": 222,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 105,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.485,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 2003623,
+              "ref": "C",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 180,
+              "tumorAltCount": 180,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 123,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.406,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 2166083,
+              "ref": "A",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 198,
+              "tumorAltCount": 198,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 129,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.391,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 2289168,
+              "ref": "G",
+              "alt": "A",
+              "pileupStatus": "passed",
+              "tumorDepth": 171,
+              "tumorAltCount": 170,
+              "tumorAltFraction": 0.994152,
+              "normalDepth": 112,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.48,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 2820415,
+              "ref": "C",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 165,
+              "tumorAltCount": 91,
+              "tumorAltFraction": 0.551515,
+              "normalDepth": 142,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.363,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 3018685,
+              "ref": "G",
+              "alt": "A",
+              "pileupStatus": "passed",
+              "tumorDepth": 177,
+              "tumorAltCount": 177,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 110,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.395,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 3100206,
+              "ref": "C",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 204,
+              "tumorAltCount": 103,
+              "tumorAltFraction": 0.504902,
+              "normalDepth": 161,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.379,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 3776793,
+              "ref": "C",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 209,
+              "tumorAltCount": 209,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 161,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.441,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 4278254,
+              "ref": "C",
+              "alt": "T",
+              "pileupStatus": "passed",
+              "tumorDepth": 145,
+              "tumorAltCount": 145,
+              "tumorAltFraction": 1.0,
+              "normalDepth": 127,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.372,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            },
+            {
+              "chrom": "chr1",
+              "pos": 4474406,
+              "ref": "T",
+              "alt": "A",
+              "pileupStatus": "passed",
+              "tumorDepth": 127,
+              "tumorAltCount": 110,
+              "tumorAltFraction": 0.866142,
+              "normalDepth": 108,
+              "normalAltCount": 0,
+              "normalAltFraction": 0.0,
+              "passed": true,
+              "elapsedSeconds": 0.347,
+              "stderr": "[mpileup] 2 samples in 2 input files"
+            }
+          ]
+        }
+      },
+      "blockers": [],
+      "nextAction": "Run full small-variant calling and callable-region concordance for strict recall/precision metrics.",
+      "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "previousStatus": "not_confirmed_truth_assets_verified"
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:15.469Z",
+      "status": "bounded_non_dry_partial",
+      "executionMode": "bounded_non_dry_public_remote_read_analysis",
+      "pipelineConfirmation": "bounded_partial_cnv_depth_only",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
+      "checkIds": [
+        "hg008_sv_cnv_concordance"
+      ],
+      "pullIds": [
+        "hg008_sv_cnv_truth"
+      ],
+      "sampleOrAssetIds": [
+        "HG008-T_somatic_stvar_cnv_v0.5"
+      ],
+      "datasetIds": [
+        "giab_hg008"
+      ],
+      "publicFindings": [
+        "NIST HG008-T v0.5 somatic SV and CNV benchmark should support reciprocal-overlap SV and CNV correctness summaries."
+      ],
+      "evidenceType": "truth_cnv_remote_bam_depth",
+      "publicFindingResult": "HG008 CNV truth loss shows reduced tumor-normal depth after neutral-region normalization; SV reciprocal-overlap remains unrun.",
+      "evidence": {
+        "cnvDepthProbe": {
+          "truthBed": "data/raw/known_answer_public/hg008/sv_cnv_truth/GRCh38_HG008-T-V0.5_somatic-CNV_PASS.draftbenchmark.calls.bed",
+          "lossInterval": {
+            "chrom": "chr1",
+            "start": 23272628,
+            "end": 72195288,
+            "copyTotal": "1",
+            "eventId": "CNA_2"
+          },
+          "neutralInterval": {
+            "chrom": "chr2",
+            "start": 0,
+            "end": 39789308,
+            "copyTotal": "2",
+            "eventId": "noCNV"
+          },
+          "lossDepth": {
+            "region": "chr1:24272629-24273629",
+            "command": "samtools depth -r chr1:24272629-24273629 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+            "returnCode": 0,
+            "stderr": "",
+            "elapsedSeconds": 0.423,
+            "status": "passed",
+            "positions": 1001,
+            "tumorMeanDepth": 83.6274,
+            "normalMeanDepth": 116.0,
+            "tumorNormalRatio": 0.720926,
+            "attempts": [
+              {
+                "attempt": 1,
+                "status": "passed",
+                "returnCode": 0,
+                "elapsedSeconds": 0.423,
+                "stderr": ""
+              }
+            ]
+          },
+          "neutralDepth": {
+            "region": "chr2:1000001-1001001",
+            "command": "samtools depth -r chr2:1000001-1001001 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+            "returnCode": 0,
+            "stderr": "",
+            "elapsedSeconds": 0.345,
+            "status": "passed",
+            "positions": 1001,
+            "tumorMeanDepth": 162.0549,
+            "normalMeanDepth": 98.6334,
+            "tumorNormalRatio": 1.643003,
+            "attempts": [
+              {
+                "attempt": 1,
+                "status": "passed",
+                "returnCode": 0,
+                "elapsedSeconds": 0.345,
+                "stderr": ""
+              }
+            ]
+          },
+          "normalizedLossTumorNormalRatio": 0.438786,
+          "passedCnvDepthSignal": true,
+          "remainingSvGap": "No Diana-generated SV/CNV callset or reciprocal-overlap caller output was produced in this bounded run."
+        }
+      },
+      "blockers": [
+        "No Diana-generated SV/CNV callset exists for HG008 in this bounded run."
+      ],
+      "nextAction": "Run SV/CNV callers and reciprocal-overlap comparison against HG008 v0.5 truth.",
+      "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "previousStatus": "not_confirmed_truth_assets_verified"
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:15.470Z",
+      "status": "bounded_non_dry_gap_identified",
+      "executionMode": "bounded_non_dry_public_remote_read_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/hg008/rna_qc_summary.json",
+      "checkIds": [
+        "hg008_tumor_rna_qc"
+      ],
+      "pullIds": [
+        "hg008_tumor_rna"
+      ],
+      "sampleOrAssetIds": [
+        "HG008-T_bulk"
+      ],
+      "datasetIds": [
+        "giab_hg008"
+      ],
+      "publicFindings": [
+        "HG008-T bulk RNA-seq should validate RNA intake and quantification plumbing but is not an HRD-positive truth label."
+      ],
+      "evidenceType": "public_fastq_stats_only",
+      "publicFindingResult": "HG008 RNA stats are present and paired, but no RNA quantification or truth target was run.",
+      "evidence": {
+        "rnaStats": {
+          "statsFiles": [
+            {
+              "path": "data/raw/known_answer_public/hg008/rna/XZOOK_20250905_A00904_IL23896-001_N4UD-C12_L001_R1_stats.txt",
+              "bases": 7811839889,
+              "reads": 51734039,
+              "readLength": 151
+            },
+            {
+              "path": "data/raw/known_answer_public/hg008/rna/XZOOK_20250905_A00904_IL23896-001_N4UD-C12_L001_R2_stats.txt",
+              "bases": 7811839889,
+              "reads": 51734039,
+              "readLength": 151
+            }
+          ],
+          "pairedReadStatsConsistent": true,
+          "remainingQuantificationGap": "RNA FASTQ stats are public, but this bounded run does not download FASTQs or run quantification."
+        }
+      },
+      "blockers": [
+        "RNA FASTQs were not downloaded and no transcript-level truth target is selected."
+      ],
+      "nextAction": "Select an RNA truth/QC target, transfer FASTQs, and run quantification.",
+      "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "previousStatus": "not_confirmed_input_metadata_only"
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:15.470Z",
+      "status": "bounded_non_dry_passed",
+      "executionMode": "bounded_non_dry_public_remote_read_analysis",
+      "pipelineConfirmation": "bounded_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/colo829/input_provenance_summary.json",
+      "checkIds": [
+        "colo829_tumor_wgs_input",
+        "colo829_normal_wgs_input"
+      ],
+      "pullIds": [
+        "colo829_tumor_wgs",
+        "colo829_normal_wgs"
+      ],
+      "sampleOrAssetIds": [
+        "COLO829",
+        "COLO829BL"
+      ],
+      "datasetIds": [
+        "colo829"
+      ],
+      "publicFindings": [
+        "COLO829 is a metastatic melanoma tumor cell line in a documented matched tumor-normal reference standard and should be analyzed as the tumor member.",
+        "COLO829BL is the matched lymphoblastoid normal line for COLO829 and should be analyzed as the normal member."
+      ],
+      "evidenceType": "remote_indexed_bam_pileup",
+      "publicFindingResult": "COLO829 tumor has BRAF V600E ALT support while COLO829R normal remains reference-like at the same locus.",
+      "evidence": {
+        "brafV600EProbe": {
+          "region": "7:140453136-140453136",
+          "build": "GRCh37/hg19-style numeric contigs",
+          "expectedRef": "A",
+          "expectedAlt": "T",
+          "tumorBam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752450/COLO829T_dedup.realigned.bam",
+          "normalBam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752449/COLO829R_dedup.realigned.bam",
+          "pileup": {
+            "command": "samtools mpileup -r 7:140453136-140453136 https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752450/COLO829T_dedup.realigned.bam https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752449/COLO829R_dedup.realigned.bam",
+            "returnCode": 0,
+            "stderr": "[mpileup] 2 samples in 2 input files",
+            "elapsedSeconds": 6.125,
+            "status": "passed",
+            "chrom": "7",
+            "pos": 140453136,
+            "pileupRef": "N",
+            "samples": [
+              {
+                "depthInformative": 155,
+                "refCount": 51,
+                "altCount": 104,
+                "otherCount": 0,
+                "deletionCount": 0,
+                "skipCount": 0,
+                "baseCounts": {
+                  "A": 51,
+                  "C": 0,
+                  "G": 0,
+                  "T": 104,
+                  "N": 0
+                },
+                "altFraction": 0.670968,
+                "sampleIndex": 0,
+                "bam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752450/COLO829T_dedup.realigned.bam",
+                "depth": 155
+              },
+              {
+                "depthInformative": 34,
+                "refCount": 34,
+                "altCount": 0,
+                "otherCount": 0,
+                "deletionCount": 0,
+                "skipCount": 0,
+                "baseCounts": {
+                  "A": 34,
+                  "C": 0,
+                  "G": 0,
+                  "T": 0,
+                  "N": 0
+                },
+                "altFraction": 0.0,
+                "sampleIndex": 1,
+                "bam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752449/COLO829R_dedup.realigned.bam",
+                "depth": 34
+              }
+            ],
+            "attempts": [
+              {
+                "attempt": 1,
+                "status": "passed",
+                "returnCode": 0,
+                "elapsedSeconds": 6.125,
+                "stderr": "[mpileup] 2 samples in 2 input files"
+              }
+            ]
+          },
+          "tumorAltFraction": 0.670968,
+          "normalAltFraction": 0.0,
+          "passedBrafGuardrail": true
+        }
+      },
+      "blockers": [],
+      "nextAction": "Run full COLO829 tumor-normal calling and signature analysis before strict pipeline confirmation.",
+      "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "previousStatus": "not_confirmed_input_metadata_only"
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:15.471Z",
+      "status": "bounded_non_dry_gap_identified",
+      "executionMode": "bounded_non_dry_public_remote_read_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json",
+      "checkIds": [
+        "colo829_sv_cna_concordance"
+      ],
+      "pullIds": [
+        "colo829_sv_cna_truth"
+      ],
+      "sampleOrAssetIds": [
+        "COLO829_sv_cna_truth"
+      ],
+      "datasetIds": [
+        "colo829"
+      ],
+      "publicFindings": [
+        "The COLO829 Zenodo truth set provides final somatic SV truth and copy-number alteration files for independent SV/CNA benchmarking."
+      ],
+      "evidenceType": "truth_assets_only_with_driver_pileup_context",
+      "publicFindingResult": "COLO829 SV/CNA truth assets are present, but no SV/CNA caller output or reciprocal-overlap result was generated.",
+      "evidence": {
+        "svCnaGap": {
+          "truthVcf": "data/raw/known_answer_public/colo829/sv_cna_truth/truthset_somaticSVs_COLO829_hg38lifted.vcf",
+          "truthVcfExists": true,
+          "copyNumberTruthZip": "data/raw/known_answer_public/colo829/sv_cna_truth/COLO829_somaticSV_copynumber.zip",
+          "copyNumberTruthZipExists": true,
+          "boundedGap": "COLO829 BRAF pileup confirms tumor-normal driver guardrail, but this run does not produce a Diana SV/CNA callset or reconcile the hg38-lifted truth with the GRCh37 submitted BAMs."
+        },
+        "brafV600EProbe": {
+          "region": "7:140453136-140453136",
+          "build": "GRCh37/hg19-style numeric contigs",
+          "expectedRef": "A",
+          "expectedAlt": "T",
+          "tumorBam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752450/COLO829T_dedup.realigned.bam",
+          "normalBam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752449/COLO829R_dedup.realigned.bam",
+          "pileup": {
+            "command": "samtools mpileup -r 7:140453136-140453136 https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752450/COLO829T_dedup.realigned.bam https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752449/COLO829R_dedup.realigned.bam",
+            "returnCode": 0,
+            "stderr": "[mpileup] 2 samples in 2 input files",
+            "elapsedSeconds": 6.125,
+            "status": "passed",
+            "chrom": "7",
+            "pos": 140453136,
+            "pileupRef": "N",
+            "samples": [
+              {
+                "depthInformative": 155,
+                "refCount": 51,
+                "altCount": 104,
+                "otherCount": 0,
+                "deletionCount": 0,
+                "skipCount": 0,
+                "baseCounts": {
+                  "A": 51,
+                  "C": 0,
+                  "G": 0,
+                  "T": 104,
+                  "N": 0
+                },
+                "altFraction": 0.670968,
+                "sampleIndex": 0,
+                "bam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752450/COLO829T_dedup.realigned.bam",
+                "depth": 155
+              },
+              {
+                "depthInformative": 34,
+                "refCount": 34,
+                "altCount": 0,
+                "otherCount": 0,
+                "deletionCount": 0,
+                "skipCount": 0,
+                "baseCounts": {
+                  "A": 34,
+                  "C": 0,
+                  "G": 0,
+                  "T": 0,
+                  "N": 0
+                },
+                "altFraction": 0.0,
+                "sampleIndex": 1,
+                "bam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR275/ERR2752449/COLO829R_dedup.realigned.bam",
+                "depth": 34
+              }
+            ],
+            "attempts": [
+              {
+                "attempt": 1,
+                "status": "passed",
+                "returnCode": 0,
+                "elapsedSeconds": 6.125,
+                "stderr": "[mpileup] 2 samples in 2 input files"
+              }
+            ]
+          },
+          "tumorAltFraction": 0.670968,
+          "normalAltFraction": 0.0,
+          "passedBrafGuardrail": true
+        }
+      },
+      "blockers": [
+        "COLO829 submitted BAMs are GRCh37-style while the fetched SV truth VCF is hg38-lifted.",
+        "No Diana SV/CNA callset exists."
+      ],
+      "nextAction": "Fetch or generate build-matched COLO829 truth/calls and run reciprocal-overlap SV/CNA evaluation.",
+      "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "previousStatus": "not_confirmed_truth_assets_verified"
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:15.471Z",
+      "status": "bounded_non_dry_blocked_remote_index_missing",
+      "executionMode": "bounded_non_dry_public_remote_read_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json",
+      "checkIds": [
+        "colo829_purity_monotonicity"
+      ],
+      "pullIds": [
+        "colo829_purity_series"
+      ],
+      "sampleOrAssetIds": [
+        "COLO829_purity_selected_levels"
+      ],
+      "datasetIds": [
+        "colo829_purity_series"
+      ],
+      "publicFindings": [
+        "Selected COLO829 dilution levels should show lower variant or truth-overlap sensitivity as tumor fraction decreases."
+      ],
+      "evidenceType": "ena_metadata_and_failed_remote_region_probe",
+      "publicFindingResult": "COLO829 dilution BAMs are public but cannot be remotely region-sliced because ENA does not expose submitted BAI files for selected levels.",
+      "evidence": {
+        "purityProbe": {
+          "enaReport": "data/raw/known_answer_public/colo829/ena/PRJEB27698_filereport.tsv",
+          "selectedPurityRunCount": 15,
+          "selectedPurityAliases": [
+            "COLO829_purity_10",
+            "COLO829_purity_10",
+            "COLO829_purity_10",
+            "COLO829_purity_20",
+            "COLO829_purity_20",
+            "COLO829_purity_20",
+            "COLO829_purity_25",
+            "COLO829_purity_25",
+            "COLO829_purity_25",
+            "COLO829_purity_50",
+            "COLO829_purity_50",
+            "COLO829_purity_50",
+            "COLO829_purity_75",
+            "COLO829_purity_75",
+            "COLO829_purity_75"
+          ],
+          "selectedSubmittedBamCount": 15,
+          "selectedSubmittedBaiCount": 0,
+          "boundedRegionProbe": {
+            "command": "samtools mpileup -r 7:140453136-140453136 https://ftp.sra.ebi.ac.uk/vol1/run/ERR409/ERR4093255/illumina_purity10.bam",
+            "returnCode": 1,
+            "stderr": "[E::idx_find_and_load] Could not retrieve index file for 'https://ftp.sra.ebi.ac.uk/vol1/run/ERR409/ERR4093255/illumina_purity10.bam'\n[mpileup] fail to load index for https://ftp.sra.ebi.ac.uk/vol1/run/ERR409/ERR4093255/illumina_purity10.bam",
+            "elapsedSeconds": 1.992
+          },
+          "blockedReason": "Selected purity BAMs are listed in ENA without submitted BAI files, so indexed remote region slicing is unavailable."
+        }
+      },
+      "blockers": [
+        "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested."
+      ],
+      "nextAction": "Transfer selected dilution BAM/FASTQ inputs, index locally if needed, then run the purity recall table.",
+      "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "previousStatus": "not_confirmed_input_metadata_only"
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:15.472Z",
+      "status": "blocked_request_or_purchase",
+      "executionMode": "bounded_non_dry_public_remote_read_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/seraseq_mrd/positive_negative_summary.json",
+      "checkIds": [
+        "seraseq_mrd_positive_negative"
+      ],
+      "pullIds": [
+        "seraseq_ctdna_mrd_panel"
+      ],
+      "sampleOrAssetIds": [
+        "Seraseq_ctDNA_MRD_Panel_Mix"
+      ],
+      "datasetIds": [
+        "seraseq_ctdna_mrd"
+      ],
+      "publicFindings": [
+        "Seraseq ctDNA MRD Panel Mix includes 0 percent 0.5 percent 0.05 percent and 0.005 percent tumor fractions for MRD positive-negative and dilution validation."
+      ],
+      "evidenceType": "source_access_blocker",
+      "publicFindingResult": "Seraseq ctDNA MRD material or variant files are not freely downloadable for non-dry analysis.",
+      "evidence": {
+        "seraseqGap": {
+          "sourceAccess": "request_or_purchase",
+          "blockedReason": "No freely downloadable public FASTQ, BAM, or variant truth files were available for non-dry analysis."
+        }
+      },
+      "blockers": [
+        "Request or purchase is required before a non-dry positive-negative MRD run."
+      ],
+      "nextAction": "Obtain material or variant truth files and define assay-specific acceptance ranges.",
+      "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "previousStatus": "blocked_request_or_purchase"
+    }
+  ]
+}

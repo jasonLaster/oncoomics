@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-06-15T00:53:51.857Z",
+  "status": "blocked_request_or_purchase",
+  "executionMode": "bounded_non_dry_public_remote_read_analysis",
+  "pipelineConfirmation": "not_confirmed",
+  "clinicalUseAllowed": "no",
+  "artifactPath": "results/clinicalization/known_answer_runs/seraseq_mrd/positive_negative_summary.json",
+  "checkIds": [
+    "seraseq_mrd_positive_negative"
+  ],
+  "pullIds": [
+    "seraseq_ctdna_mrd_panel"
+  ],
+  "sampleOrAssetIds": [
+    "Seraseq_ctDNA_MRD_Panel_Mix"
+  ],
+  "datasetIds": [
+    "seraseq_ctdna_mrd"
+  ],
+  "publicFindings": [
+    "Seraseq ctDNA MRD Panel Mix includes 0 percent 0.5 percent 0.05 percent and 0.005 percent tumor fractions for MRD positive-negative and dilution validation."
+  ],
+  "evidenceType": "source_access_blocker",
+  "publicFindingResult": "Seraseq ctDNA MRD material or variant files are not freely downloadable for non-dry analysis.",
+  "evidence": {
+    "seraseqGap": {
+      "sourceAccess": "request_or_purchase",
+      "blockedReason": "No freely downloadable public FASTQ, BAM, or variant truth files were available for non-dry analysis."
+    }
+  },
+  "blockers": [
+    "Request or purchase is required before a non-dry positive-negative MRD run."
+  ],
+  "nextAction": "Obtain material or variant truth files and define assay-specific acceptance ranges.",
+  "previousExecutionMode": "bounded_non_dry_public_remote_read_analysis",
+  "previousStatus": "blocked_request_or_purchase"
+}

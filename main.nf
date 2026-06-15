@@ -383,6 +383,57 @@ process PHASE3_SRA_BENCHMARK {
     """
 }
 
+process KNOWN_ANSWER_PUBLIC_FINDINGS {
+    tag 'known_answer_public_findings'
+    cpus 2
+    memory '8 GB'
+    time '4h'
+    publishDir "${params.outdir}/known_answer_public_findings", mode: 'copy', overwrite: true
+
+    output:
+    path 'workspace/results/clinicalization/known_answer_public_finding_*'
+    path 'workspace/results/clinicalization/known_answer_runs', optional: true
+    path 'workspace/results/clinicalization/clinicalization_readiness_rollup.*'
+
+    script:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process known_answer_public_findings --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}"
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process known_answer_public_findings --stub --workspace workspace --python-bin "${params.python_bin}"
+    """
+}
+
+process KNOWN_ANSWER_BOUNDED_NON_DRY {
+    tag 'known_answer_bounded_non_dry'
+    cpus 2
+    memory '8 GB'
+    time '4h'
+    publishDir "${params.outdir}/known_answer_bounded_non_dry", mode: 'copy', overwrite: true
+
+    output:
+    path 'workspace/results/clinicalization/known_answer_bounded_non_dry_*'
+    path 'workspace/results/clinicalization/known_answer_public_finding_*'
+    path 'workspace/results/clinicalization/known_answer_runs', optional: true
+    path 'workspace/results/clinicalization/clinicalization_readiness_rollup.*'
+
+    script:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process known_answer_bounded_non_dry --source-dir "${params.repo_dir}" --workspace workspace --python-bin "${params.python_bin}" --skip-wiki-checks "${params.skip_wiki_checks}" --task-cpus "${task.cpus}"
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics.nextflow_process known_answer_bounded_non_dry --stub --workspace workspace --python-bin "${params.python_bin}"
+    """
+}
+
 process PHASE3_WGS {
     tag "phase3_wgs_${params.phase3_reads ?: '500000'}"
     cpus { params.phase3_wgs_cpus as int }
@@ -496,7 +547,7 @@ workflow {
     selectedWorkflow = params.workflow.toString()
     effectivePhase3Reads = params.phase3_reads ? params.phase3_reads.toString() : '500000'
     allowFullWgs = params.allow_full_wgs.toString() == 'true'
-    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_sra_benchmark', 'phase3_wgs', 'phase3_wgs_align_only', 'phase3_wgs_align_scatter', 'phase3_wgs_monolith', 'all_public']
+    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_sra_benchmark', 'known_answer_public_findings', 'known_answer_bounded_non_dry', 'phase3_wgs', 'phase3_wgs_align_only', 'phase3_wgs_align_scatter', 'phase3_wgs_monolith', 'all_public']
 
     if (!workflows.contains(selectedWorkflow)) {
         error "Unknown workflow '${selectedWorkflow}'. Choose one of: ${workflows.join(', ')}."
@@ -523,6 +574,10 @@ workflow {
         PHASE3_FETCH()
     } else if (selectedWorkflow == 'phase3_sra_benchmark') {
         PHASE3_SRA_BENCHMARK()
+    } else if (selectedWorkflow == 'known_answer_public_findings') {
+        KNOWN_ANSWER_PUBLIC_FINDINGS()
+    } else if (selectedWorkflow == 'known_answer_bounded_non_dry') {
+        KNOWN_ANSWER_BOUNDED_NON_DRY()
     } else if (selectedWorkflow == 'phase3_wgs') {
         PHASE3_WGS_SPLIT()
     } else if (selectedWorkflow == 'phase3_wgs_align_only') {

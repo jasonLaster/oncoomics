@@ -12,6 +12,8 @@ SUMMARY_JSON_PATH = "results/clinicalization/clinicalization_readiness_rollup.js
 DEPENDENCIES = {
     "assay_boundaries": "results/clinicalization/clinical_assay_boundaries_summary.json",
     "qc_thresholds": "results/clinicalization/clinical_qc_threshold_lock_summary.json",
+    "sample_pull_plan": "results/clinicalization/known_answer_sample_pull_plan_summary.json",
+    "public_finding_confirmation": "results/clinicalization/known_answer_public_finding_confirmation.json",
     "known_answer_assets": "results/clinicalization/known_answer_asset_approval_packet_summary.json",
     "benchmark_plan": "results/clinicalization/known_answer_benchmark_plan_summary.json",
     "packet_evidence": "results/clinicalization/clinical_validation_evidence_link_summary.json",
@@ -55,7 +57,27 @@ def build_rollup_rows(summaries: dict[str, dict[str, Any]]) -> list[dict[str, An
     signoff = summaries["signoff"]
     boundaries = summaries["assay_boundaries"]
     benchmark_plan = summaries["benchmark_plan"]
+    sample_pull_plan = summaries["sample_pull_plan"]
+    public_finding_confirmation = summaries["public_finding_confirmation"]
     return [
+        {
+            "rollup_area": "known_answer_sample_pull_plan",
+            "dependency_status": _status(sample_pull_plan),
+            "scaffold_status": "ten_target_pull_plan_present",
+            "active_blocker_count": _int(sample_pull_plan, "pending_pull_target_count"),
+            "clinical_release_allowed": "no",
+            "ready_for_clinical_interpretation": _nested(sample_pull_plan, "ready_for_clinical_interpretation", "no"),
+            "next_action": "Owner review must approve source terms transfer costs and checksums before downloading the expanded known-answer sample suite.",
+        },
+        {
+            "rollup_area": "known_answer_public_finding_confirmation",
+            "dependency_status": _status(public_finding_confirmation),
+            "scaffold_status": "ten_target_confirmation_report_present",
+            "active_blocker_count": _int(public_finding_confirmation, "not_confirmed_count"),
+            "clinical_release_allowed": "no",
+            "ready_for_clinical_interpretation": _nested(public_finding_confirmation, "ready_for_clinical_interpretation", "no"),
+            "next_action": "Run approved known-answer inputs against public findings before claiming HG008 COLO829 or Seraseq confirmation.",
+        },
         {
             "rollup_area": "known_answer_assets",
             "dependency_status": _status(known_assets),
@@ -137,6 +159,14 @@ def validate_rollup(summaries: dict[str, dict[str, Any]], rows: list[dict[str, A
         errors.append("clinicalization readiness rollup must retain active blockers until validation and signoff are complete.")
     if _nested(summaries["known_answer_assets"], "execution_allowed_count", 0) != 0:
         errors.append("known-answer assets must keep execution_allowed_count=0.")
+    if _nested(summaries["sample_pull_plan"], "execution_allowed_count", 0) != 0:
+        errors.append("known-answer sample pull plan must keep execution_allowed_count=0.")
+    if _nested(summaries["sample_pull_plan"], "clinical_use_allowed_count", 0) != 0:
+        errors.append("known-answer sample pull plan must keep clinical_use_allowed_count=0.")
+    if _nested(summaries["public_finding_confirmation"], "confirmed_count", 0) != 0:
+        errors.append("known-answer public finding confirmation must keep confirmed_count=0 until approved runs exist.")
+    if _nested(summaries["public_finding_confirmation"], "clinical_use_allowed_count", 0) != 0:
+        errors.append("known-answer public finding confirmation must keep clinical_use_allowed_count=0.")
     if _nested(summaries["qc_thresholds"], "locked_threshold_count", 0) != 0:
         errors.append("clinical QC thresholds must keep locked_threshold_count=0.")
     if _nested(summaries["packet_evidence"], "unblocked_section_count", 0) != 0:

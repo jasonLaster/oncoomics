@@ -1,0 +1,942 @@
+{
+  "generatedAt": "2026-06-15T00:57:02.429Z",
+  "status": "completed_with_gaps",
+  "summary": {
+    "status": "completed_with_gaps",
+    "target_count": 10,
+    "artifact_count": 8,
+    "confirmed_count": 0,
+    "gap_identified_count": 9,
+    "blocked_request_or_purchase_count": 1,
+    "public_asset_count": 37,
+    "public_asset_downloaded_count": 37,
+    "public_asset_cached_count": 0,
+    "public_asset_error_count": 0,
+    "ready_for_clinical_interpretation": "no",
+    "next_step": "Implement non-dry HG008/COLO829 runners, approve large raw-input transfers, and obtain Seraseq material or variant files before claiming public-finding confirmation."
+  },
+  "rows": [
+    {
+      "check_id": "hg008_tumor_wgs_input",
+      "pull_id": "hg008_tumor_wgs",
+      "dataset_id": "giab_hg008",
+      "sample_or_asset_id": "HG008-T",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/hg008/input_provenance_summary.json",
+      "execution_status": "not_confirmed_input_metadata_only",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_asset_count": 3,
+      "download_error_count": 0,
+      "blocker_category": "raw_input_and_runner_gap",
+      "next_action": "Approve transfer plan, fetch HG008-T and HG008-N-D WGS inputs, then implement the non-dry benchmark runner and concordance adapter.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "hg008_normal_wgs_input",
+      "pull_id": "hg008_normal_wgs",
+      "dataset_id": "giab_hg008",
+      "sample_or_asset_id": "HG008-N-D",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/hg008/input_provenance_summary.json",
+      "execution_status": "not_confirmed_input_metadata_only",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_asset_count": 3,
+      "download_error_count": 0,
+      "blocker_category": "raw_input_and_runner_gap",
+      "next_action": "Approve transfer plan, fetch HG008-T and HG008-N-D WGS inputs, then implement the non-dry benchmark runner and concordance adapter.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "hg008_tumor_rna_qc",
+      "pull_id": "hg008_tumor_rna",
+      "dataset_id": "giab_hg008",
+      "sample_or_asset_id": "HG008-T_bulk",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/hg008/rna_qc_summary.json",
+      "execution_status": "not_confirmed_input_metadata_only",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_asset_count": 5,
+      "download_error_count": 0,
+      "blocker_category": "raw_input_and_runner_gap",
+      "next_action": "Approve RNA transfer, fetch the selected HG008-T RNA FASTQs, and add the RNA QC or quantification smoke gate.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "hg008_small_variant_concordance",
+      "pull_id": "hg008_small_variant_truth",
+      "dataset_id": "giab_hg008",
+      "sample_or_asset_id": "HG008-T_somatic_smvar_v0.3",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/hg008/small_variant_concordance_summary.json",
+      "execution_status": "not_confirmed_truth_assets_verified",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_asset_count": 8,
+      "download_error_count": 0,
+      "blocker_category": "truth_assets_without_pipeline_calls",
+      "next_action": "Run HG008 tumor-normal WGS through the small-variant caller and compare against the v0.3 truth VCF/callable BED.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "hg008_sv_cnv_concordance",
+      "pull_id": "hg008_sv_cnv_truth",
+      "dataset_id": "giab_hg008",
+      "sample_or_asset_id": "HG008-T_somatic_stvar_cnv_v0.5",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
+      "execution_status": "not_confirmed_truth_assets_verified",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_asset_count": 10,
+      "download_error_count": 0,
+      "blocker_category": "truth_assets_without_pipeline_calls",
+      "next_action": "Run HG008 tumor-normal WGS through SV/CNV callers and compare using reciprocal-overlap rules.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "colo829_tumor_wgs_input",
+      "pull_id": "colo829_tumor_wgs",
+      "dataset_id": "colo829",
+      "sample_or_asset_id": "COLO829",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/colo829/input_provenance_summary.json",
+      "execution_status": "not_confirmed_input_metadata_only",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_asset_count": 1,
+      "download_error_count": 0,
+      "blocker_category": "raw_input_and_runner_gap",
+      "next_action": "Approve COLO829 transfer, fetch selected tumor-normal WGS inputs, then implement the driver/signature guardrail run.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "colo829_normal_wgs_input",
+      "pull_id": "colo829_normal_wgs",
+      "dataset_id": "colo829",
+      "sample_or_asset_id": "COLO829BL",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/colo829/input_provenance_summary.json",
+      "execution_status": "not_confirmed_input_metadata_only",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_asset_count": 1,
+      "download_error_count": 0,
+      "blocker_category": "raw_input_and_runner_gap",
+      "next_action": "Approve COLO829 transfer, fetch selected tumor-normal WGS inputs, then implement the driver/signature guardrail run.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "colo829_sv_cna_concordance",
+      "pull_id": "colo829_sv_cna_truth",
+      "dataset_id": "colo829",
+      "sample_or_asset_id": "COLO829_sv_cna_truth",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json",
+      "execution_status": "not_confirmed_truth_assets_verified",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_asset_count": 4,
+      "download_error_count": 0,
+      "blocker_category": "truth_assets_without_pipeline_calls",
+      "next_action": "Run COLO829 tumor-normal WGS through SV/CNA callers and compare against the Zenodo truth assets.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "colo829_purity_monotonicity",
+      "pull_id": "colo829_purity_series",
+      "dataset_id": "colo829_purity_series",
+      "sample_or_asset_id": "COLO829_purity_selected_levels",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json",
+      "execution_status": "not_confirmed_input_metadata_only",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_asset_count": 4,
+      "download_error_count": 0,
+      "blocker_category": "raw_input_and_runner_gap",
+      "next_action": "Approve selected dilution transfers, run each level, and compute truth-overlap recall by tumor fraction.",
+      "clinical_use_allowed": "no"
+    },
+    {
+      "check_id": "seraseq_mrd_positive_negative",
+      "pull_id": "seraseq_ctdna_mrd_panel",
+      "dataset_id": "seraseq_ctdna_mrd",
+      "sample_or_asset_id": "Seraseq_ctDNA_MRD_Panel_Mix",
+      "analysis_artifact_path": "results/clinicalization/known_answer_runs/seraseq_mrd/positive_negative_summary.json",
+      "execution_status": "blocked_request_or_purchase",
+      "pipeline_confirmation": "not_confirmed",
+      "evidence_asset_count": 2,
+      "download_error_count": 0,
+      "blocker_category": "request_or_purchase_required",
+      "next_action": "Request or purchase Seraseq material or variant files, then define assay-specific positive-negative and dilution gates.",
+      "clinical_use_allowed": "no"
+    }
+  ],
+  "artifacts": [
+    {
+      "generatedAt": "2026-06-15T00:56:58.786Z",
+      "status": "not_confirmed_input_metadata_only",
+      "executionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/hg008/input_provenance_summary.json",
+      "checkIds": [
+        "hg008_tumor_wgs_input",
+        "hg008_normal_wgs_input"
+      ],
+      "pullIds": [
+        "hg008_tumor_wgs",
+        "hg008_normal_wgs"
+      ],
+      "sampleOrAssetIds": [
+        "HG008-T",
+        "HG008-N-D"
+      ],
+      "datasetIds": [
+        "giab_hg008"
+      ],
+      "publicFindings": [
+        "HG008-T is the first Cancer GIAB tumor sample and should be analyzed as the tumor member of the HG008 tumor-normal WGS pair.",
+        "HG008-N-D is a paired normal sample for the HG008 tumor and should be analyzed as the normal member of the HG008 tumor-normal WGS pair."
+      ],
+      "sourceUrls": [
+        "https://www.nist.gov/programs-projects/cancer-genome-bottle"
+      ],
+      "evidenceAssets": [
+        {
+          "label": "hg008_wgs_directory_index",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/",
+          "path": "data/raw/known_answer_public/hg008/wgs/index.html",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 9462,
+          "md5": "7c92c4b80093d53dad90f587a49a838a",
+          "sha256": "be6e9be9c79536ed3ad7eb832c4a98e3662eeacd8f345c68acfed0a7d642705d",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_wgs_readme",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/README_NYGC.md",
+          "path": "data/raw/known_answer_public/hg008/wgs/README_NYGC.md",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 27537,
+          "md5": "839a46716bce05efe2b9c0e561eed7ea",
+          "sha256": "7b577a9de678f5f4ff7d971b82196d83a9719c6c6de85d56bcaeec963a575ecc",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_wgs_checksums",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/checksums.md5",
+          "path": "data/raw/known_answer_public/hg008/wgs/checksums.md5",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 5003,
+          "md5": "80bfa742430f4535a41029a403b3947b",
+          "sha256": "2a48c957dda8b99d30ea379936cf77ed49ab76d251cd7d950196b7c69a46a7d3",
+          "expected_md5": "",
+          "error": ""
+        }
+      ],
+      "evidenceAssetCount": 3,
+      "downloadErrorCount": 0,
+      "blockerCategory": "raw_input_and_runner_gap",
+      "blockers": [
+        "HG008 WGS inputs are public but hundreds of gigabytes across FASTQ/BAM assets.",
+        "benchmark:known-answer non-dry execution is not implemented for hg008_small_variants.",
+        "No tumor-normal alignment/calling/comparison artifact has been generated from the downloaded metadata."
+      ],
+      "nextAction": "Approve transfer plan, fetch HG008-T and HG008-N-D WGS inputs, then implement the non-dry benchmark runner and concordance adapter."
+    },
+    {
+      "generatedAt": "2026-06-15T00:56:59.014Z",
+      "status": "not_confirmed_input_metadata_only",
+      "executionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/hg008/rna_qc_summary.json",
+      "checkIds": [
+        "hg008_tumor_rna_qc"
+      ],
+      "pullIds": [
+        "hg008_tumor_rna"
+      ],
+      "sampleOrAssetIds": [
+        "HG008-T_bulk"
+      ],
+      "datasetIds": [
+        "giab_hg008"
+      ],
+      "publicFindings": [
+        "HG008-T bulk RNA-seq should validate RNA intake and quantification plumbing but is not an HRD-positive truth label."
+      ],
+      "sourceUrls": [
+        "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/NIST/HG008-T_bulk/20240508p21/UMD_RNA-seq_20250925/"
+      ],
+      "evidenceAssets": [
+        {
+          "label": "hg008_rna_directory_index",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/NIST/HG008-T_bulk/20240508p21/UMD_RNA-seq_20250925/",
+          "path": "data/raw/known_answer_public/hg008/rna/index.html",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 3973,
+          "md5": "7f22c1d4fe539e5be929c5d005640dfb",
+          "sha256": "5068e2e95f34be8a8754b6a8e407b40dd770dac363cefe297608e113003dc9cd",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_rna_readme",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/NIST/HG008-T_bulk/20240508p21/UMD_RNA-seq_20250925/README_UMD_20250925.md",
+          "path": "data/raw/known_answer_public/hg008/rna/README_UMD_20250925.md",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 11524,
+          "md5": "7640fba4bfdb146442ae905c5b06d6f9",
+          "sha256": "a569c820a160045ceb194d9d9a2c7e11ea7b83681ff48f0e96d36cb58f4a6208",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_rna_checksums",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/NIST/HG008-T_bulk/20240508p21/UMD_RNA-seq_20250925/checksums.md5",
+          "path": "data/raw/known_answer_public/hg008/rna/checksums.md5",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 1658,
+          "md5": "0815d4db6a50464a0866fefad94b259d",
+          "sha256": "e12380aa8c249a09ae703e64a1c32e7eddb410d36c0335618cdb308c3a206d99",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_rna_fastq_1_stats",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/NIST/HG008-T_bulk/20240508p21/UMD_RNA-seq_20250925/XZOOK_20250905_A00904_IL23896-001_N4UD-C12_L001_R1_stats.txt",
+          "path": "data/raw/known_answer_public/hg008/rna/XZOOK_20250905_A00904_IL23896-001_N4UD-C12_L001_R1_stats.txt",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 47,
+          "md5": "8e9fba4083c35b2f4769bb6fd33ff009",
+          "sha256": "3d1c78688d46df5fefe0fbf8b8466af3c8a6b751a799657e1db48d76219f04f9",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_rna_fastq_2_stats",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/NIST/HG008-T_bulk/20240508p21/UMD_RNA-seq_20250925/XZOOK_20250905_A00904_IL23896-001_N4UD-C12_L001_R2_stats.txt",
+          "path": "data/raw/known_answer_public/hg008/rna/XZOOK_20250905_A00904_IL23896-001_N4UD-C12_L001_R2_stats.txt",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 47,
+          "md5": "8e9fba4083c35b2f4769bb6fd33ff009",
+          "sha256": "3d1c78688d46df5fefe0fbf8b8466af3c8a6b751a799657e1db48d76219f04f9",
+          "expected_md5": "",
+          "error": ""
+        }
+      ],
+      "evidenceAssetCount": 5,
+      "downloadErrorCount": 0,
+      "blockerCategory": "raw_input_and_runner_gap",
+      "blockers": [
+        "HG008-T RNA FASTQs are public but multi-gigabyte inputs.",
+        "No HG008 RNA smoke runner or quantification truth target is implemented."
+      ],
+      "nextAction": "Approve RNA transfer, fetch the selected HG008-T RNA FASTQs, and add the RNA QC or quantification smoke gate."
+    },
+    {
+      "generatedAt": "2026-06-15T00:56:59.391Z",
+      "status": "not_confirmed_truth_assets_verified",
+      "executionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/hg008/small_variant_concordance_summary.json",
+      "checkIds": [
+        "hg008_small_variant_concordance"
+      ],
+      "pullIds": [
+        "hg008_small_variant_truth"
+      ],
+      "sampleOrAssetIds": [
+        "HG008-T_somatic_smvar_v0.3"
+      ],
+      "datasetIds": [
+        "giab_hg008"
+      ],
+      "publicFindings": [
+        "NIST HG008-T v0.3 somatic small-variant benchmark should support SNV indel recall and precision measurement inside callable regions."
+      ],
+      "sourceUrls": [
+        "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-smvar_DraftBenchmark_V0.3-20260425/"
+      ],
+      "evidenceAssets": [
+        {
+          "label": "hg008_smvar_readme",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-smvar_DraftBenchmark_V0.3-20260425/README.md",
+          "path": "data/raw/known_answer_public/hg008/small_variant_truth/README.md",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 19399,
+          "md5": "993a910c9ca62e1b247ae160cda2f8ab",
+          "sha256": "7ff10ca60ecd6d7f3548c982d345ee02c93e1b8a29e102964ae025e693022bc1",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_smvar_tumor_variants_vcf",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-smvar_DraftBenchmark_V0.3-20260425/HG008-T_somatic_smvar_benchmark_v0.3_tumorvariants.vcf.gz",
+          "path": "data/raw/known_answer_public/hg008/small_variant_truth/HG008-T_somatic_smvar_benchmark_v0.3_tumorvariants.vcf.gz",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 283528,
+          "md5": "0f85c077151e9a43cb9a39cd27b8e388",
+          "sha256": "6ff5b215e0dc634c85da6164cffbd5790233258fcc48c88a598331430b061cad",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_smvar_tumor_variants_index",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-smvar_DraftBenchmark_V0.3-20260425/HG008-T_somatic_smvar_benchmark_v0.3_tumorvariants.vcf.gz.tbi",
+          "path": "data/raw/known_answer_public/hg008/small_variant_truth/HG008-T_somatic_smvar_benchmark_v0.3_tumorvariants.vcf.gz.tbi",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 168646,
+          "md5": "5f66bce87d9ec461a9cb47eed0d6ba15",
+          "sha256": "826aa2906d51760069167972b384e3c31790b66b9828d7f3757c1e3515fe2f2f",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_smvar_callable_all_bed",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-smvar_DraftBenchmark_V0.3-20260425/HG008-T_somatic_smvar_benchmark_v0.3_all.bed",
+          "path": "data/raw/known_answer_public/hg008/small_variant_truth/HG008-T_somatic_smvar_benchmark_v0.3_all.bed",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 1012698,
+          "md5": "df24735abb5437101971bf86f75f2908",
+          "sha256": "c6100933430322eb62c64e826a349c1861e26a029853502bd247f86d27e22726",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_smvar_no_germline_interference_bed",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-smvar_DraftBenchmark_V0.3-20260425/HG008-T_somatic_smvar_benchmark_v0.3_nogermlineinterference.bed",
+          "path": "data/raw/known_answer_public/hg008/small_variant_truth/HG008-T_somatic_smvar_benchmark_v0.3_nogermlineinterference.bed",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 1103115,
+          "md5": "ff216cb8c7c18681034c9516cc69e364",
+          "sha256": "cad04330da8a2966410824f7d3101172fa30d3c4dbcd1abbf3c30730539f5ea1",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_wgs_directory_index",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/",
+          "path": "data/raw/known_answer_public/hg008/wgs/index.html",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 9462,
+          "md5": "7c92c4b80093d53dad90f587a49a838a",
+          "sha256": "be6e9be9c79536ed3ad7eb832c4a98e3662eeacd8f345c68acfed0a7d642705d",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_wgs_readme",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/README_NYGC.md",
+          "path": "data/raw/known_answer_public/hg008/wgs/README_NYGC.md",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 27537,
+          "md5": "839a46716bce05efe2b9c0e561eed7ea",
+          "sha256": "7b577a9de678f5f4ff7d971b82196d83a9719c6c6de85d56bcaeec963a575ecc",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_wgs_checksums",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/checksums.md5",
+          "path": "data/raw/known_answer_public/hg008/wgs/checksums.md5",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 5003,
+          "md5": "80bfa742430f4535a41029a403b3947b",
+          "sha256": "2a48c957dda8b99d30ea379936cf77ed49ab76d251cd7d950196b7c69a46a7d3",
+          "expected_md5": "",
+          "error": ""
+        }
+      ],
+      "evidenceAssetCount": 8,
+      "downloadErrorCount": 0,
+      "blockerCategory": "truth_assets_without_pipeline_calls",
+      "blockers": [
+        "HG008 v0.3 small-variant truth assets were fetched, but no Diana-generated HG008 callset exists.",
+        "benchmark:known-answer non-dry execution is not implemented for hg008_small_variants."
+      ],
+      "nextAction": "Run HG008 tumor-normal WGS through the small-variant caller and compare against the v0.3 truth VCF/callable BED."
+    },
+    {
+      "generatedAt": "2026-06-15T00:56:59.724Z",
+      "status": "not_confirmed_truth_assets_verified",
+      "executionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
+      "checkIds": [
+        "hg008_sv_cnv_concordance"
+      ],
+      "pullIds": [
+        "hg008_sv_cnv_truth"
+      ],
+      "sampleOrAssetIds": [
+        "HG008-T_somatic_stvar_cnv_v0.5"
+      ],
+      "datasetIds": [
+        "giab_hg008"
+      ],
+      "publicFindings": [
+        "NIST HG008-T v0.5 somatic SV and CNV benchmark should support reciprocal-overlap SV and CNV correctness summaries."
+      ],
+      "sourceUrls": [
+        "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-stvar-CNV_DraftBenchmark_V0.5-20260318/"
+      ],
+      "evidenceAssets": [
+        {
+          "label": "hg008_sv_cnv_readme",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-stvar-CNV_DraftBenchmark_V0.5-20260318/README.md",
+          "path": "data/raw/known_answer_public/hg008/sv_cnv_truth/README.md",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 37301,
+          "md5": "eaab58a3cde79c7bdfa3411d34c7574b",
+          "sha256": "357e4b8007ce16014a40ead7c84a301883ab7c4f9c6babab17ae56b835741497",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_sv_cnv_checksums",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-stvar-CNV_DraftBenchmark_V0.5-20260318/checksums.md5",
+          "path": "data/raw/known_answer_public/hg008/sv_cnv_truth/checksums.md5",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 1335,
+          "md5": "29669f1f7bad7e8458888cdaab12e088",
+          "sha256": "3853b6f737b9579447729430a36dffdb3a6d0bd1ca44e4c4a2b88a2292928225",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_sv_pass_vcf",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-stvar-CNV_DraftBenchmark_V0.5-20260318/GRCh38_HG008-T-V0.5_somatic-stvar_PASS.draftbenchmark.vcf.gz",
+          "path": "data/raw/known_answer_public/hg008/sv_cnv_truth/GRCh38_HG008-T-V0.5_somatic-stvar_PASS.draftbenchmark.vcf.gz",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 58191,
+          "md5": "3c188300a504ce9c01325dbf664b1fba",
+          "sha256": "102ea23785be0b55f2143db3141f5bdc7aef28993b7c64103279b8cc0666e84b",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_sv_pass_index",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-stvar-CNV_DraftBenchmark_V0.5-20260318/GRCh38_HG008-T-V0.5_somatic-stvar_PASS.draftbenchmark.vcf.gz.tbi",
+          "path": "data/raw/known_answer_public/hg008/sv_cnv_truth/GRCh38_HG008-T-V0.5_somatic-stvar_PASS.draftbenchmark.vcf.gz.tbi",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 6512,
+          "md5": "c10272cd4e0baa299aa9632f91c7092f",
+          "sha256": "b26c8e6679ba9f2c32f8c89b0b5ab44682f9f715445b9191b86ef3fe08fe1e39",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_cnv_pass_bed",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-stvar-CNV_DraftBenchmark_V0.5-20260318/GRCh38_HG008-T-V0.5_somatic-CNV_PASS.draftbenchmark.calls.bed",
+          "path": "data/raw/known_answer_public/hg008/sv_cnv_truth/GRCh38_HG008-T-V0.5_somatic-CNV_PASS.draftbenchmark.calls.bed",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 7907,
+          "md5": "b5d9fe3a3b9a08ae0fd7898583e18a74",
+          "sha256": "d26f11e82b25748a8aead989b7d5533805ea211d63092a7c2ba524d30a736b82",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_cnv_all_bedpe",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-stvar-CNV_DraftBenchmark_V0.5-20260318/GRCh38_HG008-T-V0.5_somatic-CNV_ALL.draftbenchmark.calls.bedpe",
+          "path": "data/raw/known_answer_public/hg008/sv_cnv_truth/GRCh38_HG008-T-V0.5_somatic-CNV_ALL.draftbenchmark.calls.bedpe",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 310986,
+          "md5": "a37c3851b25b4c3143f0665700b5eefc",
+          "sha256": "a93b120b2e1fdb6cefb1ae2344c567d1f572f8ccf6ee9c1ef21390033bada84f",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_cnv_column_descriptions",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-stvar-CNV_DraftBenchmark_V0.5-20260318/V0.5_CNV_BEDPE_BED_Column_Descriptions.xlsx",
+          "path": "data/raw/known_answer_public/hg008/sv_cnv_truth/V0.5_CNV_BEDPE_BED_Column_Descriptions.xlsx",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 12233,
+          "md5": "1856bbfc73793f3c4adcf8b0345f73c8",
+          "sha256": "d5035f98575e1662999f75e5e32e23a2ce10aaee323835a7975291174f57ba11",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_wgs_directory_index",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/",
+          "path": "data/raw/known_answer_public/hg008/wgs/index.html",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 9462,
+          "md5": "7c92c4b80093d53dad90f587a49a838a",
+          "sha256": "be6e9be9c79536ed3ad7eb832c4a98e3662eeacd8f345c68acfed0a7d642705d",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_wgs_readme",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/README_NYGC.md",
+          "path": "data/raw/known_answer_public/hg008/wgs/README_NYGC.md",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 27537,
+          "md5": "839a46716bce05efe2b9c0e561eed7ea",
+          "sha256": "7b577a9de678f5f4ff7d971b82196d83a9719c6c6de85d56bcaeec963a575ecc",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "hg008_wgs_checksums",
+          "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/checksums.md5",
+          "path": "data/raw/known_answer_public/hg008/wgs/checksums.md5",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 5003,
+          "md5": "80bfa742430f4535a41029a403b3947b",
+          "sha256": "2a48c957dda8b99d30ea379936cf77ed49ab76d251cd7d950196b7c69a46a7d3",
+          "expected_md5": "",
+          "error": ""
+        }
+      ],
+      "evidenceAssetCount": 10,
+      "downloadErrorCount": 0,
+      "blockerCategory": "truth_assets_without_pipeline_calls",
+      "blockers": [
+        "HG008 v0.5 SV/CNV truth assets were fetched, but no Diana-generated HG008 SV/CNV callset exists.",
+        "benchmark:known-answer non-dry execution is not implemented for hg008_sv_cnv."
+      ],
+      "nextAction": "Run HG008 tumor-normal WGS through SV/CNV callers and compare using reciprocal-overlap rules."
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:00.284Z",
+      "status": "not_confirmed_input_metadata_only",
+      "executionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/colo829/input_provenance_summary.json",
+      "checkIds": [
+        "colo829_tumor_wgs_input",
+        "colo829_normal_wgs_input"
+      ],
+      "pullIds": [
+        "colo829_tumor_wgs",
+        "colo829_normal_wgs"
+      ],
+      "sampleOrAssetIds": [
+        "COLO829",
+        "COLO829BL"
+      ],
+      "datasetIds": [
+        "colo829"
+      ],
+      "publicFindings": [
+        "COLO829 is a metastatic melanoma tumor cell line in a documented matched tumor-normal reference standard and should be analyzed as the tumor member.",
+        "COLO829BL is the matched lymphoblastoid normal line for COLO829 and should be analyzed as the normal member."
+      ],
+      "sourceUrls": [
+        "https://ega-archive.org/studies/EGAS00001001385"
+      ],
+      "evidenceAssets": [
+        {
+          "label": "colo829_ena_prjeb27698_filereport",
+          "url": "https://www.ebi.ac.uk/ena/portal/api/filereport?accession=PRJEB27698&result=read_run&fields=run_accession,sample_accession,sample_alias,fastq_ftp,fastq_md5,fastq_bytes,submitted_ftp,submitted_md5,submitted_bytes,library_layout,library_strategy,instrument_platform,instrument_model&format=tsv&limit=0",
+          "path": "data/raw/known_answer_public/colo829/ena/PRJEB27698_filereport.tsv",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 9519,
+          "md5": "8bcba059b69671164b6a5bd0ec728518",
+          "sha256": "6f886ae5d4a5f27a0c419697becbbaff9d0030888d5ea41114ef12e2c0abd0af",
+          "expected_md5": "",
+          "error": ""
+        }
+      ],
+      "evidenceAssetCount": 1,
+      "downloadErrorCount": 0,
+      "blockerCategory": "raw_input_and_runner_gap",
+      "blockers": [
+        "COLO829/COLO829BL WGS inputs are public in ENA but each selected FASTQ/BAM is tens to hundreds of gigabytes.",
+        "benchmark:known-answer non-dry execution is not implemented for colo829_driver_signature.",
+        "No tumor-normal driver/signature artifact has been generated from the COLO829 inputs."
+      ],
+      "nextAction": "Approve COLO829 transfer, fetch selected tumor-normal WGS inputs, then implement the driver/signature guardrail run."
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:02.062Z",
+      "status": "not_confirmed_truth_assets_verified",
+      "executionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json",
+      "checkIds": [
+        "colo829_sv_cna_concordance"
+      ],
+      "pullIds": [
+        "colo829_sv_cna_truth"
+      ],
+      "sampleOrAssetIds": [
+        "COLO829_sv_cna_truth"
+      ],
+      "datasetIds": [
+        "colo829"
+      ],
+      "publicFindings": [
+        "The COLO829 Zenodo truth set provides final somatic SV truth and copy-number alteration files for independent SV/CNA benchmarking."
+      ],
+      "sourceUrls": [
+        "https://zenodo.org/records/7515830"
+      ],
+      "evidenceAssets": [
+        {
+          "label": "colo829_zenodo_record_json",
+          "url": "https://zenodo.org/api/records/7515830",
+          "path": "data/raw/known_answer_public/colo829/sv_cna_truth/zenodo_7515830.json",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 5630,
+          "md5": "a42666896c18cdf5b669f25ff53951d7",
+          "sha256": "b786d756bd4ecae0875b178ae8664d0cfa63784eaeb960a64524b7972c67db80",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "colo829_hg38_lifted_sv_truth",
+          "url": "https://zenodo.org/api/records/7515830/files/truthset_somaticSVs_COLO829_hg38lifted.vcf/content",
+          "path": "data/raw/known_answer_public/colo829/sv_cna_truth/truthset_somaticSVs_COLO829_hg38lifted.vcf",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 82821,
+          "md5": "504e4ca4bd285706c261f93be1f33a95",
+          "sha256": "365488808a9228b16d575fabaf7561c4669b9e3122a188f572865c3813f46643",
+          "expected_md5": "504e4ca4bd285706c261f93be1f33a95",
+          "error": ""
+        },
+        {
+          "label": "colo829_copy_number_truth_zip",
+          "url": "https://zenodo.org/api/records/7515830/files/COLO829_somaticSV_copynumber.zip/content",
+          "path": "data/raw/known_answer_public/colo829/sv_cna_truth/COLO829_somaticSV_copynumber.zip",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 15044,
+          "md5": "156544f39152dca24694c0afc3247d40",
+          "sha256": "a5e0c7b50dbc7f74a7fc18cfd357f886f43d86730d46ea54fa5412b834a5c160",
+          "expected_md5": "156544f39152dca24694c0afc3247d40",
+          "error": ""
+        },
+        {
+          "label": "colo829_ena_prjeb27698_filereport",
+          "url": "https://www.ebi.ac.uk/ena/portal/api/filereport?accession=PRJEB27698&result=read_run&fields=run_accession,sample_accession,sample_alias,fastq_ftp,fastq_md5,fastq_bytes,submitted_ftp,submitted_md5,submitted_bytes,library_layout,library_strategy,instrument_platform,instrument_model&format=tsv&limit=0",
+          "path": "data/raw/known_answer_public/colo829/ena/PRJEB27698_filereport.tsv",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 9519,
+          "md5": "8bcba059b69671164b6a5bd0ec728518",
+          "sha256": "6f886ae5d4a5f27a0c419697becbbaff9d0030888d5ea41114ef12e2c0abd0af",
+          "expected_md5": "",
+          "error": ""
+        }
+      ],
+      "evidenceAssetCount": 4,
+      "downloadErrorCount": 0,
+      "blockerCategory": "truth_assets_without_pipeline_calls",
+      "blockers": [
+        "COLO829 SV/CNA truth assets were fetched, but no Diana-generated COLO829 SV/CNA callset exists.",
+        "benchmark:known-answer non-dry execution is not implemented for colo829_sv_cna."
+      ],
+      "nextAction": "Run COLO829 tumor-normal WGS through SV/CNA callers and compare against the Zenodo truth assets."
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:02.062Z",
+      "status": "not_confirmed_input_metadata_only",
+      "executionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json",
+      "checkIds": [
+        "colo829_purity_monotonicity"
+      ],
+      "pullIds": [
+        "colo829_purity_series"
+      ],
+      "sampleOrAssetIds": [
+        "COLO829_purity_selected_levels"
+      ],
+      "datasetIds": [
+        "colo829_purity_series"
+      ],
+      "publicFindings": [
+        "Selected COLO829 dilution levels should show lower variant or truth-overlap sensitivity as tumor fraction decreases."
+      ],
+      "sourceUrls": [
+        "https://www.ebi.ac.uk/ena/browser/view/PRJEB27698"
+      ],
+      "evidenceAssets": [
+        {
+          "label": "colo829_ena_prjeb27698_filereport",
+          "url": "https://www.ebi.ac.uk/ena/portal/api/filereport?accession=PRJEB27698&result=read_run&fields=run_accession,sample_accession,sample_alias,fastq_ftp,fastq_md5,fastq_bytes,submitted_ftp,submitted_md5,submitted_bytes,library_layout,library_strategy,instrument_platform,instrument_model&format=tsv&limit=0",
+          "path": "data/raw/known_answer_public/colo829/ena/PRJEB27698_filereport.tsv",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 9519,
+          "md5": "8bcba059b69671164b6a5bd0ec728518",
+          "sha256": "6f886ae5d4a5f27a0c419697becbbaff9d0030888d5ea41114ef12e2c0abd0af",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "colo829_zenodo_record_json",
+          "url": "https://zenodo.org/api/records/7515830",
+          "path": "data/raw/known_answer_public/colo829/sv_cna_truth/zenodo_7515830.json",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 5630,
+          "md5": "a42666896c18cdf5b669f25ff53951d7",
+          "sha256": "b786d756bd4ecae0875b178ae8664d0cfa63784eaeb960a64524b7972c67db80",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "colo829_hg38_lifted_sv_truth",
+          "url": "https://zenodo.org/api/records/7515830/files/truthset_somaticSVs_COLO829_hg38lifted.vcf/content",
+          "path": "data/raw/known_answer_public/colo829/sv_cna_truth/truthset_somaticSVs_COLO829_hg38lifted.vcf",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 82821,
+          "md5": "504e4ca4bd285706c261f93be1f33a95",
+          "sha256": "365488808a9228b16d575fabaf7561c4669b9e3122a188f572865c3813f46643",
+          "expected_md5": "504e4ca4bd285706c261f93be1f33a95",
+          "error": ""
+        },
+        {
+          "label": "colo829_copy_number_truth_zip",
+          "url": "https://zenodo.org/api/records/7515830/files/COLO829_somaticSV_copynumber.zip/content",
+          "path": "data/raw/known_answer_public/colo829/sv_cna_truth/COLO829_somaticSV_copynumber.zip",
+          "required": "yes",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 15044,
+          "md5": "156544f39152dca24694c0afc3247d40",
+          "sha256": "a5e0c7b50dbc7f74a7fc18cfd357f886f43d86730d46ea54fa5412b834a5c160",
+          "expected_md5": "156544f39152dca24694c0afc3247d40",
+          "error": ""
+        }
+      ],
+      "evidenceAssetCount": 4,
+      "downloadErrorCount": 0,
+      "blockerCategory": "raw_input_and_runner_gap",
+      "blockers": [
+        "Selected COLO829 dilution inputs are public in ENA but are large WGS files.",
+        "benchmark:known-answer non-dry execution is not implemented for colo829_purity_series.",
+        "No recall table exists to test monotonic sensitivity across purity levels."
+      ],
+      "nextAction": "Approve selected dilution transfers, run each level, and compute truth-overlap recall by tumor fraction."
+    },
+    {
+      "generatedAt": "2026-06-15T00:57:02.428Z",
+      "status": "blocked_request_or_purchase",
+      "executionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+      "pipelineConfirmation": "not_confirmed",
+      "clinicalUseAllowed": "no",
+      "artifactPath": "results/clinicalization/known_answer_runs/seraseq_mrd/positive_negative_summary.json",
+      "checkIds": [
+        "seraseq_mrd_positive_negative"
+      ],
+      "pullIds": [
+        "seraseq_ctdna_mrd_panel"
+      ],
+      "sampleOrAssetIds": [
+        "Seraseq_ctDNA_MRD_Panel_Mix"
+      ],
+      "datasetIds": [
+        "seraseq_ctdna_mrd"
+      ],
+      "publicFindings": [
+        "Seraseq ctDNA MRD Panel Mix includes 0 percent 0.5 percent 0.05 percent and 0.005 percent tumor fractions for MRD positive-negative and dilution validation."
+      ],
+      "sourceUrls": [
+        "https://www.seracare.com/Seraseq-ctDNA-MRD-Panel-Mix-0710-2146/"
+      ],
+      "evidenceAssets": [
+        {
+          "label": "seraseq_product_page",
+          "url": "https://www.seracare.com/Seraseq-ctDNA-MRD-Panel-Mix-0710-2146/",
+          "path": "data/raw/known_answer_public/seraseq_mrd/public_docs/product_page.html",
+          "required": "no",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 195821,
+          "md5": "3fd1a1cb6ce71ca036347dcba49fe1ac",
+          "sha256": "a10a1073987b2ed3ec54357b6bbfc1a3df6676f8de5fbc97ac584593a3f43aa7",
+          "expected_md5": "",
+          "error": ""
+        },
+        {
+          "label": "seraseq_package_insert",
+          "url": "https://www.seracare.com/globalassets/seracare-resources/pi-0710-2146-seraseq-ctdna-mrd-panel-mix.pdf",
+          "path": "data/raw/known_answer_public/seraseq_mrd/public_docs/pi-0710-2146-seraseq-ctdna-mrd-panel-mix.pdf",
+          "required": "no",
+          "status": "downloaded",
+          "downloaded": "yes",
+          "bytes": 277494,
+          "md5": "568d12bbb6571d8426b4a86b262a5025",
+          "sha256": "fa94f11f4a809793328257e7376eb048c66eb7a531da22358e58535473147c2b",
+          "expected_md5": "",
+          "error": ""
+        }
+      ],
+      "evidenceAssetCount": 2,
+      "downloadErrorCount": 0,
+      "blockerCategory": "request_or_purchase_required",
+      "blockers": [
+        "Seraseq ctDNA MRD material and variant files are not freely downloadable public analysis inputs.",
+        "Assay-specific acceptance ranges and sequencing design are not established for Diana Omics."
+      ],
+      "nextAction": "Request or purchase Seraseq material or variant files, then define assay-specific positive-negative and dilution gates."
+    }
+  ]
+}

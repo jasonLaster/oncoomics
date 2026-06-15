@@ -18,6 +18,7 @@ The latest full run passed:
 - Phase 2F full WES benchmark: 4 FASTQs validated, BAM validation passed, GATK Mutect2 ran, 1307 depth-eligible SEQC2/HCC1395 truth variants, 1122 exact PASS truth matches, recall 0.8585, precision 0.9842.
 - Phase 3 WGS validation: full-source SEQC2/HCC1395 WGS FASTQs are the acceptance gate; bounded subsets are developer checks only. The verifier now fails unless Phase 3 records `readPairsMode=full`.
 - Orthogonal public examples: SEQC2/HCC1395 full WES and Phase 3 WGS are verified; HG008, COLO829, COLO829 purity, and Seraseq MRD are documented as next known-answer gates.
+- Expanded known-answer pull plan: 10 raw-sample or truth-asset targets are staged for owner review before download, including HG008, COLO829, COLO829 purity, and Seraseq MRD.
 - Phase 1 public HRD/RNA tables: 28 reference-panel samples processed into reviewer-facing evidence tables.
 - Diana intake: template and strict validation contract are ready; interpretation waits for actual Diana files.
 
@@ -32,6 +33,9 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics py:format:check
 PYTHONPATH=src /usr/bin/python3 -m diana_omics py:typecheck
 PYTHONPATH=src /usr/bin/python3 -m diana_omics py:test
 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:orthogonal
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-sample-pull-plan
+PYTHONPATH=src /usr/bin/python3 -m diana_omics run:known-answer-public-findings
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-public-findings
 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
@@ -45,6 +49,7 @@ Run through Nextflow:
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:quick
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:known-answer-public-findings
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:stub
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:dev
 ```
@@ -111,6 +116,9 @@ Main data contracts:
 
 - [manifests/diana_raw_inputs.template.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/diana_raw_inputs.template.csv): fill-in template for Diana.
 - [manifests/orthogonal_validation_candidates.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/orthogonal_validation_candidates.csv): next public truth-set targets.
+- [manifests/known_answer_sample_pull_plan.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/known_answer_sample_pull_plan.csv): 10-target pull plan for the expanded known-answer suite.
+- [manifests/known_answer_public_finding_checks.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/known_answer_public_finding_checks.csv): public finding and analysis-gate map for the 10-target suite.
+- [results/clinicalization/known_answer_public_finding_confirmation.md](/Users/jasonlaster/src/projects/diana-omics/results/clinicalization/known_answer_public_finding_confirmation.md): generated target-by-target confirmation status.
 - [results/reviewer_packet.md](/Users/jasonlaster/src/projects/diana-omics/results/reviewer_packet.md): current reviewer summary.
 - [results/diana_readiness_gate.md](/Users/jasonlaster/src/projects/diana-omics/results/diana_readiness_gate.md): readiness boundary.
 

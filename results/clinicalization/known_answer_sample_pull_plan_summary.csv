@@ -1,0 +1,11 @@
+pull_id,priority,dataset_id,sample_or_asset_id,asset_role,modality,source_access,planned_pull_mode,estimated_transfer_cost_class,execution_allowed,clinical_use_allowed,first_validation_gate
+hg008_tumor_wgs,1,giab_hg008,HG008-T,tumor,tumor_normal_wgs,yes,metadata_only_until_approval,high,no,no,HG008 tumor-normal WGS input provenance and reference-build compatibility
+hg008_normal_wgs,1,giab_hg008,HG008-N-D,normal,tumor_normal_wgs,yes,metadata_only_until_approval,high,no,no,HG008 tumor-normal WGS input provenance and reference-build compatibility
+hg008_tumor_rna,2,giab_hg008,HG008-T_bulk,tumor_rna,tumor_rna_seq,yes,metadata_only_until_approval,medium,no,no,HG008 RNA FASTQ validation and quantification QC
+hg008_small_variant_truth,1,giab_hg008,HG008-T_somatic_smvar_v0.3,truth_small_variant,tumor_normal_wgs,yes,metadata_only_until_approval,low,no,no,HG008 small-variant recall precision benchmark
+hg008_sv_cnv_truth,1,giab_hg008,HG008-T_somatic_stvar_cnv_v0.5,truth_sv_cnv,tumor_normal_wgs,yes,metadata_only_until_approval,low,no,no,HG008 SV and CNV reciprocal-overlap benchmark
+colo829_tumor_wgs,2,colo829,COLO829,tumor,tumor_normal_wgs,yes,metadata_only_until_approval,high,no,no,COLO829 tumor-normal WGS input provenance and driver signature guardrail
+colo829_normal_wgs,2,colo829,COLO829BL,normal,tumor_normal_wgs,yes,metadata_only_until_approval,high,no,no,COLO829 tumor-normal WGS input provenance and pairing compatibility
+colo829_sv_cna_truth,2,colo829,COLO829_sv_cna_truth,truth_sv_cnv,tumor_normal_wgs,yes,metadata_only_until_approval,low,no,no,COLO829 SV and CNA reciprocal-overlap benchmark
+colo829_purity_series,3,colo829_purity_series,COLO829_purity_selected_levels,dilution_series,tumor_normal_wgs_dilution,yes,metadata_only_until_approval,high,no,no,COLO829 purity recall and monotonicity stress table
+seraseq_ctdna_mrd_panel,4,seraseq_ctdna_mrd,Seraseq_ctDNA_MRD_Panel_Mix,ctdna_reference,ctdna_mrd_reference,request_or_purchase,contact_or_purchase_required,request_or_purchase,no,no,MRD positive negative and dilution validation after material or files are obtained

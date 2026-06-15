@@ -168,11 +168,17 @@ Purpose:
 
 - Verify that the implemented public WES/WGS examples have passing completion artifacts.
 - Verify that HG008, COLO829, COLO829 purity, and Seraseq MRD are documented as public or obtainable known-answer gates.
+- Verify that the expanded 10-target pull plan remains bounded by owner review, checksums, and no clinical-use permissions.
 
 Primary outputs:
 
 - `manifests/orthogonal_public_examples.csv`
+- `manifests/known_answer_sample_pull_plan.csv`
+- `manifests/known_answer_public_finding_checks.csv`
 - `results/orthogonal_validation/public_examples_summary.json`
+- `results/clinicalization/known_answer_sample_pull_plan_summary.json`
+- `results/clinicalization/known_answer_public_finding_execution.md`
+- `results/clinicalization/known_answer_public_finding_confirmation.md`
 
 ## What Still Needs A Known Answer
 
@@ -181,6 +187,10 @@ The current workflow is mechanically strong, and the SEQC2/HCC1395 public exampl
 1. HG008 tumor/normal WGS from NIST Cancer Genome in a Bottle.
 2. COLO829/COLO829BL tumor/normal WGS from ENA plus Zenodo truth files.
 3. Seraseq ctDNA MRD Panel Mix if true liquid-biopsy dilution validation is needed.
+
+The first expansion is tracked as 10 pull targets: HG008 tumor WGS, normal WGS, tumor RNA, small-variant truth, and SV/CNV truth; COLO829 tumor WGS, normal WGS, and SV/CNA truth; selected COLO829 purity levels; and Seraseq ctDNA MRD material or files.
+
+The current confirmation report says the analysis has confirmed `0/10` public findings. This is a truthful no-call state: public metadata and small truth assets can be fetched and checksum-recorded, but the HG008/COLO829 raw-input runs and comparison adapters are not implemented yet, and Seraseq remains request-or-purchase gated.
 
 See [orthogonal-validation-samples.md](/Users/jasonlaster/src/projects/diana-omics/docs/orthogonal-validation-samples.md).
 

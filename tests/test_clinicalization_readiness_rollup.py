@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import patch
 
 from diana_omics import utils
@@ -16,15 +17,16 @@ class ClinicalizationReadinessRollupTest(unittest.TestCase):
                 verify.main()
             summary = utils.read_json(root / verify.SUMMARY_JSON_PATH)
         self.assertEqual(summary["status"], "passed")
-        self.assertEqual(summary["summary"]["rollup_area_count"], 7)
-        self.assertEqual(summary["summary"]["passing_dependency_count"], 7)
+        self.assertEqual(summary["summary"]["rollup_area_count"], 9)
+        self.assertEqual(summary["summary"]["passing_dependency_count"], 9)
         self.assertGreater(summary["summary"]["active_blocker_count"], 0)
         self.assertEqual(summary["summary"]["clinical_release_allowed"], "no")
         self.assertEqual(summary["summary"]["ready_for_clinical_interpretation"], "no")
 
     def test_rollup_rejects_premature_unlocks(self):
         summaries = _summary_dict()
-        summaries["qc_thresholds"]["summary"]["locked_threshold_count"] = 1
+        threshold_summary = cast(dict[str, Any], summaries["qc_thresholds"]["summary"])
+        threshold_summary["locked_threshold_count"] = 1
         rows = verify.build_rollup_rows(summaries)
         errors = "\n".join(verify.validate_rollup(summaries, rows))
         self.assertIn("locked_threshold_count=0", errors)
@@ -66,6 +68,24 @@ def _summary_dict() -> dict[str, dict[str, object]]:
                 "access_terms_review_pending_count": 9,
                 "checksum_pending_count": 9,
                 "execution_allowed_count": 0,
+                "ready_for_clinical_interpretation": "no",
+            },
+        },
+        "sample_pull_plan": {
+            "status": "passed",
+            "summary": {
+                "pending_pull_target_count": 10,
+                "execution_allowed_count": 0,
+                "clinical_use_allowed_count": 0,
+                "ready_for_clinical_interpretation": "no",
+            },
+        },
+        "public_finding_confirmation": {
+            "status": "passed",
+            "summary": {
+                "not_confirmed_count": 10,
+                "confirmed_count": 0,
+                "clinical_use_allowed_count": 0,
                 "ready_for_clinical_interpretation": "no",
             },
         },

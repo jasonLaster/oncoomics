@@ -33,6 +33,41 @@ A useful validation sample needs:
 - Similarity to expected Diana data: tumor-normal WGS/WES, RNA-seq, vendor VCF/report files, or MRD-like ctDNA.
 - Public or practically obtainable access.
 
+## Ten-Target Pull Plan
+
+The acquisition-facing pull plan lives in:
+
+- `manifests/known_answer_sample_pull_plan.csv`
+- `results/clinicalization/known_answer_sample_pull_plan_summary.json`
+
+Verify it with:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-sample-pull-plan
+PYTHONPATH=src /usr/bin/python3 -m diana_omics run:known-answer-public-findings
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-public-findings
+```
+
+The plan deliberately mixes raw inputs and the truth assets needed to decide whether results are correct:
+
+| Target group | Pull targets | Why it is in the first expansion |
+| --- | --- | --- |
+| HG008 | tumor WGS, normal WGS, tumor RNA, small-variant truth, SV/CNV truth | First public cancer GIAB truth set for SNV/indel/SV/CNV correctness plus RNA intake plumbing. |
+| COLO829 | tumor WGS, normal WGS, SV/CNA truth | Independent tumor-normal WGS guardrail with melanoma driver/signature expectations. |
+| COLO829 purity | selected dilution levels | Sensitivity stress test where recall should fall as tumor fraction drops. |
+| Seraseq ctDNA MRD | panel mix material or files | Closest MRD-like positive/negative dilution target, but it requires request or purchase. |
+
+All 10 targets stay `execution_allowed=no` and `clinical_use_allowed=no` until owner review approves access terms, transfer cost, and checksum capture.
+
+Current confirmation status lives in:
+
+- `manifests/known_answer_public_finding_checks.csv`
+- `results/clinicalization/known_answer_public_finding_execution.md`
+- `results/clinicalization/known_answer_public_finding_confirmation.md`
+- `results/clinicalization/known_answer_public_finding_confirmation.json`
+
+As of the current generated report, the analysis confirms `0/10` public findings. Nine targets are `not_confirmed_gap_identified`; Seraseq is `blocked_request_or_purchase`. This is expected because the public metadata and small truth assets can be fetched and checksum-recorded, but the HG008/COLO829 raw-input runs and comparison adapters are not implemented yet.
+
 ## Priority 1: GIAB HG008
 
 Use this first.
@@ -160,13 +195,15 @@ Key source:
 ## Implementation Plan
 
 1. Keep `verify:orthogonal` green so implemented and planned public examples stay documented.
-2. Add `fetch:hg008` and `benchmark:hg008` commands.
-3. Add truth-file manifest rows for HG008 small variants and SV/CNV.
-4. Add 30x downsample controls so local runs are feasible.
-5. Add `fetch:colo829` and `benchmark:colo829` commands.
-6. Add COLO829 driver/signature/SV/CNA assertions.
-7. Add purity-series reporting.
-8. Decide whether to request Seraseq data or material.
+2. Keep `verify:known-answer-sample-pull-plan` green so the expanded acquisition suite remains explicit and bounded.
+3. Keep `verify:known-answer-public-findings` green so every target has an explicit public finding, analysis command, expected artifact, and no-call policy.
+4. Add `fetch:hg008` and `benchmark:hg008` commands.
+5. Add truth-file manifest rows for HG008 small variants and SV/CNV.
+6. Add 30x downsample controls so local runs are feasible.
+7. Add `fetch:colo829` and `benchmark:colo829` commands.
+8. Add COLO829 driver/signature/SV/CNA assertions.
+9. Add purity-series reporting.
+10. Decide whether to request Seraseq data or material.
 
 ## Acceptance Criteria
 

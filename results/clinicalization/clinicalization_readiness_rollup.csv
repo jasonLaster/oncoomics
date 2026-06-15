@@ -1,8 +1,10 @@
 rollup_area,dependency_status,scaffold_status,active_blocker_count,clinical_release_allowed,ready_for_clinical_interpretation,next_action
-known_answer_assets,passed,approval_packet_ready_for_owner_review,18,no,no,Owner review must approve access terms and checksums before any known-answer asset acquisition or benchmark execution.
-known_answer_benchmark_execution,passed,dry_run_plans_present,6,no,no,Do not run HG008/COLO829 benchmarks until asset approval and checksum gates are satisfied.
-qc_thresholds,passed,draft_thresholds_defined,10,no,no,Populate and lock threshold values only after known-answer validation evidence and reviewer signoff.
-validation_packet,passed,sections_linked_to_readiness_evidence,16,no,no,Keep packet sections locked until linked readiness summaries become approved validation evidence.
-change_control,passed,revalidation_triggers_defined,12,no,no,Keep every change trigger review-required until validation packet evidence and signoff are complete.
-signoff,passed,required_roles_defined,5,no,no,Convert pending role scaffolds into named reviewer records only after validation evidence sections are complete.
-clinical_reporting_boundaries,passed,candidate_only_boundaries_defined,1,no,no,"Keep reporting candidate-only until reportable range, thresholds, packet evidence, and signoff are approved."
+known_answer_sample_pull_plan,missing,ten_target_pull_plan_present,0,no,no,Owner review must approve source terms transfer costs and checksums before downloading the expanded known-answer sample suite.
+known_answer_public_finding_confirmation,passed,ten_target_confirmation_report_present,10,no,no,Run approved known-answer inputs against public findings before claiming HG008 COLO829 or Seraseq confirmation.
+known_answer_assets,missing,approval_packet_ready_for_owner_review,0,no,no,Owner review must approve access terms and checksums before any known-answer asset acquisition or benchmark execution.
+known_answer_benchmark_execution,missing,dry_run_plans_present,0,no,no,Do not run HG008/COLO829 benchmarks until asset approval and checksum gates are satisfied.
+qc_thresholds,missing,draft_thresholds_defined,0,no,no,Populate and lock threshold values only after known-answer validation evidence and reviewer signoff.
+validation_packet,missing,sections_linked_to_readiness_evidence,0,no,no,Keep packet sections locked until linked readiness summaries become approved validation evidence.
+change_control,missing,revalidation_triggers_defined,0,no,no,Keep every change trigger review-required until validation packet evidence and signoff are complete.
+signoff,missing,required_roles_defined,0,no,no,Convert pending role scaffolds into named reviewer records only after validation evidence sections are complete.
+clinical_reporting_boundaries,missing,candidate_only_boundaries_defined,1,no,no,"Keep reporting candidate-only until reportable range, thresholds, packet evidence, and signoff are approved."

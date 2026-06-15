@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-06-15T00:57:15.470Z",
+  "status": "bounded_non_dry_gap_identified",
+  "executionMode": "bounded_non_dry_public_remote_read_analysis",
+  "pipelineConfirmation": "not_confirmed",
+  "clinicalUseAllowed": "no",
+  "artifactPath": "results/clinicalization/known_answer_runs/hg008/rna_qc_summary.json",
+  "checkIds": [
+    "hg008_tumor_rna_qc"
+  ],
+  "pullIds": [
+    "hg008_tumor_rna"
+  ],
+  "sampleOrAssetIds": [
+    "HG008-T_bulk"
+  ],
+  "datasetIds": [
+    "giab_hg008"
+  ],
+  "publicFindings": [
+    "HG008-T bulk RNA-seq should validate RNA intake and quantification plumbing but is not an HRD-positive truth label."
+  ],
+  "evidenceType": "public_fastq_stats_only",
+  "publicFindingResult": "HG008 RNA stats are present and paired, but no RNA quantification or truth target was run.",
+  "evidence": {
+    "rnaStats": {
+      "statsFiles": [
+        {
+          "path": "data/raw/known_answer_public/hg008/rna/XZOOK_20250905_A00904_IL23896-001_N4UD-C12_L001_R1_stats.txt",
+          "bases": 7811839889,
+          "reads": 51734039,
+          "readLength": 151
+        },
+        {
+          "path": "data/raw/known_answer_public/hg008/rna/XZOOK_20250905_A00904_IL23896-001_N4UD-C12_L001_R2_stats.txt",
+          "bases": 7811839889,
+          "reads": 51734039,
+          "readLength": 151
+        }
+      ],
+      "pairedReadStatsConsistent": true,
+      "remainingQuantificationGap": "RNA FASTQ stats are public, but this bounded run does not download FASTQs or run quantification."
+    }
+  },
+  "blockers": [
+    "RNA FASTQs were not downloaded and no transcript-level truth target is selected."
+  ],
+  "nextAction": "Select an RNA truth/QC target, transfer FASTQs, and run quantification.",
+  "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+  "previousStatus": "not_confirmed_input_metadata_only"
+}
