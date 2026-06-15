@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-06-07T06:44:47.295Z",
+  "generatedAt": "2026-06-12T17:22:24.935Z",
   "bwa": {
-    "path": "/opt/homebrew/bin/bwa",
-    "version": "Program: bwa (alignment via Burrows-Wheeler transformation)\nVersion: 0.7.19-r1273\nContact: Heng Li <hli@ds.dfci.harvard.edu>\n\nUsage:   bwa <command> [options]\n\nCommand: index         index sequences in the FASTA format"
+    "path": "/usr/bin/bwa",
+    "version": "Program: bwa (alignment via Burrows-Wheeler transformation)\nVersion: 0.7.17-r1188\nContact: Heng Li <lh3@sanger.ac.uk>\n\nUsage:   bwa <command> [options]\n\nCommand: index         index sequences in the FASTA format"
   },
   "samtools": {
-    "path": "/opt/homebrew/bin/samtools",
-    "version": "Program: samtools (Tools for alignments in the SAM format)\nVersion: 1.23.1 (using htslib 1.23.1)\n\nUsage:   samtools <command> [options]\n\nCommands:\n  -- Indexing"
+    "path": "/usr/bin/samtools",
+    "version": "Program: samtools (Tools for alignments in the SAM format)\nVersion: 1.16.1 (using htslib 1.16)\n\nUsage:   samtools <command> [options]\n\nCommands:\n  -- Indexing"
   },
   "bcftools": {
-    "path": "/opt/homebrew/bin/bcftools",
-    "version": "Program: bcftools (Tools for variant calling and manipulating VCFs and BCFs)\nLicense: GNU GPLv3+, due to use of the GNU Scientific Library\nVersion: 1.23.1 (using htslib 1.23.1)\n\nUsage:   bcftools [--version|--version-only] [--help] <command> <argument>\n\nCommands:"
+    "path": "/usr/bin/bcftools",
+    "version": "Program: bcftools (Tools for variant calling and manipulating VCFs and BCFs)\nVersion: 1.16 (using htslib 1.16)\n\nUsage:   bcftools [--version|--version-only] [--help] <command> <argument>\n\nCommands:"
   },
   "java": {
-    "path": "/opt/homebrew/opt/openjdk@17/bin/java",
+    "path": "/usr/bin/java",
     "version": "openjdk version \"17.0.19\" 2026-04-21"
   },
   "gatk": {

@@ -38,7 +38,7 @@ def main() -> None:
         },
     )
     write_text(
-        path_from_root("docs/diana-raw-inputs.md"),
+        path_from_root("docs/operations/diana-raw-inputs.md"),
         """# Diana Raw Inputs
 
 Use this document when Diana's real files arrive and you need to tell the project where they are.
@@ -149,7 +149,7 @@ Status: **template ready**.
 Artifacts:
 
 1. `manifests/diana_raw_inputs.template.csv`
-2. `docs/diana-raw-inputs.md`
+2. `docs/operations/diana-raw-inputs.md`
 3. `results/diana_raw_intake/input_contract.json`
 4. `results/diana_raw_intake/intake_readiness_summary.csv`
 

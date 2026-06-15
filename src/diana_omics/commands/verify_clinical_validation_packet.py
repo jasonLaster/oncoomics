@@ -7,10 +7,8 @@ from ..paths import path_from_root
 from ..utils import ensure_dir, iso_now, parse_csv, read_json, read_text, write_csv, write_json
 
 MANIFEST_PATH = "manifests/clinical_validation_packet_sections.csv"
-TEMPLATE_DOC_PATH = "docs/clinical-validation-packet-template.md"
-CLINICAL_BOUNDARIES_PATH = os.environ.get(
-    "CLINICAL_PACKET_BOUNDARIES", "results/clinicalization/clinical_assay_boundaries_summary.json"
-)
+TEMPLATE_DOC_PATH = "docs/clinical/validation-packet-template.md"
+CLINICAL_BOUNDARIES_PATH = os.environ.get("CLINICAL_PACKET_BOUNDARIES", "results/clinicalization/clinical_assay_boundaries_summary.json")
 KNOWN_ANSWER_READINESS_PATH = os.environ.get(
     "CLINICAL_PACKET_KNOWN_ANSWER_READINESS", "results/clinicalization/known_answer_fixture_readiness_summary.json"
 )

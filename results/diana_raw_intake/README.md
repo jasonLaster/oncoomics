@@ -5,7 +5,7 @@ Status: **template ready**.
 Artifacts:
 
 1. `manifests/diana_raw_inputs.template.csv`
-2. `docs/diana-raw-inputs.md`
+2. `docs/operations/diana-raw-inputs.md`
 3. `results/diana_raw_intake/input_contract.json`
 4. `results/diana_raw_intake/intake_readiness_summary.csv`
 

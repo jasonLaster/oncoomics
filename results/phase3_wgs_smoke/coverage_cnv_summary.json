@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T06:44:21.982Z",
+  "generatedAt": "2026-06-12T15:45:08.151Z",
   "status": "passed",
   "rows": [
     {
@@ -7,11 +7,11 @@
       "tool": "samtools bedcov",
       "bin_size": 5000000,
       "bin_count": 631,
-      "median_log2_tumor_normal": -0.0622,
-      "relative_gain_bins": 85,
-      "relative_loss_bins": 155,
+      "median_log2_tumor_normal": -0.1459,
+      "relative_gain_bins": 70,
+      "relative_loss_bins": 202,
       "output_bins": "results/phase3_wgs_smoke/coverage_cnv_bins.csv",
-      "scarhrd_input_status": "not_assessable_low_depth_smoke_no_allele_specific_segments",
+      "scarhrd_input_status": "not_assessable_without_allele_specific_segments",
       "caveat": "Real WGS BAM coverage-derived CNV bins from samtools bedcov. This validates CNV feature plumbing but is not allele-specific segmentation or scarHRD."
     }
   ]

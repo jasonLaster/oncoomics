@@ -9,7 +9,7 @@ from ..utils import ensure_dir, iso_now, parse_csv, read_json, read_text, write_
 RESULTS_DIR = "results/orthogonal_validation"
 EXAMPLES_PATH = "manifests/orthogonal_public_examples.csv"
 CANDIDATES_PATH = "manifests/orthogonal_validation_candidates.csv"
-DOC_PATH = "docs/orthogonal-validation-samples.md"
+DOC_PATH = "docs/validation/known-answer-datasets.md"
 
 REQUIRED_CANDIDATES = {
     "giab_hg008",

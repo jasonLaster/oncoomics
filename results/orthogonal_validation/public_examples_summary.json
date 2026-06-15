@@ -1,13 +1,10 @@
 {
-  "generatedAt": "2026-06-12T05:32:58.874Z",
-  "status": "failed",
+  "generatedAt": "2026-06-15T16:00:01.775Z",
+  "status": "passed",
   "implementedExamples": 2,
   "plannedExamples": 4,
   "blockedExamples": 1,
-  "errors": [
-    "Phase 3 SEQC2/HCC1395 public WGS example must be a full-source run, not a bounded smoke.",
-    "Phase 3 SEQC2/HCC1395 public WGS example must mark fullSourceFastqs=true."
-  ],
+  "errors": [],
   "warnings": [],
   "rows": [
     {
@@ -21,7 +18,7 @@
       "artifact_status": "passed",
       "pass_gate": "status passed and readyForPhase3 true",
       "full_data_command": "PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:full-wes && PYTHONPATH=src /usr/bin/python3 -m diana_omics benchmark:full-wes",
-      "documentation": "docs/raw-data-readiness.md"
+      "documentation": "docs/status/current-state.md"
     },
     {
       "example_id": "seqc2_hcc1395_phase3_wgs",
@@ -34,7 +31,7 @@
       "artifact_status": "passed",
       "pass_gate": "status passed phase3Complete true and readPairsMode full",
       "full_data_command": "PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:phase3-wgs && PYTHONPATH=src /usr/bin/python3 -m diana_omics validate:phase3-wgs",
-      "documentation": "docs/raw-data-readiness.md"
+      "documentation": "docs/status/current-state.md"
     },
     {
       "example_id": "giab_hg008_wgs",
@@ -47,7 +44,7 @@
       "artifact_status": "planned",
       "pass_gate": "planned recall/precision and SV/CNV overlap thresholds",
       "full_data_command": "planned full or 30x downsample HG008 WGS run",
-      "documentation": "docs/orthogonal-validation-samples.md"
+      "documentation": "docs/validation/known-answer-datasets.md"
     },
     {
       "example_id": "giab_hg008_rna",
@@ -60,7 +57,7 @@
       "artifact_status": "planned",
       "pass_gate": "planned paired FASTQ plus quantification QC",
       "full_data_command": "planned full HG008 RNA-seq run",
-      "documentation": "docs/orthogonal-validation-samples.md"
+      "documentation": "docs/validation/known-answer-datasets.md"
     },
     {
       "example_id": "colo829_wgs",
@@ -73,7 +70,7 @@
       "artifact_status": "planned",
       "pass_gate": "planned SV/CNA overlap plus BRAF/UV guardrail",
       "full_data_command": "planned full or 30x downsample COLO829 WGS run",
-      "documentation": "docs/orthogonal-validation-samples.md"
+      "documentation": "docs/validation/known-answer-datasets.md"
     },
     {
       "example_id": "colo829_purity_series",
@@ -86,7 +83,7 @@
       "artifact_status": "planned",
       "pass_gate": "planned monotonic recall by purity",
       "full_data_command": "planned selected full purity-series WGS levels",
-      "documentation": "docs/orthogonal-validation-samples.md"
+      "documentation": "docs/validation/known-answer-datasets.md"
     },
     {
       "example_id": "seraseq_ctdna_mrd",
@@ -99,7 +96,7 @@
       "artifact_status": "planned",
       "pass_gate": "blocked positive/negative dilution classification",
       "full_data_command": "blocked until data/material obtained",
-      "documentation": "docs/orthogonal-validation-samples.md"
+      "documentation": "docs/validation/known-answer-datasets.md"
     }
   ]
 }

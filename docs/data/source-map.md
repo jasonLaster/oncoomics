@@ -15,7 +15,7 @@ Use:
 
 Project summary:
 
-- [wiki-source-summary.md](/Users/jasonlaster/src/projects/diana-omics/docs/wiki-source-summary.md)
+- [wiki-source-summary.md](wiki-source-summary.md)
 
 ## cBioPortal TCGA-BRCA
 
@@ -85,8 +85,8 @@ Strength:
 
 Limits:
 
-- Current WGS use is downsampled smoke.
-- Full WGS truth-set correctness still needs HG008/COLO829 expansion.
+- Current WGS use proves mechanics and selected truth overlap.
+- Full independent WGS truth-set correctness still needs HG008/COLO829 caller-level expansion.
 
 ## NIST Cancer Genome in a Bottle HG008
 
@@ -128,7 +128,8 @@ Key sources:
 
 Limits:
 
-- Small-variant truth source needs to be wired precisely before SNV recall assertions.
+- BRAF V600E is already a strong bounded driver check.
+- Full small-variant, SV, and CNA truth comparisons still need build-matched Diana-generated callsets.
 - COLO829 is melanoma, so it is a negative/orthogonal biology guardrail rather than a breast HRD positive control.
 
 ## Seraseq ctDNA MRD Panel Mix

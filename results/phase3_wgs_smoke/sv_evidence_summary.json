@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T06:44:47.293Z",
+  "generatedAt": "2026-06-12T17:22:24.935Z",
   "status": "passed",
   "rows": [
     {
@@ -8,15 +8,15 @@
       "sample": "HCC1395",
       "role": "tumor",
       "run_accession": "SRR7890824",
-      "input_bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/bam/SRR7890824.tumor.bam",
-      "total_alignments": 1004846,
-      "supplementary_alignments": 4846,
-      "discordant_mapped_pairs": 16579,
-      "interchromosomal_pairs": 10627,
-      "large_insert_pairs": 2767,
+      "input_bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/SRR7890824.tumor.bam",
+      "total_alignments": 1142092840,
+      "supplementary_alignments": 6012686,
+      "discordant_mapped_pairs": 19971496,
+      "interchromosomal_pairs": 12960773,
+      "large_insert_pairs": 3330539,
       "sv_candidate_rows_written": 100,
-      "chord_input_status": "not_assessable_low_depth_smoke_requires_full_depth_sv_caller_vcf",
-      "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is a WGS SV evidence smoke, not a validated full-depth SV caller VCF."
+      "chord_input_status": "not_assessable_requires_validated_sv_caller_vcf",
+      "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is WGS SV evidence, not a validated production SV caller VCF."
     },
     {
       "status": "passed",
@@ -24,15 +24,15 @@
       "sample": "HCC1395BL",
       "role": "normal",
       "run_accession": "SRR7890827",
-      "input_bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/bam/SRR7890827.normal.bam",
-      "total_alignments": 1004984,
-      "supplementary_alignments": 4984,
-      "discordant_mapped_pairs": 16775,
-      "interchromosomal_pairs": 10603,
-      "large_insert_pairs": 2692,
+      "input_bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/SRR7890827.normal.bam",
+      "total_alignments": 1203151451,
+      "supplementary_alignments": 5997651,
+      "discordant_mapped_pairs": 20012267,
+      "interchromosomal_pairs": 13014442,
+      "large_insert_pairs": 3024051,
       "sv_candidate_rows_written": 100,
-      "chord_input_status": "not_assessable_low_depth_smoke_requires_full_depth_sv_caller_vcf",
-      "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is a WGS SV evidence smoke, not a validated full-depth SV caller VCF."
+      "chord_input_status": "not_assessable_requires_validated_sv_caller_vcf",
+      "caveat": "Real BAM-derived split/discordant/interchromosomal evidence counts. This is WGS SV evidence, not a validated production SV caller VCF."
     }
   ]
 }

@@ -1,153 +1,80 @@
 # Diana HRD Omics
 
-This repository is a reproducible Python workspace for testing whether we can analyze Diana's future raw omics files for homologous recombination deficiency (HRD) in a way that is auditable before any real Diana FASTQ, BAM, CRAM, VCF, or RNA files arrive.
+This repository is a validation-first workspace for Diana's future tumor-normal omics data. The goal is to understand whether we can recompute HRD-relevant evidence from raw or near-raw files, while keeping every claim auditable against public known-answer samples before any Diana-specific interpretation is attempted.
 
-The project has two jobs:
+The project does four things:
 
-1. Build a validation sidecar from public data so the pipeline is already exercised on known samples.
-2. Provide a clean plug-in contract for Diana's real data so we can rerun the same checks when the files arrive.
-
-It does not make treatment recommendations. It produces evidence tables, quality summaries, and reviewer packets that still require expert review and clinical confirmation.
+- Builds HRD and TNBC subtype evidence tables from public processed breast-cancer data.
+- Runs raw public WES/WGS tumor-normal examples through alignment, calling, and validation paths.
+- Tests known-answer samples such as SEQC2/HCC1395, GIAB HG008, and COLO829 so the pipeline returns expected findings.
+- Defines the handoff contract for Diana's future FASTQ, BAM, CRAM, VCF, CNV, SV, RNA, and vendor-report files.
 
 ## Current State
 
-The implementation is Python-only. From a checkout, run commands with `PYTHONPATH=src /usr/bin/python3 -m diana_omics ...`; installed environments can use the `diana-omics` console script.
+What is working:
 
-The latest full run passed:
+- **HRD evidence tables:** public TCGA/BRCA-style processed data produce reviewer-facing HRR event, allele-state, scar/signature, RNA-context, and failure-mode tables for 28 reference-panel samples.
+- **TNBC event subtypes:** Lehmann TNBC subtype context is wired into generated evidence tables, so subtype biology can be discussed beside HRD evidence without treating subtype as a clinical HRD truth label.
+- **Raw WES benchmark:** SEQC2/HCC1395 full WES FASTQs run through validation, alignment, duplicate marking, GATK Mutect2, and truth overlap. Current evidence: `1122` exact PASS truth matches, recall `0.8585`, precision `0.9842`.
+- **Raw WGS mechanics:** SEQC2/HCC1395 full-source WGS FASTQs exercise BAM validation, Mutect2, coverage-CNV bins, SBS96 mutation context, and SV evidence summaries.
+- **Known-answer confirmations:** the expanded 29-target cohort has `19` confirmations, `1` partial confirmation, `3` strict-validation gaps, and `6` request/access blockers. The clearest result is COLO829 BRAF V600E recovery across four public tumor-normal BAM pairs.
+- **Diana intake:** the samplesheet template and strict validator are ready. Actual Diana files are still pending.
 
-- Phase 2F full WES benchmark: 4 FASTQs validated, BAM validation passed, GATK Mutect2 ran, 1307 depth-eligible SEQC2/HCC1395 truth variants, 1122 exact PASS truth matches, recall 0.8585, precision 0.9842.
-- Phase 3 WGS validation: full-source SEQC2/HCC1395 WGS FASTQs are the acceptance gate; bounded subsets are developer checks only. The verifier now fails unless Phase 3 records `readPairsMode=full`.
-- Orthogonal public examples: SEQC2/HCC1395 full WES and Phase 3 WGS are verified; HG008, COLO829, COLO829 purity, and Seraseq MRD are documented as next known-answer gates.
-- Expanded known-answer pull plan: 10 raw-sample or truth-asset targets are staged for owner review before download, including HG008, COLO829, COLO829 purity, and Seraseq MRD.
-- Expanded known-answer execution: a 29-target representative cohort now runs non-dry bounded public checks across SEQC2/HCC1395, HG008, COLO829, COLO829 purity, and Seraseq MRD. The current report has 19 confirmations, 1 partial confirmation, 3 strict-validation gaps, and 6 blocked/request-only targets.
-- Phase 1 public HRD/RNA tables: 28 reference-panel samples processed into reviewer-facing evidence tables.
-- Diana intake: template and strict validation contract are ready; interpretation waits for actual Diana files.
+What is still missing:
 
-## Quick Start
+- Full Diana raw data, metadata, sample provenance, reference build, and tumor-normal pairing confirmation.
+- Full HG008 caller-level recall/precision and SV/CNV reciprocal-overlap benchmarking.
+- Full COLO829 SV/CNA benchmarking and tumor-purity sensitivity table.
+- True MRD/plasma validation material, likely Seraseq or another request/purchase dataset.
+- Reviewer-approved HRD interpretation policy, including CHORD/scarHRD/FACETS/ASCAT/PURPLE-style input requirements and no-call thresholds.
 
-Run the lightweight checks:
+The safe boundary is simple: this repo can produce public-data validation evidence and reviewer packets. It does not make a treatment recommendation or a clinical companion-diagnostic call.
+
+## How It Works
+
+Python owns orchestration and evidence generation. The bioinformatics work is done by familiar tools:
+
+| Layer | Tools |
+| --- | --- |
+| Workflow and evidence | Python package in `src/diana_omics`, CSV/JSON manifests, generated Markdown reports |
+| Alignment and BAM/VCF work | BWA, samtools, bcftools |
+| Somatic calling | Java plus GATK MarkDuplicates, Mutect2, FilterMutectCalls, contamination helpers |
+| Portable execution | Nextflow, Docker, AWS Batch, S3 |
+| Development checks | Ruff, mypy, pytest |
+| Optional native scale-up | pysam, pyfaidx, polars, truvari, SigProfiler-compatible signature assignment |
+
+Commands all use the same entry point:
 
 ```sh
-PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:plan
-PYTHONPATH=src /usr/bin/python3 -m diana_omics py:lint
-PYTHONPATH=src /usr/bin/python3 -m diana_omics py:format:check
-PYTHONPATH=src /usr/bin/python3 -m diana_omics py:typecheck
-PYTHONPATH=src /usr/bin/python3 -m diana_omics py:test
-PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:orthogonal
-PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-sample-pull-plan
-PYTHONPATH=src /usr/bin/python3 -m diana_omics run:known-answer-public-findings
-PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-public-findings
-PYTHONPATH=src /usr/bin/python3 -m diana_omics run:known-answer-expanded-cohort
 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 ```
 
-Run the whole public validation workflow:
+A few representative commands show the shape of the project:
 
 ```sh
-PYTHONPATH=src /usr/bin/python3 -m diana_omics run:all
-```
-
-Run through Nextflow:
-
-```sh
-PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:quick
-PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:known-answer-public-findings
-PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:known-answer-expanded-cohort
-PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:stub
-PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:dev
-```
-
-`nf:phase3-wgs:*` uses the resumable split Nextflow DAG: fetch, reference index, tumor BAM, normal BAM, and downstream validation are separate checkpoints. Use `nextflow -resume` after transient cloud failures. The legacy one-process runner is available as `nf:phase3-wgs:monolith:full` for fallback comparisons.
-
-See [docs/nextflow.md](/Users/jasonlaster/src/projects/diana-omics/docs/nextflow.md) for Docker, AWS Batch, S3, and full-source WGS options.
-
-Inspect recent pipeline run artifacts and speed diagnostics:
-
-```sh
-PYTHONPATH=src /usr/bin/python3 -m diana_omics diagnose:pipeline
-```
-
-Full-WES benchmark runs now write structured telemetry under `results/full_wes_benchmark/logs/telemetry/<run-id>/`, including `events.jsonl`, OTEL-shaped `otel_spans.jsonl`, `resource_samples.jsonl`, `heartbeat.json`, and `run_manifest.json`. Set `DIANA_OMICS_LOG_UPLOAD_URI=s3://bucket/prefix` to sync those logs after the run, or set it to a local path for a filesystem mirror.
-
-For local stage-by-stage Phase 3 work, use `phase3:stage:fetch:tumor`, `phase3:stage:fetch:normal`, `phase3:stage:ref`, `phase3:stage:align:tumor`, `phase3:stage:align:normal`, and `phase3:stage:downstream`.
-
-Prepare for Diana's actual files:
-
-```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics analyze:hrd
+PYTHONPATH=src /usr/bin/python3 -m diana_omics analyze:lehmann
+PYTHONPATH=src /usr/bin/python3 -m diana_omics benchmark:full-wes
+PYTHONPATH=src /usr/bin/python3 -m diana_omics validate:phase3-wgs
+PYTHONPATH=src /usr/bin/python3 -m diana_omics run:known-answer-expanded-cohort
 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-template
-PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw
 ```
 
-When the real samplesheet exists:
+Most readers do not need to run the project. For run instructions, see [docs/operations/running-the-pipeline.md](docs/operations/running-the-pipeline.md).
 
-```sh
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
-DIANA_RAW_REQUIRE_DATA=1 \
-PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw
+## Documentation
 
-DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
-DIANA_RAW_REQUIRE_DATA=1 \
-PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw
-```
+Start here:
 
-## Documentation Guide
+- [docs/README.md](docs/README.md): short documentation map.
+- [docs/status/current-state.md](docs/status/current-state.md): what has passed, what is partial, what is blocked.
+- [docs/validation/known-answer-datasets.md](docs/validation/known-answer-datasets.md): public validation samples and dataset priorities.
+- [docs/operations/analytics-sequence.md](docs/operations/analytics-sequence.md): sequence diagram of Python orchestration and OSS tool calls.
+- [docs/data/source-map.md](docs/data/source-map.md): provenance for datasets, tools, truth sets, and vendor context.
+- [docs/operations/running-the-pipeline.md](docs/operations/running-the-pipeline.md): local, Docker, Nextflow, and AWS commands.
 
-Start with [docs/readme.md](/Users/jasonlaster/src/projects/diana-omics/docs/readme.md) if you are new to the project. Use the rest of the docs by task:
+Directory guides:
 
-| Document | Use it when you need to... |
-| --- | --- |
-| [docs/project-plan.md](/Users/jasonlaster/src/projects/diana-omics/docs/project-plan.md) | Understand the milestone plan, evidence gates, and what still needs to happen before Diana recompute. |
-| [docs/phase-status.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase-status.md) | Check what is currently complete, what passed, and what still needs full-data validation. |
-| [docs/bug-audit.md](/Users/jasonlaster/src/projects/diana-omics/docs/bug-audit.md) | Review the most likely ways the analysis could be wrong before trusting a result. |
-| [docs/diana-raw-inputs.md](/Users/jasonlaster/src/projects/diana-omics/docs/diana-raw-inputs.md) | Fill in Diana's future FASTQ/BAM/CRAM/RNA/vendor files and validate the handoff. |
-| [docs/raw-data-readiness.md](/Users/jasonlaster/src/projects/diana-omics/docs/raw-data-readiness.md) | See which public raw-data mechanics already work, from FASTQ smoke tests through WES/WGS validation. |
-| [docs/orthogonal-validation-samples.md](/Users/jasonlaster/src/projects/diana-omics/docs/orthogonal-validation-samples.md) | Pick the next known-answer datasets, especially HG008, COLO829, and Seraseq MRD. |
-| [docs/phase3-parallel-compute.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase3-parallel-compute.md) | Tune local CPU/thread usage for WGS, full-depth validation, and future Diana runs. |
-| [docs/python-implementation.md](/Users/jasonlaster/src/projects/diana-omics/docs/python-implementation.md) | Work on the Python package, command modules, tests, and verifier contracts. |
-| [docs/source-map.md](/Users/jasonlaster/src/projects/diana-omics/docs/source-map.md) | Audit where each dataset, truth set, tool, and vendor-context claim came from. |
-| [docs/wiki-source-summary.md](/Users/jasonlaster/src/projects/diana-omics/docs/wiki-source-summary.md) | Understand how the original Diana wiki packet shaped the scope and caveats. |
-| [docs/reference-panel-label-rules.md](/Users/jasonlaster/src/projects/diana-omics/docs/reference-panel-label-rules.md) | Review how Phase 1 public HRD panel labels are assigned and caveated. |
-| [docs/aws-silly-ec2.md](/Users/jasonlaster/src/projects/diana-omics/docs/aws-silly-ec2.md) | Run a tiny self-terminating AWS EC2 smoke test. |
-
-Main code:
-
-- [src/diana_omics](/Users/jasonlaster/src/projects/diana-omics/src/diana_omics): Python package.
-- [tests](/Users/jasonlaster/src/projects/diana-omics/tests): unit and integration-style contract tests.
-- [src/diana_omics/workflow_tasks.py](/Users/jasonlaster/src/projects/diana-omics/src/diana_omics/workflow_tasks.py): Python task aliases for local, Docker, AWS, and deploy loops.
-
-Main data contracts:
-
-- [manifests/diana_raw_inputs.template.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/diana_raw_inputs.template.csv): fill-in template for Diana.
-- [manifests/orthogonal_validation_candidates.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/orthogonal_validation_candidates.csv): next public truth-set targets.
-- [manifests/known_answer_sample_pull_plan.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/known_answer_sample_pull_plan.csv): 10-target pull plan for the expanded known-answer suite.
-- [manifests/known_answer_public_finding_checks.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/known_answer_public_finding_checks.csv): public finding and analysis-gate map for the 10-target suite.
-- [manifests/known_answer_expanded_cohort_plan.csv](/Users/jasonlaster/src/projects/diana-omics/manifests/known_answer_expanded_cohort_plan.csv): 29-target representative non-dry validation cohort.
-- [results/clinicalization/known_answer_expanded_cohort_execution.md](/Users/jasonlaster/src/projects/diana-omics/results/clinicalization/known_answer_expanded_cohort_execution.md): generated expanded cohort findings and gap report.
-- [results/clinicalization/known_answer_public_finding_confirmation.md](/Users/jasonlaster/src/projects/diana-omics/results/clinicalization/known_answer_public_finding_confirmation.md): generated target-by-target confirmation status.
-- [results/reviewer_packet.md](/Users/jasonlaster/src/projects/diana-omics/results/reviewer_packet.md): current reviewer summary.
-- [results/diana_readiness_gate.md](/Users/jasonlaster/src/projects/diana-omics/results/diana_readiness_gate.md): readiness boundary.
-
-## Tools
-
-Python orchestrates everything. The current workflow uses:
-
-- Python standard library for manifests, JSON/CSV, downloads, hashing, and subprocess orchestration.
-- Ruff, mypy, and pytest for formatting, static checks, and tests.
-- BWA and samtools for FASTQ-to-BAM alignment and BAM QC.
-- bcftools for VCF indexing, statistics, and caller-contract checks.
-- Java plus GATK Mutect2, FilterMutectCalls, and MarkDuplicates for production-style somatic smoke tests.
-- Local Python evidence builders for HRD tables, RNA context tables, WGS SBS96 summaries, coverage-CNV bins, and SV evidence summaries.
-
-Full-depth work now starts native-backed integration through optional extras: `pysam` for BAM/VCF IO, `pyfaidx` for reference sequence access, `polars` for larger tabular joins, `truvari` for SV benchmarking, and SigProfiler-compatible signature assignment support. The Phase 3 runner uses native VCF/reference adapters when installed and falls back to existing `bcftools`/`samtools` paths otherwise. CHORD, scarHRD, and FACETS/ASCAT/PURPLE-compatible interpretation remain gated on validated full-depth feature inputs.
-
-## Boundaries
-
-Current public validation proves mechanics and partial correctness. It does not prove that Diana is HRD-positive or HRD-negative.
-
-Before Diana interpretation, we still need:
-
-- Diana's actual raw files and metadata.
-- Reference build and tumor-normal pairing confirmation.
-- Tumor purity and sample provenance.
-- Orthogonal HG008/COLO829 correctness validation for full WGS truth sets.
-- Reviewer sign-off on HRD interpretation policy and companion-diagnostic boundaries.
+- [src/README.md](src/README.md): implementation map.
+- [results/README.md](results/README.md): generated evidence map.
+- [scripts/README.md](scripts/README.md): shell utilities.

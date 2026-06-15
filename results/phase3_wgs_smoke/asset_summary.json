@@ -1,11 +1,14 @@
 {
-  "generatedAt": "2026-06-08T14:54:56.675Z",
+  "generatedAt": "2026-06-10T23:13:04.201Z",
   "status": "ready",
   "phase": "3",
   "pairId": "seqc2_hcc1395_wgs_hiseqx_full",
   "readRequest": "full",
   "readPairsMode": "full",
+  "sourceMode": "aws_sra",
   "sampleRows": 2,
+  "fetchedSampleRows": 1,
+  "fetchOnlyRole": "tumor",
   "source": "SEQC2/HCC1395 public HiSeq X Ten WGS tumor-normal FASTQ pair",
   "reference": {
     "referenceId": "ucsc_hg38_analysis_set_full",
@@ -17,7 +20,7 @@
   },
   "gatk": {
     "jarPath": "data/raw/tools/gatk/gatk-4.6.2.0/gatk-package-4.6.2.0-local.jar",
-    "javaPath": "/opt/homebrew/opt/openjdk@17/bin/java"
+    "javaPath": "/usr/bin/java"
   },
   "seqc2Truth": {
     "snvVcfPath": "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz",
@@ -25,8 +28,18 @@
     "highConfidenceBedPath": "data/raw/reference/seqc2_hcc1395_truth/latest/High-Confidence_Regions_v1.2.bed"
   },
   "parallelism": {
-    "fetchConcurrency": 4,
+    "fetchConcurrency": 8,
     "note": "FASTQ end streams can be fetched concurrently; alignment/runtime thread controls live in validate:phase3-wgs."
+  },
+  "assetCache": {
+    "enabled": true,
+    "uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/cache/phase3_wgs",
+    "mode": "readwrite",
+    "cacheSraObjects": true,
+    "cacheFastqs": true,
+    "deleteSraAfterConversion": true,
+    "published": [],
+    "deletedLocalSra": []
   },
   "completionModes": {
     "default": "Full-source public WGS validation.",

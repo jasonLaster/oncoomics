@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T06:44:18.195Z",
+  "generatedAt": "2026-06-12T14:41:00.931Z",
   "status": "passed",
   "rows": [
     {
@@ -10,10 +10,10 @@
       "role": "tumor",
       "run_accession": "SRR7890824",
       "sample": "HCC1395",
-      "read_pairs_per_end": "500000",
+      "read_pairs_per_end": "568040077",
       "reference_sha256": "d2b7be348fb20af46461855faec64dfbd21532620bd125783df050180446055e",
-      "output_bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/bam/SRR7890824.tumor.bam",
-      "output_bai": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/bam/SRR7890824.tumor.bam.bai",
+      "output_bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/SRR7890824.tumor.bam",
+      "output_bai": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/SRR7890824.tumor.bam.bai",
       "bam_exists": "yes",
       "bai_exists": "yes",
       "quickcheck": "passed",
@@ -21,15 +21,16 @@
       "read_group_present": "yes",
       "read_group_count": 1,
       "reference_contig_count": 195,
-      "total_alignments": 1004846,
-      "mapped_alignments": 1003020,
-      "mapped_fraction": 0.9982,
-      "properly_paired_alignments": 985602,
-      "properly_paired_fraction": 0.9808,
+      "total_alignments": 1142092840,
+      "mapped_alignments": 1139314191,
+      "mapped_fraction": 0.9976,
+      "properly_paired_alignments": 1116026148,
+      "properly_paired_fraction": 0.9772,
       "mapped_standard_contigs": 24,
-      "bam_size_bytes": 111988236,
+      "bam_size_bytes": 72284401542,
       "status": "passed",
-      "caveat": "Phase 3 WGS smoke uses a real WGS FASTQ subset from the full SEQC2/HCC1395 HiSeq X pair. It validates WGS-capable mechanics, not full-depth WGS HRD sensitivity or a clinical Diana interpretation."
+      "caveat": "Phase 3 WGS uses real public WGS FASTQs from the full SEQC2/HCC1395 HiSeq X pair. Full-source validation is the acceptance gate; bounded subsets are only optional developer checks.",
+      "validation_cache": "computed"
     },
     {
       "pair_id": "seqc2_hcc1395_wgs_hiseqx_full",
@@ -39,10 +40,10 @@
       "role": "normal",
       "run_accession": "SRR7890827",
       "sample": "HCC1395BL",
-      "read_pairs_per_end": "500000",
+      "read_pairs_per_end": "598576900",
       "reference_sha256": "d2b7be348fb20af46461855faec64dfbd21532620bd125783df050180446055e",
-      "output_bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/bam/SRR7890827.normal.bam",
-      "output_bai": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/bam/SRR7890827.normal.bam.bai",
+      "output_bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/SRR7890827.normal.bam",
+      "output_bai": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/SRR7890827.normal.bam.bai",
       "bam_exists": "yes",
       "bai_exists": "yes",
       "quickcheck": "passed",
@@ -50,15 +51,16 @@
       "read_group_present": "yes",
       "read_group_count": 1,
       "reference_contig_count": 195,
-      "total_alignments": 1004984,
-      "mapped_alignments": 1003388,
-      "mapped_fraction": 0.9984,
-      "properly_paired_alignments": 985874,
-      "properly_paired_fraction": 0.981,
+      "total_alignments": 1203151451,
+      "mapped_alignments": 1200272696,
+      "mapped_fraction": 0.9976,
+      "properly_paired_alignments": 1176890962,
+      "properly_paired_fraction": 0.9782,
       "mapped_standard_contigs": 24,
-      "bam_size_bytes": 110566412,
+      "bam_size_bytes": 78688017530,
       "status": "passed",
-      "caveat": "Phase 3 WGS smoke uses a real WGS FASTQ subset from the full SEQC2/HCC1395 HiSeq X pair. It validates WGS-capable mechanics, not full-depth WGS HRD sensitivity or a clinical Diana interpretation."
+      "caveat": "Phase 3 WGS uses real public WGS FASTQs from the full SEQC2/HCC1395 HiSeq X pair. Full-source validation is the acceptance gate; bounded subsets are only optional developer checks.",
+      "validation_cache": "computed"
     }
   ]
 }

@@ -230,7 +230,7 @@ The older acquisition-facing manifests still exist and are useful for provenance
 - `results/clinicalization/known_answer_public_finding_execution.md`
 - `results/clinicalization/known_answer_public_finding_confirmation.md`
 
-Those files are intentionally conservative about execution and clinical use. For an outcome-oriented view of what we have actually validated, start with the expanded cohort report instead.
+Those files are intentionally conservative about execution and clinical use. For an outcome-oriented view of what we have actually validated, start with this page and the expanded cohort report instead.
 
 ## Boundary
 

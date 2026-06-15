@@ -146,7 +146,7 @@ def main() -> None:
         },
     )
     write_text(
-        path_from_root("docs/reference-panel-label-rules.md"),
+        path_from_root("docs/data/reference-panel-label-rules.md"),
         """# HRD Reference Panel Label Rules
 
 This frozen phase-1 panel uses open processed TCGA-BRCA PanCancer Atlas data from cBioPortal. It is a validation panel for workflow mechanics, not a clinical HRD truth set.
