@@ -44,19 +44,31 @@ Python owns orchestration and evidence generation. The bioinformatics work is do
 | Optional native scale-up | pysam, pyfaidx, polars, truvari, SigProfiler-compatible signature assignment |
 
 ```mermaid
-sequenceDiagram
-    actor User
-    participant Pipeline as Python pipeline
-    participant Tools as OSS bioinformatics tools
-    participant Truth as public truth sets
-    participant Evidence as results and verifiers
+gantt
+    title HRD Evidence Computation Path
+    dateFormat X
+    axisFormat %s
 
-    User->>Pipeline: run HRD, subtype, WES/WGS, or known-answer command
-    Pipeline->>Tools: call BWA, samtools, GATK, bcftools, and optional native libs
-    Tools-->>Pipeline: return BAM, VCF, depth, CNV, SBS96, and SV evidence
-    Pipeline->>Truth: compare public samples to expected answers
-    Pipeline->>Evidence: write CSV/JSON/Markdown summaries
-    Evidence-->>User: pass/fail status, caveats, gaps, and no-call boundaries
+    section Inputs
+    Load manifests and public or Diana metadata      :0, 1
+    Validate FASTQ, BAM, VCF, RNA, and vendor files  :1, 1
+
+    section DNA Processing
+    Align tumor-normal reads with BWA and samtools   :2, 3
+    Call somatic SNVs and indels with GATK Mutect2   :5, 2
+    Normalize and score VCFs with bcftools           :7, 1
+
+    section HRD Evidence
+    Build HRR event and allele-state tables          :8, 1
+    Compute CNV, SV, SBS96, and signature surfaces   :8, 2
+    Add TNBC subtype and RNA context                 :9, 1
+
+    section Validation
+    Compare public samples to known answers          :10, 2
+    Run verifier gates and no-call boundaries        :12, 1
+
+    section Output
+    Write reviewer packet and readiness summaries    :13, 1
 ```
 
 Commands all use the same entry point:
