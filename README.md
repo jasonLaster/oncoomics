@@ -50,25 +50,25 @@ gantt
     axisFormat %b %d
 
     section Inputs
-    Load manifests and metadata              :inputs_meta, 2026-01-01, 1d
-    Validate omics inputs                    :inputs_validate, after inputs_meta, 1d
+    Manifest and metadata load               :inputs_meta, 2026-01-01, 1d
+    Omics input validation                   :inputs_validate, 2026-01-02, 1d
 
     section DNA Processing
-    Align tumor-normal reads                 :dna_align, after inputs_validate, 3d
-    Call somatic SNVs and indels             :dna_call, after dna_align, 2d
-    Normalize and score VCFs                 :dna_score, after dna_call, 1d
+    Tumor normal read alignment              :dna_align, 2026-01-03, 3d
+    Somatic SNV and indel calling            :dna_call, 2026-01-06, 2d
+    VCF normalization and scoring            :dna_score, 2026-01-08, 1d
 
     section HRD Evidence
-    Build HRR and allele-state tables        :hrd_events, after dna_score, 1d
-    Compute CNV SV SBS96 signature surfaces  :hrd_surfaces, after dna_score, 2d
-    Add TNBC subtype and RNA context         :rna_context, after hrd_events, 1d
+    HRR and allele state tables              :hrd_events, 2026-01-09, 1d
+    CNV SV SBS96 signature surfaces          :hrd_surfaces, 2026-01-09, 2d
+    TNBC subtype and RNA context             :rna_context, 2026-01-10, 1d
 
     section Validation
-    Compare public samples to known answers  :known_answers, after hrd_surfaces, 2d
-    Run verifier gates and no-call boundaries :verify, after known_answers, 1d
+    Known answer comparison                  :known_answers, 2026-01-11, 2d
+    Verifier gates and no call boundaries    :verify, 2026-01-13, 1d
 
     section Output
-    Write reviewer packet and readiness docs :outputs, after verify, 1d
+    Reviewer packet and readiness summaries  :outputs, 2026-01-14, 1d
 ```
 
 Commands all use the same entry point:
