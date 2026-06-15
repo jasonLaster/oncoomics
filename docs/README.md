@@ -7,7 +7,7 @@ This directory is organized for a new reader who wants the project shape first a
 1. Read the top-level [README](../README.md) for the project summary and boundary.
 2. Read [status/current-state.md](status/current-state.md) for the evidence gates, current results, and open gaps.
 3. Read [validation/known-answer-datasets.md](validation/known-answer-datasets.md) for the public samples that prove or stress the pipeline.
-4. Read [operations/analytics-sequence.md](operations/analytics-sequence.md) for the system sequence diagram and OSS call map.
+4. Read [operations/analytics-sequence.md](operations/analytics-sequence.md) for the analytics system architecture and OSS call map.
 5. Read [data/source-map.md](data/source-map.md) when you need provenance for datasets, tools, truth sets, or vendor context.
 6. Read [operations/running-the-pipeline.md](operations/running-the-pipeline.md) only if you plan to run local, Docker, Nextflow, or AWS workflows.
 

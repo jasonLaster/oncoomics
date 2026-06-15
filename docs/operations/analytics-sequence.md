@@ -1,6 +1,40 @@
-# Analytics Sequence
+# Analytics System Architecture
 
-This diagram shows how the analytics pipeline moves from a command to calculations, OSS tool calls, generated evidence, and verifier checks.
+This page explains the system boundaries behind the short sequence diagram in the top-level README. Python is the control plane. OSS bioinformatics tools do the heavy data processing. Verifiers make the outputs auditable.
+
+## System Layers
+
+```mermaid
+flowchart TD
+    User[Operator or Nextflow] --> CLI[diana_omics CLI]
+    CLI --> Commands[Python command modules]
+    Commands --> Manifests[CSV manifests and JSON config]
+    Commands --> PublicData[Public FASTQ, BAM, VCF, BED, RNA, and metadata]
+    Commands --> Tooling[OSS tool subprocesses]
+    Commands --> Native[Optional native Python libraries]
+    Tooling --> Intermediates[BAM, BAI, VCF, index, depth, coverage, signature inputs]
+    Native --> Intermediates
+    Intermediates --> Calculators[Python evidence calculators]
+    PublicData --> Calculators
+    Manifests --> Calculators
+    Calculators --> Results[results/ CSV, JSON, Markdown]
+    Results --> Verifiers[verify:* commands]
+    Verifiers --> Decision[passed, partial, gap, blocked, no-call]
+```
+
+## Runtime Surfaces
+
+| Surface | Role | Main files |
+| --- | --- | --- |
+| Python CLI | Dispatches every workflow command and verifier. | `src/diana_omics/cli.py`, `src/diana_omics/commands/` |
+| Nextflow | Runs the same Python commands locally, in Docker, or in AWS Batch. | `main.nf`, `src/diana_omics/nextflow_process.py` |
+| Manifests | Declare samples, references, validation targets, and clinical boundaries. | `manifests/*.csv`, `manifests/*.json` |
+| OSS tools | Perform alignment, BAM/VCF processing, somatic calling, and depth scans. | BWA, samtools, bcftools, Java/GATK |
+| Optional native libs | Reduce parsing/reference-context risk and prepare for full-depth scale-up. | `pysam`, `pyfaidx`, `polars`, `truvari`, SigProfiler-compatible packages |
+| Results | Store generated evidence and reviewer-facing summaries. | `results/` |
+| Verifiers | Enforce required files, columns, statuses, and no-call boundaries. | `verify:*` commands |
+
+## Detailed Sequence
 
 ```mermaid
 sequenceDiagram
@@ -69,6 +103,10 @@ sequenceDiagram
 | Known-answer probes | `run:known-answer-expanded-cohort` | Remote BAM pileup/depth helpers backed by samtools-style probes | COLO829 BRAF V600E, HG008 SNV/CNV confirmations, gap/blocker report |
 | Verification | `verify:*` commands | Python CSV/JSON/Markdown parsing | Machine-checkable pass/fail gates and no-call boundaries |
 
-## Reading The Diagram
+## Architecture Notes
 
-Python is the control plane. It reads manifests, calls external tools, computes summary tables, writes evidence, and enforces verifier contracts. BWA, samtools, bcftools, and GATK do the core bioinformatics work. Optional native libraries such as `pysam`, `pyfaidx`, `polars`, `truvari`, and SigProfiler-compatible packages are used where they reduce parsing risk or unlock full-depth benchmarking.
+- Python commands are deterministic adapters around manifests, public inputs, and OSS tool outputs.
+- External tools are treated as subprocess dependencies with logs, version capture, and generated summary files.
+- Nextflow does not replace Python logic; it provides runtime portability, resource sizing, resume boundaries, Docker, AWS Batch, and S3 publishing.
+- The result layer is intentionally redundant: CSV/JSON files are machine-checkable, while Markdown files explain the same evidence for reviewers.
+- Clinical interpretation is blocked until verifiers pass, known-answer gaps are closed, and reviewer signoff exists.

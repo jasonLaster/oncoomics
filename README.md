@@ -43,6 +43,22 @@ Python owns orchestration and evidence generation. The bioinformatics work is do
 | Development checks | Ruff, mypy, pytest |
 | Optional native scale-up | pysam, pyfaidx, polars, truvari, SigProfiler-compatible signature assignment |
 
+```mermaid
+sequenceDiagram
+    actor User
+    participant Pipeline as Python pipeline
+    participant Tools as OSS bioinformatics tools
+    participant Truth as public truth sets
+    participant Evidence as results and verifiers
+
+    User->>Pipeline: run HRD, subtype, WES/WGS, or known-answer command
+    Pipeline->>Tools: call BWA, samtools, GATK, bcftools, and optional native libs
+    Tools-->>Pipeline: return BAM, VCF, depth, CNV, SBS96, and SV evidence
+    Pipeline->>Truth: compare public samples to expected answers
+    Pipeline->>Evidence: write CSV/JSON/Markdown summaries
+    Evidence-->>User: pass/fail status, caveats, gaps, and no-call boundaries
+```
+
 Commands all use the same entry point:
 
 ```sh
@@ -69,7 +85,7 @@ Start here:
 - [docs/README.md](docs/README.md): short documentation map.
 - [docs/status/current-state.md](docs/status/current-state.md): what has passed, what is partial, what is blocked.
 - [docs/validation/known-answer-datasets.md](docs/validation/known-answer-datasets.md): public validation samples and dataset priorities.
-- [docs/operations/analytics-sequence.md](docs/operations/analytics-sequence.md): sequence diagram of Python orchestration and OSS tool calls.
+- [docs/operations/analytics-sequence.md](docs/operations/analytics-sequence.md): systems architecture for analytics orchestration and OSS tool calls.
 - [docs/data/source-map.md](docs/data/source-map.md): provenance for datasets, tools, truth sets, and vendor context.
 - [docs/operations/running-the-pipeline.md](docs/operations/running-the-pipeline.md): local, Docker, Nextflow, and AWS commands.
 
