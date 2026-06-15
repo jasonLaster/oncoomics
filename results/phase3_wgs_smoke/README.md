@@ -6,17 +6,20 @@ Representative pair: `seqc2_hcc1395_wgs_hiseqx_full`
 
 Reference: `ucsc_hg38_analysis_set_full` (GRCh38/hg38)
 
-Reads per FASTQ end: `568040077`
+Reads per FASTQ end: `942559447`
 
 Read mode: `full`
 
 Parallelism:
 
-1. Available CPUs detected: `64`
+1. Available CPUs detected: `32`
 2. Total thread budget: `16`
 3. Tumor/normal alignment in parallel: `no`
-4. Per-sample alignment/sort threads: `16`
-5. GATK PairHMM threads: `8`
+4. Split-process BWA threads: `16`
+5. Split-process samtools sort threads: `16`
+6. Monolith per-sample BWA threads: `16`
+7. Monolith per-sample samtools sort threads: `16`
+8. GATK PairHMM threads: `8`
 
 What this validates:
 

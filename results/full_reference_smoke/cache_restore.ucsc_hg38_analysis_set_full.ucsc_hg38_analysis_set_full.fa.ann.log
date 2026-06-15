@@ -1,0 +1,9 @@
+$ '/usr/bin/aws' s3 cp --only-show-errors 's3://diana-omics-raw-inputs-172630973301-us-east-1/cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.ann' '/tmp/nxf.7joqrRCGtf/workspace/data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.ann'
+
+## stdout
+
+
+## stderr
+
+
+exit_status=0

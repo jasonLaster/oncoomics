@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-06-13T13:01:23.305Z",
+  "stage": "align_tumor",
+  "status": "restored_cache",
+  "role": "tumor",
+  "runAccession": "SRR7890833",
+  "bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/WGS_EA_T_1.tumor.bam",
+  "bai": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/WGS_EA_T_1.tumor.bam.bai",
+  "cacheUri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/tumor"
+}

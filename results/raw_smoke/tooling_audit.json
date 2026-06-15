@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-12T20:05:33.382Z",
+  "generatedAt": "2026-06-13T12:41:10.740Z",
   "phase2aReady": true,
   "alignmentReady": true,
   "humanReferenceSmokeReady": true,
@@ -16,7 +16,7 @@
   "nativeFoundationReady": false,
   "svBenchmarkReady": false,
   "sigProfilerReady": false,
-  "fullAlignmentToolboxReady": false,
+  "fullAlignmentToolboxReady": true,
   "workflowReady": true,
   "fullWorkflowReady": true,
   "alignmentReadyDefinition": "At least one short-read aligner from bwa/bwa-mem2/minimap2 plus samtools.",
@@ -42,7 +42,7 @@
         },
         {
           "tool": "python3",
-          "path": "/opt/homebrew/bin/python3",
+          "path": "/usr/bin/python3",
           "available": true
         }
       ],
@@ -54,26 +54,26 @@
       "tools": [
         {
           "tool": "prefetch",
-          "path": "",
-          "available": false
+          "path": "/usr/bin/prefetch",
+          "available": true
         },
         {
           "tool": "fasterq-dump",
-          "path": "",
-          "available": false
+          "path": "/usr/bin/fasterq-dump",
+          "available": true
         },
         {
           "tool": "fastq-dump",
-          "path": "",
-          "available": false
+          "path": "/usr/bin/fastq-dump",
+          "available": true
         },
         {
           "tool": "vdb-config",
-          "path": "",
-          "available": false
+          "path": "/usr/bin/vdb-config",
+          "available": true
         }
       ],
-      "allAvailable": false
+      "allAvailable": true
     },
     {
       "group": "qc",
@@ -96,7 +96,7 @@
         },
         {
           "tool": "seqkit",
-          "path": "/opt/homebrew/bin/seqkit",
+          "path": "/usr/bin/seqkit",
           "available": true
         }
       ],
@@ -108,26 +108,26 @@
       "tools": [
         {
           "tool": "bwa",
-          "path": "/opt/homebrew/bin/bwa",
+          "path": "/usr/bin/bwa",
           "available": true
         },
         {
           "tool": "bwa-mem2",
-          "path": "",
-          "available": false
+          "path": "/usr/local/bin/bwa-mem2",
+          "available": true
         },
         {
           "tool": "minimap2",
-          "path": "",
-          "available": false
+          "path": "/usr/local/bin/minimap2",
+          "available": true
         },
         {
           "tool": "samtools",
-          "path": "/opt/homebrew/bin/samtools",
+          "path": "/usr/bin/samtools",
           "available": true
         }
       ],
-      "allAvailable": false
+      "allAvailable": true
     },
     {
       "group": "caller_smoke",
@@ -135,7 +135,7 @@
       "tools": [
         {
           "tool": "bcftools",
-          "path": "/opt/homebrew/bin/bcftools",
+          "path": "/usr/bin/bcftools",
           "available": true
         }
       ],
@@ -147,7 +147,7 @@
       "tools": [
         {
           "tool": "java17",
-          "path": "/opt/homebrew/opt/openjdk@17/bin/java",
+          "path": "/usr/bin/java",
           "available": true
         },
         {
@@ -174,22 +174,22 @@
         },
         {
           "tool": "bwa",
-          "path": "/opt/homebrew/bin/bwa",
+          "path": "/usr/bin/bwa",
           "available": true
         },
         {
           "tool": "samtools",
-          "path": "/opt/homebrew/bin/samtools",
+          "path": "/usr/bin/samtools",
           "available": true
         },
         {
           "tool": "bcftools",
-          "path": "/opt/homebrew/bin/bcftools",
+          "path": "/usr/bin/bcftools",
           "available": true
         },
         {
           "tool": "java17",
-          "path": "/opt/homebrew/opt/openjdk@17/bin/java",
+          "path": "/usr/bin/java",
           "available": true
         }
       ],
@@ -216,22 +216,22 @@
         },
         {
           "tool": "bwa",
-          "path": "/opt/homebrew/bin/bwa",
+          "path": "/usr/bin/bwa",
           "available": true
         },
         {
           "tool": "samtools",
-          "path": "/opt/homebrew/bin/samtools",
+          "path": "/usr/bin/samtools",
           "available": true
         },
         {
           "tool": "bcftools",
-          "path": "/opt/homebrew/bin/bcftools",
+          "path": "/usr/bin/bcftools",
           "available": true
         },
         {
           "tool": "java17",
-          "path": "/opt/homebrew/opt/openjdk@17/bin/java",
+          "path": "/usr/bin/java",
           "available": true
         }
       ],
@@ -248,18 +248,18 @@
         },
         {
           "tool": "python3",
-          "path": "/opt/homebrew/bin/python3",
+          "path": "/usr/bin/python3",
           "available": true
         },
         {
           "tool": "nextflow",
-          "path": "/opt/homebrew/bin/nextflow",
-          "available": true
+          "path": "",
+          "available": false
         },
         {
           "tool": "docker",
-          "path": "/opt/homebrew/bin/docker",
-          "available": true
+          "path": "",
+          "available": false
         },
         {
           "tool": "singularity",
@@ -280,13 +280,13 @@
       "tools": [
         {
           "tool": "nextflow",
-          "path": "/opt/homebrew/bin/nextflow",
-          "available": true
+          "path": "",
+          "available": false
         },
         {
           "tool": "docker",
-          "path": "/opt/homebrew/bin/docker",
-          "available": true
+          "path": "",
+          "available": false
         },
         {
           "tool": "singularity",
@@ -305,8 +305,8 @@
         },
         {
           "tool": "micromamba",
-          "path": "",
-          "available": false
+          "path": "/usr/local/bin/micromamba",
+          "available": true
         }
       ],
       "allAvailable": false

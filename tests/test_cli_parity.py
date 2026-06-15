@@ -149,6 +149,9 @@ class CliParityTest(unittest.TestCase):
     def test_phase3_aws_failfast_task_is_conservative(self):
         argv = TASKS["nf:aws:phase3-wgs:full:ondemand-failfast"].steps[0].argv
         self.assertIn("awsbatch_ondemand", argv)
+        self.assertEqual("public_bam", argv[argv.index("--phase3_source_mode") + 1])
+        self.assertEqual("flagstat_only", argv[argv.index("--phase3_bam_validation_mode") + 1])
+        self.assertEqual("full", argv[argv.index("--phase3_coverage_cnv_mode") + 1])
         self.assertIn("--aws_max_retries", argv)
         self.assertEqual("0", argv[argv.index("--aws_max_retries") + 1])
         self.assertEqual("16", argv[argv.index("--phase3_align_cpus") + 1])

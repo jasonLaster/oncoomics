@@ -78,11 +78,17 @@ def download_if_missing(url: str, relative_path: str, label: str) -> bool:
     if path_from_root(relative_path).exists() and path_from_root(relative_path).stat().st_size > 0:
         return False
     tmp_path = f"{relative_path}.tmp"
-    run_command(
-        f"curl -L --fail --retry 3 --retry-delay 2 -o {quote_shell_arg(tmp_path)} {quote_shell_arg(url)} && mv {quote_shell_arg(tmp_path)} {quote_shell_arg(relative_path)}",
-        f"{RESULTS_DIR}/logs/download.{label}.log",
-    )
+    run_command(download_command(url, tmp_path, relative_path), f"{RESULTS_DIR}/logs/download.{label}.log")
     return True
+
+
+def download_command(url: str, tmp_path: str, relative_path: str) -> str:
+    return (
+        "curl -L --fail --retry 8 --retry-all-errors --retry-delay 5 "
+        "--connect-timeout 30 --speed-time 60 --speed-limit 1024 "
+        f"-C - -o {quote_shell_arg(tmp_path)} {quote_shell_arg(url)} && "
+        f"mv {quote_shell_arg(tmp_path)} {quote_shell_arg(relative_path)}"
+    )
 
 
 def file_summary(asset: dict[str, str]) -> dict:

@@ -1,2 +1,2 @@
-status,tool,bin_size,bin_count,median_log2_tumor_normal,relative_gain_bins,relative_loss_bins,output_bins,scarhrd_input_status,caveat
-passed,samtools bedcov,5000000,631,-0.1459,70,202,results/phase3_wgs_smoke/coverage_cnv_bins.csv,not_assessable_without_allele_specific_segments,Real WGS BAM coverage-derived CNV bins from samtools bedcov. This validates CNV feature plumbing but is not allele-specific segmentation or scarHRD.
+status,tool,coverage_cnv_mode,bin_size,bin_count,median_log2_tumor_normal,relative_gain_bins,relative_loss_bins,output_bins,scarhrd_input_status,real_output_status,caveat
+passed,samtools bedcov,full,5000000,631,0.0,111,74,results/phase3_wgs_smoke/coverage_cnv_bins.csv,not_assessable_without_allele_specific_segments,real_coverage_cnv_bin_output,Real WGS BAM coverage-derived CNV bins from samtools bedcov. This validates CNV feature plumbing but is not allele-specific segmentation or scarHRD.

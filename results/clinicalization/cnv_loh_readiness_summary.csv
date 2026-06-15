@@ -1,2 +1,2 @@
 status,candidate_count,primary_candidate_count,phase3_cnv_status,phase3_cnv_bins,phase3_cnv_tool,phase3_scarhrd_input_status,current_bins_are_not_allele_specific_segments,ready_for_clinical_interpretation,next_step,error_count
-passed,4,1,passed,631,samtools bedcov,not_assessable_without_allele_specific_segments,yes,no,Containerize the primary candidate and run HG008/COLO829 CNV/LOH truth-overlap fixtures before enabling scarHRD interpretation.,0
+passed,4,1,passed,631,samtools bedcov,not_assessable_low_depth_smoke_no_allele_specific_segments,yes,no,Containerize the primary candidate and run HG008/COLO829 CNV/LOH truth-overlap fixtures before enabling scarHRD interpretation.,0

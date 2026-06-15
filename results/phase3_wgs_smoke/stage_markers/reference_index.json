@@ -1,0 +1,8 @@
+{
+  "generatedAt": "2026-06-13T12:45:43.521Z",
+  "stage": "reference_index",
+  "status": "passed",
+  "referenceId": "ucsc_hg38_analysis_set_full",
+  "referencePath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa",
+  "threads": 16
+}

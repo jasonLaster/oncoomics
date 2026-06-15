@@ -1,6 +1,6 @@
 # Diana Readiness Gate
 
-Status: **ready for Phase 4 setup once Diana raw files arrive, but not ready for clinical interpretation without raw-file inventory, Diana-specific production resource decisions, WGS/CNV/SV/signature policy, and reviewer sign-off**.
+Status: **not ready for Phase 4 setup until the Phase 3 full-source public WGS gate passes; also not ready for clinical interpretation without raw-file inventory, Diana-specific production resource decisions, WGS/CNV/SV/signature policy, and reviewer sign-off**.
 
 ## Required Before Diana Data
 
@@ -11,7 +11,7 @@ Status: **ready for Phase 4 setup once Diana raw files arrive, but not ready for
 5. Confirm whether the requested DNA workflow should be GRCh38, GRCh37/hg19, hs37d5, or a vendor-specific reference bundle.
 6. Confirm WES intervals, known-sites resources, germline-resource/PoN/contamination policy, and final production somatic-caller route if raw DNA is FASTQ/BAM/CRAM.
 7. If Diana DNA is WGS, confirm CNV/SV/signature tooling, compute target, and benchmark thresholds before interpreting HRD signatures.
-8. Confirm that the Phase 3 full-source public WGS validation remains passing before Diana data arrive.
+8. Run or confirm the Phase 3 full-source public WGS validation before Diana data arrive.
 9. Get reviewer sign-off on the benchmark caveats.
 
 ## Validation State
@@ -24,6 +24,6 @@ The benchmark mechanics are runnable and validated on open processed public data
 4. Phase 2D full-reference caller-readiness smoke using the UCSC hg38 analysis set, BRCA1/BRCA2 interval metadata, and an indexed bcftools VCF contract smoke.
 5. Phase 2E GATK Mutect2 production-style tumor-normal smoke on a larger HCC1395 WES downsample, with SEQC2 truth VCFs available for bounded overlap checks.
 6. Phase 2F full WES benchmark on the SEQC2/HCC1395 tumor-normal pair, with full FASTQ MD5 validation, full-reference BAM contracts, GATK duplicate marking, common-biallelic contamination estimation, PoN-aware Mutect2, and bounded truth-overlap metrics.
-7. Phase 3 full-source WGS validation on the SEQC2/HCC1395 tumor-normal WGS pair, with complete public WGS FASTQs, full-reference BAM contracts, Mutect2 WGS output, coverage-CNV bins, SBS96 matrix output, and BAM-derived SV evidence.
+7. Phase 3 full-source representative WGS validation on the SEQC2/HCC1395 tumor-normal WGS pair, with full-reference BAM contracts, Mutect2 WGS output, coverage-CNV bins, SBS96 matrix output, and BAM-derived SV evidence.
 
-The current workflow is sufficient to validate project plumbing, samplesheet shape, local BAM file contracts, partial and full human-reference handling, a production-style Mutect2 execution path, indexed somatic VCF outputs, full WES small-variant benchmark behavior, full-source WGS feature-lane mechanics, and evidence-table boundaries. It is not sufficient to make a treatment-changing HRD claim, and it does not yet validate allele-specific CNV calls, production SV caller VCFs, or WGS-grade HRD signatures.
+The current workflow is sufficient to validate project plumbing, samplesheet shape, local BAM file contracts, partial and full human-reference handling, a production-style Mutect2 execution path, indexed somatic VCF outputs, full WES small-variant benchmark behavior, bounded WGS feature-lane mechanics, and evidence-table boundaries. It is not sufficient to make a treatment-changing HRD claim, and it does not yet validate the full-source WGS acceptance gate, allele-specific CNV calls, production SV caller VCFs, or WGS-grade HRD signatures.

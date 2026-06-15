@@ -2,10 +2,12 @@
 .nextflow/
 work/
 nextflow-out/
+logs/
+bam/
+artifacts/
 .pytest_cache/
 **/__pycache__/
 *.pyc
-bam/
 
 data/raw/**
 !data/raw/.gitkeep

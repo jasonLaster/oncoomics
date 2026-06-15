@@ -1,8 +1,55 @@
 {
-  "generatedAt": "2026-06-07T06:35:11.303Z",
+  "generatedAt": "2026-06-13T12:42:13.923Z",
   "status": "built",
   "referenceCount": 1,
   "sampleRows": 2,
+  "assetCache": {
+    "enabled": true,
+    "uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/cache/phase3_wgs",
+    "mode": "readwrite",
+    "events": [
+      {
+        "action": "restored",
+        "path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/hg38.analysisSet.fa.gz"
+      },
+      {
+        "action": "restored",
+        "path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa"
+      },
+      {
+        "action": "restored",
+        "path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.fai"
+      },
+      {
+        "action": "restored",
+        "path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.amb"
+      },
+      {
+        "action": "restored",
+        "path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.ann"
+      },
+      {
+        "action": "restored",
+        "path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.bwt"
+      },
+      {
+        "action": "restored",
+        "path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.pac"
+      },
+      {
+        "action": "restored",
+        "path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.sa"
+      },
+      {
+        "action": "restored",
+        "path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.dict"
+      },
+      {
+        "action": "restored",
+        "path": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/brca_chr13_chr17_smoke.bed"
+      }
+    ]
+  },
   "references": [
     {
       "reference_id": "ucsc_hg38_analysis_set_full",

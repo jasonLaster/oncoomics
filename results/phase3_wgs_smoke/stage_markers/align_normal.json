@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-06-13T13:06:12.581Z",
+  "stage": "align_normal",
+  "status": "restored_cache",
+  "role": "normal",
+  "runAccession": "SRR7890832",
+  "bam": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/WGS_EA_N_1.normal.bam",
+  "bai": "data/raw/phase3_wgs_smoke/seqc2_hcc1395_wgs_hiseqx_full/ucsc_hg38_analysis_set_full/full/bam/WGS_EA_N_1.normal.bam.bai",
+  "cacheUri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/normal"
+}

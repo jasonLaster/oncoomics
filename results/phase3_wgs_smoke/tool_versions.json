@@ -1,8 +1,16 @@
 {
-  "generatedAt": "2026-06-12T17:22:24.935Z",
+  "generatedAt": "2026-06-13T13:25:38.368Z",
   "bwa": {
     "path": "/usr/bin/bwa",
     "version": "Program: bwa (alignment via Burrows-Wheeler transformation)\nVersion: 0.7.17-r1188\nContact: Heng Li <lh3@sanger.ac.uk>\n\nUsage:   bwa <command> [options]\n\nCommand: index         index sequences in the FASTA format"
+  },
+  "bwa_mem2": {
+    "path": "/usr/local/bin/bwa-mem2",
+    "version": "Usage: bwa-mem2 <command> <arguments>\nCommands:\n  index         create index\n  mem           alignment\n  version       print version number"
+  },
+  "minimap2": {
+    "path": "/usr/local/bin/minimap2",
+    "version": "Usage: minimap2 [options] <target.fa>|<target.idx> [query.fa] [...]\nOptions:\n  Indexing:\n    -H           use homopolymer-compressed k-mer (preferrable for PacBio)\n    -k INT       k-mer size (no larger than 28) [15]\n    -w INT       minimizer window size [10]\n    -I NUM       split index for every ~NUM input bases [8G]\n    -d FILE      dump index to FILE []"
   },
   "samtools": {
     "path": "/usr/bin/samtools",
@@ -13,11 +21,43 @@
     "version": "Program: bcftools (Tools for variant calling and manipulating VCFs and BCFs)\nVersion: 1.16 (using htslib 1.16)\n\nUsage:   bcftools [--version|--version-only] [--help] <command> <argument>\n\nCommands:"
   },
   "java": {
-    "path": "/usr/bin/java",
-    "version": "openjdk version \"17.0.19\" 2026-04-21"
+    "path": "",
+    "version": "skipped_public_bam_timing"
   },
   "gatk": {
-    "jarPath": "data/raw/tools/gatk/gatk-4.6.2.0/gatk-package-4.6.2.0-local.jar",
-    "version": "The Genome Analysis Toolkit (GATK) v4.6.2.0"
+    "jarPath": "",
+    "version": "skipped_public_bam_timing"
+  },
+  "optionalNativeIntegrations": {
+    "pysam": {
+      "available": "no",
+      "package": "pysam",
+      "version": "",
+      "purpose": "native BAM/VCF/BCF parsing for full-depth variant and alignment checks"
+    },
+    "pyfaidx": {
+      "available": "no",
+      "package": "pyfaidx",
+      "version": "",
+      "purpose": "indexed reference-sequence lookup for SBS96 and normalization features"
+    },
+    "polars": {
+      "available": "no",
+      "package": "polars",
+      "version": "",
+      "purpose": "larger manifest and result joins once multi-sample validation scales"
+    },
+    "truvari": {
+      "available": "no",
+      "package": "truvari",
+      "version": "",
+      "purpose": "SV truth-set comparison for HG008 and COLO829 orthogonal validation"
+    },
+    "SigProfilerAssignment": {
+      "available": "no",
+      "package": "SigProfilerAssignment",
+      "version": "",
+      "purpose": "SBS signature assignment once full WGS mutation counts are adequate"
+    }
   }
 }

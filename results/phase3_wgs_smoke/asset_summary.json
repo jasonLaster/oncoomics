@@ -1,15 +1,16 @@
 {
-  "generatedAt": "2026-06-10T23:13:04.201Z",
+  "generatedAt": "2026-06-13T12:49:46.575Z",
   "status": "ready",
   "phase": "3",
   "pairId": "seqc2_hcc1395_wgs_hiseqx_full",
   "readRequest": "full",
   "readPairsMode": "full",
-  "sourceMode": "aws_sra",
+  "sourceMode": "public_bam",
+  "fastqLocalMode": "hydrate",
   "sampleRows": 2,
   "fetchedSampleRows": 1,
   "fetchOnlyRole": "tumor",
-  "source": "SEQC2/HCC1395 public HiSeq X Ten WGS tumor-normal FASTQ pair",
+  "source": "SEQC2/HCC1395 public HiSeq X Ten WGS tumor-normal BWA MEM BAM/BAI pair",
   "reference": {
     "referenceId": "ucsc_hg38_analysis_set_full",
     "assembly": "hg38",
@@ -19,13 +20,18 @@
     "dictPath": "data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.dict"
   },
   "gatk": {
-    "jarPath": "data/raw/tools/gatk/gatk-4.6.2.0/gatk-package-4.6.2.0-local.jar",
-    "javaPath": "/usr/bin/java"
+    "status": "skipped_missing_allowed",
+    "required": false,
+    "requireMode": "0",
+    "jarPath": "",
+    "javaPath": ""
   },
   "seqc2Truth": {
-    "snvVcfPath": "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz",
-    "indelVcfPath": "data/raw/reference/seqc2_hcc1395_truth/latest/high-confidence_sINDEL_in_HC_regions_v1.2.1.vcf.gz",
-    "highConfidenceBedPath": "data/raw/reference/seqc2_hcc1395_truth/latest/High-Confidence_Regions_v1.2.bed"
+    "status": "skipped_missing_allowed",
+    "required": false,
+    "snvVcfPath": "",
+    "indelVcfPath": "",
+    "highConfidenceBedPath": ""
   },
   "parallelism": {
     "fetchConcurrency": 8,
@@ -35,15 +41,13 @@
     "enabled": true,
     "uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/cache/phase3_wgs",
     "mode": "readwrite",
-    "cacheSraObjects": true,
-    "cacheFastqs": true,
-    "deleteSraAfterConversion": true,
-    "published": [],
-    "deletedLocalSra": []
+    "publicBamSource": true,
+    "bamRoot": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/data/WGS",
+    "validationMethod": "public_bwa_mem_bam_manifest_sra_spot_count_check"
   },
   "completionModes": {
     "default": "Full-source public WGS validation.",
     "bounded_developer_check": "Set PHASE3_WGS_READS to an integer only for developer plumbing checks; bounded mode does not satisfy the Phase 3 acceptance gate."
   },
-  "boundary": "Full-source runs prepare complete SEQC2/HCC1395 public WGS FASTQs for Phase 3 validation. Bounded subsets are optional developer checks and are not accepted as completed orthogonal validation."
+  "boundary": "Full-source runs prepare complete SEQC2/HCC1395 public WGS inputs for Phase 3 validation. Bounded subsets are optional developer checks and are not accepted as completed orthogonal validation."
 }

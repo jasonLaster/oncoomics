@@ -89,6 +89,15 @@ class AuditAndProductionHelpersTest(unittest.TestCase):
         self.assertEqual(fetch_full_wes_benchmark_assets.reference_dict_path("ref.fa"), "ref.dict")
         self.assertEqual(fetch_full_wes_benchmark_assets.reference_dict_path("ref.fasta"), "ref.dict")
 
+    def test_production_asset_download_resumes_and_retries_all_errors(self):
+        command = fetch_production_somatic_assets.download_command(
+            "https://example.test/gatk.zip", "data/raw/tools/gatk/gatk.zip.tmp", "data/raw/tools/gatk/gatk.zip"
+        )
+        self.assertIn("--retry 8", command)
+        self.assertIn("--retry-all-errors", command)
+        self.assertIn("-C -", command)
+        self.assertIn("&& mv 'data/raw/tools/gatk/gatk.zip.tmp' 'data/raw/tools/gatk/gatk.zip'", command)
+
     def test_interval_bed_writer_format(self):
         calls = {}
 
