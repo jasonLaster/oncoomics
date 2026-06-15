@@ -8,6 +8,7 @@ from .workflow_tasks import TASKS, run_task
 
 def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.analyze_hrd import main as analyze_hrd
+    from .commands.analyze_lehmann_subtypes import main as analyze_lehmann_subtypes
     from .commands.audit_raw_tools import main as audit_raw_tools
     from .commands.build_alignment_smoke_assets import main as build_alignment_smoke_assets
     from .commands.build_diana_raw_template import main as build_diana_raw_template
@@ -57,6 +58,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
 
     return {
         "analyze:hrd": analyze_hrd,
+        "analyze:lehmann": analyze_lehmann_subtypes,
         "analyze:rna": build_rna_context,
         "audit:raw-tools": audit_raw_tools,
         "build:alignment-smoke": build_alignment_smoke_assets,

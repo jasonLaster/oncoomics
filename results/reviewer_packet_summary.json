@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-12T05:37:14.947Z",
+  "generatedAt": "2026-06-15T00:39:40.522Z",
   "panelSampleCount": 28,
   "categoryCounts": [
     {
@@ -58,5 +58,88 @@
       "predicted_bucket": "predicted_negative",
       "count": "8"
     }
-  ]
+  ],
+  "lehmann": {
+    "generatedAt": "2026-06-15T00:38:27.560Z",
+    "source": {
+      "name": "Lehmann et al. 2016 PLOS One S1 Table",
+      "url": "https://doi.org/10.1371/journal.pone.0157368.s006",
+      "rawCache": "data/raw/lehmann/pone0157368s006.xlsx"
+    },
+    "classifierValidation": {
+      "generatedAt": "2026-06-15T00:38:27.445Z",
+      "runMode": "non_dry_expression_classifier_validation",
+      "status": "completed",
+      "method": "Python port of the public BCTL Lehmann signature-score helper using cBioPortal PanCan Atlas RNA Seq V2 RSEM values.",
+      "boundary": "This validates expression acquisition and signature scoring, but it is not the Vanderbilt TNBCtype centroid/permutation web-tool implementation.",
+      "signatureSource": "https://github.com/BCTL-Bordet/TNBC_molecularsubtypes/blob/main/lehmann.RData",
+      "signatureCsv": "data/processed/lehmann/lehmann_signature_genes.csv",
+      "rawExpressionCache": "data/raw/lehmann/cbioportal_tcga_tnbc_lehmann_signature_expression.json.gz",
+      "officialTcgaTnbcSamples": 180,
+      "assessableSamples": 179,
+      "missingExpressionSamples": [
+        "TCGA-AR-A2LR-01"
+      ],
+      "signatureRows": 7799,
+      "signatureUniqueEntrezRequested": 4059,
+      "expressionRecordsFetched": 719938,
+      "availableSignatureEntrez": 4022,
+      "availableExpressionSamples": 179,
+      "coverageBySubtype": {
+        "basal_like_1": {
+          "signatureEntrezCount": 671,
+          "availableEntrezCount": 659,
+          "coverage": 0.9821
+        },
+        "basal_like_2": {
+          "signatureEntrezCount": 430,
+          "availableEntrezCount": 414,
+          "coverage": 0.9628
+        },
+        "immunomodulatory": {
+          "signatureEntrezCount": 1055,
+          "availableEntrezCount": 1034,
+          "coverage": 0.9801
+        },
+        "mesenchymal": {
+          "signatureEntrezCount": 836,
+          "availableEntrezCount": 816,
+          "coverage": 0.9761
+        },
+        "mesenchymal_stem_like": {
+          "signatureEntrezCount": 2346,
+          "availableEntrezCount": 2323,
+          "coverage": 0.9902
+        },
+        "luminal_ar": {
+          "signatureEntrezCount": 2220,
+          "availableEntrezCount": 2205,
+          "coverage": 0.9932
+        }
+      },
+      "localTnbctypeMatches": 124,
+      "localTnbctypeMatchRate": 0.6927,
+      "localRefinedMatches": 142,
+      "localRefinedMatchRate": 0.7933
+    },
+    "officialTcgaTnbcCount": 180,
+    "panelSampleCount": 28,
+    "panelWithOfficialLehmannCount": 8,
+    "panelMissingOfficialLehmannCount": 20,
+    "statusCounts": {
+      "basal_context_but_not_official_lehmann_tnbc": 2,
+      "confirmed_from_lehmann_tcga_s1": 8,
+      "no_call_not_in_official_lehmann_tcga_tnbc": 5,
+      "not_applicable_not_tnbc_from_available_fields": 13
+    },
+    "currentRnaMarkerGeneCount": 19,
+    "currentRnaBoundary": "Current RNA context is a marker-module lane, not a genome-wide TNBCtype classifier input.",
+    "dianaRequirements": [
+      "Clinical ER/PR/HER2 confirmation that the tumor is TNBC.",
+      "Genome-wide RNA expression from tumor RNA-seq/WTS or a validated expression assay.",
+      "Normalization on TNBC samples only, or an equivalent locked TNBCtype input contract.",
+      "Locked TNBCtype/TNBCtype-4 implementation or archived Vanderbilt web-tool run with coefficients and p-values.",
+      "TCGA positive controls from the official S1 table for regression testing."
+    ]
+  }
 }

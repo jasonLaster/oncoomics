@@ -135,6 +135,7 @@ TASKS: dict[str, Task] = {
         _py("build:panel"),
         _py("analyze:hrd"),
         _py("analyze:rna"),
+        _py("analyze:lehmann"),
         _py("build:packet"),
         _py("verify:outputs"),
     ),

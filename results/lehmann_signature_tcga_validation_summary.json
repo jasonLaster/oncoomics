@@ -1,0 +1,56 @@
+{
+  "generatedAt": "2026-06-15T00:38:27.445Z",
+  "runMode": "non_dry_expression_classifier_validation",
+  "status": "completed",
+  "method": "Python port of the public BCTL Lehmann signature-score helper using cBioPortal PanCan Atlas RNA Seq V2 RSEM values.",
+  "boundary": "This validates expression acquisition and signature scoring, but it is not the Vanderbilt TNBCtype centroid/permutation web-tool implementation.",
+  "signatureSource": "https://github.com/BCTL-Bordet/TNBC_molecularsubtypes/blob/main/lehmann.RData",
+  "signatureCsv": "data/processed/lehmann/lehmann_signature_genes.csv",
+  "rawExpressionCache": "data/raw/lehmann/cbioportal_tcga_tnbc_lehmann_signature_expression.json.gz",
+  "officialTcgaTnbcSamples": 180,
+  "assessableSamples": 179,
+  "missingExpressionSamples": [
+    "TCGA-AR-A2LR-01"
+  ],
+  "signatureRows": 7799,
+  "signatureUniqueEntrezRequested": 4059,
+  "expressionRecordsFetched": 719938,
+  "availableSignatureEntrez": 4022,
+  "availableExpressionSamples": 179,
+  "coverageBySubtype": {
+    "basal_like_1": {
+      "signatureEntrezCount": 671,
+      "availableEntrezCount": 659,
+      "coverage": 0.9821
+    },
+    "basal_like_2": {
+      "signatureEntrezCount": 430,
+      "availableEntrezCount": 414,
+      "coverage": 0.9628
+    },
+    "immunomodulatory": {
+      "signatureEntrezCount": 1055,
+      "availableEntrezCount": 1034,
+      "coverage": 0.9801
+    },
+    "mesenchymal": {
+      "signatureEntrezCount": 836,
+      "availableEntrezCount": 816,
+      "coverage": 0.9761
+    },
+    "mesenchymal_stem_like": {
+      "signatureEntrezCount": 2346,
+      "availableEntrezCount": 2323,
+      "coverage": 0.9902
+    },
+    "luminal_ar": {
+      "signatureEntrezCount": 2220,
+      "availableEntrezCount": 2205,
+      "coverage": 0.9932
+    }
+  },
+  "localTnbctypeMatches": 124,
+  "localTnbctypeMatchRate": 0.6927,
+  "localRefinedMatches": 142,
+  "localRefinedMatchRate": 0.7933
+}

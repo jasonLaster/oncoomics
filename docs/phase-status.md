@@ -62,6 +62,7 @@ Verifier:
 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:panel
 PYTHONPATH=src /usr/bin/python3 -m diana_omics analyze:hrd
 PYTHONPATH=src /usr/bin/python3 -m diana_omics analyze:rna
+PYTHONPATH=src /usr/bin/python3 -m diana_omics analyze:lehmann
 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:packet
 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 ```

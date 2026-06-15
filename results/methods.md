@@ -24,6 +24,10 @@ Likely damaging variants are rule-classified as nonsense, frameshift, splice-sit
 
 RNA context uses selected marker genes from cBioPortal RNA Seq V2 RSEM batch-normalized values. Scores are log2(value + 1), z-scored across the fetched cohort, then averaged into marker modules.
 
+## Lehmann/TNBCtype Context
+
+Official Lehmann TCGA TNBC calls are imported from the 2016 PLOS One supplementary table for public TCGA cross-checking. New Diana Lehmann subtype calls are not computed from the current marker lane; they require genome-wide RNA expression, TNBC-only normalization or an equivalent locked input contract, and a locked TNBCtype/TNBCtype-4 implementation or archived Vanderbilt web-tool run.
+
 ## Raw-Data Smoke Lanes
 
 Phase 2A validates direct raw FASTQ access and pairing from a small SEQC2/HCC1395 tumor-normal WES subset. Phase 2B validates local FASTQ-to-BAM mechanics against a read-backed synthetic smoke reference. Phase 2C validates partial real-human-reference alignment against UCSC hg38 and hg19 chr13+chr17 references. Phase 2D validates one full reference, the UCSC hg38 analysis set, with BRCA1/BRCA2 interval metadata, full-reference BAM contracts, and a tiny indexed VCF caller smoke. Phase 2E validates a production-style GATK Mutect2 tumor-normal execution path on a larger HCC1395 WES downsample. Phase 2F validates full ENA WES FASTQ downloads, full-reference alignment, GATK duplicate marking, Broad hg38 PoN use, common-biallelic contamination estimation, and a bounded SEQC2 truth-overlap Mutect2 benchmark. Phase 3 currently validates bounded developer WGS mechanics; the full-source public WGS acceptance gate is still pending.

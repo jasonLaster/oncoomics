@@ -38,6 +38,16 @@ REQUIRED_FILES = [
     "results/hrd_predictions.csv",
     "results/rna_subtype_context.csv",
     "results/rna_module_context.csv",
+    "data/processed/lehmann/tcga_tnbc_lehmann_s1_calls.csv",
+    "data/processed/lehmann/lehmann_signature_genes.csv",
+    "results/lehmann_tnbc_tcga_panel.csv",
+    "results/evidence_tables/lehmann_tnbc_tcga_panel.csv",
+    "results/lehmann_signature_tcga_validation.csv",
+    "results/evidence_tables/lehmann_signature_tcga_validation.csv",
+    "results/lehmann_signature_tcga_validation_summary.json",
+    "results/lehmann_signature_tcga_validation.md",
+    "results/lehmann_tnbc_feasibility_summary.json",
+    "results/lehmann_tnbc_feasibility.md",
     "results/methods.md",
     "results/reviewer_packet.md",
     "results/diana_readiness_gate.md",
@@ -391,10 +401,58 @@ def main() -> None:
             len(panel) or 1,
             ["sample_id", "source", "tool", "basal_marker_z", "immune_inflammation_marker_z", "caveat"],
         ),
+        (
+            "data/processed/lehmann/tcga_tnbc_lehmann_s1_calls.csv",
+            180,
+            ["sample_id", "patient_id", "lehmann_tnbctype", "lehmann_refined_tnbctype", "lehmann_im_corr", "lehmann_lar_corr"],
+        ),
+        (
+            "data/processed/lehmann/lehmann_signature_genes.csv",
+            7000,
+            ["signature", "gene", "entrez", "coefficient"],
+        ),
+        (
+            "results/lehmann_tnbc_tcga_panel.csv",
+            len(panel) or 1,
+            ["sample_id", "patient_id", "lehmann_tnbctype", "lehmann_refined_tnbctype", "evidence_status", "next_action"],
+        ),
+        (
+            "results/lehmann_signature_tcga_validation.csv",
+            180,
+            [
+                "sample_id",
+                "official_refined_tnbctype",
+                "local_signature_refined_tnbctype",
+                "matches_official_refined_tnbctype",
+                "assessable_from_cbioportal_signature_expression",
+                "score_bl1",
+                "score_lar",
+            ],
+        ),
     ]
     for path, minimum, columns in table_contracts:
         rows = require_rows(errors, path, minimum)
         require_columns(errors, path, rows, columns)
+
+    lehmann_summary = read_json_if_exists(errors, "results/lehmann_tnbc_feasibility_summary.json")
+    if lehmann_summary.get("officialTcgaTnbcCount") != 180:
+        errors.append("Lehmann feasibility summary must preserve the 180-sample official TCGA TNBC table count.")
+    if lehmann_summary.get("panelWithOfficialLehmannCount") != 8:
+        errors.append("Lehmann feasibility summary must record the current 8-sample official panel overlap.")
+    if lehmann_summary.get("currentRnaMarkerGeneCount") != 19:
+        errors.append("Lehmann feasibility summary must preserve the current 19-gene marker-lane boundary.")
+    classifier = lehmann_summary.get("classifierValidation", {})
+    if not isinstance(classifier, dict):
+        errors.append("Lehmann feasibility summary must include classifierValidation from the non-dry expression run.")
+        classifier = {}
+    if classifier.get("runMode") != "non_dry_expression_classifier_validation":
+        errors.append("Lehmann classifier validation must record runMode=non_dry_expression_classifier_validation.")
+    if int(classifier.get("assessableSamples") or 0) < 179:
+        errors.append("Lehmann classifier validation must score at least 179 TCGA TNBC controls.")
+    if int(classifier.get("expressionRecordsFetched") or 0) < 700000:
+        errors.append("Lehmann classifier validation must fetch the full signature-gene expression payload.")
+    if int(classifier.get("localRefinedMatches") or 0) < 100:
+        errors.append("Lehmann classifier validation concordance is too low for a completed non-dry run.")
 
     raw_panel = require_rows(errors, "manifests/raw_representative_panel.csv", 8)
     require_columns(

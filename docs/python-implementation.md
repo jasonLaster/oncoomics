@@ -43,6 +43,7 @@ Public data and processed-panel analysis:
 - `build:panel`
 - `analyze:hrd`
 - `analyze:rna`
+- `analyze:lehmann`
 - `build:packet`
 
 Raw representative data:

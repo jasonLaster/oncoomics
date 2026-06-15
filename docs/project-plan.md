@@ -37,6 +37,8 @@ Primary artifacts:
 - `results/scar_signature_table.csv`
 - `results/hrd_predictions.csv`
 - `results/rna_subtype_context.csv`
+- `results/lehmann_tnbc_tcga_panel.csv`
+- `results/lehmann_signature_tcga_validation.csv`
 - `results/reviewer_packet.md`
 
 Verifier:
@@ -45,6 +47,7 @@ Verifier:
 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:panel
 PYTHONPATH=src /usr/bin/python3 -m diana_omics analyze:hrd
 PYTHONPATH=src /usr/bin/python3 -m diana_omics analyze:rna
+PYTHONPATH=src /usr/bin/python3 -m diana_omics analyze:lehmann
 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:packet
 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:outputs
 ```

@@ -160,7 +160,7 @@ SMOKE_PREREQUISITES = (
 FULL_REFERENCE = ("fetch:full-reference-smoke", "smoke:full-reference")
 PRODUCTION_SOMATIC = ("fetch:production-somatic", "smoke:production-somatic")
 FULL_WES = ("fetch:full-wes", "benchmark:full-wes")
-FINAL_ANALYSIS = ("build:panel", "analyze:hrd", "analyze:rna", "build:packet")
+FINAL_ANALYSIS = ("build:panel", "analyze:hrd", "analyze:rna", "analyze:lehmann", "build:packet")
 
 
 def quick_steps() -> tuple[WorkflowStep, ...]:

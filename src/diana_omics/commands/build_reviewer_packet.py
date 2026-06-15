@@ -38,6 +38,15 @@ def main() -> None:
     confusion = parse_csv(read_text(path_from_root("results/hrd_confusion_matrix.csv")))
     summary = read_json(path_from_root("results/hrd_analysis_summary.json"))
     rna_summary = read_json(path_from_root("results/rna_context_summary.json"))
+    lehmann_summary = optional_summary(
+        "results/lehmann_tnbc_feasibility_summary.json",
+        {
+            "officialTcgaTnbcCount": "not_run",
+            "panelWithOfficialLehmannCount": "not_run",
+            "panelMissingOfficialLehmannCount": "not_run",
+            "currentRnaMarkerGeneCount": "not_run",
+        },
+    )
     cbio_summary = read_json(path_from_root("data/processed/catalog/cbioportal_tcga_brca_summary.json"))
     xena_summary = read_json(path_from_root("data/processed/catalog/xena_tcga_brca_clinical_summary.json"))
     gdc_summary = read_json(path_from_root("data/processed/catalog/gdc_tcga_brca_open_summary.json"))
@@ -106,6 +115,9 @@ def main() -> None:
         if phase3_full_source
         else "The current Phase 3 WGS artifact is a bounded developer subset, not the full-source WGS acceptance run or a final HRD classifier."
     )
+    lehmann_classifier = lehmann_summary.get("classifierValidation", {})
+    if not isinstance(lehmann_classifier, dict):
+        lehmann_classifier = {}
 
     write_text(
         path_from_root("results/methods.md"),
@@ -134,6 +146,10 @@ Likely damaging variants are rule-classified as nonsense, frameshift, splice-sit
 ## RNA Context
 
 RNA context uses selected marker genes from cBioPortal RNA Seq V2 RSEM batch-normalized values. Scores are log2(value + 1), z-scored across the fetched cohort, then averaged into marker modules.
+
+## Lehmann/TNBCtype Context
+
+Official Lehmann TCGA TNBC calls are imported from the 2016 PLOS One supplementary table for public TCGA cross-checking. New Diana Lehmann subtype calls are not computed from the current marker lane; they require genome-wide RNA expression, TNBC-only normalization or an equivalent locked input contract, and a locked TNBCtype/TNBCtype-4 implementation or archived Vanderbilt web-tool run.
 
 ## Raw-Data Smoke Lanes
 
@@ -217,6 +233,13 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 - Phase 3 WGS read-pair mode: {phase3_wgs_summary.get("readPairsMode", "unknown")}
 - Phase 3 coverage-CNV bins: {phase3_wgs_summary.get("coverageCnvBins", "unknown")}
 - Phase 3 SBS96 usable SNVs: {phase3_wgs_summary.get("sbs96UsableSnvRecords", "unknown")}
+- Lehmann official TCGA TNBC samples: {lehmann_summary.get("officialTcgaTnbcCount", "unknown")}
+- Lehmann official calls in current panel: {lehmann_summary.get("panelWithOfficialLehmannCount", "unknown")}
+- Lehmann panel no-calls: {lehmann_summary.get("panelMissingOfficialLehmannCount", "unknown")}
+- Current RNA marker genes for subtype context: {lehmann_summary.get("currentRnaMarkerGeneCount", "unknown")}
+- Lehmann signature expression records fetched: {lehmann_classifier.get("expressionRecordsFetched", "unknown")}
+- Lehmann signature-scored TCGA TNBC controls: {lehmann_classifier.get("assessableSamples", "unknown")} / {lehmann_classifier.get("officialTcgaTnbcSamples", "unknown")}
+- Lehmann local refined-call concordance: {lehmann_classifier.get("localRefinedMatches", "unknown")} / {lehmann_classifier.get("assessableSamples", "unknown")}
 
 ## Frozen Panel
 
@@ -236,23 +259,27 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 2. Sample identifiers cross cBioPortal and Xena without truncation in the selected clinical subset.
 3. The reference panel includes positive, mechanistic, ambiguous, and negative controls.
 4. HRR events, copy-loss proxies, scar proxies, and RNA context are written as separate evidence tables.
-5. Ambiguous samples remain ambiguous instead of being forced into HRD-positive or HRD-negative buckets.
-6. Raw-data smoke tests validate FASTQ pairing, local BAM contracts, and partial real-human-reference alignment against two reference builds.
-7. Full-reference smoke validates one full hg38 analysis-set reference, BRCA interval metadata, caller-ready BAM contracts, and indexed VCF generation.
-8. Production somatic smoke validates GATK Mutect2/FilterMutectCalls execution on a larger downsampled HCC1395 WES tumor-normal pair.
-9. Full WES benchmark validates complete ENA FASTQ files, full-reference BAM contracts, duplicate marking, contamination estimation, PoN-aware Mutect2, and SEQC2 truth-overlap metrics.
-10. {phase3_passed_bullet}
+5. Official Lehmann TCGA TNBC subtype calls are imported and joined to the current panel without imputing missing or non-TNBC samples.
+6. The non-dry Lehmann expression path fetches cBioPortal signature-gene expression and scores TCGA TNBC controls against official calls.
+7. Ambiguous samples remain ambiguous instead of being forced into HRD-positive or HRD-negative buckets.
+8. Raw-data smoke tests validate FASTQ pairing, local BAM contracts, and partial real-human-reference alignment against two reference builds.
+9. Full-reference smoke validates one full hg38 analysis-set reference, BRCA interval metadata, caller-ready BAM contracts, and indexed VCF generation.
+10. Production somatic smoke validates GATK Mutect2/FilterMutectCalls execution on a larger downsampled HCC1395 WES tumor-normal pair.
+11. Full WES benchmark validates complete ENA FASTQ files, full-reference BAM contracts, duplicate marking, contamination estimation, PoN-aware Mutect2, and SEQC2 truth-overlap metrics.
+12. {phase3_passed_bullet}
 
 ## Main Limitations
 
 1. GISTIC copy loss is not allele-specific LOH.
 2. Fraction genome altered and aneuploidy are scar proxies, not scarHRD.
 3. SBS3, SV signatures, CHORD, and HRDetect are not assessable from the current processed phase-1 inputs.
-4. The Phase 2F Mutect2 VCF is WES small-variant benchmark evidence, not WGS HRD signature evidence.
-5. {phase3_limitation}
-6. The Phase 2F local gate uses the Broad 1000g PoN and common-biallelic contamination resource, but the full multi-GB af-only gnomAD resource remains documented as a production/cloud input rather than a local gating download.
-7. BQSR, orientation-bias modeling, vendor capture intervals, allele-specific copy-number, validated SV calling, full-depth WGS scaling, and WGS signature calling remain Phase 4 or Diana-specific production decisions.
-8. Clinical action still requires clinician-owned validation, companion diagnostics, or orthogonal confirmation.
+4. Current RNA subtype context is a marker-module lane, not a genome-wide Lehmann/TNBCtype classifier.
+5. The local Lehmann signature-score validation is not the locked Vanderbilt TNBCtype centroid/permutation implementation.
+6. The Phase 2F Mutect2 VCF is WES small-variant benchmark evidence, not WGS HRD signature evidence.
+7. {phase3_limitation}
+8. The Phase 2F local gate uses the Broad 1000g PoN and common-biallelic contamination resource, but the full multi-GB af-only gnomAD resource remains documented as a production/cloud input rather than a local gating download.
+9. BQSR, orientation-bias modeling, vendor capture intervals, allele-specific copy-number, validated SV calling, full-depth WGS scaling, and WGS signature calling remain Phase 4 or Diana-specific production decisions.
+10. Clinical action still requires clinician-owned validation, companion diagnostics, or orthogonal confirmation.
 
 ## Output Tables
 
@@ -263,11 +290,14 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 - `results/hrd_failure_modes.csv`
 - `results/rna_subtype_context.csv`
 - `results/rna_module_context.csv`
+- `results/lehmann_tnbc_tcga_panel.csv`
+- `results/lehmann_signature_tcga_validation.csv`
 
 ## Summaries
 
 - HRD summary: {json.dumps(summary, separators=(",", ":"))}
 - RNA summary: {json.dumps(rna_summary, separators=(",", ":"))}
+- Lehmann summary: {json.dumps(lehmann_summary, separators=(",", ":"))}
 """
     write_text(path_from_root("results/reviewer_packet.md"), packet)
     write_json(
@@ -278,6 +308,7 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
             "categoryCounts": category_counts,
             "predictionCounts": prediction_counts,
             "confusion": confusion,
+            "lehmann": lehmann_summary,
         },
     )
     print(f"Built reviewer packet for {len(panel)} panel samples.")

@@ -8,6 +8,7 @@ class CliParityTest(unittest.TestCase):
     def test_python_cli_registers_core_workflow_commands(self):
         expected = {
             "analyze:hrd",
+            "analyze:lehmann",
             "analyze:rna",
             "audit:raw-tools",
             "benchmark:full-wes",
