@@ -46,29 +46,29 @@ Python owns orchestration and evidence generation. The bioinformatics work is do
 ```mermaid
 gantt
     title HRD Evidence Computation Path
-    dateFormat X
-    axisFormat %s
+    dateFormat YYYY-MM-DD
+    axisFormat %b %d
 
     section Inputs
-    Load manifests and public or Diana metadata      :0, 1
-    Validate FASTQ, BAM, VCF, RNA, and vendor files  :1, 1
+    Load manifests and metadata              :inputs_meta, 2026-01-01, 1d
+    Validate omics inputs                    :inputs_validate, after inputs_meta, 1d
 
     section DNA Processing
-    Align tumor-normal reads with BWA and samtools   :2, 3
-    Call somatic SNVs and indels with GATK Mutect2   :5, 2
-    Normalize and score VCFs with bcftools           :7, 1
+    Align tumor-normal reads                 :dna_align, after inputs_validate, 3d
+    Call somatic SNVs and indels             :dna_call, after dna_align, 2d
+    Normalize and score VCFs                 :dna_score, after dna_call, 1d
 
     section HRD Evidence
-    Build HRR event and allele-state tables          :8, 1
-    Compute CNV, SV, SBS96, and signature surfaces   :8, 2
-    Add TNBC subtype and RNA context                 :9, 1
+    Build HRR and allele-state tables        :hrd_events, after dna_score, 1d
+    Compute CNV SV SBS96 signature surfaces  :hrd_surfaces, after dna_score, 2d
+    Add TNBC subtype and RNA context         :rna_context, after hrd_events, 1d
 
     section Validation
-    Compare public samples to known answers          :10, 2
-    Run verifier gates and no-call boundaries        :12, 1
+    Compare public samples to known answers  :known_answers, after hrd_surfaces, 2d
+    Run verifier gates and no-call boundaries :verify, after known_answers, 1d
 
     section Output
-    Write reviewer packet and readiness summaries    :13, 1
+    Write reviewer packet and readiness docs :outputs, after verify, 1d
 ```
 
 Commands all use the same entry point:
