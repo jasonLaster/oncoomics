@@ -5,11 +5,14 @@ nextflow-out/
 .pytest_cache/
 **/__pycache__/
 *.pyc
+bam/
 
 data/raw/**
 !data/raw/.gitkeep
 data/processed/**
 results/**
+!results/full_wes_benchmark/
+!results/full_wes_benchmark/full_wes_benchmark_summary.json
 
 infra/aws/.terraform/**
 infra/aws/*.tfstate

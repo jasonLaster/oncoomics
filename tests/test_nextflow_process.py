@@ -26,6 +26,15 @@ class NextflowProcessTest(unittest.TestCase):
         self.assertEqual(steps[-1].command, "verify:outputs")
         self.assertIn("quick does not recompute", steps[-1].failure_message)
 
+    def test_expanded_known_answer_cohort_has_isolated_workflow_steps(self):
+        steps = nf.workflow_steps(nf.ProcessConfig(stage="known_answer_expanded_cohort"))
+        self.assertEqual(
+            command_names(steps),
+            ["run:known-answer-public-findings", "run:known-answer-expanded-cohort", "verify:clinicalization-readiness-rollup"],
+        )
+        self.assertEqual(steps[-1].kind, "optional_python")
+        self.assertIn("expanded known-answer cohort", steps[-1].failure_message)
+
     def test_split_fetch_workspace_skips_wes_by_default_and_removes_fastq_scratch(self):
         steps = nf.workflow_steps(nf.ProcessConfig(stage="phase3_fetch_workspace"))
         messages = [step.message for step in steps if step.kind == "message"]

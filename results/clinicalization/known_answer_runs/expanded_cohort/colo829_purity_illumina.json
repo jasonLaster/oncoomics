@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-06-15T01:26:36.825Z",
+  "probeKey": "colo829_purity_illumina",
+  "status": "expanded_non_dry_blocked_remote_index_missing",
+  "pipelineConfirmation": "not_confirmed",
+  "clinicalUseAllowed": "no",
+  "publicDocumentationAlignment": "gap",
+  "evidenceType": "ena_metadata_without_remote_indexes",
+  "publicFindingResult": "COLO829 purity illumina metadata exposes 5 runs across levels 10, 20, 25, 50, 75 but submitted BAM indexes are missing for remote slicing.",
+  "evidence": {
+    "enaReport": "data/raw/known_answer_public/colo829/ena/PRJEB27698_filereport.tsv",
+    "platformGroup": "illumina",
+    "selectedRunCount": 5,
+    "selectedLevels": [
+      "10",
+      "20",
+      "25",
+      "50",
+      "75"
+    ],
+    "instrumentPlatformCounts": {
+      "ILLUMINA": 5
+    },
+    "submittedBamCount": 5,
+    "submittedBaiCount": 0,
+    "runAccessions": [
+      "ERR4093256",
+      "ERR4093257",
+      "ERR4093258",
+      "ERR4093255",
+      "ERR4093259"
+    ]
+  },
+  "blockers": [
+    "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested."
+  ],
+  "nextAction": "Transfer selected dilution BAM/FASTQ inputs and index locally before running purity recall."
+}

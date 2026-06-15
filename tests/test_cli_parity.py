@@ -28,6 +28,7 @@ class CliParityTest(unittest.TestCase):
             "fetch:raw-candidates",
             "plan:known-answer-benchmarks",
             "run:known-answer-bounded-non-dry",
+            "run:known-answer-expanded-cohort",
             "run:known-answer-public-findings",
             "smoke:alignment",
             "smoke:full-reference",
@@ -77,6 +78,7 @@ class CliParityTest(unittest.TestCase):
         self.assertIn("benchmark:known-answer", TASKS)
         self.assertIn("nf:aws:sra-bench:tiny", TASKS)
         self.assertIn("nf:aws:known-answer-bounded-non-dry", TASKS)
+        self.assertIn("nf:aws:known-answer-expanded-cohort", TASKS)
         self.assertIn("phase3:stage:align:tumor", TASKS)
         forbidden = "b" + "un"
         for name, task in TASKS.items():

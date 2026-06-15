@@ -1,0 +1,79 @@
+{
+  "generatedAt": "2026-06-15T01:26:36.821Z",
+  "probeKey": "colo829_platform_illumina_novaseq_phased",
+  "status": "expanded_non_dry_passed",
+  "pipelineConfirmation": "bounded_braf_guardrail_confirmed",
+  "clinicalUseAllowed": "no",
+  "publicDocumentationAlignment": "aligned",
+  "evidenceType": "remote_indexed_bam_braf_pileup",
+  "publicFindingResult": "COLO829 Illumina NovaSeq phased tumor has BRAF V600E ALT fraction 0.753846 while normal ALT fraction is 0.0.",
+  "evidence": {
+    "platform": "Illumina NovaSeq phased",
+    "region": "7:140453136-140453136",
+    "expectedRef": "A",
+    "expectedAlt": "T",
+    "tumorBam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR282/ERR2820167/phased_possorted_bamCOLO829T.bam",
+    "normalBam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR282/ERR2820166/phased_possorted_bamCOLO829R.bam",
+    "pileup": {
+      "command": "samtools mpileup -r 7:140453136-140453136 https://ftp.sra.ebi.ac.uk/vol1/run/ERR282/ERR2820167/phased_possorted_bamCOLO829T.bam https://ftp.sra.ebi.ac.uk/vol1/run/ERR282/ERR2820166/phased_possorted_bamCOLO829R.bam",
+      "returnCode": 0,
+      "stderr": "[mpileup] 2 samples in 2 input files",
+      "elapsedSeconds": 6.652,
+      "status": "passed",
+      "chrom": "7",
+      "pos": 140453136,
+      "pileupRef": "N",
+      "samples": [
+        {
+          "depthInformative": 65,
+          "refCount": 16,
+          "altCount": 49,
+          "otherCount": 0,
+          "deletionCount": 0,
+          "skipCount": 0,
+          "baseCounts": {
+            "A": 16,
+            "C": 0,
+            "G": 0,
+            "T": 49,
+            "N": 0
+          },
+          "altFraction": 0.753846,
+          "sampleIndex": 0,
+          "bam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR282/ERR2820167/phased_possorted_bamCOLO829T.bam",
+          "depth": 65
+        },
+        {
+          "depthInformative": 24,
+          "refCount": 24,
+          "altCount": 0,
+          "otherCount": 0,
+          "deletionCount": 0,
+          "skipCount": 0,
+          "baseCounts": {
+            "A": 24,
+            "C": 0,
+            "G": 0,
+            "T": 0,
+            "N": 0
+          },
+          "altFraction": 0.0,
+          "sampleIndex": 1,
+          "bam": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR282/ERR2820166/phased_possorted_bamCOLO829R.bam",
+          "depth": 24
+        }
+      ],
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "passed",
+          "returnCode": 0,
+          "elapsedSeconds": 6.652,
+          "stderr": "[mpileup] 2 samples in 2 input files"
+        }
+      ]
+    }
+  },
+  "blockers": [],
+  "nextAction": "Run full COLO829 tumor-normal calling and signature analysis before strict pipeline confirmation."
+}

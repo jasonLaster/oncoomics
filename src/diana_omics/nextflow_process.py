@@ -47,6 +47,7 @@ SOURCE_WORKSPACE_STAGES = {
     "phase3_sra_benchmark",
     "phase3_wgs",
     "known_answer_bounded_non_dry",
+    "known_answer_expanded_cohort",
     "known_answer_public_findings",
     "all_public",
 }
@@ -222,9 +223,7 @@ def phase3_fetch_workspace_steps(config: ProcessConfig) -> tuple[WorkflowStep, .
     if config.phase3_prereq_mode == "full":
         production_somatic_steps = python_steps(PRODUCTION_SOMATIC)
     else:
-        production_somatic_steps = (
-            message_step("Skipping production somatic prerequisites for split Phase 3 WGS minimal mode."),
-        )
+        production_somatic_steps = (message_step("Skipping production somatic prerequisites for split Phase 3 WGS minimal mode."),)
     return (
         setup_steps
         + python_steps(("fetch:full-reference-smoke",))
@@ -377,6 +376,21 @@ def known_answer_bounded_non_dry_steps() -> tuple[WorkflowStep, ...]:
     )
 
 
+def known_answer_expanded_cohort_steps() -> tuple[WorkflowStep, ...]:
+    return (
+        python_step("run:known-answer-public-findings"),
+        python_step("run:known-answer-expanded-cohort"),
+        optional_python_step(
+            "verify:clinicalization-readiness-rollup",
+            success_message="Clinicalization readiness rollup passed.",
+            failure_message=(
+                "Clinicalization readiness rollup did not pass in this isolated cloud job; "
+                "the expanded known-answer cohort artifacts were still generated."
+            ),
+        ),
+    )
+
+
 def workflow_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
     if config.stage == "quick":
         return quick_steps()
@@ -406,6 +420,8 @@ def workflow_steps(config: ProcessConfig) -> tuple[WorkflowStep, ...]:
         return phase3_wgs_steps(config)
     if config.stage == "known_answer_bounded_non_dry":
         return known_answer_bounded_non_dry_steps()
+    if config.stage == "known_answer_expanded_cohort":
+        return known_answer_expanded_cohort_steps()
     if config.stage == "known_answer_public_findings":
         return known_answer_public_finding_steps()
     if config.stage == "all_public":
@@ -506,37 +522,31 @@ def phase3_stage_environment(config: ProcessConfig, env: dict[str, str]) -> dict
         "PHASE3_WGS_ALIGNER": inherited_or_default(env, "PHASE3_WGS_ALIGNER", config.phase3_aligner),
         "PHASE3_WGS_BWA_THREADS": inherited_or_default(env, "PHASE3_WGS_BWA_THREADS", config.phase3_bwa_threads),
         "PHASE3_WGS_SORT_THREADS": inherited_or_default(env, "PHASE3_WGS_SORT_THREADS", config.phase3_sort_threads),
-        "PHASE3_WGS_ALIGN_INPUT_MODE": inherited_or_default(
-            env, "PHASE3_WGS_ALIGN_INPUT_MODE", config.phase3_align_input_mode
-        ),
-        "PHASE3_WGS_ALIGN_PROFILE_MODE": inherited_or_default(
-            env, "PHASE3_WGS_ALIGN_PROFILE_MODE", config.phase3_align_profile_mode
-        ),
-        "PHASE3_WGS_SCATTER_OUTPUT_MODE": inherited_or_default(
-            env, "PHASE3_WGS_SCATTER_OUTPUT_MODE", config.phase3_scatter_output_mode
-        ),
+        "PHASE3_WGS_ALIGN_INPUT_MODE": inherited_or_default(env, "PHASE3_WGS_ALIGN_INPUT_MODE", config.phase3_align_input_mode),
+        "PHASE3_WGS_ALIGN_PROFILE_MODE": inherited_or_default(env, "PHASE3_WGS_ALIGN_PROFILE_MODE", config.phase3_align_profile_mode),
+        "PHASE3_WGS_SCATTER_OUTPUT_MODE": inherited_or_default(env, "PHASE3_WGS_SCATTER_OUTPUT_MODE", config.phase3_scatter_output_mode),
         "PHASE3_WGS_SHARD_INPUT_MODE": inherited_or_default(env, "PHASE3_WGS_SHARD_INPUT_MODE", config.phase3_shard_input_mode),
         "PHASE3_WGS_FORCE": "1" if as_bool(config.phase3_force) else inherited_or_default(env, "PHASE3_WGS_FORCE", "0"),
         "PHASE3_WGS_FORCE_SHARD_ALIGNMENT": (
-            "1"
-            if as_bool(config.phase3_force_shard_alignment)
-            else inherited_or_default(env, "PHASE3_WGS_FORCE_SHARD_ALIGNMENT", "0")
+            "1" if as_bool(config.phase3_force_shard_alignment) else inherited_or_default(env, "PHASE3_WGS_FORCE_SHARD_ALIGNMENT", "0")
         ),
         "PHASE3_WGS_SHARD_COUNT": inherited_or_default(env, "PHASE3_WGS_SHARD_COUNT", config.phase3_shard_count),
         "PHASE3_WGS_SHARD_INDEX": inherited_or_default(env, "PHASE3_WGS_SHARD_INDEX", config.phase3_shard_index),
-        "PHASE3_WGS_BAM_VALIDATION_MODE": inherited_or_default(
-            env, "PHASE3_WGS_BAM_VALIDATION_MODE", config.phase3_bam_validation_mode
-        ),
-        "PHASE3_WGS_COVERAGE_CNV_MODE": inherited_or_default(
-            env, "PHASE3_WGS_COVERAGE_CNV_MODE", config.phase3_coverage_cnv_mode
-        ),
+        "PHASE3_WGS_BAM_VALIDATION_MODE": inherited_or_default(env, "PHASE3_WGS_BAM_VALIDATION_MODE", config.phase3_bam_validation_mode),
+        "PHASE3_WGS_COVERAGE_CNV_MODE": inherited_or_default(env, "PHASE3_WGS_COVERAGE_CNV_MODE", config.phase3_coverage_cnv_mode),
         "PHASE3_WGS_ALIGNMENT_CACHE_WORKERS": config.phase3_alignment_cache_workers,
         "PHASE3_WGS_ASSET_CACHE_URI": config.phase3_asset_cache_uri,
         "PHASE3_WGS_ASSET_CACHE_MODE": config.phase3_asset_cache_mode,
     }
     if config.stage in stage_by_process:
         values["PHASE3_WGS_STAGE"] = stage_by_process[config.stage]
-    if config.stage in {"phase3_align_sample", "phase3_prepare_fastq_shards", "phase3_align_shard", "phase3_gather_shards", "phase3_downstream"}:
+    if config.stage in {
+        "phase3_align_sample",
+        "phase3_prepare_fastq_shards",
+        "phase3_align_shard",
+        "phase3_gather_shards",
+        "phase3_downstream",
+    }:
         values["PHASE3_WGS_PARALLEL_ALIGN"] = "0"
     return values
 
@@ -682,9 +692,7 @@ def require_path(path: Optional[Path], flag_name: str) -> Path:
 
 def prepare_workspace(config: ProcessConfig) -> Path:
     workspace = config.workspace.resolve()
-    if reference_index_from_source(config):
-        prepare_source_workspace(require_path(config.source_dir, "--source-dir"), workspace)
-    elif config.stage in SOURCE_WORKSPACE_STAGES:
+    if reference_index_from_source(config) or config.stage in SOURCE_WORKSPACE_STAGES:
         prepare_source_workspace(require_path(config.source_dir, "--source-dir"), workspace)
     elif (
         config.stage == "phase3_gather_shards"
@@ -727,7 +735,9 @@ def write_stub_outputs(config: ProcessConfig) -> None:
         role = config.role or "unknown"
         (workspace / "src").mkdir(parents=True, exist_ok=True)
         (workspace / "manifests").mkdir(parents=True, exist_ok=True)
-        (workspace / "manifests/phase3_wgs_smoke_samplesheet.csv").write_text("role,run_accession,sample,read_pairs_per_end\n", encoding="utf-8")
+        (workspace / "manifests/phase3_wgs_smoke_samplesheet.csv").write_text(
+            "role,run_accession,sample,read_pairs_per_end\n", encoding="utf-8"
+        )
         (workspace / "results/phase3_wgs_smoke/shards").mkdir(parents=True, exist_ok=True)
         write_json_stub(workspace / "results/phase3_wgs_smoke/asset_summary.json", {"status": "ready", "stub": True})
         write_json_stub(
@@ -738,7 +748,9 @@ def write_stub_outputs(config: ProcessConfig) -> None:
     if config.stage == "phase3_align_shard":
         role = config.role or "unknown"
         write_json_stub(
-            workspace / PHASE3_STAGE_MARKER_DIR / f"align_{role}_shard{int(config.phase3_shard_index):02d}of{int(config.phase3_shard_count):02d}.json",
+            workspace
+            / PHASE3_STAGE_MARKER_DIR
+            / f"align_{role}_shard{int(config.phase3_shard_index):02d}of{int(config.phase3_shard_count):02d}.json",
             {
                 "stub": True,
                 "stage": "align_shard",
@@ -786,6 +798,19 @@ def write_stub_outputs(config: ProcessConfig) -> None:
             json.dumps({"status": "stub", "stub": True}) + "\n", encoding="utf-8"
         )
         (result_dir / "known_answer_public_finding_confirmation.csv").touch()
+        (result_dir / "clinicalization_readiness_rollup.json").write_text(
+            json.dumps({"status": "stub", "stub": True}) + "\n", encoding="utf-8"
+        )
+        (result_dir / "clinicalization_readiness_rollup.csv").touch()
+        return
+    if config.stage == "known_answer_expanded_cohort":
+        result_dir = workspace / "results/clinicalization"
+        result_dir.mkdir(parents=True, exist_ok=True)
+        (result_dir / "known_answer_expanded_cohort_execution.json").write_text(
+            json.dumps({"status": "stub", "stub": True}) + "\n", encoding="utf-8"
+        )
+        (result_dir / "known_answer_expanded_cohort_execution.csv").touch()
+        (result_dir / "known_answer_expanded_cohort_execution.md").write_text("# Stub\n", encoding="utf-8")
         (result_dir / "clinicalization_readiness_rollup.json").write_text(
             json.dumps({"status": "stub", "stub": True}) + "\n", encoding="utf-8"
         )

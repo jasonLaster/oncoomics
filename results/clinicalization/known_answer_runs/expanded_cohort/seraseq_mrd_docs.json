@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-06-15T01:26:36.826Z",
+  "probeKey": "seraseq_mrd_docs",
+  "status": "expanded_non_dry_blocked_request_or_purchase",
+  "pipelineConfirmation": "not_confirmed",
+  "clinicalUseAllowed": "no",
+  "publicDocumentationAlignment": "blocked_request_or_purchase",
+  "evidenceType": "source_access_blocker",
+  "publicFindingResult": "Seraseq ctDNA MRD components are documented at 0, 0.005, 0.05, and 0.5 percent tumor fractions, but material or VCF files require request or purchase.",
+  "evidence": {
+    "sourceAccess": "request_or_purchase",
+    "productPageCached": true,
+    "packageInsertCached": true,
+    "blockedReason": "No freely downloadable public FASTQ, BAM, or variant truth files were available for non-dry analysis."
+  },
+  "blockers": [
+    "Request or purchase is required before non-dry positive-negative MRD validation."
+  ],
+  "nextAction": "Obtain Seraseq material or request-only VCFs and define assay-specific acceptance ranges."
+}

@@ -30,6 +30,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
     from .commands.run_full_wes_benchmark import main as run_full_wes_benchmark
     from .commands.run_human_reference_smoke import main as run_human_reference_smoke
     from .commands.run_known_answer_bounded_non_dry import main as run_known_answer_bounded_non_dry
+    from .commands.run_known_answer_expanded_cohort import main as run_known_answer_expanded_cohort
     from .commands.run_known_answer_public_findings import main as run_known_answer_public_findings
     from .commands.run_phase3_wgs_smoke import main as run_phase3_wgs_smoke
     from .commands.run_production_somatic_smoke import main as run_production_somatic_smoke
@@ -81,6 +82,7 @@ def _load_commands() -> dict[str, Callable[[], None]]:
         "fetch:raw-candidates": fetch_raw_candidate_metadata,
         "plan:known-answer-benchmarks": plan_known_answer_benchmarks,
         "run:known-answer-bounded-non-dry": run_known_answer_bounded_non_dry,
+        "run:known-answer-expanded-cohort": run_known_answer_expanded_cohort,
         "run:known-answer-public-findings": run_known_answer_public_findings,
         "smoke:alignment": run_alignment_smoke,
         "smoke:full-reference": run_full_reference_smoke,

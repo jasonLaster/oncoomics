@@ -34,3 +34,4 @@ infra/aws/*.tfplan
 infra/aws/nextflow.aws.json
 
 logs
+bam/

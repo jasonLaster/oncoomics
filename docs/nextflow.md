@@ -211,6 +211,12 @@ The known-answer public-finding suite has its own bounded cloud workflow. It fet
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:known-answer-public-findings
 ```
 
+The expanded known-answer cohort runs the public-finding preflight and then executes the 29-target bounded non-dry report in the same AWS Batch shape:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:known-answer-expanded-cohort
+```
+
 ## Blob Storage Rule
 
 Blob stores are good for durable inputs, references, logs, and final outputs. They are not a substitute for local task scratch when the tools do heavy BAM/VCF IO.

@@ -1,216 +1,237 @@
 # Orthogonal Validation Samples
 
-This document lists the extra public or reference-material samples that should be run before trusting the pipeline on Diana's real files. The point is correctness, not just completion.
+This page answers the practical question: what have we already done to show that the pipeline works before Diana's real files arrive?
 
-## Current Public Examples
+The short version is that we are no longer just collecting candidate datasets. We have run public tumor-normal data through real pipeline paths, compared outputs against known answers, recovered expected biology, and identified the remaining gaps that need full caller-level validation.
 
-The machine-readable public examples live in:
+## What We Have Proven
 
-- `manifests/orthogonal_public_examples.csv`
-- `results/orthogonal_validation/public_examples_summary.json`
+| Validation result | Input | What the pipeline did | Why it matters |
+| --- | --- | --- | --- |
+| Recovered the expected melanoma driver in COLO829 | Public indexed BAMs for COLO829 tumor and COLO829BL normal | Read the BRAF V600E locus directly from tumor-normal BAMs across Illumina HiSeq X, PacBio Sequel, Oxford Nanopore MinION, and Illumina NovaSeq/phased submissions | Shows that the pipeline can interrogate public cancer BAMs and recover a clinically recognizable expected driver while the matched normal remains reference-like. |
+| Passed a full public WES truth benchmark | SEQC2/HCC1395 tumor-normal WES FASTQs | Validated 4 FASTQs, aligned, marked duplicates, ran GATK Mutect2/FilterMutectCalls, estimated contamination, and compared calls to SEQC2 truth-overlap variants | Shows the end-to-end WES path can go from raw public FASTQ to a truth-comparison result, not just a completed run. |
+| Passed full-source WGS mechanics on a public tumor-normal pair | SEQC2/HCC1395 full WGS FASTQs | Produced BAM validation, filtered VCF output, truth-depth checks, coverage-CNV bins, SBS96 mutation context, and SV evidence summaries | Shows the WGS pipeline can generate the major evidence surfaces we need before applying it to Diana. |
+| Confirmed HG008 tumor-normal SNV truth signals | GIAB HG008-T tumor and HG008-N-D normal public BAMs plus NIST small-variant truth | Tested 40 simple somatic SNV truth loci by remote pileup; all 40 had tumor ALT support and normal REF support | Shows the pipeline can use the first public Cancer GIAB tumor-normal benchmark for bounded somatic correctness checks. |
+| Confirmed HG008 CNV depth direction signals | GIAB HG008 public BAMs plus NIST SV/CNV truth | Tested four CNV truth intervals and saw the expected normalized tumor-normal depth direction | Shows the public HG008 truth set can exercise copy-number behavior before full segment-level caller comparison exists. |
+| Ran the expanded validation in AWS Batch | Same 29-target expanded cohort | Built an arm64 ECR image, fetched small public assets in the task, ran non-dry remote-read probes, and published reports to S3 | Shows the validation workflow is portable to cloud execution, not just a local developer exercise. |
 
-Verify them with:
+Current expanded cohort result:
+
+- `29` validation targets across `5` sample groups.
+- `19` non-dry confirmations.
+- `1` partial confirmation: HG008 RNA paired FASTQ stats are consistent, but quantification has not run.
+- `3` strict-validation gaps: HG008 SV overlap, COLO829 SV overlap, and COLO829 CNA overlap still need Diana-generated callsets.
+- `6` blocked targets: COLO829 purity levels need local indexing or full transfer; Seraseq MRD requires request or purchase access.
+
+Primary generated report:
+
+```sh
+results/clinicalization/known_answer_expanded_cohort_execution.md
+```
+
+## Dataset Map
+
+| Dataset | Current use | What it is best for | Current evidence | Remaining gap |
+| --- | --- | --- | --- | --- |
+| SEQC2/HCC1395 WES | Implemented benchmark | Raw WES FASTQ to BAM to Mutect2 to truth comparison | `1122` exact PASS truth matches, recall `0.8585`, precision `0.9842`, contamination status passed | Keep as a regression gate; broaden intervals or add more WES datasets if we want more exome diversity. |
+| SEQC2/HCC1395 full WGS | Implemented benchmark | Full-source WGS mechanics: BAM, VCF, CNV bins, SBS96, SV evidence | `268` exact truth matches, `631` CNV bins, `265` SBS96 SNVs, SV evidence status passed | This proves mechanics, but full HRD interpretation still needs Diana-like WGS policy and production CNV/SV/signature thresholds. |
+| GIAB HG008 | Bounded non-dry validation | Personalis NeXT Personal-like whole-genome tumor-normal validation for SNV/indel, SV, CNV, and RNA intake plumbing | `40/40` truth SNVs passed tumor-normal pileup gates; `4/4` CNV truth intervals passed depth-direction checks | Generate Diana callsets and run formal small-variant recall/precision plus SV/CNV reciprocal overlap. RNA needs FASTQ transfer and quantification target selection. |
+| COLO829/COLO829BL | Bounded non-dry validation | Independent melanoma tumor-normal guardrail, multi-platform BAM handling, known driver recovery, future SV/CNA benchmarking | BRAF V600E recovered in tumor and not normal across four public sequencing-platform BAM pairs | Generate build-matched Diana SV/CNA calls and compare with Zenodo truth assets; add UV/SBS7 guardrail when mutation-count context is sufficient. |
+| COLO829 purity series | Metadata and blocker identified | Sensitivity stress testing across tumor fractions | ENA metadata exposes Illumina and long-read dilution levels at 10, 20, 25, 50, and 75 percent | Remote BAMs lack submitted BAI files, so we need full transfer or local indexing before monotonic recall can be tested. |
+| Seraseq ctDNA MRD Panel Mix | Request/purchase target | MRD-like positive/negative and dilution validation before Diana plasma files arrive | Public docs describe 0, 0.005, 0.05, and 0.5 percent tumor fractions | Not freely downloadable as FASTQ/BAM/VCF. We need to buy/request material or variant files and define assay-specific acceptance ranges. |
+
+## Priority Samples
+
+### 1. COLO829 / COLO829BL
+
+This is the most persuasive user-facing example because the expected result is concrete: a melanoma tumor should carry BRAF V600E and the matched normal should not.
+
+Use it for:
+
+- Independent tumor-normal WGS validation outside breast cancer.
+- Driver-recovery sanity checks.
+- Multi-platform input handling across Illumina, PacBio, Oxford Nanopore, and phased NovaSeq BAMs.
+- Future SV/CNA truth-overlap benchmarking.
+- Future HRD-negative or non-HRD-signature guardrails.
+
+What we have already shown:
+
+- Illumina HiSeq X tumor ALT fraction: `0.670968`; normal ALT fraction: `0.0`.
+- PacBio Sequel tumor ALT fraction: `0.568182`; normal ALT fraction: `0.018868`.
+- Oxford Nanopore MinION tumor ALT fraction: `0.610169`; normal ALT fraction: `0.04`.
+- Illumina NovaSeq phased tumor ALT fraction: `0.753846`; normal ALT fraction: `0.0`.
+
+Best next step:
+
+Run full COLO829 tumor-normal calling, reconcile GRCh37 submitted BAMs with hg38-lifted truth assets, and produce SV/CNA reciprocal-overlap reports.
+
+Key sources:
+
+- ENA project: https://www.ebi.ac.uk/ena/browser/view/PRJEB27698
+- COLO829 SV/CNA truth: https://zenodo.org/records/7515830
+- Multi-platform SV reference: https://pmc.ncbi.nlm.nih.gov/articles/PMC9903816/
+
+### 2. GIAB HG008
+
+This is the highest-value Diana-like validation sample because it is a public tumor-normal cancer benchmark from NIST GIAB. It is the right anchor for a Personalis NeXT Personal-like whole-genome sequencing validation ladder.
+
+Use it for:
+
+- Tumor-normal WGS small-variant correctness.
+- SV/CNV correctness.
+- Reference-build compatibility checks.
+- Downsampled WGS validation before full-transfer runs.
+- RNA intake and quantification plumbing.
+
+What we have already shown:
+
+- `40/40` simple somatic SNV truth loci had tumor ALT support and normal REF support.
+- `4/4` CNV truth intervals had the expected normalized tumor-normal depth direction.
+- HG008 RNA public stats are paired and internally consistent.
+
+Best next step:
+
+Generate actual Diana HG008 callsets, then compare small variants, SVs, and CNVs to NIST truth files. Treat the existing pileup/depth checks as bounded confirmation, not as a substitute for full recall and precision.
+
+Key sources:
+
+- NIST Cancer Genome in a Bottle: https://www.nist.gov/programs-projects/cancer-genome-bottle
+- HG008 small-variant benchmark: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-smvar_DraftBenchmark_V0.3-20260425/
+- HG008 SV/CNV benchmark: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-stvar-CNV_DraftBenchmark_V0.5-20260318/
+- HG008 WGS: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/
+- HG008 RNA-seq: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/NIST/HG008-T_bulk/20240508p21/UMD_RNA-seq_20250925/
+
+### 3. SEQC2/HCC1395
+
+This is our strongest end-to-end raw-data benchmark because it already exercises real FASTQs, alignment, somatic calling, and truth comparison.
+
+Use it for:
+
+- Regression testing the FASTQ-to-BAM-to-VCF path.
+- WES truth-overlap validation.
+- Full WGS mechanics across VCF, CNV, SBS96, and SV evidence outputs.
+- Proving that the repo can produce auditable metrics from public tumor-normal data.
+
+What we have already shown:
+
+- WES: `4` FASTQs validated, BAM validation passed, `1307` depth-eligible truth variants, `1122` exact PASS truth matches, recall `0.8585`, precision `0.9842`.
+- WGS: full-source FASTQs, `268` exact truth matches, `631` CNV bins, `265` SBS96 usable SNV records, and SV evidence output.
+
+Best next step:
+
+Keep HCC1395 as a release regression gate. It is not a perfect Diana surrogate, but it is the cleanest proof that core mechanics work from raw public data.
+
+Key sources:
+
+- SEQC2 high-confidence somatic SNV/indel truth: https://sites.google.com/view/seqc2/home/data-analysis/high-confidence-somatic-snv-and-indel-v1-2
+- SEQC2 community reference paper: https://pmc.ncbi.nlm.nih.gov/articles/PMC8532138/
+
+### 4. COLO829 Purity Series
+
+This is the most useful next stress test once we are ready to transfer larger public files. It can tell us whether detection behaves sensibly as tumor fraction drops.
+
+Use it for:
+
+- Sensitivity degradation testing.
+- Monotonic recall checks by tumor purity.
+- Dilution-series behavior before plasma/MRD data are available.
+
+What we have already shown:
+
+- ENA metadata exposes selected purity levels for Illumina and long-read data.
+- The selected submitted BAMs do not expose BAI indexes, so remote slicing cannot test recall yet.
+
+Best next step:
+
+Transfer selected BAMs or FASTQs, index locally, and run a monotonic recall table against COLO829 truth assets.
+
+### 5. Seraseq ctDNA MRD Panel Mix
+
+This is the closest currently identified target to the MRD/plasma question, but it is not an open public FASTQ dataset.
+
+Use it for:
+
+- Positive/negative MRD-like validation.
+- Limit-of-detection stress cases.
+- Tumor-fraction dilution behavior closer to Signatera or NeXT Personal-style plasma use.
+
+What public docs say:
+
+- The mix includes 0 percent, 0.5 percent, 0.05 percent, and 0.005 percent tumor fractions.
+- It is designed around matched normal background, tumor-derived variants, and biosynthetic spike-ins.
+
+Best next step:
+
+Buy or request the material or variant files. Once obtained, define acceptance ranges before running it, especially for the 0.005 percent limit-of-detection case.
+
+Key source:
+
+- Product page: https://www.seracare.com/Seraseq-ctDNA-MRD-Panel-Mix-0710-2146/
+
+## How To Run The Evidence
+
+Current implemented public examples:
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:orthogonal
 ```
 
-Current implemented examples:
-
-| Example | What it proves | Default command | Full-source command |
-| --- | --- | --- | --- |
-| `seqc2_hcc1395_full_wes` | Full public WES FASTQs can be validated, aligned, called with GATK Mutect2, and compared with SEQC2/HCC1395 truth-overlap variants. | `PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:full-wes && PYTHONPATH=src /usr/bin/python3 -m diana_omics benchmark:full-wes` | Same command; Phase 2F already uses the full public WES FASTQs. |
-| `seqc2_hcc1395_phase3_wgs` | The TypeScript-era public WGS example is preserved in Python: full-source SEQC2/HCC1395 WGS FASTQs flow through FASTQ validation, BAM, VCF, CNV bins, SBS96, and SV evidence outputs. | `PYTHONPATH=src /usr/bin/python3 -m diana_omics fetch:phase3-wgs && PYTHONPATH=src /usr/bin/python3 -m diana_omics validate:phase3-wgs` | Same command; full-source WGS is now the required Phase 3 acceptance gate. |
-
-Bounded Phase 3 WGS runs are available only by setting `PHASE3_WGS_READS` to an integer for developer plumbing checks. They do not satisfy the orthogonal validation gate.
-
-## Selection Criteria
-
-A useful validation sample needs:
-
-- Raw or near-raw data: FASTQ, BAM, or CRAM.
-- A known answer: truth VCF, truth BED/BEDPE, known driver, known signature, known dilution, or validated positive/negative status.
-- Similarity to expected Diana data: tumor-normal WGS/WES, RNA-seq, vendor VCF/report files, or MRD-like ctDNA.
-- Public or practically obtainable access.
-
-## Ten-Target Pull Plan
-
-The acquisition-facing pull plan lives in:
-
-- `manifests/known_answer_sample_pull_plan.csv`
-- `results/clinicalization/known_answer_sample_pull_plan_summary.json`
-
-Verify it with:
+Expanded known-answer cohort:
 
 ```sh
-PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-sample-pull-plan
-PYTHONPATH=src /usr/bin/python3 -m diana_omics run:known-answer-public-findings
-PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:known-answer-public-findings
+PYTHONPATH=src /usr/bin/python3 -m diana_omics run:known-answer-expanded-cohort
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:known-answer-expanded-cohort
 ```
 
-The plan deliberately mixes raw inputs and the truth assets needed to decide whether results are correct:
+Cloud execution:
 
-| Target group | Pull targets | Why it is in the first expansion |
-| --- | --- | --- |
-| HG008 | tumor WGS, normal WGS, tumor RNA, small-variant truth, SV/CNV truth | First public cancer GIAB truth set for SNV/indel/SV/CNV correctness plus RNA intake plumbing. |
-| COLO829 | tumor WGS, normal WGS, SV/CNA truth | Independent tumor-normal WGS guardrail with melanoma driver/signature expectations. |
-| COLO829 purity | selected dilution levels | Sensitivity stress test where recall should fall as tumor fraction drops. |
-| Seraseq ctDNA MRD | panel mix material or files | Closest MRD-like positive/negative dilution target, but it requires request or purchase. |
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:known-answer-expanded-cohort
+```
 
-All 10 targets stay `execution_allowed=no` and `clinical_use_allowed=no` until owner review approves access terms, transfer cost, and checksum capture.
+The most recent AWS Batch run succeeded with:
 
-Current confirmation status lives in:
+- Job: `0b1141b8-59b9-4797-8ea1-6e1c0c6d6dba`
+- Image: `172630973301.dkr.ecr.us-east-1.amazonaws.com/diana-omics:knownanswer-expanded-arm64-wesfix-20260615T014259Z`
+- S3 report: `s3://diana-omics-results-172630973301-us-east-1/runs/known_answer_expanded_cohort/workspace/results/clinicalization/known_answer_expanded_cohort_execution.json`
 
+## How To Make The Validation Stronger
+
+1. Promote HG008 from bounded pileup/depth checks to full caller benchmarking.
+
+   Generate Diana small-variant, SV, and CNV callsets from HG008 tumor-normal data. Report recall, precision, callable-region denominator, and reciprocal-overlap summaries against NIST truth.
+
+2. Promote COLO829 from driver guardrail to full tumor-normal benchmark.
+
+   Keep BRAF V600E as the easy-to-explain sanity check, then add build-matched SV/CNA truth comparisons and a UV/SBS7 signature guardrail.
+
+3. Transfer and index selected COLO829 purity files.
+
+   Start with a small number of levels, such as 75, 50, 25, and 10 percent. The result should be a monotonic recall table that makes sensitivity limits visible.
+
+4. Buy or request Seraseq ctDNA MRD material/files.
+
+   This is the cleanest way to test positive/negative and low-fraction MRD-like behavior before Diana plasma files arrive.
+
+5. Add another breast/TNBC-oriented public benchmark only after confirming raw access and a known answer.
+
+   HCC1395 is useful, but it should not be the only breast-cancer-like regression. The next candidate should have raw or near-raw data, a tumor-normal pairing, explicit truth labels, and permissive access.
+
+6. Add vendor-style fixtures.
+
+   If we can obtain representative VCF/report fixtures from Signatera, NeXT Personal, Tempus, Caris, Foundation, or similar assays, add parser and reconciliation tests. These should complement the raw sequencing benchmarks rather than replace them.
+
+## Historical Manifests
+
+The older acquisition-facing manifests still exist and are useful for provenance:
+
+- `manifests/known_answer_sample_pull_plan.csv`
 - `manifests/known_answer_public_finding_checks.csv`
 - `results/clinicalization/known_answer_public_finding_execution.md`
 - `results/clinicalization/known_answer_public_finding_confirmation.md`
-- `results/clinicalization/known_answer_public_finding_confirmation.json`
 
-As of the current generated report, the analysis confirms `0/10` public findings. Nine targets are `not_confirmed_gap_identified`; Seraseq is `blocked_request_or_purchase`. This is expected because the public metadata and small truth assets can be fetched and checksum-recorded, but the HG008/COLO829 raw-input runs and comparison adapters are not implemented yet.
+Those files are intentionally conservative about execution and clinical use. For an outcome-oriented view of what we have actually validated, start with the expanded cohort report instead.
 
-## Priority 1: GIAB HG008
+## Boundary
 
-Use this first.
-
-Why:
-
-- NIST Cancer Genome in a Bottle is designed for cancer genome benchmarking.
-- HG008 has tumor and paired normal data.
-- Current NIST benchmark files include small variants and SV/CNV truth.
-- Public files include Illumina WGS, BAMs, long-read data, and RNA-seq.
-
-Best use:
-
-- Personalis NeXT Personal-like tumor/normal WGS validation.
-- 30x WGS downsample testing.
-- SNV/indel correctness.
-- SV/CNV correctness.
-- RNA-seq intake and quantification plumbing.
-
-Known-answer gates:
-
-- Compare SNV/indel calls with `HG008-T_somatic_smvar_benchmark_v0.3_somatic_tumornormal.vcf.gz` inside the provided benchmark BED.
-- Compare SV/CNV calls with `GRCh38_HG008-T-V0.5_somatic-stvar-CNV_ALL.draftbenchmark.vcf.gz` and related PASS CNV BED/BEDPE files.
-- Confirm reference-build compatibility before benchmarking.
-- Treat RNA-seq as QC/quantification validation until a specific RNA truth target is chosen.
-
-Planned runnable gate:
-
-```sh
-fetch:hg008
-benchmark:hg008
-```
-
-Required outputs before this counts as complete:
-
-- small-variant recall/precision summary
-- SV truth overlap summary
-- CNV reciprocal-overlap summary
-- reference compatibility report
-- tool version and command provenance
-
-Key sources:
-
-- NIST Cancer Genome in a Bottle: https://www.nist.gov/programs-projects/cancer-genome-bottle
-- Small-variant benchmark: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-smvar_DraftBenchmark_V0.3-20260425/
-- SV/CNV benchmark: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/analysis/NIST_HG008-T_somatic-stvar-CNV_DraftBenchmark_V0.5-20260318/
-- NYGC Illumina WGS: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/
-- HG008 RNA-seq: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/NIST/HG008-T_bulk/20240508p21/UMD_RNA-seq_20250925/
-
-## Priority 2: COLO829 / COLO829BL
-
-Use this as the second independent WGS benchmark.
-
-Why:
-
-- COLO829 tumor and COLO829BL matched normal are classic cancer reference samples.
-- ENA project `PRJEB27698` exposes Illumina WGS FASTQs/BAMs plus long-read data.
-- Zenodo provides curated somatic SV and CNA truth.
-- Published literature describes a somatic mutation catalogue, BRAF V600E, UV-like mutational signature, and melanoma-specific biology.
-- Public purity-series data allow sensitivity stress testing.
-
-Best use:
-
-- Independent tumor-normal WGS validation.
-- SV/CNV truth comparison.
-- HRD-negative or non-HRD-signature guardrail.
-- Purity/dilution behavior.
-
-Known-answer gates:
-
-- Recover expected BRAF V600E or documented melanoma driver context.
-- Show UV-like/SBS7 context rather than overcalling HRD-like signature.
-- Compare SV calls against `truthset_somaticSVs_COLO829_hg38lifted.vcf`.
-- Compare CNA outputs against Zenodo CNA files.
-- Run at least one dilution level and confirm recall decreases as tumor purity decreases.
-
-Planned runnable gate:
-
-```sh
-fetch:colo829
-benchmark:colo829
-benchmark:colo829-purity
-```
-
-Required outputs before this counts as complete:
-
-- BRAF/driver sanity summary
-- UV/SBS7 guardrail summary
-- SV/CNA truth-overlap summary
-- purity-series recall table
-- explicit HRD-negative or non-HRD-signature caveat
-
-Key sources:
-
-- ENA project: https://www.ebi.ac.uk/ena/browser/view/PRJEB27698
-- Zenodo SV/CNA truth: https://zenodo.org/records/7515830
-- COLO829 somatic mutation catalogue: https://www.nature.com/articles/nature08658
-- Multi-platform SV reference: https://www.sciencedirect.com/science/article/pii/S2666979X22000726
-
-## Priority 3: Seraseq ctDNA MRD Panel Mix
-
-Use this only if we need an MRD-like answer before Diana plasma files arrive.
-
-Why:
-
-- It is closer to Signatera/NeXT Personal-style positive/negative MRD validation than tissue WGS dilution.
-- It has matched normal background, tumor-derived variants, synthetic variants, and known dilution levels.
-- It includes expected variants and VAF/dilution behavior.
-
-Limitation:
-
-This is not a freely downloadable public FASTQ dataset. The datasheet says variant lists are available by contacting LGC/SeraCare, and material may need to be purchased.
-
-Known-answer gates:
-
-- 0 percent tumor should be negative.
-- 0.5 percent and 0.05 percent tumor should be positive if sequencing depth is adequate.
-- 0.005 percent tumor should be treated as a limit-of-detection stress case.
-- Expected variants include BRCA1 c.1961delA, BRAF V600E, EGFR T790M, KRAS G12D/G12C, NRAS Q61R, and PIK3CA H1047R.
-
-Key source:
-
-- Seraseq ctDNA MRD Panel Mix datasheet: https://www.seracare.com/globalassets/seracare-resources/ds-mkt-00626-0710-2146-seraseq-ctdna-mrd-panel-mix.pdf
-
-## Implementation Plan
-
-1. Keep `verify:orthogonal` green so implemented and planned public examples stay documented.
-2. Keep `verify:known-answer-sample-pull-plan` green so the expanded acquisition suite remains explicit and bounded.
-3. Keep `verify:known-answer-public-findings` green so every target has an explicit public finding, analysis command, expected artifact, and no-call policy.
-4. Add `fetch:hg008` and `benchmark:hg008` commands.
-5. Add truth-file manifest rows for HG008 small variants and SV/CNV.
-6. Add 30x downsample controls so local runs are feasible.
-7. Add `fetch:colo829` and `benchmark:colo829` commands.
-8. Add COLO829 driver/signature/SV/CNA assertions.
-9. Add purity-series reporting.
-10. Decide whether to request Seraseq data or material.
-
-## Acceptance Criteria
-
-Before Diana WGS interpretation:
-
-- HG008 SNV/indel truth comparison passes defined recall/precision thresholds.
-- HG008 SV/CNV truth comparison produces inspectable precision/recall summaries.
-- COLO829 recovers expected driver/signature behavior and SV/CNA truth overlap.
-- Public validation still passes `verify:outputs`.
-- Documentation states which results are benchmarked truth and which are smoke evidence.
+These validations show that the public-data pipeline can ingest, analyze, and compare known samples in meaningful ways. They do not make a clinical claim about Diana. Before Diana interpretation, we still need Diana's real files, reference-build and pairing confirmation, tumor purity context, full HG008/COLO829 truth comparisons, and reviewer signoff on HRD interpretation policy.

@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-06-15T01:25:59.863Z",
+  "probeKey": "hg008_rna_stats",
+  "status": "expanded_non_dry_partial",
+  "pipelineConfirmation": "bounded_rna_intake_stats_confirmed",
+  "clinicalUseAllowed": "no",
+  "publicDocumentationAlignment": "aligned",
+  "evidenceType": "public_fastq_stats_only",
+  "publicFindingResult": "HG008 RNA paired FASTQ stats are internally consistent but quantification has not run.",
+  "evidence": {
+    "rnaStats": {
+      "statsFiles": [
+        {
+          "path": "data/raw/known_answer_public/hg008/rna/XZOOK_20250905_A00904_IL23896-001_N4UD-C12_L001_R1_stats.txt",
+          "bases": 7811839889,
+          "reads": 51734039,
+          "readLength": 151
+        },
+        {
+          "path": "data/raw/known_answer_public/hg008/rna/XZOOK_20250905_A00904_IL23896-001_N4UD-C12_L001_R2_stats.txt",
+          "bases": 7811839889,
+          "reads": 51734039,
+          "readLength": 151
+        }
+      ],
+      "pairedReadStatsConsistent": true,
+      "remainingQuantificationGap": "RNA FASTQ stats are public, but this bounded run does not download FASTQs or run quantification."
+    }
+  },
+  "blockers": [
+    "RNA FASTQs were not downloaded and no transcript-level truth target is selected."
+  ],
+  "nextAction": "Transfer HG008 RNA FASTQs and run quantification against a selected RNA QC target."
+}
