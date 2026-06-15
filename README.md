@@ -92,6 +92,7 @@ Start with [docs/readme.md](/Users/jasonlaster/src/projects/diana-omics/docs/rea
 | [docs/phase-status.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase-status.md) | Check what is currently complete, what passed, and what still needs full-data validation. |
 | [docs/bug-audit.md](/Users/jasonlaster/src/projects/diana-omics/docs/bug-audit.md) | Review the most likely ways the analysis could be wrong before trusting a result. |
 | [docs/diana-raw-inputs.md](/Users/jasonlaster/src/projects/diana-omics/docs/diana-raw-inputs.md) | Fill in Diana's future FASTQ/BAM/CRAM/RNA/vendor files and validate the handoff. |
+| [docs/vendor-normalization.md](/Users/jasonlaster/src/projects/diana-omics/docs/vendor-normalization.md) | Normalize Personalis/Natera WES/WGS deliverables into the common TCGA format and filter them to TCGA standards. |
 | [docs/raw-data-readiness.md](/Users/jasonlaster/src/projects/diana-omics/docs/raw-data-readiness.md) | See which public raw-data mechanics already work, from FASTQ smoke tests through WES/WGS validation. |
 | [docs/orthogonal-validation-samples.md](/Users/jasonlaster/src/projects/diana-omics/docs/orthogonal-validation-samples.md) | Pick the next known-answer datasets, especially HG008, COLO829, and Seraseq MRD. |
 | [docs/phase3-parallel-compute.md](/Users/jasonlaster/src/projects/diana-omics/docs/phase3-parallel-compute.md) | Tune local CPU/thread usage for WGS, full-depth validation, and future Diana runs. |
