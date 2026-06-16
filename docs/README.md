@@ -35,6 +35,9 @@ For command, evidence, and domain vocabulary, see [terms.md](terms.md).
 | [clinical/orchestration.md](clinical/orchestration.md) | Understand the clinical-readiness gates and sequencing. |
 | [clinical/validation-packet-template.md](clinical/validation-packet-template.md) | Draft or review the clinical validation packet structure. |
 | [operations/diana-raw-inputs.md](operations/diana-raw-inputs.md) | Prepare Diana's real raw files for validation and staging. |
+| [rosalind/README.md](rosalind/README.md) | Understand how GPT-Rosalind, NGS Analysis, and Life Science Research would integrate with this project. |
+| [rosalind/hrd-workflow.md](rosalind/hrd-workflow.md) | Review the GPT-Rosalind workflow for HRD evidence and score readiness from WGS/WES. |
+| [rosalind/trop2-adc-workflow.md](rosalind/trop2-adc-workflow.md) | Review the GPT-Rosalind workflow for TROP-2 ADC target assessment from bulk WES and scRNA-seq. |
 | [operations/running-the-pipeline.md](operations/running-the-pipeline.md) | Run local, Docker, Nextflow, and AWS workflows. |
 | [operations/analytics-sequence.md](operations/analytics-sequence.md) | See the systems architecture for analytics orchestration and OSS tool calls. |
 | [data/source-map.md](data/source-map.md) | Audit dataset, truth-set, tool, and vendor-context sources. |
