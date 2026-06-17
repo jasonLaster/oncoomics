@@ -319,6 +319,23 @@ Allowed conclusion:
 COLO829 is an independent tumor-normal and driver-recovery guardrail. It does not establish HRD status until full SV/CNA/signature evidence is generated and benchmarked.
 ```
 
+### Diana Raw-Intake Packet
+
+Use Diana raw intake to prove the arrival contract before Dinah's actual files are available:
+
+- preserve the `manifests/diana_raw_inputs.template.csv` column contract;
+- keep the strict validation command and staging command visible in the packet;
+- require actual BAM/FASTQ/CRAM paths, indexes, reference metadata, and tumor-normal pairing before compute;
+- keep HRD interpretation `no_call` until strict file validation and downstream feature lanes pass.
+
+Allowed conclusion:
+
+```text
+This packet proves the raw-data intake contract is ready. It does not validate Diana files or produce HRD evidence until the actual BAM/FASTQ/CRAM paths are supplied and pass strict intake validation.
+```
+
+Current materialized-artifact smoke: `diana-raw-intake-materialized-20260617`, using `artifacts/diana_raw_intake_ready`. This small artifact root contains only the intake template, operations runbook, and readiness summary JSON files and can be used with `--sample-set diana_raw_intake --artifact-root-rel artifacts/diana_raw_intake_ready` for bounded cloud packet validation.
+
 ### Output Layout For Validated Sample Runs
 
 For sample-specific GPT-Rosalind packets, write outputs under:
