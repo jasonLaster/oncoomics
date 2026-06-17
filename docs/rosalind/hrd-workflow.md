@@ -360,13 +360,14 @@ The `input_evidence_index.json` should point back to the existing `results/` and
 
 ### Cloud Materialized Packet Smoke
 
-The current cloud-ready proofs are `cloud-selective5-20260617`, `cloud-helper-selective5-20260617`, and `cloud-hg008-depth-20260617`, all run on AWS Batch on 2026-06-17. They used pushed GitHub archives, materialized bounded evidence roots inside the container, and ran the packet builder with `ROSALIND_HRD_ARTIFACT_ROOT`.
+The current cloud-ready proofs are `cloud-selective5-20260617`, `cloud-helper-selective5-20260617`, `cloud-hg008-depth-20260617`, and `cloud-diana-raw-intake-20260617`, all run on AWS Batch on 2026-06-17. They used pushed GitHub archives, materialized bounded evidence roots inside the container, and ran the packet builder with `ROSALIND_HRD_ARTIFACT_ROOT`.
 
 | Run ID | Batch job | Status | Sample set | Evidence rows | Adapter rows | Packet blockers |
 | --- | --- | --- | --- | --- | --- | --- |
 | `cloud-selective5-20260617` | `573cd3de-afe9-4949-80a2-8ba0a523c300` | `SUCCEEDED` | `hcc1395_wgs` | `7` | `7` | `0` |
 | `cloud-helper-selective5-20260617` | `e8d00f20-26c8-4a32-8198-8aa10c916859` | `SUCCEEDED` | `hcc1395_wgs` | `7` | `7` | `0` |
 | `cloud-hg008-depth-20260617` | `8a01caf6-5439-4c54-b068-2ecd5d325269` | `SUCCEEDED` | `hg008` | `4` | `4` | `2` |
+| `cloud-diana-raw-intake-20260617` | `5640a9f1-8f8c-4560-a8dc-338f3b39c655` | `SUCCEEDED` | `diana_raw_intake` | `4` | `4` | `1` |
 
 Cloud output was written to:
 
@@ -374,6 +375,7 @@ Cloud output was written to:
 s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-selective5-20260617
 s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-helper-selective5-20260617
 s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-hg008-depth-20260617
+s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-diana-raw-intake-20260617
 ```
 
 Committed evidence is available under:
@@ -385,6 +387,8 @@ results/rosalind_hrd/cloud-helper-selective5-20260617/
 results/rosalind_hrd/hcc1395_wgs/cloud-helper-selective5-20260617/
 results/rosalind_hrd/cloud-hg008-depth-20260617/
 results/rosalind_hrd/hg008/cloud-hg008-depth-20260617/
+results/rosalind_hrd/cloud-diana-raw-intake-20260617/
+results/rosalind_hrd/diana_raw_intake/cloud-diana-raw-intake-20260617/
 ```
 
 These runs prove the lightweight packet builder can run in Batch against materialized artifacts and produce reviewer-packet outputs without uploading local generated data. They do not prove full WGS compute or a final HRD score. The generated packets keep SBS3, scarHRD, CHORD, and HRDetect-style interpretation behind their current no-call boundaries until production adapters, thresholds, and known-answer performance are locked.

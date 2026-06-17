@@ -1,0 +1,54 @@
+{
+  "run_id": "cloud-diana-raw-intake-20260617",
+  "source_commit": "cefbe73ea1797e081e5735c6010ff258ee092b11",
+  "aws_batch_job_id": "5640a9f1-8f8c-4560-a8dc-338f3b39c655",
+  "aws_batch_job_queue": "diana-omics-prod-use1-ondemand",
+  "aws_region": "us-east-1",
+  "s3_prefix": "s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-diana-raw-intake-20260617",
+  "artifact_root": "/tmp/diana-cloud-packet-cloud-diana-raw-intake-20260617/oncoomics-cefbe73ea1797e081e5735c6010ff258ee092b11/artifacts/diana_raw_intake_ready",
+  "sample_sets": [
+    "diana_raw_intake"
+  ],
+  "packet_index_sha256": "3c30cd702c8e4bcb73016360e4943ba4ed709ad1291112d66cb12db9e3a48a8d",
+  "run_manifest_sha256": "7e1b79c215a3eb07dbb1a5e19ba61a97b9c394ae5104aa64e43b0fa18c0c0d21",
+  "reviewer_packet_sha256": {
+    "diana_raw_intake": "04aecd1c35d0945228c48339315a8ded14be61b7f296b668015487a9af667f32"
+  },
+  "adapter_status_rows": {
+    "diana_raw_intake": [
+      {
+        "adapter": "Raw file intake",
+        "state": "blocked_until_files",
+        "blocker": "Actual Diana BAM/FASTQ/CRAM paths have not passed strict intake validation.",
+        "next_action": "Copy the template to manifests/diana_raw_inputs.csv, fill actual paths and metadata, then run verify:diana-raw with DIANA_RAW_REQUIRE_DATA=1."
+      },
+      {
+        "adapter": "Tumor-normal DNA pairing",
+        "state": "blocked_until_files",
+        "blocker": "No validated matched tumor-normal DNA pair is staged.",
+        "next_action": "Confirm tumor and normal rows share pair_id before compute."
+      },
+      {
+        "adapter": "Reference/index preflight",
+        "state": "ready_to_validate",
+        "blocker": "Reference files must exist and match all DNA rows when strict validation runs.",
+        "next_action": "Validate reference FASTA, FAI, and dict paths in verify:diana-raw."
+      },
+      {
+        "adapter": "HRD interpretation",
+        "state": "no_call",
+        "blocker": "No Diana sample evidence exists yet.",
+        "next_action": "Run the staged DNA feature lanes and public validation sidecars before interpretation."
+      }
+    ]
+  },
+  "packet_index_tail": [
+    "# Rosalind HRD Packet Index",
+    "",
+    "Run ID: `cloud-diana-raw-intake-20260617`",
+    "",
+    "| sample_set | output_dir | evidence_rows | adapter_rows | blocker_count |",
+    "| --- | --- | --- | --- | --- |",
+    "| diana_raw_intake | results/rosalind_hrd/diana_raw_intake/cloud-diana-raw-intake-20260617 | 4 | 4 | 1 |"
+  ]
+}
