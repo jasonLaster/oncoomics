@@ -239,6 +239,57 @@ def payload_blockers(*payloads: Mapping[str, Any]) -> list[str]:
     return blockers
 
 
+def hg008_cnv_depth_detail(cnv: Mapping[str, Any], sv_cnv: Mapping[str, Any]) -> str:
+    evidence = cnv.get("evidence", {}) if isinstance(cnv.get("evidence"), dict) else {}
+    probes = evidence.get("cnvProbes", []) if isinstance(evidence.get("cnvProbes"), list) else []
+    public_result = str(cnv.get("publicFindingResult", ""))
+    sv_cnv_evidence = sv_cnv.get("evidence", {}) if isinstance(sv_cnv.get("evidence"), dict) else {}
+    depth_probe = sv_cnv_evidence.get("cnvDepthProbe", {}) if isinstance(sv_cnv_evidence.get("cnvDepthProbe"), dict) else {}
+    reciprocal_depth_signal = "yes" if depth_probe.get("passedCnvDepthSignal") is True else "no"
+    if probes:
+        return f"{public_result} Bounded reciprocal depth signal present: {reciprocal_depth_signal}."
+    return public_result
+
+
+def hg008_sv_cnv_detail(sv_cnv: Mapping[str, Any]) -> str:
+    public_result = str(sv_cnv.get("publicFindingResult", ""))
+    evidence = sv_cnv.get("evidence", {}) if isinstance(sv_cnv.get("evidence"), dict) else {}
+    depth_probe = evidence.get("cnvDepthProbe", {}) if isinstance(evidence.get("cnvDepthProbe"), dict) else {}
+    if not depth_probe:
+        return public_result
+    normalized_ratio = depth_probe.get("normalizedLossTumorNormalRatio", "unknown")
+    passed_signal = "yes" if depth_probe.get("passedCnvDepthSignal") is True else "no"
+    remaining_gap = depth_probe.get("remainingSvGap", "")
+    return (
+        f"{public_result} Bounded CNV depth signal: {passed_signal}; "
+        f"normalized loss tumor-normal ratio: {normalized_ratio}. {remaining_gap}"
+    ).strip()
+
+
+def hg008_normalized_blockers(cnv: Mapping[str, Any], sv_truth: Mapping[str, Any], sv_cnv: Mapping[str, Any]) -> list[str]:
+    raw_blockers = payload_blockers(cnv, sv_truth, sv_cnv)
+    blockers: list[str] = []
+    raw_text = " ".join(raw_blockers).lower()
+    cnv_has_depth_evidence = "cnv" in raw_text or bool(cnv.get("publicFindingResult")) or bool(sv_cnv.get("publicFindingResult"))
+    if cnv_has_depth_evidence:
+        blockers.append(
+            "No Diana-generated CNV segment callset exists for HG008; current HG008 CNV evidence is bounded depth-direction validation, not segment-level reciprocal overlap."
+        )
+    if "sv" in raw_text or bool(sv_truth.get("publicFindingResult")):
+        blockers.append("No Diana-generated SV callset exists for HG008; SV reciprocal-overlap against v0.5 truth remains unrun.")
+    for blocker in raw_blockers:
+        lower = blocker.lower()
+        normalized = (
+            "cnv callset" in lower
+            or "sv/cnv callset" in lower
+            or "sv callset" in lower
+            or "reciprocal-overlap" in lower
+        )
+        if not normalized and blocker not in blockers:
+            blockers.append(blocker)
+    return blockers
+
+
 def hcc1395_wes_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
     summary = read_json_or_empty("results/full_wes_benchmark/full_wes_benchmark_summary.json")
     truth = read_json_or_empty("results/full_wes_benchmark/truth_overlap_benchmark_summary.json")
@@ -418,17 +469,17 @@ def hg008_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[s
     sv = read_json_or_empty("results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json")
     evidence = [
         evidence_row("snv_truth_panel", str(snv.get("status", "missing")), str(snv.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/expanded_cohort/hg008_snv_panel.json"),
-        evidence_row("cnv_depth_sweep", str(cnv.get("status", "missing")), str(cnv.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json"),
+        evidence_row("cnv_depth_sweep", str(cnv.get("status", "missing")), hg008_cnv_depth_detail(cnv, sv), "results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json"),
         evidence_row("sv_truth_asset", str(sv_truth.get("status", "missing")), str(sv_truth.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/expanded_cohort/hg008_sv_truth_asset.json"),
-        evidence_row("sv_cnv_reciprocal_overlap", str(sv.get("status", "missing")), str(sv.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json"),
+        evidence_row("sv_cnv_reciprocal_overlap", str(sv.get("status", "missing")), hg008_sv_cnv_detail(sv), "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json"),
     ]
     adapters = [
         adapter_row("SNV correctness validation", "partial_evidence", "Bounded truth-pileup confirmations are present, but full caller-level recall/precision is not complete.", "Run full small-variant caller concordance."),
-        adapter_row("CNV/LOH correctness validation", "partial_evidence", "Depth-direction checks passed, but no Diana-generated CNV segment overlap exists.", "Run CNV calling and reciprocal-overlap against HG008 truth."),
-        adapter_row("SV correctness validation", "blocked", "No Diana-generated SV callset exists for HG008 in the bounded run.", "Run SV caller and reciprocal-overlap against HG008 v0.5 truth."),
+        adapter_row("CNV/LOH correctness validation", "partial_evidence", "Bounded depth-direction checks passed, but no Diana-generated CNV segment callset or segment-level reciprocal-overlap result exists.", "Run CNV calling and segment-level reciprocal-overlap against HG008 truth."),
+        adapter_row("SV correctness validation", "blocked", "No Diana-generated SV callset exists for HG008; SV reciprocal-overlap remains unrun.", "Run SV caller and reciprocal-overlap against HG008 v0.5 truth."),
         adapter_row("HRD interpretation", "no_call", "HG008 is a truth-set validator, not a Diana HRD interpretation sample.", "Use only for pipeline correctness."),
     ]
-    blockers = payload_blockers(cnv, sv_truth, sv)
+    blockers = hg008_normalized_blockers(cnv, sv_truth, sv)
     return evidence, adapters, blockers
 
 

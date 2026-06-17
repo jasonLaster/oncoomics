@@ -300,6 +300,8 @@ Allowed conclusion:
 HG008 is a truth-set validation sample. It should improve confidence in caller correctness and CNV/SV benchmarking, not produce a Diana-style HRD interpretation.
 ```
 
+Current refined packet: `public-evidence-hg008-depth-20260617`. It preserves the HG008 no-HRD-interpretation boundary, credits `40/40` SNV truth confirmations and `4/4` bounded CNV depth-direction confirmations, and narrows the remaining HG008 blockers to missing Diana-generated CNV segment overlap and SV reciprocal-overlap outputs.
+
 ### COLO829 Packet
 
 Use COLO829/COLO829BL to demonstrate an independent tumor-normal guardrail:
@@ -379,7 +381,7 @@ After generating packets, refresh the blocker triage board:
 ROSALIND_HRD_TRIAGE_PACKET_RUN=<packet_run_id> ROSALIND_HRD_TRIAGE_ID=<triage_id> PYTHONPATH=src /usr/bin/python3 -m diana_omics triage:rosalind-hrd-readiness
 ```
 
-The triage board compares the selected all-sample packet with materialized packet runs. It is the place to record that the repo-root HCC1395 WGS metadata-only blocker is closed by the selective materialized/cloud packets, while HG008, COLO829, and Diana raw intake still have true caller, indexing, build-reconciliation, or file-arrival blockers.
+The triage board compares the selected all-sample packet with materialized packet runs. It is the place to record that the repo-root HCC1395 WGS metadata-only blocker is closed by the selective materialized/cloud packets, while HG008, COLO829, and Diana raw intake still have true caller, indexing, build-reconciliation, or file-arrival blockers. The current HG008-focused triage run is `readiness-triage-hg008-depth-20260617`, based on `public-evidence-hg008-depth-20260617`.
 
 ## Source Pattern
 

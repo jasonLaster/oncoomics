@@ -256,6 +256,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     "status": "expanded_non_dry_passed",
                     "publicFindingResult": "4/4 CNVs passed.",
                     "blockers": ["No Diana-generated CNV callset exists for HG008."],
+                    "evidence": {"cnvProbes": [{"passed": True}, {"passed": True}, {"passed": True}, {"passed": True}]},
                 },
             )
             utils.write_json(
@@ -268,18 +269,38 @@ class RosalindHrdPacketTest(unittest.TestCase):
             )
             utils.write_json(
                 root / "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
-                {"status": "bounded_non_dry_partial", "publicFindingResult": "SV overlap remains unrun.", "blockers": []},
+                {
+                    "status": "bounded_non_dry_partial",
+                    "publicFindingResult": "SV overlap remains unrun.",
+                    "blockers": ["No Diana-generated SV/CNV callset exists for HG008 in this bounded run."],
+                    "evidence": {
+                        "cnvDepthProbe": {
+                            "passedCnvDepthSignal": True,
+                            "normalizedLossTumorNormalRatio": 0.438786,
+                            "remainingSvGap": "SV reciprocal-overlap remains unrun.",
+                        }
+                    },
+                },
             )
             utils.write_json(root / "results/clinicalization/known_answer_runs/expanded_cohort/hg008_rna_stats.json", {"status": "passed"})
 
             with patch.object(packet, "path_from_root", lambda relative: root / relative):
                 summary = packet.write_packet(packet.PACKET_SPECS["hg008"], "unit")
 
-            self.assertIn("No Diana-generated SV callset exists for HG008.", summary["blockers"])
+            self.assertEqual(
+                summary["blockers"],
+                [
+                    "No Diana-generated CNV segment callset exists for HG008; current HG008 CNV evidence is bounded depth-direction validation, not segment-level reciprocal overlap.",
+                    "No Diana-generated SV callset exists for HG008; SV reciprocal-overlap against v0.5 truth remains unrun.",
+                ],
+            )
             evidence_rows = utils.parse_csv(utils.read_text(root / "results/rosalind_hrd/hg008/unit/sample_validation_summary.csv"))
             self.assertIn("sv_truth_asset", {row["evidence_id"] for row in evidence_rows})
+            cnv_row = next(row for row in evidence_rows if row["evidence_id"] == "cnv_depth_sweep")
+            self.assertIn("Bounded reciprocal depth signal present: yes", cnv_row["detail"])
             reviewer = utils.read_text(root / "results/rosalind_hrd/hg008/unit/reviewer_packet.md")
             self.assertIn("HG008 SV truth asset is present", reviewer)
+            self.assertIn("normalized loss tumor-normal ratio: 0.438786", reviewer)
 
     def test_colo829_packet_surfaces_purity_series_blocker(self):
         with tempfile.TemporaryDirectory() as tmp:
