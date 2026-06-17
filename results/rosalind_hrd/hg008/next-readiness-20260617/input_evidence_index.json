@@ -1,0 +1,29 @@
+{
+  "sampleSet": "hg008",
+  "artifacts": [
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hg008_snv_panel.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/hg008_snv_panel.json",
+      "exists": "yes",
+      "bytes": 20033
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json",
+      "exists": "yes",
+      "bytes": 6833
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
+      "exists": "yes",
+      "bytes": 3736
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hg008_rna_stats.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/hg008_rna_stats.json",
+      "exists": "yes",
+      "bytes": 1341
+    }
+  ]
+}

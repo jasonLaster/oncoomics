@@ -1,0 +1,18 @@
+{
+  "status": "candidate_context_available",
+  "boundary": "Research context may enrich observed events, but it must not override failed QC, missing adapters, or HRD no-call states.",
+  "recommended_source_skills": [
+    "clinvar-variation-skill for observed variant pathogenicity context",
+    "gnomad-graphql-skill for population frequency and constraint context",
+    "cbioportal-skill and civic-skill for cancer recurrence and clinical evidence context",
+    "uniprot-skill and reactome-skill for HR repair gene and pathway context",
+    "clinicaltrials-skill only for explicit translational follow-up questions"
+  ],
+  "candidate_observed_evidence_ids": [
+    "colo829_platform_illumina_hiseqx",
+    "colo829_platform_pacbio_sequel",
+    "colo829_platform_ont_minion",
+    "colo829_platform_illumina_novaseq_phased"
+  ],
+  "sample_set": "colo829"
+}

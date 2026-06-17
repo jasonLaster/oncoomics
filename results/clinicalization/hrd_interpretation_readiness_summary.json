@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-12T21:45:07.623Z",
+  "generatedAt": "2026-06-17T17:22:14.411Z",
   "status": "passed",
   "errors": [],
   "summary": {
@@ -18,7 +18,7 @@
       "adapter_id": "sigprofiler_sbs3",
       "tool_name": "SigProfilerAssignment SBS3 adapter",
       "priority": "signature_context_adapter",
-      "current_input_status": "not_assessable_low_mutation_count",
+      "current_input_status": "not_assessable_variant_calling_skipped",
       "interpretation_status": "no_call",
       "clinical_actionability": "not_ready",
       "locked_threshold_status": "not_locked",
@@ -30,7 +30,7 @@
       "adapter_id": "scarhrd",
       "tool_name": "scarHRD adapter",
       "priority": "copy_number_scar_adapter",
-      "current_input_status": "not_assessable_low_depth_smoke_no_allele_specific_segments",
+      "current_input_status": "not_assessable_without_allele_specific_segments",
       "interpretation_status": "no_call",
       "clinical_actionability": "not_ready",
       "locked_threshold_status": "not_locked",
@@ -42,7 +42,7 @@
       "adapter_id": "chord",
       "tool_name": "CHORD adapter",
       "priority": "hrd_classifier_adapter",
-      "current_input_status": "not_assessable_low_depth_smoke_requires_full_depth_sv_caller_vcf",
+      "current_input_status": "not_assessable_requires_validated_sv_caller_vcf",
       "interpretation_status": "no_call",
       "clinical_actionability": "not_ready",
       "locked_threshold_status": "not_locked",

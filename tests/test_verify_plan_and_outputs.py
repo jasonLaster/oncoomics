@@ -28,6 +28,15 @@ class VerifyPlanAndOutputsTest(unittest.TestCase):
             self.assertIn("Missing missing.csv", errors)
             self.assertIn("tiny.csv has 1 rows; expected at least 2.", errors)
 
+    def test_require_status_in_accepts_explicit_alternate_states(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            utils.write_json(root / "summary.json", {"status": "skipped_public_bam_timing"})
+            errors: list[str] = []
+            with patch.object(verify_outputs, "path_from_root", lambda relative: root / relative):
+                verify_outputs.require_status_in(errors, "summary.json", {"passed", "skipped_public_bam_timing"})
+            self.assertEqual(errors, [])
+
 
 if __name__ == "__main__":
     unittest.main()

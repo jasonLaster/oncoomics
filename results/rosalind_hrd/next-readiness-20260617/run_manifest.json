@@ -1,0 +1,79 @@
+{
+  "generatedAt": "2026-06-17T17:26:17.658Z",
+  "runId": "next-readiness-20260617",
+  "sampleSets": [
+    "hcc1395_wes",
+    "hcc1395_wgs",
+    "hg008",
+    "colo829",
+    "diana_raw_intake"
+  ],
+  "packetRoot": "results/rosalind_hrd",
+  "artifactRoot": "repo_root",
+  "artifactRootMode": "repo_root",
+  "packets": [
+    {
+      "sampleSet": "hcc1395_wes",
+      "title": "SEQC2/HCC1395 WES HRD Readiness Packet",
+      "outputDir": "results/rosalind_hrd/hcc1395_wes/next-readiness-20260617",
+      "evidenceRows": 5,
+      "adapterRows": 6,
+      "blockers": [],
+      "missingArtifacts": [],
+      "allowedConclusion": "This sample demonstrates WES small-variant and caller-readiness behavior. It does not support a genome-wide HRD scar, SV, SBS3, CHORD, or HRDetect-style score."
+    },
+    {
+      "sampleSet": "hcc1395_wgs",
+      "title": "SEQC2/HCC1395 WGS HRD Evidence-Surface Packet",
+      "outputDir": "results/rosalind_hrd/hcc1395_wgs/next-readiness-20260617",
+      "evidenceRows": 7,
+      "adapterRows": 7,
+      "blockers": [
+        "Current SV evidence summary has no discordant mapped-pair counts; regenerate full SV evidence before using WGS as the flagship HRD packet."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "This sample exercises the WGS evidence surfaces needed for HRD review. It remains a partial HRD evidence packet until allele-specific CNV/LOH, production SV calls, signature thresholds, CHORD/scarHRD/HRDetect policy, and known-answer performance are locked."
+    },
+    {
+      "sampleSet": "hg008",
+      "title": "GIAB HG008 Truth-Set Readiness Packet",
+      "outputDir": "results/rosalind_hrd/hg008/next-readiness-20260617",
+      "evidenceRows": 3,
+      "adapterRows": 4,
+      "blockers": [
+        "No Diana-generated SV/CNV callset exists for HG008 in this bounded run."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "HG008 is a truth-set validation sample. It should improve confidence in caller correctness and CNV/SV benchmarking, not produce a Diana-style HRD interpretation."
+    },
+    {
+      "sampleSet": "colo829",
+      "title": "COLO829/COLO829BL Tumor-Normal Guardrail Packet",
+      "outputDir": "results/rosalind_hrd/colo829/next-readiness-20260617",
+      "evidenceRows": 6,
+      "adapterRows": 3,
+      "blockers": [
+        "COLO829 submitted BAMs are GRCh37-style while the fetched SV truth VCF is hg38-lifted.",
+        "No Diana SV/CNA callset exists."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "COLO829 is an independent tumor-normal and driver-recovery guardrail. It does not establish HRD status until full SV/CNA/signature evidence is generated and benchmarked."
+    },
+    {
+      "sampleSet": "diana_raw_intake",
+      "title": "Diana Raw BAM/FASTQ Intake Readiness Packet",
+      "outputDir": "results/rosalind_hrd/diana_raw_intake/next-readiness-20260617",
+      "evidenceRows": 4,
+      "adapterRows": 4,
+      "blockers": [
+        "Actual Diana BAM/FASTQ/CRAM paths have not passed strict intake validation."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "This packet proves the raw-data intake contract is ready. It does not validate Diana files or produce HRD evidence until the actual BAM/FASTQ/CRAM paths are supplied and pass strict intake validation."
+    }
+  ],
+  "sourcePattern": {
+    "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
+    "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats."
+  }
+}

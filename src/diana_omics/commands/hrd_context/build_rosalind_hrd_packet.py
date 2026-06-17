@@ -10,7 +10,7 @@ from ...paths import path_from_root
 from ...utils import ensure_dir, iso_now, parse_csv, read_json, read_text, write_csv, write_json, write_text
 
 RESULT_ROOT = "results/rosalind_hrd"
-DEFAULT_SAMPLE_SETS = ("hcc1395_wes", "hcc1395_wgs", "hg008", "colo829")
+DEFAULT_SAMPLE_SETS = ("hcc1395_wes", "hcc1395_wgs", "hg008", "colo829", "diana_raw_intake")
 
 
 @dataclass(frozen=True)
@@ -91,6 +91,22 @@ PACKET_SPECS: dict[str, PacketSpec] = {
             "results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json",
         ),
     ),
+    "diana_raw_intake": PacketSpec(
+        sample_set="diana_raw_intake",
+        title="Diana Raw BAM/FASTQ Intake Readiness Packet",
+        use_case="Prepare the exact validation and staging path for Diana tumor-normal BAM, CRAM, FASTQ, and optional RNA FASTQ files.",
+        allowed_conclusion=(
+            "This packet proves the raw-data intake contract is ready. It does not validate Diana files or produce HRD "
+            "evidence until the actual BAM/FASTQ/CRAM paths are supplied and pass strict intake validation."
+        ),
+        artifacts=(
+            "manifests/diana_raw_inputs.template.csv",
+            "docs/operations/diana-raw-inputs.md",
+            "results/diana_raw_intake/input_contract.json",
+            "results/diana_raw_intake/intake_readiness_summary.json",
+            "results/diana_raw_intake/input_validation_summary.json",
+        ),
+    ),
 }
 
 
@@ -112,8 +128,30 @@ def run_id() -> str:
     return iso_now().replace(":", "").replace(".", "-")
 
 
+def artifact_root() -> Path:
+    raw = os.environ.get("ROSALIND_HRD_ARTIFACT_ROOT")
+    if raw:
+        return Path(raw).expanduser()
+    return path_from_root("")
+
+
+def artifact_root_mode() -> str:
+    return "materialized_artifact_root" if os.environ.get("ROSALIND_HRD_ARTIFACT_ROOT") else "repo_root"
+
+
+def artifact_root_label() -> str:
+    return str(artifact_root()) if artifact_root_mode() == "materialized_artifact_root" else "repo_root"
+
+
+def artifact_path_from_root(relative_path: str | Path) -> Path:
+    path = Path(relative_path)
+    if path.is_absolute():
+        return path
+    return artifact_root() / path
+
+
 def read_json_or_empty(relative_path: str) -> dict[str, Any]:
-    path = path_from_root(relative_path)
+    path = artifact_path_from_root(relative_path)
     if not path.exists():
         return {}
     payload = read_json(path)
@@ -121,7 +159,7 @@ def read_json_or_empty(relative_path: str) -> dict[str, Any]:
 
 
 def read_csv_or_empty(relative_path: str) -> list[dict[str, str]]:
-    path = path_from_root(relative_path)
+    path = artifact_path_from_root(relative_path)
     if not path.exists():
         return []
     return parse_csv(read_text(path))
@@ -130,10 +168,12 @@ def read_csv_or_empty(relative_path: str) -> list[dict[str, str]]:
 def artifact_index(paths: Sequence[str]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for relative_path in paths:
-        path = path_from_root(relative_path)
+        path = artifact_path_from_root(relative_path)
+        resolved_path = str(path) if artifact_root_mode() == "materialized_artifact_root" else relative_path
         rows.append(
             {
                 "path": relative_path,
+                "resolved_path": resolved_path,
                 "exists": "yes" if path.exists() else "no",
                 "bytes": path.stat().st_size if path.exists() else "",
             }
@@ -143,6 +183,20 @@ def artifact_index(paths: Sequence[str]) -> list[dict[str, Any]]:
 
 def count_csv_status(rows: Sequence[Mapping[str, str]], status: str = "passed") -> int:
     return sum(1 for row in rows if row.get("status") == status)
+
+
+def first_json_row(payload: Mapping[str, Any]) -> dict[str, Any]:
+    rows = payload.get("rows", [])
+    if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+        return rows[0]
+    return {}
+
+
+def as_int(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def evidence_row(evidence_id: str, status: str, detail: str, artifact: str, caveat: str = "") -> dict[str, str]:
@@ -223,13 +277,24 @@ def hcc1395_wgs_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], 
     summary = read_json_or_empty("results/phase3_wgs_smoke/phase3_wgs_summary.json")
     hrd_tools = read_json_or_empty("results/phase3_wgs_smoke/hrd_tool_readiness_summary.json")
     sv_summary = read_json_or_empty("results/phase3_wgs_smoke/sv_evidence_summary.json")
+    sv_readiness = read_json_or_empty("results/clinicalization/sv_caller_readiness_summary.json")
+    cnv_readiness = read_json_or_empty("results/clinicalization/cnv_loh_readiness_summary.json")
     hrd_readiness = read_json_or_empty("results/clinicalization/hrd_interpretation_readiness_summary.json")
     sv_rows = sv_summary.get("rows", []) if isinstance(sv_summary.get("rows"), list) else []
-    discordant_pairs = sum(int(row.get("discordant_mapped_pairs") or 0) for row in sv_rows if isinstance(row, dict))
+    discordant_pairs = sum(as_int(row.get("discordant_mapped_pairs")) for row in sv_rows if isinstance(row, dict))
     sv_statuses = sorted({str(row.get("chord_input_status", "")) for row in sv_rows if isinstance(row, dict) and row.get("chord_input_status")})
+    sv_readiness_row = first_json_row(sv_readiness)
+    cnv_readiness_row = first_json_row(cnv_readiness)
+    sv_readiness_pairs = as_int(sv_readiness_row.get("phase3_discordant_mapped_pairs"))
     blockers: list[str] = []
     if discordant_pairs <= 0:
         blockers.append("Current SV evidence summary has no discordant mapped-pair counts; regenerate full SV evidence before using WGS as the flagship HRD packet.")
+    if discordant_pairs <= 0 and sv_readiness_pairs > 0:
+        blockers.append(
+            "SV readiness sidecar is stale relative to the current SV evidence summary: "
+            f"sv_caller_readiness reports {sv_readiness_pairs} discordant mapped pairs, but sv_evidence_summary reports 0. "
+            "Regenerate SV evidence and rerun verify:sv-caller-readiness before treating the WGS packet as current."
+        )
     evidence = [
         evidence_row(
             "wgs_pair_validation",
@@ -270,6 +335,29 @@ def hcc1395_wgs_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], 
             f"SV evidence rows: {len(sv_rows)}; discordant mapped pairs: {discordant_pairs}; CHORD statuses: {';'.join(sv_statuses) or 'missing'}.",
             "results/phase3_wgs_smoke/sv_evidence_summary.json",
             "CHORD and HRDetect need validated SV caller VCF/BEDPE, not metadata-only evidence.",
+        ),
+        evidence_row(
+            "sv_caller_readiness",
+            str(sv_readiness.get("status", "missing")),
+            (
+                f"Candidate SV caller rows: {sv_readiness_row.get('candidate_count', 'unknown')}; "
+                f"discordant mapped pairs in sidecar: {sv_readiness_row.get('phase3_discordant_mapped_pairs', 'unknown')}; "
+                f"ready for clinical interpretation: {sv_readiness_row.get('ready_for_clinical_interpretation', 'unknown')}."
+            ),
+            "results/clinicalization/sv_caller_readiness_summary.json",
+            "Use this as a readiness gate only after it agrees with the current SV evidence summary.",
+        ),
+        evidence_row(
+            "cnv_loh_readiness",
+            str(cnv_readiness.get("status", "missing")),
+            (
+                f"CNV bins: {cnv_readiness_row.get('phase3_cnv_bins', 'unknown')}; "
+                f"allele-specific segments available: "
+                f"{'no' if cnv_readiness_row.get('current_bins_are_not_allele_specific_segments') == 'yes' else 'unknown'}; "
+                f"ready for clinical interpretation: {cnv_readiness_row.get('ready_for_clinical_interpretation', 'unknown')}."
+            ),
+            "results/clinicalization/cnv_loh_readiness_summary.json",
+            "Coverage bins remain a plumbing check, not scarHRD-ready allele-specific CNV/LOH evidence.",
         ),
     ]
     adapters: list[dict[str, str]] = []
@@ -343,11 +431,82 @@ def colo829_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list
     return evidence, adapters, blockers
 
 
+def diana_raw_intake_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
+    contract = read_json_or_empty("results/diana_raw_intake/input_contract.json")
+    readiness = read_json_or_empty("results/diana_raw_intake/intake_readiness_summary.json")
+    validation = read_json_or_empty("results/diana_raw_intake/input_validation_summary.json")
+    validation_summary = validation.get("summary", {}) if isinstance(validation.get("summary"), dict) else {}
+    required_columns = contract.get("requiredColumns", []) if isinstance(contract.get("requiredColumns"), list) else []
+    matched_pairs = validation_summary.get("matchedPairIds", []) if isinstance(validation_summary.get("matchedPairIds"), list) else []
+    validation_status = str(validation.get("status", "missing"))
+    evidence = [
+        evidence_row(
+            "intake_template",
+            str(readiness.get("status", "missing")),
+            (
+                f"Template: {readiness.get('template', 'unknown')}; "
+                f"samplesheet: {readiness.get('actualSamplesheet', 'unknown')}; "
+                f"ready for raw data: {readiness.get('readyForDianaRawData', 'unknown')}."
+            ),
+            "results/diana_raw_intake/intake_readiness_summary.json",
+            "Template readiness only confirms the intake surface exists.",
+        ),
+        evidence_row(
+            "input_contract",
+            "present" if required_columns else "missing",
+            (
+                f"{len(required_columns)} required columns; DNA assays: {';'.join(contract.get('dnaAssays', []))}; "
+                f"data types: {';'.join(contract.get('dataTypes', []))}."
+            ),
+            "results/diana_raw_intake/input_contract.json",
+        ),
+        evidence_row(
+            "strict_file_validation",
+            validation_status,
+            (
+                f"Rows: {validation_summary.get('rowCount', 0)}; DNA rows: {validation_summary.get('dnaRowCount', 0)}; "
+                f"tumor DNA rows: {validation_summary.get('tumorDnaRows', 0)}; normal DNA rows: {validation_summary.get('normalDnaRows', 0)}; "
+                f"matched pair IDs: {';'.join(matched_pairs) or 'none'}."
+            ),
+            "results/diana_raw_intake/input_validation_summary.json",
+            "Expected to remain waiting until actual Diana BAM/FASTQ/CRAM paths are supplied.",
+        ),
+        evidence_row(
+            "run_path",
+            "ready_to_validate" if readiness.get("status") == "template_ready" else "blocked",
+            (
+                f"Validate with `{contract.get('validationCommand', 'missing')}`; "
+                f"stage with `{contract.get('recomputeCommand', 'missing')}`."
+            ),
+            "results/diana_raw_intake/input_contract.json",
+            "Passing intake validation still does not produce an HRD score.",
+        ),
+    ]
+    if validation_status == "passed":
+        raw_state = "ready_to_stage"
+        raw_blocker = ""
+        raw_next = "Stage the Diana analysis packet, then choose WGS/WES feature lanes from the staged rows."
+        blockers: list[str] = []
+    else:
+        raw_state = "blocked_until_files"
+        raw_blocker = "Actual Diana BAM/FASTQ/CRAM paths have not passed strict intake validation."
+        raw_next = "Copy the template to manifests/diana_raw_inputs.csv, fill actual paths and metadata, then run verify:diana-raw with DIANA_RAW_REQUIRE_DATA=1."
+        blockers = [raw_blocker]
+    adapters = [
+        adapter_row("Raw file intake", raw_state, raw_blocker, raw_next),
+        adapter_row("Tumor-normal DNA pairing", "blocked_until_files" if not matched_pairs else "ready_to_stage", "No validated matched tumor-normal DNA pair is staged." if not matched_pairs else "", "Confirm tumor and normal rows share pair_id before compute."),
+        adapter_row("Reference/index preflight", "ready_to_validate", "Reference files must exist and match all DNA rows when strict validation runs.", "Validate reference FASTA, FAI, and dict paths in verify:diana-raw."),
+        adapter_row("HRD interpretation", "no_call", "No Diana sample evidence exists yet.", "Run the staged DNA feature lanes and public validation sidecars before interpretation."),
+    ]
+    return evidence, adapters, blockers
+
+
 EVIDENCE_BUILDERS = {
     "hcc1395_wes": hcc1395_wes_evidence,
     "hcc1395_wgs": hcc1395_wgs_evidence,
     "hg008": hg008_evidence,
     "colo829": colo829_evidence,
+    "diana_raw_intake": diana_raw_intake_evidence,
 }
 
 
@@ -449,6 +608,56 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
     }
 
 
+def write_cloud_materialization_plan(root: str, packet_run_id: str, packet_summaries: Sequence[Mapping[str, Any]]) -> None:
+    required_prefixes = sorted(
+        {
+            str(Path(path).parts[0])
+            for packet in packet_summaries
+            for path in packet.get("missingArtifacts", [])
+            if Path(str(path)).parts
+        }
+    )
+    write_text(
+        path_from_root(f"{root}/cloud_materialization_plan.md"),
+        "\n".join(
+            [
+                "# Cloud Materialization Plan",
+                "",
+                f"Run ID: `{packet_run_id}`",
+                "",
+                f"Artifact root mode: `{artifact_root_mode()}`",
+                "",
+                "Use this when the container image does not include repository `results/`, `manifests/`, or `docs/operations` artifacts.",
+                "",
+                "## Required Environment",
+                "",
+                "```sh",
+                "export ROSALIND_HRD_ARTIFACT_ROOT=/workspace/artifacts",
+                f"export ROSALIND_HRD_RUN_ID={packet_run_id}",
+                "PYTHONPATH=src /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet",
+                "```",
+                "",
+                "Materialize the artifact root so paths like `results/phase3_wgs_smoke/phase3_wgs_summary.json` resolve under `$ROSALIND_HRD_ARTIFACT_ROOT`.",
+                "",
+                "## Typical Prefixes",
+                "",
+                "- `results/full_wes_benchmark/`",
+                "- `results/phase3_wgs_smoke/`",
+                "- `results/clinicalization/`",
+                "- `results/diana_raw_intake/`",
+                "- `manifests/`",
+                "- `docs/operations/`",
+                "",
+                "## Missing Prefixes In This Run",
+                *(f"- `{prefix}/`" for prefix in required_prefixes),
+                *(["- None."] if not required_prefixes else []),
+                "",
+                "The packet builder writes new output to the repo checkout, but reads source evidence from `$ROSALIND_HRD_ARTIFACT_ROOT` when that variable is set.",
+            ]
+        ),
+    )
+
+
 def main() -> None:
     packet_run_id = run_id()
     sample_sets = selected_sample_sets()
@@ -460,6 +669,8 @@ def main() -> None:
         "runId": packet_run_id,
         "sampleSets": list(sample_sets),
         "packetRoot": RESULT_ROOT,
+        "artifactRoot": artifact_root_label(),
+        "artifactRootMode": artifact_root_mode(),
         "packets": packet_summaries,
         "sourcePattern": {
             "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
@@ -490,6 +701,7 @@ def main() -> None:
             ]
         ),
     )
+    write_cloud_materialization_plan(root, packet_run_id, packet_summaries)
     print(f"Rosalind HRD packets written: {root}")
 
 

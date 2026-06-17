@@ -27,11 +27,11 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 - Full WES depth-eligible truth variants: 1307
 - Full WES contamination status: passed
 - Phase 3 WGS mechanics status: passed
-- Phase 3 WGS full-source acceptance: pending_full_source
+- Phase 3 WGS full-source acceptance: passed
 - Phase 3 WGS complete: yes
-- Phase 3 ready for Phase 4 setup: no
-- Phase 3 WGS read pairs/end: 500000
-- Phase 3 WGS read-pair mode: unknown
+- Phase 3 ready for Phase 4 setup: yes
+- Phase 3 WGS read pairs/end: 942559447
+- Phase 3 WGS read-pair mode: full
 - Phase 3 coverage-CNV bins: 631
 - Phase 3 SBS96 usable SNVs: 0
 - Lehmann official TCGA TNBC samples: 180
@@ -82,7 +82,7 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 9. Full-reference smoke validates one full hg38 analysis-set reference, BRCA interval metadata, caller-ready BAM contracts, and indexed VCF generation.
 10. Production somatic smoke validates GATK Mutect2/FilterMutectCalls execution on a larger downsampled HCC1395 WES tumor-normal pair.
 11. Full WES benchmark validates complete ENA FASTQ files, full-reference BAM contracts, duplicate marking, contamination estimation, PoN-aware Mutect2, and SEQC2 truth-overlap metrics.
-12. Phase 3 bounded WGS developer validation has exercised the full-reference BAM, Mutect2, coverage-CNV, SBS96, and SV evidence lanes; full-source acceptance remains pending.
+12. Phase 3 full-source WGS validation passed with complete representative WGS FASTQs, full-reference WGS BAM contracts, Mutect2 WGS output, coverage-CNV bins, SBS96 matrix generation, and BAM-derived SV evidence lanes.
 
 ## Main Limitations
 
@@ -92,7 +92,7 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 4. Current RNA subtype context is a marker-module lane, not a genome-wide Lehmann/TNBCtype classifier.
 5. The local Lehmann signature-score validation is not the locked Vanderbilt TNBCtype centroid/permutation implementation.
 6. The Phase 2F Mutect2 VCF is WES small-variant benchmark evidence, not WGS HRD signature evidence.
-7. The current Phase 3 WGS artifact is a bounded developer subset, not the full-source WGS acceptance run or a final HRD classifier.
+7. The Phase 3 WGS lane is a representative full-source WGS validation, not a final HRD classifier.
 8. The Phase 2F local gate uses the Broad 1000g PoN and common-biallelic contamination resource, but the full multi-GB af-only gnomAD resource remains documented as a production/cloud input rather than a local gating download.
 9. BQSR, orientation-bias modeling, vendor capture intervals, allele-specific copy-number, validated SV calling, full-depth WGS scaling, and WGS signature calling remain Phase 4 or Diana-specific production decisions.
 10. Clinical action still requires clinician-owned validation, companion diagnostics, or orthogonal confirmation.
@@ -111,6 +111,6 @@ This is ready for reviewer sanity-check of the workflow mechanics. It is not yet
 
 ## Summaries
 
-- HRD summary: {"generatedAt":"2026-06-07T06:44:48.179Z","panelSampleCount":28,"eventRowCount":31,"alleleStateRowCount":31,"scarSignatureRowCount":28,"failureModeRowCount":63,"confusionMatrix":[{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_ambiguous_or_not_assessable","count":7},{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_hrd_like","count":1},{"expected_bucket":"expected_hrd_like","predicted_bucket":"predicted_hrd_like","count":12},{"expected_bucket":"expected_negative","predicted_bucket":"predicted_negative","count":8}],"boundary":"Phase-1 HRD classes are processed public-data candidates. WGS signatures, allele-specific LOH, CHORD, HRDetect, and companion diagnostics are not run."}
-- RNA summary: {"generatedAt":"2026-06-07T06:44:48.289Z","panelSampleCount":28,"expressionRecordCount":20558,"moduleDefinitions":{"basal_marker":["KRT5","KRT14","KRT17","EGFR","FOXC1"],"lar_luminal_marker":["AR","FOXA1","GATA3","ESR1"],"proliferation_marker":["MKI67"],"immune_inflammation_marker":["CD8A","CD274","CXCL9","IFNG"],"epithelial_marker":["EPCAM","MUC1"],"stromal_emt_marker":["VIM"]},"boundary":"RNA context is a small marker-module lane and does not reproduce TNBCtype, TNBC-DX, or Reveal."}
+- HRD summary: {"generatedAt":"2026-06-13T13:25:44.782Z","panelSampleCount":28,"eventRowCount":31,"alleleStateRowCount":31,"scarSignatureRowCount":28,"failureModeRowCount":63,"confusionMatrix":[{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_ambiguous_or_not_assessable","count":7},{"expected_bucket":"expected_ambiguous","predicted_bucket":"predicted_hrd_like","count":1},{"expected_bucket":"expected_hrd_like","predicted_bucket":"predicted_hrd_like","count":12},{"expected_bucket":"expected_negative","predicted_bucket":"predicted_negative","count":8}],"boundary":"Phase-1 HRD classes are processed public-data candidates. WGS signatures, allele-specific LOH, CHORD, HRDetect, and companion diagnostics are not run."}
+- RNA summary: {"generatedAt":"2026-06-13T13:25:44.997Z","panelSampleCount":28,"expressionRecordCount":20558,"moduleDefinitions":{"basal_marker":["KRT5","KRT14","KRT17","EGFR","FOXC1"],"lar_luminal_marker":["AR","FOXA1","GATA3","ESR1"],"proliferation_marker":["MKI67"],"immune_inflammation_marker":["CD8A","CD274","CXCL9","IFNG"],"epithelial_marker":["EPCAM","MUC1"],"stromal_emt_marker":["VIM"]},"boundary":"RNA context is a small marker-module lane and does not reproduce TNBCtype, TNBC-DX, or Reveal."}
 - Lehmann summary: {"generatedAt":"2026-06-15T00:38:27.560Z","source":{"name":"Lehmann et al. 2016 PLOS One S1 Table","url":"https://doi.org/10.1371/journal.pone.0157368.s006","rawCache":"data/raw/lehmann/pone0157368s006.xlsx"},"classifierValidation":{"generatedAt":"2026-06-15T00:38:27.445Z","runMode":"non_dry_expression_classifier_validation","status":"completed","method":"Python port of the public BCTL Lehmann signature-score helper using cBioPortal PanCan Atlas RNA Seq V2 RSEM values.","boundary":"This validates expression acquisition and signature scoring, but it is not the Vanderbilt TNBCtype centroid/permutation web-tool implementation.","signatureSource":"https://github.com/BCTL-Bordet/TNBC_molecularsubtypes/blob/main/lehmann.RData","signatureCsv":"data/processed/lehmann/lehmann_signature_genes.csv","rawExpressionCache":"data/raw/lehmann/cbioportal_tcga_tnbc_lehmann_signature_expression.json.gz","officialTcgaTnbcSamples":180,"assessableSamples":179,"missingExpressionSamples":["TCGA-AR-A2LR-01"],"signatureRows":7799,"signatureUniqueEntrezRequested":4059,"expressionRecordsFetched":719938,"availableSignatureEntrez":4022,"availableExpressionSamples":179,"coverageBySubtype":{"basal_like_1":{"signatureEntrezCount":671,"availableEntrezCount":659,"coverage":0.9821},"basal_like_2":{"signatureEntrezCount":430,"availableEntrezCount":414,"coverage":0.9628},"immunomodulatory":{"signatureEntrezCount":1055,"availableEntrezCount":1034,"coverage":0.9801},"mesenchymal":{"signatureEntrezCount":836,"availableEntrezCount":816,"coverage":0.9761},"mesenchymal_stem_like":{"signatureEntrezCount":2346,"availableEntrezCount":2323,"coverage":0.9902},"luminal_ar":{"signatureEntrezCount":2220,"availableEntrezCount":2205,"coverage":0.9932}},"localTnbctypeMatches":124,"localTnbctypeMatchRate":0.6927,"localRefinedMatches":142,"localRefinedMatchRate":0.7933},"officialTcgaTnbcCount":180,"panelSampleCount":28,"panelWithOfficialLehmannCount":8,"panelMissingOfficialLehmannCount":20,"statusCounts":{"basal_context_but_not_official_lehmann_tnbc":2,"confirmed_from_lehmann_tcga_s1":8,"no_call_not_in_official_lehmann_tcga_tnbc":5,"not_applicable_not_tnbc_from_available_fields":13},"currentRnaMarkerGeneCount":19,"currentRnaBoundary":"Current RNA context is a marker-module lane, not a genome-wide TNBCtype classifier input.","dianaRequirements":["Clinical ER/PR/HER2 confirmation that the tumor is TNBC.","Genome-wide RNA expression from tumor RNA-seq/WTS or a validated expression assay.","Normalization on TNBC samples only, or an equivalent locked TNBCtype input contract.","Locked TNBCtype/TNBCtype-4 implementation or archived Vanderbilt web-tool run with coefficients and p-values.","TCGA positive controls from the official S1 table for regression testing."]}

@@ -99,6 +99,12 @@ def main() -> None:
     phase3_acceptance_status = (
         "passed" if phase3_full_source and phase3_wgs_summary.get("phase3Complete") is True else "pending_full_source"
     )
+    phase4_setup_ready = phase3_full_source and phase3_wgs_summary.get("readyForPhase4WhenDianaRawArrives") is True
+    readiness_status = (
+        "ready for Phase 4 setup once Diana raw files arrive"
+        if phase4_setup_ready
+        else "not ready for Phase 4 setup until the Phase 3 full-source public WGS gate passes"
+    )
     phase3_scope = "full-source representative WGS" if phase3_full_source else "bounded developer WGS subset"
     phase3_acceptance_note = (
         "Phase 3 validates full-source representative WGS mechanics with complete public SEQC2/HCC1395 WGS FASTQs."
@@ -167,7 +173,7 @@ Full-depth WGS rearrangement signature interpretation, scarHRD, CHORD, HRDetect,
         path_from_root("results/diana_readiness_gate.md"),
         f"""# Diana Readiness Gate
 
-Status: **not ready for Phase 4 setup until the Phase 3 full-source public WGS gate passes; also not ready for clinical interpretation without raw-file inventory, Diana-specific production resource decisions, WGS/CNV/SV/signature policy, and reviewer sign-off**.
+Status: **{readiness_status}; also not ready for clinical interpretation without raw-file inventory, Diana-specific production resource decisions, WGS/CNV/SV/signature policy, and reviewer sign-off**.
 
 ## Required Before Diana Data
 
@@ -193,7 +199,7 @@ The benchmark mechanics are runnable and validated on open processed public data
 6. Phase 2F full WES benchmark on the SEQC2/HCC1395 tumor-normal pair, with full FASTQ MD5 validation, full-reference BAM contracts, GATK duplicate marking, common-biallelic contamination estimation, PoN-aware Mutect2, and bounded truth-overlap metrics.
 7. Phase 3 {phase3_scope} validation on the SEQC2/HCC1395 tumor-normal WGS pair, with full-reference BAM contracts, Mutect2 WGS output, coverage-CNV bins, SBS96 matrix output, and BAM-derived SV evidence.
 
-The current workflow is sufficient to validate project plumbing, samplesheet shape, local BAM file contracts, partial and full human-reference handling, a production-style Mutect2 execution path, indexed somatic VCF outputs, full WES small-variant benchmark behavior, bounded WGS feature-lane mechanics, and evidence-table boundaries. It is not sufficient to make a treatment-changing HRD claim, and it does not yet validate the full-source WGS acceptance gate, allele-specific CNV calls, production SV caller VCFs, or WGS-grade HRD signatures.
+The current workflow is sufficient to validate project plumbing, samplesheet shape, local BAM file contracts, partial and full human-reference handling, a production-style Mutect2 execution path, indexed somatic VCF outputs, full WES small-variant benchmark behavior, WGS feature-lane mechanics, and evidence-table boundaries. It is not sufficient to make a treatment-changing HRD claim, and it does not yet validate allele-specific CNV calls, production SV caller VCFs, or WGS-grade HRD signatures.
 """,
     )
 
