@@ -337,6 +337,29 @@ next_actions.md
 
 The `input_evidence_index.json` should point back to the existing `results/` and `manifests/` files used, so the packet is reproducible without copying large BAMs or FASTQs.
 
+### Cloud Materialized Packet Smoke
+
+The current cloud-ready proof is `cloud-selective5-20260617`, run on AWS Batch on 2026-06-17. It used the pushed GitHub archive for commit `3103ae6ec2a7b7939090409f377b459cbc9d368a`, materialized the selective HCC1395 WGS evidence root inside the container, and ran the packet builder with `ROSALIND_HRD_ARTIFACT_ROOT`.
+
+| Run ID | Batch job | Status | Sample set | Evidence rows | Adapter rows | Packet blockers |
+| --- | --- | --- | --- | --- | --- | --- |
+| `cloud-selective5-20260617` | `573cd3de-afe9-4949-80a2-8ba0a523c300` | `SUCCEEDED` | `hcc1395_wgs` | `7` | `7` | `0` |
+
+Cloud output was written to:
+
+```text
+s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-selective5-20260617
+```
+
+Committed evidence is available under:
+
+```text
+results/rosalind_hrd/cloud-selective5-20260617/
+results/rosalind_hrd/hcc1395_wgs/cloud-selective5-20260617/
+```
+
+This run proves the lightweight packet builder can run in Batch against materialized artifacts and produce reviewer-packet outputs without uploading local generated data. It does not prove full WGS compute or a final HRD score. The generated packet keeps SBS3, scarHRD, CHORD, and HRDetect-style interpretation behind their current no-call boundaries until production adapters, thresholds, and known-answer performance are locked.
+
 ## Source Pattern
 
 This design follows the OpenAI life-sciences workflow pattern documented in:
