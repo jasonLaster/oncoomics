@@ -1,0 +1,41 @@
+{
+  "sampleSet": "diana_raw_intake",
+  "artifacts": [
+    {
+      "path": "manifests/diana_raw_inputs.template.csv",
+      "resolved_path": "artifacts/diana_raw_intake_ready/manifests/diana_raw_inputs.template.csv",
+      "exists": "yes",
+      "bytes": 2140
+    },
+    {
+      "path": "docs/operations/diana-raw-inputs.md",
+      "resolved_path": "artifacts/diana_raw_intake_ready/docs/operations/diana-raw-inputs.md",
+      "exists": "yes",
+      "bytes": 3918
+    },
+    {
+      "path": "results/diana_raw_intake/input_contract.json",
+      "resolved_path": "artifacts/diana_raw_intake_ready/results/diana_raw_intake/input_contract.json",
+      "exists": "yes",
+      "bytes": 1824
+    },
+    {
+      "path": "results/diana_raw_intake/intake_readiness_summary.json",
+      "resolved_path": "artifacts/diana_raw_intake_ready/results/diana_raw_intake/intake_readiness_summary.json",
+      "exists": "yes",
+      "bytes": 684
+    },
+    {
+      "path": "results/diana_raw_intake/input_validation_summary.json",
+      "resolved_path": "artifacts/diana_raw_intake_ready/results/diana_raw_intake/input_validation_summary.json",
+      "exists": "yes",
+      "bytes": 2326
+    },
+    {
+      "path": "results/diana_raw_intake/dinah_handoff_plan.json",
+      "resolved_path": "artifacts/diana_raw_intake_ready/results/diana_raw_intake/dinah_handoff_plan.json",
+      "exists": "yes",
+      "bytes": 6280
+    }
+  ]
+}

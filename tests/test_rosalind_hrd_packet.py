@@ -391,6 +391,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     "requiredColumns": ["patient_id", "pair_id", "sample_id"],
                     "dnaAssays": ["WGS", "WES"],
                     "dataTypes": ["FASTQ", "BAM", "CRAM"],
+                    "handoffPlanCommand": "PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff",
                     "validationCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw",
                     "recomputeCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw",
                 },
@@ -411,6 +412,16 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     "summary": {"rowCount": 0, "dnaRowCount": 0, "tumorDnaRows": 0, "normalDnaRows": 0, "matchedPairIds": []},
                 },
             )
+            utils.write_json(
+                root / "results/diana_raw_intake/dinah_handoff_plan.json",
+                {
+                    "status": "waiting_for_dinah_files",
+                    "samplesheet": "manifests/diana_raw_inputs.csv",
+                    "analysisId": "unit",
+                    "currentState": {"status": "waiting_for_dinah_files"},
+                    "handoffSteps": [{"name": "strict_validate_diana_inputs"}, {"name": "stage_diana_raw_analysis_packet"}],
+                },
+            )
 
             with patch.object(packet, "path_from_root", lambda relative: root / relative):
                 summary = packet.write_packet(packet.PACKET_SPECS["diana_raw_intake"], "unit")
@@ -420,6 +431,8 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertIn("blocked_until_files", {row["state"] for row in adapter_rows})
             reviewer = utils.read_text(root / "results/rosalind_hrd/diana_raw_intake/unit/reviewer_packet.md")
             self.assertIn("verify:diana-raw", reviewer)
+            self.assertIn("dinah_handoff_plan", reviewer)
+            self.assertIn("plan:diana-raw-handoff", reviewer)
 
 
 if __name__ == "__main__":

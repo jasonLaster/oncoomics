@@ -109,6 +109,7 @@ PACKET_SPECS: dict[str, PacketSpec] = {
             "results/diana_raw_intake/input_contract.json",
             "results/diana_raw_intake/intake_readiness_summary.json",
             "results/diana_raw_intake/input_validation_summary.json",
+            "results/diana_raw_intake/dinah_handoff_plan.json",
         ),
     ),
 }
@@ -518,7 +519,10 @@ def diana_raw_intake_evidence() -> tuple[list[dict[str, str]], list[dict[str, st
     contract = read_json_or_empty("results/diana_raw_intake/input_contract.json")
     readiness = read_json_or_empty("results/diana_raw_intake/intake_readiness_summary.json")
     validation = read_json_or_empty("results/diana_raw_intake/input_validation_summary.json")
+    handoff = read_json_or_empty("results/diana_raw_intake/dinah_handoff_plan.json")
     validation_summary = validation.get("summary", {}) if isinstance(validation.get("summary"), dict) else {}
+    handoff_state = handoff.get("currentState", {}) if isinstance(handoff.get("currentState"), dict) else {}
+    handoff_steps = handoff.get("handoffSteps", []) if isinstance(handoff.get("handoffSteps"), list) else []
     required_columns = contract.get("requiredColumns", []) if isinstance(contract.get("requiredColumns"), list) else []
     matched_pairs = validation_summary.get("matchedPairIds", []) if isinstance(validation_summary.get("matchedPairIds"), list) else []
     validation_status = str(validation.get("status", "missing"))
@@ -555,10 +559,21 @@ def diana_raw_intake_evidence() -> tuple[list[dict[str, str]], list[dict[str, st
             "Expected to remain waiting until actual Diana BAM/FASTQ/CRAM paths are supplied.",
         ),
         evidence_row(
+            "dinah_handoff_plan",
+            str(handoff.get("status", "missing")),
+            (
+                f"Steps: {len(handoff_steps)}; samplesheet: {handoff.get('samplesheet', 'unknown')}; "
+                f"analysis ID: {handoff.get('analysisId', 'unknown')}; current state: {handoff_state.get('status', 'unknown')}."
+            ),
+            "results/diana_raw_intake/dinah_handoff_plan.json",
+            "Planning artifact only; it does not validate files or authorize human-data cloud upload.",
+        ),
+        evidence_row(
             "run_path",
             "ready_to_validate" if readiness.get("status") == "template_ready" else "blocked",
             (
-                f"Validate with `{contract.get('validationCommand', 'missing')}`; "
+                f"Plan with `{contract.get('handoffPlanCommand', 'missing')}`; "
+                f"validate with `{contract.get('validationCommand', 'missing')}`; "
                 f"stage with `{contract.get('recomputeCommand', 'missing')}`."
             ),
             "results/diana_raw_intake/input_contract.json",
@@ -573,7 +588,7 @@ def diana_raw_intake_evidence() -> tuple[list[dict[str, str]], list[dict[str, st
     else:
         raw_state = "blocked_until_files"
         raw_blocker = "Actual Diana BAM/FASTQ/CRAM paths have not passed strict intake validation."
-        raw_next = "Copy the template to manifests/diana_raw_inputs.csv, fill actual paths and metadata, then run verify:diana-raw with DIANA_RAW_REQUIRE_DATA=1."
+        raw_next = "Run plan:diana-raw-handoff, copy the template to manifests/diana_raw_inputs.csv, fill actual paths and metadata, then run verify:diana-raw with DIANA_RAW_REQUIRE_DATA=1."
         blockers = [raw_blocker]
     adapters = [
         adapter_row("Raw file intake", raw_state, raw_blocker, raw_next),
