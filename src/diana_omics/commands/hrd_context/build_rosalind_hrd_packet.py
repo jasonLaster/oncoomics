@@ -199,6 +199,10 @@ def as_int(value: Any) -> int:
         return 0
 
 
+def has_value(value: Any) -> bool:
+    return value not in (None, "")
+
+
 def evidence_row(evidence_id: str, status: str, detail: str, artifact: str, caveat: str = "") -> dict[str, str]:
     return {
         "evidence_id": evidence_id,
@@ -286,13 +290,15 @@ def hcc1395_wgs_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], 
     sv_readiness_row = first_json_row(sv_readiness)
     cnv_readiness_row = first_json_row(cnv_readiness)
     sv_readiness_pairs = as_int(sv_readiness_row.get("phase3_discordant_mapped_pairs"))
+    sv_readiness_pairs_present = has_value(sv_readiness_row.get("phase3_discordant_mapped_pairs"))
     blockers: list[str] = []
     if discordant_pairs <= 0:
         blockers.append("Current SV evidence summary has no discordant mapped-pair counts; regenerate full SV evidence before using WGS as the flagship HRD packet.")
-    if discordant_pairs <= 0 and sv_readiness_pairs > 0:
+    if sv_readiness_pairs_present and discordant_pairs != sv_readiness_pairs:
         blockers.append(
             "SV readiness sidecar is stale relative to the current SV evidence summary: "
-            f"sv_caller_readiness reports {sv_readiness_pairs} discordant mapped pairs, but sv_evidence_summary reports 0. "
+            f"sv_caller_readiness reports {sv_readiness_pairs} discordant mapped pairs, but "
+            f"sv_evidence_summary reports {discordant_pairs}. "
             "Regenerate SV evidence and rerun verify:sv-caller-readiness before treating the WGS packet as current."
         )
     evidence = [
@@ -609,6 +615,7 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
 
 
 def write_cloud_materialization_plan(root: str, packet_run_id: str, packet_summaries: Sequence[Mapping[str, Any]]) -> None:
+    sample_sets = ",".join(str(packet.get("sampleSet", "")) for packet in packet_summaries if packet.get("sampleSet"))
     required_prefixes = sorted(
         {
             str(Path(path).parts[0])
@@ -634,6 +641,7 @@ def write_cloud_materialization_plan(root: str, packet_run_id: str, packet_summa
                 "```sh",
                 "export ROSALIND_HRD_ARTIFACT_ROOT=/workspace/artifacts",
                 f"export ROSALIND_HRD_RUN_ID={packet_run_id}",
+                f"export ROSALIND_HRD_SAMPLE_SET={sample_sets}",
                 "PYTHONPATH=src /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet",
                 "```",
                 "",

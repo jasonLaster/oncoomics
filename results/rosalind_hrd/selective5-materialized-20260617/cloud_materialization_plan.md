@@ -1,8 +1,8 @@
 # Cloud Materialization Plan
 
-Run ID: `next-readiness-20260617`
+Run ID: `selective5-materialized-20260617`
 
-Artifact root mode: `repo_root`
+Artifact root mode: `materialized_artifact_root`
 
 Use this when the container image does not include repository `results/`, `manifests/`, or `docs/operations` artifacts.
 
@@ -10,8 +10,8 @@ Use this when the container image does not include repository `results/`, `manif
 
 ```sh
 export ROSALIND_HRD_ARTIFACT_ROOT=/workspace/artifacts
-export ROSALIND_HRD_RUN_ID=next-readiness-20260617
-export ROSALIND_HRD_SAMPLE_SET=hcc1395_wes,hcc1395_wgs,hg008,colo829,diana_raw_intake
+export ROSALIND_HRD_RUN_ID=selective5-materialized-20260617
+export ROSALIND_HRD_SAMPLE_SET=hcc1395_wgs
 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet
 ```
 

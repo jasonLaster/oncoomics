@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-06-17T17:36:13.963Z",
+  "runId": "selective5-materialized-20260617",
+  "sampleSets": [
+    "hcc1395_wgs"
+  ],
+  "packetRoot": "results/rosalind_hrd",
+  "artifactRoot": "artifacts/phase3_wgs_selective5",
+  "artifactRootMode": "materialized_artifact_root",
+  "packets": [
+    {
+      "sampleSet": "hcc1395_wgs",
+      "title": "SEQC2/HCC1395 WGS HRD Evidence-Surface Packet",
+      "outputDir": "results/rosalind_hrd/hcc1395_wgs/selective5-materialized-20260617",
+      "evidenceRows": 7,
+      "adapterRows": 7,
+      "blockers": [],
+      "missingArtifacts": [],
+      "allowedConclusion": "This sample exercises the WGS evidence surfaces needed for HRD review. It remains a partial HRD evidence packet until allele-specific CNV/LOH, production SV calls, signature thresholds, CHORD/scarHRD/HRDetect policy, and known-answer performance are locked."
+    }
+  ],
+  "sourcePattern": {
+    "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
+    "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats."
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-06-17T17:33:29.372Z",
+  "status": "passed",
+  "errors": [],
+  "summary": {
+    "status": "passed",
+    "adapter_count": 4,
+    "no_call_adapter_count": 4,
+    "ready_for_clinical_interpretation": "no",
+    "phase3_hrd_tool_status": "passed",
+    "cnv_ready_for_clinical_interpretation": "no",
+    "sv_ready_for_clinical_interpretation": "no",
+    "next_step": "Add HG008 and COLO829 known-answer fixtures for CNV/LOH, SV, and signature adapters before locking thresholds.",
+    "error_count": 0
+  },
+  "rows": [
+    {
+      "adapter_id": "sigprofiler_sbs3",
+      "tool_name": "SigProfilerAssignment SBS3 adapter",
+      "priority": "signature_context_adapter",
+      "current_input_status": "input_ready_threshold_met",
+      "interpretation_status": "no_call",
+      "clinical_actionability": "not_ready",
+      "locked_threshold_status": "not_locked",
+      "required_inputs": "validated SBS96/SBS288 mutation matrix plus reconstruction metrics and locked minimum-mutation policy",
+      "no_call_reason": "SBS3 interpretation thresholds and known-answer performance are not locked.",
+      "output_contract": "SBS3 activity and QC status with no-call reason"
+    },
+    {
+      "adapter_id": "scarhrd",
+      "tool_name": "scarHRD adapter",
+      "priority": "copy_number_scar_adapter",
+      "current_input_status": "not_assessable_without_allele_specific_segments",
+      "interpretation_status": "no_call",
+      "clinical_actionability": "not_ready",
+      "locked_threshold_status": "not_locked",
+      "required_inputs": "validated allele-specific copy-number segments with total/minor copy number purity and ploidy",
+      "no_call_reason": "Allele-specific CNV/LOH segments are not available.",
+      "output_contract": "LOH LST TAI summed scar score and no-call reason"
+    },
+    {
+      "adapter_id": "chord",
+      "tool_name": "CHORD adapter",
+      "priority": "hrd_classifier_adapter",
+      "current_input_status": "not_assessable_requires_validated_sv_caller_vcf",
+      "interpretation_status": "no_call",
+      "clinical_actionability": "not_ready",
+      "locked_threshold_status": "not_locked",
+      "required_inputs": "validated somatic SNV/indel features plus production SV caller VCF or BEDPE and CNV context",
+      "no_call_reason": "Validated production SV caller VCF/BEDPE input is not available.",
+      "output_contract": "HRD class BRCA1-like probability BRCA2-like probability and no-call reason"
+    },
+    {
+      "adapter_id": "hrdetect",
+      "tool_name": "HRDetect-style adapter",
+      "priority": "integrated_model_adapter",
+      "current_input_status": "not_assessable_until_component_adapters_are_validated",
+      "interpretation_status": "no_call",
+      "clinical_actionability": "not_ready",
+      "locked_threshold_status": "not_locked",
+      "required_inputs": "locked six-feature HRD model inputs including substitution signatures indel signatures rearrangement signatures and CNV/LOH features",
+      "no_call_reason": "Integrated HRDetect-style feature classes and model calibration are not complete.",
+      "output_contract": "integrated HRD probability feature vector QC status and no-call reason"
+    }
+  ]
+}

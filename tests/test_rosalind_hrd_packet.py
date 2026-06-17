@@ -157,6 +157,50 @@ class RosalindHrdPacketTest(unittest.TestCase):
             evidence_rows = utils.parse_csv(utils.read_text(root / "results/rosalind_hrd/hcc1395_wgs/unit/sample_validation_summary.csv"))
             self.assertIn("sv_caller_readiness", {row["evidence_id"] for row in evidence_rows})
 
+    def test_hcc1395_wgs_packet_flags_zero_sidecar_against_positive_sv_counts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            utils.write_json(root / "results/phase3_wgs_smoke/phase3_wgs_summary.json", {"status": "passed"})
+            utils.write_json(root / "results/phase3_wgs_smoke/hrd_tool_readiness_summary.json", {"status": "passed", "rows": []})
+            utils.write_json(root / "results/clinicalization/cnv_loh_readiness_summary.json", {"status": "passed", "rows": []})
+            utils.write_json(root / "results/clinicalization/hrd_interpretation_readiness_summary.json", {"status": "passed", "rows": []})
+            utils.write_json(root / "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wgs_summary.json", {"status": "passed"})
+            utils.write_csv(root / "results/phase3_wgs_smoke/bam_validation_summary.csv", [{"status": "passed"}])
+            utils.write_json(root / "results/phase3_wgs_smoke/coverage_cnv_summary.json", {"status": "passed"})
+            utils.write_json(root / "results/phase3_wgs_smoke/signature_assignment_summary.json", {"status": "passed"})
+            utils.write_json(
+                root / "results/phase3_wgs_smoke/sv_evidence_summary.json",
+                {
+                    "status": "passed",
+                    "rows": [
+                        {
+                            "status": "passed",
+                            "tool": "samtools view flag/evidence counters",
+                            "discordant_mapped_pairs": 20,
+                            "chord_input_status": "not_assessable_requires_validated_sv_caller_vcf",
+                        }
+                    ],
+                },
+            )
+            utils.write_json(
+                root / "results/clinicalization/sv_caller_readiness_summary.json",
+                {
+                    "status": "passed",
+                    "rows": [
+                        {
+                            "candidate_count": 4,
+                            "phase3_discordant_mapped_pairs": 0,
+                            "ready_for_clinical_interpretation": "no",
+                        }
+                    ],
+                },
+            )
+
+            with patch.object(packet, "path_from_root", lambda relative: root / relative):
+                summary = packet.write_packet(packet.PACKET_SPECS["hcc1395_wgs"], "unit")
+
+            self.assertTrue(any("sv_evidence_summary reports 20" in blocker for blocker in summary["blockers"]))
+
     def test_artifact_root_override_reads_materialized_inputs(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)
@@ -198,6 +242,18 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertIn("4/4 FASTQ rows passed", evidence_rows[0]["detail"])
             artifact_index = utils.read_json(output_root / "results/rosalind_hrd/hcc1395_wes/unit/input_evidence_index.json")
             self.assertTrue(str(artifact_root) in artifact_index["artifacts"][0]["resolved_path"])
+
+    def test_cloud_materialization_plan_preserves_selected_sample_sets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch.object(packet, "path_from_root", lambda relative: root / relative):
+                packet.write_cloud_materialization_plan(
+                    "results/rosalind_hrd/unit",
+                    "unit",
+                    [{"sampleSet": "hcc1395_wgs", "missingArtifacts": []}],
+                )
+            plan = utils.read_text(root / "results/rosalind_hrd/unit/cloud_materialization_plan.md")
+        self.assertIn("export ROSALIND_HRD_SAMPLE_SET=hcc1395_wgs", plan)
 
     def test_diana_raw_intake_packet_marks_waiting_input_path(self):
         with tempfile.TemporaryDirectory() as tmp:
