@@ -9,7 +9,7 @@ Packet run: `public-evidence-plus-20260617`
 | colo829 | requires_transfer_or_indexing | no | 4 |  | Transfer or index the selected public purity assets before trying to close this blocker. |
 | diana_raw_intake | waiting_for_dinah_files | external | 1 |  | Fill and validate manifests/diana_raw_inputs.csv when Dinah's actual BAM/FASTQ/CRAM paths arrive. |
 | hcc1395_wes | packet_has_no_blockers | no | 0 | local-validation;next-readiness-20260617 | Preserve the packet as a public-sample evidence boundary; do not promote no-call HRD adapters without required inputs. |
-| hcc1395_wgs | closed_by_materialized_packet | yes | 1 | cloud-selective5-20260617;selective5-materialized-20260617 | Use the zero-blocker selective/materialized HCC1395 WGS packet as the current WGS HRD evidence-surface demo. |
+| hcc1395_wgs | closed_by_materialized_packet | yes | 1 | cloud-helper-selective5-20260617;cloud-selective5-20260617;selective5-materialized-20260617 | Use the zero-blocker selective/materialized HCC1395 WGS packet as the current WGS HRD evidence-surface demo. |
 | hg008 | requires_caller_or_truth_overlap_recompute | no | 3 |  | Run or containerize the relevant caller/overlap lane before changing the packet state. |
 
 ## Interpretation Boundary
@@ -47,7 +47,7 @@ This board identifies packet blockers and existing materialized packet closures.
 ### hcc1395_wgs
 - Decision: `closed_by_materialized_packet`
 - Actionable now: `yes`
-- Closed by runs: `cloud-selective5-20260617; selective5-materialized-20260617`
+- Closed by runs: `cloud-helper-selective5-20260617; cloud-selective5-20260617; selective5-materialized-20260617`
 - Next action: Use the zero-blocker selective/materialized HCC1395 WGS packet as the current WGS HRD evidence-surface demo.
 - Blockers:
   - Current SV evidence summary has no discordant mapped-pair counts; regenerate full SV evidence before using WGS as the flagship HRD packet.

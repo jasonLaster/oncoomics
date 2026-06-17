@@ -1,0 +1,72 @@
+{
+  "run_id": "cloud-helper-selective5-20260617",
+  "source_commit": "52212f105be129836f3c435b6929030a22d36722",
+  "aws_batch_job_id": "e8d00f20-26c8-4a32-8198-8aa10c916859",
+  "aws_batch_job_queue": "diana-omics-prod-use1-ondemand",
+  "aws_region": "us-east-1",
+  "s3_prefix": "s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-helper-selective5-20260617",
+  "artifact_root": "/tmp/diana-cloud-packet-cloud-helper-selective5-20260617/oncoomics-52212f105be129836f3c435b6929030a22d36722/artifacts/phase3_wgs_selective5",
+  "sample_sets": [
+    "hcc1395_wgs"
+  ],
+  "packet_index_sha256": "b5f3fcbd241986da8ede71be9433d6254f606c17c8db95c66319e0c4d9db8728",
+  "run_manifest_sha256": "0da4e95bb315ab148cc316245e1a1a83c95b17dd52be96b8e999f5c420dd2b2e",
+  "reviewer_packet_sha256": {
+    "hcc1395_wgs": "01fd7e334388d33b296c8b19716a6dc4ba55039179f4f795e4ca5b427c0ffeb9"
+  },
+  "adapter_status_rows": {
+    "hcc1395_wgs": [
+      {
+        "adapter": "SigProfilerAssignment",
+        "state": "input_ready_threshold_met",
+        "blocker": "Classification is deferred for low mutation count; the matrix is a real VCF-derived output, not a proxy.",
+        "next_action": "Promote to ready only after the required production adapter and known-answer validation pass."
+      },
+      {
+        "adapter": "scarHRD",
+        "state": "not_assessable_without_allele_specific_segments",
+        "blocker": "scarHRD needs allele-specific segmented CN calls; this run validates WGS coverage-bin plumbing only.",
+        "next_action": "Promote to ready only after the required production adapter and known-answer validation pass."
+      },
+      {
+        "adapter": "CHORD",
+        "state": "not_assessable_requires_validated_sv_caller_vcf",
+        "blocker": "CHORD-style interpretation needs full-depth SNV/indel/SV/CNV feature inputs; this validates the feature lanes.",
+        "next_action": "Promote to ready only after the required production adapter and known-answer validation pass."
+      },
+      {
+        "adapter": "sigprofiler_sbs3",
+        "state": "no_call",
+        "blocker": "SBS3 interpretation thresholds and known-answer performance are not locked.",
+        "next_action": "validated SBS96/SBS288 mutation matrix plus reconstruction metrics and locked minimum-mutation policy"
+      },
+      {
+        "adapter": "scarhrd",
+        "state": "no_call",
+        "blocker": "Allele-specific CNV/LOH segments are not available.",
+        "next_action": "validated allele-specific copy-number segments with total/minor copy number purity and ploidy"
+      },
+      {
+        "adapter": "chord",
+        "state": "no_call",
+        "blocker": "Validated production SV caller VCF/BEDPE input is not available.",
+        "next_action": "validated somatic SNV/indel features plus production SV caller VCF or BEDPE and CNV context"
+      },
+      {
+        "adapter": "hrdetect",
+        "state": "no_call",
+        "blocker": "Integrated HRDetect-style feature classes and model calibration are not complete.",
+        "next_action": "locked six-feature HRD model inputs including substitution signatures indel signatures rearrangement signatures and CNV/LOH features"
+      }
+    ]
+  },
+  "packet_index_tail": [
+    "# Rosalind HRD Packet Index",
+    "",
+    "Run ID: `cloud-helper-selective5-20260617`",
+    "",
+    "| sample_set | output_dir | evidence_rows | adapter_rows | blocker_count |",
+    "| --- | --- | --- | --- | --- |",
+    "| hcc1395_wgs | results/rosalind_hrd/hcc1395_wgs/cloud-helper-selective5-20260617 | 7 | 7 | 0 |"
+  ]
+}

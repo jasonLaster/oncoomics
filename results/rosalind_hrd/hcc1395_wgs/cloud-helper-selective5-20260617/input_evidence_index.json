@@ -1,0 +1,53 @@
+{
+  "sampleSet": "hcc1395_wgs",
+  "artifacts": [
+    {
+      "path": "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-helper-selective5-20260617/oncoomics-52212f105be129836f3c435b6929030a22d36722/artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/phase3_wgs_summary.json",
+      "exists": "yes",
+      "bytes": 1282
+    },
+    {
+      "path": "results/phase3_wgs_smoke/bam_validation_summary.csv",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-helper-selective5-20260617/oncoomics-52212f105be129836f3c435b6929030a22d36722/artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/bam_validation_summary.csv",
+      "exists": "yes",
+      "bytes": 1802
+    },
+    {
+      "path": "results/phase3_wgs_smoke/coverage_cnv_summary.json",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-helper-selective5-20260617/oncoomics-52212f105be129836f3c435b6929030a22d36722/artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/coverage_cnv_summary.json",
+      "exists": "yes",
+      "bytes": 636
+    },
+    {
+      "path": "results/phase3_wgs_smoke/signature_assignment_summary.json",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-helper-selective5-20260617/oncoomics-52212f105be129836f3c435b6929030a22d36722/artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/signature_assignment_summary.json",
+      "exists": "yes",
+      "bytes": 787
+    },
+    {
+      "path": "results/phase3_wgs_smoke/sv_evidence_summary.json",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-helper-selective5-20260617/oncoomics-52212f105be129836f3c435b6929030a22d36722/artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/sv_evidence_summary.json",
+      "exists": "yes",
+      "bytes": 1672
+    },
+    {
+      "path": "results/phase3_wgs_smoke/hrd_tool_readiness_summary.json",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-helper-selective5-20260617/oncoomics-52212f105be129836f3c435b6929030a22d36722/artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/hrd_tool_readiness_summary.json",
+      "exists": "yes",
+      "bytes": 1464
+    },
+    {
+      "path": "results/clinicalization/hrd_interpretation_readiness_summary.json",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-helper-selective5-20260617/oncoomics-52212f105be129836f3c435b6929030a22d36722/artifacts/phase3_wgs_selective5/results/clinicalization/hrd_interpretation_readiness_summary.json",
+      "exists": "yes",
+      "bytes": 3196
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wgs_summary.json",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-helper-selective5-20260617/oncoomics-52212f105be129836f3c435b6929030a22d36722/artifacts/phase3_wgs_selective5/results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wgs_summary.json",
+      "exists": "yes",
+      "bytes": 2130
+    }
+  ]
+}
