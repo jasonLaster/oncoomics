@@ -243,6 +243,107 @@ class RosalindHrdPacketTest(unittest.TestCase):
             artifact_index = utils.read_json(output_root / "results/rosalind_hrd/hcc1395_wes/unit/input_evidence_index.json")
             self.assertTrue(str(artifact_root) in artifact_index["artifacts"][0]["resolved_path"])
 
+    def test_hg008_packet_surfaces_sv_truth_asset_blocker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/expanded_cohort/hg008_snv_panel.json",
+                {"status": "expanded_non_dry_passed", "publicFindingResult": "40/40 SNVs passed.", "blockers": []},
+            )
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json",
+                {
+                    "status": "expanded_non_dry_passed",
+                    "publicFindingResult": "4/4 CNVs passed.",
+                    "blockers": ["No Diana-generated CNV callset exists for HG008."],
+                },
+            )
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/expanded_cohort/hg008_sv_truth_asset.json",
+                {
+                    "status": "expanded_non_dry_gap_identified",
+                    "publicFindingResult": "HG008 SV truth asset is present.",
+                    "blockers": ["No Diana-generated SV callset exists for HG008."],
+                },
+            )
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
+                {"status": "bounded_non_dry_partial", "publicFindingResult": "SV overlap remains unrun.", "blockers": []},
+            )
+            utils.write_json(root / "results/clinicalization/known_answer_runs/expanded_cohort/hg008_rna_stats.json", {"status": "passed"})
+
+            with patch.object(packet, "path_from_root", lambda relative: root / relative):
+                summary = packet.write_packet(packet.PACKET_SPECS["hg008"], "unit")
+
+            self.assertIn("No Diana-generated SV callset exists for HG008.", summary["blockers"])
+            evidence_rows = utils.parse_csv(utils.read_text(root / "results/rosalind_hrd/hg008/unit/sample_validation_summary.csv"))
+            self.assertIn("sv_truth_asset", {row["evidence_id"] for row in evidence_rows})
+            reviewer = utils.read_text(root / "results/rosalind_hrd/hg008/unit/reviewer_packet.md")
+            self.assertIn("HG008 SV truth asset is present", reviewer)
+
+    def test_colo829_packet_surfaces_purity_series_blocker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in (
+                "colo829_platform_illumina_hiseqx",
+                "colo829_platform_pacbio_sequel",
+                "colo829_platform_ont_minion",
+                "colo829_platform_illumina_novaseq_phased",
+            ):
+                utils.write_json(
+                    root / f"results/clinicalization/known_answer_runs/expanded_cohort/{name}.json",
+                    {"status": "expanded_non_dry_passed", "publicFindingResult": f"{name} recovered BRAF V600E."},
+                )
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/expanded_cohort/colo829_sv_cna_truth_asset.json",
+                {
+                    "status": "expanded_non_dry_gap_identified",
+                    "publicFindingResult": "SV/CNA truth assets are present.",
+                    "blockers": ["No Diana SV/CNA callset exists."],
+                },
+            )
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json",
+                {"status": "bounded_non_dry_gap_identified", "publicFindingResult": "SV/CNA overlap was not generated.", "blockers": []},
+            )
+            purity_blocker = "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested."
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_illumina.json",
+                {
+                    "status": "expanded_non_dry_blocked_remote_index_missing",
+                    "publicFindingResult": "COLO829 purity illumina metadata exposes selected levels.",
+                    "blockers": [purity_blocker],
+                },
+            )
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_long_read.json",
+                {
+                    "status": "expanded_non_dry_blocked_remote_index_missing",
+                    "publicFindingResult": "COLO829 purity long_read metadata exposes selected levels.",
+                    "blockers": [purity_blocker],
+                },
+            )
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json",
+                {
+                    "status": "bounded_non_dry_blocked_remote_index_missing",
+                    "publicFindingResult": "COLO829 dilution BAMs cannot be remotely region-sliced.",
+                    "blockers": [purity_blocker],
+                },
+            )
+
+            with patch.object(packet, "path_from_root", lambda relative: root / relative):
+                summary = packet.write_packet(packet.PACKET_SPECS["colo829"], "unit")
+
+            self.assertIn(purity_blocker, summary["blockers"])
+            evidence_rows = utils.parse_csv(utils.read_text(root / "results/rosalind_hrd/colo829/unit/sample_validation_summary.csv"))
+            evidence_ids = {row["evidence_id"] for row in evidence_rows}
+            self.assertIn("purity_illumina_metadata", evidence_ids)
+            self.assertIn("purity_long_read_metadata", evidence_ids)
+            self.assertIn("purity_recall_table", evidence_ids)
+            adapter_rows = utils.parse_csv(utils.read_text(root / "results/rosalind_hrd/colo829/unit/hrd_adapter_status.csv"))
+            self.assertIn("Purity sensitivity benchmark", {row["adapter"] for row in adapter_rows})
+
     def test_cloud_materialization_plan_preserves_selected_sample_sets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

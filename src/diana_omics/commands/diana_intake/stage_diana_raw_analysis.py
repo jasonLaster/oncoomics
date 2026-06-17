@@ -50,11 +50,17 @@ def main() -> None:
             "command": f"DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 DIANA_RAW_ANALYSIS_ID={analysis_id()} {PY_COMMAND} stage:diana-raw",
             "purpose": "Write the Diana-specific run packet, input manifest, and reviewer boundary.",
         },
+        {
+            "step": 4,
+            "name": "refresh_rosalind_intake_packet",
+            "command": f"ROSALIND_HRD_SAMPLE_SET=diana_raw_intake ROSALIND_HRD_RUN_ID=diana-raw-{analysis_id()} {PY_COMMAND} build:rosalind-hrd-packet",
+            "purpose": "Refresh the Rosalind-style raw-intake packet after strict validation and staging.",
+        },
     ]
     if any(row.get("assay") == "WGS" for row in dna_rows):
         command_rows.append(
             {
-                "step": 4,
+                "step": 5,
                 "name": "run_wgs_feature_lanes",
                 "command": "Use the staged DNA rows with the Phase 3 WGS runner settings: alignment, Mutect2, coverage-CNV bins, SBS96 matrix, and SV evidence. For full WGS, set final interval/scatter policy before launch.",
                 "purpose": "Recompute DNA HRD feature inputs from Diana WGS once compute policy is approved.",
@@ -63,7 +69,7 @@ def main() -> None:
     else:
         command_rows.append(
             {
-                "step": 4,
+                "step": 5,
                 "name": "run_wes_small_variant_lanes",
                 "command": "Use the staged DNA rows with the Phase 2F WES benchmark mechanics: alignment or supplied BAMs, duplicate marking, contamination, Mutect2, and small-variant evidence.",
                 "purpose": "Recompute Diana WES small-variant HRD-supporting evidence once capture/resource policy is approved.",
@@ -113,6 +119,7 @@ Matched DNA pair IDs: `{";".join(summary["matchedPairIds"])}`
 1. `{PY_COMMAND} run:all`
 2. `DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 {PY_COMMAND} verify:diana-raw`
 3. `DIANA_RAW_SAMPLESHEET={samplesheet} DIANA_RAW_REQUIRE_DATA=1 DIANA_RAW_ANALYSIS_ID={analysis_id()} {PY_COMMAND} stage:diana-raw`
+4. `ROSALIND_HRD_SAMPLE_SET=diana_raw_intake ROSALIND_HRD_RUN_ID=diana-raw-{analysis_id()} {PY_COMMAND} build:rosalind-hrd-packet`
 
 The staged packet records Diana raw inputs and the exact validation sidecar. It is designed so Diana's HRD recompute can be compared against the public SEQC2/HCC1395 validation outputs in the same repository.
 

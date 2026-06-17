@@ -47,6 +47,16 @@ Each row should identify:
 - tumor purity or tumor content when known
 - source/vendor notes
 
+## Arrival Checklist
+
+When the files arrive:
+
+1. Confirm whether the bundle contains FASTQ, BAM, CRAM, VCF/CNV/SV, RNA FASTQ, reports, or a mixture.
+2. Confirm tumor-normal pairing and use the same `pair_id` for matched DNA rows.
+3. Confirm the reference build, contig naming, and index files before compute.
+4. Record tumor purity, tumor content, normal type, platform, and vendor notes when known.
+5. Confirm whether cloud upload is allowed for any human data before scheduling Batch or S3 work.
+
 ## Validate The Files
 
 ```sh
@@ -75,6 +85,16 @@ The stage command writes:
 ```text
 results/diana_raw_analysis/<analysis_id>/
 ```
+
+## Refresh The Rosalind Intake Packet
+
+After strict validation and staging pass:
+
+```sh
+ROSALIND_HRD_SAMPLE_SET=diana_raw_intake ROSALIND_HRD_RUN_ID=diana-raw-<analysis_id> PYTHONPATH=src /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet
+```
+
+Use this packet to show that Diana files passed intake and pairing checks before any HRD interpretation starts.
 
 ## Supported Input Shapes
 

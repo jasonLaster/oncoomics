@@ -70,6 +70,7 @@ PACKET_SPECS: dict[str, PacketSpec] = {
         artifacts=(
             "results/clinicalization/known_answer_runs/expanded_cohort/hg008_snv_panel.json",
             "results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json",
+            "results/clinicalization/known_answer_runs/expanded_cohort/hg008_sv_truth_asset.json",
             "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
             "results/clinicalization/known_answer_runs/expanded_cohort/hg008_rna_stats.json",
         ),
@@ -89,6 +90,9 @@ PACKET_SPECS: dict[str, PacketSpec] = {
             "results/clinicalization/known_answer_runs/expanded_cohort/colo829_platform_illumina_novaseq_phased.json",
             "results/clinicalization/known_answer_runs/expanded_cohort/colo829_sv_cna_truth_asset.json",
             "results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json",
+            "results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_illumina.json",
+            "results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_long_read.json",
+            "results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json",
         ),
     ),
     "diana_raw_intake": PacketSpec(
@@ -220,6 +224,19 @@ def adapter_row(adapter: str, state: str, blocker: str, next_action: str) -> dic
         "blocker": blocker,
         "next_action": next_action,
     }
+
+
+def payload_blockers(*payloads: Mapping[str, Any]) -> list[str]:
+    blockers: list[str] = []
+    for payload in payloads:
+        values = payload.get("blockers", [])
+        if not isinstance(values, list):
+            continue
+        for value in values:
+            text = str(value)
+            if text and text not in blockers:
+                blockers.append(text)
+    return blockers
 
 
 def hcc1395_wes_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
@@ -397,10 +414,12 @@ def hcc1395_wgs_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], 
 def hg008_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
     snv = read_json_or_empty("results/clinicalization/known_answer_runs/expanded_cohort/hg008_snv_panel.json")
     cnv = read_json_or_empty("results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json")
+    sv_truth = read_json_or_empty("results/clinicalization/known_answer_runs/expanded_cohort/hg008_sv_truth_asset.json")
     sv = read_json_or_empty("results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json")
     evidence = [
         evidence_row("snv_truth_panel", str(snv.get("status", "missing")), str(snv.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/expanded_cohort/hg008_snv_panel.json"),
         evidence_row("cnv_depth_sweep", str(cnv.get("status", "missing")), str(cnv.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json"),
+        evidence_row("sv_truth_asset", str(sv_truth.get("status", "missing")), str(sv_truth.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/expanded_cohort/hg008_sv_truth_asset.json"),
         evidence_row("sv_cnv_reciprocal_overlap", str(sv.get("status", "missing")), str(sv.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json"),
     ]
     adapters = [
@@ -409,7 +428,7 @@ def hg008_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[s
         adapter_row("SV correctness validation", "blocked", "No Diana-generated SV callset exists for HG008 in the bounded run.", "Run SV caller and reciprocal-overlap against HG008 v0.5 truth."),
         adapter_row("HRD interpretation", "no_call", "HG008 is a truth-set validator, not a Diana HRD interpretation sample.", "Use only for pipeline correctness."),
     ]
-    blockers = [str(item) for item in sv.get("blockers", [])] if isinstance(sv.get("blockers"), list) else []
+    blockers = payload_blockers(cnv, sv_truth, sv)
     return evidence, adapters, blockers
 
 
@@ -426,14 +445,21 @@ def colo829_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list
         evidence.append(evidence_row(Path(path).stem, str(payload.get("status", "missing")), str(payload.get("publicFindingResult", "")), path))
     sv = read_json_or_empty("results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json")
     truth = read_json_or_empty("results/clinicalization/known_answer_runs/expanded_cohort/colo829_sv_cna_truth_asset.json")
+    purity_illumina = read_json_or_empty("results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_illumina.json")
+    purity_long_read = read_json_or_empty("results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_long_read.json")
+    purity_recall = read_json_or_empty("results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json")
     evidence.append(evidence_row("sv_cna_truth_asset", str(truth.get("status", "missing")), str(truth.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/expanded_cohort/colo829_sv_cna_truth_asset.json"))
     evidence.append(evidence_row("sv_cna_reciprocal_overlap", str(sv.get("status", "missing")), str(sv.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json"))
+    evidence.append(evidence_row("purity_illumina_metadata", str(purity_illumina.get("status", "missing")), str(purity_illumina.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_illumina.json"))
+    evidence.append(evidence_row("purity_long_read_metadata", str(purity_long_read.get("status", "missing")), str(purity_long_read.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_long_read.json"))
+    evidence.append(evidence_row("purity_recall_table", str(purity_recall.get("status", "missing")), str(purity_recall.get("publicFindingResult", "")), "results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json"))
     adapters = [
         adapter_row("BRAF driver guardrail", "partial_evidence", "BRAF V600E pileup recovery is confirmed across available platforms.", "Use as a tumor-normal handling guardrail only."),
         adapter_row("SV/CNA benchmark", "blocked", "No build-matched Diana SV/CNA callset exists.", "Fetch or generate build-matched COLO829 calls and run reciprocal overlap."),
+        adapter_row("Purity sensitivity benchmark", "blocked", "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested.", "Transfer selected dilution BAM/FASTQ inputs and index locally before running purity recall."),
         adapter_row("HRD interpretation", "no_call", "Driver recovery does not establish HRD status.", "Run full SV/CNA/signature evidence before any HRD interpretation."),
     ]
-    blockers = [str(item) for item in sv.get("blockers", [])] if isinstance(sv.get("blockers"), list) else []
+    blockers = payload_blockers(truth, sv, purity_illumina, purity_long_read, purity_recall)
     return evidence, adapters, blockers
 
 
