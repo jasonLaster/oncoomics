@@ -1,0 +1,35 @@
+{
+  "sampleSet": "hcc1395_wes",
+  "artifacts": [
+    {
+      "path": "results/full_wes_benchmark/full_wes_benchmark_summary.json",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-hcc1395-wes-20260617/oncoomics-5e73953960e5e798028b4a6ceb2cfe6765b83a0f/artifacts/hcc1395_wes_validation/results/full_wes_benchmark/full_wes_benchmark_summary.json",
+      "exists": "yes",
+      "bytes": 1514
+    },
+    {
+      "path": "results/full_wes_benchmark/truth_overlap_benchmark_summary.json",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-hcc1395-wes-20260617/oncoomics-5e73953960e5e798028b4a6ceb2cfe6765b83a0f/artifacts/hcc1395_wes_validation/results/full_wes_benchmark/truth_overlap_benchmark_summary.json",
+      "exists": "yes",
+      "bytes": 4925
+    },
+    {
+      "path": "results/full_wes_benchmark/full_wes_fastq_validation.csv",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-hcc1395-wes-20260617/oncoomics-5e73953960e5e798028b4a6ceb2cfe6765b83a0f/artifacts/hcc1395_wes_validation/results/full_wes_benchmark/full_wes_fastq_validation.csv",
+      "exists": "yes",
+      "bytes": 1053
+    },
+    {
+      "path": "results/full_wes_benchmark/full_wes_bam_validation.csv",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-hcc1395-wes-20260617/oncoomics-5e73953960e5e798028b4a6ceb2cfe6765b83a0f/artifacts/hcc1395_wes_validation/results/full_wes_benchmark/full_wes_bam_validation.csv",
+      "exists": "yes",
+      "bytes": 2242
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wes_summary.json",
+      "resolved_path": "/tmp/diana-cloud-packet-cloud-hcc1395-wes-20260617/oncoomics-5e73953960e5e798028b4a6ceb2cfe6765b83a0f/artifacts/hcc1395_wes_validation/results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wes_summary.json",
+      "exists": "yes",
+      "bytes": 2209
+    }
+  ]
+}

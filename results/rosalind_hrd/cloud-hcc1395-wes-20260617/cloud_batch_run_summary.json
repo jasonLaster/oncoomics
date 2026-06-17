@@ -1,0 +1,66 @@
+{
+  "run_id": "cloud-hcc1395-wes-20260617",
+  "source_commit": "5e73953960e5e798028b4a6ceb2cfe6765b83a0f",
+  "aws_batch_job_id": "e616e07e-2a4a-479d-a305-33e1e67df13f",
+  "aws_batch_job_queue": "diana-omics-prod-use1-ondemand",
+  "aws_region": "us-east-1",
+  "s3_prefix": "s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-hcc1395-wes-20260617",
+  "artifact_root": "/tmp/diana-cloud-packet-cloud-hcc1395-wes-20260617/oncoomics-5e73953960e5e798028b4a6ceb2cfe6765b83a0f/artifacts/hcc1395_wes_validation",
+  "sample_sets": [
+    "hcc1395_wes"
+  ],
+  "packet_index_sha256": "f31634a55b22bf72dce25f79251d82e599bb65142702225a7a87c728e8063eba",
+  "run_manifest_sha256": "d419aa4d4ceec7b6bd6e5725decbe1bde135708ffcd9030aa737e7f8ffbfffcc",
+  "reviewer_packet_sha256": {
+    "hcc1395_wes": "90ce9bb4bd375f4b84c6c9c42d69b358fd9b0e6cd28c9c173c3e03aff8f74eb1"
+  },
+  "adapter_status_rows": {
+    "hcc1395_wes": [
+      {
+        "adapter": "HRR SNV/indel evidence",
+        "state": "partial_evidence",
+        "blocker": "Small-variant evidence exists but HRR event curation is not a final HRD score.",
+        "next_action": "Curate observed HRR events if Diana WES/WGS calls contain them."
+      },
+      {
+        "adapter": "Biallelic/LOH evidence",
+        "state": "no_call",
+        "blocker": "Allele-specific CNV/LOH segments are unavailable.",
+        "next_action": "Run allele-specific CNV/LOH tooling before assessing second hits."
+      },
+      {
+        "adapter": "SBS3",
+        "state": "no_call",
+        "blocker": "WES is not sufficient for locked genome-wide SBS3 interpretation.",
+        "next_action": "Use WGS mutation matrix plus locked thresholds."
+      },
+      {
+        "adapter": "scarHRD",
+        "state": "no_call",
+        "blocker": "Allele-specific total/minor copy-number segments are unavailable.",
+        "next_action": "Generate FACETS/ASCAT/PURPLE-like segments."
+      },
+      {
+        "adapter": "CHORD",
+        "state": "no_call",
+        "blocker": "Validated SV caller VCF/BEDPE and full feature vector are unavailable.",
+        "next_action": "Run validated SV/CNV/small-variant feature adapters."
+      },
+      {
+        "adapter": "HRDetect-style model",
+        "state": "no_call",
+        "blocker": "Integrated calibrated feature vector is unavailable.",
+        "next_action": "Lock component adapters and model calibration before scoring."
+      }
+    ]
+  },
+  "packet_index_tail": [
+    "# Rosalind HRD Packet Index",
+    "",
+    "Run ID: `cloud-hcc1395-wes-20260617`",
+    "",
+    "| sample_set | output_dir | evidence_rows | adapter_rows | blocker_count |",
+    "| --- | --- | --- | --- | --- |",
+    "| hcc1395_wes | results/rosalind_hrd/hcc1395_wes/cloud-hcc1395-wes-20260617 | 5 | 6 | 0 |"
+  ]
+}

@@ -1,0 +1,6 @@
+evidence_id,status,detail,artifact,caveat
+fastq_validation,passed,4/4 FASTQ rows passed validation.,results/full_wes_benchmark/full_wes_fastq_validation.csv,
+bam_validation,passed,2/2 BAM rows passed validation.,results/full_wes_benchmark/full_wes_bam_validation.csv,
+somatic_small_variant_truth_overlap,passed,1122 exact PASS truth matches; recall 0.8585; precision 0.9842.,results/full_wes_benchmark/full_wes_benchmark_summary.json,"WES truth-overlap evidence does not establish genome-wide HRD signatures, SVs, or scarHRD."
+contamination,passed,Contamination estimate 0.0.,results/full_wes_benchmark/full_wes_benchmark_summary.json,
+truth_overlap_detail,passed,Detailed truth-overlap summary is present.,results/full_wes_benchmark/truth_overlap_benchmark_summary.json,

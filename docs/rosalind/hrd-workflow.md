@@ -269,6 +269,8 @@ Allowed conclusion:
 This sample demonstrates WES small-variant and caller-readiness behavior. It does not support a genome-wide HRD scar, SV, SBS3, CHORD, or HRDetect-style score.
 ```
 
+Current materialized-artifact smoke: `hcc1395-wes-materialized-20260617`, using `artifacts/hcc1395_wes_validation`. This small artifact root contains only WES benchmark summary outputs and known-answer rollup JSON, not FASTQs, BAMs, VCFs, or reference files. The cloud run `cloud-hcc1395-wes-20260617` exercised the same root through AWS Batch and reproduced the WES packet with 5 evidence rows, 6 adapter rows, and 0 packet blockers while preserving WES-only HRD no-call boundaries.
+
 ### SEQC2/HCC1395 WGS Packet
 
 Use HCC1395 WGS as the current best HRD evidence-surface demonstration:
@@ -362,10 +364,11 @@ The `input_evidence_index.json` should point back to the existing `results/` and
 
 ### Cloud Materialized Packet Smoke
 
-The current cloud-ready proofs are `cloud-selective5-20260617`, `cloud-helper-selective5-20260617`, `cloud-hg008-depth-20260617`, `cloud-colo829-guardrail-20260617`, and `cloud-diana-raw-intake-20260617`, all run on AWS Batch on 2026-06-17. They used pushed GitHub archives, materialized bounded evidence roots inside the container, and ran the packet builder with `ROSALIND_HRD_ARTIFACT_ROOT`.
+The current cloud-ready proofs are `cloud-hcc1395-wes-20260617`, `cloud-selective5-20260617`, `cloud-helper-selective5-20260617`, `cloud-hg008-depth-20260617`, `cloud-colo829-guardrail-20260617`, and `cloud-diana-raw-intake-20260617`, all run on AWS Batch on 2026-06-17. They used pushed GitHub archives, materialized bounded evidence roots inside the container, and ran the packet builder with `ROSALIND_HRD_ARTIFACT_ROOT`.
 
 | Run ID | Batch job | Status | Sample set | Evidence rows | Adapter rows | Packet blockers |
 | --- | --- | --- | --- | --- | --- | --- |
+| `cloud-hcc1395-wes-20260617` | `e616e07e-2a4a-479d-a305-33e1e67df13f` | `SUCCEEDED` | `hcc1395_wes` | `5` | `6` | `0` |
 | `cloud-selective5-20260617` | `573cd3de-afe9-4949-80a2-8ba0a523c300` | `SUCCEEDED` | `hcc1395_wgs` | `7` | `7` | `0` |
 | `cloud-helper-selective5-20260617` | `e8d00f20-26c8-4a32-8198-8aa10c916859` | `SUCCEEDED` | `hcc1395_wgs` | `7` | `7` | `0` |
 | `cloud-hg008-depth-20260617` | `8a01caf6-5439-4c54-b068-2ecd5d325269` | `SUCCEEDED` | `hg008` | `4` | `4` | `2` |
@@ -375,6 +378,7 @@ The current cloud-ready proofs are `cloud-selective5-20260617`, `cloud-helper-se
 Cloud output was written to:
 
 ```text
+s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-hcc1395-wes-20260617
 s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-selective5-20260617
 s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-helper-selective5-20260617
 s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-hg008-depth-20260617
@@ -385,6 +389,8 @@ s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-diana-ra
 Committed evidence is available under:
 
 ```text
+results/rosalind_hrd/cloud-hcc1395-wes-20260617/
+results/rosalind_hrd/hcc1395_wes/cloud-hcc1395-wes-20260617/
 results/rosalind_hrd/cloud-selective5-20260617/
 results/rosalind_hrd/hcc1395_wgs/cloud-selective5-20260617/
 results/rosalind_hrd/cloud-helper-selective5-20260617/
@@ -414,7 +420,7 @@ After generating packets, refresh the blocker triage board:
 ROSALIND_HRD_TRIAGE_PACKET_RUN=<packet_run_id> ROSALIND_HRD_TRIAGE_ID=<triage_id> PYTHONPATH=src /usr/bin/python3 -m diana_omics triage:rosalind-hrd-readiness
 ```
 
-The triage board compares the selected all-sample packet with materialized packet runs. It is the place to record that the repo-root HCC1395 WGS metadata-only blocker is closed by the selective materialized/cloud packets, while HG008, COLO829, and Diana raw intake still have true caller, indexing, build-reconciliation, or file-arrival blockers. The current HG008-focused triage run is `readiness-triage-hg008-depth-20260617`, based on `public-evidence-hg008-depth-20260617`.
+The triage board compares the selected all-sample packet with materialized packet runs. It is the place to record that the repo-root HCC1395 WGS metadata-only blocker is closed by the selective materialized/cloud packets and that HCC1395 WES now has local/cloud materialized closures, while HG008, COLO829, and Diana raw intake still have true caller, indexing, build-reconciliation, or file-arrival blockers. The current public-cloud triage run is `readiness-triage-public-cloud-20260617`, based on `public-evidence-hg008-depth-20260617`.
 
 ## Source Pattern
 
