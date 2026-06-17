@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-06-17T19:04:31.079Z",
+  "runId": "cloud-diana-raw-intake-handoff-20260617",
+  "sampleSets": [
+    "diana_raw_intake"
+  ],
+  "packetRoot": "results/rosalind_hrd",
+  "artifactRoot": "/tmp/diana-cloud-packet-cloud-diana-raw-intake-handoff-20260617/oncoomics-84c3019c86ec9ad8b71e1d59c1efbf72f249898c/artifacts/diana_raw_intake_ready",
+  "artifactRootMode": "materialized_artifact_root",
+  "packets": [
+    {
+      "sampleSet": "diana_raw_intake",
+      "title": "Diana Raw BAM/FASTQ Intake Readiness Packet",
+      "outputDir": "results/rosalind_hrd/diana_raw_intake/cloud-diana-raw-intake-handoff-20260617",
+      "evidenceRows": 5,
+      "adapterRows": 4,
+      "blockers": [
+        "Actual Diana BAM/FASTQ/CRAM paths have not passed strict intake validation."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "This packet proves the raw-data intake contract is ready. It does not validate Diana files or produce HRD evidence until the actual BAM/FASTQ/CRAM paths are supplied and pass strict intake validation."
+    }
+  ],
+  "sourcePattern": {
+    "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
+    "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats."
+  }
+}
