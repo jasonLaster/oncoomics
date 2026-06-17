@@ -1,0 +1,54 @@
+{
+  "run_id": "cloud-hg008-depth-20260617",
+  "source_commit": "774cbf7c0af091404616fab72a8f5c3c12ed9423",
+  "aws_batch_job_id": "8a01caf6-5439-4c54-b068-2ecd5d325269",
+  "aws_batch_job_queue": "diana-omics-prod-use1-ondemand",
+  "aws_region": "us-east-1",
+  "s3_prefix": "s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-hg008-depth-20260617",
+  "artifact_root": "/tmp/diana-cloud-packet-cloud-hg008-depth-20260617/oncoomics-774cbf7c0af091404616fab72a8f5c3c12ed9423/artifacts/hg008_depth_validation",
+  "sample_sets": [
+    "hg008"
+  ],
+  "packet_index_sha256": "746f34033cf22f75be3788ce17d943f5808996ddd0f3295aa450270c06230633",
+  "run_manifest_sha256": "28cf1dc456cace397bea91b98d8ef5a69461eb72c9bfbd31d9ae867eb806a16e",
+  "reviewer_packet_sha256": {
+    "hg008": "5072a636785deb7c2bb8acae165862ca1269418d6abdba6daa6a307d8750a5f8"
+  },
+  "adapter_status_rows": {
+    "hg008": [
+      {
+        "adapter": "SNV correctness validation",
+        "state": "partial_evidence",
+        "blocker": "Bounded truth-pileup confirmations are present, but full caller-level recall/precision is not complete.",
+        "next_action": "Run full small-variant caller concordance."
+      },
+      {
+        "adapter": "CNV/LOH correctness validation",
+        "state": "partial_evidence",
+        "blocker": "Bounded depth-direction checks passed, but no Diana-generated CNV segment callset or segment-level reciprocal-overlap result exists.",
+        "next_action": "Run CNV calling and segment-level reciprocal-overlap against HG008 truth."
+      },
+      {
+        "adapter": "SV correctness validation",
+        "state": "blocked",
+        "blocker": "No Diana-generated SV callset exists for HG008; SV reciprocal-overlap remains unrun.",
+        "next_action": "Run SV caller and reciprocal-overlap against HG008 v0.5 truth."
+      },
+      {
+        "adapter": "HRD interpretation",
+        "state": "no_call",
+        "blocker": "HG008 is a truth-set validator, not a Diana HRD interpretation sample.",
+        "next_action": "Use only for pipeline correctness."
+      }
+    ]
+  },
+  "packet_index_tail": [
+    "# Rosalind HRD Packet Index",
+    "",
+    "Run ID: `cloud-hg008-depth-20260617`",
+    "",
+    "| sample_set | output_dir | evidence_rows | adapter_rows | blocker_count |",
+    "| --- | --- | --- | --- | --- |",
+    "| hg008 | results/rosalind_hrd/hg008/cloud-hg008-depth-20260617 | 4 | 4 | 2 |"
+  ]
+}
