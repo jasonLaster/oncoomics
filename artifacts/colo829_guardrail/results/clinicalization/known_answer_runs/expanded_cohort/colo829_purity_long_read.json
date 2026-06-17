@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-06-15T01:26:36.826Z",
+  "probeKey": "colo829_purity_long_read",
+  "status": "expanded_non_dry_blocked_remote_index_missing",
+  "pipelineConfirmation": "not_confirmed",
+  "clinicalUseAllowed": "no",
+  "publicDocumentationAlignment": "gap",
+  "evidenceType": "ena_metadata_without_remote_indexes",
+  "publicFindingResult": "COLO829 purity long_read metadata exposes 10 runs across levels 10, 20, 25, 50, 75 but submitted BAM indexes are missing for remote slicing.",
+  "evidence": {
+    "enaReport": "data/raw/known_answer_public/colo829/ena/PRJEB27698_filereport.tsv",
+    "platformGroup": "long_read",
+    "selectedRunCount": 10,
+    "selectedLevels": [
+      "10",
+      "20",
+      "25",
+      "50",
+      "75"
+    ],
+    "instrumentPlatformCounts": {
+      "OXFORD_NANOPORE": 5,
+      "PACBIO_SMRT": 5
+    },
+    "submittedBamCount": 10,
+    "submittedBaiCount": 0,
+    "runAccessions": [
+      "ERR4093263",
+      "ERR4093265",
+      "ERR4093266",
+      "ERR4093269",
+      "ERR4093260",
+      "ERR4093262",
+      "ERR4093264",
+      "ERR4093267",
+      "ERR4093261",
+      "ERR4093268"
+    ]
+  },
+  "blockers": [
+    "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested."
+  ],
+  "nextAction": "Transfer selected dilution BAM/FASTQ inputs and index locally before running purity recall."
+}

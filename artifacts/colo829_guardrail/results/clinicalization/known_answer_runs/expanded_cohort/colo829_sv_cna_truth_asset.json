@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-06-15T01:26:36.825Z",
+  "probeKey": "colo829_sv_cna_truth_asset",
+  "status": "expanded_non_dry_gap_identified",
+  "pipelineConfirmation": "not_confirmed",
+  "clinicalUseAllowed": "no",
+  "publicDocumentationAlignment": "gap",
+  "evidenceType": "truth_assets_only_with_driver_context",
+  "publicFindingResult": "COLO829 SV/CNA truth assets are present but no build-matched Diana SV/CNA callset exists.",
+  "evidence": {
+    "truthVcf": "data/raw/known_answer_public/colo829/sv_cna_truth/truthset_somaticSVs_COLO829_hg38lifted.vcf",
+    "truthVcfExists": true,
+    "truthVcfRecordCount": 134,
+    "copyNumberTruthZip": "data/raw/known_answer_public/colo829/sv_cna_truth/COLO829_somaticSV_copynumber.zip",
+    "copyNumberTruthZipExists": true,
+    "copyNumberTruthZipBytes": 15044
+  },
+  "blockers": [
+    "COLO829 submitted BAMs and fetched hg38-lifted truth still require build reconciliation.",
+    "No Diana SV/CNA callset exists."
+  ],
+  "nextAction": "Fetch or generate build-matched COLO829 calls and run SV/CNA reciprocal-overlap evaluation."
+}

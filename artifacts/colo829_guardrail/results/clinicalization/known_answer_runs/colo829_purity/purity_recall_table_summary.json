@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-06-15T00:57:15.471Z",
+  "status": "bounded_non_dry_blocked_remote_index_missing",
+  "executionMode": "bounded_non_dry_public_remote_read_analysis",
+  "pipelineConfirmation": "not_confirmed",
+  "clinicalUseAllowed": "no",
+  "artifactPath": "results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json",
+  "checkIds": [
+    "colo829_purity_monotonicity"
+  ],
+  "pullIds": [
+    "colo829_purity_series"
+  ],
+  "sampleOrAssetIds": [
+    "COLO829_purity_selected_levels"
+  ],
+  "datasetIds": [
+    "colo829_purity_series"
+  ],
+  "publicFindings": [
+    "Selected COLO829 dilution levels should show lower variant or truth-overlap sensitivity as tumor fraction decreases."
+  ],
+  "evidenceType": "ena_metadata_and_failed_remote_region_probe",
+  "publicFindingResult": "COLO829 dilution BAMs are public but cannot be remotely region-sliced because ENA does not expose submitted BAI files for selected levels.",
+  "evidence": {
+    "purityProbe": {
+      "enaReport": "data/raw/known_answer_public/colo829/ena/PRJEB27698_filereport.tsv",
+      "selectedPurityRunCount": 15,
+      "selectedPurityAliases": [
+        "COLO829_purity_10",
+        "COLO829_purity_10",
+        "COLO829_purity_10",
+        "COLO829_purity_20",
+        "COLO829_purity_20",
+        "COLO829_purity_20",
+        "COLO829_purity_25",
+        "COLO829_purity_25",
+        "COLO829_purity_25",
+        "COLO829_purity_50",
+        "COLO829_purity_50",
+        "COLO829_purity_50",
+        "COLO829_purity_75",
+        "COLO829_purity_75",
+        "COLO829_purity_75"
+      ],
+      "selectedSubmittedBamCount": 15,
+      "selectedSubmittedBaiCount": 0,
+      "boundedRegionProbe": {
+        "command": "samtools mpileup -r 7:140453136-140453136 https://ftp.sra.ebi.ac.uk/vol1/run/ERR409/ERR4093255/illumina_purity10.bam",
+        "returnCode": 1,
+        "stderr": "[E::idx_find_and_load] Could not retrieve index file for 'https://ftp.sra.ebi.ac.uk/vol1/run/ERR409/ERR4093255/illumina_purity10.bam'\n[mpileup] fail to load index for https://ftp.sra.ebi.ac.uk/vol1/run/ERR409/ERR4093255/illumina_purity10.bam",
+        "elapsedSeconds": 1.992
+      },
+      "blockedReason": "Selected purity BAMs are listed in ENA without submitted BAI files, so indexed remote region slicing is unavailable."
+    }
+  },
+  "blockers": [
+    "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested."
+  ],
+  "nextAction": "Transfer selected dilution BAM/FASTQ inputs, index locally if needed, then run the purity recall table.",
+  "previousExecutionMode": "non_dry_public_asset_fetch_and_gap_analysis",
+  "previousStatus": "not_confirmed_input_metadata_only"
+}

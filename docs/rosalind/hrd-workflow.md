@@ -319,6 +319,8 @@ Allowed conclusion:
 COLO829 is an independent tumor-normal and driver-recovery guardrail. It does not establish HRD status until full SV/CNA/signature evidence is generated and benchmarked.
 ```
 
+Current materialized-artifact smoke: `colo829-guardrail-materialized-20260617`, using `artifacts/colo829_guardrail`. This small artifact root contains only known-answer summary JSON files and can be used with `--sample-set colo829 --artifact-root-rel artifacts/colo829_guardrail` for bounded cloud packet validation. The packet remains blocked on build-matched SV/CNA caller output and local transfer or indexing of selected purity assets.
+
 ### Diana Raw-Intake Packet
 
 Use Diana raw intake to prove the arrival contract before Dinah's actual files are available:
