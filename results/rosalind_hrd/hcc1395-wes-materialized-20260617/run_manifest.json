@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-06-17T18:44:45.847Z",
+  "runId": "hcc1395-wes-materialized-20260617",
+  "sampleSets": [
+    "hcc1395_wes"
+  ],
+  "packetRoot": "results/rosalind_hrd",
+  "artifactRoot": "artifacts/hcc1395_wes_validation",
+  "artifactRootMode": "materialized_artifact_root",
+  "packets": [
+    {
+      "sampleSet": "hcc1395_wes",
+      "title": "SEQC2/HCC1395 WES HRD Readiness Packet",
+      "outputDir": "results/rosalind_hrd/hcc1395_wes/hcc1395-wes-materialized-20260617",
+      "evidenceRows": 5,
+      "adapterRows": 6,
+      "blockers": [],
+      "missingArtifacts": [],
+      "allowedConclusion": "This sample demonstrates WES small-variant and caller-readiness behavior. It does not support a genome-wide HRD scar, SV, SBS3, CHORD, or HRDetect-style score."
+    }
+  ],
+  "sourcePattern": {
+    "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
+    "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats."
+  }
+}
