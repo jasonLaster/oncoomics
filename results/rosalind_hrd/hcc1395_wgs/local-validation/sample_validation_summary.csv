@@ -1,0 +1,6 @@
+evidence_id,status,detail,artifact,caveat
+wgs_pair_validation,passed,Full-source FASTQs: True; read pairs per end: 942559447; BAM validation: passed.,results/phase3_wgs_smoke/phase3_wgs_summary.json,
+small_variant_lane,skipped_public_bam_timing,Truth-depth eligible variants: 0; exact PASS matches: 0.,results/phase3_wgs_smoke/phase3_wgs_summary.json,Public-BAM timing runs may skip local variant calling; do not infer HRD score readiness from this alone.
+coverage_cnv_bins,passed,631 coverage CNV bins generated.,results/phase3_wgs_smoke/coverage_cnv_summary.json,Coverage bins are not allele-specific CNV/LOH segments.
+sbs96_matrix,skipped_public_bam_timing,0 usable SNV records for SBS96.,results/phase3_wgs_smoke/signature_assignment_summary.json,SBS3 interpretation remains no-call until thresholds and known-answer performance are locked.
+sv_evidence,passed,SV evidence rows: 2; discordant mapped pairs: 0; CHORD statuses: not_assessable_metadata_only.,results/phase3_wgs_smoke/sv_evidence_summary.json,"CHORD and HRDetect need validated SV caller VCF/BEDPE, not metadata-only evidence."

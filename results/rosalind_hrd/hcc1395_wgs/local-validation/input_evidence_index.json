@@ -1,0 +1,45 @@
+{
+  "sampleSet": "hcc1395_wgs",
+  "artifacts": [
+    {
+      "path": "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+      "exists": "yes",
+      "bytes": 1362
+    },
+    {
+      "path": "results/phase3_wgs_smoke/bam_validation_summary.csv",
+      "exists": "yes",
+      "bytes": 1854
+    },
+    {
+      "path": "results/phase3_wgs_smoke/coverage_cnv_summary.json",
+      "exists": "yes",
+      "bytes": 756
+    },
+    {
+      "path": "results/phase3_wgs_smoke/signature_assignment_summary.json",
+      "exists": "yes",
+      "bytes": 718
+    },
+    {
+      "path": "results/phase3_wgs_smoke/sv_evidence_summary.json",
+      "exists": "yes",
+      "bytes": 1564
+    },
+    {
+      "path": "results/phase3_wgs_smoke/hrd_tool_readiness_summary.json",
+      "exists": "yes",
+      "bytes": 1477
+    },
+    {
+      "path": "results/clinicalization/hrd_interpretation_readiness_summary.json",
+      "exists": "yes",
+      "bytes": 3232
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wgs_summary.json",
+      "exists": "yes",
+      "bytes": 2130
+    }
+  ]
+}

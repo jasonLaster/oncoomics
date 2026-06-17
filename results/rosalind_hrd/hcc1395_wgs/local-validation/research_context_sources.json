@@ -1,0 +1,13 @@
+{
+  "status": "deferred_until_observed_sample_events",
+  "boundary": "Research context may enrich observed events, but it must not override failed QC, missing adapters, or HRD no-call states.",
+  "recommended_source_skills": [
+    "clinvar-variation-skill for observed variant pathogenicity context",
+    "gnomad-graphql-skill for population frequency and constraint context",
+    "cbioportal-skill and civic-skill for cancer recurrence and clinical evidence context",
+    "uniprot-skill and reactome-skill for HR repair gene and pathway context",
+    "clinicaltrials-skill only for explicit translational follow-up questions"
+  ],
+  "candidate_observed_evidence_ids": [],
+  "sample_set": "hcc1395_wgs"
+}

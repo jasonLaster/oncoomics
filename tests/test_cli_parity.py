@@ -21,6 +21,7 @@ class CliParityTest(unittest.TestCase):
             "build:packet",
             "build:panel",
             "build:raw-samplesheets",
+            "build:rosalind-hrd-packet",
             "diagnose:pipeline",
             "fetch:full-reference-smoke",
             "fetch:full-wes",

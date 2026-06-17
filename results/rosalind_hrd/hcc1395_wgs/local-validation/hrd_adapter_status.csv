@@ -1,0 +1,8 @@
+adapter,state,blocker,next_action
+SigProfilerAssignment,not_assessable_variant_calling_skipped,"Classification is deferred for low mutation count; the matrix is a real VCF-derived output, not a proxy.",Promote to ready only after the required production adapter and known-answer validation pass.
+scarHRD,not_assessable_without_allele_specific_segments,scarHRD needs allele-specific segmented CN calls; this run validates WGS coverage-bin plumbing only.,Promote to ready only after the required production adapter and known-answer validation pass.
+CHORD,not_assessable_requires_validated_sv_caller_vcf,CHORD-style interpretation needs full-depth SNV/indel/SV/CNV feature inputs; this validates the feature lanes.,Promote to ready only after the required production adapter and known-answer validation pass.
+sigprofiler_sbs3,no_call,SBS3 interpretation thresholds and known-answer performance are not locked.,validated SBS96/SBS288 mutation matrix plus reconstruction metrics and locked minimum-mutation policy
+scarhrd,no_call,Allele-specific CNV/LOH segments are not available.,validated allele-specific copy-number segments with total/minor copy number purity and ploidy
+chord,no_call,Validated production SV caller VCF/BEDPE input is not available.,validated somatic SNV/indel features plus production SV caller VCF or BEDPE and CNV context
+hrdetect,no_call,Integrated HRDetect-style feature classes and model calibration are not complete.,locked six-feature HRD model inputs including substitution signatures indel signatures rearrangement signatures and CNV/LOH features

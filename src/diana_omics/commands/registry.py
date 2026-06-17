@@ -26,6 +26,7 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "build:packet": CommandSpec("diana_omics.commands.hrd_context.build_reviewer_packet"),
     "build:panel": CommandSpec("diana_omics.commands.hrd_context.build_reference_panel"),
     "build:raw-samplesheets": CommandSpec("diana_omics.commands.raw_validation.build_raw_samplesheets"),
+    "build:rosalind-hrd-packet": CommandSpec("diana_omics.commands.hrd_context.build_rosalind_hrd_packet"),
     "benchmark:sra-range": CommandSpec("diana_omics.commands.phase3_wgs.run_sra_benchmark"),
     "diagnose:pipeline": CommandSpec("diana_omics.commands.quality.diagnose_pipeline"),
     "fetch:full-reference-smoke": CommandSpec("diana_omics.commands.alignment_validation.fetch_full_reference_smoke_assets"),
@@ -103,6 +104,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "analyze:lehmann",
             "analyze:rna",
             "build:packet",
+            "build:rosalind-hrd-packet",
         ),
     ),
     CommandFamily(
