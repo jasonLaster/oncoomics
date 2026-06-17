@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pipeline Strategy Sanity"
+  short_description: "Check whether analytics strategy is sound"
+  default_prompt: "Use $pipeline-strategy-sanity to review whether this analytics pipeline is strategically sound."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pipeline Validation Sanity"
+  short_description: "Check evidence, controls, and outputs"
+  default_prompt: "Use $pipeline-validation-sanity to review the validation evidence for this analytics pipeline."

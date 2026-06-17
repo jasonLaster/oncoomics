@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pipeline Deployment Governance"
+  short_description: "Review deployment readiness and oversight"
+  default_prompt: "Use $pipeline-deployment-governance to review deployment, monitoring, and oversight for this analytics pipeline."

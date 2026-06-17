@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pipeline Data Custody Audit"
+  short_description: "Audit data quality, provenance, and bias"
+  default_prompt: "Use $pipeline-data-custody-audit to sanity check the data foundation for this analytics pipeline."
