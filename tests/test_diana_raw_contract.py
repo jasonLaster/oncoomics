@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from diana_omics import utils
-from diana_omics.commands.diana_intake import stage_diana_raw_analysis
+from diana_omics.commands.diana_intake import plan_diana_raw_handoff, stage_diana_raw_analysis
 from diana_omics.commands.diana_intake.verify_diana_raw import validate_rows
 from diana_omics.diana_raw import DIANA_RAW_COLUMNS, template_rows
 
@@ -127,6 +127,29 @@ class DianaRawContractTest(unittest.TestCase):
             refresh = next(row for row in command_rows if row["name"] == "refresh_rosalind_intake_packet")
             self.assertIn("build:rosalind-hrd-packet", refresh["command"])
             self.assertIn("ROSALIND_HRD_SAMPLE_SET=diana_raw_intake", refresh["command"])
+
+    def test_handoff_plan_writes_prearrival_commands(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with (
+                patch.object(plan_diana_raw_handoff, "path_from_root", lambda relative: root / relative),
+                patch.dict("os.environ", {"DIANA_RAW_ANALYSIS_ID": "unit"}, clear=False),
+            ):
+                plan_diana_raw_handoff.main()
+
+            summary = utils.read_json(root / "results/diana_raw_intake/dinah_handoff_plan.json")
+            self.assertEqual(summary["status"], "waiting_for_dinah_files")
+            rows = utils.parse_csv(utils.read_text(root / "results/diana_raw_intake/dinah_handoff_plan.csv"))
+            names = [row["name"] for row in rows]
+            self.assertIn("cloud_upload_permission_gate", names)
+            self.assertIn("strict_validate_diana_inputs", names)
+            self.assertIn("stage_diana_raw_analysis_packet", names)
+            self.assertIn("refresh_rosalind_raw_intake_packet", names)
+            strict = next(row for row in rows if row["name"] == "strict_validate_diana_inputs")
+            self.assertIn("DIANA_RAW_REQUIRE_DATA=1", strict["command_or_action"])
+            self.assertIn("verify:diana-raw", strict["command_or_action"])
+            markdown = utils.read_text(root / "results/diana_raw_intake/dinah_handoff_plan.md")
+            self.assertIn("No AWS Batch or S3 upload for human data until permission is explicit.", markdown)
 
 
 if __name__ == "__main__":

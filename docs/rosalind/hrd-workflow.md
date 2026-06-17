@@ -328,6 +328,7 @@ Current materialized-artifact smoke: `colo829-guardrail-materialized-20260617`, 
 Use Diana raw intake to prove the arrival contract before Dinah's actual files are available:
 
 - preserve the `manifests/diana_raw_inputs.template.csv` column contract;
+- keep the `plan:diana-raw-handoff` checklist current before actual paths arrive;
 - keep the strict validation command and staging command visible in the packet;
 - require actual BAM/FASTQ/CRAM paths, indexes, reference metadata, and tumor-normal pairing before compute;
 - keep HRD interpretation `no_call` until strict file validation and downstream feature lanes pass.
@@ -338,7 +339,7 @@ Allowed conclusion:
 This packet proves the raw-data intake contract is ready. It does not validate Diana files or produce HRD evidence until the actual BAM/FASTQ/CRAM paths are supplied and pass strict intake validation.
 ```
 
-Current materialized-artifact smoke: `diana-raw-intake-materialized-20260617`, using `artifacts/diana_raw_intake_ready`. This small artifact root contains only the intake template, operations runbook, and readiness summary JSON files and can be used with `--sample-set diana_raw_intake --artifact-root-rel artifacts/diana_raw_intake_ready` for bounded cloud packet validation.
+Current materialized-artifact smoke: `diana-raw-intake-materialized-20260617`, using `artifacts/diana_raw_intake_ready`. This small artifact root contains only the intake template, operations runbook, and readiness summary JSON files and can be used with `--sample-set diana_raw_intake --artifact-root-rel artifacts/diana_raw_intake_ready` for bounded cloud packet validation. The current handoff runbook is `results/diana_raw_intake/dinah_handoff_plan.md`; it records the strict validation, staging, packet refresh, triage refresh, cloud-upload permission gate, and first compute-lane routing boundary for when Dinah's real paths arrive.
 
 ### Output Layout For Validated Sample Runs
 

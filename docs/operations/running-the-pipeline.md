@@ -34,6 +34,7 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics run:known-answer-expanded-cohort
 | Run WES benchmark | `PYTHONPATH=src /usr/bin/python3 -m diana_omics benchmark:full-wes` |
 | Run WGS validation | `PYTHONPATH=src /usr/bin/python3 -m diana_omics validate:phase3-wgs` |
 | Build Diana template | `PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-template` |
+| Plan Diana raw handoff | `PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff` |
 | Validate Diana samplesheet | `DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw` |
 
 ## Nextflow

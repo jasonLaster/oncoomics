@@ -52,6 +52,7 @@
   "requiredDnaContract": "At least one tumor DNA row and one matched normal DNA row sharing pair_id, with FASTQ pairs, BAM+BAI, or CRAM+CRAI.",
   "rnaContract": "Optional RNA_FASTQ rows can be included for expression context, but DNA tumor-normal rows are required for HRD mechanics.",
   "referenceContract": "Diana DNA rows should use the same reference_id/reference_path/reference_fai_path/reference_dict_path unless a reviewer approves a build-specific split.",
+  "handoffPlanCommand": "PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff",
   "recomputeCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw",
   "validationCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw"
 }

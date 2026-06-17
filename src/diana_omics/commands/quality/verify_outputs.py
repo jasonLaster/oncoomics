@@ -663,6 +663,15 @@ def main() -> None:
     if diana_validation.get("status") not in {"waiting_for_diana_raw_data", "passed"}:
         errors.append(f"Diana raw input validation status must be waiting or passed, not {diana_validation.get('status')!r}.")
 
+    handoff_plan = read_json_if_exists(errors, "results/diana_raw_intake/dinah_handoff_plan.json")
+    handoff_steps = handoff_plan.get("handoffSteps", [])
+    handoff_names = {row.get("name") for row in handoff_steps if isinstance(row, dict)} if isinstance(handoff_steps, list) else set()
+    for required_step in ["cloud_upload_permission_gate", "strict_validate_diana_inputs", "stage_diana_raw_analysis_packet"]:
+        if required_step not in handoff_names:
+            errors.append(f"Diana raw handoff plan must include {required_step}.")
+    if "verify:diana-raw" not in str(handoff_plan) or "stage:diana-raw" not in str(handoff_plan):
+        errors.append("Diana raw handoff plan must record strict validation and staging commands.")
+
     readiness = (
         read_text(path_from_root("results/diana_readiness_gate.md")) if path_from_root("results/diana_readiness_gate.md").exists() else ""
     )

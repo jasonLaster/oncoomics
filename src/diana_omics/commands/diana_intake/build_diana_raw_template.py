@@ -20,7 +20,7 @@ def main() -> None:
                 "actual_samplesheet": contract["samplesheet"],
                 "ready_for_diana_raw_data": "yes",
                 "ready_to_interpret": "no",
-                "next_step": "Copy the template to manifests/diana_raw_inputs.csv, replace placeholder paths, then run verify:diana-raw with DIANA_RAW_REQUIRE_DATA=1.",
+                "next_step": "Run plan:diana-raw-handoff, copy the template to manifests/diana_raw_inputs.csv, replace placeholder paths, then run verify:diana-raw with DIANA_RAW_REQUIRE_DATA=1.",
             }
         ],
     )
@@ -33,6 +33,7 @@ def main() -> None:
             "actualSamplesheet": contract["samplesheet"],
             "readyForDianaRawData": True,
             "readyToInterpret": False,
+            "handoffPlanCommand": contract["handoffPlanCommand"],
             "validationCommand": contract["validationCommand"],
             "recomputeCommand": contract["recomputeCommand"],
         },
@@ -63,6 +64,12 @@ Generate the template:
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-template
+```
+
+Write the current pre-arrival handoff plan:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff
 ```
 
 Copy it:
@@ -97,6 +104,7 @@ When the files arrive:
 3. Confirm the reference build, contig naming, and index files before compute.
 4. Record tumor purity, tumor content, normal type, platform, and vendor notes when known.
 5. Confirm whether cloud upload is allowed for any human data before scheduling Batch or S3 work.
+6. Rerun `plan:diana-raw-handoff` after filling the samplesheet to capture the current state before strict validation.
 
 ## Validate The Files
 
@@ -172,8 +180,9 @@ Artifacts:
 2. `docs/operations/diana-raw-inputs.md`
 3. `results/diana_raw_intake/input_contract.json`
 4. `results/diana_raw_intake/intake_readiness_summary.csv`
+5. `results/diana_raw_intake/dinah_handoff_plan.md`
 
-The project can now accept Diana raw FASTQ, BAM, or CRAM paths through `manifests/diana_raw_inputs.csv` and validate them with `PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw`.
+The project can now accept Diana raw FASTQ, BAM, or CRAM paths through `manifests/diana_raw_inputs.csv`, plan the handoff with `PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff`, and validate paths with `PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw`.
 """,
     )
     print(f"Diana raw input template ready: {DIANA_RAW_TEMPLATE}")

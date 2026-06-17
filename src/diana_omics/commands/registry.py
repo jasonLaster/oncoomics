@@ -37,6 +37,7 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "fetch:production-somatic": CommandSpec("diana_omics.commands.alignment_validation.fetch_production_somatic_assets"),
     "fetch:raw-candidates": CommandSpec("diana_omics.commands.raw_validation.fetch_raw_candidate_metadata"),
     "plan:known-answer-benchmarks": CommandSpec("diana_omics.commands.known_answer.plan_known_answer_benchmarks"),
+    "plan:diana-raw-handoff": CommandSpec("diana_omics.commands.diana_intake.plan_diana_raw_handoff"),
     "run:known-answer-bounded-non-dry": CommandSpec("diana_omics.commands.known_answer.run_known_answer_bounded_non_dry"),
     "run:known-answer-expanded-cohort": CommandSpec("diana_omics.commands.known_answer.run_known_answer_expanded_cohort"),
     "run:known-answer-public-findings": CommandSpec("diana_omics.commands.known_answer.run_known_answer_public_findings"),
@@ -191,6 +192,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
         "Create, verify, and stage the future Diana raw-data handoff contract.",
         (
             "build:diana-template",
+            "plan:diana-raw-handoff",
             "verify:diana-raw",
             "stage:diana-raw",
         ),

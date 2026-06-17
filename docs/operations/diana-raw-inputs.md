@@ -24,6 +24,12 @@ Generate the template:
 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-template
 ```
 
+Write the current pre-arrival handoff plan:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff
+```
+
 Copy it:
 
 ```sh
@@ -56,6 +62,7 @@ When the files arrive:
 3. Confirm the reference build, contig naming, and index files before compute.
 4. Record tumor purity, tumor content, normal type, platform, and vendor notes when known.
 5. Confirm whether cloud upload is allowed for any human data before scheduling Batch or S3 work.
+6. Rerun `plan:diana-raw-handoff` after filling the samplesheet to capture the current state before strict validation.
 
 ## Validate The Files
 

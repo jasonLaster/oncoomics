@@ -41,7 +41,7 @@ The CLI uses the same families for `PYTHONPATH=src python3 -m diana_omics --help
 * Phase 3 WGS: `fetch:phase3-wgs`, `validate:phase3-wgs`, `benchmark:sra-range`, and commands beginning with `phase3:stage:`.
 * Known-answer validation: `plan:known-answer-benchmarks`, `benchmark:known-answer`, `run:known-answer-*`, `verify:orthogonal`, and commands beginning with `verify:known-answer-`.
 * Clinical readiness: commands beginning with `verify:clinical-`, plus `verify:clinicalization-readiness-rollup`, `verify:cnv-loh-readiness`, `verify:hrd-interpretation-readiness`, and `verify:sv-caller-readiness`.
-* Diana intake: `build:diana-template`, `verify:diana-raw`, `stage:diana-raw`.
+* Diana intake: `build:diana-template`, `plan:diana-raw-handoff`, `verify:diana-raw`, `stage:diana-raw`.
 * Quality and diagnostics: `py:format`, `py:format:check`, `py:lint`, `py:typecheck`, `py:test`, `typecheck`, `test`, `verify:plan`, `verify:plan:online`, `verify:outputs`, `verify:phase3-outputs`, `diagnose:pipeline`.
 * Local Nextflow: commands beginning with `nf:` for local or Docker profiles.
 * AWS and deployment: commands beginning with `infra:aws:`, `aws:ecr:push`, `aws:hrd-packet:cloud-submit`, `deploy:aws`, and commands beginning with `nf:aws:`.
