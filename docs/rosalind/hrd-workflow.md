@@ -360,6 +360,13 @@ results/rosalind_hrd/hcc1395_wgs/cloud-selective5-20260617/
 
 This run proves the lightweight packet builder can run in Batch against materialized artifacts and produce reviewer-packet outputs without uploading local generated data. It does not prove full WGS compute or a final HRD score. The generated packet keeps SBS3, scarHRD, CHORD, and HRDetect-style interpretation behind their current no-call boundaries until production adapters, thresholds, and known-answer performance are locked.
 
+Future cloud packet runs should use the repo task wrapper:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:hrd-packet:cloud-submit -- --dry-run
+PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:hrd-packet:cloud-submit -- --run-id cloud-selective5-YYYYMMDD
+```
+
 ## Source Pattern
 
 This design follows the OpenAI life-sciences workflow pattern documented in:

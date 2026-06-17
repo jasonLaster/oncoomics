@@ -126,6 +126,7 @@ class CliParityTest(unittest.TestCase):
     def test_python_task_runner_owns_workflow_aliases(self):
         self.assertIn("run:all", TASKS)
         self.assertIn("benchmark:known-answer", TASKS)
+        self.assertIn("aws:hrd-packet:cloud-submit", TASKS)
         self.assertIn("nf:aws:sra-bench:tiny", TASKS)
         self.assertIn("nf:aws:known-answer-bounded-non-dry", TASKS)
         self.assertIn("nf:aws:known-answer-expanded-cohort", TASKS)
@@ -146,6 +147,8 @@ class CliParityTest(unittest.TestCase):
         self.assertTrue(TASKS["py:test"].steps[0].append_args)
         self.assertTrue(TASKS["benchmark:known-answer"].accepts_args)
         self.assertTrue(TASKS["benchmark:known-answer"].steps[0].append_args)
+        self.assertTrue(TASKS["aws:hrd-packet:cloud-submit"].accepts_args)
+        self.assertTrue(TASKS["aws:hrd-packet:cloud-submit"].steps[0].append_args)
 
     def test_phase3_aws_failfast_task_is_conservative(self):
         argv = TASKS["nf:aws:phase3-wgs:full:ondemand-failfast"].steps[0].argv

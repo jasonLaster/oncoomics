@@ -80,6 +80,17 @@ Confirm:
 - S3 work objects appear under the `diana-omics-work-...` bucket.
 - No raw data was uploaded from local.
 
+## HRD Packet Cloud Submit
+
+Use the lightweight HRD packet submitter when the goal is to prove packet-builder behavior against already-materialized evidence artifacts, not to rerun WGS compute:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:hrd-packet:cloud-submit -- --dry-run
+PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:hrd-packet:cloud-submit -- --run-id cloud-selective5-YYYYMMDD
+```
+
+The script downloads a pushed GitHub archive inside AWS Batch, sets `ROSALIND_HRD_ARTIFACT_ROOT` to a repo-relative materialized artifact root, runs `build:rosalind-hrd-packet`, and uploads only cloud-generated packet outputs to S3. It does not upload local `results/` or raw data.
+
 ## Monitoring
 
 Get the AWS Batch job id from Nextflow output or from `nextflow.log`, then poll status and recent logs:

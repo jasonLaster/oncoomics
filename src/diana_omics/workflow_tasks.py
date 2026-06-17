@@ -215,6 +215,10 @@ TASKS: dict[str, Task] = {
         _terraform("apply", env=_tf_image_env({"TF_VAR_region": "us-east-1", "TF_VAR_environment": "prod-use1"})),
     ),
     "aws:ecr:push": _task(_tool("bash", "infra/aws/push-image.sh")),
+    "aws:hrd-packet:cloud-submit": _task(
+        _tool("bash", "infra/aws/submit-hrd-packet-cloud.sh", append_args=True),
+        accepts_args=True,
+    ),
     "deploy:aws": _task(
         _tool("bash", "infra/aws/push-image.sh"),
         _terraform("workspace", "select", "sra-use1"),
