@@ -1,0 +1,5 @@
+evidence_id,status,detail,artifact,caveat
+snv_truth_panel,expanded_non_dry_passed,40/40 HG008 truth SNVs passed tumor ALT and normal REF pileup gates.,results/clinicalization/known_answer_runs/expanded_cohort/hg008_snv_panel.json,
+cnv_depth_sweep,expanded_non_dry_passed,4/4 HG008 CNV truth intervals passed normalized tumor-normal depth direction checks. Bounded reciprocal depth signal present: yes.,results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json,
+sv_truth_asset,expanded_non_dry_gap_identified,HG008 SV truth asset is present but no Diana SV callset exists for reciprocal-overlap confirmation.,results/clinicalization/known_answer_runs/expanded_cohort/hg008_sv_truth_asset.json,
+sv_cnv_reciprocal_overlap,bounded_non_dry_partial,HG008 CNV truth loss shows reduced tumor-normal depth after neutral-region normalization; SV reciprocal-overlap remains unrun. Bounded CNV depth signal: yes; normalized loss tumor-normal ratio: 0.438786. No Diana-generated SV/CNV callset or reciprocal-overlap caller output was produced in this bounded run.,results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json,

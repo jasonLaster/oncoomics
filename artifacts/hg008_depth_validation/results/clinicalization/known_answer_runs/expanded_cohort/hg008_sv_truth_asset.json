@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-06-15T01:25:59.861Z",
+  "probeKey": "hg008_sv_truth_asset",
+  "status": "expanded_non_dry_gap_identified",
+  "pipelineConfirmation": "not_confirmed",
+  "clinicalUseAllowed": "no",
+  "publicDocumentationAlignment": "gap",
+  "evidenceType": "truth_asset_presence_without_caller_output",
+  "publicFindingResult": "HG008 SV truth asset is present but no Diana SV callset exists for reciprocal-overlap confirmation.",
+  "evidence": {
+    "truthVcf": "data/raw/known_answer_public/hg008/sv_cnv_truth/GRCh38_HG008-T-V0.5_somatic-stvar_PASS.draftbenchmark.vcf.gz",
+    "truthVcfExists": true,
+    "cnvBedRows": 221
+  },
+  "blockers": [
+    "No Diana-generated SV callset exists for HG008 in this expanded bounded run."
+  ],
+  "nextAction": "Run SV callers and reciprocal-overlap comparison against HG008 v0.5 truth."
+}

@@ -302,6 +302,8 @@ HG008 is a truth-set validation sample. It should improve confidence in caller c
 
 Current refined packet: `public-evidence-hg008-depth-20260617`. It preserves the HG008 no-HRD-interpretation boundary, credits `40/40` SNV truth confirmations and `4/4` bounded CNV depth-direction confirmations, and narrows the remaining HG008 blockers to missing Diana-generated CNV segment overlap and SV reciprocal-overlap outputs.
 
+Current materialized-artifact smoke: `hg008-depth-materialized-20260617`, using `artifacts/hg008_depth_validation`. This small artifact root contains only known-answer summary JSON files and can be used with `--sample-set hg008 --artifact-root-rel artifacts/hg008_depth_validation` for bounded cloud packet validation.
+
 ### COLO829 Packet
 
 Use COLO829/COLO829BL to demonstrate an independent tumor-normal guardrail:

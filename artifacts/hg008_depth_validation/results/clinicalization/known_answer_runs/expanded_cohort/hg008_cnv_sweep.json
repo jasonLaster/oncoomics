@@ -1,0 +1,179 @@
+{
+  "generatedAt": "2026-06-15T01:25:59.858Z",
+  "probeKey": "hg008_cnv_sweep",
+  "status": "expanded_non_dry_passed",
+  "pipelineConfirmation": "bounded_expanded_cnv_depth_confirmed",
+  "clinicalUseAllowed": "no",
+  "publicDocumentationAlignment": "aligned",
+  "evidenceType": "truth_cnv_remote_bam_depth_sweep",
+  "publicFindingResult": "4/4 HG008 CNV truth intervals passed normalized tumor-normal depth direction checks.",
+  "evidence": {
+    "truthBed": "data/raw/known_answer_public/hg008/sv_cnv_truth/GRCh38_HG008-T-V0.5_somatic-CNV_PASS.draftbenchmark.calls.bed",
+    "neutralInterval": {
+      "chrom": "chr3",
+      "start": 101706543,
+      "end": 182470122,
+      "copyTotal": "2",
+      "eventId": "noCNV",
+      "depth": {
+        "region": "chr3:102706544-102707544",
+        "command": "samtools depth -r chr3:102706544-102707544 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+        "returnCode": 0,
+        "stderr": "",
+        "elapsedSeconds": 4.699,
+        "status": "passed",
+        "positions": 1001,
+        "tumorMeanDepth": 139.1229,
+        "normalMeanDepth": 120.6963,
+        "tumorNormalRatio": 1.152669,
+        "attempts": [
+          {
+            "attempt": 1,
+            "status": "passed",
+            "returnCode": 0,
+            "elapsedSeconds": 4.699,
+            "stderr": ""
+          }
+        ]
+      }
+    },
+    "cnvProbes": [
+      {
+        "chrom": "chr20",
+        "start": 21980693,
+        "end": 22025084,
+        "copyTotal": "0",
+        "minorCopy": "0",
+        "majorCopy": "0",
+        "eventId": "SV_151",
+        "depth": {
+          "region": "chr20:22024084-22025084",
+          "command": "samtools depth -r chr20:22024084-22025084 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+          "returnCode": 0,
+          "stderr": "",
+          "elapsedSeconds": 3.672,
+          "status": "passed",
+          "positions": 1001,
+          "tumorMeanDepth": 0.001,
+          "normalMeanDepth": 111.7373,
+          "tumorNormalRatio": 9e-06,
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "passed",
+              "returnCode": 0,
+              "elapsedSeconds": 3.672,
+              "stderr": ""
+            }
+          ]
+        },
+        "normalizedTumorNormalRatio": 8e-06,
+        "expectedDirection": "below_neutral",
+        "passed": true
+      },
+      {
+        "chrom": "chr4",
+        "start": 57514371,
+        "end": 149325373,
+        "copyTotal": "1",
+        "minorCopy": "0",
+        "majorCopy": "1",
+        "eventId": "CNA_8",
+        "depth": {
+          "region": "chr4:58514372-58515372",
+          "command": "samtools depth -r chr4:58514372-58515372 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+          "returnCode": 0,
+          "stderr": "",
+          "elapsedSeconds": 3.639,
+          "status": "passed",
+          "positions": 1001,
+          "tumorMeanDepth": 74.7483,
+          "normalMeanDepth": 108.2657,
+          "tumorNormalRatio": 0.690415,
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "passed",
+              "returnCode": 0,
+              "elapsedSeconds": 3.639,
+              "stderr": ""
+            }
+          ]
+        },
+        "normalizedTumorNormalRatio": 0.598971,
+        "expectedDirection": "below_neutral",
+        "passed": true
+      },
+      {
+        "chrom": "chr20",
+        "start": 51797864,
+        "end": 62257545,
+        "copyTotal": "3",
+        "minorCopy": "1",
+        "majorCopy": "2",
+        "eventId": "CNA_36",
+        "depth": {
+          "region": "chr20:52797865-52798865",
+          "command": "samtools depth -r chr20:52797865-52798865 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+          "returnCode": 0,
+          "stderr": "",
+          "elapsedSeconds": 6.839,
+          "status": "passed",
+          "positions": 1001,
+          "tumorMeanDepth": 245.1898,
+          "normalMeanDepth": 123.3017,
+          "tumorNormalRatio": 1.988536,
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "passed",
+              "returnCode": 0,
+              "elapsedSeconds": 6.839,
+              "stderr": ""
+            }
+          ]
+        },
+        "normalizedTumorNormalRatio": 1.725158,
+        "expectedDirection": "above_neutral",
+        "passed": true
+      },
+      {
+        "chrom": "chr19",
+        "start": 38983526,
+        "end": 39706584,
+        "copyTotal": "4",
+        "minorCopy": "1",
+        "majorCopy": "3",
+        "eventId": "CNA_25",
+        "depth": {
+          "region": "chr19:39705584-39706584",
+          "command": "samtools depth -r chr19:39705584-39706584 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-T_Illumina_161x_GRCh38-GIABv3.bam https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_somatic/HG008/Liss_lab/NYGC_Illumina-WGS_20231023/HG008-N-D_Illumina_118x_GRCh38-GIABv3.bam",
+          "returnCode": 0,
+          "stderr": "",
+          "elapsedSeconds": 5.29,
+          "status": "passed",
+          "positions": 1001,
+          "tumorMeanDepth": 351.3477,
+          "normalMeanDepth": 126.1069,
+          "tumorNormalRatio": 2.78611,
+          "attempts": [
+            {
+              "attempt": 1,
+              "status": "passed",
+              "returnCode": 0,
+              "elapsedSeconds": 5.29,
+              "stderr": ""
+            }
+          ]
+        },
+        "normalizedTumorNormalRatio": 2.417095,
+        "expectedDirection": "above_neutral",
+        "passed": true
+      }
+    ]
+  },
+  "blockers": [
+    "No Diana-generated CNV callset or reciprocal-overlap result exists for HG008."
+  ],
+  "nextAction": "Run CNV calling and compare segments against HG008 v0.5 truth."
+}
