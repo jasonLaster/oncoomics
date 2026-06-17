@@ -40,6 +40,7 @@ class CliParityTest(unittest.TestCase):
             "smoke:production-somatic",
             "smoke:raw",
             "stage:diana-raw",
+            "triage:rosalind-hrd-readiness",
             "validate:phase3-wgs",
             "verify:clinical-assay-boundaries",
             "verify:clinical-change-control",

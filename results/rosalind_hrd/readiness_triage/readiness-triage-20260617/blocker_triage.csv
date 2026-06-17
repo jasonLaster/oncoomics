@@ -1,0 +1,6 @@
+sample_set,decision,actionable_now,blocker_count,closed_by_runs,next_action
+colo829,requires_transfer_or_indexing,no,4,,Transfer or index the selected public purity assets before trying to close this blocker.
+diana_raw_intake,waiting_for_dinah_files,external,1,,Fill and validate manifests/diana_raw_inputs.csv when Dinah's actual BAM/FASTQ/CRAM paths arrive.
+hcc1395_wes,packet_has_no_blockers,no,0,local-validation;next-readiness-20260617,Preserve the packet as a public-sample evidence boundary; do not promote no-call HRD adapters without required inputs.
+hcc1395_wgs,closed_by_materialized_packet,yes,1,cloud-selective5-20260617;selective5-materialized-20260617,Use the zero-blocker selective/materialized HCC1395 WGS packet as the current WGS HRD evidence-surface demo.
+hg008,requires_caller_or_truth_overlap_recompute,no,3,,Run or containerize the relevant caller/overlap lane before changing the packet state.

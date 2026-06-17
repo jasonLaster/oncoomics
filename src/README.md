@@ -35,7 +35,7 @@ src/diana_omics/
 
 The CLI uses the same families for `PYTHONPATH=src python3 -m diana_omics --help`. The single source of truth is [commands/registry.py](diana_omics/commands/registry.py); see [commands/README.md](diana_omics/commands/README.md) for the folder map and command naming pattern.
 
-* HRD and RNA context: `fetch:phase1`, `build:panel`, `analyze:hrd`, `analyze:lehmann`, `analyze:rna`, `build:packet`.
+* HRD and RNA context: `fetch:phase1`, `build:panel`, `analyze:hrd`, `analyze:lehmann`, `analyze:rna`, `build:packet`, `build:rosalind-hrd-packet`, `triage:rosalind-hrd-readiness`.
 * Raw public validation: `fetch:raw-candidates`, `audit:raw-tools`, `build:raw-samplesheets`, `smoke:raw`.
 * Alignment and representative validation: `build:alignment-smoke`, `smoke:alignment`, `fetch:human-reference-smoke`, `smoke:human-reference`, `fetch:full-reference-smoke`, `smoke:full-reference`, `fetch:production-somatic`, `smoke:production-somatic`, `fetch:full-wes`, `benchmark:full-wes`.
 * Phase 3 WGS: `fetch:phase3-wgs`, `validate:phase3-wgs`, `benchmark:sra-range`, and commands beginning with `phase3:stage:`.
@@ -44,7 +44,7 @@ The CLI uses the same families for `PYTHONPATH=src python3 -m diana_omics --help
 * Diana intake: `build:diana-template`, `verify:diana-raw`, `stage:diana-raw`.
 * Quality and diagnostics: `py:format`, `py:format:check`, `py:lint`, `py:typecheck`, `py:test`, `typecheck`, `test`, `verify:plan`, `verify:plan:online`, `verify:outputs`, `verify:phase3-outputs`, `diagnose:pipeline`.
 * Local Nextflow: commands beginning with `nf:` for local or Docker profiles.
-* AWS and deployment: commands beginning with `infra:aws:`, `aws:ecr:push`, `deploy:aws`, and commands beginning with `nf:aws:`.
+* AWS and deployment: commands beginning with `infra:aws:`, `aws:ecr:push`, `aws:hrd-packet:cloud-submit`, `deploy:aws`, and commands beginning with `nf:aws:`.
 * Workflow aliases: `run:all`.
 
 ## Design Rules

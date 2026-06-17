@@ -48,6 +48,7 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "smoke:production-somatic": CommandSpec("diana_omics.commands.alignment_validation.run_production_somatic_smoke"),
     "smoke:raw": CommandSpec("diana_omics.commands.raw_validation.run_raw_smoke"),
     "stage:diana-raw": CommandSpec("diana_omics.commands.diana_intake.stage_diana_raw_analysis"),
+    "triage:rosalind-hrd-readiness": CommandSpec("diana_omics.commands.hrd_context.triage_rosalind_hrd_readiness"),
     "verify:clinical-assay-boundaries": CommandSpec("diana_omics.commands.clinical_readiness.verify_clinical_assay_boundaries"),
     "verify:clinical-change-control": CommandSpec("diana_omics.commands.clinical_readiness.verify_clinical_change_control"),
     "verify:clinical-qc-thresholds": CommandSpec("diana_omics.commands.clinical_readiness.verify_clinical_qc_thresholds"),
@@ -105,6 +106,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "analyze:rna",
             "build:packet",
             "build:rosalind-hrd-packet",
+            "triage:rosalind-hrd-readiness",
         ),
     ),
     CommandFamily(
