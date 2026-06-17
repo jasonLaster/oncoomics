@@ -1,0 +1,54 @@
+{
+  "run_id": "cloud-colo829-guardrail-20260617",
+  "source_commit": "ee90e775f2b13d79e5fc94f21a54d113557b638c",
+  "aws_batch_job_id": "477dc868-d16a-4bad-a58d-2794b2ed0f91",
+  "aws_batch_job_queue": "diana-omics-prod-use1-ondemand",
+  "aws_region": "us-east-1",
+  "s3_prefix": "s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-colo829-guardrail-20260617",
+  "artifact_root": "/tmp/diana-cloud-packet-cloud-colo829-guardrail-20260617/oncoomics-ee90e775f2b13d79e5fc94f21a54d113557b638c/artifacts/colo829_guardrail",
+  "sample_sets": [
+    "colo829"
+  ],
+  "packet_index_sha256": "39cda84e037b9c2b4230b9c6e0e839643fee281843c573c7d979a832c8a4b69d",
+  "run_manifest_sha256": "6d5b2691bd8628ae5f9d6daa94e85835d8b67d3886906c6b9ffcfc7f40833927",
+  "reviewer_packet_sha256": {
+    "colo829": "dcbb349e995cc93d79d94420f803d9613e85a1a44fa615156dfd2ef2e93c5b29"
+  },
+  "adapter_status_rows": {
+    "colo829": [
+      {
+        "adapter": "BRAF driver guardrail",
+        "state": "partial_evidence",
+        "blocker": "BRAF V600E pileup recovery is confirmed across available platforms.",
+        "next_action": "Use as a tumor-normal handling guardrail only."
+      },
+      {
+        "adapter": "SV/CNA benchmark",
+        "state": "blocked",
+        "blocker": "No build-matched Diana SV/CNA callset exists.",
+        "next_action": "Fetch or generate build-matched COLO829 calls and run reciprocal overlap."
+      },
+      {
+        "adapter": "Purity sensitivity benchmark",
+        "state": "blocked",
+        "blocker": "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested.",
+        "next_action": "Transfer selected dilution BAM/FASTQ inputs and index locally before running purity recall."
+      },
+      {
+        "adapter": "HRD interpretation",
+        "state": "no_call",
+        "blocker": "Driver recovery does not establish HRD status.",
+        "next_action": "Run full SV/CNA/signature evidence before any HRD interpretation."
+      }
+    ]
+  },
+  "packet_index_tail": [
+    "# Rosalind HRD Packet Index",
+    "",
+    "Run ID: `cloud-colo829-guardrail-20260617`",
+    "",
+    "| sample_set | output_dir | evidence_rows | adapter_rows | blocker_count |",
+    "| --- | --- | --- | --- | --- |",
+    "| colo829 | results/rosalind_hrd/colo829/cloud-colo829-guardrail-20260617 | 9 | 4 | 4 |"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-06-17T18:39:39.066Z",
+  "runId": "cloud-colo829-guardrail-20260617",
+  "sampleSets": [
+    "colo829"
+  ],
+  "packetRoot": "results/rosalind_hrd",
+  "artifactRoot": "/tmp/diana-cloud-packet-cloud-colo829-guardrail-20260617/oncoomics-ee90e775f2b13d79e5fc94f21a54d113557b638c/artifacts/colo829_guardrail",
+  "artifactRootMode": "materialized_artifact_root",
+  "packets": [
+    {
+      "sampleSet": "colo829",
+      "title": "COLO829/COLO829BL Tumor-Normal Guardrail Packet",
+      "outputDir": "results/rosalind_hrd/colo829/cloud-colo829-guardrail-20260617",
+      "evidenceRows": 9,
+      "adapterRows": 4,
+      "blockers": [
+        "COLO829 submitted BAMs and fetched hg38-lifted truth still require build reconciliation.",
+        "No Diana SV/CNA callset exists.",
+        "COLO829 submitted BAMs are GRCh37-style while the fetched SV truth VCF is hg38-lifted.",
+        "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "COLO829 is an independent tumor-normal and driver-recovery guardrail. It does not establish HRD status until full SV/CNA/signature evidence is generated and benchmarked."
+    }
+  ],
+  "sourcePattern": {
+    "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
+    "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats."
+  }
+}

@@ -319,7 +319,7 @@ Allowed conclusion:
 COLO829 is an independent tumor-normal and driver-recovery guardrail. It does not establish HRD status until full SV/CNA/signature evidence is generated and benchmarked.
 ```
 
-Current materialized-artifact smoke: `colo829-guardrail-materialized-20260617`, using `artifacts/colo829_guardrail`. This small artifact root contains only known-answer summary JSON files and can be used with `--sample-set colo829 --artifact-root-rel artifacts/colo829_guardrail` for bounded cloud packet validation. The packet remains blocked on build-matched SV/CNA caller output and local transfer or indexing of selected purity assets.
+Current materialized-artifact smoke: `colo829-guardrail-materialized-20260617`, using `artifacts/colo829_guardrail`. This small artifact root contains only known-answer summary JSON files and can be used with `--sample-set colo829 --artifact-root-rel artifacts/colo829_guardrail` for bounded cloud packet validation. The cloud run `cloud-colo829-guardrail-20260617` exercised the same root through AWS Batch and reproduced the COLO829 packet with 9 evidence rows, 4 adapter rows, and 4 explicit blockers. The packet remains blocked on build-matched SV/CNA caller output and local transfer or indexing of selected purity assets.
 
 ### Diana Raw-Intake Packet
 
@@ -362,13 +362,14 @@ The `input_evidence_index.json` should point back to the existing `results/` and
 
 ### Cloud Materialized Packet Smoke
 
-The current cloud-ready proofs are `cloud-selective5-20260617`, `cloud-helper-selective5-20260617`, `cloud-hg008-depth-20260617`, and `cloud-diana-raw-intake-20260617`, all run on AWS Batch on 2026-06-17. They used pushed GitHub archives, materialized bounded evidence roots inside the container, and ran the packet builder with `ROSALIND_HRD_ARTIFACT_ROOT`.
+The current cloud-ready proofs are `cloud-selective5-20260617`, `cloud-helper-selective5-20260617`, `cloud-hg008-depth-20260617`, `cloud-colo829-guardrail-20260617`, and `cloud-diana-raw-intake-20260617`, all run on AWS Batch on 2026-06-17. They used pushed GitHub archives, materialized bounded evidence roots inside the container, and ran the packet builder with `ROSALIND_HRD_ARTIFACT_ROOT`.
 
 | Run ID | Batch job | Status | Sample set | Evidence rows | Adapter rows | Packet blockers |
 | --- | --- | --- | --- | --- | --- | --- |
 | `cloud-selective5-20260617` | `573cd3de-afe9-4949-80a2-8ba0a523c300` | `SUCCEEDED` | `hcc1395_wgs` | `7` | `7` | `0` |
 | `cloud-helper-selective5-20260617` | `e8d00f20-26c8-4a32-8198-8aa10c916859` | `SUCCEEDED` | `hcc1395_wgs` | `7` | `7` | `0` |
 | `cloud-hg008-depth-20260617` | `8a01caf6-5439-4c54-b068-2ecd5d325269` | `SUCCEEDED` | `hg008` | `4` | `4` | `2` |
+| `cloud-colo829-guardrail-20260617` | `477dc868-d16a-4bad-a58d-2794b2ed0f91` | `SUCCEEDED` | `colo829` | `9` | `4` | `4` |
 | `cloud-diana-raw-intake-20260617` | `5640a9f1-8f8c-4560-a8dc-338f3b39c655` | `SUCCEEDED` | `diana_raw_intake` | `4` | `4` | `1` |
 
 Cloud output was written to:
@@ -377,6 +378,7 @@ Cloud output was written to:
 s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-selective5-20260617
 s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-helper-selective5-20260617
 s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-hg008-depth-20260617
+s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-colo829-guardrail-20260617
 s3://diana-omics-results-172630973301-us-east-1/runs/rosalind_hrd/cloud-diana-raw-intake-20260617
 ```
 
@@ -389,6 +391,8 @@ results/rosalind_hrd/cloud-helper-selective5-20260617/
 results/rosalind_hrd/hcc1395_wgs/cloud-helper-selective5-20260617/
 results/rosalind_hrd/cloud-hg008-depth-20260617/
 results/rosalind_hrd/hg008/cloud-hg008-depth-20260617/
+results/rosalind_hrd/cloud-colo829-guardrail-20260617/
+results/rosalind_hrd/colo829/cloud-colo829-guardrail-20260617/
 results/rosalind_hrd/cloud-diana-raw-intake-20260617/
 results/rosalind_hrd/diana_raw_intake/cloud-diana-raw-intake-20260617/
 ```
