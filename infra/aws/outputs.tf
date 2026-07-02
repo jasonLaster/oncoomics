@@ -33,6 +33,11 @@ output "raw_inputs_bucket" {
   value       = aws_s3_bucket.this["raw"].bucket
 }
 
+output "diana_raw_intake_uri" {
+  description = "Private S3 prefix for Diana raw-input uploads and manifests."
+  value       = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_intake_prefix}"
+}
+
 output "spot_queue" {
   description = "AWS Batch Spot queue name."
   value       = aws_batch_job_queue.spot.name

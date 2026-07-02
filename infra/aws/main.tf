@@ -20,6 +20,8 @@ locals {
     ManagedBy   = "terraform"
     Repository  = "diana-omics"
   }
+
+  diana_raw_intake_prefix = "private/diana/raw-intake"
 }
 
 data "aws_iam_policy_document" "bootstrap_local_cli" {
@@ -671,5 +673,6 @@ resource "local_file" "nextflow_params" {
     aws_logs_group         = aws_cloudwatch_log_group.batch.name
     container              = "${aws_ecr_repository.diana_omics.repository_url}:${var.image_tag}"
     phase3_asset_cache_uri = "s3://${aws_s3_bucket.this["raw"].bucket}/cache/phase3_wgs"
+    diana_raw_intake_uri   = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_intake_prefix}"
   })
 }

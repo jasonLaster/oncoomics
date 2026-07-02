@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-13T12:41:10.828Z",
+  "generatedAt": "2026-07-02T16:30:36.668Z",
   "status": "template_ready",
   "template": "manifests/diana_raw_inputs.template.csv",
   "actualSamplesheet": "manifests/diana_raw_inputs.csv",

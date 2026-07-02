@@ -1,6 +1,15 @@
 from __future__ import annotations
 
-from ...diana_raw import DIANA_RAW_RESULTS, DIANA_RAW_TEMPLATE, diana_raw_contract, template_rows
+from ...diana_raw import (
+    DIANA_RAW_RESULTS,
+    DIANA_RAW_S3_INCOMING_URI,
+    DIANA_RAW_S3_INTAKE_URI,
+    DIANA_RAW_S3_MANIFESTS_URI,
+    DIANA_RAW_S3_VALIDATED_URI,
+    DIANA_RAW_TEMPLATE,
+    diana_raw_contract,
+    template_rows,
+)
 from ...paths import path_from_root
 from ...utils import ensure_dir, iso_now, write_csv, write_json, write_text
 
@@ -40,7 +49,7 @@ def main() -> None:
     )
     write_text(
         path_from_root("docs/operations/diana-raw-inputs.md"),
-        """# Diana Raw Inputs
+        f"""# Diana Raw Inputs
 
 Use this document when Diana's real files arrive and you need to tell the project where they are.
 
@@ -106,6 +115,26 @@ When the files arrive:
 5. Confirm whether cloud upload is allowed for any human data before scheduling Batch or S3 work.
 6. Rerun `plan:diana-raw-handoff` after filling the samplesheet to capture the current state before strict validation.
 
+## S3 Intake Location
+
+Diana's raw files should be uploaded to the private raw-inputs bucket under this prefix:
+
+```text
+{DIANA_RAW_S3_INTAKE_URI}
+```
+
+Use these sub-prefixes:
+
+```text
+{DIANA_RAW_S3_INCOMING_URI}/
+{DIANA_RAW_S3_MANIFESTS_URI}/
+{DIANA_RAW_S3_VALIDATED_URI}/
+```
+
+Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the Nextflow work bucket. The `cache/phase3_wgs/` prefix is for public validation assets and cloud-generated cache files, not Diana's private raw data.
+
+Detailed upload and bucket-to-bucket transfer instructions live in `docs/operations/diana-raw-s3-upload.md`.
+
 ## Validate The Files
 
 ```sh
@@ -170,7 +199,7 @@ Passing `verify:diana-raw` means the files are staged correctly. It does not mea
     )
     write_text(
         path_from_root(f"{DIANA_RAW_RESULTS}/README.md"),
-        """# Diana Raw Intake
+        f"""# Diana Raw Intake
 
 Status: **template ready**.
 
@@ -183,6 +212,12 @@ Artifacts:
 5. `results/diana_raw_intake/dinah_handoff_plan.md`
 
 The project can now accept Diana raw FASTQ, BAM, or CRAM paths through `manifests/diana_raw_inputs.csv`, plan the handoff with `PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff`, and validate paths with `PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw`.
+
+Private S3 intake prefix:
+
+```text
+{DIANA_RAW_S3_INTAKE_URI}
+```
 """,
     )
     print(f"Diana raw input template ready: {DIANA_RAW_TEMPLATE}")

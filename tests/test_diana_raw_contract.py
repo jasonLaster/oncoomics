@@ -6,7 +6,7 @@ from unittest.mock import patch
 from diana_omics import utils
 from diana_omics.commands.diana_intake import plan_diana_raw_handoff, stage_diana_raw_analysis
 from diana_omics.commands.diana_intake.verify_diana_raw import validate_rows
-from diana_omics.diana_raw import DIANA_RAW_COLUMNS, template_rows
+from diana_omics.diana_raw import DIANA_RAW_COLUMNS, diana_raw_contract, template_rows
 
 
 class DianaRawContractTest(unittest.TestCase):
@@ -17,6 +17,15 @@ class DianaRawContractTest(unittest.TestCase):
         self.assertTrue(any(row["role"] == "tumor" and row["assay"] == "WGS" for row in rows))
         self.assertTrue(any(row["role"] == "normal" and row["assay"] == "WGS" for row in rows))
         self.assertTrue(any(row["assay"] == "RNA" for row in rows))
+
+    def test_contract_names_private_s3_intake_prefix(self):
+        contract = diana_raw_contract()
+        self.assertEqual(
+            contract["s3IncomingUri"],
+            "s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake/incoming",
+        )
+        self.assertNotIn("/cache/phase3_wgs", contract["s3IntakeUri"])
+        self.assertIn("presigned PUT", contract["uploadContract"])
 
     def test_validate_rows_accepts_existing_fastq_pair_and_reference_files(self):
         with tempfile.TemporaryDirectory() as tmp:

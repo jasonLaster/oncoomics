@@ -64,6 +64,26 @@ When the files arrive:
 5. Confirm whether cloud upload is allowed for any human data before scheduling Batch or S3 work.
 6. Rerun `plan:diana-raw-handoff` after filling the samplesheet to capture the current state before strict validation.
 
+## S3 Intake Location
+
+Diana's raw files should be uploaded to the private raw-inputs bucket under this prefix:
+
+```text
+s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake
+```
+
+Use these sub-prefixes:
+
+```text
+s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake/incoming/
+s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake/manifests/
+s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake/validated/
+```
+
+Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the Nextflow work bucket. The `cache/phase3_wgs/` prefix is for public validation assets and cloud-generated cache files, not Diana's private raw data.
+
+Detailed upload and bucket-to-bucket transfer instructions live in `docs/operations/diana-raw-s3-upload.md`.
+
 ## Validate The Files
 
 ```sh

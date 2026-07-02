@@ -180,6 +180,24 @@ This bucket is private, encrypted, and writable by the Batch job role. It is res
 
 Do not upload local `data/raw`, local FASTQ/BAM/VCF files, or local generated artifacts into this cache. Subsequent AWS Batch runs restore cached FASTQs first, cached SRA objects second, and only then re-download from public SRA. Restored FASTQs still go through the full scan/spot-count checks; restored BAMs still go through quickcheck, BAI, and requested read-scope checks. For resume-heavy runs, tune `phase3_alignment_cache_workers` for concurrent BAM/BAI cache writes and leave downstream-only validation to reuse current CNV, SBS96, and SV evidence artifacts when their inputs are unchanged.
 
+## Diana Raw Intake Prefix
+
+Diana's private raw files belong under the raw-inputs bucket, separated from the public validation cache:
+
+```txt
+s3://diana-omics-raw-inputs-<account>-<region>/private/diana/raw-intake
+```
+
+Recommended sub-prefixes:
+
+- `private/diana/raw-intake/incoming/`
+- `private/diana/raw-intake/manifests/`
+- `private/diana/raw-intake/validated/`
+
+Do not upload Diana files under `cache/phase3_wgs/`, `s3://diana-omics-results-...`, or `s3://diana-omics-work-...`.
+
+Detailed upload and bucket-to-bucket transfer instructions live in `docs/operations/diana-raw-s3-upload.md`.
+
 After any failed or interrupted AWS run, refresh the local diagnostic report:
 
 ```sh
