@@ -188,7 +188,7 @@ def diana_raw_contract() -> dict[str, Any]:
         "referenceContract": "Diana DNA rows should use the same reference_id/reference_path/reference_fai_path/reference_dict_path unless a reviewer approves a build-specific split.",
         "handoffPlanCommand": "PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff",
         "s3InboxUri": DIANA_RAW_S3_INBOX_URI,
-        "uploadContract": "Upload or transfer Diana raw files only under the diana/inbox prefix. The AWS bucket policy allows write-only uploads from any AWS principal; no presigned URLs are required.",
+        "uploadContract": "Upload or transfer Diana raw files only under the diana/inbox prefix. The AWS bucket policy allows list-and-write access for any AWS principal; object download is not allowed.",
         "recomputeCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw",
         "validationCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw",
     }

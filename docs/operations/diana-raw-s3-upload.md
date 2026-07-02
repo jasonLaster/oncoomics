@@ -20,11 +20,12 @@ Do not upload Diana files under `cache/phase3_wgs/`, `s3://diana-omics-results-.
 
 ## Access Model
 
-The inbox is write-only for external uploaders:
+The inbox is list-and-write for external uploaders:
 
 - Any authenticated AWS principal can upload objects to `diana/inbox/*`.
+- Any authenticated AWS principal can list the `diana/inbox/` prefix.
 - Uploaders do not need presigned URLs.
-- Uploaders do not get read, list, or delete access from this policy.
+- Uploaders do not get object download/read or delete access from this policy.
 - Bucket-owner-enforced ownership makes uploaded objects owned by the Diana Omics bucket owner.
 - The bucket still uses SSE-KMS encryption.
 
@@ -66,7 +67,7 @@ If the source files use a source KMS key, the transfer principal also needs decr
 
 ## Verify The Transfer
 
-The uploader may not be able to list or read the destination after upload. A Diana operator should verify the delivery:
+The uploader can list the inbox prefix after upload:
 
 ```sh
 aws s3 ls s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/ --recursive --summarize --region us-east-1

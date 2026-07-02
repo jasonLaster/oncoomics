@@ -324,7 +324,38 @@ data "aws_iam_policy_document" "s3_tls" {
     for_each = each.key == "raw" ? [1] : []
 
     content {
-      sid    = "AllowAnyAwsPrincipalWriteOnlyDianaInbox"
+      sid    = "AllowAnyAwsPrincipalListDianaInbox"
+      effect = "Allow"
+      actions = [
+        "s3:ListBucket"
+      ]
+      resources = [each.value.arn]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+      condition {
+        test     = "StringNotEquals"
+        variable = "aws:PrincipalType"
+        values   = ["Anonymous"]
+      }
+      condition {
+        test     = "StringLike"
+        variable = "s3:prefix"
+        values = [
+          local.diana_raw_inbox_prefix,
+          "${local.diana_raw_inbox_prefix}/",
+          "${local.diana_raw_inbox_prefix}/*"
+        ]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "raw" ? [1] : []
+
+    content {
+      sid    = "AllowAnyAwsPrincipalWriteDianaInbox"
       effect = "Allow"
       actions = [
         "s3:AbortMultipartUpload",
