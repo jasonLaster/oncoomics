@@ -21,7 +21,47 @@ locals {
     Repository  = "diana-omics"
   }
 
-  diana_raw_intake_prefix = "private/diana/raw-intake"
+  diana_raw_inbox_prefix = "diana/inbox"
+}
+
+data "aws_iam_policy_document" "kms_main" {
+  statement {
+    sid    = "EnableAccountKmsAdministration"
+    effect = "Allow"
+    actions = [
+      "kms:*"
+    ]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid    = "AllowAnyAwsPrincipalToEncryptDianaInboxUploads"
+    effect = "Allow"
+    actions = [
+      "kms:DescribeKey",
+      "kms:Encrypt",
+      "kms:GenerateDataKey"
+    ]
+    resources = ["*"]
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["s3.${var.region}.amazonaws.com"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "kms:EncryptionContext:aws:s3:arn"
+      values   = ["arn:aws:s3:::${local.bucket_names.raw}/${local.diana_raw_inbox_prefix}/*"]
+    }
+  }
 }
 
 data "aws_iam_policy_document" "bootstrap_local_cli" {
@@ -66,6 +106,7 @@ resource "aws_kms_key" "main" {
   description             = "Diana Omics ${var.environment} S3 and Batch encryption key"
   deletion_window_in_days = 30
   enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.kms_main.json
 }
 
 resource "aws_kms_alias" "main" {
@@ -217,9 +258,9 @@ resource "aws_s3_bucket_public_access_block" "this" {
 
   bucket                  = each.value.id
   block_public_acls       = true
-  block_public_policy     = true
+  block_public_policy     = each.key == "raw" ? false : true
   ignore_public_acls      = true
-  restrict_public_buckets = true
+  restrict_public_buckets = each.key == "raw" ? false : true
 }
 
 resource "aws_s3_bucket_ownership_controls" "this" {
@@ -276,6 +317,30 @@ data "aws_iam_policy_document" "s3_tls" {
       test     = "Bool"
       variable = "aws:SecureTransport"
       values   = ["false"]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "raw" ? [1] : []
+
+    content {
+      sid    = "AllowAnyAwsPrincipalWriteOnlyDianaInbox"
+      effect = "Allow"
+      actions = [
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts",
+        "s3:PutObject"
+      ]
+      resources = ["${each.value.arn}/${local.diana_raw_inbox_prefix}/*"]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+      condition {
+        test     = "StringNotEquals"
+        variable = "aws:PrincipalType"
+        values   = ["Anonymous"]
+      }
     }
   }
 }
@@ -673,6 +738,6 @@ resource "local_file" "nextflow_params" {
     aws_logs_group         = aws_cloudwatch_log_group.batch.name
     container              = "${aws_ecr_repository.diana_omics.repository_url}:${var.image_tag}"
     phase3_asset_cache_uri = "s3://${aws_s3_bucket.this["raw"].bucket}/cache/phase3_wgs"
-    diana_raw_intake_uri   = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_intake_prefix}"
+    diana_raw_inbox_uri    = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_inbox_prefix}"
   })
 }

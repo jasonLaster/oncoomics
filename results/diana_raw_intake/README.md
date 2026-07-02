@@ -15,5 +15,5 @@ The project can now accept Diana raw FASTQ, BAM, or CRAM paths through `manifest
 Private S3 intake prefix:
 
 ```text
-s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake
+s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox
 ```

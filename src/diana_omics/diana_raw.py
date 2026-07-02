@@ -8,10 +8,7 @@ from .paths import path_from_root
 DIANA_RAW_TEMPLATE = "manifests/diana_raw_inputs.template.csv"
 DIANA_RAW_DEFAULT = "manifests/diana_raw_inputs.csv"
 DIANA_RAW_RESULTS = "results/diana_raw_intake"
-DIANA_RAW_S3_INTAKE_URI = "s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake"
-DIANA_RAW_S3_INCOMING_URI = f"{DIANA_RAW_S3_INTAKE_URI}/incoming"
-DIANA_RAW_S3_MANIFESTS_URI = f"{DIANA_RAW_S3_INTAKE_URI}/manifests"
-DIANA_RAW_S3_VALIDATED_URI = f"{DIANA_RAW_S3_INTAKE_URI}/validated"
+DIANA_RAW_S3_INBOX_URI = "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox"
 
 DIANA_RAW_COLUMNS = [
     "patient_id",
@@ -190,11 +187,8 @@ def diana_raw_contract() -> dict[str, Any]:
         "rnaContract": "Optional RNA_FASTQ rows can be included for expression context, but DNA tumor-normal rows are required for HRD mechanics.",
         "referenceContract": "Diana DNA rows should use the same reference_id/reference_path/reference_fai_path/reference_dict_path unless a reviewer approves a build-specific split.",
         "handoffPlanCommand": "PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff",
-        "s3IntakeUri": DIANA_RAW_S3_INTAKE_URI,
-        "s3IncomingUri": DIANA_RAW_S3_INCOMING_URI,
-        "s3ManifestsUri": DIANA_RAW_S3_MANIFESTS_URI,
-        "s3ValidatedUri": DIANA_RAW_S3_VALIDATED_URI,
-        "uploadContract": "Upload Diana raw files only under the private S3 intake prefix. Use presigned PUT URLs for collaborators who do not have AWS credentials.",
+        "s3InboxUri": DIANA_RAW_S3_INBOX_URI,
+        "uploadContract": "Upload or transfer Diana raw files only under the diana/inbox prefix. The AWS bucket policy allows write-only uploads from any AWS principal; no presigned URLs are required.",
         "recomputeCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw",
         "validationCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw",
     }

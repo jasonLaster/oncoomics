@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from ...diana_raw import (
     DIANA_RAW_RESULTS,
-    DIANA_RAW_S3_INCOMING_URI,
-    DIANA_RAW_S3_INTAKE_URI,
-    DIANA_RAW_S3_MANIFESTS_URI,
-    DIANA_RAW_S3_VALIDATED_URI,
+    DIANA_RAW_S3_INBOX_URI,
     DIANA_RAW_TEMPLATE,
     diana_raw_contract,
     template_rows,
@@ -115,20 +112,12 @@ When the files arrive:
 5. Confirm whether cloud upload is allowed for any human data before scheduling Batch or S3 work.
 6. Rerun `plan:diana-raw-handoff` after filling the samplesheet to capture the current state before strict validation.
 
-## S3 Intake Location
+## S3 Inbox Location
 
-Diana's raw files should be uploaded to the private raw-inputs bucket under this prefix:
-
-```text
-{DIANA_RAW_S3_INTAKE_URI}
-```
-
-Use these sub-prefixes:
+Diana's raw files should be uploaded or transferred to this inbox prefix:
 
 ```text
-{DIANA_RAW_S3_INCOMING_URI}/
-{DIANA_RAW_S3_MANIFESTS_URI}/
-{DIANA_RAW_S3_VALIDATED_URI}/
+{DIANA_RAW_S3_INBOX_URI}/
 ```
 
 Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the Nextflow work bucket. The `cache/phase3_wgs/` prefix is for public validation assets and cloud-generated cache files, not Diana's private raw data.
@@ -216,7 +205,7 @@ The project can now accept Diana raw FASTQ, BAM, or CRAM paths through `manifest
 Private S3 intake prefix:
 
 ```text
-{DIANA_RAW_S3_INTAKE_URI}
+{DIANA_RAW_S3_INBOX_URI}
 ```
 """,
     )

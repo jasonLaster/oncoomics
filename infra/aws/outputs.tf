@@ -33,9 +33,9 @@ output "raw_inputs_bucket" {
   value       = aws_s3_bucket.this["raw"].bucket
 }
 
-output "diana_raw_intake_uri" {
-  description = "Private S3 prefix for Diana raw-input uploads and manifests."
-  value       = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_intake_prefix}"
+output "diana_raw_inbox_uri" {
+  description = "Write-only S3 inbox prefix for Diana raw-input uploads and transfers."
+  value       = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_inbox_prefix}"
 }
 
 output "spot_queue" {

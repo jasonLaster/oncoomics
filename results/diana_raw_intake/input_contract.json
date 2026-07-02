@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-02T16:30:36.667Z",
+  "generatedAt": "2026-07-02T16:33:58.464Z",
   "samplesheet": "manifests/diana_raw_inputs.csv",
   "template": "manifests/diana_raw_inputs.template.csv",
   "requiredColumns": [
@@ -53,11 +53,8 @@
   "rnaContract": "Optional RNA_FASTQ rows can be included for expression context, but DNA tumor-normal rows are required for HRD mechanics.",
   "referenceContract": "Diana DNA rows should use the same reference_id/reference_path/reference_fai_path/reference_dict_path unless a reviewer approves a build-specific split.",
   "handoffPlanCommand": "PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff",
-  "s3IntakeUri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake",
-  "s3IncomingUri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake/incoming",
-  "s3ManifestsUri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake/manifests",
-  "s3ValidatedUri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake/validated",
-  "uploadContract": "Upload Diana raw files only under the private S3 intake prefix. Use presigned PUT URLs for collaborators who do not have AWS credentials.",
+  "s3InboxUri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox",
+  "uploadContract": "Upload or transfer Diana raw files only under the diana/inbox prefix. The AWS bucket policy allows write-only uploads from any AWS principal; no presigned URLs are required.",
   "recomputeCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw",
   "validationCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw"
 }

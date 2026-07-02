@@ -49,7 +49,7 @@ variable "spot_max_vcpus" {
 variable "ondemand_max_vcpus" {
   description = "Maximum vCPUs for the On-Demand compute environment."
   type        = number
-  default     = 128
+  default     = 256
 }
 
 variable "batch_arm_instance_families" {

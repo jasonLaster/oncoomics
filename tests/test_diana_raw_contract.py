@@ -18,14 +18,14 @@ class DianaRawContractTest(unittest.TestCase):
         self.assertTrue(any(row["role"] == "normal" and row["assay"] == "WGS" for row in rows))
         self.assertTrue(any(row["assay"] == "RNA" for row in rows))
 
-    def test_contract_names_private_s3_intake_prefix(self):
+    def test_contract_names_s3_inbox_prefix(self):
         contract = diana_raw_contract()
         self.assertEqual(
-            contract["s3IncomingUri"],
-            "s3://diana-omics-raw-inputs-172630973301-us-east-1/private/diana/raw-intake/incoming",
+            contract["s3InboxUri"],
+            "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox",
         )
-        self.assertNotIn("/cache/phase3_wgs", contract["s3IntakeUri"])
-        self.assertIn("presigned PUT", contract["uploadContract"])
+        self.assertNotIn("/cache/phase3_wgs", contract["s3InboxUri"])
+        self.assertIn("any AWS principal", contract["uploadContract"])
 
     def test_validate_rows_accepts_existing_fastq_pair_and_reference_files(self):
         with tempfile.TemporaryDirectory() as tmp:
