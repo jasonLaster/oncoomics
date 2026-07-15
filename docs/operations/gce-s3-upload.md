@@ -1,56 +1,67 @@
-# Echo / Personalis S3 Upload Handoff
+# GCE To Diana S3 Upload
 
-This is the sender checklist for Akhil and the Echo team to deliver Diana's two
-Personalis datasets, WGS and ImmunoID, from a Google Compute Engine VM to the
-Diana Omics write-only S3 inbox.
+Use this sender checklist to deliver one or more datasets from a Google Compute
+Engine VM or Google Cloud Storage into the Diana Omics write-only S3 inbox.
 
 ## Delivery Destination
 
-Upload only to this exact prefix:
+The Diana operator will assign a batch name with this format:
 
 ```text
-s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/
+YYYY-MM-DD-source-name
 ```
 
-Use these subfolders so WGS and ImmunoID remain distinct:
+Upload only to the assigned batch prefix:
 
 ```text
-2026-07-14-echo-personalis/
-├── wgs/
-├── immunoid/
+s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/
+```
+
+Use descriptive subfolders to keep datasets and assays distinct:
+
+```text
+YYYY-MM-DD-source-name/
+├── data/
+│   ├── dataset-a/
+│   └── dataset-b/
 ├── manifest.csv
 └── checksums.sha256
 ```
 
-Do not classify ImmunoID files as WGS or assume they are interchangeable with a
-matched-normal or RNA dataset. Preserve the Personalis file names and assay
-labels. The Diana team will map the two deliveries into the analysis samplesheet
-after receipt.
+Preserve source file names, sample roles, assay labels, and dataset boundaries.
+Do not combine assays or infer that tumor, matched-normal, DNA, and RNA files are
+interchangeable. The Diana operator will map the delivery into the analysis
+samplesheet after receipt.
 
 ## Access And Expiration
 
-Jason will provide the AWS access key ID and secret access key through a secure
-channel separate from email. Do not commit, email, or paste the credentials into
-tickets or logs.
+The Diana operator will provide these values through a secure channel separate
+from email:
 
-The credentials:
+- AWS access key ID and secret access key.
+- Expected AWS identity ARN.
+- Assigned batch name and exact destination prefix.
+- Credential expiration time.
 
-- Identify `diana-echo-personalis-upload-202607`.
-- Can list and write only the exact batch prefix above.
-- Cannot read or delete objects, list the parent inbox, or write elsewhere.
-- Stop working after August 14, 2026 at 23:59:59 UTC.
+Do not commit, email, or paste credentials into tickets or logs. The temporary
+credentials should:
+
+- List and write only the assigned batch prefix.
+- Prevent object reads, deletes, parent-inbox listing, and writes elsewhere.
+- Expire shortly after the expected delivery window.
 
 The destination applies AWS KMS encryption automatically. AWS S3 uses multipart
-upload for large genomics files; the credential and KMS policies already include
-the operations required for multipart upload.
+upload for large genomics files; the credential and KMS policies include the
+operations required for multipart upload without granting object-read access.
 
 ## 1. Prepare The Delivery
 
-Keep WGS and ImmunoID in separate local directories under one delivery root. The
-bundle should contain the raw and derived files Personalis made available,
-including required index, QC, and report files. Examples include FASTQ pairs,
-BAM/CRAM plus BAI/CRAI, VCF/gVCF plus indexes, CNV/SV outputs, and reports. Do not
-omit a file solely because it is derived; identify its type in the manifest.
+Place every dataset below a common `data/` directory. Include the raw and derived
+files supplied by the source, along with required indexes, QC outputs, and
+reports. Examples include FASTQ pairs, BAM/CRAM plus BAI/CRAI, VCF/gVCF plus
+indexes, CNV/SV outputs, expression or fusion outputs, and reports. Do not omit a
+file solely because it is derived; identify its type and provenance in the
+manifest.
 
 Create `manifest.csv` with one row per delivered file and this header:
 
@@ -60,25 +71,25 @@ dataset,sample_id,role,assay,data_type,relative_path,size_bytes,sha256,reference
 
 Required details:
 
-- `dataset`: `WGS` or `ImmunoID`.
-- `sample_id`: the Personalis sample identifier.
-- `role`: tumor, matched normal, tumor RNA, report, or other accurate role.
-- `assay`: the exact Personalis assay or workflow name.
+- `dataset`: the source dataset or product label.
+- `sample_id`: the source sample identifier.
+- `role`: tumor, matched normal, tumor RNA, report, or another accurate role.
+- `assay`: the exact assay or workflow name.
 - `data_type`: FASTQ, BAM, CRAM, VCF, CNV, SV, report, QC, or another precise type.
-- `relative_path`: path below the delivery root, such as `wgs/sample_R1.fastq.gz`.
+- `relative_path`: path below the delivery root, such as `data/wgs/sample_R1.fastq.gz`.
 - `size_bytes` and `sha256`: source-side byte count and SHA-256 checksum.
 - `reference_build`: for example GRCh38/hg38, or `not_applicable` for a report.
-- `source_vendor`: `Personalis`.
+- `source_vendor`: the organization that produced the file.
 - `notes`: library, lane, capture, pipeline version, or other provenance not represented elsewhere.
 
-An existing Personalis manifest is acceptable if it contains equivalent fields.
-Please identify tumor-normal pairing, reference build, and assay provenance
-explicitly rather than inferring them from file names.
+An existing source manifest is acceptable if it contains equivalent fields.
+Identify tumor-normal pairing, reference build, and assay provenance explicitly
+rather than inferring them from file names.
 
-From the delivery root, generate a checksum file for the data directories:
+From the delivery root, generate a checksum file for the data directory:
 
 ```sh
-find wgs immunoid -type f -print0 | sort -z | xargs -0 sha256sum > checksums.sha256
+find data -type f -print0 | sort -z | xargs -0 sha256sum > checksums.sha256
 ```
 
 Confirm every data file appears once in both `manifest.csv` and
@@ -91,26 +102,25 @@ delivery working directory. The disk should have enough free space for the
 staged files plus at least 20 percent headroom for manifests, checksums, and
 retries. Keep the source GCS objects until Diana confirms acceptance.
 
-If the Personalis files exist only in GCS, stage them onto the attached disk:
+If the source files exist only in GCS, stage each dataset onto the attached disk:
 
 ```sh
-DELIVERY_ROOT=/mnt/echo-personalis/delivery
-mkdir -p "$DELIVERY_ROOT/wgs" "$DELIVERY_ROOT/immunoid"
+DELIVERY_ROOT=/mnt/diana-delivery
+DATASET_NAME=replace-with-dataset-name
+SOURCE_GCS_URI=gs://SOURCE-BUCKET/SOURCE-PREFIX/
 
+mkdir -p "$DELIVERY_ROOT/data/$DATASET_NAME"
 gcloud auth list
-gcloud storage du --summarize gs://PERSONALIS-WGS-BUCKET/PREFIX/
-gcloud storage du --summarize gs://PERSONALIS-IMMUNOID-BUCKET/PREFIX/
+gcloud storage du --summarize "$SOURCE_GCS_URI"
 df -h "$DELIVERY_ROOT"
-
-gcloud storage rsync --recursive gs://PERSONALIS-WGS-BUCKET/PREFIX/ "$DELIVERY_ROOT/wgs/"
-gcloud storage rsync --recursive gs://PERSONALIS-IMMUNOID-BUCKET/PREFIX/ "$DELIVERY_ROOT/immunoid/"
+gcloud storage rsync --recursive "$SOURCE_GCS_URI" "$DELIVERY_ROOT/data/$DATASET_NAME/"
 ```
 
-Replace the two `gs://` placeholders with the actual Echo locations. If the
-files are already on an attached disk, set `DELIVERY_ROOT` to their common
-parent and skip the GCS copy. Do not stream large files directly from
-`gcloud storage cat` into `aws s3 cp -`; a broken pipe would need to restart the
-object and makes source-side SHA-256 verification harder.
+Repeat the staging commands for each dataset. If the files are already on an
+attached disk, set `DELIVERY_ROOT` to their common parent and skip the GCS copy.
+Do not stream large files directly from `gcloud storage cat` into
+`aws s3 cp -`; a broken pipe would need to restart the object and makes
+source-side SHA-256 verification harder.
 
 Install AWS CLI v2. This block supports the common x86-64 and Arm GCE machine
 architectures:
@@ -151,46 +161,42 @@ Verify the identity:
 aws sts get-caller-identity --query Arn --output text
 ```
 
-Expected result:
-
-```text
-arn:aws:iam::172630973301:user/diana-echo-personalis-upload-202607
-```
+The result must exactly match the expected ARN supplied by the Diana operator.
+Stop and ask the operator if it does not match.
 
 Run the transfer inside `tmux`, `screen`, or another persistent terminal so an
 SSH disconnect does not stop the upload. The standard AWS CLI v2 multipart
-defaults are suitable for this delivery; no custom S3 endpoint or encryption
-flags are required.
+defaults are suitable; no custom S3 endpoint or encryption flags are required.
 
-## 3. Upload WGS And ImmunoID
+## 3. Upload The Delivery
 
-Set the local and destination paths:
+Set the assigned batch name and paths:
 
 ```sh
-: "${DELIVERY_ROOT:=/mnt/echo-personalis/delivery}"
-DEST=s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/
+: "${DELIVERY_ROOT:=/mnt/diana-delivery}"
+BATCH_NAME=YYYY-MM-DD-source-name
+DEST="s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/${BATCH_NAME}/"
 ```
 
-Review the planned object paths first:
+Replace `BATCH_NAME` with the exact value supplied by the Diana operator. Review
+the planned object paths first:
 
 ```sh
-aws s3 cp "$DELIVERY_ROOT/wgs/" "${DEST}wgs/" --recursive --dryrun --region us-east-1
-aws s3 cp "$DELIVERY_ROOT/immunoid/" "${DEST}immunoid/" --recursive --dryrun --region us-east-1
+aws s3 cp "$DELIVERY_ROOT/data/" "${DEST}data/" --recursive --dryrun --region us-east-1
 ```
 
-Upload the data directories, then upload the manifest and checksums last:
+Upload the data directory, then upload the manifest and checksums last:
 
 ```sh
-aws s3 cp "$DELIVERY_ROOT/wgs/" "${DEST}wgs/" --recursive --region us-east-1 --only-show-errors
-aws s3 cp "$DELIVERY_ROOT/immunoid/" "${DEST}immunoid/" --recursive --region us-east-1 --only-show-errors
+aws s3 cp "$DELIVERY_ROOT/data/" "${DEST}data/" --recursive --region us-east-1 --only-show-errors
 aws s3 cp "$DELIVERY_ROOT/manifest.csv" "${DEST}manifest.csv" --region us-east-1 --only-show-errors
 aws s3 cp "$DELIVERY_ROOT/checksums.sha256" "${DEST}checksums.sha256" --region us-east-1 --only-show-errors
 ```
 
 The AWS CLI automatically uses multipart upload for large files. If a command is
-interrupted, rerun the same command. Because these credentials cannot read or
-delete objects, contact Jason before changing a key that has already been
-uploaded; do not upload a correction under an ambiguous duplicate name.
+interrupted, rerun the same command. Because the credentials cannot read or
+delete objects, contact the Diana operator before changing a key that has already
+been uploaded; do not upload a correction under an ambiguous duplicate name.
 
 ## 4. Confirm Delivery
 
@@ -204,9 +210,9 @@ The credentials intentionally cannot run `head-object`, download an object, or
 delete an object. A failure of those operations is expected and does not mean the
 upload failed.
 
-Send Jason:
+Send the Diana operator:
 
-- Confirmation that both `wgs/` and `immunoid/` completed.
+- Confirmation that every dataset completed.
 - The total object count and total size from the command above.
 - The manifest and checksum file names.
 - Any upload warning or retry, with the UTC timestamp and affected relative path.
@@ -219,21 +225,21 @@ unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
 
 ## Diana Operator Acceptance
 
-The Diana operator performs the read-side checks that Echo cannot perform:
+The Diana operator performs the read-side checks that the sender cannot perform:
 
-1. List the exact prefix and reconcile object count and bytes with Echo.
-2. Use `head-object` to confirm size and SSE-KMS metadata for representative WGS,
-   ImmunoID, manifest, and checksum objects.
+1. List the exact prefix and reconcile object count and bytes with the sender.
+2. Use `head-object` to confirm size and SSE-KMS metadata for representative data,
+   manifest, and checksum objects.
 3. Copy the accepted delivery into an approved analysis staging location and run
    `sha256sum -c checksums.sha256` from the delivery root.
-4. Map the vendor manifest into `manifests/diana_raw_inputs.csv`, preserving WGS
-   versus ImmunoID assay boundaries, sample roles, pairing, and reference build.
+4. Map the source manifest into `manifests/diana_raw_inputs.csv`, preserving
+   dataset and assay boundaries, sample roles, pairing, and reference build.
 5. Run strict intake validation:
 
    ```sh
    DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw
    ```
 
-6. Deactivate the Echo access key immediately after acceptance. Do not begin HRD
+6. Deactivate the sender access key immediately after acceptance. Do not begin
    interpretation until checksum, reference, index, and tumor-normal pairing
    checks pass.

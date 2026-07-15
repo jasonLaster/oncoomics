@@ -37,8 +37,8 @@ an identity policy that restricts listing and writes to one batch prefix. Send
 credentials through an approved secret-sharing channel, never email or a source
 repository. Deactivate the access key after delivery acceptance.
 
-The July 2026 Echo/Personalis delivery has a dedicated sender checklist in
-`docs/operations/echo-personalis-s3-upload.md`.
+For deliveries originating in Google Cloud, use the sender checklist in
+`docs/operations/gce-s3-upload.md`.
 
 ## What To Include
 
