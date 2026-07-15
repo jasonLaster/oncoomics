@@ -28,6 +28,7 @@ The inbox is list-and-write for external uploaders:
 - Uploaders do not get object download/read or delete access from this policy.
 - Bucket-owner-enforced ownership makes uploaded objects owned by the Diana Omics bucket owner.
 - The bucket still uses SSE-KMS encryption.
+- The KMS policy permits decrypt operations only through S3 for inbox objects. S3 requires this for multipart uploads; it does not grant uploaders object read access.
 
 This is intentionally an inbox, not a shared workspace.
 
