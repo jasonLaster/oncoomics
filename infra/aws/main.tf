@@ -42,6 +42,7 @@ data "aws_iam_policy_document" "kms_main" {
     sid    = "AllowAnyAwsPrincipalToEncryptDianaInboxUploads"
     effect = "Allow"
     actions = [
+      "kms:Decrypt",
       "kms:DescribeKey",
       "kms:Encrypt",
       "kms:GenerateDataKey"

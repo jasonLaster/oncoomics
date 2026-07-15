@@ -28,8 +28,17 @@ The inbox is list-and-write for external uploaders:
 - Uploaders do not get object download/read or delete access from this policy.
 - Bucket-owner-enforced ownership makes uploaded objects owned by the Diana Omics bucket owner.
 - The bucket still uses SSE-KMS encryption.
+- The KMS policy permits decrypt operations only through S3 for inbox objects. S3 requires this for multipart uploads; it does not grant uploaders object read access.
 
 This is intentionally an inbox, not a shared workspace.
+
+For external teams without an AWS account, provision temporary credentials with
+an identity policy that restricts listing and writes to one batch prefix. Send
+credentials through an approved secret-sharing channel, never email or a source
+repository. Deactivate the access key after delivery acceptance.
+
+The July 2026 Echo/Personalis delivery has a dedicated sender checklist in
+`docs/operations/echo-personalis-s3-upload.md`.
 
 ## What To Include
 
@@ -73,10 +82,14 @@ The uploader can list the inbox prefix after upload:
 aws s3 ls s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/ --recursive --summarize --region us-east-1
 ```
 
-Spot-check one object:
+The Diana operator, not the external uploader, should spot-check one object:
 
 ```sh
 aws s3api head-object --bucket diana-omics-raw-inputs-172630973301-us-east-1 --key diana/inbox/YYYY-MM-DD-source-name/example.fastq.gz --region us-east-1
 ```
+
+`head-object` requires read permission and should fail for a write-only external
+uploader. The uploader verifies delivery with the prefix listing and source-side
+checksums; the Diana operator performs object metadata and checksum acceptance.
 
 Compare the delivered checksum manifest against the source checksums before using the files for intake validation. Do not run Diana interpretation from inbox files until manifests, tumor-normal pairing, references, indexes, and checksums pass validation.
