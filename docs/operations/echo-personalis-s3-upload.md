@@ -86,8 +86,56 @@ Confirm every data file appears once in both `manifest.csv` and
 
 ## 2. Configure The GCE VM
 
-Use AWS CLI v2 on the GCE VM. Load the securely shared credentials without
-placing the secret in shell history:
+Use a GCE VM with an attached persistent disk, not the boot disk, for the
+delivery working directory. The disk should have enough free space for the
+staged files plus at least 20 percent headroom for manifests, checksums, and
+retries. Keep the source GCS objects until Diana confirms acceptance.
+
+If the Personalis files exist only in GCS, stage them onto the attached disk:
+
+```sh
+DELIVERY_ROOT=/mnt/echo-personalis/delivery
+mkdir -p "$DELIVERY_ROOT/wgs" "$DELIVERY_ROOT/immunoid"
+
+gcloud auth list
+gcloud storage du --summarize gs://PERSONALIS-WGS-BUCKET/PREFIX/
+gcloud storage du --summarize gs://PERSONALIS-IMMUNOID-BUCKET/PREFIX/
+df -h "$DELIVERY_ROOT"
+
+gcloud storage rsync --recursive gs://PERSONALIS-WGS-BUCKET/PREFIX/ "$DELIVERY_ROOT/wgs/"
+gcloud storage rsync --recursive gs://PERSONALIS-IMMUNOID-BUCKET/PREFIX/ "$DELIVERY_ROOT/immunoid/"
+```
+
+Replace the two `gs://` placeholders with the actual Echo locations. If the
+files are already on an attached disk, set `DELIVERY_ROOT` to their common
+parent and skip the GCS copy. Do not stream large files directly from
+`gcloud storage cat` into `aws s3 cp -`; a broken pipe would need to restart the
+object and makes source-side SHA-256 verification harder.
+
+Install AWS CLI v2. This block supports the common x86-64 and Arm GCE machine
+architectures:
+
+```sh
+case "$(uname -m)" in
+  x86_64) AWSCLI_ARCH=x86_64 ;;
+  aarch64|arm64) AWSCLI_ARCH=aarch64 ;;
+  *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+esac
+
+AWSCLI_TMP=$(mktemp -d)
+curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${AWSCLI_ARCH}.zip" -o "$AWSCLI_TMP/awscliv2.zip"
+unzip -q "$AWSCLI_TMP/awscliv2.zip" -d "$AWSCLI_TMP"
+if command -v aws >/dev/null 2>&1; then
+  sudo "$AWSCLI_TMP/aws/install" --update
+else
+  sudo "$AWSCLI_TMP/aws/install"
+fi
+rm -rf "$AWSCLI_TMP"
+aws --version
+```
+
+Load the securely shared credentials without placing the secret in shell
+history:
 
 ```sh
 read -r -p "AWS access key ID: " AWS_ACCESS_KEY_ID
@@ -109,12 +157,17 @@ Expected result:
 arn:aws:iam::172630973301:user/diana-echo-personalis-upload-202607
 ```
 
+Run the transfer inside `tmux`, `screen`, or another persistent terminal so an
+SSH disconnect does not stop the upload. The standard AWS CLI v2 multipart
+defaults are suitable for this delivery; no custom S3 endpoint or encryption
+flags are required.
+
 ## 3. Upload WGS And ImmunoID
 
 Set the local and destination paths:
 
 ```sh
-DELIVERY_ROOT=/path/to/echo-personalis-delivery
+: "${DELIVERY_ROOT:=/mnt/echo-personalis/delivery}"
 DEST=s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/
 ```
 
