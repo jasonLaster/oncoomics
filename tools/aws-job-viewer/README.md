@@ -22,8 +22,28 @@ The stable Convex production deployment is released with `npm run convex:deploy`
 
 ## Views
 
-- **Overview** shows active and recent jobs, run stages, dependency order, execution details, and chromosome progress when GATK progress events are available.
-- **Raw logs** reads the newest 1,000 events from Convex, with **Load older** and **Load all** controls that make every archived event visible. Opening or refreshing a job first advances its CloudWatch cursor so the archive remains current.
+- The flexible workspace has independently collapsible job and context-inspector rails. Desktop rail state persists across reloads; mobile uses one temporary rail at a time so the work surface stays readable.
+- **Overview** combines run health, observed stage state, dependency progress, execution context, and chromosome-level GATK progress.
+- **Logs** renders cursor-paginated Convex history as a compact structured ledger. Diana, AWS, Nextflow, GATK, JSON telemetry, command, artifact, warning, and error adapters preserve the raw message while promoting useful fields. Selecting an event opens parsed fields, provenance, and the raw payload in the contextual right rail without reflowing the feed. Search, level filters, and event-type filters apply to every page loaded so far.
+- Older events load automatically when the history sentinel enters the scroll viewport. Rows use browser-native `content-visibility` so large loaded archives remain inexpensive to paint.
+
+The complete v2 behavior, accessibility, responsive-layout, API, and stable-selector contract is specified in [docs/viewer-v2.md](docs/viewer-v2.md).
+
+## Verify the viewer
+
+```bash
+npm run test:unit
+npm run test:e2e
+npm run build
+```
+
+The Playwright suite mocks both API routes and covers the two rails, job selection, structured workflow progress, log adapters, combined filtering, infinite cursor pagination, contextual event inspection, scroll/focus restoration, and mobile drawer behavior. An opt-in production spec exercises the live jobs and logs APIs:
+
+```bash
+PLAYWRIGHT_BASE_URL=https://jobs.diana-tnbc.com \
+PLAYWRIGHT_PRODUCTION=1 \
+npm run test:e2e
+```
 
 ## Backfill CloudWatch logs
 

@@ -13,7 +13,10 @@
     "convex:deploy": "convex deploy --cmd-url-env-var-name CONVEX_URL --cmd 'npm run build'",
     "convex:backfill-logs": "node scripts/backfill-convex-logs.mjs --full",
     "start": "next start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test": "npm run build && npm run test:unit",
+    "test:unit": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "lint": "eslint app convex lib tests --ignore-pattern .next --ignore-pattern convex/_generated"
   },
   "dependencies": {
@@ -27,6 +30,7 @@
     "react-dom": "19.2.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

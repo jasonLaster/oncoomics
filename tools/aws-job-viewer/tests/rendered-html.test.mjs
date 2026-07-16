@@ -9,11 +9,16 @@ test("defines the Diana run monitor shell", async () => {
   ]);
   assert.match(layout, /title: "Diana Compute — Run monitor"/);
   assert.match(viewer, /Diana Compute/);
-  assert.match(viewer, /Run monitor/);
-  assert.match(viewer, />Overview</);
-  assert.match(viewer, /Raw logs/);
-  assert.match(viewer, /Refresh in \{countdown\}s/);
+  assert.match(viewer, /Run monitor <span>v2<\/span>/);
+  assert.match(viewer, />\s*Overview\s*</);
+  assert.match(viewer, />\s*Logs\s*\{/);
+  assert.match(viewer, /Next sync \{countdown\}s/);
   assert.match(viewer, /No job selected/);
+  assert.match(viewer, /data-testid="left-rail"/);
+  assert.match(viewer, /data-testid="right-rail"/);
+  assert.match(viewer, /data-testid="toggle-left-rail"/);
+  assert.match(viewer, /data-testid="toggle-right-rail"/);
+  assert.match(viewer, /data-testid="workflow-progress"/);
 });
 
 test("implements automatic refresh and server-side AWS access", async () => {
@@ -25,10 +30,18 @@ test("implements automatic refresh and server-side AWS access", async () => {
   ]);
 
   assert.match(viewer, /const REFRESH_SECONDS = 60/);
-  assert.match(viewer, /setInterval\(\(\) => void fetchJobs\(\), REFRESH_SECONDS \* 1_000\)/);
+  assert.match(
+    viewer,
+    /const refreshTimer = window\.setInterval\([\s\S]*?fetchJobs\(\)[\s\S]*?REFRESH_SECONDS \* 1_000/,
+  );
   assert.match(viewer, /\/api\/job-logs\?\$\{searchParams\.toString\(\)\}/);
-  assert.match(viewer, /Load older/);
-  assert.match(viewer, /Load all/);
+  assert.match(viewer, /new IntersectionObserver/);
+  assert.match(viewer, /data-testid="log-pagination-sentinel"/);
+  assert.match(viewer, /data-testid="log-feed"/);
+  assert.match(viewer, /data-testid="log-search"/);
+  assert.match(viewer, /data-testid="log-level-filter"/);
+  assert.match(viewer, /data-testid="log-category-filter"/);
+  assert.match(viewer, /preserveScrollHeightRef/);
   assert.match(jobsRoute, /listViewerJobs/);
   assert.match(logsRoute, /getPersistentViewerLogsPage/);
   assert.match(awsBridge, /CloudWatchLogsClient/);
