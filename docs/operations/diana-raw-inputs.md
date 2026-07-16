@@ -72,9 +72,10 @@ Diana's raw files should be uploaded or transferred to this inbox prefix:
 s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/
 ```
 
-Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the Nextflow work bucket. The `cache/phase3_wgs/` prefix is for public validation assets and cloud-generated cache files, not Diana's private raw data.
+Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the Nextflow work bucket. The `diana/inbox/` prefix is publicly listable and downloadable; upload only material approved for unrestricted public distribution.
 
 Detailed upload and bucket-to-bucket transfer instructions live in `docs/operations/diana-raw-s3-upload.md`.
+Public download and outbound transfer instructions live in `docs/operations/diana-public-data-download.md`.
 
 ## Validate The Files
 

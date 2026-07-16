@@ -25,8 +25,9 @@ class DianaRawContractTest(unittest.TestCase):
             "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox",
         )
         self.assertNotIn("/cache/phase3_wgs", contract["s3InboxUri"])
-        self.assertIn("any AWS principal", contract["uploadContract"])
-        self.assertIn("object download is not allowed", contract["uploadContract"])
+        self.assertIn("authenticated writes", contract["uploadContract"])
+        self.assertIn("anonymous listing and downloads", contract["uploadContract"])
+        self.assertIn("AES256", contract["uploadContract"])
 
     def test_validate_rows_accepts_existing_fastq_pair_and_reference_files(self):
         with tempfile.TemporaryDirectory() as tmp:

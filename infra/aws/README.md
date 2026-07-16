@@ -192,6 +192,10 @@ Do not upload Diana files under `cache/phase3_wgs/`, `s3://diana-omics-results-.
 
 Detailed upload and bucket-to-bucket transfer instructions live in `docs/operations/diana-raw-s3-upload.md`.
 
+The `diana/inbox/` prefix is publicly listable and downloadable. Objects in
+that prefix must use S3-managed `AES256` encryption; SSE-KMS objects cannot be
+served to anonymous S3 requests.
+
 After any failed or interrupted AWS run, refresh the local diagnostic report:
 
 ```sh

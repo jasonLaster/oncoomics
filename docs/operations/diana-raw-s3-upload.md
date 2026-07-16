@@ -20,17 +20,16 @@ Do not upload Diana files under `cache/phase3_wgs/`, `s3://diana-omics-results-.
 
 ## Access Model
 
-The inbox is list-and-write for external uploaders:
+The inbox is a public-read landing zone with authenticated uploads:
 
-- Any authenticated AWS principal can upload objects to `diana/inbox/*`.
-- Any authenticated AWS principal can list the `diana/inbox/` prefix.
+- Any authenticated AWS principal can upload objects to `diana/inbox/*` when the request uses S3-managed `AES256` encryption.
+- Anyone can list the `diana/inbox/` prefix and download its objects without AWS credentials.
 - Uploaders do not need presigned URLs.
-- Uploaders do not get object download/read or delete access from this policy.
+- Uploaders do not get delete access from this policy.
 - Bucket-owner-enforced ownership makes uploaded objects owned by the Diana Omics bucket owner.
-- The bucket still uses SSE-KMS encryption.
-- The KMS policy permits decrypt operations only through S3 for inbox objects. S3 requires this for multipart uploads; it does not grant uploaders object read access.
+- Public objects use S3-managed `AES256` encryption because S3 does not permit anonymous reads of SSE-KMS objects.
 
-This is intentionally an inbox, not a shared workspace.
+Only upload data that is approved for unrestricted public distribution. This prefix is not appropriate for private or controlled-access data.
 
 For external teams without an AWS account, provision temporary credentials with
 an identity policy that restricts listing and writes to one batch prefix. Send
@@ -54,14 +53,14 @@ Each delivery should include:
 Use `aws s3 cp --recursive` or individual `aws s3 cp` commands:
 
 ```sh
-aws s3 cp /path/to/diana-files/ s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/ --recursive --region us-east-1 --only-show-errors
+aws s3 cp /path/to/diana-files/ s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/ --recursive --sse AES256 --region us-east-1 --only-show-errors
 ```
 
 Upload the manifest and checksum files into the same batch folder:
 
 ```sh
-aws s3 cp manifest.csv s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/manifest.csv --region us-east-1 --only-show-errors
-aws s3 cp checksums.sha256 s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/checksums.sha256 --region us-east-1 --only-show-errors
+aws s3 cp manifest.csv s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/manifest.csv --sse AES256 --region us-east-1 --only-show-errors
+aws s3 cp checksums.sha256 s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/checksums.sha256 --sse AES256 --region us-east-1 --only-show-errors
 ```
 
 ## Transfer From Bucket A To Our Bucket
@@ -69,10 +68,10 @@ aws s3 cp checksums.sha256 s3://diana-omics-raw-inputs-172630973301-us-east-1/di
 The source bucket owner must grant the transfer principal read access to `s3://SOURCE-BUCKET/SOURCE-PREFIX/`. Then run:
 
 ```sh
-aws s3 cp s3://SOURCE-BUCKET/SOURCE-PREFIX/ s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/ --recursive --source-region SOURCE-REGION --region us-east-1 --only-show-errors
+aws s3 cp s3://SOURCE-BUCKET/SOURCE-PREFIX/ s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/ --recursive --sse AES256 --source-region SOURCE-REGION --region us-east-1 --only-show-errors
 ```
 
-If the source files use a source KMS key, the transfer principal also needs decrypt permission on that source key. Our destination bucket applies the Diana Omics SSE-KMS encryption policy.
+If the source files use a source KMS key, the transfer principal also needs decrypt permission on that source key. The destination copy must still specify `--sse AES256` so the result is anonymously readable.
 
 ## Verify The Transfer
 
@@ -82,14 +81,12 @@ The uploader can list the inbox prefix after upload:
 aws s3 ls s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/ --recursive --summarize --region us-east-1
 ```
 
-The Diana operator, not the external uploader, should spot-check one object:
+Spot-check one object without credentials:
 
 ```sh
-aws s3api head-object --bucket diana-omics-raw-inputs-172630973301-us-east-1 --key diana/inbox/YYYY-MM-DD-source-name/example.fastq.gz --region us-east-1
+aws s3api head-object --bucket diana-omics-raw-inputs-172630973301-us-east-1 --key diana/inbox/YYYY-MM-DD-source-name/example.fastq.gz --region us-east-1 --no-sign-request
 ```
 
-`head-object` requires read permission and should fail for a write-only external
-uploader. The uploader verifies delivery with the prefix listing and source-side
-checksums; the Diana operator performs object metadata and checksum acceptance.
+The uploader and Diana operator can both verify the public object metadata, prefix listing, and source-side checksums without credentials.
 
 Compare the delivered checksum manifest against the source checksums before using the files for intake validation. Do not run Diana interpretation from inbox files until manifests, tumor-normal pairing, references, indexes, and checksums pass validation.

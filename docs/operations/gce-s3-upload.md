@@ -166,7 +166,8 @@ Stop and ask the operator if it does not match.
 
 Run the transfer inside `tmux`, `screen`, or another persistent terminal so an
 SSH disconnect does not stop the upload. The standard AWS CLI v2 multipart
-defaults are suitable; no custom S3 endpoint or encryption flags are required.
+defaults are suitable; use `--sse AES256` on every upload so the result remains
+publicly downloadable.
 
 ## 3. Upload The Delivery
 
@@ -182,15 +183,15 @@ Replace `BATCH_NAME` with the exact value supplied by the Diana operator. Review
 the planned object paths first:
 
 ```sh
-aws s3 cp "$DELIVERY_ROOT/data/" "${DEST}data/" --recursive --dryrun --region us-east-1
+aws s3 cp "$DELIVERY_ROOT/data/" "${DEST}data/" --recursive --sse AES256 --dryrun --region us-east-1
 ```
 
 Upload the data directory, then upload the manifest and checksums last:
 
 ```sh
-aws s3 cp "$DELIVERY_ROOT/data/" "${DEST}data/" --recursive --region us-east-1 --only-show-errors
-aws s3 cp "$DELIVERY_ROOT/manifest.csv" "${DEST}manifest.csv" --region us-east-1 --only-show-errors
-aws s3 cp "$DELIVERY_ROOT/checksums.sha256" "${DEST}checksums.sha256" --region us-east-1 --only-show-errors
+aws s3 cp "$DELIVERY_ROOT/data/" "${DEST}data/" --recursive --sse AES256 --region us-east-1 --only-show-errors
+aws s3 cp "$DELIVERY_ROOT/manifest.csv" "${DEST}manifest.csv" --sse AES256 --region us-east-1 --only-show-errors
+aws s3 cp "$DELIVERY_ROOT/checksums.sha256" "${DEST}checksums.sha256" --sse AES256 --region us-east-1 --only-show-errors
 ```
 
 The AWS CLI automatically uses multipart upload for large files. If a command is
@@ -206,9 +207,8 @@ List the exact delivery prefix and report the final object count and total size:
 aws s3 ls "$DEST" --recursive --summarize --region us-east-1
 ```
 
-The credentials intentionally cannot run `head-object`, download an object, or
-delete an object. A failure of those operations is expected and does not mean the
-upload failed.
+Anyone can run `head-object` or download an object anonymously. The upload
+credentials still cannot delete objects.
 
 Send the Diana operator:
 

@@ -274,6 +274,18 @@ resource "aws_s3_bucket_ownership_controls" "this" {
   }
 }
 
+resource "aws_s3_bucket_cors_configuration" "raw_public_read" {
+  bucket = aws_s3_bucket.this["raw"].id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag", "Content-Length", "Last-Modified"]
+    max_age_seconds = 3600
+  }
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   for_each = aws_s3_bucket.this
 
@@ -336,11 +348,6 @@ data "aws_iam_policy_document" "s3_tls" {
         identifiers = ["*"]
       }
       condition {
-        test     = "StringNotEquals"
-        variable = "aws:PrincipalType"
-        values   = ["Anonymous"]
-      }
-      condition {
         test     = "StringLike"
         variable = "s3:prefix"
         values = [
@@ -356,12 +363,51 @@ data "aws_iam_policy_document" "s3_tls" {
     for_each = each.key == "raw" ? [1] : []
 
     content {
+      sid       = "AllowPublicReadDianaInbox"
+      effect    = "Allow"
+      actions   = ["s3:GetObject"]
+      resources = ["${each.value.arn}/${local.diana_raw_inbox_prefix}/*"]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "raw" ? [1] : []
+
+    content {
       sid    = "AllowAnyAwsPrincipalWriteDianaInbox"
+      effect = "Allow"
+      actions   = ["s3:PutObject"]
+      resources = ["${each.value.arn}/${local.diana_raw_inbox_prefix}/*"]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+      condition {
+        test     = "StringNotEquals"
+        variable = "aws:PrincipalType"
+        values   = ["Anonymous"]
+      }
+      condition {
+        test     = "StringEquals"
+        variable = "s3:x-amz-server-side-encryption"
+        values   = ["AES256"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "raw" ? [1] : []
+
+    content {
+      sid    = "AllowAnyAwsPrincipalManageMultipartDianaInbox"
       effect = "Allow"
       actions = [
         "s3:AbortMultipartUpload",
-        "s3:ListMultipartUploadParts",
-        "s3:PutObject"
+        "s3:ListMultipartUploadParts"
       ]
       resources = ["${each.value.arn}/${local.diana_raw_inbox_prefix}/*"]
       principals {
@@ -372,6 +418,26 @@ data "aws_iam_policy_document" "s3_tls" {
         test     = "StringNotEquals"
         variable = "aws:PrincipalType"
         values   = ["Anonymous"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "raw" ? [1] : []
+
+    content {
+      sid       = "DenyNonPubliclyReadableEncryptionDianaInbox"
+      effect    = "Deny"
+      actions   = ["s3:PutObject"]
+      resources = ["${each.value.arn}/${local.diana_raw_inbox_prefix}/*"]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+      condition {
+        test     = "StringNotEquals"
+        variable = "s3:x-amz-server-side-encryption"
+        values   = ["AES256"]
       }
     }
   }
