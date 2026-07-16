@@ -3,6 +3,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { getVercelOidcToken } from "@vercel/oidc";
 import { api } from "../convex/_generated/api";
 import {
+  extractChromosomeProgressEvents,
   getViewerLogStreamPage,
   getViewerLogStreams,
   type listViewerJobs,
@@ -165,6 +166,45 @@ async function syncLogStream(
   return { inserted, pages };
 }
 
+async function syncProgressStream(
+  client: ConvexHttpClient,
+  stream: ViewerLogStream,
+  maxPages: number,
+) {
+  const cursor = await client.query(api.jobProgress.getProgressCursor, {
+    jobId: stream.jobId,
+    logStreamName: stream.logStreamName,
+  });
+  let nextToken = cursor?.nextForwardToken || undefined;
+  let progressEventsInserted = 0;
+  let pages = 0;
+
+  while (pages < maxPages) {
+    const previousToken = nextToken;
+    const page = await getViewerLogStreamPage(
+      stream.logStreamName,
+      nextToken,
+    );
+    const complete = page.nextForwardToken === (previousToken || null);
+    const events = extractChromosomeProgressEvents(stream.jobId, page.events);
+    const result = await client.mutation(api.jobProgress.ingestProgressBatch, {
+      jobId: stream.jobId,
+      jobName: stream.jobName,
+      logStreamName: stream.logStreamName,
+      nextForwardToken: page.nextForwardToken,
+      backfillComplete: complete,
+      syncedAt: Date.now(),
+      events,
+    });
+    progressEventsInserted += result.progressEventsInserted;
+    pages += 1;
+    nextToken = page.nextForwardToken || undefined;
+    if (complete) break;
+  }
+
+  return { progressEventsInserted, pages };
+}
+
 export async function persistAndMergeViewerSnapshot(
   payload: ViewerPayload,
 ): Promise<ViewerPayload> {
@@ -173,6 +213,19 @@ export async function persistAndMergeViewerSnapshot(
   try {
     const client = await convexClient();
     const snapshot = normalizedSnapshot(payload);
+    await Promise.all(
+      payload.jobs
+        .filter(
+          (job) =>
+            job.id && job.status === "RUNNING" && Boolean(job.logStreamName),
+        )
+        .map(async (job) => {
+          const streams = await getViewerLogStreams(job.id!);
+          await Promise.all(
+            streams.map((stream) => syncProgressStream(client, stream, 1_000)),
+          );
+        }),
+    );
     await client.mutation(api.jobProgress.ingestSnapshot, snapshot);
     const aggregates = await client.query(api.jobProgress.getAggregates, {
       jobIds: snapshot.jobs.map((job) => job.jobId),
@@ -207,7 +260,12 @@ export async function getPersistentViewerLogsPage(
     try {
       const streams = await getViewerLogStreams(jobId);
       await Promise.all(
-        streams.map((stream) => syncLogStream(client, stream, 1_000)),
+        streams.map(async (stream) => {
+          await Promise.all([
+            syncLogStream(client, stream, 1_000),
+            syncProgressStream(client, stream, 1_000),
+          ]);
+        }),
       );
     } catch (error) {
       console.warn("[convex] live CloudWatch log sync unavailable", {

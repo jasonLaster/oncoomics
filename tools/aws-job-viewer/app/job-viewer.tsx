@@ -319,6 +319,18 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function preserveCumulativeProgress(current: ViewerJob, incoming: ViewerJob) {
+  if (!current.progress) return incoming;
+  if (
+    !incoming.progress ||
+    incoming.progress.genomePercent + Number.EPSILON <
+      current.progress.genomePercent
+  ) {
+    return { ...incoming, progress: current.progress };
+  }
+  return incoming;
+}
+
 function useSerialPoll(
   task: () => Promise<void | number>,
   enabled: boolean,
@@ -439,7 +451,9 @@ export function JobViewer() {
         return {
           ...current,
           jobs: current.jobs.map((job) =>
-            job.id === jobId ? body.job : job,
+            job.id === jobId
+              ? preserveCumulativeProgress(job, body.job)
+              : job,
           ),
         };
       });

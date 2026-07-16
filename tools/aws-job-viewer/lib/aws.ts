@@ -58,6 +58,57 @@ const TOTAL_STANDARD_BASES = Object.values(STANDARD_CHROMOSOME_LENGTHS).reduce(
 type CachedChromosome = { position: number; seenAt: number };
 const chromosomeCache = new Map<string, Map<string, CachedChromosome>>();
 
+export type ViewerProgressEvent = {
+  eventKey: string;
+  jobId: string;
+  chromosome: string;
+  position: number;
+  length: number;
+  observedAt: number;
+  active: boolean;
+};
+
+export function extractChromosomeProgressEvents(
+  jobId: string,
+  events: Array<{ timestamp?: number; message?: string }>,
+): ViewerProgressEvent[] {
+  const maxima = new Map<
+    string,
+    { position: number; observedAt: number }
+  >();
+
+  for (const event of events) {
+    const observedAt = event.timestamp || Date.now();
+    for (const match of (event.message || "").matchAll(
+      /ProgressMeter\s+-\s+(chr(?:\d+|X)):(\d+)/g,
+    )) {
+      const chromosome = match[1];
+      const position = Number(match[2]);
+      if (!STANDARD_CHROMOSOME_LENGTHS[chromosome] || !Number.isFinite(position)) {
+        continue;
+      }
+      const current = maxima.get(chromosome);
+      if (
+        !current ||
+        position > current.position ||
+        (position === current.position && observedAt > current.observedAt)
+      ) {
+        maxima.set(chromosome, { position, observedAt });
+      }
+    }
+  }
+
+  return [...maxima.entries()].map(([chromosome, value]) => ({
+    eventKey: `${jobId}:${chromosome}:${value.position}`,
+    jobId,
+    chromosome,
+    position: value.position,
+    length: STANDARD_CHROMOSOME_LENGTHS[chromosome],
+    observedAt: value.observedAt,
+    active: Date.now() - value.observedAt < 180_000,
+  }));
+}
+
 function clientConfig() {
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
   const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;

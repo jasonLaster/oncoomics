@@ -144,7 +144,10 @@ export const logPages = {
   },
 };
 
-export async function installApiMocks(page: Page) {
+export async function installApiMocks(
+  page: Page,
+  options: { statusProgressPercent?: number } = {},
+) {
   const jobRequests: string[] = [];
   const statusRequests: string[] = [];
   const logRequests: string[] = [];
@@ -160,7 +163,19 @@ export async function installApiMocks(page: Page) {
     const url = route.request().url();
     statusRequests.push(url);
     const jobId = new URL(url).searchParams.get("jobId");
-    const job = jobsPayload.jobs.find((item) => item.id === jobId);
+    const fixtureJob = jobsPayload.jobs.find((item) => item.id === jobId);
+    const job =
+      fixtureJob &&
+      options.statusProgressPercent !== undefined &&
+      fixtureJob.progress
+        ? {
+            ...fixtureJob,
+            progress: {
+              ...fixtureJob.progress,
+              genomePercent: options.statusProgressPercent,
+            },
+          }
+        : fixtureJob;
     await route.fulfill({
       status: job ? 200 : 404,
       json: job

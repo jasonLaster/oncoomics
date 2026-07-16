@@ -16,7 +16,7 @@ AWS credentials stay in the server process and are never sent to the browser. Th
 
 Vercel deployments use `AWS_ROLE_ARN` with Vercel OIDC to exchange short-lived tokens for a scoped AWS read-only session. Static AWS access keys are not required.
 
-The hosted viewer also persists normalized job-status, chromosome-progress, and complete CloudWatch log events in Convex. Convex receives the same project-scoped Vercel OIDC identity. Log messages are deduplicated with deterministic SHA-256 event keys, and a per-stream forward cursor makes synchronization incremental. Durable chromosome maxima are merged back into each response so cold starts do not lose completed work.
+The hosted viewer also persists normalized job-status, chromosome-progress, and complete CloudWatch log events in Convex. Convex receives the same project-scoped Vercel OIDC identity. Log messages are deduplicated with deterministic SHA-256 event keys, and independent per-stream cursors make raw-log and progress synchronization incremental and resumable. Durable chromosome maxima are repaired from missed CloudWatch pages and merged back into each response so cold starts or a temporary persistence outage cannot regress completed work.
 
 If the durable Convex deployment is temporarily unavailable, log reads degrade to direct, backward-cursor CloudWatch pagination instead of failing the viewer. The response retains the same event and cursor contract and traverses the current stream before earlier Batch attempts; persistence and a complete historical event count resume when Convex is available again.
 

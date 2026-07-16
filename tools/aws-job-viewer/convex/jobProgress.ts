@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 
 const EXPECTED_ISSUER = "https://oidc.vercel.com/jlasters-projects";
 const TOTAL_STANDARD_BASES = 3_031_042_417;
@@ -63,6 +63,71 @@ async function requireViewerIdentity(ctx: {
   }
 }
 
+type ProgressEvent = {
+  eventKey: string;
+  jobId: string;
+  chromosome: string;
+  position: number;
+  length: number;
+  observedAt: number;
+  active: boolean;
+};
+
+async function upsertProgressEvents(
+  ctx: MutationCtx,
+  events: ProgressEvent[],
+) {
+  let progressEventsInserted = 0;
+  let chromosomeProgressUpserted = 0;
+
+  for (const event of events) {
+    const existingEvent = await ctx.db
+      .query("progressEvents")
+      .withIndex("by_event_key", (q) => q.eq("eventKey", event.eventKey))
+      .unique();
+    if (!existingEvent) {
+      await ctx.db.insert("progressEvents", event);
+      progressEventsInserted += 1;
+    }
+
+    const existingProgress = await ctx.db
+      .query("chromosomeProgress")
+      .withIndex("by_job_chromosome", (q) =>
+        q.eq("jobId", event.jobId).eq("chromosome", event.chromosome),
+      )
+      .unique();
+
+    if (!existingProgress) {
+      await ctx.db.insert("chromosomeProgress", {
+        jobId: event.jobId,
+        chromosome: event.chromosome,
+        position: event.position,
+        length: event.length,
+        firstObservedAt: event.observedAt,
+        lastObservedAt: event.observedAt,
+        active: event.active,
+      });
+      chromosomeProgressUpserted += 1;
+    } else if (
+      event.position > existingProgress.position ||
+      event.observedAt > existingProgress.lastObservedAt
+    ) {
+      await ctx.db.patch(existingProgress._id, {
+        position: Math.max(existingProgress.position, event.position),
+        length: event.length,
+        lastObservedAt: Math.max(
+          existingProgress.lastObservedAt,
+          event.observedAt,
+        ),
+        active: event.active,
+      });
+      chromosomeProgressUpserted += 1;
+    }
+  }
+
+  return { progressEventsInserted, chromosomeProgressUpserted };
+}
+
 export const ingestSnapshot = mutation({
   args: {
     generatedAt: v.number(),
@@ -117,50 +182,8 @@ export const ingestSnapshot = mutation({
       }
     }
 
-    for (const event of args.progressEvents) {
-      const existingEvent = await ctx.db
-        .query("progressEvents")
-        .withIndex("by_event_key", (q) => q.eq("eventKey", event.eventKey))
-        .unique();
-      if (!existingEvent) {
-        await ctx.db.insert("progressEvents", event);
-        progressEventsInserted += 1;
-      }
-
-      const existingProgress = await ctx.db
-        .query("chromosomeProgress")
-        .withIndex("by_job_chromosome", (q) =>
-          q.eq("jobId", event.jobId).eq("chromosome", event.chromosome),
-        )
-        .unique();
-
-      if (!existingProgress) {
-        await ctx.db.insert("chromosomeProgress", {
-          jobId: event.jobId,
-          chromosome: event.chromosome,
-          position: event.position,
-          length: event.length,
-          firstObservedAt: event.observedAt,
-          lastObservedAt: event.observedAt,
-          active: event.active,
-        });
-        chromosomeProgressUpserted += 1;
-      } else if (
-        event.position > existingProgress.position ||
-        event.observedAt > existingProgress.lastObservedAt
-      ) {
-        await ctx.db.patch(existingProgress._id, {
-          position: Math.max(existingProgress.position, event.position),
-          length: event.length,
-          lastObservedAt: Math.max(
-            existingProgress.lastObservedAt,
-            event.observedAt,
-          ),
-          active: event.active,
-        });
-        chromosomeProgressUpserted += 1;
-      }
-    }
+    ({ progressEventsInserted, chromosomeProgressUpserted } =
+      await upsertProgressEvents(ctx, args.progressEvents));
 
     await ctx.db.insert("syncRuns", {
       generatedAt: args.generatedAt,
@@ -377,6 +400,82 @@ export const getLogCursor = query({
       backfillComplete: stream.backfillComplete,
       lastSyncedAt: stream.lastSyncedAt,
     };
+  },
+});
+
+export const getProgressCursor = query({
+  args: {
+    jobId: v.string(),
+    logStreamName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireViewerIdentity(ctx);
+    const stream = await ctx.db
+      .query("logStreams")
+      .withIndex("by_job_stream", (q) =>
+        q.eq("jobId", args.jobId).eq("logStreamName", args.logStreamName),
+      )
+      .unique();
+    if (!stream) return null;
+    return {
+      nextForwardToken: stream.progressNextForwardToken ?? null,
+      backfillComplete: stream.progressBackfillComplete ?? false,
+      lastSyncedAt: stream.progressLastSyncedAt ?? null,
+    };
+  },
+});
+
+export const ingestProgressBatch = mutation({
+  args: {
+    jobId: v.string(),
+    jobName: nullableString,
+    logStreamName: v.string(),
+    nextForwardToken: nullableString,
+    backfillComplete: v.boolean(),
+    syncedAt: v.number(),
+    events: v.array(progressEventValidator),
+  },
+  returns: v.object({
+    progressEventsInserted: v.number(),
+    chromosomeProgressUpserted: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    await requireViewerIdentity(ctx);
+    const result = await upsertProgressEvents(ctx, args.events);
+    const stream = await ctx.db
+      .query("logStreams")
+      .withIndex("by_job_stream", (q) =>
+        q.eq("jobId", args.jobId).eq("logStreamName", args.logStreamName),
+      )
+      .unique();
+
+    if (stream) {
+      await ctx.db.patch(stream._id, {
+        jobName: args.jobName,
+        progressNextForwardToken: args.nextForwardToken,
+        progressLastSyncedAt: Math.max(
+          stream.progressLastSyncedAt || 0,
+          args.syncedAt,
+        ),
+        progressBackfillComplete: args.backfillComplete,
+      });
+    } else {
+      await ctx.db.insert("logStreams", {
+        jobId: args.jobId,
+        jobName: args.jobName,
+        logStreamName: args.logStreamName,
+        nextForwardToken: null,
+        eventCount: 0,
+        firstSyncedAt: args.syncedAt,
+        lastSyncedAt: args.syncedAt,
+        backfillComplete: false,
+        progressNextForwardToken: args.nextForwardToken,
+        progressLastSyncedAt: args.syncedAt,
+        progressBackfillComplete: args.backfillComplete,
+      });
+    }
+
+    return result;
   },
 });
 

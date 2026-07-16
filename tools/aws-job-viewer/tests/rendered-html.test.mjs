@@ -35,6 +35,7 @@ test("implements automatic refresh and server-side AWS access", async () => {
   assert.match(viewer, /const ACTIVE_DETAIL_REFRESH_SECONDS = 10/);
   assert.match(viewer, /const TERMINAL_LOG_REFRESH_SECONDS = 60/);
   assert.match(viewer, /function useSerialPoll/);
+  assert.match(viewer, /function preserveCumulativeProgress/);
   assert.match(viewer, /\/api\/job-status\?jobId=/);
   assert.match(viewer, /document\.visibilityState === "visible"/);
   assert.match(viewer, /navigator\.onLine/);
@@ -72,9 +73,10 @@ test("implements automatic refresh and server-side AWS access", async () => {
 });
 
 test("persists normalized progress and complete logs with project-scoped OIDC", async () => {
-  const [jobsRoute, convexBridge, schema, functions, authConfig] = await Promise.all([
+  const [jobsRoute, convexBridge, awsBridge, schema, functions, authConfig] = await Promise.all([
     readFile(new URL("../app/api/jobs/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/convex.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/aws.ts", import.meta.url), "utf8"),
     readFile(new URL("../convex/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../convex/jobProgress.ts", import.meta.url), "utf8"),
     readFile(new URL("../convex/auth.config.ts", import.meta.url), "utf8"),
@@ -93,11 +95,17 @@ test("persists normalized progress and complete logs with project-scoped OIDC", 
   assert.match(functions, /export const getAggregates = query/);
   assert.match(functions, /export const ingestLogBatch = mutation/);
   assert.match(functions, /export const getLogPage = query/);
+  assert.match(functions, /export const getProgressCursor = query/);
+  assert.match(functions, /export const ingestProgressBatch = mutation/);
+  assert.match(convexBridge, /syncProgressStream/);
+  assert.match(awsBridge, /extractChromosomeProgressEvents/);
   assert.match(functions, /paginationOptsValidator/);
   assert.match(functions, /TOTAL_STANDARD_BASES = 3_031_042_417/);
   assert.match(authConfig, /oidc\.vercel\.com\/jlasters-projects/);
   assert.match(functions, /project:diana-aws-job-viewer:environment:/);
   assert.match(schema, /message: v\.string/);
+  assert.match(schema, /progressNextForwardToken: v\.optional/);
+  assert.match(schema, /progressBackfillComplete: v\.optional/);
 });
 
 test("backfills complete CloudWatch streams into the durable log archive", async () => {

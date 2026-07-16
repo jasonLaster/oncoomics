@@ -3,6 +3,7 @@ import { afterEach, test } from "node:test";
 
 import {
   batch,
+  extractChromosomeProgressEvents,
   getDirectCloudWatchLogsPage,
   logs,
 } from "../lib/aws.ts";
@@ -44,6 +45,36 @@ function decodeCursor(value) {
     Buffer.from(value.slice("cloudwatch:".length), "base64url").toString("utf8"),
   );
 }
+
+test("extracts page maxima for durable chromosome progress", () => {
+  const now = Date.now();
+  const events = extractChromosomeProgressEvents("job-1", [
+    {
+      timestamp: now - 30_000,
+      message: "INFO ProgressMeter - chr17:12000000  1.0  12000000",
+    },
+    {
+      timestamp: now - 10_000,
+      message:
+        "INFO ProgressMeter - chr17:43044295  2.0  43044295 ProgressMeter - chr2:242193100",
+    },
+    {
+      timestamp: now,
+      message: "INFO ProgressMeter - chrY:1000 ignored",
+    },
+  ]);
+
+  assert.deepEqual(
+    events.map((event) => [event.chromosome, event.position]),
+    [
+      ["chr17", 43_044_295],
+      ["chr2", 242_193_100],
+    ],
+  );
+  assert.equal(events[0].eventKey, "job-1:chr17:43044295");
+  assert.equal(events[0].observedAt, now - 10_000);
+  assert.equal(events[0].active, true);
+});
 
 test("reads the newest attempt first and produces stable event keys", async () => {
   mockJob(job());

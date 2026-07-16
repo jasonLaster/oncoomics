@@ -88,6 +88,9 @@ export default defineSchema({
     firstSyncedAt: v.number(),
     lastSyncedAt: v.number(),
     backfillComplete: v.boolean(),
+    progressNextForwardToken: v.optional(nullableString),
+    progressLastSyncedAt: v.optional(v.number()),
+    progressBackfillComplete: v.optional(v.boolean()),
   })
     .index("by_job", ["jobId"])
     .index("by_job_stream", ["jobId", "logStreamName"])

@@ -119,6 +119,19 @@ test.describe("viewer v2 live refresh", () => {
     await expect.poll(() => statusRequests.length).toBeGreaterThan(statusBeforePause);
     await expect(page.getByText("Live", { exact: true })).toBeVisible();
   });
+
+  test("never regresses cumulative progress from a partial status window", async ({
+    page,
+  }) => {
+    const { statusRequests } = await installApiMocks(page, {
+      statusProgressPercent: 12.5,
+    });
+    await page.goto("/");
+    await expect.poll(() => statusRequests.length).toBeGreaterThan(0);
+    await expect(
+      page.getByLabel("Run metrics").getByText("37.5%", { exact: true }),
+    ).toBeVisible();
+  });
 });
 
 test.describe("viewer v2 structured logs", () => {
