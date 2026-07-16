@@ -177,7 +177,7 @@ The suite verifies:
 - feed scroll-position and trigger-focus restoration after inspection;
 - mobile default collapse and one-drawer-at-a-time behavior.
 
-Run it from `tools/aws-job-viewer`:
+Run it from `apps/jobs`:
 
 ```bash
 npm run test:e2e

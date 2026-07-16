@@ -20,7 +20,7 @@ __pycache__/
 .ipynb_checkpoints/
 node_modules/
 .next/
-site/dist/
+apps/data/dist/
 .vercel/
 
 # Nextflow runtime state.

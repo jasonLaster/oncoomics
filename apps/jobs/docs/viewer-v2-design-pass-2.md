@@ -71,7 +71,7 @@ All movement is disabled or reduced to opacity under `prefers-reduced-motion`. D
 
 ## Verification
 
-Run from `tools/aws-job-viewer`:
+Run from `apps/jobs`:
 
 ```bash
 npm test

@@ -102,7 +102,8 @@ Start here:
 - [docs/data/source-map.md](docs/data/source-map.md): provenance for datasets, tools, truth sets, and vendor context.
 - [docs/operations/running-the-pipeline.md](docs/operations/running-the-pipeline.md): local, Docker, Nextflow, and AWS commands.
 - [docs/operations/diana-public-data-download.md](docs/operations/diana-public-data-download.md): public Diana dataset download and transfer guide.
-- [tools/aws-job-viewer/README.md](tools/aws-job-viewer/README.md): private local viewer for live AWS Batch progress and CloudWatch logs.
+- [apps/data/README.md](apps/data/README.md): public open-data landing page and S3 file browser.
+- [apps/jobs/README.md](apps/jobs/README.md): private viewer for live AWS Batch progress and CloudWatch logs.
 
 Directory guides:
 

@@ -53,7 +53,7 @@ Edit the existing mobile logs screen into an implementable third design-pass ref
 
 ## Verification
 
-Run from `tools/aws-job-viewer`:
+Run from `apps/jobs`:
 
 ```bash
 npm test

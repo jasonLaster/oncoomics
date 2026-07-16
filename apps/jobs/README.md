@@ -5,7 +5,7 @@ A private local dashboard for Diana AWS Batch jobs and CloudWatch logs.
 ## Open the viewer
 
 ```bash
-cd tools/aws-job-viewer
+cd apps/jobs
 npm install
 npm run viewer
 ```
@@ -62,7 +62,7 @@ npm run test:e2e
 After deploying the Convex schema, backfill every event retained for every stream-bearing job discoverable in the enabled AWS Batch queues:
 
 ```bash
-cd tools/aws-job-viewer
+cd apps/jobs
 CONVEX_URL=https://your-production-deployment.convex.cloud \
   npm run convex:backfill-logs
 ```
