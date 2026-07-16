@@ -90,6 +90,8 @@ The first `/api/job-logs` response contains the newest stored page and a `contin
 
 Cursor pages are merged by `eventKey`, sorted chronologically, and prepended because they contain older events. Prepending a page preserves the reader's visible scroll position; it must not jump the reader to a different event. Only one older-page request may be in flight at a time. Pagination stops when `isDone` is true or `continueCursor` is absent. Errors appear inline with a retry path and do not erase pages already loaded.
 
+Convex is the preferred durable source. If that archive is unavailable, the API falls back to CloudWatch `GetLogEvents`, paging backward through the current stream and then earlier Batch attempts. Its prefixed opaque cursor bypasses Convex on subsequent pages. The fallback uses the same deterministic event keys, chronological ordering, and response fields, so filtering, event inspection, and infinite loading continue to work. Empty CloudWatch pages advance until the backward token stabilizes; only token stability marks a stream complete. In fallback mode `totalEvents` grows with pages loaded rather than claiming a complete stored count; durable totals resume with Convex.
+
 Search and filters apply to all events loaded so far. Reaching the sentinel continues loading even when the current filter hides most rows, until the archive is complete or enough matching results fill the viewport.
 
 ## Responsive behavior

@@ -44,7 +44,12 @@ test("implements automatic refresh and server-side AWS access", async () => {
   assert.match(viewer, /preserveScrollHeightRef/);
   assert.match(jobsRoute, /listViewerJobs/);
   assert.match(logsRoute, /getPersistentViewerLogsPage/);
+  assert.match(logsRoute, /getDirectCloudWatchLogsPage/);
+  assert.match(logsRoute, /cloudwatch-fallback/);
   assert.match(awsBridge, /CloudWatchLogsClient/);
+  assert.match(awsBridge, /nextBackwardToken/);
+  assert.match(awsBridge, /startFromHead: false/);
+  assert.match(awsBridge, /DIRECT_LOG_CURSOR_PREFIX = "cloudwatch:"/);
   assert.match(awsBridge, /DescribeJobQueuesCommand/);
   assert.match(awsBridge, /awsCredentialsProvider/);
   assert.match(awsBridge, /AWS_ROLE_ARN/);

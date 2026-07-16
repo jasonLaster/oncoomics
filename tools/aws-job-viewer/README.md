@@ -18,6 +18,8 @@ Vercel deployments use `AWS_ROLE_ARN` with Vercel OIDC to exchange short-lived t
 
 The hosted viewer also persists normalized job-status, chromosome-progress, and complete CloudWatch log events in Convex. Convex receives the same project-scoped Vercel OIDC identity. Log messages are deduplicated with deterministic SHA-256 event keys, and a per-stream forward cursor makes each one-minute refresh incremental. Durable chromosome maxima are merged back into each response so cold starts do not lose completed work.
 
+If the durable Convex deployment is temporarily unavailable, log reads degrade to direct, backward-cursor CloudWatch pagination instead of failing the viewer. The response retains the same event and cursor contract and traverses the current stream before earlier Batch attempts; persistence and a complete historical event count resume when Convex is available again.
+
 The stable Convex production deployment is released with `npm run convex:deploy` while a production deploy key is present. `CONVEX_URL` selects that deployment at runtime; when it is absent, the viewer continues in live AWS-only mode. Vercel Preview and Production point to the same stable operational history rather than creating isolated per-branch databases.
 
 ## Views

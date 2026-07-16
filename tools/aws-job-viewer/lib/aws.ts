@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   BatchClient,
   DescribeJobQueuesCommand,
@@ -137,6 +138,7 @@ export type ViewerLogStream = {
   jobId: string;
   jobName: string | null;
   logStreamName: string;
+  startedAt: number;
 };
 
 export async function getViewerLogStreams(
@@ -145,15 +147,38 @@ export async function getViewerLogStreams(
   const response = await batch.send(new DescribeJobsCommand({ jobs: [jobId] }));
   const job = response.jobs?.[0];
   if (!job) throw new Error("Job not found");
-  const names = [
-    job.container?.logStreamName,
-    ...(job.attempts || []).map((attempt) => attempt.container?.logStreamName),
-  ].filter((name): name is string => Boolean(name));
-  return [...new Set(names)].map((logStreamName) => ({
-    jobId,
-    jobName: job.jobName || null,
-    logStreamName,
-  }));
+  const latestAttemptStartedAt = Math.max(
+    job.startedAt || 0,
+    ...(job.attempts || []).map((attempt) => attempt.startedAt || 0),
+  );
+  const candidates = [
+    {
+      logStreamName: job.container?.logStreamName,
+      startedAt: latestAttemptStartedAt,
+    },
+    ...(job.attempts || []).map((attempt) => ({
+      logStreamName: attempt.container?.logStreamName,
+      startedAt: attempt.startedAt || 0,
+    })),
+  ].filter(
+    (candidate): candidate is { logStreamName: string; startedAt: number } =>
+      Boolean(candidate.logStreamName),
+  );
+  const byName = new Map<string, number>();
+  for (const candidate of candidates) {
+    byName.set(
+      candidate.logStreamName,
+      Math.max(byName.get(candidate.logStreamName) || 0, candidate.startedAt),
+    );
+  }
+  return [...byName.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .map(([logStreamName, startedAt]) => ({
+      jobId,
+      jobName: job.jobName || null,
+      logStreamName,
+      startedAt,
+    }));
 }
 
 export async function getViewerLogStreamPage(
@@ -181,6 +206,180 @@ export async function getViewerLogStreamPage(
     }
     throw error;
   }
+}
+
+type DirectLogCursor = {
+  version: 1;
+  jobId: string;
+  streamName: string;
+  nextBackwardToken: string | null;
+};
+
+const DIRECT_LOG_CURSOR_PREFIX = "cloudwatch:";
+
+function decodeDirectLogCursor(cursor: string | null): DirectLogCursor | null {
+  if (!cursor?.startsWith(DIRECT_LOG_CURSOR_PREFIX)) return null;
+  try {
+    const decoded = JSON.parse(
+      Buffer.from(cursor.slice(DIRECT_LOG_CURSOR_PREFIX.length), "base64url").toString(
+        "utf8",
+      ),
+    ) as DirectLogCursor;
+    if (
+      decoded.version !== 1 ||
+      typeof decoded.jobId !== "string" ||
+      typeof decoded.streamName !== "string" ||
+      (decoded.nextBackwardToken !== null &&
+        typeof decoded.nextBackwardToken !== "string")
+    ) {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function encodeDirectLogCursor(cursor: DirectLogCursor) {
+  return `${DIRECT_LOG_CURSOR_PREFIX}${Buffer.from(JSON.stringify(cursor)).toString("base64url")}`;
+}
+
+function directLogEvent(
+  stream: ViewerLogStream,
+  event: OutputLogEvent,
+) {
+  const timestamp = event.timestamp ?? event.ingestionTime ?? 0;
+  const ingestionTime = event.ingestionTime ?? null;
+  const message = event.message || "";
+  const eventKey = createHash("sha256")
+    .update(
+      `${stream.jobId}\0${stream.logStreamName}\0${timestamp}\0${ingestionTime || ""}\0${message}`,
+    )
+    .digest("hex");
+  return {
+    eventKey,
+    timestamp,
+    ingestionTime,
+    logStreamName: stream.logStreamName,
+    message,
+  };
+}
+
+/**
+ * Read newest-first CloudWatch history when the durable Convex archive is
+ * unavailable. The opaque cursor records the active attempt by stream name and
+ * advances older only after that stream's backward token stabilizes.
+ */
+export async function getDirectCloudWatchLogsPage(
+  jobId: string,
+  cursor: string | null,
+  requestedPageSize = 1_000,
+) {
+  const streams = await getViewerLogStreams(jobId);
+  if (streams.length === 0) {
+    return {
+      jobId,
+      jobName: null,
+      logStreamName: null,
+      events: [],
+      totalEvents: 0,
+      backfillComplete: true,
+      isDone: true,
+      continueCursor: null,
+    };
+  }
+
+  const previous = decodeDirectLogCursor(cursor);
+  let streamIndex =
+    previous?.jobId === jobId
+      ? streams.findIndex((stream) => stream.logStreamName === previous.streamName)
+      : 0;
+  if (streamIndex < 0) streamIndex = 0;
+  let nextToken = previous?.jobId === jobId ? previous.nextBackwardToken : null;
+  const limit = Math.max(1, Math.min(10_000, requestedPageSize));
+
+  while (streamIndex < streams.length) {
+    const stream = streams[streamIndex];
+    let response;
+    try {
+      response = await logs.send(
+        new GetLogEventsCommand({
+          logGroupName: LOG_GROUP,
+          logStreamName: stream.logStreamName,
+          limit,
+          startFromHead: false,
+          ...(nextToken ? { nextToken } : {}),
+        }),
+      );
+    } catch (error) {
+      if ((error as { name?: string }).name === "ResourceNotFoundException") {
+        streamIndex += 1;
+        nextToken = null;
+        continue;
+      }
+      throw error;
+    }
+
+    const nextBackwardToken = response.nextBackwardToken || null;
+    if (nextToken && nextBackwardToken === nextToken) {
+      streamIndex += 1;
+      nextToken = null;
+      continue;
+    }
+
+    const events = (response.events || [])
+      .map((event) => directLogEvent(stream, event))
+      .sort(
+        (left, right) =>
+          left.timestamp - right.timestamp ||
+          left.eventKey.localeCompare(right.eventKey),
+      );
+    const streamHasMore = nextBackwardToken !== null;
+    const hasOlderStream = streamIndex < streams.length - 1;
+    const isDone = !streamHasMore && !hasOlderStream;
+    const nextCursor: DirectLogCursor | null = isDone
+      ? null
+      : streamHasMore
+        ? {
+            version: 1,
+            jobId,
+            streamName: stream.logStreamName,
+            nextBackwardToken,
+          }
+        : {
+            version: 1,
+            jobId,
+            streamName: streams[streamIndex + 1].logStreamName,
+            nextBackwardToken: null,
+          };
+    return {
+      jobId,
+      jobName: streams.find((item) => item.jobName)?.jobName || null,
+      logStreamName:
+        streams.length === 1
+          ? streams[0].logStreamName
+          : `${streams.length} CloudWatch streams`,
+      events,
+      totalEvents: events.length,
+      backfillComplete: isDone,
+      isDone,
+      continueCursor: nextCursor ? encodeDirectLogCursor(nextCursor) : null,
+    };
+  }
+
+  return {
+    jobId,
+    jobName: streams.find((stream) => stream.jobName)?.jobName || null,
+    logStreamName:
+      streams.length === 1
+        ? streams[0].logStreamName
+        : `${streams.length} CloudWatch streams`,
+    events: [],
+    totalEvents: 0,
+    backfillComplete: true,
+    isDone: true,
+    continueCursor: null,
+  };
 }
 
 function parseChromosomeProgress(jobId: string, events: OutputLogEvent[]) {

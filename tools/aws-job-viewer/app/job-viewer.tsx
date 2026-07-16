@@ -242,6 +242,11 @@ function mergeLogPayload(
   return {
     ...incoming,
     events: mergedEvents,
+    totalEvents: Math.max(
+      current.totalEvents,
+      incoming.totalEvents,
+      mergedEvents.length,
+    ),
     continueCursor:
       mode === "prepend" ? incoming.continueCursor : current.continueCursor,
     isDone: mode === "prepend" ? incoming.isDone : current.isDone,
