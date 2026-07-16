@@ -446,10 +446,11 @@ summary:focus-visible {
 
 .log-event {
   position: relative;
+  contain-intrinsic-size: 30px;
   grid-template-columns: 62px 18px minmax(0, 1fr) 28px;
   gap: 8px;
-  min-height: 34px;
-  padding: 5px 10px;
+  min-height: 30px;
+  padding: 3px 10px;
   background: transparent;
 }
 
@@ -457,7 +458,7 @@ summary:focus-visible {
   content: "";
   position: absolute;
   z-index: 2;
-  top: 14px;
+  top: 11px;
   right: -12px;
   width: 5px;
   height: 5px;
@@ -520,9 +521,21 @@ summary:focus-visible {
   gap: 10px;
   padding-right: 0;
 }
-.log-event-titleline { gap: 8px; }
-.log-event-titleline strong { font-size: 12px; font-weight: 600; }
-.log-event-titleline span { font-size: 9px; }
+.log-event-titleline {
+  min-width: 0;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.log-event-titleline strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-event-titleline span { display: none; }
 .log-event-body > p {
   overflow: hidden;
   margin: 0;
@@ -542,7 +555,7 @@ summary:focus-visible {
   grid-column: 4;
   align-self: center;
   width: 28px;
-  height: 26px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -810,11 +823,12 @@ summary:focus-visible {
   .log-event-list { padding-right: 14px; }
   .log-event-list::before { right: 6px; }
   .log-event {
+    contain-intrinsic-size: 44px;
     grid-template-columns: 18px 52px minmax(0, 1fr) 44px;
     grid-template-rows: 1fr;
     gap: 8px;
     min-height: 44px;
-    padding: 5px 7px;
+    padding: 0 7px;
   }
 
   .log-event::after { top: 18px; right: -11px; }
@@ -834,7 +848,10 @@ summary:focus-visible {
   .log-event-body {
     grid-column: 3;
     grid-row: 1;
-    display: block;
+    display: grid;
+    grid-template-columns: minmax(82px, 0.42fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 7px;
     padding-right: 0;
   }
 
@@ -842,7 +859,7 @@ summary:focus-visible {
   .log-event-titleline strong { font-size: 12px; }
   .log-event-titleline span { font-size: 9px; }
   .log-event-body > p { font-size: 11px; line-height: 1.35; }
-  .event-inspect-button { grid-column: 4; width: 44px; height: 44px; margin-block: -5px; }
+  .event-inspect-button { grid-column: 4; width: 44px; height: 44px; margin-block: 0; }
   .inspector-rail { width: min(94vw, 420px); }
   .event-inspector-heading button { min-height: 44px; }
   .event-inspector-summary h2 { font-size: 18px; }

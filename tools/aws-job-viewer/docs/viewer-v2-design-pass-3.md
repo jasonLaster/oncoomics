@@ -36,7 +36,7 @@ Edit the existing mobile logs screen into an implementable third design-pass ref
 | --- | --- | --- |
 | The right rail always repeated run context | Direct event selection changes the same rail into a structured Event inspector | Context now follows the object the user is investigating. |
 | Each event exposed an inline Raw event disclosure | Raw payload and parsed fields live in the inspector | Infinite-list rows never expand, so chronology and scroll anchoring remain stable. |
-| Pass-2 routine rows were roughly 66-78px high | Desktop ledger rows are approximately 34px; mobile rows are 44px | Density comes from a single aligned summary line while touch remains operable. |
+| Pass-2 routine rows were roughly 66-78px high | Desktop ledger rows are approximately 30px; mobile rows are 44px | Density comes from a single aligned summary line with truncation instead of wrapping, while touch remains operable. |
 | Selection had no persistent visual state | The immutable `eventKey` drives a calm blue tint, subtle inset outline, and `data-selected` | Selection survives page prepends without confusing index drift and remains testable without relying on color. |
 | A collapsed inspector had to be opened separately | The explicit Inspect action opens it without changing the stored rail preference | One intentional action reaches detail, and Back returns the prior layout. |
 | Mobile detail could have expanded inline or used a bottom sheet | A right-edge modal sheet uses the established rail's spatial origin | Horizontal entry avoids competing with vertical feed scrolling and preserves the list geometry. |

@@ -59,7 +59,7 @@ test.describe("viewer v2 desktop workspace", () => {
 });
 
 test.describe("viewer v2 structured logs", () => {
-  test("formats events and combines search, level, and category filters", async ({ page }) => {
+  test("formats events and combines search, level, and category filters", async ({ page, isMobile }) => {
     await installApiMocks(page);
     await page.goto("/");
     await page.getByRole("tab", { name: "Logs" }).click();
@@ -73,6 +73,15 @@ test.describe("viewer v2 structured logs", () => {
     const artifactEvent = events.filter({ hasText: "Encrypted reviewer packet uploaded" });
     await expect(artifactEvent).toHaveCount(1);
     await expect(artifactEvent).toHaveAttribute("data-category", "artifact");
+
+    const rowHeight = await progressEvent.evaluate((node) => node.getBoundingClientRect().height);
+    if (isMobile) {
+      expect(rowHeight).toBeGreaterThanOrEqual(44);
+      expect(rowHeight).toBeLessThanOrEqual(46);
+    } else {
+      expect(rowHeight).toBeGreaterThanOrEqual(28);
+      expect(rowHeight).toBeLessThanOrEqual(34);
+    }
 
     await page.getByTestId("log-search").fill("contamination threshold");
     await expect(events).toHaveCount(1);

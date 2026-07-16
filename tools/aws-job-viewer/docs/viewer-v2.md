@@ -68,7 +68,7 @@ Adapters normalize known event shapes while preserving the original message as e
 
 Level color is consistent: neutral/cool for debug and info, amber for warnings, red for errors, and positive green only for confirmed completion. Color is supplemental: severity remains explicit in the event's accessible name and as visible text in the inspector.
 
-The ledger keeps routine desktop rows close to 34 CSS pixels high by putting timestamp, adapted title, concise detail, and an explicit inspection affordance on one line. Mobile rows are 44 pixels high to retain a reliable touch target. Parsed metadata and the raw payload live in the inspector instead of expanding a row and shifting the infinite list.
+The ledger keeps routine desktop rows close to 30 CSS pixels high by putting timestamp, a single-line adapted title, concise detail, and an explicit inspection affordance on one line. Long production titles truncate instead of wrapping. Mobile rows are 44 pixels high to retain a reliable touch target. Parsed metadata and the raw payload live in the inspector instead of expanding a row and shifting the infinite list.
 
 Selecting an event by its immutable `eventKey` gives the row a calm blue tint and changes the right rail to Event mode. The inspector shows severity, category, source, full timestamp, formatted message, parsed fields, CloudWatch provenance, and the untouched raw payload. Closing it restores focus to the triggering control and preserves the feed's exact scroll position. On mobile the rail is a modal right-edge sheet; lazy pagination pauses while it is open so the selected event cannot move underneath the user.
 
