@@ -142,6 +142,9 @@ document.querySelector('#app').innerHTML = `
             <input id="tree-search" type="search" placeholder="Search files, folders, and buckets" autocomplete="off" />
           </label>
         </div>
+        <div class="tree-column-headings" aria-hidden="true">
+          <span></span><span>Latest file</span><span>Size</span>
+        </div>
         <div class="tree" id="file-tree" aria-live="polite">
           ${Array.from({ length: 8 }, (_, index) => `<div class="tree-skeleton" style="--skeleton-depth: ${Math.min(index, 4)}"><span></span></div>`).join('')}
         </div>
@@ -185,7 +188,7 @@ const formatBytes = (bytes, precise = false) => {
 };
 
 const formatDate = (date) => new Intl.DateTimeFormat('en-US', {
-  month: 'short', day: 'numeric', year: 'numeric'
+  month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
 }).format(date);
 
 const typeForKey = (key) => {
@@ -206,7 +209,14 @@ const typeForKey = (key) => {
 };
 
 function buildTree(items) {
-  const root = { name: 'Diana public S3', type: 'directory', children: new Map(), size: 0, fileCount: 0 };
+  const root = {
+    name: 'Diana public S3',
+    type: 'directory',
+    children: new Map(),
+    size: 0,
+    fileCount: 0,
+    lastModified: new Date(0),
+  };
 
   items.forEach((object) => {
     const sourceKey = `source:${object.source.id}`;
@@ -217,15 +227,18 @@ function buildTree(items) {
         children: new Map(),
         size: 0,
         fileCount: 0,
+        lastModified: new Date(0),
         source: object.source,
       });
     }
 
     root.size += object.size;
     root.fileCount += 1;
+    if (object.lastModified > root.lastModified) root.lastModified = object.lastModified;
     let directory = root.children.get(sourceKey);
     directory.size += object.size;
     directory.fileCount += 1;
+    if (object.lastModified > directory.lastModified) directory.lastModified = object.lastModified;
 
     const parts = object.relativeKey.split('/').filter(Boolean);
     parts.forEach((part, index) => {
@@ -237,11 +250,19 @@ function buildTree(items) {
 
       const childKey = `directory:${part}`;
       if (!directory.children.has(childKey)) {
-        directory.children.set(childKey, { name: part, type: 'directory', children: new Map(), size: 0, fileCount: 0 });
+        directory.children.set(childKey, {
+          name: part,
+          type: 'directory',
+          children: new Map(),
+          size: 0,
+          fileCount: 0,
+          lastModified: new Date(0),
+        });
       }
       directory = directory.children.get(childKey);
       directory.size += object.size;
       directory.fileCount += 1;
+      if (object.lastModified > directory.lastModified) directory.lastModified = object.lastModified;
     });
   });
 
@@ -266,6 +287,7 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
         <span class="file-glyph" aria-hidden="true"></span>
         <a class="file-name" href="${url}" title="Download ${escapeHtml(child.name)}">${escapeHtml(child.name)}</a>
         <span class="file-type">${fileType}</span>
+        <time class="item-date" datetime="${child.lastModified.toISOString()}" title="Updated ${child.lastModified.toISOString()}">${formatDate(child.lastModified)}</time>
         <span class="item-size">${formatBytes(child.size)}</span>
         <a class="download-link" href="${url}" aria-label="Download ${escapeHtml(child.name)}" title="Download">↓</a>
       </div>`;
@@ -281,6 +303,7 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
         <span class="folder-glyph" aria-hidden="true"></span>
         <strong>${escapeHtml(directory.name)}</strong>
         <span class="directory-meta">${directory.fileCount} ${directory.fileCount === 1 ? 'file' : 'files'}</span>
+        <time class="item-date" datetime="${directory.lastModified.toISOString()}" title="Most recent file: ${directory.lastModified.toISOString()}">${formatDate(directory.lastModified)}</time>
         <span class="item-size">${formatBytes(directory.size)}</span>
       </summary>
       <div class="tree-children">${childMarkup}</div>
@@ -355,8 +378,10 @@ function updateSourceCard(source, sourceObjects, error = null) {
   }
 
   const bytes = sourceObjects.reduce((sum, object) => sum + object.size, 0);
+  const newest = sourceObjects.reduce((latest, object) => object.lastModified > latest ? object.lastModified : latest, new Date(0));
   state.querySelector('span').textContent = 'Live';
-  stats.innerHTML = `<strong>${sourceObjects.length.toLocaleString()} files</strong><span>${formatBytes(bytes, true)}</span>`;
+  const latestLabel = sourceObjects.length ? ` · latest ${formatDate(newest)}` : '';
+  stats.innerHTML = `<strong>${sourceObjects.length.toLocaleString()} files</strong><span>${formatBytes(bytes, true)}${latestLabel}</span>`;
 }
 
 async function loadInventory() {
