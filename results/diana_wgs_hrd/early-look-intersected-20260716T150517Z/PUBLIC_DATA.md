@@ -1,8 +1,9 @@
 # Public S3 access
 
-The entire `diana-omics-results-172630973301-us-east-1` bucket is anonymously
-listable and readable over HTTPS. Objects use SSE-S3 (`AES256`), and insecure
-HTTP requests remain denied.
+The entire current object namespace of
+`diana-omics-results-172630973301-us-east-1` is anonymously listable and
+readable over HTTPS. All 838 current objects use SSE-S3 (`AES256`), and
+insecure HTTP requests remain denied.
 The same access, encryption, and CORS configuration is declared in
 `infra/aws/main.tf` so a future Terraform apply preserves this public state.
 
@@ -19,6 +20,18 @@ Browse the run as S3 XML:
 The Git-tracked `PUBLIC_S3_MANIFEST.tsv` records each public object present
 when this packet was published, including bytes, ETag, encryption, and URL;
 the manifest excludes only its own S3 object.
+
+## Version-history boundary
+
+Bucket versioning remains enabled. Noncurrent versions do not appear in the
+normal public object listing and are not included in the public manifest. A
+2026-07-16 audit found 1,461 noncurrent versions: 15 use SSE-S3 and 1,446 retain
+historical SSE-KMS encryption. SSE-KMS versions cannot be downloaded
+anonymously because anonymous readers cannot receive `kms:Decrypt`.
+
+Making historical version content public would require copying it into a new
+SSE-S3 archive namespace and deciding whether to delete the original version
+history. That destructive migration was not performed by this publication.
 
 Download the full run anonymously:
 

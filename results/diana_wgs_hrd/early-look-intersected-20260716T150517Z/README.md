@@ -41,5 +41,6 @@ Object sizes, ETags, encryption, and direct URLs are indexed in
 ## Data-handling boundary
 
 The dataset owner explicitly authorized unrestricted public distribution on
-2026-07-16. The results bucket is anonymously listable and readable; no AWS
-credentials or presigned URLs are required.
+2026-07-16. All current objects in the results bucket are anonymously listable
+and readable; no AWS credentials or presigned URLs are required. See
+`PUBLIC_DATA.md` for the separate noncurrent-version boundary.
