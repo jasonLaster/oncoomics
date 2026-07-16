@@ -30,6 +30,7 @@ class CliParityTest(unittest.TestCase):
             "fetch:phase3-wgs",
             "fetch:production-somatic",
             "fetch:raw-candidates",
+            "normalize:vendor",
             "plan:diana-raw-handoff",
             "plan:known-answer-benchmarks",
             "run:known-answer-bounded-non-dry",
