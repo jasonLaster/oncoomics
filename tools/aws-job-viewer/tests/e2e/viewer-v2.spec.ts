@@ -58,6 +58,69 @@ test.describe("viewer v2 desktop workspace", () => {
   });
 });
 
+test.describe("viewer v2 live refresh", () => {
+  test.skip(({ isMobile }) => Boolean(isMobile), "The polling contract is viewport-independent.");
+
+  test("refreshes active jobs and their logs on the live cadence", async ({ page }) => {
+    await page.clock.install();
+    const { jobRequests, statusRequests, logRequests } = await installApiMocks(page);
+    await page.goto("/");
+    await page.clock.runFor(1);
+    await expect.poll(() => jobRequests.length).toBeGreaterThan(0);
+
+    await expect.poll(() => statusRequests.length).toBeGreaterThan(0);
+    const statusBefore = statusRequests.length;
+    await page.clock.fastForward(10_100);
+    await expect.poll(() => statusRequests.length).toBeGreaterThan(statusBefore);
+
+    const jobsBefore = jobRequests.length;
+    await page.clock.fastForward(20_100);
+    await expect.poll(() => jobRequests.length).toBeGreaterThan(jobsBefore);
+
+    await page.getByRole("tab", { name: "Logs" }).click();
+    await page.clock.runFor(1);
+    await expect.poll(
+      () => logRequests.filter((url) => !url.includes("cursor=")).length,
+    ).toBeGreaterThan(0);
+
+    const freshLogsBefore = logRequests.filter(
+      (url) => !url.includes("cursor="),
+    ).length;
+    await page.clock.fastForward(10_100);
+
+    await expect.poll(
+      () => logRequests.filter((url) => !url.includes("cursor=")).length,
+    ).toBeGreaterThan(freshLogsBefore);
+  });
+
+  test("pauses polling offline and catches up after reconnect", async ({
+    context,
+    page,
+  }) => {
+    await page.clock.install();
+    const { jobRequests, statusRequests } = await installApiMocks(page);
+    await page.goto("/");
+    await page.clock.runFor(1);
+    await expect.poll(() => statusRequests.length).toBeGreaterThan(0);
+    await expect(page.getByText("Live", { exact: true })).toBeVisible();
+
+    await context.setOffline(true);
+    await expect(page.getByText("Paused", { exact: true })).toBeVisible();
+    await expect(page.getByText("Sync paused", { exact: true })).toBeVisible();
+    const jobsBeforePause = jobRequests.length;
+    const statusBeforePause = statusRequests.length;
+    await page.clock.fastForward(30_100);
+    expect(jobRequests).toHaveLength(jobsBeforePause);
+    expect(statusRequests).toHaveLength(statusBeforePause);
+
+    await context.setOffline(false);
+    await page.clock.runFor(1);
+    await expect.poll(() => jobRequests.length).toBeGreaterThan(jobsBeforePause);
+    await expect.poll(() => statusRequests.length).toBeGreaterThan(statusBeforePause);
+    await expect(page.getByText("Live", { exact: true })).toBeVisible();
+  });
+});
+
 test.describe("viewer v2 structured logs", () => {
   test("formats events and combines search, level, and category filters", async ({ page, isMobile }) => {
     await installApiMocks(page);

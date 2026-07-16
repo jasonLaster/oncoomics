@@ -10,13 +10,13 @@ npm install
 npm run viewer
 ```
 
-Then open [http://localhost:3000](http://localhost:3000). The viewer reads the current AWS CLI profile, discovers enabled Batch queues, and refreshes every 60 seconds. Set `AWS_PROFILE` before launching to use a profile other than `default`.
+Then open [http://localhost:3000](http://localhost:3000). The viewer reads the current AWS CLI profile, discovers enabled Batch queues, and uses adaptive polling so active work updates more often than an idle inventory. Set `AWS_PROFILE` before launching to use a profile other than `default`.
 
 AWS credentials stay in the server process and are never sent to the browser. The profile only needs read access for Batch job discovery and CloudWatch log events.
 
 Vercel deployments use `AWS_ROLE_ARN` with Vercel OIDC to exchange short-lived tokens for a scoped AWS read-only session. Static AWS access keys are not required.
 
-The hosted viewer also persists normalized job-status, chromosome-progress, and complete CloudWatch log events in Convex. Convex receives the same project-scoped Vercel OIDC identity. Log messages are deduplicated with deterministic SHA-256 event keys, and a per-stream forward cursor makes each one-minute refresh incremental. Durable chromosome maxima are merged back into each response so cold starts do not lose completed work.
+The hosted viewer also persists normalized job-status, chromosome-progress, and complete CloudWatch log events in Convex. Convex receives the same project-scoped Vercel OIDC identity. Log messages are deduplicated with deterministic SHA-256 event keys, and a per-stream forward cursor makes synchronization incremental. Durable chromosome maxima are merged back into each response so cold starts do not lose completed work.
 
 If the durable Convex deployment is temporarily unavailable, log reads degrade to direct, backward-cursor CloudWatch pagination instead of failing the viewer. The response retains the same event and cursor contract and traverses the current stream before earlier Batch attempts; persistence and a complete historical event count resume when Convex is available again.
 
@@ -30,6 +30,15 @@ The stable Convex production deployment is released with `npm run convex:deploy`
 - Older events load automatically when the history sentinel enters the scroll viewport. Rows use browser-native `content-visibility` so large loaded archives remain inexpensive to paint.
 
 The complete v2 behavior, accessibility, responsive-layout, API, and stable-selector contract is specified in [docs/viewer-v2.md](docs/viewer-v2.md).
+
+## Freshness and polling
+
+- The complete job inventory refreshes every 30 seconds while any job is active and every 120 seconds when no job is active.
+- On **Overview**, the selected active job gets a lightweight status refresh every 10 seconds; terminal selections rely on inventory refresh.
+- On **Logs**, newest events refresh every 10 seconds for an active job and every 60 seconds for a terminal job. Log polling does not run while Overview is selected.
+- Each polling lane waits for its current request to settle before scheduling the next one, preventing request pileups within that lane.
+- Automatic polling pauses when the page is hidden or the browser is offline. Returning to a visible, online state triggers immediate catch-up for the relevant lanes.
+- The top bar distinguishes **Connecting**, **Live**, **Paused**, **Data stale**, and **Connection issue**. It shows the age of the newest successful update beside the full-inventory countdown; **Sync now** requests that inventory immediately.
 
 ## Verify the viewer
 

@@ -145,10 +145,28 @@ export const logPages = {
 };
 
 export async function installApiMocks(page: Page) {
+  const jobRequests: string[] = [];
+  const statusRequests: string[] = [];
   const logRequests: string[] = [];
 
   await page.route(/\/api\/jobs(?:\?.*)?$/, async (route) => {
-    await route.fulfill({ json: jobsPayload });
+    jobRequests.push(route.request().url());
+    await route.fulfill({
+      json: { ...jobsPayload, generatedAt: new Date().toISOString() },
+    });
+  });
+
+  await page.route(/\/api\/job-status(?:\?.*)?$/, async (route) => {
+    const url = route.request().url();
+    statusRequests.push(url);
+    const jobId = new URL(url).searchParams.get("jobId");
+    const job = jobsPayload.jobs.find((item) => item.id === jobId);
+    await route.fulfill({
+      status: job ? 200 : 404,
+      json: job
+        ? { generatedAt: new Date().toISOString(), region: jobsPayload.region, job }
+        : { error: "Job not found" },
+    });
   });
 
   await page.route(/\/api\/job-logs(?:\?.*)?$/, async (route) => {
@@ -160,5 +178,5 @@ export async function installApiMocks(page: Page) {
     });
   });
 
-  return { logRequests };
+  return { jobRequests, statusRequests, logRequests };
 }

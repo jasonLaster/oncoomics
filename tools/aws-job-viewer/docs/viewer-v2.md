@@ -35,6 +35,32 @@ Changing jobs updates all of the following as one coherent context:
 
 The viewer must not show logs from the previously selected job while the new job is loading.
 
+## Polling and freshness
+
+The viewer separates broad job discovery from the selected job's active detail so that running work feels live without repeatedly rebuilding the entire workspace. Automatic requests follow these cadences:
+
+| Polling lane | When enabled | Cadence |
+| --- | --- | --- |
+| Full job inventory | The page is visible and online | Every 30 seconds while any discovered job is active; every 120 seconds when the inventory is idle. |
+| Selected job status | The selected job is active and **Overview** is the current tab | Every 10 seconds through the lightweight `/api/job-status` route. |
+| Selected job logs | **Logs** is the current tab | Every 10 seconds for an active selected job; every 60 seconds for a terminal selected job. |
+
+The selected-job status lane does not run on Logs, and the log lane does not run on Overview. Terminal jobs rely on the inventory cadence on Overview because their status is no longer changing rapidly. Manual cursor pagination for older log history remains independent of the newest-page log refresh.
+
+Every polling lane is serial: it schedules its next request only after the current request settles. A slow request therefore cannot accumulate overlapping requests in the same lane. Changing the selected job or tab cancels that lane's pending timer and starts the newly relevant lane immediately.
+
+Automatic polling pauses whenever the document is hidden or the browser reports that it is offline. Existing jobs, logs, filters, and selection remain visible while paused. Returning to a visible, online state re-enables the relevant lanes and triggers an immediate catch-up request instead of waiting through a full interval.
+
+The top bar reports freshness truthfully:
+
+- **Live** means automatic refresh is eligible and at least one data request has succeeded within the freshness window.
+- **Connecting** means the page is eligible to refresh but no data request has completed yet.
+- **Paused** means automatic refresh is intentionally suspended because the page is hidden or offline; the adjacent countdown changes to **Sync paused**.
+- **Data stale** means the page is eligible to refresh but the most recent successful data update is older than twice the current inventory interval: more than 60 seconds when active jobs exist or more than 240 seconds when the inventory is idle.
+- **Connection issue** takes precedence when a current inventory or selected-status request has failed. Existing successful data stays on screen rather than being presented as newly refreshed.
+
+**Updated N seconds ago** reflects the most recent successful inventory, selected-job, or newest-log response. **Full sync** is the countdown to the full inventory refresh, not a claim that every data lane shares one timer. **Sync now** requests a full inventory refresh; tab-specific polling continues on its own cadence.
+
 ## Overview and workflow progress
 
 The Overview tab is the default view. It favors readable hierarchy, restrained color, aligned numeric data, and clear empty states.
@@ -102,11 +128,13 @@ The mobile log toolbar stacks its search and filters, event metadata wraps witho
 
 ## API contract used by the viewer
 
-`GET /api/jobs` returns the generated time, AWS region, queues, and normalized jobs. A job includes identity, status and timings, run/stage/dependency context, optional log stream, and optional aggregate progress.
+`GET /api/jobs` returns the generated time, AWS region, queues, and normalized jobs. A job includes identity, status and timings, run/stage/dependency context, optional log stream, and optional aggregate progress. This is the full inventory route used by the 30/120-second polling lane and **Sync now**.
+
+`GET /api/job-status?jobId=<id>` returns the generated time, AWS region, and one normalized AWS Batch job. It is the lightweight 10-second Overview refresh for an active selection; it updates that job in place without replacing the rest of the inventory.
 
 `GET /api/job-logs?jobId=<id>` returns the newest page for the selected job. Supplying `cursor=<continueCursor>` requests the next older page. Responses include job and stream identity, `events`, `totalEvents`, `backfillComplete`, `isDone`, and the next `continueCursor`.
 
-API errors are visible but never expose credentials or server exception details. Job refresh and log pagination are independent: a delayed log page must not block job status refresh.
+API errors are visible but never expose credentials or server exception details. Inventory refresh, selected-job refresh, newest-log refresh, and older-log pagination are independent lanes: a delayed request must not create overlap in its lane or erase data already loaded by another lane.
 
 ## Stable selectors and accessibility contract
 
@@ -134,6 +162,7 @@ The Playwright suite in `tests/e2e/viewer-v2.spec.ts` intercepts `/api/jobs` and
 The suite verifies:
 
 - independent desktop rail collapse and persistence across reload;
+- active inventory, selected-job, and newest-log polling cadences;
 - job selection and selected-row semantics;
 - structured metrics and workflow states;
 - formatted log adapters and combined search/filter behavior;

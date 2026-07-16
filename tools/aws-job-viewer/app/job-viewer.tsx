@@ -15,7 +15,10 @@ import {
   type LogSeverity,
 } from "./log-adapters";
 
-const REFRESH_SECONDS = 60;
+const ACTIVE_INVENTORY_REFRESH_SECONDS = 30;
+const IDLE_INVENTORY_REFRESH_SECONDS = 120;
+const ACTIVE_DETAIL_REFRESH_SECONDS = 10;
+const TERMINAL_LOG_REFRESH_SECONDS = 60;
 const LOG_PAGE_SIZE = 250;
 const LEFT_RAIL_KEY = "diana-viewer-v2:left-rail-collapsed";
 const RIGHT_RAIL_KEY = "diana-viewer-v2:right-rail-collapsed";
@@ -316,13 +319,56 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function useSerialPoll(
+  task: () => Promise<void | number>,
+  enabled: boolean,
+  intervalMs: number,
+  resetKey: string,
+) {
+  const taskRef = useRef(task);
+  const intervalRef = useRef(intervalMs);
+
+  useEffect(() => {
+    taskRef.current = task;
+  }, [task]);
+
+  useEffect(() => {
+    intervalRef.current = intervalMs;
+  }, [intervalMs]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    let timer: number | undefined;
+
+    const poll = async () => {
+      const nextInterval = await taskRef.current();
+      if (!cancelled) {
+        timer = window.setTimeout(
+          poll,
+          nextInterval ?? intervalRef.current,
+        );
+      }
+    };
+
+    timer = window.setTimeout(poll, 0);
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [enabled, resetKey]);
+}
+
 export function JobViewer() {
   const [payload, setPayload] = useState<JobsPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<"overview" | "logs">("overview");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [countdown, setCountdown] = useState(REFRESH_SECONDS);
+  const [pageCanRefresh, setPageCanRefresh] = useState(true);
+  const [lastInventorySyncAt, setLastInventorySyncAt] = useState<number | null>(null);
+  const [lastSuccessfulSyncAt, setLastSuccessfulSyncAt] = useState<number | null>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const [logs, setLogs] = useState<LogsPayload | null>(null);
   const [logsError, setLogsError] = useState<string | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -352,6 +398,9 @@ export function JobViewer() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Unable to load jobs.");
       setPayload(body);
+      const observedAt = Date.parse(body.generatedAt) || Date.now();
+      setLastInventorySyncAt(observedAt);
+      setLastSuccessfulSyncAt(observedAt);
       setError(null);
       setSelectedId((current) => {
         if (current && body.jobs.some((job: ViewerJob) => job.id === current)) {
@@ -363,11 +412,45 @@ export function JobViewer() {
           null
         );
       });
+      return body.jobs.some((job: ViewerJob) => statusIsActive(job.status))
+        ? ACTIVE_INVENTORY_REFRESH_SECONDS * 1_000
+        : IDLE_INVENTORY_REFRESH_SECONDS * 1_000;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to load jobs.");
     } finally {
       setIsRefreshing(false);
-      setCountdown(REFRESH_SECONDS);
+    }
+  }, []);
+
+  const fetchSelectedJob = useCallback(async (jobId: string) => {
+    try {
+      const response = await fetch(
+        `/api/job-status?jobId=${encodeURIComponent(jobId)}`,
+        { cache: "no-store" },
+      );
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error || "Unable to refresh the selected job.");
+      }
+      setPayload((current) => {
+        if (!current || !current.jobs.some((job) => job.id === jobId)) {
+          return current;
+        }
+        return {
+          ...current,
+          jobs: current.jobs.map((job) =>
+            job.id === jobId ? body.job : job,
+          ),
+        };
+      });
+      setLastSuccessfulSyncAt(Date.parse(body.generatedAt) || Date.now());
+      setError(null);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Unable to refresh the selected job.",
+      );
     }
   }, []);
 
@@ -383,6 +466,7 @@ export function JobViewer() {
       try {
         const body = await requestLogPage(jobId, cursor);
         setLogs((current) => mergeLogPayload(current, body, mode));
+        setLastSuccessfulSyncAt(Date.now());
         setLogsError(null);
       } catch (cause) {
         setLogsError(
@@ -437,37 +521,83 @@ export function JobViewer() {
   }, []);
 
   useEffect(() => {
-    const initialTimer = window.setTimeout(() => void fetchJobs(), 0);
-    const refreshTimer = window.setInterval(
-      () => void fetchJobs(),
-      REFRESH_SECONDS * 1_000,
-    );
-    const countdownTimer = window.setInterval(
-      () => setCountdown((value) => (value > 1 ? value - 1 : REFRESH_SECONDS)),
-      1_000,
-    );
-    return () => {
-      window.clearTimeout(initialTimer);
-      window.clearInterval(refreshTimer);
-      window.clearInterval(countdownTimer);
+    const updateRefreshState = () => {
+      setPageCanRefresh(
+        document.visibilityState === "visible" && navigator.onLine,
+      );
     };
-  }, [fetchJobs]);
+    updateRefreshState();
+    document.addEventListener("visibilitychange", updateRefreshState);
+    window.addEventListener("online", updateRefreshState);
+    window.addEventListener("offline", updateRefreshState);
+    window.addEventListener("pageshow", updateRefreshState);
+    window.addEventListener("focus", updateRefreshState);
+    return () => {
+      document.removeEventListener("visibilitychange", updateRefreshState);
+      window.removeEventListener("online", updateRefreshState);
+      window.removeEventListener("offline", updateRefreshState);
+      window.removeEventListener("pageshow", updateRefreshState);
+      window.removeEventListener("focus", updateRefreshState);
+    };
+  }, []);
 
   useEffect(() => {
-    if (tab !== "logs" || !selectedId) return;
-    const initialTimer = window.setTimeout(
-      () => void fetchLogs(selectedId, null, "replace"),
-      0,
-    );
-    const timer = window.setInterval(
-      () => void fetchLogs(selectedId, null, "refresh"),
-      REFRESH_SECONDS * 1_000,
-    );
-    return () => {
-      window.clearTimeout(initialTimer);
-      window.clearInterval(timer);
-    };
-  }, [fetchLogs, selectedId, tab]);
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const hasActiveJobs = Boolean(
+    payload?.jobs.some((job) => statusIsActive(job.status)),
+  );
+  const selectedJobIsActive = Boolean(
+    payload?.jobs.some(
+      (job) => job.id === selectedId && statusIsActive(job.status),
+    ),
+  );
+  const jobRefreshSeconds = hasActiveJobs
+    ? ACTIVE_INVENTORY_REFRESH_SECONDS
+    : IDLE_INVENTORY_REFRESH_SECONDS;
+  const logRefreshSeconds = selectedJobIsActive
+    ? ACTIVE_DETAIL_REFRESH_SECONDS
+    : TERMINAL_LOG_REFRESH_SECONDS;
+  const countdown = lastInventorySyncAt
+    ? Math.max(
+        0,
+        Math.ceil(
+          (lastInventorySyncAt + jobRefreshSeconds * 1_000 - clockNow) /
+            1_000,
+        ),
+      )
+    : jobRefreshSeconds;
+  const dataAgeSeconds = lastSuccessfulSyncAt
+    ? Math.max(0, Math.floor((clockNow - lastSuccessfulSyncAt) / 1_000))
+    : null;
+  const dataIsStale =
+    dataAgeSeconds !== null && dataAgeSeconds > jobRefreshSeconds * 2;
+
+  useSerialPoll(
+    fetchJobs,
+    pageCanRefresh,
+    jobRefreshSeconds * 1_000,
+    "job-inventory",
+  );
+  useSerialPoll(
+    () => fetchSelectedJob(selectedId!),
+    pageCanRefresh && tab === "overview" && selectedJobIsActive && Boolean(selectedId),
+    ACTIVE_DETAIL_REFRESH_SECONDS * 1_000,
+    `selected:${selectedId || "none"}`,
+  );
+  useSerialPoll(
+    () =>
+      fetchLogs(
+        selectedId!,
+        null,
+        logs?.jobId === selectedId ? "refresh" : "replace",
+      ),
+    pageCanRefresh && tab === "logs" && Boolean(selectedId),
+    logRefreshSeconds * 1_000,
+    `logs:${selectedId || "none"}:${tab}`,
+  );
 
   useLayoutEffect(() => {
     mainPanelRef.current?.scrollTo({ top: 0 });
@@ -659,6 +789,15 @@ export function JobViewer() {
     workflow.find((step) => step.state === "failed") ||
     workflow.find((step) => step.state === "queued") ||
     workflow.at(-1);
+  const connectionLabel = error
+    ? "Connection issue"
+    : !pageCanRefresh
+      ? "Paused"
+      : lastSuccessfulSyncAt === null
+        ? "Connecting"
+      : dataIsStale
+        ? "Data stale"
+        : "Live";
 
   return (
     <main className="viewer-shell">
@@ -685,11 +824,20 @@ export function JobViewer() {
 
         <div className="topbar-meta">
           <div className="connection-state">
-            <span className={`live-dot ${error ? "is-error" : ""}`} aria-hidden="true" />
-            <span>{error ? "Connection issue" : "Live"}</span>
+            <span
+              className={`live-dot ${error || dataIsStale ? "is-error" : ""}`}
+              aria-hidden="true"
+            />
+            <span>{connectionLabel}</span>
           </div>
           <span className="region-label">{payload?.region || "us-east-1"}</span>
-          <span className="refresh-label">Next sync {countdown}s</span>
+          <span className="refresh-label">
+            {!pageCanRefresh
+              ? "Sync paused"
+              : dataAgeSeconds === null
+                ? "Sync starting"
+                : `Updated ${dataAgeSeconds}s ago · Full sync ${countdown}s`}
+          </span>
           <button
             className="refresh-button"
             onClick={() => void fetchJobs()}
@@ -775,7 +923,9 @@ export function JobViewer() {
 
           <div className="rail-footer">
             <span>Last sync</span>
-            <time>{payload ? formatDate(payload.generatedAt) : "Waiting…"}</time>
+            <time dateTime={lastSuccessfulSyncAt ? new Date(lastSuccessfulSyncAt).toISOString() : undefined}>
+              {lastSuccessfulSyncAt ? formatDate(lastSuccessfulSyncAt) : "Waiting…"}
+            </time>
           </div>
         </aside>
 

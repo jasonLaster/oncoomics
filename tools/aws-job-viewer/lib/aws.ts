@@ -456,6 +456,48 @@ function parseChromosomeProgress(jobId: string, events: OutputLogEvent[]) {
   };
 }
 
+async function viewerJobFromDetail(job: JobDetail) {
+  const logStreamName = job.container?.logStreamName || null;
+  const logEvents =
+    job.status === "RUNNING" && logStreamName
+      ? await latestLogEvents(logStreamName, 1_000)
+      : [];
+  const progress = logEvents.length
+    ? parseChromosomeProgress(job.jobId || "unknown", logEvents)
+    : null;
+  return {
+    id: job.jobId,
+    name: job.jobName,
+    status: job.status,
+    statusReason: job.statusReason || job.container?.reason || null,
+    queue: job.jobQueue?.split("/").at(-1) || job.jobQueue,
+    createdAt: job.createdAt || null,
+    startedAt: job.startedAt || null,
+    stoppedAt: job.stoppedAt || null,
+    timeoutSeconds: job.timeout?.attemptDurationSeconds || null,
+    attempts: job.attempts?.length || 0,
+    runId: inferRunId(job),
+    stage: inferStage(job),
+    logStreamName,
+    dependsOn: (job.dependsOn || []).map((dependency) => dependency.jobId),
+    array: job.arrayProperties
+      ? {
+          size: job.arrayProperties.size || null,
+          index: job.arrayProperties.index ?? null,
+          statusSummary: job.arrayProperties.statusSummary || null,
+        }
+      : null,
+    progress,
+  };
+}
+
+export async function getViewerJob(jobId: string) {
+  const response = await batch.send(new DescribeJobsCommand({ jobs: [jobId] }));
+  const job = response.jobs?.[0];
+  if (!job) return null;
+  return viewerJobFromDetail(job);
+}
+
 export async function listViewerJobs() {
   const queueResponse = await batch.send(
     new DescribeJobQueuesCommand({ maxResults: 100 }),
@@ -504,42 +546,7 @@ export async function listViewerJobs() {
     )
   ).flat();
 
-  const jobs = await Promise.all(
-    details.map(async (job) => {
-      const logStreamName = job.container?.logStreamName || null;
-      const logEvents =
-        job.status === "RUNNING" && logStreamName
-          ? await latestLogEvents(logStreamName, 1_000)
-          : [];
-      const progress = logEvents.length
-        ? parseChromosomeProgress(job.jobId || "unknown", logEvents)
-        : null;
-      return {
-        id: job.jobId,
-        name: job.jobName,
-        status: job.status,
-        statusReason: job.statusReason || job.container?.reason || null,
-        queue: job.jobQueue?.split("/").at(-1) || job.jobQueue,
-        createdAt: job.createdAt || null,
-        startedAt: job.startedAt || null,
-        stoppedAt: job.stoppedAt || null,
-        timeoutSeconds: job.timeout?.attemptDurationSeconds || null,
-        attempts: job.attempts?.length || 0,
-        runId: inferRunId(job),
-        stage: inferStage(job),
-        logStreamName,
-        dependsOn: (job.dependsOn || []).map((dependency) => dependency.jobId),
-        array: job.arrayProperties
-          ? {
-              size: job.arrayProperties.size || null,
-              index: job.arrayProperties.index ?? null,
-              statusSummary: job.arrayProperties.statusSummary || null,
-            }
-          : null,
-        progress,
-      };
-    }),
-  );
+  const jobs = await Promise.all(details.map(viewerJobFromDetail));
 
   return {
     generatedAt: new Date().toISOString(),
