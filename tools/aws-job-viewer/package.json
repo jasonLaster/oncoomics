@@ -9,14 +9,18 @@
     "dev": "next dev --hostname 127.0.0.1",
     "viewer": "./scripts/start-local.sh",
     "build": "next build",
+    "convex:codegen": "convex codegen",
+    "convex:deploy": "convex deploy --cmd-url-env-var-name CONVEX_URL --cmd 'npm run build'",
     "start": "next start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
-    "lint": "eslint app lib tests --ignore-pattern .next"
+    "lint": "eslint app convex lib tests --ignore-pattern .next --ignore-pattern convex/_generated"
   },
   "dependencies": {
     "@aws-sdk/client-batch": "^3.1088.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.1088.0",
+    "@vercel/oidc": "^3.8.0",
     "@vercel/oidc-aws-credentials-provider": "^3.3.0",
+    "convex": "^1.42.2",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6"

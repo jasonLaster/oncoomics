@@ -38,3 +38,27 @@ test("implements automatic refresh and server-side AWS access", async () => {
   assert.doesNotMatch(viewer, /AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN/);
   await assert.rejects(access(new URL("../app/_sites-preview/SkeletonPreview.tsx", import.meta.url)));
 });
+
+test("persists normalized progress with project-scoped OIDC", async () => {
+  const [jobsRoute, convexBridge, schema, functions, authConfig] = await Promise.all([
+    readFile(new URL("../app/api/jobs/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/convex.ts", import.meta.url), "utf8"),
+    readFile(new URL("../convex/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../convex/jobProgress.ts", import.meta.url), "utf8"),
+    readFile(new URL("../convex/auth.config.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(jobsRoute, /persistAndMergeViewerSnapshot/);
+  assert.match(convexBridge, /getVercelOidcToken/);
+  assert.match(convexBridge, /ConvexHttpClient/);
+  assert.match(convexBridge, /chromosome\.active/);
+  assert.match(schema, /progressEvents: defineTable/);
+  assert.match(schema, /chromosomeProgress: defineTable/);
+  assert.match(schema, /jobStatusEvents: defineTable/);
+  assert.match(functions, /export const ingestSnapshot = mutation/);
+  assert.match(functions, /export const getAggregates = query/);
+  assert.match(functions, /TOTAL_STANDARD_BASES = 3_031_042_417/);
+  assert.match(authConfig, /oidc\.vercel\.com\/jlasters-projects/);
+  assert.match(functions, /project:diana-aws-job-viewer:environment:/);
+  assert.doesNotMatch(schema, /message: v\.string|rawLog|logMessage/);
+});

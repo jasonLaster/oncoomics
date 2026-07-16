@@ -1,10 +1,12 @@
 import { listViewerJobs } from "../../../lib/aws";
+import { persistAndMergeViewerSnapshot } from "../../../lib/convex";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    const payload = await listViewerJobs();
+    const livePayload = await listViewerJobs();
+    const payload = await persistAndMergeViewerSnapshot(livePayload);
     return Response.json(payload, {
       headers: { "Cache-Control": "no-store" },
     });
