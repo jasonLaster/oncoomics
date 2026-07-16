@@ -1,22 +1,29 @@
-# Diana Public Data Download Guide
+# Diana Public Data Downloads
 
-Use this guide to browse or copy the public Diana Omics dataset to a computer, another Amazon S3 bucket, a Google Compute Engine VM, Google Cloud Storage, or Box.
+Use this document when you need to browse or copy the public Diana Omics dataset.
 
-## Source
+## Public Dataset
 
-Landing page and live file tree:
+Browse the live file tree at [data.diana-tnbc.com](https://data.diana-tnbc.com).
 
-```text
-https://data.diana-tnbc.com
-```
-
-Public S3 prefix:
+The public S3 prefix is:
 
 ```text
 s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/
 ```
 
-The prefix is anonymously listable and readable. No Diana-issued AWS credentials or presigned URLs are required. At the time this guide was written, the dataset was about 328 GB; check the live site for the current file count and size before starting a transfer.
+The prefix is anonymously listable and readable. No Diana-issued AWS credentials or presigned URLs are required. Check the live file tree for the current file count, size, and most recent update before starting a transfer.
+
+## Choose A Download Method
+
+| Destination | Recommended method |
+| --- | --- |
+| One file | Browser or `curl` |
+| Local computer | AWS CLI anonymous `sync` |
+| Another S3 bucket | AWS CLI authenticated `sync` |
+| Google Compute Engine VM | AWS CLI anonymous `sync` to an attached disk |
+| Google Cloud Storage | GCE staging disk or Storage Transfer Service |
+| Box | Download locally, then upload with Box CLI |
 
 ## Before You Start
 
@@ -28,17 +35,17 @@ The prefix is anonymously listable and readable. No Diana-issued AWS credentials
 
 ## Browse Or Download One File
 
-Use the file tree at `https://data.diana-tnbc.com` to expand folders and download individual files.
+Use the [live file tree](https://data.diana-tnbc.com) to expand folders and download individual files.
 
 Every object also has a direct HTTPS URL. For example:
 
-```sh
+```bash
 curl -L -O "https://diana-omics-raw-inputs-172630973301-us-east-1.s3.us-east-1.amazonaws.com/diana/inbox/2026-07-14-echo-personalis/manifest.csv"
 ```
 
 Use `curl -C -` to resume a partially downloaded large file:
 
-```sh
+```bash
 curl -L -C - -O "HTTPS_OBJECT_URL"
 ```
 
@@ -46,7 +53,7 @@ curl -L -C - -O "HTTPS_OBJECT_URL"
 
 Install the AWS CLI, then preview the inventory:
 
-```sh
+```bash
 SOURCE="s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/"
 
 aws s3 ls "$SOURCE" \
@@ -58,7 +65,7 @@ aws s3 ls "$SOURCE" \
 
 Download everything:
 
-```sh
+```bash
 aws s3 sync "$SOURCE" ./diana-inbox/ \
   --no-sign-request \
   --only-show-errors
@@ -68,7 +75,7 @@ Rerun the same command after an interruption. `sync` skips local files that alre
 
 Download only one subtree:
 
-```sh
+```bash
 aws s3 sync \
   "${SOURCE}2026-07-14-echo-personalis/data/wgs/" \
   ./diana-wgs/ \
@@ -78,7 +85,7 @@ aws s3 sync \
 
 Download only selected file types:
 
-```sh
+```bash
 aws s3 sync "$SOURCE" ./diana-indexes-and-manifests/ \
   --no-sign-request \
   --exclude "*" \
@@ -92,7 +99,7 @@ aws s3 sync "$SOURCE" ./diana-indexes-and-manifests/ \
 
 Use AWS credentials that can list and write to the destination bucket. Do not add `--no-sign-request` to this command: the destination write must be signed, and the public source also accepts authenticated reads.
 
-```sh
+```bash
 SOURCE="s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/"
 DEST="s3://DESTINATION_BUCKET/diana-inbox/"
 DEST_REGION="us-east-1"
@@ -107,7 +114,7 @@ aws s3 sync "$SOURCE" "$DEST" \
 
 For a KMS-encrypted destination, add:
 
-```sh
+```bash
 --sse aws:kms --sse-kms-key-id "KMS_KEY_ARN"
 ```
 
@@ -117,7 +124,7 @@ The active AWS principal needs destination permissions such as `s3:ListBucket`, 
 
 Attach or select a persistent disk with enough free space, install the AWS CLI on the VM, and download anonymously:
 
-```sh
+```bash
 SOURCE="s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/"
 DEST="/mnt/disks/diana-data/diana-inbox/"
 
@@ -136,7 +143,7 @@ Run the command inside `tmux` or `screen` so an SSH disconnect does not stop the
 
 First download to the VM as shown above. Then authenticate `gcloud` for a principal that can write to the destination bucket and upload the local tree:
 
-```sh
+```bash
 gcloud storage rsync \
   /mnt/disks/diana-data/diana-inbox/ \
   gs://DESTINATION_BUCKET/diana-inbox/ \
@@ -149,7 +156,7 @@ This route requires temporary disk space on the VM but does not require AWS cred
 
 Google Storage Transfer Service can perform a managed S3-to-GCS transfer without a GCE staging disk:
 
-```sh
+```bash
 gcloud transfer jobs create \
   s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/ \
   gs://DESTINATION_BUCKET/diana-inbox/ \
@@ -162,7 +169,7 @@ Google requires AWS source credentials for this managed path. Use short-lived, m
 
 For a complete transfer, first download the dataset to local or attached storage. Then install and authenticate the Box CLI and upload the directory to an existing Box parent folder:
 
-```sh
+```bash
 box folders:upload ./diana-inbox \
   --parent-folder="BOX_PARENT_FOLDER_ID"
 ```
@@ -173,20 +180,20 @@ Before uploading, confirm that the Box plan has enough storage and allows files 
 
 Start with the delivery manifest:
 
-```sh
+```bash
 head -n 5 diana-inbox/2026-07-14-echo-personalis/manifest.csv
 ```
 
 Then verify the supplied SHA-256 checksums from the delivery directory:
 
-```sh
+```bash
 cd diana-inbox/2026-07-14-echo-personalis
 sha256sum -c checksums.sha256
 ```
 
 On macOS, use:
 
-```sh
+```bash
 shasum -a 256 -c checksums.sha256
 ```
 
@@ -200,7 +207,12 @@ Do not treat a transfer as complete until the expected object count, total bytes
 - If a Box upload rejects a large file, check the plan's per-file upload limit before retrying.
 - If a GCE disk fills, expand the persistent disk and filesystem before rerunning the sync.
 
-## References
+## Related Documentation
+
+- [Diana raw input intake contract](diana-raw-inputs.md)
+- [Diana raw S3 upload and transfer guide](diana-raw-s3-upload.md)
+
+## External References
 
 - [AWS CLI high-level S3 commands](https://docs.aws.amazon.com/cli/latest/userguide/cli-services-s3-commands.html)
 - [AWS CLI `s3 sync` reference](https://docs.aws.amazon.com/cli/latest/reference/s3/sync.html)

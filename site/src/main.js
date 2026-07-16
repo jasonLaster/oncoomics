@@ -1,8 +1,10 @@
 import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
 import markdown from 'highlight.js/lib/languages/markdown';
 import 'highlight.js/styles/github-dark.css';
 import './styles.css';
 
+hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('markdown', markdown);
 
 const BUCKET = 'diana-omics-raw-inputs-172630973301-us-east-1';
@@ -26,6 +28,24 @@ aws s3 cp ${S3_URI}2026-07-14-echo-personalis/data/wgs/ ./wgs/ \\
   --recursive \\
   --no-sign-request
 \`\`\``;
+
+const highlightMarkdownWithBash = (source) => {
+  const fencePattern = /```bash\n([\s\S]*?)\n```/g;
+  let highlighted = '';
+  let previousIndex = 0;
+
+  for (const match of source.matchAll(fencePattern)) {
+    const matchIndex = match.index ?? 0;
+    highlighted += hljs.highlight(source.slice(previousIndex, matchIndex), { language: 'markdown' }).value;
+    highlighted += '<span class="hljs-code"><span class="hljs-meta">```bash</span>\n';
+    highlighted += hljs.highlight(match[1], { language: 'bash' }).value;
+    highlighted += '\n<span class="hljs-meta">```</span></span>';
+    previousIndex = matchIndex + match[0].length;
+  }
+
+  highlighted += hljs.highlight(source.slice(previousIndex), { language: 'markdown' }).value;
+  return highlighted;
+};
 
 document.querySelector('#app').innerHTML = `
   <header class="site-header">
@@ -55,7 +75,7 @@ document.querySelector('#app').innerHTML = `
         <p class="eyebrow">Download guide</p>
         <h2 id="download-heading">Get the data</h2>
         <p>Download locally or transfer the dataset to another S3 bucket, Google Cloud, a GCE disk, or Box.</p>
-        <a href="/data-downloads.md">Open the full download guide <span aria-hidden="true">→</span></a>
+        <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/operations/diana-public-data-download.md">Open the full download guide <span aria-hidden="true">→</span></a>
       </div>
       <div class="code-card">
         <div class="code-bar">
@@ -104,8 +124,8 @@ document.querySelector('#app').innerHTML = `
 `;
 
 const codeElement = document.querySelector('#markdown-code');
-codeElement.textContent = markdownInstructions;
-hljs.highlightElement(codeElement);
+codeElement.innerHTML = highlightMarkdownWithBash(markdownInstructions);
+codeElement.classList.add('hljs');
 
 let objects = [];
 let searchTerm = '';

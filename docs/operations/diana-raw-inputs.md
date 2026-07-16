@@ -74,8 +74,8 @@ s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/
 
 Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the Nextflow work bucket. The `diana/inbox/` prefix is publicly listable and downloadable; upload only material approved for unrestricted public distribution.
 
-Detailed upload and bucket-to-bucket transfer instructions live in `docs/operations/diana-raw-s3-upload.md`.
-Public download and outbound transfer instructions live in `docs/operations/diana-public-data-download.md`.
+See [Diana Raw S3 Upload And Transfer](diana-raw-s3-upload.md) for upload and bucket-to-bucket transfer instructions.
+See [Diana Public Data Downloads](diana-public-data-download.md) for public download and outbound transfer instructions.
 
 ## Validate The Files
 

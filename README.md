@@ -101,6 +101,7 @@ Start here:
 - [docs/operations/analytics-sequence.md](docs/operations/analytics-sequence.md): systems architecture for analytics orchestration and OSS tool calls.
 - [docs/data/source-map.md](docs/data/source-map.md): provenance for datasets, tools, truth sets, and vendor context.
 - [docs/operations/running-the-pipeline.md](docs/operations/running-the-pipeline.md): local, Docker, Nextflow, and AWS commands.
+- [docs/operations/diana-public-data-download.md](docs/operations/diana-public-data-download.md): public Diana dataset download and transfer guide.
 
 Directory guides:
 
