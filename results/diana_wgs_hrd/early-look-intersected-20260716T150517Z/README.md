@@ -17,6 +17,9 @@ Start with [HANDOFF.md](HANDOFF.md), then follow [NEXT_STEPS.md](NEXT_STEPS.md).
 Public access details and download commands are in [PUBLIC_DATA.md](PUBLIC_DATA.md).
 Object sizes, ETags, encryption, and direct URLs are indexed in
 [PUBLIC_S3_MANIFEST.tsv](PUBLIC_S3_MANIFEST.tsv).
+Historical object versions are mapped in
+[VERSION_ARCHIVE.md](VERSION_ARCHIVE.md) and
+[VERSION_ARCHIVE_MANIFEST.tsv](VERSION_ARCHIVE_MANIFEST.tsv).
 
 ## Public dataset
 
@@ -43,4 +46,5 @@ Object sizes, ETags, encryption, and direct URLs are indexed in
 The dataset owner explicitly authorized unrestricted public distribution on
 2026-07-16. All current objects in the results bucket are anonymously listable
 and readable; no AWS credentials or presigned URLs are required. See
-`PUBLIC_DATA.md` for the separate noncurrent-version boundary.
+`VERSION_ARCHIVE.md` for the public, non-destructive archive of noncurrent
+object content.

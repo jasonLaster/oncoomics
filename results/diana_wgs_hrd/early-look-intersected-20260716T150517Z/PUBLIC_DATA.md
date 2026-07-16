@@ -2,8 +2,8 @@
 
 The entire current object namespace of
 `diana-omics-results-172630973301-us-east-1` is anonymously listable and
-readable over HTTPS. All 838 current objects use SSE-S3 (`AES256`), and
-insecure HTTP requests remain denied.
+readable over HTTPS. All current objects use SSE-S3 (`AES256`), and insecure
+HTTP requests remain denied.
 The same access, encryption, and CORS configuration is declared in
 `infra/aws/main.tf` so a future Terraform apply preserves this public state.
 
@@ -24,14 +24,18 @@ the manifest excludes only its own S3 object.
 ## Version-history boundary
 
 Bucket versioning remains enabled. Noncurrent versions do not appear in the
-normal public object listing and are not included in the public manifest. A
-2026-07-16 audit found 1,461 noncurrent versions: 15 use SSE-S3 and 1,446 retain
-historical SSE-KMS encryption. SSE-KMS versions cannot be downloaded
-anonymously because anonymous readers cannot receive `kms:Decrypt`.
+normal object listing, but version metadata is anonymously listable with
+`ListObjectVersions`. Historical content has been copied non-destructively
+into the public SSE-S3 archive documented in `VERSION_ARCHIVE.md`.
 
-Making historical version content public would require copying it into a new
-SSE-S3 archive namespace and deciding whether to delete the original version
-history. That destructive migration was not performed by this publication.
+- Noncurrent versions archived: `1,465`
+- Archived bytes: `845,410,505`
+- Delete markers inventoried: `1,142`
+- Original historical versions deleted: `0`
+
+The original SSE-KMS version IDs remain encrypted as originally written, but
+every captured object body is available anonymously through its mapped SSE-S3
+archive object.
 
 Download the full run anonymously:
 
@@ -51,6 +55,7 @@ aws s3 ls s3://diana-omics-results-172630973301-us-east-1/ \
 
 ## Direct result links
 
+- [Public version archive](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/?list-type=2&prefix=version-history%2F2026-07-16-snapshot%2F)
 - [Public S3 manifest](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/handoff/PUBLIC_S3_MANIFEST.tsv)
 - [Early-look summary](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/artifacts/early_look_summary.json)
 - [PASS HRR variants](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/artifacts/variants/core_hrr_pass_variants.csv)

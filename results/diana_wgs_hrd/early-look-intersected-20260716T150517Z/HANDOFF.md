@@ -8,7 +8,7 @@ s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd/diana-wgs-hrd-202
 
 All current bucket objects are anonymously listable/readable. See
 `PUBLIC_DATA.md` for HTTPS links, download commands, and the separate
-noncurrent-version boundary.
+noncurrent-version archive documented in `VERSION_ARCHIVE.md`.
 
 ## Outcome
 
