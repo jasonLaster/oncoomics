@@ -259,9 +259,9 @@ resource "aws_s3_bucket_public_access_block" "this" {
 
   bucket                  = each.value.id
   block_public_acls       = true
-  block_public_policy     = each.key == "raw" ? false : true
+  block_public_policy     = contains(["raw", "results"], each.key) ? false : true
   ignore_public_acls      = true
-  restrict_public_buckets = each.key == "raw" ? false : true
+  restrict_public_buckets = contains(["raw", "results"], each.key) ? false : true
 }
 
 resource "aws_s3_bucket_ownership_controls" "this" {
@@ -286,6 +286,18 @@ resource "aws_s3_bucket_cors_configuration" "raw_public_read" {
   }
 }
 
+resource "aws_s3_bucket_cors_configuration" "results_public_read" {
+  bucket = aws_s3_bucket.this["results"].id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag", "Content-Length", "Last-Modified"]
+    max_age_seconds = 3600
+  }
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   for_each = aws_s3_bucket.this
 
@@ -293,8 +305,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
 
   rule {
     apply_server_side_encryption_by_default {
-      kms_master_key_id = aws_kms_key.main.arn
-      sse_algorithm     = "aws:kms"
+      kms_master_key_id = each.key == "results" ? null : aws_kms_key.main.arn
+      sse_algorithm     = each.key == "results" ? "AES256" : "aws:kms"
     }
   }
 }
@@ -360,6 +372,36 @@ data "aws_iam_policy_document" "s3_tls" {
   }
 
   dynamic "statement" {
+    for_each = each.key == "results" ? [1] : []
+
+    content {
+      sid       = "AllowPublicListResults"
+      effect    = "Allow"
+      actions   = ["s3:ListBucket"]
+      resources = [each.value.arn]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "results" ? [1] : []
+
+    content {
+      sid       = "AllowPublicReadResults"
+      effect    = "Allow"
+      actions   = ["s3:GetObject"]
+      resources = ["${each.value.arn}/*"]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+    }
+  }
+
+  dynamic "statement" {
     for_each = each.key == "raw" ? [1] : []
 
     content {
@@ -378,8 +420,8 @@ data "aws_iam_policy_document" "s3_tls" {
     for_each = each.key == "raw" ? [1] : []
 
     content {
-      sid    = "AllowAnyAwsPrincipalWriteDianaInbox"
-      effect = "Allow"
+      sid       = "AllowAnyAwsPrincipalWriteDianaInbox"
+      effect    = "Allow"
       actions   = ["s3:PutObject"]
       resources = ["${each.value.arn}/${local.diana_raw_inbox_prefix}/*"]
       principals {

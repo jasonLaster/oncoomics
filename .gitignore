@@ -38,3 +38,16 @@ infra/aws/nextflow.aws.json
 
 logs
 bam/
+
+# Local mirrors of public Diana WGS/HRD result data. Keep the handoff reports
+# and public S3 manifest in Git; download large evidence objects from S3.
+.codex-tmp/
+tmp/pdfs/
+results/diana_wgs_hrd/**/artifacts/
+results/diana_wgs_hrd/**/annotations/
+results/diana_wgs_hrd/**/references/
+results/diana_wgs_hrd/**/provenance/
+results/diana_wgs_hrd/**/staged_inputs/
+results/diana_wgs_hrd/**/SHA256SUMS
+results/diana_wgs_hrd/**/MANIFEST.tsv
+results/diana_wgs_hrd/**/MANIFEST.tsv.sha256
