@@ -133,6 +133,56 @@ export async function latestLogEvents(
   }
 }
 
+export type ViewerLogStream = {
+  jobId: string;
+  jobName: string | null;
+  logStreamName: string;
+};
+
+export async function getViewerLogStreams(
+  jobId: string,
+): Promise<ViewerLogStream[]> {
+  const response = await batch.send(new DescribeJobsCommand({ jobs: [jobId] }));
+  const job = response.jobs?.[0];
+  if (!job) throw new Error("Job not found");
+  const names = [
+    job.container?.logStreamName,
+    ...(job.attempts || []).map((attempt) => attempt.container?.logStreamName),
+  ].filter((name): name is string => Boolean(name));
+  return [...new Set(names)].map((logStreamName) => ({
+    jobId,
+    jobName: job.jobName || null,
+    logStreamName,
+  }));
+}
+
+export async function getViewerLogStreamPage(
+  logStreamName: string,
+  nextToken?: string,
+  limit = 10_000,
+) {
+  try {
+    const response = await logs.send(
+      new GetLogEventsCommand({
+        logGroupName: LOG_GROUP,
+        logStreamName,
+        limit,
+        startFromHead: true,
+        ...(nextToken ? { nextToken } : {}),
+      }),
+    );
+    return {
+      events: response.events || [],
+      nextForwardToken: response.nextForwardToken || null,
+    };
+  } catch (error) {
+    if ((error as { name?: string }).name === "ResourceNotFoundException") {
+      return { events: [], nextForwardToken: nextToken || null };
+    }
+    throw error;
+  }
+}
+
 function parseChromosomeProgress(jobId: string, events: OutputLogEvent[]) {
   const cached = chromosomeCache.get(jobId) || new Map<string, CachedChromosome>();
   const windowFirst = new Map<string, { position: number; seenAt: number }>();

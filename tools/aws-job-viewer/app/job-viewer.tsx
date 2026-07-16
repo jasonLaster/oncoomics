@@ -55,13 +55,25 @@ type JobsPayload = {
   jobs: ViewerJob[];
 };
 
-type LogEvent = { timestamp: number | null; message: string };
+type LogEvent = {
+  eventKey: string;
+  timestamp: number;
+  ingestionTime: number | null;
+  logStreamName: string;
+  message: string;
+};
 type LogsPayload = {
   jobId: string;
-  jobName: string;
+  jobName: string | null;
   logStreamName: string | null;
   events: LogEvent[];
+  totalEvents: number;
+  backfillComplete: boolean;
+  isDone: boolean;
+  continueCursor: string | null;
 };
+
+type LogMergeMode = "replace" | "refresh" | "prepend";
 
 const WORKFLOW = [
   { id: "integrity", label: "Intake integrity", detail: "AWS-side SHA-256 verification" },
@@ -114,6 +126,42 @@ function statusLabel(status: string) {
   return status.toLowerCase().replaceAll("_", " ");
 }
 
+async function requestLogPage(jobId: string, cursor?: string | null) {
+  const searchParams = new URLSearchParams({ jobId });
+  if (cursor) searchParams.set("cursor", cursor);
+  const response = await fetch(`/api/job-logs?${searchParams.toString()}`, {
+    cache: "no-store",
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || "Unable to load logs.");
+  return body as LogsPayload;
+}
+
+function mergeLogPayload(
+  current: LogsPayload | null,
+  incoming: LogsPayload,
+  mode: LogMergeMode,
+) {
+  if (!current || current.jobId !== incoming.jobId || mode === "replace") {
+    return incoming;
+  }
+  const events = new Map<string, LogEvent>();
+  for (const event of [...current.events, ...incoming.events]) {
+    events.set(event.eventKey, event);
+  }
+  const mergedEvents = [...events.values()].sort(
+    (left, right) =>
+      left.timestamp - right.timestamp || left.eventKey.localeCompare(right.eventKey),
+  );
+  return {
+    ...incoming,
+    events: mergedEvents,
+    continueCursor:
+      mode === "prepend" ? incoming.continueCursor : current.continueCursor,
+    isDone: mode === "prepend" ? incoming.isDone : current.isDone,
+  };
+}
+
 function stageState(stage: string, selectedStage: string, selectedStatus: string) {
   const selectedIndex = WORKFLOW.findIndex((item) => item.id === selectedStage);
   const index = WORKFLOW.findIndex((item) => item.id === stage);
@@ -134,6 +182,7 @@ export function JobViewer() {
   const [logs, setLogs] = useState<LogsPayload | null>(null);
   const [logsError, setLogsError] = useState<string | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [logsLoadingAll, setLogsLoadingAll] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     setIsRefreshing(true);
@@ -155,16 +204,16 @@ export function JobViewer() {
     }
   }, []);
 
-  const fetchLogs = useCallback(async (jobId: string) => {
+  const fetchLogs = useCallback(async (
+    jobId: string,
+    cursor?: string | null,
+    mode: LogMergeMode = "refresh",
+  ) => {
     setLogsLoading(true);
     setLogs((current) => (current?.jobId === jobId ? current : null));
     try {
-      const response = await fetch(`/api/job-logs?jobId=${encodeURIComponent(jobId)}`, {
-        cache: "no-store",
-      });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "Unable to load logs.");
-      setLogs(body);
+      const body = await requestLogPage(jobId, cursor);
+      setLogs((current) => mergeLogPayload(current, body, mode));
       setLogsError(null);
     } catch (cause) {
       setLogsError(cause instanceof Error ? cause.message : "Unable to load logs.");
@@ -172,6 +221,26 @@ export function JobViewer() {
       setLogsLoading(false);
     }
   }, []);
+
+  const loadAllLogs = useCallback(async () => {
+    if (!selectedId || !logs || logs.isDone || !logs.continueCursor) return;
+    setLogsLoadingAll(true);
+    setLogsError(null);
+    try {
+      let accumulated = logs;
+      while (!accumulated.isDone && accumulated.continueCursor) {
+        const cursor = accumulated.continueCursor;
+        const page = await requestLogPage(selectedId, cursor);
+        accumulated = mergeLogPayload(accumulated, page, "prepend");
+        setLogs(accumulated);
+        if (page.continueCursor === cursor) break;
+      }
+    } catch (cause) {
+      setLogsError(cause instanceof Error ? cause.message : "Unable to load logs.");
+    } finally {
+      setLogsLoadingAll(false);
+    }
+  }, [logs, selectedId]);
 
   useEffect(() => {
     const initialTimer = window.setTimeout(() => void fetchJobs(), 0);
@@ -189,8 +258,14 @@ export function JobViewer() {
 
   useEffect(() => {
     if (tab !== "logs" || !selectedId) return;
-    const initialTimer = window.setTimeout(() => void fetchLogs(selectedId), 0);
-    const timer = window.setInterval(() => void fetchLogs(selectedId), REFRESH_SECONDS * 1_000);
+    const initialTimer = window.setTimeout(
+      () => void fetchLogs(selectedId, null, "replace"),
+      0,
+    );
+    const timer = window.setInterval(
+      () => void fetchLogs(selectedId, null, "refresh"),
+      REFRESH_SECONDS * 1_000,
+    );
     return () => {
       window.clearTimeout(initialTimer);
       window.clearInterval(timer);
@@ -382,13 +457,44 @@ export function JobViewer() {
                 <section className="logs-panel">
                   <div className="logs-toolbar">
                     <div>
-                      <p className="eyebrow">CloudWatch tail</p>
+                      <p className="eyebrow">Persistent CloudWatch archive</p>
                       <h3>{logs?.jobName || selected.name}</h3>
                       <span title={logs?.logStreamName || selected.logStreamName || ""}>{logs?.logStreamName || selected.logStreamName || "Log stream pending"}</span>
                     </div>
                     <div className="logs-toolbar-actions">
-                      <span>{logLines.length ? `${logLines.length} latest events` : "No events"}</span>
-                      <button onClick={() => void fetchLogs(selected.id)} disabled={logsLoading}>{logsLoading ? "Loading…" : "Refresh logs"}</button>
+                      <span>
+                        {logs
+                          ? `${logs.events.length.toLocaleString()} of ${logs.totalEvents.toLocaleString()} stored events`
+                          : "No events"}
+                      </span>
+                      {logs && !logs.isDone && logs.continueCursor && (
+                        <>
+                          <button
+                            onClick={() =>
+                              void fetchLogs(
+                                selected.id,
+                                logs.continueCursor,
+                                "prepend",
+                              )
+                            }
+                            disabled={logsLoading || logsLoadingAll}
+                          >
+                            Load older
+                          </button>
+                          <button
+                            onClick={() => void loadAllLogs()}
+                            disabled={logsLoading || logsLoadingAll}
+                          >
+                            {logsLoadingAll ? "Loading all…" : "Load all"}
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => void fetchLogs(selected.id, null, "refresh")}
+                        disabled={logsLoading || logsLoadingAll}
+                      >
+                        {logsLoading ? "Loading…" : "Refresh logs"}
+                      </button>
                     </div>
                   </div>
                   {logsError ? (
@@ -396,7 +502,7 @@ export function JobViewer() {
                   ) : !selected.logStreamName ? (
                     <div className="logs-empty"><strong>Log stream not created yet</strong><span>CloudWatch logs become available after the Batch container starts.</span></div>
                   ) : logsLoading && !logs ? (
-                    <div className="logs-empty"><strong>Reading CloudWatch…</strong><span>Loading the latest 1,000 events.</span></div>
+                    <div className="logs-empty"><strong>Reading the persistent archive…</strong><span>Syncing CloudWatch into Convex and loading the newest page.</span></div>
                   ) : logLines.length ? (
                     <pre className="raw-log" aria-label="Raw CloudWatch logs">{logLines.join("\n")}</pre>
                   ) : (

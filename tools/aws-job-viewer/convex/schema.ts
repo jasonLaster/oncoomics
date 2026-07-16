@@ -66,4 +66,30 @@ export default defineSchema({
     jobCount: v.number(),
     progressEventCount: v.number(),
   }).index("by_generated_at", ["generatedAt"]),
+
+  logEvents: defineTable({
+    eventKey: v.string(),
+    jobId: v.string(),
+    logStreamName: v.string(),
+    timestamp: v.number(),
+    ingestionTime: nullableNumber,
+    message: v.string(),
+  })
+    .index("by_event_key", ["eventKey"])
+    .index("by_job_time", ["jobId", "timestamp", "eventKey"])
+    .index("by_stream_time", ["logStreamName", "timestamp", "eventKey"]),
+
+  logStreams: defineTable({
+    jobId: v.string(),
+    jobName: nullableString,
+    logStreamName: v.string(),
+    nextForwardToken: nullableString,
+    eventCount: v.number(),
+    firstSyncedAt: v.number(),
+    lastSyncedAt: v.number(),
+    backfillComplete: v.boolean(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_stream", ["jobId", "logStreamName"])
+    .index("by_stream", ["logStreamName"]),
 });

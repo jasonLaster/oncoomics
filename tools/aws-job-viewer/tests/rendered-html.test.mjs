@@ -26,10 +26,11 @@ test("implements automatic refresh and server-side AWS access", async () => {
 
   assert.match(viewer, /const REFRESH_SECONDS = 60/);
   assert.match(viewer, /setInterval\(\(\) => void fetchJobs\(\), REFRESH_SECONDS \* 1_000\)/);
-  assert.match(viewer, /\/api\/job-logs\?jobId=/);
-  assert.match(viewer, /latest 1,000 events/);
+  assert.match(viewer, /\/api\/job-logs\?\$\{searchParams\.toString\(\)\}/);
+  assert.match(viewer, /Load older/);
+  assert.match(viewer, /Load all/);
   assert.match(jobsRoute, /listViewerJobs/);
-  assert.match(logsRoute, /getViewerLogs/);
+  assert.match(logsRoute, /getPersistentViewerLogsPage/);
   assert.match(awsBridge, /CloudWatchLogsClient/);
   assert.match(awsBridge, /DescribeJobQueuesCommand/);
   assert.match(awsBridge, /awsCredentialsProvider/);
@@ -39,7 +40,7 @@ test("implements automatic refresh and server-side AWS access", async () => {
   await assert.rejects(access(new URL("../app/_sites-preview/SkeletonPreview.tsx", import.meta.url)));
 });
 
-test("persists normalized progress with project-scoped OIDC", async () => {
+test("persists normalized progress and complete logs with project-scoped OIDC", async () => {
   const [jobsRoute, convexBridge, schema, functions, authConfig] = await Promise.all([
     readFile(new URL("../app/api/jobs/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/convex.ts", import.meta.url), "utf8"),
@@ -55,10 +56,27 @@ test("persists normalized progress with project-scoped OIDC", async () => {
   assert.match(schema, /progressEvents: defineTable/);
   assert.match(schema, /chromosomeProgress: defineTable/);
   assert.match(schema, /jobStatusEvents: defineTable/);
+  assert.match(schema, /logEvents: defineTable/);
+  assert.match(schema, /logStreams: defineTable/);
   assert.match(functions, /export const ingestSnapshot = mutation/);
   assert.match(functions, /export const getAggregates = query/);
+  assert.match(functions, /export const ingestLogBatch = mutation/);
+  assert.match(functions, /export const getLogPage = query/);
+  assert.match(functions, /paginationOptsValidator/);
   assert.match(functions, /TOTAL_STANDARD_BASES = 3_031_042_417/);
   assert.match(authConfig, /oidc\.vercel\.com\/jlasters-projects/);
   assert.match(functions, /project:diana-aws-job-viewer:environment:/);
-  assert.doesNotMatch(schema, /message: v\.string|rawLog|logMessage/);
+  assert.match(schema, /message: v\.string/);
+});
+
+test("backfills complete CloudWatch streams into the durable log archive", async () => {
+  const backfill = await readFile(
+    new URL("../scripts/backfill-convex-logs.mjs", import.meta.url),
+    "utf8",
+  );
+  assert.match(backfill, /startFromHead: true/);
+  assert.match(backfill, /response\.nextForwardToken/);
+  assert.match(backfill, /ingestLogBatch/);
+  assert.match(backfill, /--full/);
+  assert.match(backfill, /sha256/);
 });

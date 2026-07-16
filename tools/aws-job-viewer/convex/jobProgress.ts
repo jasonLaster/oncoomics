@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 
 const EXPECTED_ISSUER = "https://oidc.vercel.com/jlasters-projects";
@@ -34,6 +35,13 @@ const progressEventValidator = v.object({
   length: v.number(),
   observedAt: v.number(),
   active: v.boolean(),
+});
+
+const logEventValidator = v.object({
+  eventKey: v.string(),
+  timestamp: v.number(),
+  ingestionTime: nullableNumber,
+  message: v.string(),
 });
 
 async function requireViewerIdentity(ctx: {
@@ -345,6 +353,158 @@ export const getDashboardSummary = query({
             progressEventCount: latestSync.progressEventCount,
           }
         : null,
+    };
+  },
+});
+
+export const getLogCursor = query({
+  args: {
+    jobId: v.string(),
+    logStreamName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireViewerIdentity(ctx);
+    const stream = await ctx.db
+      .query("logStreams")
+      .withIndex("by_job_stream", (q) =>
+        q.eq("jobId", args.jobId).eq("logStreamName", args.logStreamName),
+      )
+      .unique();
+    if (!stream) return null;
+    return {
+      nextForwardToken: stream.nextForwardToken,
+      eventCount: stream.eventCount,
+      backfillComplete: stream.backfillComplete,
+      lastSyncedAt: stream.lastSyncedAt,
+    };
+  },
+});
+
+export const ingestLogBatch = mutation({
+  args: {
+    jobId: v.string(),
+    jobName: nullableString,
+    logStreamName: v.string(),
+    nextForwardToken: nullableString,
+    updateCursor: v.boolean(),
+    backfillComplete: v.boolean(),
+    syncedAt: v.number(),
+    events: v.array(logEventValidator),
+  },
+  returns: v.object({
+    inserted: v.number(),
+    totalEvents: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    await requireViewerIdentity(ctx);
+    let inserted = 0;
+
+    for (const event of args.events) {
+      const existing = await ctx.db
+        .query("logEvents")
+        .withIndex("by_event_key", (q) => q.eq("eventKey", event.eventKey))
+        .unique();
+      if (existing) continue;
+      await ctx.db.insert("logEvents", {
+        ...event,
+        jobId: args.jobId,
+        logStreamName: args.logStreamName,
+      });
+      inserted += 1;
+    }
+
+    const stream = await ctx.db
+      .query("logStreams")
+      .withIndex("by_job_stream", (q) =>
+        q.eq("jobId", args.jobId).eq("logStreamName", args.logStreamName),
+      )
+      .unique();
+    const totalEvents = (stream?.eventCount || 0) + inserted;
+
+    if (stream) {
+      await ctx.db.patch(stream._id, {
+        jobName: args.jobName,
+        eventCount: totalEvents,
+        lastSyncedAt: Math.max(stream.lastSyncedAt, args.syncedAt),
+        backfillComplete: stream.backfillComplete || args.backfillComplete,
+        ...(args.updateCursor
+          ? { nextForwardToken: args.nextForwardToken }
+          : {}),
+      });
+    } else {
+      await ctx.db.insert("logStreams", {
+        jobId: args.jobId,
+        jobName: args.jobName,
+        logStreamName: args.logStreamName,
+        nextForwardToken: args.updateCursor ? args.nextForwardToken : null,
+        eventCount: totalEvents,
+        firstSyncedAt: args.syncedAt,
+        lastSyncedAt: args.syncedAt,
+        backfillComplete: args.backfillComplete,
+      });
+    }
+
+    return { inserted, totalEvents };
+  },
+});
+
+export const getLogPage = query({
+  args: {
+    jobId: v.string(),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireViewerIdentity(ctx);
+    const streams = await ctx.db
+      .query("logStreams")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .collect();
+    const result = await ctx.db
+      .query("logEvents")
+      .withIndex("by_job_time", (q) => q.eq("jobId", args.jobId))
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    return {
+      jobId: args.jobId,
+      jobName: streams.find((stream) => stream.jobName)?.jobName || null,
+      logStreamName:
+        streams.length === 1
+          ? streams[0].logStreamName
+          : streams.length > 1
+            ? `${streams.length} CloudWatch streams`
+            : null,
+      events: result.page.reverse().map((event) => ({
+        eventKey: event.eventKey,
+        timestamp: event.timestamp,
+        ingestionTime: event.ingestionTime,
+        logStreamName: event.logStreamName,
+        message: event.message,
+      })),
+      totalEvents: streams.reduce((sum, stream) => sum + stream.eventCount, 0),
+      backfillComplete:
+        streams.length > 0 && streams.every((stream) => stream.backfillComplete),
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+    };
+  },
+});
+
+export const getLogStats = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireViewerIdentity(ctx);
+    const streams = await ctx.db.query("logStreams").collect();
+    return {
+      streamCount: streams.length,
+      jobCount: new Set(streams.map((stream) => stream.jobId)).size,
+      eventCount: streams.reduce((sum, stream) => sum + stream.eventCount, 0),
+      completeStreamCount: streams.filter((stream) => stream.backfillComplete)
+        .length,
+      latestSyncAt: streams.reduce(
+        (latest, stream) => Math.max(latest, stream.lastSyncedAt),
+        0,
+      ),
     };
   },
 });
