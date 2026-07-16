@@ -75,9 +75,13 @@ test.describe("viewer v2 structured logs", () => {
     await expect(artifactEvent).toHaveAttribute("data-category", "artifact");
 
     const rowHeight = await progressEvent.evaluate((node) => node.getBoundingClientRect().height);
+    const intrinsicSize = await progressEvent.evaluate(
+      (node) => getComputedStyle(node).containIntrinsicSize,
+    );
     if (isMobile) {
       expect(rowHeight).toBeGreaterThanOrEqual(44);
       expect(rowHeight).toBeLessThanOrEqual(46);
+      expect(intrinsicSize).toContain("44px");
       for (const control of [
         page.getByTestId("log-level-filter"),
         page.getByTestId("log-category-filter"),
@@ -88,6 +92,7 @@ test.describe("viewer v2 structured logs", () => {
     } else {
       expect(rowHeight).toBeGreaterThanOrEqual(28);
       expect(rowHeight).toBeLessThanOrEqual(34);
+      expect(intrinsicSize).toContain("24px");
     }
 
     await page.getByTestId("log-search").fill("contamination threshold");

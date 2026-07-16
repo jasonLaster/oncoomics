@@ -446,7 +446,7 @@ summary:focus-visible {
 
 .log-event {
   position: relative;
-  contain-intrinsic-size: 30px;
+  contain-intrinsic-size: 24px;
   grid-template-columns: 62px 18px minmax(0, 1fr) 28px;
   gap: 8px;
   min-height: 30px;
