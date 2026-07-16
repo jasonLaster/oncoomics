@@ -1,4 +1,5 @@
 import { getViewerJob, REGION } from "../../../lib/aws";
+import { persistAndMergeViewerSnapshot } from "../../../lib/convex";
 
 export const runtime = "nodejs";
 
@@ -19,8 +20,15 @@ export async function GET(request: Request) {
         { status: 404, headers: { "Cache-Control": "no-store" } },
       );
     }
+    const generatedAt = new Date().toISOString();
+    const payload = await persistAndMergeViewerSnapshot({
+      generatedAt,
+      region: REGION,
+      queues: job.queue ? [job.queue] : [],
+      jobs: [job],
+    });
     return Response.json(
-      { generatedAt: new Date().toISOString(), region: REGION, job },
+      { generatedAt, region: REGION, job: payload.jobs[0] || job },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

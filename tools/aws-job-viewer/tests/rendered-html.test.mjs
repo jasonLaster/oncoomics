@@ -51,7 +51,9 @@ test("implements automatic refresh and server-side AWS access", async () => {
   assert.match(viewer, /preserveScrollHeightRef/);
   assert.match(jobsRoute, /listViewerJobs/);
   assert.match(jobStatusRoute, /getViewerJob/);
-  assert.match(jobStatusRoute, /generatedAt: new Date\(\)\.toISOString\(\)/);
+  assert.match(jobStatusRoute, /persistAndMergeViewerSnapshot/);
+  assert.match(jobStatusRoute, /job: payload\.jobs\[0\] \|\| job/);
+  assert.match(jobStatusRoute, /const generatedAt = new Date\(\)\.toISOString\(\)/);
   assert.match(jobStatusRoute, /Cache-Control.*no-store/s);
   assert.match(logsRoute, /getPersistentViewerLogsPage/);
   assert.match(logsRoute, /getDirectCloudWatchLogsPage/);

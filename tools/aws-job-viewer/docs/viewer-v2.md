@@ -130,7 +130,7 @@ The mobile log toolbar stacks its search and filters, event metadata wraps witho
 
 `GET /api/jobs` returns the generated time, AWS region, queues, and normalized jobs. A job includes identity, status and timings, run/stage/dependency context, optional log stream, and optional aggregate progress. This is the full inventory route used by the 30/120-second polling lane and **Sync now**.
 
-`GET /api/job-status?jobId=<id>` returns the generated time, AWS region, and one normalized AWS Batch job. It is the lightweight 10-second Overview refresh for an active selection; it updates that job in place without replacing the rest of the inventory.
+`GET /api/job-status?jobId=<id>` returns the generated time, AWS region, and one normalized AWS Batch job. It is the lightweight 10-second Overview refresh for an active selection; it updates that job in place without replacing the rest of the inventory. Fresh AWS status and recent CloudWatch progress are merged with the same durable Convex chromosome maxima used by the full inventory, so a narrow log window cannot regress displayed progress.
 
 `GET /api/job-logs?jobId=<id>` returns the newest page for the selected job. Supplying `cursor=<continueCursor>` requests the next older page. Responses include job and stream identity, `events`, `totalEvents`, `backfillComplete`, `isDone`, and the next `continueCursor`.
 
