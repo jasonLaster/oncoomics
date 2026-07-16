@@ -724,6 +724,13 @@ summary:focus-visible {
 @media (max-width: 820px) {
   :root { --topbar-height: 58px; }
 
+  .rail-toggle,
+  .refresh-button {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+
   .workspace-rail,
   .workspace-rail[data-collapsed="true"] {
     transition:
@@ -745,7 +752,12 @@ summary:focus-visible {
   .job-heading-line { margin-bottom: 5px; }
 
   .tabs { padding-inline: 14px; }
-  .tabs button { font-size: 12px; }
+  .tabs button {
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 6px;
+    font-size: 12px;
+  }
 
   .overview-content { padding: 12px 12px 28px; }
 
@@ -814,7 +826,7 @@ summary:focus-visible {
   .logs-toolbar { grid-template-columns: 1fr 1fr 44px; gap: 0; padding: 0; }
   .log-search-field { min-height: 45px; border-bottom: 1px solid var(--line); }
   .filter-field { min-height: 44px; }
-  .filter-field select { height: 43px; font-size: 11px; }
+  .filter-field select { height: 44px; font-size: 11px; }
   .logs-refresh-button { min-width: 44px; min-height: 44px; font-size: 0; }
   .logs-refresh-button > span { font-size: 16px; }
   .logs-result-bar { min-height: 36px; font-size: 10px; }

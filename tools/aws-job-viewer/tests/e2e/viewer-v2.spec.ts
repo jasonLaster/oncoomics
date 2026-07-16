@@ -78,6 +78,13 @@ test.describe("viewer v2 structured logs", () => {
     if (isMobile) {
       expect(rowHeight).toBeGreaterThanOrEqual(44);
       expect(rowHeight).toBeLessThanOrEqual(46);
+      for (const control of [
+        page.getByTestId("log-level-filter"),
+        page.getByTestId("log-category-filter"),
+      ]) {
+        const box = await control.boundingBox();
+        expect(box?.height).toBeGreaterThanOrEqual(44);
+      }
     } else {
       expect(rowHeight).toBeGreaterThanOrEqual(28);
       expect(rowHeight).toBeLessThanOrEqual(34);
@@ -166,9 +173,24 @@ test.describe("viewer v2 mobile workspace", () => {
     await expect(rightRail).toHaveAttribute("data-collapsed", "true");
     await expect(page.getByRole("heading", { name: "Diana HRD evidence" })).toBeVisible();
 
+    for (const control of [
+      page.getByTestId("toggle-left-rail"),
+      page.getByTestId("toggle-right-rail"),
+      page.getByRole("tab", { name: "Overview" }),
+      page.getByRole("tab", { name: "Logs" }),
+    ]) {
+      const box = await control.boundingBox();
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+    }
+
     await page.getByTestId("toggle-left-rail").click();
     await expect(leftRail).toHaveAttribute("data-collapsed", "false");
     await expect(rightRail).toHaveAttribute("data-collapsed", "true");
+
+    await page.getByRole("button", { name: /Filter failure sentinel/ }).click();
+    await expect(leftRail).toHaveAttribute("data-collapsed", "true");
+    await expect(page.getByRole("heading", { name: "Filter failure sentinel" })).toBeVisible();
 
     await page.getByTestId("toggle-right-rail").click();
     await expect(leftRail).toHaveAttribute("data-collapsed", "true");

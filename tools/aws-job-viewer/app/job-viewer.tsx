@@ -636,6 +636,10 @@ export function JobViewer() {
     setSelectedLogKey(null);
     lastInspectButtonRef.current = null;
     setSelectedId(jobId);
+    if (isMobile) {
+      setLeftCollapsed(true);
+      window.localStorage.setItem(LEFT_RAIL_KEY, "true");
+    }
   };
 
   const selectTab = (nextTab: "overview" | "logs") => {
