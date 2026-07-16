@@ -46,6 +46,24 @@ h1 { font-size: clamp(42px, 6vw, 66px); line-height: 1; font-weight: 650; }
 .dataset-stats dt { margin-bottom: 8px; color: var(--muted); font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .08em; }
 .dataset-stats dd { margin: 0; font-size: 16px; font-weight: 750; white-space: nowrap; }
 
+.source-section { padding: 4px 0 72px; }
+.source-heading { margin-bottom: 18px; }
+.source-heading h2 { margin: 0; font-size: 22px; font-weight: 680; letter-spacing: -.035em; }
+.source-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.source-card { min-width: 0; padding: 20px; border: 1px solid #cfd8d2; border-radius: 10px; background: rgba(255, 255, 255, .72); }
+.source-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.source-card h3 { margin: 0; font-size: 15px; letter-spacing: -.025em; }
+.source-card p { min-height: 44px; margin: 11px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.source-card code { display: block; overflow: hidden; color: var(--green); font: 9px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.source-state { flex: none; display: inline-flex; align-items: center; gap: 6px; color: var(--green); font: 750 9px ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .06em; }
+.source-state i { width: 6px; height: 6px; border-radius: 50%; background: #39b96f; }
+.source-state.error { color: #984440; }
+.source-state.error i { background: #c15a54; }
+.source-stats { display: flex; align-items: baseline; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.source-stats strong { font-size: 13px; }
+.source-stats span { color: var(--muted); font-size: 10px; }
+.source-card.source-error { border-color: #e0c2be; }
+
 .tree-section { padding: 72px 0 88px; border-top: 1px solid var(--line); }
 .section-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 16px; }
 .section-heading h2, .download-section h2 { font-size: 28px; font-weight: 680; }
@@ -133,6 +151,8 @@ footer { border-top: 1px solid var(--line); }
   .tree-toolbar { align-items: stretch; flex-direction: column; }
   .search-field { width: 100%; }
   .download-section { grid-template-columns: 1fr; gap: 36px; }
+  .source-grid { grid-template-columns: 1fr; }
+  .source-card p { min-height: 0; }
 }
 
 @media (max-width: 560px) {
