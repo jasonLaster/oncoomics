@@ -16,7 +16,7 @@ AWS credentials stay in the server process and are never sent to the browser. Th
 
 Vercel deployments use `AWS_ROLE_ARN` with Vercel OIDC to exchange short-lived tokens for a scoped AWS read-only session. Static AWS access keys are not required.
 
-The hosted viewer also persists normalized job-status, chromosome-progress, and complete CloudWatch log events in Convex. Convex receives the same project-scoped Vercel OIDC identity. Log messages are deduplicated with deterministic SHA-256 event keys, and independent per-stream cursors make raw-log and progress synchronization incremental and resumable. Durable chromosome maxima are repaired from missed CloudWatch pages and merged back into each response so cold starts or a temporary persistence outage cannot regress completed work.
+The hosted viewer also persists normalized job-status, chromosome-progress, and complete CloudWatch log events in Convex. Convex receives the same project-scoped Vercel OIDC identity. Log messages are deduplicated with deterministic SHA-256 event keys, and independent per-stream cursors make raw-log and progress synchronization incremental and resumable. Each refresh commits a bounded slice and the next refresh resumes from that exact cursor, with no lifetime backlog ceiling. Compare-and-set cursor writes prevent overlapping refreshes from moving backward. Durable chromosome maxima are repaired from missed CloudWatch pages and merged back into each response so cold starts or a temporary persistence outage cannot regress completed work.
 
 If the durable Convex deployment is temporarily unavailable, log reads degrade to direct, backward-cursor CloudWatch pagination instead of failing the viewer. The response retains the same event and cursor contract and traverses the current stream before earlier Batch attempts; persistence and a complete historical event count resume when Convex is available again.
 
@@ -39,6 +39,7 @@ The complete v2 behavior, accessibility, responsive-layout, API, and stable-sele
 - Each polling lane waits for its current request to settle before scheduling the next one, preventing request pileups within that lane.
 - Automatic polling pauses when the page is hidden or the browser is offline. Returning to a visible, online state triggers immediate catch-up for the relevant lanes.
 - The top bar distinguishes **Connecting**, **Live**, **Paused**, **Data stale**, and **Connection issue**. It shows the age of the newest successful update beside the full-inventory countdown; **Sync now** requests that inventory immediately.
+- Every newest-page or inventory refresh advances a bounded raw-log/progress backfill slice. Stream attempts are registered durably, and due candidates rotate through an indexed four-stream work queue. Failed discovery stays retryable; failed stream reads receive exponential backoff so one poisoned stream cannot starve the queue. Running streams keep tailing; incomplete terminal streams continue in the background after they age out of the visible 24-hour job inventory and receive a post-stop stability check, even if nobody opens their Logs tab.
 
 ## Verify the viewer
 
@@ -66,6 +67,6 @@ CONVEX_URL=https://your-production-deployment.convex.cloud \
   npm run convex:backfill-logs
 ```
 
-The process starts each stream at its head, paginates until CloudWatch returns a stable forward token, and safely resumes after interruptions. Re-running it is idempotent. AWS access comes from the normal SDK credential chain or `AWS_ROLE_ARN`; Convex access uses the project-scoped `VERCEL_OIDC_TOKEN`.
+The default process resumes each stream's independent raw-log and progress cursors, paginates until CloudWatch returns stable forward tokens, and safely resumes after interruptions. Re-running it is idempotent. `npm run convex:rebuild-logs` is the explicit replay-from-head variant. A concurrent cursor conflict exits nonzero instead of claiming completion; the next run resumes from the winning cursor. AWS access comes from the normal SDK credential chain or `AWS_ROLE_ARN`; Convex access uses the project-scoped `VERCEL_OIDC_TOKEN`.
 
 Optional runtime configuration is documented in `.env.example`.

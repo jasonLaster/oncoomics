@@ -235,7 +235,7 @@ export async function getViewerLogStreams(
 export async function getViewerLogStreamPage(
   logStreamName: string,
   nextToken?: string,
-  limit = 10_000,
+  limit = 500,
 ) {
   try {
     const response = await logs.send(

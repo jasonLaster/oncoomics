@@ -98,6 +98,13 @@ test("persists normalized progress and complete logs with project-scoped OIDC", 
   assert.match(functions, /export const getProgressCursor = query/);
   assert.match(functions, /export const ingestProgressBatch = mutation/);
   assert.match(convexBridge, /syncProgressStream/);
+  assert.match(convexBridge, /syncForwardPages/);
+  assert.match(convexBridge, /FOREGROUND_SYNC_MAX_PAGES = 8/);
+  assert.match(convexBridge, /BACKGROUND_SYNC_MAX_PAGES = 1/);
+  assert.match(convexBridge, /TERMINAL_SETTLE_GRACE_MS/);
+  assert.match(functions, /expectedForwardToken/);
+  assert.match(functions, /cursorAdvanced/);
+  assert.doesNotMatch(convexBridge, /sync(?:Log|Progress)Stream\(client, stream, 1_000\)/);
   assert.match(awsBridge, /extractChromosomeProgressEvents/);
   assert.match(functions, /paginationOptsValidator/);
   assert.match(functions, /TOTAL_STANDARD_BASES = 3_031_042_417/);
@@ -106,6 +113,20 @@ test("persists normalized progress and complete logs with project-scoped OIDC", 
   assert.match(schema, /message: v\.string/);
   assert.match(schema, /progressNextForwardToken: v\.optional/);
   assert.match(schema, /progressBackfillComplete: v\.optional/);
+  assert.match(schema, /cursorVersion: v\.optional/);
+  assert.match(schema, /progressCursorVersion: v\.optional/);
+  assert.match(functions, /FORWARD_CURSOR_VERSION = 2/);
+  assert.match(functions, /export const registerLogStreams = mutation/);
+  assert.match(functions, /export const getBackfillCandidates = query/);
+  assert.match(functions, /export const initializeBackfillQueue = mutation/);
+  assert.match(functions, /export const finishBackfillAttempt = mutation/);
+  assert.match(functions, /backfillFailureCount/);
+  assert.match(functions, /legacyCursorWriteAllowed/);
+  assert.match(schema, /by_next_backfill/);
+  assert.match(convexBridge, /BACKGROUND_SYNC_CANDIDATES = 4/);
+  assert.match(convexBridge, /advanceDurableBackfills/);
+  assert.match(convexBridge, /Promise\.allSettled/);
+  assert.match(convexBridge, /completeDiscovery: succeeded/);
 });
 
 test("backfills complete CloudWatch streams into the durable log archive", async () => {
@@ -117,5 +138,9 @@ test("backfills complete CloudWatch streams into the durable log archive", async
   assert.match(backfill, /response\.nextForwardToken/);
   assert.match(backfill, /ingestLogBatch/);
   assert.match(backfill, /--full/);
+  assert.match(backfill, /SOURCE_PAGE_EVENTS = 500/);
+  assert.match(backfill, /expectedForwardToken/);
+  assert.match(backfill, /ingestProgressBatch/);
+  assert.match(backfill, /Backfill incomplete/);
   assert.match(backfill, /sha256/);
 });

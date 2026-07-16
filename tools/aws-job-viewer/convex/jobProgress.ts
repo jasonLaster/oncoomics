@@ -4,6 +4,15 @@ import { mutation, query, type MutationCtx } from "./_generated/server";
 
 const EXPECTED_ISSUER = "https://oidc.vercel.com/jlasters-projects";
 const TOTAL_STANDARD_BASES = 3_031_042_417;
+const FORWARD_CURSOR_VERSION = 2;
+const TERMINAL_SETTLE_GRACE_MS = 2 * 60 * 1_000;
+const ACTIVE_JOB_STATUSES = new Set([
+  "SUBMITTED",
+  "PENDING",
+  "RUNNABLE",
+  "STARTING",
+  "RUNNING",
+]);
 const ALLOWED_SUBJECTS = new Set(
   ["development", "preview", "production"].map(
     (environment) =>
@@ -154,7 +163,17 @@ export const ingestSnapshot = mutation({
         .query("jobs")
         .withIndex("by_job_id", (q) => q.eq("jobId", job.jobId))
         .unique();
-      const jobDocument = { ...job, lastObservedAt: args.generatedAt };
+      const isTerminal = !ACTIVE_JOB_STATUSES.has(job.status);
+      const jobDocument = {
+        ...job,
+        lastObservedAt: args.generatedAt,
+        ...(isTerminal
+          ? {
+              terminalObservedAt:
+                existing?.terminalObservedAt ?? args.generatedAt,
+            }
+          : {}),
+      };
 
       if (existing) {
         if (existing.status !== job.status) {
@@ -380,6 +399,245 @@ export const getDashboardSummary = query({
   },
 });
 
+export const getJobsNeedingStreamDiscovery = query({
+  args: { jobIds: v.array(v.string()), limit: v.number() },
+  returns: v.array(v.string()),
+  handler: async (ctx, args) => {
+    await requireViewerIdentity(ctx);
+    const now = Date.now();
+    const jobs = [];
+    for (const jobId of args.jobIds) {
+      const job = await ctx.db
+        .query("jobs")
+        .withIndex("by_job_id", (q) => q.eq("jobId", jobId))
+        .unique();
+      if (job) {
+        const active = ACTIVE_JOB_STATUSES.has(job.status);
+        if (
+          !job.streamsDiscoveredAt ||
+          (active && now - job.streamsDiscoveredAt >= 2 * 60 * 1_000)
+        ) {
+          jobs.push(job);
+        }
+      }
+    }
+    return jobs
+      .sort(
+        (left, right) =>
+          (left.streamsDiscoveredAt || 0) - (right.streamsDiscoveredAt || 0),
+      )
+      .slice(0, Math.max(1, Math.min(8, Math.floor(args.limit))))
+      .map((job) => job.jobId);
+  },
+});
+
+export const registerLogStreams = mutation({
+  args: {
+    discoveredAt: v.number(),
+    jobs: v.array(
+      v.object({
+        jobId: v.string(),
+        jobName: nullableString,
+        completeDiscovery: v.boolean(),
+        streams: v.array(
+          v.object({
+            logStreamName: v.string(),
+            startedAt: v.number(),
+          }),
+        ),
+      }),
+    ),
+  },
+  returns: v.object({ registered: v.number() }),
+  handler: async (ctx, args) => {
+    await requireViewerIdentity(ctx);
+    let registered = 0;
+    for (const jobInput of args.jobs) {
+      for (const streamInput of jobInput.streams) {
+        const existing = await ctx.db
+          .query("logStreams")
+          .withIndex("by_job_stream", (q) =>
+            q
+              .eq("jobId", jobInput.jobId)
+              .eq("logStreamName", streamInput.logStreamName),
+          )
+          .unique();
+        if (existing) {
+          await ctx.db.patch(existing._id, {
+            jobName: jobInput.jobName,
+            streamStartedAt: Math.max(
+              existing.streamStartedAt || 0,
+              streamInput.startedAt,
+            ),
+            ...(!existing.nextBackfillAt ? { nextBackfillAt: 0 } : {}),
+          });
+        } else {
+          await ctx.db.insert("logStreams", {
+            jobId: jobInput.jobId,
+            jobName: jobInput.jobName,
+            logStreamName: streamInput.logStreamName,
+            streamStartedAt: streamInput.startedAt,
+            nextForwardToken: null,
+            eventCount: 0,
+            firstSyncedAt: args.discoveredAt,
+            lastSyncedAt: 0,
+            backfillComplete: false,
+            progressNextForwardToken: null,
+            progressLastSyncedAt: 0,
+            progressBackfillComplete: false,
+            nextBackfillAt: 0,
+            backfillFailureCount: 0,
+          });
+          registered += 1;
+        }
+      }
+
+      const job = await ctx.db
+        .query("jobs")
+        .withIndex("by_job_id", (q) => q.eq("jobId", jobInput.jobId))
+        .unique();
+      if (job && jobInput.completeDiscovery) {
+        await ctx.db.patch(job._id, { streamsDiscoveredAt: args.discoveredAt });
+      }
+    }
+    return { registered };
+  },
+});
+
+export const getBackfillCandidates = query({
+  args: { limit: v.number() },
+  handler: async (ctx, args) => {
+    await requireViewerIdentity(ctx);
+    const now = Date.now();
+    const streams = await ctx.db
+      .query("logStreams")
+      .withIndex("by_next_backfill", (q) => q.lte("nextBackfillAt", now))
+      .order("asc")
+      .take(Math.max(1, Math.min(8, Math.floor(args.limit))));
+
+    return Promise.all(
+      streams.map(async (stream) => {
+        const job = await ctx.db
+          .query("jobs")
+          .withIndex("by_job_id", (q) => q.eq("jobId", stream.jobId))
+          .unique();
+        const active = job ? ACTIVE_JOB_STATUSES.has(job.status) : false;
+        const terminalAt = active
+          ? null
+          : job?.stoppedAt ||
+            job?.terminalObservedAt ||
+            job?.lastObservedAt ||
+            stream.firstSyncedAt;
+        const settledAfter = terminalAt
+          ? terminalAt + TERMINAL_SETTLE_GRACE_MS
+          : Number.POSITIVE_INFINITY;
+        const rawNeedsSync =
+          !active &&
+          (stream.cursorVersion !== FORWARD_CURSOR_VERSION ||
+            !stream.backfillComplete ||
+            now < settledAfter ||
+            stream.lastSyncedAt < settledAfter);
+        const progressNeedsSync =
+          active ||
+          stream.progressCursorVersion !== FORWARD_CURSOR_VERSION ||
+          !stream.progressBackfillComplete ||
+          now < settledAfter ||
+          (stream.progressLastSyncedAt || 0) < settledAfter;
+        return {
+          jobId: stream.jobId,
+          jobName: stream.jobName,
+          logStreamName: stream.logStreamName,
+          startedAt: stream.streamStartedAt || 0,
+          terminalAt,
+          rawNeedsSync,
+          progressNeedsSync,
+        };
+      }),
+    );
+  },
+});
+
+export const initializeBackfillQueue = mutation({
+  args: { limit: v.number() },
+  returns: v.object({ initialized: v.number() }),
+  handler: async (ctx, args) => {
+    await requireViewerIdentity(ctx);
+    const streams = await ctx.db
+      .query("logStreams")
+      .filter((q) => q.eq(q.field("nextBackfillAt"), undefined))
+      .take(Math.max(1, Math.min(32, Math.floor(args.limit))));
+    for (const stream of streams) {
+      await ctx.db.patch(stream._id, {
+        nextBackfillAt: 0,
+        backfillFailureCount: 0,
+      });
+    }
+    return { initialized: streams.length };
+  },
+});
+
+export const finishBackfillAttempt = mutation({
+  args: {
+    jobId: v.string(),
+    logStreamName: v.string(),
+    succeeded: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireViewerIdentity(ctx);
+    const stream = await ctx.db
+      .query("logStreams")
+      .withIndex("by_job_stream", (q) =>
+        q.eq("jobId", args.jobId).eq("logStreamName", args.logStreamName),
+      )
+      .unique();
+    if (!stream) return null;
+
+    if (!args.succeeded) {
+      const failures = Math.min(8, (stream.backfillFailureCount || 0) + 1);
+      await ctx.db.patch(stream._id, {
+        backfillFailureCount: failures,
+        nextBackfillAt:
+          Date.now() + Math.min(15 * 60 * 1_000, 30_000 * 2 ** (failures - 1)),
+      });
+      return null;
+    }
+
+    const job = await ctx.db
+      .query("jobs")
+      .withIndex("by_job_id", (q) => q.eq("jobId", args.jobId))
+      .unique();
+    const active = job ? ACTIVE_JOB_STATUSES.has(job.status) : false;
+    const terminalAt = active
+      ? null
+      : job?.stoppedAt ||
+        job?.terminalObservedAt ||
+        job?.lastObservedAt ||
+        stream.firstSyncedAt;
+    const settledAfter = terminalAt
+      ? terminalAt + TERMINAL_SETTLE_GRACE_MS
+      : Number.POSITIVE_INFINITY;
+    const terminalComplete =
+      !active &&
+      Date.now() >= settledAfter &&
+      stream.cursorVersion === FORWARD_CURSOR_VERSION &&
+      stream.backfillComplete &&
+      stream.lastSyncedAt >= settledAfter &&
+      stream.progressCursorVersion === FORWARD_CURSOR_VERSION &&
+      stream.progressBackfillComplete &&
+      (stream.progressLastSyncedAt || 0) >= settledAfter;
+    await ctx.db.patch(stream._id, {
+      backfillFailureCount: 0,
+      nextBackfillAt: terminalComplete
+        ? Date.now() + 365 * 24 * 60 * 60 * 1_000
+        : active
+          ? Date.now() + 10_000
+          : Date.now() + 1_000,
+    });
+    return null;
+  },
+});
+
 export const getLogCursor = query({
   args: {
     jobId: v.string(),
@@ -399,6 +657,7 @@ export const getLogCursor = query({
       eventCount: stream.eventCount,
       backfillComplete: stream.backfillComplete,
       lastSyncedAt: stream.lastSyncedAt,
+      cursorVersion: stream.cursorVersion ?? 1,
     };
   },
 });
@@ -421,6 +680,7 @@ export const getProgressCursor = query({
       nextForwardToken: stream.progressNextForwardToken ?? null,
       backfillComplete: stream.progressBackfillComplete ?? false,
       lastSyncedAt: stream.progressLastSyncedAt ?? null,
+      cursorVersion: stream.progressCursorVersion ?? 1,
     };
   },
 });
@@ -430,6 +690,7 @@ export const ingestProgressBatch = mutation({
     jobId: v.string(),
     jobName: nullableString,
     logStreamName: v.string(),
+    expectedForwardToken: v.optional(nullableString),
     nextForwardToken: nullableString,
     backfillComplete: v.boolean(),
     syncedAt: v.number(),
@@ -438,6 +699,7 @@ export const ingestProgressBatch = mutation({
   returns: v.object({
     progressEventsInserted: v.number(),
     chromosomeProgressUpserted: v.number(),
+    cursorAdvanced: v.boolean(),
   }),
   handler: async (ctx, args) => {
     await requireViewerIdentity(ctx);
@@ -449,7 +711,18 @@ export const ingestProgressBatch = mutation({
       )
       .unique();
 
-    if (stream) {
+    const currentToken = stream?.progressNextForwardToken ?? null;
+    const expectedForwardToken =
+      args.expectedForwardToken === undefined
+        ? currentToken
+        : args.expectedForwardToken;
+    const legacyCursorWriteAllowed =
+      args.expectedForwardToken !== undefined ||
+      (stream?.progressCursorVersion ?? 1) < FORWARD_CURSOR_VERSION;
+    const cursorAdvanced =
+      legacyCursorWriteAllowed && currentToken === expectedForwardToken;
+
+    if (stream && cursorAdvanced) {
       await ctx.db.patch(stream._id, {
         jobName: args.jobName,
         progressNextForwardToken: args.nextForwardToken,
@@ -458,8 +731,10 @@ export const ingestProgressBatch = mutation({
           args.syncedAt,
         ),
         progressBackfillComplete: args.backfillComplete,
+        progressCursorVersion: FORWARD_CURSOR_VERSION,
+        nextBackfillAt: args.syncedAt,
       });
-    } else {
+    } else if (!stream && cursorAdvanced) {
       await ctx.db.insert("logStreams", {
         jobId: args.jobId,
         jobName: args.jobName,
@@ -472,10 +747,13 @@ export const ingestProgressBatch = mutation({
         progressNextForwardToken: args.nextForwardToken,
         progressLastSyncedAt: args.syncedAt,
         progressBackfillComplete: args.backfillComplete,
+        progressCursorVersion: FORWARD_CURSOR_VERSION,
+        nextBackfillAt: args.syncedAt,
+        backfillFailureCount: 0,
       });
     }
 
-    return result;
+    return { ...result, cursorAdvanced };
   },
 });
 
@@ -484,6 +762,7 @@ export const ingestLogBatch = mutation({
     jobId: v.string(),
     jobName: nullableString,
     logStreamName: v.string(),
+    expectedForwardToken: v.optional(nullableString),
     nextForwardToken: nullableString,
     updateCursor: v.boolean(),
     backfillComplete: v.boolean(),
@@ -493,6 +772,7 @@ export const ingestLogBatch = mutation({
   returns: v.object({
     inserted: v.number(),
     totalEvents: v.number(),
+    cursorAdvanced: v.boolean(),
   }),
   handler: async (ctx, args) => {
     await requireViewerIdentity(ctx);
@@ -519,15 +799,33 @@ export const ingestLogBatch = mutation({
       )
       .unique();
     const totalEvents = (stream?.eventCount || 0) + inserted;
+    const currentToken = stream?.nextForwardToken ?? null;
+    const expectedForwardToken =
+      args.expectedForwardToken === undefined
+        ? currentToken
+        : args.expectedForwardToken;
+    const legacyCursorWriteAllowed =
+      args.expectedForwardToken !== undefined ||
+      (stream?.cursorVersion ?? 1) < FORWARD_CURSOR_VERSION;
+    const cursorAdvanced =
+      args.updateCursor &&
+      legacyCursorWriteAllowed &&
+      currentToken === expectedForwardToken;
 
     if (stream) {
       await ctx.db.patch(stream._id, {
         jobName: args.jobName,
         eventCount: totalEvents,
         lastSyncedAt: Math.max(stream.lastSyncedAt, args.syncedAt),
-        backfillComplete: stream.backfillComplete || args.backfillComplete,
-        ...(args.updateCursor
-          ? { nextForwardToken: args.nextForwardToken }
+        backfillComplete: cursorAdvanced
+          ? args.backfillComplete
+          : stream.backfillComplete,
+        ...(cursorAdvanced
+          ? {
+              nextForwardToken: args.nextForwardToken,
+              cursorVersion: FORWARD_CURSOR_VERSION,
+              nextBackfillAt: args.syncedAt,
+            }
           : {}),
       });
     } else {
@@ -535,15 +833,20 @@ export const ingestLogBatch = mutation({
         jobId: args.jobId,
         jobName: args.jobName,
         logStreamName: args.logStreamName,
-        nextForwardToken: args.updateCursor ? args.nextForwardToken : null,
+        nextForwardToken: cursorAdvanced ? args.nextForwardToken : null,
         eventCount: totalEvents,
         firstSyncedAt: args.syncedAt,
         lastSyncedAt: args.syncedAt,
-        backfillComplete: args.backfillComplete,
+        backfillComplete: cursorAdvanced && args.backfillComplete,
+        ...(cursorAdvanced
+          ? { cursorVersion: FORWARD_CURSOR_VERSION }
+          : {}),
+        nextBackfillAt: args.syncedAt,
+        backfillFailureCount: 0,
       });
     }
 
-    return { inserted, totalEvents };
+    return { inserted, totalEvents, cursorAdvanced };
   },
 });
 
@@ -554,15 +857,35 @@ export const getLogPage = query({
   },
   handler: async (ctx, args) => {
     await requireViewerIdentity(ctx);
-    const streams = await ctx.db
-      .query("logStreams")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
-    const result = await ctx.db
-      .query("logEvents")
-      .withIndex("by_job_time", (q) => q.eq("jobId", args.jobId))
-      .order("desc")
-      .paginate(args.paginationOpts);
+    const [streams, job, result] = await Promise.all([
+      ctx.db
+        .query("logStreams")
+        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+        .collect(),
+      ctx.db
+        .query("jobs")
+        .withIndex("by_job_id", (q) => q.eq("jobId", args.jobId))
+        .unique(),
+      ctx.db
+        .query("logEvents")
+        .withIndex("by_job_time", (q) => q.eq("jobId", args.jobId))
+        .order("desc")
+        .paginate(args.paginationOpts),
+    ]);
+    const active = job ? ACTIVE_JOB_STATUSES.has(job.status) : false;
+    const terminalAt =
+      job?.stoppedAt || job?.terminalObservedAt || job?.lastObservedAt || 0;
+    const settledAfter = terminalAt + TERMINAL_SETTLE_GRACE_MS;
+    const archiveComplete =
+      !active &&
+      Date.now() >= settledAfter &&
+      streams.length > 0 &&
+      streams.every(
+        (stream) =>
+          stream.cursorVersion === FORWARD_CURSOR_VERSION &&
+          stream.backfillComplete &&
+          stream.lastSyncedAt >= settledAfter,
+      );
 
     return {
       jobId: args.jobId,
@@ -581,8 +904,7 @@ export const getLogPage = query({
         message: event.message,
       })),
       totalEvents: streams.reduce((sum, stream) => sum + stream.eventCount, 0),
-      backfillComplete:
-        streams.length > 0 && streams.every((stream) => stream.backfillComplete),
+      backfillComplete: archiveComplete,
       isDone: result.isDone,
       continueCursor: result.continueCursor,
     };

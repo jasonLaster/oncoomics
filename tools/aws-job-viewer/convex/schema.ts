@@ -17,6 +17,8 @@ export default defineSchema({
     runId: v.string(),
     stage: v.string(),
     lastObservedAt: v.number(),
+    terminalObservedAt: v.optional(v.number()),
+    streamsDiscoveredAt: v.optional(v.number()),
   })
     .index("by_job_id", ["jobId"])
     .index("by_status", ["status"])
@@ -83,16 +85,22 @@ export default defineSchema({
     jobId: v.string(),
     jobName: nullableString,
     logStreamName: v.string(),
+    streamStartedAt: v.optional(v.number()),
     nextForwardToken: nullableString,
     eventCount: v.number(),
     firstSyncedAt: v.number(),
     lastSyncedAt: v.number(),
     backfillComplete: v.boolean(),
+    cursorVersion: v.optional(v.number()),
     progressNextForwardToken: v.optional(nullableString),
     progressLastSyncedAt: v.optional(v.number()),
     progressBackfillComplete: v.optional(v.boolean()),
+    progressCursorVersion: v.optional(v.number()),
+    nextBackfillAt: v.optional(v.number()),
+    backfillFailureCount: v.optional(v.number()),
   })
     .index("by_job", ["jobId"])
     .index("by_job_stream", ["jobId", "logStreamName"])
-    .index("by_stream", ["logStreamName"]),
+    .index("by_stream", ["logStreamName"])
+    .index("by_next_backfill", ["nextBackfillAt"]),
 });
