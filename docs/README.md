@@ -40,6 +40,9 @@ For command, evidence, and domain vocabulary, see [terms.md](terms.md).
 | [rosalind/hrd-workflow.md](rosalind/hrd-workflow.md) | Review the GPT-Rosalind workflow for HRD evidence and score readiness from WGS/WES. |
 | [rosalind/trop2-adc-workflow.md](rosalind/trop2-adc-workflow.md) | Review the GPT-Rosalind workflow for TROP-2 ADC target assessment from bulk WES and scRNA-seq. |
 | [operations/running-the-pipeline.md](operations/running-the-pipeline.md) | Run local, Docker, Nextflow, and AWS workflows. |
+| [operations/fast-rerun-performance-cost-summary.md](operations/fast-rerun-performance-cost-summary.md) | Compare today's run with the projected CPU and GPU fast-rerun performance and cost. |
+| [operations/next-generation-fast-rerun.md](operations/next-generation-fast-rerun.md) | Review the measured bottlenecks and selected `us-east-2` P5en/Parabricks fast-rerun design. |
+| [operations/historical/2026-07-16-cpu-fast-rerun-plan.md](operations/historical/2026-07-16-cpu-fast-rerun-plan.md) | Review the superseded CPU scatter plan retained for historical provenance. |
 | [operations/analytics-sequence.md](operations/analytics-sequence.md) | See the systems architecture for analytics orchestration and OSS tool calls. |
 | [data/source-map.md](data/source-map.md) | Audit dataset, truth-set, tool, and vendor-context sources. |
 | [data/wiki-source-summary.md](data/wiki-source-summary.md) | Understand the original Diana wiki scope. |

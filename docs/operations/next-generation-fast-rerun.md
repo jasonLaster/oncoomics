@@ -1,0 +1,306 @@
+# Next-Generation WGS Fast-Rerun Strategy
+
+Status: selected implementation strategy based on the live `diana-wgs-hrd-20260716T033101Z` run, observed through 2026-07-16 19:25 UTC. This document authorizes no clinical interpretation and does not by itself submit new high-cost compute.
+
+For the executive runtime and cost comparison, see [fast-rerun-performance-cost-summary.md](fast-rerun-performance-cost-summary.md).
+
+## Decision
+
+**Verdict: go, assuming the selected GPU quota lands.** Build one resumable `phase3_wgs_fast` Nextflow workflow in `us-east-2`. Run Parabricks on one On-Demand `p5en.48xlarge` with eight NVIDIA H200 GPUs. Do not build a CPU caller fallback or a multi-region race for the first implementation.
+
+The superseded CPU scatter design is preserved as a historical artifact in [historical/2026-07-16-cpu-fast-rerun-plan.md](historical/2026-07-16-cpu-fast-rerun-plan.md). It is not an active fallback.
+
+For the next run of the current tumor/matched-normal pair, do **not** rerun FASTQ alignment or BAM gathering. Reuse the two validated duplicate-marked BAMs as an immutable input checkpoint and rerun only the evidence DAG. For later FASTQ-origin runs, replace the lane-alignment-plus-gather critical path with parallel Parabricks `fq2bam` jobs only after a separate BAM and known-answer non-inferiority gate passes.
+
+The speed targets are:
+
+| Run mode | Acceptance target | Stretch target |
+| --- | ---: | ---: |
+| Existing BAMs to complete evidence, warm regional cache | 90 minutes | 60 minutes |
+| Existing BAMs to complete evidence, cold regional cache | 2 hours | 90 minutes |
+| FASTQs to complete evidence, tumor and normal in parallel | 3 hours | 2 hours |
+| Resume after a post-caller branch failure | 30 minutes | 15 minutes |
+
+These are engineering targets, not measured Parabricks performance claims. Promotion requires benchmark evidence.
+
+## What the current run taught us
+
+### Measured critical path
+
+| Stage | Shape | Observed wall time | Finding |
+| --- | --- | ---: | --- |
+| Preflight | 1 vCPU, 2 GiB | 5 seconds | Not material. |
+| Lane alignment | 8 parallel jobs, 16 vCPU and 60 GiB each | 4.00-4.37 hours; 4.37-hour critical path | Parallelism works, but each lane creates a 13-14 GiB intermediate BAM. |
+| Gather and mark duplicates | 64 vCPU, 120 GiB | 2.01 hours | Normal and tumor were processed serially. Downloads took about 100 seconds; merge/markdup dominated. |
+| Targeted early look | 32 vCPU, 100 GiB, On-Demand | 26.1 minutes | Bounded HRR calls, contamination, QC, and coarse CNV evidence can be produced quickly from the finished BAM pair. |
+| Full evidence v2 | 64 vCPU, 120 GiB, Spot | More than 7 hours 47 minutes and still running at observation time | The full CPU Mutect2 scatter is the dominant bottleneck. |
+
+At the observation point, long-running shards such as `chr1` and `chr2` were still incomplete after roughly 450 minutes of caller progress. The current compute critical path had already exceeded 14.2 hours, excluding queue gaps, and was not complete.
+
+### Root-cause assessment
+
+The primary performance diagnosis is **same-host caller contention**:
+
+- One evidence job launches ten GATK Mutect2 JVMs through a `ThreadPoolExecutor`.
+- Every JVM independently reads the same 47.6 GiB tumor BAM and 52.1 GiB normal BAM.
+- All processes share one 2 TiB gp3 volume configured for 16,000 IOPS and 1,000 MB/s.
+- Each Mutect2 process uses an 8 GiB heap and two PairHMM threads. The 64-vCPU allocation therefore does not remove the shared random-read and cache-pressure bottleneck.
+- The current log stream shows highly uneven progress and long-contig stragglers, consistent with contention. This is a high-confidence diagnosis, but the current run did not publish host CPU, page-cache, or EBS queue-depth metrics, so the exact CPU-versus-I/O split remains an evidence gap.
+
+Secondary losses are also material:
+
+- Gather handles normal and tumor serially even though the samples are independent until somatic calling.
+- The ad hoc evidence worker performs repeated whole-BAM scans. The version-controlled Phase 3 implementation already has a single-pass SV evidence path and should remain the source of truth.
+- The evidence stage is monolithic. A late failure repeats Mutect2, contamination, CNV, SV evidence, and packaging instead of resuming from durable per-branch outputs.
+- The work prefix contains 212.1 GiB. The early-look result prefix contains about 113.4 GiB because it copied the approximately 100 GiB BAM pair and reference/resource inputs into the result tree. Results should contain immutable pointers, checksums, and small evidence artifacts, not another copy of every large input.
+- The live July run was submitted as a Python worker stored in S3, not as the checked-in Nextflow DAG. The latest local Nextflow session was a successful five-task stub (`61c5a3a4-b2e1-4ecc-9614-d117010fa274`, revision `097f6ee3ff`), so it does not describe the live execution.
+
+## Fastest-rerun architecture
+
+```mermaid
+flowchart LR
+    M["Immutable input manifest"] --> R{"Validated BAM cache hit?"}
+    R -->|yes| B["Tumor and normal BAM checkpoint"]
+    R -->|no| FT["Tumor fq2bam GPU job"]
+    R -->|no| FN["Normal fq2bam GPU job"]
+    FT --> B
+    FN --> B
+    B --> P["Parabricks mutectcaller on p5en.48xlarge"]
+    P --> PP["PoN postprocessing and caller checkpoint"]
+    B --> Q["QC and contamination branch"]
+    B --> N["CNV evidence branch"]
+    B --> V["Single-pass SV evidence branch"]
+    PP --> F["Orientation model and FilterMutectCalls"]
+    Q --> F
+    F --> J["Evidence join and validation gates"]
+    N --> J
+    V --> J
+    J --> O["Small result artifacts plus provenance pointers"]
+```
+
+### 1. Immutable input manifest
+
+Every run starts from a manifest, not a mutable directory. The manifest must record:
+
+- pseudonymous run, pair, role, and BAM sample identifiers;
+- region-local S3 URI, object size, SHA-256, version ID, and encryption state;
+- BAM/BAI pairing and `samtools quickcheck` result;
+- reference FASTA and sequence-dictionary fingerprint;
+- PoN, germline-resource, common-sites, and interval-set fingerprints;
+- container image digest, caller version, parameter digest, and repo commit;
+- allowed interpretation level and the required no-call policy.
+
+The current two BAMs are KMS-encrypted but the source bucket returned no version ID or SHA-256 checksum. Their multipart ETags and sizes are recorded, but they are not content hashes. The first rerun preflight should compute SHA-256 once, copy the objects into a versioned immutable cache, and make that cache the restart boundary.
+
+### 2. Content-addressed regional cache
+
+Storage is deliberately traded for speed. Replicate the validated input bundle before compute is needed:
+
+```text
+s3://<regional-private-cache>/wgs-v2/
+  inputs/<bam-sha256>/tumor.bam
+  inputs/<bam-sha256>/tumor.bam.bai
+  inputs/<bam-sha256>/normal.bam
+  inputs/<bam-sha256>/normal.bam.bai
+  references/<reference-sha256>/...
+  resources/<resource-sha256>/...
+  parabricks/prepon/<pon-sha256>/<image-digest>/...
+  outputs/<tool>/<image-digest>/<input-digest>/<parameter-digest>/...
+```
+
+Replicate the encrypted bundle from `us-east-1` to a private versioned cache in `us-east-2`. Use a region-local KMS key and verify checksums after replication. The result prefix should store the regional object versions and hashes; it should not recopy BAMs into each run directory.
+
+### 3. Selected GPU environment
+
+The selected environment is `us-east-2` on one On-Demand `p5en.48xlarge`. This shape has 192 vCPUs, 2 TiB of RAM, eight NVIDIA H200 GPUs, and eight 3.8 TB NVMe SSDs. It is explicitly supported through the On-Demand purchase path and is currently offered in all three `us-east-2` availability zones. The current AWS account has zero On-Demand P quota there; this plan assumes that quota is raised before execution.
+
+Quota and capacity contract:
+
+| Need | Request | Purpose |
+| --- | ---: | --- |
+| Immediate BAM-to-evidence rerun | 192 On-Demand P vCPUs | One `p5en.48xlarge` caller job. |
+| Later parallel tumor/normal `fq2bam` | 384 On-Demand P vCPUs | Two `p5en.48xlarge` alignment jobs running concurrently. |
+
+An EC2 offering and approved quota do not guarantee live capacity. The launch step should fail clearly if `p5en.48xlarge` cannot be placed; it should not silently switch instance type, region, caller, or Spot capacity. An operator can retry the same idempotent job without invalidating completed checkpoints.
+
+Use separate managed AWS Batch compute environments and queues:
+
+- `cpu-io-use2`: Graviton families for downloads, QC, packaging, and other ARM-compatible work;
+- `gpu-p5en-use2`: x86 ECS GPU-optimized AMI, `p5en.48xlarge` only.
+
+Do not mix GPU and non-GPU jobs in the same queue. GPU job definitions must request GPU resources explicitly. Stripe the eight instance-store NVMe devices into an ephemeral RAID0 `/scratch` volume for Parabricks inputs, temporary data, and outputs; upload every durable checkpoint to S3 before the job exits. Do not run the caller against the container root disk.
+
+### 4. Parabricks caller
+
+Start with `pbrun mutectcaller` against the existing BAM pair. This is the smallest unit that attacks the measured bottleneck without changing alignment or duplicate marking.
+
+Requirements and choices:
+
+- Pin the Parabricks container by immutable digest after confirming the current supported tag.
+- Request all eight GPUs and meet NVIDIA's eight-GPU CPU/RAM requirements.
+- Use `--run-partition` and record per-GPU utilization so the selected shape can be right-sized only after the first accepted run.
+- Build the Parabricks PoN index once with `prepon`, cache it by PoN and image digest, run `mutectcaller`, and apply `postpon` as required for PoN annotation.
+- Preserve tumor and normal `SM` names, the exact reference, standard-contig scope, germline resource, interval policy, and downstream contamination/orientation filtering inputs.
+- Keep contamination, `LearnReadOrientationModel`, `FilterMutectCalls`, SBS96, CNV, and SV evidence as explicit downstream processes until equivalence is proven. Do not hide the first implementation inside the monolithic `pbrun somatic` wrapper.
+
+Parabricks documents small output differences from GATK caused by math implementations, SIMD behavior, and deterministic hash iteration. Therefore VCF byte equality is not an acceptance criterion; truth performance and variant-level concordance are.
+
+### 5. Independent evidence branches
+
+Run these as separate checkpointed jobs as soon as the BAM manifest passes:
+
+- QC: tumor and normal flagstat/idxstats concurrently, with no redundant full scans.
+- Contamination: scatter pileup summaries by balanced intervals, gather, then calculate matched-normal contamination.
+- CNV evidence: retain the current coarse coverage result only as partial evidence; do not relabel it as allele-specific CNV, LOH, or scarHRD.
+- SV evidence: use the checked-in single-pass BAM scan. This remains mechanical evidence, not a production SV caller.
+- Somatic short variants: Parabricks, followed by the same filtering and result boundary.
+
+The final join should be cheap and repeatable. A failed CNV or packet-build branch must not invalidate a completed somatic caller checkpoint.
+
+## Nextflow implementation contract
+
+Add a checked-in `phase3_wgs_fast` workflow rather than another S3-only worker. Suggested process boundaries:
+
+```text
+FAST_INPUT_MANIFEST
+FAST_REPLICATE_INPUTS              source to us-east-2
+FAST_FQ2BAM_TUMOR                  optional GPU
+FAST_FQ2BAM_NORMAL                 optional GPU
+FAST_VALIDATE_BAMS
+FAST_MUTECT_PARABRICKS             selected GPU caller
+FAST_CONTAMINATION
+FAST_ORIENTATION_MODEL
+FAST_FILTER_MUTECT
+FAST_CNV_EVIDENCE
+FAST_SV_EVIDENCE
+FAST_EVIDENCE_JOIN
+FAST_VERIFY_AND_PUBLISH
+```
+
+Implementation rules:
+
+- Python remains the source of truth; Nextflow owns scheduling, per-process containers, retries, and durable checkpoints.
+- The workflow has one caller: Parabricks. Do not add a backend-selection flag to the first implementation.
+- Map processes to `cpu_io` and `gpu_parabricks` queues.
+- Keep the current ARM application image for compatible CPU tasks and use a pinned x86 Parabricks image only for GPU tasks.
+- Use `-resume` and content digests. Do not use a timestamp alone as a cache key.
+- Publish large inputs and intermediates once to the immutable cache. Publish pointer manifests and evidence outputs to the run result prefix.
+- Redact sample identifiers from job names and general CloudWatch command logs; retain them only in access-controlled provenance where required.
+- Make every process idempotent so a placement failure can be retried without repeating completed work.
+
+## Validation and promotion gates
+
+### Gate 0: input and reference identity
+
+Required before any caller benchmark:
+
+- BAM quickcheck and index validation pass.
+- Tumor/normal `SM` tags and roles match the manifest.
+- BAM, FASTA, interval, PoN, and germline contig names and order are compatible.
+- Reference and resource SHA-256 values match between the `us-east-1` source and `us-east-2` cache.
+- Existing no-call and interpretation boundaries are loaded into the run manifest.
+
+### Gate 1: P5en and Parabricks smoke
+
+Run `nvidia-smi`, verify all eight H200 GPUs are visible, and execute a fixed bounded interval. Accept the environment only if:
+
+- the pinned container and driver/CUDA combination passes Parabricks startup checks;
+- all eight GPUs are allocated to the Batch job and visible inside the container;
+- the BAM pair, reference, and resources stage to local scratch successfully;
+- the bounded VCF, logs, and provenance checkpoint upload with verified checksums;
+- retrying after a forced post-checkpoint failure reuses the completed caller output.
+
+### Gate 2: Parabricks MutectCaller non-inferiority
+
+Compare Parabricks with the pinned GATK 4.6.2.0 baseline on identical existing BAMs and resources:
+
+- report PASS/PASS and all-record precision, recall, and Jaccard after normalization;
+- stratify SNVs, indels, HRR genes, low-VAF calls, and filtered records;
+- require no known-answer recall or precision regression greater than 0.5 percentage points;
+- require HCC1395 WES truth recall at least `0.85` and precision at least `0.98`, unless the validation owner approves a better predeclared threshold;
+- explain every high-confidence truth call lost by one backend;
+- preserve contamination, orientation-bias, and PoN filtering behavior;
+- require two repeated Parabricks runs to be deterministic after normalization.
+
+This gate proves a research pipeline backend, not clinical equivalence.
+
+### Gate 3: Parabricks `fq2bam` non-inferiority
+
+Promote GPU alignment separately. Run tumor and normal in parallel, with all lane pairs and preserved read groups. Compare against the existing BAMs:
+
+- total, mapped, properly paired, duplicate, and insert-size metrics;
+- read-group and sample identity;
+- reference and contig compatibility;
+- downstream truth-set performance using both BAM pairs;
+- effects of BQSR or any duplicate-marking difference.
+
+Do not combine the caller and aligner changes into one validation experiment.
+
+### Gate 4: end-to-end known-answer regression
+
+Before the fast backend becomes default:
+
+- rerun the SEQC2/HCC1395 WES truth benchmark;
+- rerun the full-source WGS mechanical evidence checks;
+- run the bounded HG008 and COLO829 guardrails;
+- keep CNV, SV, signature, scarHRD, CHORD, and HRDetect claim boundaries unchanged;
+- produce a side-by-side validation packet with tool/container digests and normalized call differences.
+
+## Observability required on the next run
+
+CloudWatch logs alone revealed the current bottleneck but could not separate CPU and storage pressure. Every new process should publish:
+
+- Nextflow session UUID, repo revision, process hash, attempt, queue, region, and instance type;
+- queue wait, image pull, input stage, compute, output stage, and total wall time;
+- input/output bytes and cache hit status;
+- CPU utilization, resident memory, page faults, local-disk throughput, IOPS, latency, queue depth, and free space;
+- GPU utilization, memory, power, and temperature at 10-second intervals for Parabricks;
+- caller interval bases, records emitted, F1R2 size, and normalized variants per minute;
+- checkpoint URI, SHA-256, status, and retry reason.
+
+Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Preserve the Nextflow trace, timeline, report, DAG, and `.nextflow.log` for every acceptance run.
+
+## Execution sequence
+
+### Before quota approval
+
+1. Let the current evidence job finish or fail naturally and preserve its logs; do not treat its result as the speed baseline until terminal status is recorded.
+2. Freeze the validated BAM pair, indices, reference, PoN, germline, and common-sites resources into an immutable input manifest with SHA-256 values.
+3. Implement the checked-in Parabricks evidence DAG and pointer-only result publication.
+4. Create the `us-east-2` private cache, KMS key, ECR mirrors, Batch compute environments, queues, job definitions, and CloudWatch dashboard.
+5. Request 192 On-Demand P vCPUs in `us-east-2`; request 384 before the later parallel `fq2bam` gate.
+
+### After quota approval
+
+1. Run Gate 1 with `nvidia-smi` and a fixed small Parabricks interval on `p5en.48xlarge`.
+2. Run the full existing-BAM Parabricks caller and Gate 2 comparison.
+3. Promote the accepted Parabricks caller into the complete checkpointed evidence DAG.
+4. Verify caller completeness, resume behavior, known-answer boundaries, evidence packaging, and the 90-minute acceptance target.
+5. Only then benchmark parallel tumor/normal `fq2bam` and Gate 3.
+
+## Explicit non-goals and claim boundaries
+
+- Faster execution does not authorize clinical reporting.
+- A Parabricks result is not accepted because the job completed or because NVIDIA describes compatibility with GATK.
+- Coarse coverage bins are not allele-specific CNV/LOH, scarHRD, CHORD, or HRDetect evidence.
+- The current SV scan is not a production structural-variant caller.
+- A PASS VCF record is not a pathogenicity classification.
+- Storage replication does not relax data-custody, encryption, access-control, or regional-governance requirements.
+- The first implementation intentionally has no CPU caller fallback, Spot path, HealthOmics path, or multi-region race.
+- No result may widen the reportable range until known-answer thresholds and reviewer signoff exist.
+
+## Sources and operational evidence
+
+Live evidence came from AWS Batch job metadata, `/aws/batch/job` CloudWatch streams, the run's S3 worker, S3 object metadata, the active compute environments, and the early-look result summaries for `diana-wgs-hrd-20260716T033101Z`.
+
+External implementation references:
+
+- [NVIDIA Parabricks installation requirements](https://docs.nvidia.com/clara/parabricks/get-started/installation-requirements)
+- [NVIDIA Parabricks MutectCaller](https://docs.nvidia.com/clara/parabricks/latest/documentation/tooldocs/man_mutectcaller.html)
+- [NVIDIA Parabricks somatic workflow](https://docs.nvidia.com/clara/parabricks/latest/documentation/tooldocs/man_somatic.html)
+- [NVIDIA Parabricks WDL/Nextflow workflows](https://docs.nvidia.com/clara/parabricks/about-parabricks/software-overview/nvidia-parabricks-wdl-nextflow-workflows)
+- [AWS Batch GPU workload AMIs](https://docs.aws.amazon.com/batch/latest/userguide/batch-gpu-ami.html)
+- [AWS ECS GPU task definitions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-gpu.html)
+- [AWS accelerated-computing instance specifications](https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html)
+- [AWS P5en On-Demand availability](https://aws.amazon.com/blogs/aws/new-amazon-ec2-p5en-instances-with-nvidia-h200-tensor-core-gpus-and-efav3-networking/)
+- [GATK Mutect2 orientation and scatter workflow](https://gatk.broadinstitute.org/hc/en-us/articles/360035531132--How-to-Call-somatic-mutations-using-GATK4-Mutect2)
