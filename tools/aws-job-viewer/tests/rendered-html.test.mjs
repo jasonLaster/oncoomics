@@ -32,6 +32,8 @@ test("implements automatic refresh and server-side AWS access", async () => {
   assert.match(logsRoute, /getViewerLogs/);
   assert.match(awsBridge, /CloudWatchLogsClient/);
   assert.match(awsBridge, /DescribeJobQueuesCommand/);
+  assert.match(awsBridge, /awsCredentialsProvider/);
+  assert.match(awsBridge, /AWS_ROLE_ARN/);
   assert.match(`${jobsRoute}\n${logsRoute}`, /Cache-Control.*no-store|no-store/s);
   assert.doesNotMatch(viewer, /AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN/);
   await assert.rejects(access(new URL("../app/_sites-preview/SkeletonPreview.tsx", import.meta.url)));

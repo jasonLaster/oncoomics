@@ -14,6 +14,8 @@ Then open [http://localhost:3000](http://localhost:3000). The viewer reads the c
 
 AWS credentials stay in the server process and are never sent to the browser. The profile only needs read access for Batch job discovery and CloudWatch log events.
 
+Vercel deployments use `AWS_ROLE_ARN` with Vercel OIDC to exchange short-lived tokens for a scoped AWS read-only session. Static AWS access keys are not required.
+
 ## Views
 
 - **Overview** shows active and recent jobs, run stages, dependency order, execution details, and chromosome progress when GATK progress events are available.

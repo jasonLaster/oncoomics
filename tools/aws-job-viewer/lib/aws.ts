@@ -11,6 +11,7 @@ import {
   GetLogEventsCommand,
   type OutputLogEvent,
 } from "@aws-sdk/client-cloudwatch-logs";
+import { awsCredentialsProvider } from "@vercel/oidc-aws-credentials-provider";
 
 export const REGION = process.env.AWS_REGION || "us-east-1";
 export const LOG_GROUP = process.env.AWS_BATCH_LOG_GROUP || "/aws/batch/job";
@@ -60,17 +61,20 @@ function clientConfig() {
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
   const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
   const sessionToken = process.env.AWS_SESSION_TOKEN;
+  const roleArn = process.env.AWS_ROLE_ARN;
+  const credentials =
+    accessKeyId && secretAccessKey
+      ? {
+          accessKeyId,
+          secretAccessKey,
+          ...(sessionToken ? { sessionToken } : {}),
+        }
+      : roleArn
+        ? awsCredentialsProvider({ roleArn })
+        : undefined;
   return {
     region: REGION,
-    ...(accessKeyId && secretAccessKey
-      ? {
-          credentials: {
-            accessKeyId,
-            secretAccessKey,
-            ...(sessionToken ? { sessionToken } : {}),
-          },
-        }
-      : {}),
+    ...(credentials ? { credentials } : {}),
   };
 }
 
