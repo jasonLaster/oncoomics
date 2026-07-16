@@ -6,8 +6,9 @@ Public run root:
 s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/
 ```
 
-The bucket is anonymously listable/readable. See `PUBLIC_DATA.md` for HTTPS
-links and download commands.
+All current bucket objects are anonymously listable/readable. See
+`PUBLIC_DATA.md` for HTTPS links, download commands, and the separate
+noncurrent-version boundary.
 
 ## Outcome
 
