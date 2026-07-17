@@ -187,6 +187,10 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             "/repo/scripts/render_source_report_freeze_runbook.py",
             prerequisites,
         )
+        self.assertIn("/repo/scripts/publish_private_report.py", prerequisites)
+        self.assertIn("/repo/scripts/prepare_ai_review_run.py", prerequisites)
+        self.assertIn("/repo/scripts/build_ai_review_bundle.py", prerequisites)
+        self.assertIn("/repo/scripts/render_reviewed_publication_runbook.py", prerequisites)
         for stale in (
             "/repo/.codex-tmp/hrd-reports/stage_crosscheck_report.py",
             "/repo/.codex-tmp/hrd-crosschecks/aws/submit_route.py",
@@ -244,6 +248,11 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             "sigprofiler_sbs3",
             "/repo/.codex-tmp/hrd-reports/blocked-crosschecks/"
             "hrdetect_blocked",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.deterministic_full_wgs.private.json",
+            "/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/"
+            f"{MODULE.RUN_ID}/model-catalog-receipt.20260717T115311Z.json",
+            "/repo/.codex-tmp/public-index/public-index.terminal.json",
         ):
             self.assertIn(path, outputs)
 

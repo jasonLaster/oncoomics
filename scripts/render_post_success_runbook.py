@@ -23,6 +23,10 @@ from publish_reviewed_public_report import (
     SUBJECT_ALIAS,
 )
 from render_ai_synthesis_runbook import FORBIDDEN_TOKENS, write_once
+from render_source_report_freeze_runbook import (
+    required_absent as source_required_absent,
+    required_existing as source_required_existing,
+)
 
 
 JOB_ID = "6f827d44-d19b-4a6c-9126-d65189aa66cf"
@@ -404,6 +408,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
         scripts / "stage_hrd_crosscheck_report.py",
         scripts / "generate_blocked_hrd_crosscheck_reports.py",
         scripts / "render_source_report_freeze_runbook.py",
+        *source_required_existing(root),
         *required_local_inputs(root),
     )
 
@@ -466,6 +471,7 @@ def required_absent(root: Path) -> tuple[Path, ...]:
             blocked / directory
             for directory in BLOCKED_CROSSCHECK_REPORT_DIRS.values()
         ),
+        *source_required_absent(root, "terminal"),
     )
 
 

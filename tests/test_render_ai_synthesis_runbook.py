@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
@@ -167,6 +168,70 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             ".codex-tmp/hrd-reports/ai-review/build_review_bundle.py",
         ):
             self.assertNotIn("/repo/" + stale, prerequisites)
+
+    def test_required_absent_includes_child_create_only_outputs(self) -> None:
+        outputs = {
+            path.as_posix()
+            for path in MODULE.required_absent(Path("/repo"), "unit")
+        }
+
+        for path in (
+            "/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/"
+            f"{MODULE.RUN_ID}/{MODULE.MODEL_CATALOG_RECEIPT}",
+            "/repo/.codex-tmp/hrd-reports/ai-review/"
+            f"{MODULE.RUN_ID}",
+            "/repo/.codex-tmp/hrd-reports/synthesis/"
+            f"{MODULE.RUN_ID}",
+            "/repo/.codex-tmp/hrd-reports/ai-review/"
+            f"{MODULE.RUN_ID}/publication-receipts/"
+            "unit.ai-reviewer-a.private.json",
+            "/repo/.codex-tmp/hrd-reports/ai-review/"
+            f"{MODULE.RUN_ID}/publication-receipts/"
+            "unit.comparative-synthesis.private.json",
+            "/repo/.codex-tmp/hrd-reports/publication/"
+            "unit.deterministic_full_wgs.public.dry.json",
+            "/repo/.codex-tmp/hrd-reports/publication/"
+            "unit.comparative_hrd_synthesis.public.json",
+            "/repo/.codex-tmp/public-index/public-index.unit.json",
+        ):
+            self.assertIn(path, outputs)
+
+    def test_main_rejects_preexisting_child_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for path in MODULE.required_existing(root):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("{}\n", encoding="utf-8")
+
+            stale = (
+                root
+                / ".codex-tmp/hrd-reports/ai-review"
+                / MODULE.RUN_ID
+            )
+            stale.mkdir(parents=True)
+            output = root / "ai-review.md"
+            argv = [
+                "render_ai_synthesis_runbook.py",
+                "--output",
+                str(output),
+                "--root",
+                str(root),
+            ]
+            for method_id in MODULE.REQUIRED_METHOD_IDS:
+                argv.extend(
+                    [
+                        "--private-publication-receipt",
+                        str(root / f"{method_id}.json"),
+                    ]
+                )
+
+            with (
+                patch.object(sys, "argv", argv),
+                self.assertRaisesRegex(SystemExit, "create-only outputs"),
+            ):
+                MODULE.main()
+
+            self.assertFalse(output.exists())
 
     def test_private_freeze_gate_accepts_current_checked_in_receipts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

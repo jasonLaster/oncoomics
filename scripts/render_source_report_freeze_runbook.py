@@ -15,7 +15,12 @@ from hrd_report_inventory import (
     REQUIRED_METHOD_IDS,
 )
 from publish_reviewed_public_report import METHOD_CONTRACTS, REGION, RUN_ID
-from render_ai_synthesis_runbook import FORBIDDEN_TOKENS, write_once
+from render_ai_synthesis_runbook import (
+    FORBIDDEN_TOKENS,
+    required_absent as ai_required_absent,
+    required_existing as ai_required_existing,
+    write_once,
+)
 
 
 class Raw(str):
@@ -176,13 +181,17 @@ def required_existing(root: Path) -> tuple[Path, ...]:
         scripts / "hrd_report_inventory.py",
         scripts / "publish_private_report.py",
         scripts / "render_ai_synthesis_runbook.py",
+        *ai_required_existing(root),
     )
 
 
 def required_absent(root: Path, receipt_stem: str) -> tuple[Path, ...]:
-    return tuple(
-        receipt_path(root, receipt_stem, method_id)
-        for method_id in REQUIRED_METHOD_IDS
+    return (
+        *(
+            receipt_path(root, receipt_stem, method_id)
+            for method_id in REQUIRED_METHOD_IDS
+        ),
+        *ai_required_absent(root, receipt_stem),
     )
 
 

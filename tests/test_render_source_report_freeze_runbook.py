@@ -199,23 +199,41 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
         }
 
         self.assertEqual(
-            prerequisites,
             {
                 "/repo/scripts/hrd_report_inventory.py",
                 "/repo/scripts/publish_private_report.py",
                 "/repo/scripts/render_ai_synthesis_runbook.py",
+                "/repo/scripts/prepare_ai_review_run.py",
+                "/repo/scripts/build_ai_review_bundle.py",
+                "/repo/scripts/stage_ai_review_inputs.py",
+                "/repo/scripts/validate_ai_review.py",
+                "/repo/scripts/finalize_ai_review.py",
+                "/repo/scripts/generate_comparative_hrd_synthesis.py",
+                "/repo/scripts/render_reviewed_publication_runbook.py",
+                "/repo/scripts/write_ai_model_catalog_receipt.py",
             },
+            prerequisites,
         )
 
     def test_required_absent_includes_source_private_receipts(self) -> None:
-        self.assertEqual(
-            [path.as_posix() for path in MODULE.required_absent(Path("/repo"), "unit")],
-            [
+        outputs = {
+            path.as_posix()
+            for path in MODULE.required_absent(Path("/repo"), "unit")
+        }
+
+        for path in (
+            *(
                 "/repo/.codex-tmp/hrd-reports/deterministic-full/"
                 f"unit.{method_id}.private.json"
                 for method_id in MODULE.REQUIRED_METHOD_IDS
-            ],
-        )
+            ),
+            "/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/"
+            f"{MODULE.RUN_ID}/model-catalog-receipt.20260717T115311Z.json",
+            "/repo/.codex-tmp/hrd-reports/ai-review/"
+            f"{MODULE.RUN_ID}",
+            "/repo/.codex-tmp/public-index/public-index.unit.dry.json",
+        ):
+            self.assertIn(path, outputs)
 
     def test_main_rejects_preexisting_source_receipts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

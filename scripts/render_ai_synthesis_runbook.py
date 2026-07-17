@@ -298,6 +298,34 @@ def model_catalog_receipt_path(root: Path) -> Path:
     )
 
 
+def ai_private_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
+    receipt_root = (
+        root
+        / ".codex-tmp/hrd-reports/ai-review"
+        / RUN_ID
+        / "publication-receipts"
+    )
+    return (
+        receipt_root / f"{receipt_stem}.ai-reviewer-a.private.json",
+        receipt_root / f"{receipt_stem}.ai-reviewer-b.private.json",
+        receipt_root / f"{receipt_stem}.comparative-synthesis.private.json",
+    )
+
+
+def reviewed_public_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
+    return (
+        *(
+            root
+            / ".codex-tmp/hrd-reports/publication"
+            / f"{receipt_stem}.{method_id}.public{suffix}.json"
+            for method_id in REPORT_METHOD_IDS
+            for suffix in (".dry", "")
+        ),
+        root / ".codex-tmp/public-index" / f"public-index.{receipt_stem}.dry.json",
+        root / ".codex-tmp/public-index" / f"public-index.{receipt_stem}.json",
+    )
+
+
 def required_existing(root: Path) -> tuple[Path, ...]:
     scripts = root / "scripts"
     return (
@@ -311,6 +339,16 @@ def required_existing(root: Path) -> tuple[Path, ...]:
         scripts / "publish_private_report.py",
         scripts / "render_reviewed_publication_runbook.py",
         scripts / "write_ai_model_catalog_receipt.py",
+    )
+
+
+def required_absent(root: Path, receipt_stem: str) -> tuple[Path, ...]:
+    return (
+        model_catalog_receipt_path(root),
+        root / ".codex-tmp/hrd-reports/ai-review" / RUN_ID,
+        root / ".codex-tmp/hrd-reports/synthesis" / RUN_ID,
+        *ai_private_receipt_paths(root, receipt_stem),
+        *reviewed_public_receipt_paths(root, receipt_stem),
     )
 
 
@@ -603,6 +641,16 @@ def main() -> int:
         )
     if args.output.exists() or args.output.is_symlink():
         raise SystemExit(f"Fail-closed: output already exists: {args.output}")
+    preexisting = [
+        path
+        for path in required_absent(root, args.receipt_stem)
+        if path.exists() or path.is_symlink()
+    ]
+    if preexisting:
+        raise SystemExit(
+            "Fail-closed: AI synthesis create-only outputs already exist: "
+            + ", ".join(str(path) for path in preexisting)
+        )
 
     manifests = report_manifest_paths(
         root,
