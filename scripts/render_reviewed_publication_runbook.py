@@ -123,9 +123,10 @@ def publish_command(
     return command
 
 
-def index_commands(root: Path) -> list[list[str | Path]]:
+def index_commands(root: Path, receipt_stem: str = "terminal") -> list[list[str | Path]]:
     scripts = root / "scripts"
     index = root / ".codex-tmp/public-index/objects.json"
+    receipt_root = root / ".codex-tmp/public-index"
     return [
         [
             "python3",
@@ -139,7 +140,7 @@ def index_commands(root: Path) -> list[list[str | Path]]:
             "--index",
             index,
             "--receipt-output",
-            root / ".codex-tmp/public-index/public-index.dry.json",
+            receipt_root / f"public-index.{receipt_stem}.dry.json",
         ],
         [
             "python3",
@@ -147,7 +148,7 @@ def index_commands(root: Path) -> list[list[str | Path]]:
             "--index",
             index,
             "--receipt-output",
-            root / ".codex-tmp/public-index/public-index.json",
+            receipt_root / f"public-index.{receipt_stem}.json",
             "--apply",
         ],
     ]
@@ -231,7 +232,7 @@ def render(
         [
             "## 2. Rebuild and publish the public index",
             "",
-            *[block(command) for command in index_commands(root)],
+            *[block(command) for command in index_commands(root, receipt_stem)],
         ]
     )
 

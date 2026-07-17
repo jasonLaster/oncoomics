@@ -79,9 +79,10 @@ outputs before any local report staging:
 
 ```bash
 RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
+POST_SUCCESS_RUNBOOK="$RUN_ROOT/post-success-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
 
 python3 scripts/render_post_success_runbook.py \
-  --output "$RUN_ROOT/post-success-runbook.md"
+  --output "$POST_SUCCESS_RUNBOOK"
 ```
 
 ```bash
@@ -485,8 +486,10 @@ private-freeze commands for the canonical source report packets and the
 follow-on AI handoff command:
 
 ```bash
+SOURCE_FREEZE_RUNBOOK=".codex-tmp/hrd-reports/deterministic-full/source-freeze-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
+
 python3 scripts/render_source_report_freeze_runbook.py \
-  --output .codex-tmp/hrd-reports/deterministic-full/source-freeze-runbook.md
+  --output "$SOURCE_FREEZE_RUNBOOK"
 ```
 
 After all seven source report packets are privately frozen,
@@ -503,8 +506,10 @@ with `scripts/publish_reviewed_public_report.py` and also requires each local
 `report_manifest.json` to hash to the exact row frozen in S3.
 
 ```bash
+AI_REVIEW_RUNBOOK=".codex-tmp/hrd-reports/ai-review/post-reports-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
+
 python3 scripts/render_ai_synthesis_runbook.py \
-  --output .codex-tmp/hrd-reports/ai-review/post-reports-runbook.md \
+  --output "$AI_REVIEW_RUNBOOK" \
   --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.deterministic_full_wgs.private.json \
   --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.rosalind_diana_wgs.private.json \
   --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.sequenza_scarhrd.private.json \
@@ -525,8 +530,10 @@ comparative synthesis packet are privately frozen, render the full reviewed
 public-publication handoff:
 
 ```bash
+REVIEWED_PUBLIC_RUNBOOK=".codex-tmp/hrd-reports/publication/reviewed-public-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
+
 python3 scripts/render_reviewed_publication_runbook.py \
-  --output .codex-tmp/hrd-reports/publication/reviewed-public-runbook.md \
+  --output "$REVIEWED_PUBLIC_RUNBOOK" \
   --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.deterministic_full_wgs.private.json \
   --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.rosalind_diana_wgs.private.json \
   --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.sequenza_scarhrd.private.json \

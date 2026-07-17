@@ -539,6 +539,10 @@ def render(root: Path) -> str:
                 response_output=deterministic / "terminal.materializer.response.json",
             )
         ),
+        "Wait for the submitted materializer job in "
+        "`terminal.materializer.response.json` to reach `SUCCEEDED`, then "
+        "render and run the terminal capture command.",
+        "",
         block(
             [
                 "python3",
@@ -682,29 +686,29 @@ def render(root: Path) -> str:
 
     for route in EXECUTABLE_CROSSCHECK_METHOD_IDS:
         response = deterministic / f"terminal.{route}.response.json"
+        submission_id = route_var(route, "SUBMISSION_ID")
+        job_id = route_var(route, "JOB_ID")
         lines.extend(
             [
                 f"### {route}",
                 "",
+                bash_block([submission_id_assign(submission_id, route)]),
+                block(submit_route_command(aws_dir, deterministic, route)),
+                block(
+                    submit_route_command(
+                        aws_dir,
+                        deterministic,
+                        route,
+                        response_output=response,
+                    )
+                ),
+                "Wait for this route's submitted Batch job to reach "
+                "`SUCCEEDED`, then capture and stage its exact "
+                "content-addressed report.",
+                "",
                 bash_block(
                     [
-                        submission_id_assign(route_var(route, "SUBMISSION_ID"), route),
-                        shell_join(
-                            submit_route_command(aws_dir, deterministic, route)
-                        ),
-                        shell_join(
-                            submit_route_command(
-                                aws_dir,
-                                deterministic,
-                                route,
-                                response_output=response,
-                            )
-                        ),
-                        jq_assign(
-                            route_var(route, "JOB_ID"),
-                            ".job_id",
-                            response,
-                        ),
+                        jq_assign(job_id, ".job_id", response),
                         shell_join(capture_route_command(scripts, deterministic, route)),
                         shell_join(
                             download_route_command(

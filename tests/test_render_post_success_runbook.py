@@ -56,11 +56,26 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertIn("HRD_CROSSCHECK_LICENSE_REVIEWED=YES", text)
         self.assertIn("terminal.materializer.request.dry.json", text)
         self.assertIn("terminal.materializer.capture-command.sh", text)
+        self.assertIn(
+            "Wait for the submitted materializer job in "
+            "`terminal.materializer.response.json` to reach `SUCCEEDED`",
+            text,
+        )
+        self.assertIn(
+            "Wait for this route's submitted Batch job to reach `SUCCEEDED`",
+            text,
+        )
         self.assertIn(".codex-tmp/hrd-crosschecks/input-contract.pending.json", text)
         self.assertIn("--expected-crosscheck-materializer-sha256", text)
         self.assertIn("ROSALIND_HRD_SAMPLE_SET=diana_wgs", text)
         self.assertIn("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON=", text)
         self.assertIn("build:rosalind-hrd-packet", text)
+
+        materializer_submit = text.index("terminal.materializer.request.json")
+        materializer_wait = text.index("Wait for the submitted materializer job")
+        materializer_capture = text.index("render_materializer_capture_command.py")
+        self.assertLess(materializer_submit, materializer_wait)
+        self.assertLess(materializer_wait, materializer_capture)
 
     def test_routes_render_in_canonical_executable_order(self) -> None:
         text = MODULE.render(Path("/repo"))
@@ -84,6 +99,38 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertNotIn("sequenza01", text)
         self.assertNotIn("sigprof01", text)
         self.assertNotIn("'$CONTRACT_URI'", text)
+
+        for route in MODULE.EXECUTABLE_CROSSCHECK_METHOD_IDS:
+            submit = text.index(f"terminal.{route}.request.json --response-output")
+            wait = text.index(
+                "Wait for this route's submitted Batch job to reach `SUCCEEDED`",
+                submit,
+            )
+            capture = text.index(f"capture_route_terminal.py --route {route}", wait)
+            self.assertLess(submit, wait)
+            self.assertLess(wait, capture)
+
+    def test_route_submit_command_has_exact_response_output_argv(self) -> None:
+        response = Path("/run/terminal.sequenza_scarhrd.response.json")
+
+        dry_run = MODULE.submit_route_command(
+            Path("/repo/aws"),
+            Path("/run"),
+            "sequenza_scarhrd",
+        )
+        apply = MODULE.submit_route_command(
+            Path("/repo/aws"),
+            Path("/run"),
+            "sequenza_scarhrd",
+            response_output=response,
+        )
+
+        self.assertNotIn("--response-output", dry_run)
+        self.assertEqual(apply.count("--response-output"), 1)
+        self.assertEqual(apply[apply.index("--response-output") + 1], response)
+        self.assertIn("HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES", apply)
+        self.assertIn("HRD_CROSSCHECK_LICENSE_REVIEWED=YES", apply)
+        self.assertEqual(apply[-1], "--submit")
 
     def test_render_source_handoff_follows_all_packet_staging(self) -> None:
         text = MODULE.render(Path("/repo"))

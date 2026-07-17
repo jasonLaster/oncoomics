@@ -246,7 +246,8 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
 
         self.assertIn("/repo/scripts/render_reviewed_publication_runbook.py", text)
         self.assertIn(
-            "/repo/.codex-tmp/hrd-reports/publication/reviewed-public-runbook.md",
+            "/repo/.codex-tmp/hrd-reports/publication/"
+            "terminal.reviewed-public-runbook.md",
             text,
         )
         self.assertEqual(text.count("--private-publication-receipt "), 10)

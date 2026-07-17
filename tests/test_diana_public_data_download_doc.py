@@ -163,6 +163,52 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             text,
         )
 
+    def test_post_success_renderer_uses_fresh_create_only_output(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'POST_SUCCESS_RUNBOOK="$RUN_ROOT/post-success-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"',
+            text,
+        )
+        self.assertIn('--output "$POST_SUCCESS_RUNBOOK"', text)
+        self.assertNotIn('--output "$RUN_ROOT/post-success-runbook.md"', text)
+
+    def test_follow_on_runbook_renderers_use_fresh_create_only_outputs(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+
+        expected = {
+            "SOURCE_FREEZE_RUNBOOK": (
+                ".codex-tmp/hrd-reports/deterministic-full/"
+                "source-freeze-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
+            ),
+            "AI_REVIEW_RUNBOOK": (
+                ".codex-tmp/hrd-reports/ai-review/"
+                "post-reports-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
+            ),
+            "REVIEWED_PUBLIC_RUNBOOK": (
+                ".codex-tmp/hrd-reports/publication/"
+                "reviewed-public-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
+            ),
+        }
+        for variable, path in expected.items():
+            self.assertIn(f'{variable}="{path}"', text)
+            self.assertIn(f'--output "${variable}"', text)
+
+        self.assertNotIn(
+            "--output .codex-tmp/hrd-reports/deterministic-full/"
+            "source-freeze-runbook.md",
+            text,
+        )
+        self.assertNotIn(
+            "--output .codex-tmp/hrd-reports/ai-review/post-reports-runbook.md",
+            text,
+        )
+        self.assertNotIn(
+            "--output .codex-tmp/hrd-reports/publication/"
+            "reviewed-public-runbook.md",
+            text,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

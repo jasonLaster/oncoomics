@@ -142,14 +142,14 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
 
         self.assertIn("/repo/scripts/build_public_results_index.py", text)
         self.assertEqual(text.count("/repo/scripts/publish_public_results_index.py"), 2)
-        self.assertIn("/repo/.codex-tmp/public-index/public-index.dry.json", text)
-        self.assertIn("/repo/.codex-tmp/public-index/public-index.json", text)
+        self.assertIn("/repo/.codex-tmp/public-index/public-index.terminal.dry.json", text)
+        self.assertIn("/repo/.codex-tmp/public-index/public-index.terminal.json", text)
         for stale in MODULE.STALE_TOKENS:
             self.assertNotIn(stale, text)
 
     def test_index_commands_have_exact_build_dry_and_apply_argv(self) -> None:
         index = Path("/repo/.codex-tmp/public-index/objects.json")
-        commands = MODULE.index_commands(Path("/repo"))
+        commands = MODULE.index_commands(Path("/repo"), "unit")
 
         self.assertEqual(
             commands,
@@ -166,7 +166,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                     "--index",
                     index,
                     "--receipt-output",
-                    Path("/repo/.codex-tmp/public-index/public-index.dry.json"),
+                    Path("/repo/.codex-tmp/public-index/public-index.unit.dry.json"),
                 ],
                 [
                     "python3",
@@ -174,7 +174,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                     "--index",
                     index,
                     "--receipt-output",
-                    Path("/repo/.codex-tmp/public-index/public-index.json"),
+                    Path("/repo/.codex-tmp/public-index/public-index.unit.json"),
                     "--apply",
                 ],
             ],

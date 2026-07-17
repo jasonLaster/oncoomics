@@ -527,7 +527,9 @@ def render(
             block(
                 reviewed_publication_runbook_command(
                     scripts,
-                    reports / "publication/reviewed-public-runbook.md",
+                    reports
+                    / "publication"
+                    / f"{receipt_stem}.reviewed-public-runbook.md",
                     reviewed_publication_receipt_paths(root, receipt_stem),
                 )
             ),

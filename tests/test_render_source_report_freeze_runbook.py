@@ -54,7 +54,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
 
         self.assertIn("/repo/scripts/render_ai_synthesis_runbook.py", text)
         self.assertIn(
-            "/repo/.codex-tmp/hrd-reports/ai-review/post-reports-runbook.md",
+            "/repo/.codex-tmp/hrd-reports/ai-review/terminal.post-reports-runbook.md",
             text,
         )
         self.assertEqual(text.count("--private-publication-receipt "), 7)

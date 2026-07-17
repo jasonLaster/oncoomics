@@ -213,7 +213,8 @@ def render(
                 ai_runbook_command(
                     scripts,
                     root
-                    / ".codex-tmp/hrd-reports/ai-review/post-reports-runbook.md",
+                    / ".codex-tmp/hrd-reports/ai-review"
+                    / f"{receipt_stem}.post-reports-runbook.md",
                     receipt_paths,
                 )
             ),
