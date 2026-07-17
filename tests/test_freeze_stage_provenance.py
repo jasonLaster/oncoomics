@@ -267,12 +267,32 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 KMS,
                 "CRC64NVME",
                 REGION,
-            )
+        )
         arguments, region = mocked.call_args.args
         self.assertEqual(region, REGION)
-        self.assertIn("work-bucket/path%20with%20space/preflight.json", arguments)
-        self.assertEqual(arguments[arguments.index("--if-none-match") + 1], "*")
-        self.assertIn("--copy-source-if-match", arguments)
+        self.assertEqual(
+            arguments,
+            [
+                "s3api",
+                "copy-object",
+                "--copy-source",
+                "work-bucket/path%20with%20space/preflight.json",
+                "--copy-source-if-match",
+                '"etag"',
+                "--bucket",
+                "private-bucket",
+                "--key",
+                "frozen/preflight.json",
+                "--if-none-match",
+                "*",
+                "--server-side-encryption",
+                "aws:kms",
+                "--sse-kms-key-id",
+                KMS,
+                "--checksum-algorithm",
+                "CRC64NVME",
+            ],
+        )
         with tempfile.TemporaryDirectory() as value:
             receipt = Path(value) / "receipt.json"
             receipt.write_text("{}")
@@ -280,9 +300,30 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 MODULE.put_receipt(
                     receipt, "private-bucket", "receipt-key", KMS, REGION
                 )
-        put_arguments = mocked_put.call_args.args[0]
+        put_arguments, put_region = mocked_put.call_args.args
+        self.assertEqual(put_region, REGION)
         self.assertEqual(
-            put_arguments[put_arguments.index("--if-none-match") + 1], "*"
+            put_arguments,
+            [
+                "s3api",
+                "put-object",
+                "--bucket",
+                "private-bucket",
+                "--key",
+                "receipt-key",
+                "--body",
+                str(receipt),
+                "--if-none-match",
+                "*",
+                "--server-side-encryption",
+                "aws:kms",
+                "--sse-kms-key-id",
+                KMS,
+                "--checksum-algorithm",
+                "SHA256",
+                "--content-type",
+                "application/json",
+            ],
         )
 
     def test_version_history_consumes_pages_and_labels_delete_markers(self) -> None:
