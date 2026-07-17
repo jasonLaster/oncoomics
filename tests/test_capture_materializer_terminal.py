@@ -233,9 +233,21 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             if operation == ("s3api", "get-bucket-versioning"):
                 return {"Status": "Enabled"}
             if operation == ("s3api", "head-object"):
-                self.assertIn("--version-id", arguments)
-                self.assertIn(self.version_id, arguments)
-                self.assertIn("--checksum-mode", arguments)
+                self.assertEqual(
+                    arguments,
+                    (
+                        "s3api",
+                        "head-object",
+                        "--bucket",
+                        "diana-omics-private-results-172630973301-us-east-1",
+                        "--key",
+                        self.key,
+                        "--version-id",
+                        self.version_id,
+                        "--checksum-mode",
+                        "ENABLED",
+                    ),
+                )
                 return copy.deepcopy(values["metadata"])
             if operation == ("s3api", "list-object-versions"):
                 return copy.deepcopy(values["history"])
