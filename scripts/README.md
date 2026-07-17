@@ -4,6 +4,9 @@ Most workflows should use `PYTHONPATH=src /usr/bin/python3 -m diana_omics ...` r
 
 Current shell utilities:
 
+- `build_ai_review_bundle.py`: build a de-identified, hash-bound model review
+  bundle from the frozen seven-method HRD report inventory without invoking a
+  model.
 - `build_public_results_index.py`: build the reviewed static S3 object index that
   powers `data.diana-tnbc.com`.
 - `generate_blocked_hrd_crosscheck_reports.py`: render FACETS→scarHRD,
