@@ -75,6 +75,7 @@ REQUIRED_REPORT_HEADINGS = (
     "## Limitations",
     "## Authorized conclusion",
 )
+REVIEW_OUTPUT_FILES = {"claims.csv", "report.md", "review_manifest.json"}
 
 CLAIM_ID = re.compile(r"^C[0-9]{3,}$")
 CITATION = re.compile(
@@ -1028,6 +1029,37 @@ def validate_review_manifest(
     return expected_outputs, invocation
 
 
+def require_exact_review_output_dir(review_dir: Path) -> None:
+    if review_dir.is_symlink() or not review_dir.is_dir():
+        raise ValueError("review directory is missing or a symlink")
+
+    observed = {path.name for path in review_dir.iterdir()}
+    if observed != REVIEW_OUTPUT_FILES:
+        missing = sorted(REVIEW_OUTPUT_FILES - observed)
+        unexpected = sorted(observed - REVIEW_OUTPUT_FILES)
+        details = []
+        if missing:
+            details.append("missing " + ",".join(missing))
+        if unexpected:
+            details.append("unexpected " + ",".join(unexpected))
+        raise ValueError(
+            "review directory must contain exactly report.md, claims.csv, "
+            "and review_manifest.json before validation: "
+            + "; ".join(details)
+        )
+
+    invalid = sorted(
+        path.name
+        for path in review_dir.iterdir()
+        if path.is_symlink() or not path.is_file()
+    )
+    if invalid:
+        raise ValueError(
+            "review directory contains invalid output paths: "
+            + ",".join(invalid)
+        )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle-dir", required=True, type=Path)
@@ -1065,6 +1097,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         report_path = review_dir / "report.md"
         claims_path = review_dir / "claims.csv"
         review_manifest_path = review_dir / "review_manifest.json"
+        require_exact_review_output_dir(review_dir)
         required_paths = (
             bundle_path,
             bundle_manifest_path,

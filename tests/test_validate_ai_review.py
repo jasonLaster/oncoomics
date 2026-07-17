@@ -385,6 +385,23 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertNotEqual(leaked.returncode, 0)
             self.assertIn("raw object, URI, or local path", leaked.stderr)
 
+    def test_rejects_extra_review_output_before_validation_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review = Path(temporary) / "review-a"
+            fixture.write_review(review)
+            (review / "notes.md").write_text(
+                "stale reviewer scratch\n",
+                encoding="utf-8",
+            )
+
+            validated = fixture.validate(review)
+
+            self.assertNotEqual(validated.returncode, 0)
+            self.assertIn("review directory must contain exactly", validated.stderr)
+            self.assertFalse((review / "validation.json").exists())
+
     def test_reviewer_b_requires_independent_validated_a_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))
