@@ -14,6 +14,9 @@ Current shell utilities:
 - `generate_blocked_hrd_crosscheck_reports.py`: render FACETS→scarHRD,
   Oncoanalyser→CHORD, and HRDetect no-call packets for routes that are not yet
   executable or clinically authorized.
+- `generate_comparative_hrd_synthesis.py`: generate the offline
+  `comparative_hrd_synthesis` packet from the frozen seven-method report
+  inventory and two independently validated AI-review outputs.
 - `hrd_report_inventory.py`: pin the canonical seven-method Diana WGS report
   inventory shared by deterministic, Rosalind, cross-check, and AI-review
   reporting.
