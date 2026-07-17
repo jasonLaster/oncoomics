@@ -9,9 +9,10 @@ locals {
   azs         = slice(data.aws_availability_zones.available.names, 0, 2)
 
   bucket_names = {
-    work    = "${var.project}-work-${data.aws_caller_identity.current.account_id}-${var.region}"
-    results = "${var.project}-results-${data.aws_caller_identity.current.account_id}-${var.region}"
-    raw     = "${var.project}-raw-inputs-${data.aws_caller_identity.current.account_id}-${var.region}"
+    work            = "${var.project}-work-${data.aws_caller_identity.current.account_id}-${var.region}"
+    results         = "${var.project}-results-${data.aws_caller_identity.current.account_id}-${var.region}"
+    private_results = "${var.project}-private-results-${data.aws_caller_identity.current.account_id}-${var.region}"
+    raw             = "${var.project}-raw-inputs-${data.aws_caller_identity.current.account_id}-${var.region}"
   }
 
   tags = {
@@ -731,15 +732,16 @@ resource "local_file" "nextflow_params" {
   filename        = "${path.module}/nextflow.aws.json"
   file_permission = "0600"
   content = jsonencode({
-    aws_region             = var.region
-    aws_workdir            = "s3://${aws_s3_bucket.this["work"].bucket}/work"
-    aws_results_dir        = "s3://${aws_s3_bucket.this["results"].bucket}/runs"
-    aws_spot_queue         = aws_batch_job_queue.spot.name
-    aws_ondemand_queue     = aws_batch_job_queue.ondemand.name
-    aws_job_role           = aws_iam_role.batch_job.arn
-    aws_logs_group         = aws_cloudwatch_log_group.batch.name
-    container              = "${aws_ecr_repository.diana_omics.repository_url}:${var.image_tag}"
-    phase3_asset_cache_uri = "s3://${aws_s3_bucket.this["raw"].bucket}/cache/phase3_wgs"
-    diana_raw_inbox_uri    = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_inbox_prefix}"
+    aws_region              = var.region
+    aws_workdir             = "s3://${aws_s3_bucket.this["work"].bucket}/work"
+    aws_results_dir         = "s3://${aws_s3_bucket.this["results"].bucket}/runs"
+    aws_private_results_dir = "s3://${aws_s3_bucket.this["private_results"].bucket}/runs"
+    aws_spot_queue          = aws_batch_job_queue.spot.name
+    aws_ondemand_queue      = aws_batch_job_queue.ondemand.name
+    aws_job_role            = aws_iam_role.batch_job.arn
+    aws_logs_group          = aws_cloudwatch_log_group.batch.name
+    container               = "${aws_ecr_repository.diana_omics.repository_url}:${var.image_tag}"
+    phase3_asset_cache_uri  = "s3://${aws_s3_bucket.this["raw"].bucket}/cache/phase3_wgs"
+    diana_raw_inbox_uri     = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_inbox_prefix}"
   })
 }

@@ -53,6 +53,19 @@ AWS_IMAGE_TAG=24d8a65-awswrap2 PYTHONPATH=src /usr/bin/python3 -m diana_omics in
 
 The active SRA stack uses account-local AWS credentials and `us-east-1`. It writes `infra/aws/nextflow.aws.json`, which is ignored by git and used by the AWS Nextflow scripts. The original `us-west-1` stack is legacy for this workload because cross-region SRA reads benchmarked much slower.
 
+The stack deliberately separates reviewed public-validation outputs from
+sensitive analysis outputs:
+
+- `diana-omics-results-...` exposes only the exact reviewed public prefixes in
+  Terraform. Never write patient-derived or otherwise sensitive artifacts to
+  it.
+- `diana-omics-private-results-...` is the durable destination for sensitive
+  analysis results, method reports, provenance, and reviewer packets. It uses
+  SSE-KMS, versioning, bucket-owner-enforced ownership, TLS-only access, and all
+  four S3 public-access-block controls.
+- `diana-omics-work-...` is private scratch space with lifecycle expiry, not the
+  sole durable copy of a report.
+
 ## Build And Push Image
 
 After the ECR repository exists:
@@ -192,6 +205,26 @@ s3://diana-omics-raw-inputs-<account>-<region>/diana/inbox
 Do not upload Diana files under `cache/phase3_wgs/`, `s3://diana-omics-results-...`, or `s3://diana-omics-work-...`.
 
 Detailed upload and bucket-to-bucket transfer instructions live in `docs/operations/diana-raw-s3-upload.md`.
+
+## Private Analysis Results
+
+Patient-derived VCF, BAM, CNV, SV, signature, HRD, reviewer-packet, and
+interpretation artifacts belong under:
+
+```txt
+s3://diana-omics-private-results-<account>-<region>/runs/<alias>/<run-id>/
+```
+
+Use a de-identified alias in the key. Every method directory must retain the
+input object URI and VersionId when available, input SHA-256, immutable image
+digest, exact command and parameters, tool versions, output SHA-256 inventory,
+QC state, and interpretation state. A report produced in the expiring work
+bucket is incomplete until its reviewed durable copy is verified here.
+
+Do not publish this bucket, add it to `public_results_prefixes`, or use it as a
+raw-upload inbox. The Batch job role can read and write it so private cloud jobs
+can publish their own results without routing data through a developer
+workstation.
 
 The required custody contract for `diana/inbox/` is private controlled access:
 
