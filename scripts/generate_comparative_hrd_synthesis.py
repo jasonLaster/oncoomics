@@ -734,8 +734,53 @@ def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
             + ", ".join(sorted(invalid))
         )
 
-    for filename in expected:
-        (output / filename).unlink(missing_ok=True)
+    existing = sorted(path.name for path in output.iterdir() if path.name in expected)
+    if existing:
+        raise ValueError(
+            "synthesis output already contains packet files: " + ", ".join(existing)
+        )
+
+
+def copy_create_only(source: Path, destination: Path) -> None:
+    with source.open("rb") as source_handle:
+        try:
+            file_descriptor = os.open(
+                destination,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o644,
+            )
+        except FileExistsError as error:
+            raise ValueError(
+                "synthesis output packet already exists: " + destination.name
+            ) from error
+
+        try:
+            destination_handle = os.fdopen(file_descriptor, "wb")
+        except Exception:
+            os.close(file_descriptor)
+            destination.unlink(missing_ok=True)
+            raise
+
+        try:
+            with destination_handle:
+                for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
+                    destination_handle.write(chunk)
+        except Exception:
+            destination.unlink(missing_ok=True)
+            raise
+
+
+def install_packet_create_only(staged_paths: Sequence[Path], output: Path) -> None:
+    installed: List[Path] = []
+    try:
+        for path in staged_paths:
+            destination = output / path.name
+            copy_create_only(path, destination)
+            installed.append(destination)
+    except Exception:
+        for path in installed:
+            path.unlink(missing_ok=True)
+        raise
 
 
 def main() -> None:
@@ -907,8 +952,13 @@ def main() -> None:
         }
         manifest_path = staging / "report_manifest.json"
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        for path in (report_path, agreement_path, manifest_path):
-            os.replace(path, output / path.name)
+        try:
+            install_packet_create_only(
+                (report_path, agreement_path, manifest_path),
+                output,
+            )
+        except ValueError as error:
+            raise SystemExit("Fail-closed: " + str(error)) from error
     print("Wrote verified comparative synthesis: " + str(output))
     print("Authorized HRD state: {0}; no model invoked".format(ceiling))
 

@@ -371,14 +371,50 @@ class GenerateSynthesisTests(unittest.TestCase):
             )
             self.assertIn("source_not_comparable", rows[4]["structured_disagreement_types"])
 
-    def test_missing_required_method_fails_and_removes_stale_outputs(self) -> None:
+    def test_existing_packet_files_fail_create_only_and_remain_unchanged(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             fixture = SynthesisFixture(Path(temporary))
             self.assertEqual(fixture.run().returncode, 0)
+            original_hashes = {
+                filename: sha256(fixture.output_dir / filename)
+                for filename in PUBLISH_PRIVATE.METHOD_CONTRACTS[
+                    "comparative_hrd_synthesis"
+                ]["files"]
+            }
+
             result = fixture.run(fixture.source_manifests[:1], fixture.methods[:1])
+
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn("method inventory", result.stdout + result.stderr)
-            self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+            self.assertIn(
+                "synthesis output already contains packet files",
+                result.stdout + result.stderr,
+            )
+            self.assertEqual(
+                {
+                    filename: sha256(fixture.output_dir / filename)
+                    for filename in original_hashes
+                },
+                original_hashes,
+            )
+
+    def test_preexisting_report_fails_create_only(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            fixture.output_dir.mkdir()
+            stale_report = fixture.output_dir / "report.md"
+            stale_report.write_text("stale synthesis report\n", encoding="utf-8")
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "synthesis output already contains packet files: report.md",
+                result.stdout + result.stderr,
+            )
+            self.assertEqual(
+                stale_report.read_text(encoding="utf-8"),
+                "stale synthesis report\n",
+            )
 
     def test_stale_extra_output_fails_before_removing_prior_packet(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
