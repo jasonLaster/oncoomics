@@ -9,10 +9,16 @@ Current shell utilities:
   model.
 - `build_public_results_index.py`: build the reviewed static S3 object index that
   powers `data.diana-tnbc.com`.
+- `capture_batch_provenance.py`: capture a successful full-WGS Batch execution
+  and verify the exact worker source before terminal artifact freezing.
 - `download_exact_report_tree.py`: materialize a passed private cross-check
   report publication by exact S3 VersionId before compacting it for review.
 - `finalize_ai_review.py`: wrap a passed independent AI review in a schema-1
   HRD report manifest that can be privately frozen.
+- `freeze_final_artifacts.py`: copy a successful deterministic artifact tree
+  into versioned private storage with exact destination VersionIds.
+- `freeze_stage_provenance.py`: freeze terminal WGS preflight/gather evidence
+  from expiring work storage into the versioned private bucket.
 - `generate_blocked_hrd_crosscheck_reports.py`: render FACETS→scarHRD,
   Oncoanalyser→CHORD, and HRDetect no-call packets for routes that are not yet
   executable or clinically authorized.

@@ -74,11 +74,69 @@ input_sha256.csv
 report_manifest.json
 ```
 
+Capture the terminal Batch job and freeze its source stage and final artifact
+outputs before any local report staging:
+
+```bash
+RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
+RUN_ID=diana-wgs-hrd-20260716T033101Z
+JOB_ID=6f827d44-d19b-4a6c-9126-d65189aa66cf
+WORK_BUCKET=diana-omics-work-172630973301-us-east-1
+RESULTS_BUCKET=diana-omics-results-172630973301-us-east-1
+PRIVATE_BUCKET=diana-omics-private-results-172630973301-us-east-1
+
+python3 scripts/capture_batch_provenance.py \
+  --job-id "$JOB_ID" \
+  --run-id "$RUN_ID" \
+  --worker-uri "s3://$WORK_BUCKET/runs/diana-hrd/$RUN_ID/inputs/diana_hrd_wgs_worker.py" \
+  --executed-worker-freeze-receipt "$RUN_ROOT/executed-worker-freeze-receipt.json" \
+  --executed-worker-freeze-receipt-upload "$RUN_ROOT/executed-worker-freeze-receipt-upload.json" \
+  --output "$RUN_ROOT/terminal.execution.succeeded.json" \
+  --expected-status SUCCEEDED
+
+python3 scripts/freeze_stage_provenance.py \
+  --job-id "$JOB_ID" \
+  --run-id "$RUN_ID" \
+  --execution-receipt "$RUN_ROOT/terminal.execution.succeeded.json" \
+  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
+  --output "$RUN_ROOT/terminal.stage-freeze.dry.json" \
+  --anchor-output "$RUN_ROOT/terminal.stage-freeze.dry.anchor.json"
+
+python3 scripts/freeze_stage_provenance.py \
+  --job-id "$JOB_ID" \
+  --run-id "$RUN_ID" \
+  --execution-receipt "$RUN_ROOT/terminal.execution.succeeded.json" \
+  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
+  --output "$RUN_ROOT/terminal.stage-freeze.json" \
+  --anchor-output "$RUN_ROOT/terminal.stage-freeze.anchor.json" \
+  --apply
+
+python3 scripts/freeze_final_artifacts.py \
+  --job-id "$JOB_ID" \
+  --run-id "$RUN_ID" \
+  --execution-receipt "$RUN_ROOT/terminal.execution.succeeded.json" \
+  --source-prefix "s3://$RESULTS_BUCKET/runs/diana-hrd/$RUN_ID/artifacts/" \
+  --destination-prefix "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/deterministic/artifacts/" \
+  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
+  --output "$RUN_ROOT/terminal.final-freeze.dry.json" \
+  --anchor-output "$RUN_ROOT/terminal.final-freeze.dry.anchor.json"
+
+python3 scripts/freeze_final_artifacts.py \
+  --job-id "$JOB_ID" \
+  --run-id "$RUN_ID" \
+  --execution-receipt "$RUN_ROOT/terminal.execution.succeeded.json" \
+  --source-prefix "s3://$RESULTS_BUCKET/runs/diana-hrd/$RUN_ID/artifacts/" \
+  --destination-prefix "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/deterministic/artifacts/" \
+  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
+  --output "$RUN_ROOT/terminal.final-freeze.json" \
+  --anchor-output "$RUN_ROOT/terminal.final-freeze.anchor.json" \
+  --apply
+```
+
 Materialize the final private freeze by exact S3 `VersionId` before staging the
 report packet:
 
 ```bash
-RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
 
 python3 scripts/materialize_frozen_artifacts.py \
   --freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \

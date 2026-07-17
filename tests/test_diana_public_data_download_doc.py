@@ -86,6 +86,28 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             text,
         )
 
+    def test_terminal_packet_docs_start_with_checked_in_freeze_commands(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+
+        for script in (
+            "scripts/capture_batch_provenance.py",
+            "scripts/freeze_stage_provenance.py",
+            "scripts/freeze_final_artifacts.py",
+            "scripts/materialize_frozen_artifacts.py",
+            "scripts/stage_deterministic_wgs_report.py",
+        ):
+            self.assertIn(script, text)
+        self.assertIn(
+            '--output "$RUN_ROOT/terminal.execution.succeeded.json"',
+            text,
+        )
+        self.assertIn('--output "$RUN_ROOT/terminal.stage-freeze.json"', text)
+        self.assertIn('--output "$RUN_ROOT/terminal.final-freeze.json"', text)
+        self.assertLess(
+            text.index("scripts/capture_batch_provenance.py"),
+            text.index("scripts/materialize_frozen_artifacts.py"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
