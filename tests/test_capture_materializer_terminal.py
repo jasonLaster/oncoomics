@@ -418,11 +418,31 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             destination = Path(temporary) / "receipt.json"
 
             def command(command, **kwargs):
-                self.assertEqual(command[0:3], ["aws", "s3api", "get-object"])
-                self.assertEqual(command[command.index("--version-id") + 1], self.version_id)
-                self.assertEqual(command[command.index("--checksum-mode") + 1], "ENABLED")
-                self.assertEqual(command[-1], str(destination))
-                self.assertTrue(kwargs["text"])
+                self.assertEqual(
+                    command,
+                    [
+                        "aws",
+                        "s3api",
+                        "get-object",
+                        "--bucket",
+                        "diana-omics-private-results-unit",
+                        "--key",
+                        "receipt.json",
+                        "--version-id",
+                        self.version_id,
+                        "--checksum-mode",
+                        "ENABLED",
+                        "--region",
+                        MODULE.REGION,
+                        "--output",
+                        "json",
+                        str(destination),
+                    ],
+                )
+                self.assertEqual(
+                    kwargs,
+                    {"text": True, "stderr": subprocess.STDOUT},
+                )
                 return json.dumps(self.metadata)
 
             with mock.patch.object(subprocess, "check_output", side_effect=command):
