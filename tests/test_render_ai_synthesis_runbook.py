@@ -17,6 +17,7 @@ if str(SCRIPT_DIR) not in sys.path:
 import generate_blocked_hrd_crosscheck_reports as BLOCKED_GENERATOR  # noqa: E402
 import publish_reviewed_public_report as PUBLISH  # noqa: E402
 import render_reviewed_publication_runbook as REVIEWED_PUBLIC  # noqa: E402
+import runbook_io as RUNBOOK_IO  # noqa: E402
 
 SPEC = importlib.util.spec_from_file_location(
     "render_ai_synthesis_runbook", SCRIPT_DIR / "render_ai_synthesis_runbook.py"
@@ -157,6 +158,22 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         ):
             self.assertIn(f"--receipt-output {receipt_path}", text)
             self.assertIn(f"--private-publication-receipt {receipt_path}", text)
+
+    def test_reviewed_publication_receipts_reuse_source_and_ai_helpers(self) -> None:
+        root = Path("/repo")
+
+        self.assertEqual(
+            MODULE.reviewed_publication_receipt_paths(root, "terminal"),
+            (
+                *(
+                    RUNBOOK_IO.source_private_receipt_path(
+                        root, "terminal", method_id
+                    )
+                    for method_id in MODULE.REQUIRED_METHOD_IDS
+                ),
+                *MODULE.ai_private_receipt_paths(root, "terminal"),
+            ),
+        )
 
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
         prerequisites = {

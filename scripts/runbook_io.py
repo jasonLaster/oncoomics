@@ -13,6 +13,29 @@ def unique_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
     return tuple(dict.fromkeys(paths))
 
 
+def source_private_receipt_path(
+    root: Path, receipt_stem: str, method_id: str
+) -> Path:
+    """Return a source HRD packet's private-freeze receipt path."""
+
+    return (
+        root
+        / ".codex-tmp/hrd-reports/deterministic-full"
+        / f"{receipt_stem}.{method_id}.private.json"
+    )
+
+
+def source_private_receipt_paths(
+    root: Path, receipt_stem: str, method_ids: Iterable[str]
+) -> tuple[Path, ...]:
+    """Return source HRD private-freeze receipt paths in method order."""
+
+    return tuple(
+        source_private_receipt_path(root, receipt_stem, method_id)
+        for method_id in method_ids
+    )
+
+
 def write_once(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

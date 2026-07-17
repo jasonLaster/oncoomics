@@ -35,7 +35,7 @@ from render_reviewed_publication_runbook import (
     required_absent as reviewed_public_required_absent,
     required_existing as reviewed_public_required_existing,
 )
-from runbook_io import unique_paths, write_once
+from runbook_io import source_private_receipt_paths, unique_paths, write_once
 
 FORBIDDEN_TOKENS = ("E019_S01", "DRF-PSN49561", "echo-personalis", "personalis")
 AI_PRIVATE_RECEIPT_STEMS = (
@@ -233,27 +233,23 @@ def publish_command(
     ]
 
 
-def reviewed_publication_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
-    reports = root / ".codex-tmp/hrd-reports"
-    source_receipt_root = reports / "deterministic-full"
-    ai_receipt_root = reports / "ai-review" / RUN_ID / "publication-receipts"
+def reviewed_publication_receipt_paths(
+    root: Path, receipt_stem: str
+) -> tuple[Path, ...]:
     receipt_paths = {
-        method_id: source_receipt_root / f"{receipt_stem}.{method_id}.private.json"
-        for method_id in REQUIRED_METHOD_IDS
+        **dict(
+            zip(
+                REQUIRED_METHOD_IDS,
+                source_private_receipt_paths(root, receipt_stem, REQUIRED_METHOD_IDS),
+            )
+        ),
+        **dict(
+            zip(
+                (*AI_REVIEW_METHOD_IDS, *COMPARATIVE_METHOD_IDS),
+                ai_private_receipt_paths(root, receipt_stem),
+            )
+        ),
     }
-    receipt_paths.update(
-        {
-            "ai_review_reviewer_a": (
-                ai_receipt_root / f"{receipt_stem}.ai-reviewer-a.private.json"
-            ),
-            "ai_review_reviewer_b": (
-                ai_receipt_root / f"{receipt_stem}.ai-reviewer-b.private.json"
-            ),
-            "comparative_hrd_synthesis": (
-                ai_receipt_root / f"{receipt_stem}.comparative-synthesis.private.json"
-            ),
-        }
-    )
     return tuple(receipt_paths[method_id] for method_id in REPORT_METHOD_IDS)
 
 

@@ -20,7 +20,7 @@ from render_ai_synthesis_runbook import (
     required_absent as ai_required_absent,
     required_existing as ai_required_existing,
 )
-from runbook_io import unique_paths, write_once
+from runbook_io import source_private_receipt_path, unique_paths, write_once
 
 
 class Raw(str):
@@ -128,11 +128,7 @@ def validate_packet_dirs(paths: dict[str, Path]) -> None:
 
 
 def receipt_path(root: Path, receipt_stem: str, method_id: str) -> Path:
-    return (
-        root
-        / ".codex-tmp/hrd-reports/deterministic-full"
-        / f"{receipt_stem}.{method_id}.private.json"
-    )
+    return source_private_receipt_path(root, receipt_stem, method_id)
 
 
 def publish_command(
