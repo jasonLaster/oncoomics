@@ -150,6 +150,18 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             text.index("python3 scripts/render_source_report_freeze_runbook.py"),
         )
 
+    def test_crosscheck_contract_uses_existing_pending_template(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+
+        self.assertNotIn(
+            '--pending-contract "$RUN_ROOT/input-contract.pending.json"',
+            text,
+        )
+        self.assertIn(
+            "--pending-contract .codex-tmp/hrd-crosschecks/input-contract.pending.json",
+            text,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

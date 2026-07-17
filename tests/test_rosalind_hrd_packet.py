@@ -191,6 +191,26 @@ def write_deterministic_report(root: Path, artifact_root: Path) -> Path:
 
 
 class RosalindHrdPacketTest(unittest.TestCase):
+    def test_packet_file_writes_are_create_only_and_fsynced(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            destination = root / "results/rosalind_hrd/unit/report.md"
+
+            with patch.object(
+                packet.os,
+                "fsync",
+                wraps=packet.os.fsync,
+            ) as fsync:
+                packet.write_text_create_only(destination, "one")
+
+            self.assertEqual(destination.read_text(encoding="utf-8"), "one\n")
+            self.assertEqual(fsync.call_count, 1)
+
+            with self.assertRaises(FileExistsError):
+                packet.write_text_create_only(destination, "two")
+
+            self.assertEqual(destination.read_text(encoding="utf-8"), "one\n")
+
     def test_hcc1395_wes_packet_writes_no_call_adapter_status(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

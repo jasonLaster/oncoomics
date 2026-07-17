@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import os
 import re
@@ -10,7 +12,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from ...paths import path_from_root
-from ...utils import ensure_dir, iso_now, parse_csv, read_json, read_text, write_csv, write_json, write_text
+from ...utils import ensure_dir, iso_now, parse_csv, read_json, read_text
 
 RESULT_ROOT = "results/rosalind_hrd"
 DEFAULT_SAMPLE_SETS = ("hcc1395_wes", "hcc1395_wgs", "hg008", "colo829", "diana_raw_intake")
@@ -192,6 +194,52 @@ def read_json_or_empty(relative_path: str) -> dict[str, Any]:
         return {}
     payload = read_json(path)
     return payload if isinstance(payload, dict) else {"payload": payload}
+
+
+def write_text_create_only(path: Path, value: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            descriptor = -1
+            handle.write(value if value.endswith("\n") else f"{value}\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+    except Exception:
+        if descriptor >= 0:
+            os.close(descriptor)
+        path.unlink(missing_ok=True)
+        raise
+
+
+def write_json_create_only(path: Path, value: Any) -> None:
+    write_text_create_only(path, json.dumps(value, indent=2) + "\n")
+
+
+def write_csv_create_only(
+    path: Path,
+    rows: Sequence[Mapping[str, Any]],
+    columns: Sequence[str] | None = None,
+) -> None:
+    resolved_columns = list(
+        columns or dict.fromkeys(key for row in rows for key in row.keys())
+    )
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=resolved_columns,
+        extrasaction="ignore",
+        lineterminator="\n",
+    )
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(
+            {
+                column: "" if row.get(column) is None else row.get(column)
+                for column in resolved_columns
+            }
+        )
+    write_text_create_only(path, output.getvalue())
 
 
 def read_csv_or_empty(relative_path: str) -> list[dict[str, str]]:
@@ -1395,11 +1443,13 @@ def write_packet_to_dir(
     report_path = output_path / "report.md"
     report_manifest_path = output_path / "report_manifest.json"
 
-    write_json(input_index_path, {"sampleSet": spec.sample_set, "artifacts": artifacts})
-    write_csv(evidence_summary_path, evidence_rows)
-    write_csv(adapter_status_path, adapter_rows)
-    write_json(research_context_path, research_context(spec, evidence_rows))
-    write_text(
+    write_json_create_only(
+        input_index_path, {"sampleSet": spec.sample_set, "artifacts": artifacts}
+    )
+    write_csv_create_only(evidence_summary_path, evidence_rows)
+    write_csv_create_only(adapter_status_path, adapter_rows)
+    write_json_create_only(research_context_path, research_context(spec, evidence_rows))
+    write_text_create_only(
         next_actions_path,
         "\n".join(
             [
@@ -1465,8 +1515,8 @@ def write_packet_to_dir(
             "Use external databases only to enrich observed sample events. Do not use literature or database context to override missing inputs, failed QC, or no-call adapter states.",
         ]
     )
-    write_text(reviewer_packet_path, reviewer_report)
-    write_text(report_path, reviewer_report)
+    write_text_create_only(reviewer_packet_path, reviewer_report)
+    write_text_create_only(report_path, reviewer_report)
     evidence_status = packet_evidence_status(evidence_rows)
     generated_paths = {
         "input_evidence_index.json": input_index_path,
@@ -1523,7 +1573,7 @@ def write_packet_to_dir(
             **({"provenance": deterministic_binding} if deterministic_binding else {}),
         },
     }
-    write_json(report_manifest_path, report_manifest)
+    write_json_create_only(report_manifest_path, report_manifest)
     packet_files = [*generated_paths.values(), report_path, report_manifest_path]
     if spec.sample_set == "diana_wgs":
         scan_generated_packet(
@@ -1559,7 +1609,7 @@ def write_cloud_materialization_plan(root: str, packet_run_id: str, packet_summa
             if Path(str(path)).parts
         }
     )
-    write_text(
+    write_text_create_only(
         path_from_root(f"{root}/cloud_materialization_plan.md"),
         "\n".join(
             [
@@ -1629,8 +1679,8 @@ def main() -> None:
             "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats.",
         },
     }
-    write_json(path_from_root(f"{root}/run_manifest.json"), manifest)
-    write_text(
+    write_json_create_only(path_from_root(f"{root}/run_manifest.json"), manifest)
+    write_text_create_only(
         path_from_root(f"{root}/packet_index.md"),
         "\n".join(
             [

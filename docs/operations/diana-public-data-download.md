@@ -225,7 +225,7 @@ fresh content-addressed contract object when `--apply` is present.
 
 ```bash
 python3 scripts/finalize_input_contract.py \
-  --pending-contract "$RUN_ROOT/input-contract.pending.json" \
+  --pending-contract .codex-tmp/hrd-crosschecks/input-contract.pending.json \
   --final-freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
   --final-freeze-anchor "$RUN_ROOT/terminal.final-freeze.anchor.json" \
   --exact-materialization-receipt "$RUN_ROOT/terminal.materialize.json" \
