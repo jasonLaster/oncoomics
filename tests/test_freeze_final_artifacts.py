@@ -173,7 +173,62 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             [(row["VersionId"], row["history_kind"]) for row in rows],
             [("v1", "version"), ("d1", "delete_marker")],
         )
-        self.assertIn("--key-marker", mocked.call_args_list[1].args[0])
+        self.assertEqual(mocked.call_count, 2)
+        self.assertEqual(
+            mocked.call_args_list[0].args,
+            (
+                [
+                    "s3api",
+                    "list-object-versions",
+                    "--bucket",
+                    "bucket",
+                    "--prefix",
+                    "prefix/",
+                ],
+                "us-east-1",
+            ),
+        )
+        self.assertEqual(
+            mocked.call_args_list[1].args,
+            (
+                [
+                    "s3api",
+                    "list-object-versions",
+                    "--bucket",
+                    "bucket",
+                    "--prefix",
+                    "prefix/",
+                    "--key-marker",
+                    "prefix/a",
+                    "--version-id-marker",
+                    "v1",
+                ],
+                "us-east-1",
+            ),
+        )
+
+    def test_version_history_rejects_missing_version_marker(self) -> None:
+        with patch.object(
+            MODULE,
+            "aws_json",
+            return_value={
+                "Versions": [{"Key": "prefix/a", "VersionId": "v1"}],
+                "IsTruncated": True,
+                "NextKeyMarker": "prefix/a",
+            },
+        ):
+            with self.assertRaisesRegex(RuntimeError, "next key/version markers"):
+                MODULE.version_history("bucket", "prefix/", "us-east-1")
+
+    def test_version_history_rejects_stalled_pagination(self) -> None:
+        stalled = {
+            "IsTruncated": True,
+            "NextKeyMarker": "prefix/a",
+            "NextVersionIdMarker": "v1",
+        }
+        with patch.object(MODULE, "aws_json", side_effect=[stalled, stalled]):
+            with self.assertRaisesRegex(RuntimeError, "did not advance"):
+                MODULE.version_history("bucket", "prefix/", "us-east-1")
 
     def test_bucket_versioning_must_be_enabled(self) -> None:
         with patch.object(MODULE, "aws_json", return_value={"Status": "Enabled"}):
