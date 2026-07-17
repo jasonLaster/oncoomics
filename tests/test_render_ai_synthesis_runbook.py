@@ -262,12 +262,17 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             self.assertGreater(index, previous)
             previous = index
 
-        self.assertIn(
-            "/repo/.codex-tmp/hrd-reports/ai-review/"
-            f"{MODULE.RUN_ID}/publication-receipts/"
+        for receipt in (
             "terminal.ai-reviewer-a.private.json",
-            text,
-        )
+            "terminal.ai-reviewer-b.private.json",
+            "terminal.comparative-synthesis.private.json",
+        ):
+            self.assertIn(
+                "/repo/.codex-tmp/hrd-reports/ai-review/"
+                f"{MODULE.RUN_ID}/publication-receipts/"
+                f"{receipt}",
+                text,
+            )
 
     def test_reviewed_publication_runbook_command_has_exact_output_argv(self) -> None:
         output = Path("/repo/.codex-tmp/hrd-reports/publication/runbook.md")
