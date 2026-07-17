@@ -1,3 +1,4 @@
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -71,27 +72,122 @@ def write_diana_wgs_worker_artifacts(root: Path, readiness_overrides: Optional[D
         root / "cnv/coverage_cnv_summary.json",
         {"status": "partial_evidence", "bin_count": 600, "relative_gain_bins": 4, "relative_loss_bins": 5},
     )
-    utils.write_csv(root / "cnv/coverage_cnv_bins.csv", [{"contig": "chr1", "start": 0, "end": 5_000_000}])
+    cnv_rows = []
+    for index in range(600):
+        coverage_class = (
+            "relative_gain" if index < 4 else "relative_loss" if index < 9 else "neutral_or_low_signal"
+        )
+        cnv_rows.append(
+            {"contig": "chr1", "start": index * 5_000_000, "end": (index + 1) * 5_000_000, "coverage_class": coverage_class}
+        )
+    utils.write_csv(root / "cnv/coverage_cnv_bins.csv", cnv_rows)
     utils.write_json(
         root / "signatures/signature_assignment_summary.json",
         {
             "status": "partial_evidence",
             "usable_snv_records": 100,
+            "sbs96_rows": 96,
             "sigprofiler_assignment_status": "input_ready_threshold_met",
             "sbs3_status": "no_call_signature_assignment_and_threshold_policy_not_locked",
         },
     )
-    utils.write_csv(root / "signatures/wgs_sbs96_matrix.csv", [{"mutation_type": "C>A", "count": 1}])
+    substitutions = ("C>A", "C>G", "C>T", "T>A", "T>C", "T>G")
+    bases = ("A", "C", "G", "T")
+    sbs_rows = []
+    for substitution in substitutions:
+        for left in bases:
+            for right in bases:
+                sbs_rows.append(
+                    {
+                        "mutation_type": substitution,
+                        "trinucleotide": f"{left}[{substitution}]{right}",
+                        "count": 2 if len(sbs_rows) < 4 else 1,
+                    }
+                )
+    utils.write_csv(root / "signatures/wgs_sbs96_matrix.csv", sbs_rows)
     sv_rows = [
-        {"status": "partial_evidence", "role": "tumor", "discordant_mapped_pairs": 20, "supplementary_alignments": 10},
-        {"status": "partial_evidence", "role": "normal", "discordant_mapped_pairs": 8, "supplementary_alignments": 3},
+        {
+            "status": "partial_evidence", "role": "tumor", "total_alignments": 100,
+            "discordant_mapped_pairs": 20, "supplementary_alignments": 10,
+            "interchromosomal_pairs": 4, "large_insert_pairs": 16,
+        },
+        {
+            "status": "partial_evidence", "role": "normal", "total_alignments": 100,
+            "discordant_mapped_pairs": 8, "supplementary_alignments": 3,
+            "interchromosomal_pairs": 2, "large_insert_pairs": 6,
+        },
     ]
     utils.write_json(
         root / "sv/sv_evidence_summary.json",
         {"status": "partial_evidence", "rows": sv_rows, "production_sv_callset_status": "no_call"},
     )
     utils.write_csv(root / "sv/sv_evidence_summary.csv", sv_rows)
-    utils.write_json(root / "tool_versions.json", {"samtools": "samtools 1.20"})
+    utils.write_json(
+        root / "tool_versions.json",
+        {"bwa": "bwa 0.7.17", "samtools": "samtools 1.20", "bcftools": "bcftools 1.20", "gatk": "gatk 4.6.1.0"},
+    )
+
+
+def write_deterministic_report(root: Path, artifact_root: Path) -> Path:
+    root.mkdir(parents=True, exist_ok=True)
+    input_rows = []
+    source_sha256 = {}
+    for relative, input_id in packet.DIANA_WGS_DETERMINISTIC_INPUTS.items():
+        path = artifact_root / relative
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        source_sha256[input_id] = digest
+        input_rows.append(
+            {
+                "input_id": input_id,
+                "path": f"artifact-root/{relative}",
+                "bytes": path.stat().st_size,
+                "sha256": digest,
+            }
+        )
+    utils.write_csv(root / "input_sha256.csv", input_rows)
+    utils.write_csv(root / "readiness.csv", [{"evidence_surface": "overall_hrd", "state": "no_call", "reason": "unit"}])
+    utils.write_json(
+        root / "evidence_checks.json",
+        {
+            "status": "passed",
+            "report_status": "partial_evidence",
+            "overall_hrd_status": "no_call",
+            "checks": [{"check_id": "unit_contract", "status": "passed", "detail": "synthetic"}],
+            "input_sha256": input_rows,
+        },
+    )
+    (root / "report.md").write_text("# Deterministic full-WGS unit report\n", encoding="utf-8")
+    support_sha256 = {
+        name: hashlib.sha256((root / name).read_bytes()).hexdigest()
+        for name in packet.DETERMINISTIC_SUPPORT_FILES
+    }
+    utils.write_json(
+        root / "report_manifest.json",
+        {
+            "schema_version": 1,
+            "method_id": "deterministic_full_wgs",
+            "report_kind": "deterministic_baseline",
+            "evidence_status": "partial_evidence",
+            "authorized_hrd_state": "no_call",
+            "classification_authorized": False,
+            "classification_qc_status": "not_applicable",
+            "support_sha256": support_sha256,
+            "source_sha256": source_sha256,
+            "report_sha256": hashlib.sha256((root / "report.md").read_bytes()).hexdigest(),
+            "review_summary": {
+                "overall": {"evidence_status": "partial_evidence", "authorized_hrd_state": "no_call"},
+                "custody": {
+                    "private_freeze_status": "passed",
+                    "exact_kms_match": True,
+                    "freeze_receipt_version_id": "freeze-version-unit",
+                    "stage_provenance_receipt_version_id": "stage-version-unit",
+                    "freeze_receipt_sha256": "a" * 64,
+                    "stage_provenance_receipt_sha256": "b" * 64,
+                },
+            },
+        },
+    )
+    return root
 
 
 class RosalindHrdPacketTest(unittest.TestCase):
@@ -335,10 +431,17 @@ class RosalindHrdPacketTest(unittest.TestCase):
             output_root = Path(tmp)
             artifact_root = Path(artifacts)
             write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(output_root / "deterministic", artifact_root)
 
             with (
                 patch.object(packet, "path_from_root", lambda relative: output_root / relative),
-                patch.dict("os.environ", {"ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root)}),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
             ):
                 summary = packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
 
@@ -370,6 +473,44 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertNotIn("SENSITIVE-PAIR-ID", reviewer)
             self.assertNotIn("SENSITIVE-DATASET-LABEL", reviewer)
 
+            evidence_index = utils.read_json(
+                output_root / "results/rosalind_hrd/diana_wgs/unit/input_evidence_index.json"
+            )
+            self.assertEqual(len(evidence_index["artifacts"]), len(packet.PACKET_SPECS["diana_wgs"].artifacts))
+            for artifact in evidence_index["artifacts"]:
+                source = artifact_root / artifact["path"]
+                self.assertEqual(artifact["sha256"], hashlib.sha256(source.read_bytes()).hexdigest())
+
+            report = output_root / "results/rosalind_hrd/diana_wgs/unit/report.md"
+            manifest = utils.read_json(
+                output_root / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json"
+            )
+            self.assertEqual(report.read_text(encoding="utf-8"), reviewer)
+            self.assertEqual(manifest["method_id"], "rosalind_diana_wgs")
+            self.assertEqual(manifest["evidence_status"], "partial_evidence")
+            self.assertEqual(manifest["authorized_hrd_state"], "no_call")
+            self.assertFalse(manifest["classification_authorized"])
+            self.assertEqual(manifest["report_sha256"], hashlib.sha256(report.read_bytes()).hexdigest())
+            self.assertEqual(len(manifest["source_sha256"]), len(evidence_index["artifacts"]))
+            self.assertEqual(
+                set(manifest["support_sha256"]),
+                {
+                    "input_evidence_index.json", "sample_validation_summary.csv",
+                    "hrd_adapter_status.csv", "research_context_sources.json",
+                    "next_actions.md", "reviewer_packet.md",
+                },
+            )
+            self.assertEqual(manifest["review_summary"]["provenance"]["artifact_count"], 12)
+            self.assertTrue(manifest["review_summary"]["provenance"]["custody"]["exact_kms_match"])
+            self.assertTrue(all(row["next_action"] for row in manifest["review_summary"]["adapters"]))
+            self.assertIn("## Deterministic custody and process", reviewer)
+            self.assertIn("samtools 1.20", reviewer)
+            serialized_manifest = utils.read_text(
+                output_root / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json"
+            )
+            self.assertNotIn("SENSITIVE-PAIR-ID", serialized_manifest)
+            self.assertNotIn("SENSITIVE-DATASET-LABEL", serialized_manifest)
+
     def test_diana_wgs_packet_clamps_unsupported_adapter_promotions(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)
@@ -378,10 +519,17 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 artifact_root,
                 readiness_overrides={"coverage_cnv": "ready", "scarHRD": "ready", "overall_hrd": "ready"},
             )
+            deterministic_root = write_deterministic_report(output_root / "deterministic", artifact_root)
 
             with (
                 patch.object(packet, "path_from_root", lambda relative: output_root / relative),
-                patch.dict("os.environ", {"ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root)}),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
             ):
                 summary = packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
 
@@ -400,6 +548,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
             output_root = Path(tmp)
             artifact_root = Path(artifacts)
             write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(output_root / "deterministic", artifact_root)
             for relative in (
                 "alignment/bam_validation_summary.json",
                 "variants/mutect2_summary.json",
@@ -411,24 +560,19 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
             with (
                 patch.object(packet, "path_from_root", lambda relative: output_root / relative),
-                patch.dict("os.environ", {"ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root)}),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
             ):
-                summary = packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
-
-            self.assertEqual(len(summary["missingArtifacts"]), 5)
-            evidence_rows = utils.parse_csv(
-                utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/sample_validation_summary.csv")
+                with self.assertRaisesRegex(ValueError, "Diana WGS"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+            self.assertFalse(
+                (output_root / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json").exists()
             )
-            evidence = {row["evidence_id"]: row for row in evidence_rows}
-            self.assertIn("unavailable", evidence["wgs_alignment"]["detail"])
-            self.assertIn("no negative finding is inferred", evidence["hrr_region_small_variants"]["detail"])
-            self.assertIn("no zero-count finding", evidence["bam_derived_sv_evidence"]["detail"])
-            reviewer = utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/reviewer_packet.md")
-            self.assertNotIn("0/0 tumor/normal alignment rows", reviewer)
-            self.assertNotIn("Rows: 0; discordant mapped pairs: 0", reviewer)
-            self.assertNotIn("No PASS records were emitted", reviewer)
-            context = utils.read_json(output_root / "results/rosalind_hrd/diana_wgs/unit/research_context_sources.json")
-            self.assertEqual(context["status"], "deferred_until_observed_sample_events")
 
     def test_diana_wgs_packet_flags_disagreement_between_readiness_csv_and_summary(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
@@ -438,10 +582,17 @@ class RosalindHrdPacketTest(unittest.TestCase):
             worker_summary = utils.read_json(artifact_root / "diana_hrd_summary.json")
             next(row for row in worker_summary["hrd_readiness"] if row["evidence_surface"] == "wgs_alignment")["status"] = "no_call"
             utils.write_json(artifact_root / "diana_hrd_summary.json", worker_summary)
+            deterministic_root = write_deterministic_report(output_root / "deterministic", artifact_root)
 
             with (
                 patch.object(packet, "path_from_root", lambda relative: output_root / relative),
-                patch.dict("os.environ", {"ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root)}),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
             ):
                 summary = packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
 
@@ -452,6 +603,81 @@ class RosalindHrdPacketTest(unittest.TestCase):
             alignment = next(row for row in adapter_rows if row["adapter"] == "WGS alignment")
             self.assertEqual(alignment["state"], "no_call")
             self.assertIn("no state promotion", alignment["blocker"])
+
+    def test_diana_wgs_packet_rejects_deterministic_or_worker_tampering(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(output_root / "deterministic", artifact_root)
+            (deterministic_root / "evidence_checks.json").write_text("{}\n", encoding="utf-8")
+            stale_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+            stale_dir.mkdir(parents=True)
+            (stale_dir / "report.md").write_text("stale\n", encoding="utf-8")
+            (stale_dir / "report_manifest.json").write_text("{}\n", encoding="utf-8")
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                with self.assertRaisesRegex(ValueError, "support hash differs"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+            self.assertFalse((stale_dir / "report.md").exists())
+            self.assertFalse((stale_dir / "report_manifest.json").exists())
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            alignment_path = artifact_root / "alignment/bam_validation_summary.json"
+            alignment = utils.read_json(alignment_path)
+            alignment["rows"][1]["role"] = "tumor"
+            utils.write_json(alignment_path, alignment)
+            deterministic_root = write_deterministic_report(output_root / "deterministic", artifact_root)
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                with self.assertRaisesRegex(ValueError, "one passed tumor and one passed normal"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+    def test_diana_wgs_packet_identifier_scan_removes_generated_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            summary_path = artifact_root / "diana_hrd_summary.json"
+            summary = utils.read_json(summary_path)
+            summary["input"]["reference"] = summary["input"]["pair"]
+            utils.write_json(summary_path, summary)
+            deterministic_root = write_deterministic_report(output_root / "deterministic", artifact_root)
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                with self.assertRaisesRegex(ValueError, "identifier scan failed"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+            self.assertFalse((output_dir / "report.md").exists())
+            self.assertFalse((output_dir / "report_manifest.json").exists())
+            self.assertEqual(list(output_dir.glob("*")), [])
 
     def test_hg008_packet_surfaces_sv_truth_asset_blocker(self):
         with tempfile.TemporaryDirectory() as tmp:

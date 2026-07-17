@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import re
 from dataclasses import dataclass
@@ -198,20 +200,42 @@ def read_csv_or_empty(relative_path: str) -> list[dict[str, str]]:
     return parse_csv(read_text(path))
 
 
-def artifact_index(paths: Sequence[str]) -> list[dict[str, Any]]:
+def artifact_index(paths: Sequence[str], *, logical_paths_only: bool = False) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for relative_path in paths:
         path = artifact_path_from_root(relative_path)
-        resolved_path = str(path) if artifact_root_mode() == "materialized_artifact_root" else relative_path
+        resolved_path = (
+            f"artifact-root/{relative_path}"
+            if logical_paths_only
+            else (str(path) if artifact_root_mode() == "materialized_artifact_root" else relative_path)
+        )
         rows.append(
             {
                 "path": relative_path,
                 "resolved_path": resolved_path,
                 "exists": "yes" if path.exists() else "no",
                 "bytes": path.stat().st_size if path.exists() else "",
+                "sha256": sha256_file(path) if path.is_file() else "",
             }
         )
     return rows
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def packet_evidence_status(evidence_rows: Sequence[Mapping[str, str]]) -> str:
+    unavailable = {"", "blocked", "failed", "missing", "no_call", "not_run"}
+    return (
+        "partial_evidence"
+        if any(str(row.get("status", "")).strip() not in unavailable for row in evidence_rows)
+        else "blocked"
+    )
 
 
 def count_csv_status(rows: Sequence[Mapping[str, str]], status: str = "passed") -> int:
@@ -641,6 +665,282 @@ DIANA_WGS_READINESS_SURFACES = (
 )
 DIANA_WGS_PARTIAL_ONLY_SURFACES = {"coverage_cnv", "sbs96", "sv"}
 DIANA_WGS_NO_CALL_SURFACES = {"scarHRD", "CHORD", "HRDetect", "overall_hrd"}
+DIANA_WGS_DETERMINISTIC_INPUTS = {
+    "diana_hrd_summary.json": "summary",
+    "hrd_readiness.csv": "readiness",
+    "alignment/bam_validation_summary.json": "alignment_json",
+    "variants/mutect2_summary.json": "variant_summary",
+    "variants/brca1_brca2_pass_variants.csv": "brca_rows",
+    "cnv/coverage_cnv_summary.json": "cnv_summary",
+    "cnv/coverage_cnv_bins.csv": "cnv_bins",
+    "signatures/signature_assignment_summary.json": "signature_summary",
+    "signatures/wgs_sbs96_matrix.csv": "sbs96",
+    "sv/sv_evidence_summary.json": "sv_summary",
+    "sv/sv_evidence_summary.csv": "sv_csv",
+    "tool_versions.json": "tool_versions",
+}
+DETERMINISTIC_SUPPORT_FILES = {
+    "readiness.csv",
+    "evidence_checks.json",
+    "input_sha256.csv",
+}
+PACKET_REPORT_FILES = {
+    "input_evidence_index.json",
+    "sample_validation_summary.csv",
+    "hrd_adapter_status.csv",
+    "research_context_sources.json",
+    "next_actions.md",
+    "reviewer_packet.md",
+    "report.md",
+    "report_manifest.json",
+}
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+EXPECTED_SBS96 = {
+    (mutation, f"{left}[{mutation}]{right}")
+    for mutation in ("C>A", "C>G", "C>T", "T>A", "T>C", "T>G")
+    for left in "ACGT"
+    for right in "ACGT"
+}
+
+
+def require_real_nonempty_file(path: Path, label: str) -> Path:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
+        raise ValueError(f"{label} must be a non-empty regular non-symlink file")
+    return path
+
+
+def require_sha256(value: Any, label: str) -> str:
+    digest = str(value).lower()
+    if not HEX64.fullmatch(digest):
+        raise ValueError(f"{label} must be a lowercase SHA-256")
+    return digest
+
+
+def require_nonnegative_int(value: Any, label: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be a non-negative integer")
+    try:
+        number = int(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{label} must be a non-negative integer") from error
+    if number < 0 or str(value).strip() not in {str(number), f"{number}.0"}:
+        raise ValueError(f"{label} must be a non-negative integer")
+    return number
+
+
+def validate_diana_wgs_worker_schema() -> None:
+    alignment = read_json_or_empty("alignment/bam_validation_summary.json")
+    alignment_rows = alignment.get("rows", []) if isinstance(alignment.get("rows"), list) else []
+    alignment_by_role = {
+        str(row.get("role", "")): row for row in alignment_rows if isinstance(row, dict)
+    }
+    if (
+        alignment.get("status") != "passed"
+        or len(alignment_rows) != 2
+        or set(alignment_by_role) != {"tumor", "normal"}
+    ):
+        raise ValueError("Diana WGS alignment schema requires one passed tumor and one passed normal row")
+    for role, row in alignment_by_role.items():
+        total = require_nonnegative_int(row.get("total_reads"), f"{role} total_reads")
+        mapped = require_nonnegative_int(row.get("mapped_reads"), f"{role} mapped_reads")
+        if row.get("status") != "passed" or total <= 0 or mapped > total:
+            raise ValueError(f"Diana WGS {role} alignment counts are inconsistent")
+
+    variants = read_json_or_empty("variants/mutect2_summary.json")
+    variant_counts = {
+        key: require_nonnegative_int(variants.get(key), f"variant {key}")
+        for key in (
+            "total_filtered_records", "pass_records", "pass_snvs", "pass_indels",
+            "brca1_brca2_pass_region_records",
+        )
+    }
+    brca_rows = read_csv_or_empty("variants/brca1_brca2_pass_variants.csv")
+    if (
+        variants.get("status") != "passed"
+        or variant_counts["pass_records"] != variant_counts["pass_snvs"] + variant_counts["pass_indels"]
+        or variant_counts["pass_records"] > variant_counts["total_filtered_records"]
+        or len(brca_rows) != variant_counts["brca1_brca2_pass_region_records"]
+    ):
+        raise ValueError("Diana WGS variant summary and bounded HRR rows do not reconcile")
+
+    cnv = read_json_or_empty("cnv/coverage_cnv_summary.json")
+    cnv_rows = read_csv_or_empty("cnv/coverage_cnv_bins.csv")
+    cnv_classes = [row.get("coverage_class", "") for row in cnv_rows]
+    bin_count = require_nonnegative_int(cnv.get("bin_count"), "CNV bin_count")
+    if (
+        cnv.get("status") != "partial_evidence"
+        or len(cnv_rows) != bin_count
+        or set(cnv_classes) - {"relative_gain", "relative_loss", "neutral_or_low_signal"}
+        or cnv_classes.count("relative_gain") != require_nonnegative_int(cnv.get("relative_gain_bins"), "CNV gain bins")
+        or cnv_classes.count("relative_loss") != require_nonnegative_int(cnv.get("relative_loss_bins"), "CNV loss bins")
+    ):
+        raise ValueError("Diana WGS coverage-CNV rows and summary do not reconcile")
+
+    signatures = read_json_or_empty("signatures/signature_assignment_summary.json")
+    sbs_rows = read_csv_or_empty("signatures/wgs_sbs96_matrix.csv")
+    sbs_keys = {(row.get("mutation_type", ""), row.get("trinucleotide", "")) for row in sbs_rows}
+    sbs_counts = [require_nonnegative_int(row.get("count"), "SBS96 count") for row in sbs_rows]
+    if (
+        signatures.get("status") != "partial_evidence"
+        or len(sbs_rows) != 96
+        or sbs_keys != EXPECTED_SBS96
+        or sum(sbs_counts) != require_nonnegative_int(signatures.get("usable_snv_records"), "usable SBS96 SNVs")
+        or not str(signatures.get("sbs3_status", "")).startswith("no_call")
+    ):
+        raise ValueError("Diana WGS SBS96 matrix is not an exact 96-channel input")
+
+    sv = read_json_or_empty("sv/sv_evidence_summary.json")
+    sv_json_rows = sv.get("rows", []) if isinstance(sv.get("rows"), list) else []
+    sv_csv_rows = read_csv_or_empty("sv/sv_evidence_summary.csv")
+    json_by_role = {str(row.get("role", "")): row for row in sv_json_rows if isinstance(row, dict)}
+    csv_by_role = {str(row.get("role", "")): row for row in sv_csv_rows}
+    count_fields = (
+        "total_alignments", "supplementary_alignments", "discordant_mapped_pairs",
+        "interchromosomal_pairs", "large_insert_pairs",
+    )
+    if (
+        sv.get("status") != "partial_evidence"
+        or sv.get("production_sv_callset_status") != "no_call"
+        or len(sv_json_rows) != 2
+        or len(sv_csv_rows) != 2
+        or set(json_by_role) != {"tumor", "normal"}
+        or set(csv_by_role) != {"tumor", "normal"}
+    ):
+        raise ValueError("Diana WGS SV JSON/CSV role schema is not exact")
+    for role in ("tumor", "normal"):
+        for field in count_fields:
+            json_value = require_nonnegative_int(json_by_role[role].get(field), f"SV {role} {field}")
+            csv_value = require_nonnegative_int(csv_by_role[role].get(field), f"SV CSV {role} {field}")
+            if json_value != csv_value:
+                raise ValueError(f"Diana WGS SV JSON/CSV differs for {role} {field}")
+        if require_nonnegative_int(json_by_role[role].get("total_alignments"), f"SV {role} total") != require_nonnegative_int(alignment_by_role[role].get("total_reads"), f"alignment {role} total"):
+            raise ValueError(f"Diana WGS SV totals do not reconcile with {role} alignment")
+
+
+def diana_wgs_deterministic_binding() -> dict[str, Any]:
+    raw = os.environ.get("ROSALIND_HRD_DETERMINISTIC_REPORT_DIR", "").strip()
+    if not raw:
+        raise ValueError(
+            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR is required for the Diana WGS packet"
+        )
+    report_root = Path(raw).expanduser()
+    if report_root.is_symlink() or not report_root.is_dir():
+        raise ValueError("deterministic report directory must be a real directory")
+    validate_diana_wgs_worker_schema()
+    paths = {
+        name: require_real_nonempty_file(report_root / name, f"deterministic {name}")
+        for name in {
+            "report.md", "report_manifest.json", *DETERMINISTIC_SUPPORT_FILES
+        }
+    }
+    manifest = read_json(paths["report_manifest.json"])
+    if not isinstance(manifest, dict):
+        raise ValueError("deterministic report manifest must be an object")
+    expected_contract = {
+        "schema_version": 1,
+        "method_id": "deterministic_full_wgs",
+        "evidence_status": "partial_evidence",
+        "authorized_hrd_state": "no_call",
+        "classification_authorized": False,
+    }
+    for key, expected in expected_contract.items():
+        if manifest.get(key) != expected:
+            raise ValueError(f"deterministic report manifest {key} is not exact")
+    if manifest.get("report_sha256") != sha256_file(paths["report.md"]):
+        raise ValueError("deterministic report hash differs from its manifest")
+    support = manifest.get("support_sha256")
+    if not isinstance(support, dict) or set(support) != DETERMINISTIC_SUPPORT_FILES:
+        raise ValueError("deterministic support SHA-256 inventory is not exact")
+    for name in DETERMINISTIC_SUPPORT_FILES:
+        if require_sha256(support.get(name), f"deterministic support {name}") != sha256_file(paths[name]):
+            raise ValueError(f"deterministic support hash differs for {name}")
+
+    source = manifest.get("source_sha256")
+    if not isinstance(source, dict) or not source:
+        raise ValueError("deterministic source SHA-256 inventory is missing")
+    input_rows = parse_csv(read_text(paths["input_sha256.csv"]))
+    if not input_rows or any(set(row) != {"input_id", "path", "bytes", "sha256"} for row in input_rows):
+        raise ValueError("deterministic input SHA-256 CSV schema is not exact")
+    input_by_id = {row["input_id"]: row for row in input_rows}
+    if len(input_by_id) != len(input_rows):
+        raise ValueError("deterministic input SHA-256 CSV has duplicate input IDs")
+    artifact_hashes: dict[str, str] = {}
+    for relative, input_id in DIANA_WGS_DETERMINISTIC_INPUTS.items():
+        artifact = require_real_nonempty_file(
+            artifact_path_from_root(relative), f"Diana WGS artifact {relative}"
+        )
+        digest = sha256_file(artifact)
+        row = input_by_id.get(input_id)
+        if (
+            not row
+            or require_sha256(source.get(input_id), f"deterministic source {input_id}") != digest
+            or require_sha256(row.get("sha256"), f"deterministic input {input_id}") != digest
+            or str(row.get("path")) != f"artifact-root/{relative}"
+            or as_int(row.get("bytes")) != artifact.stat().st_size
+        ):
+            raise ValueError(f"Diana WGS artifact is not exactly bound by deterministic input {input_id}")
+        artifact_hashes[input_id] = digest
+
+    checks = read_json(paths["evidence_checks.json"])
+    check_rows = checks.get("checks", []) if isinstance(checks, dict) else []
+    checks_input = checks.get("input_sha256", []) if isinstance(checks, dict) else []
+    normalized_checks_input = [
+        {key: str(row.get(key, "")) for key in ("input_id", "path", "bytes", "sha256")}
+        for row in checks_input
+        if isinstance(row, dict)
+    ]
+    normalized_csv_input = [
+        {key: str(row.get(key, "")) for key in ("input_id", "path", "bytes", "sha256")}
+        for row in input_rows
+    ]
+    if (
+        checks.get("status") != "passed"
+        or checks.get("report_status") != "partial_evidence"
+        or checks.get("overall_hrd_status") != "no_call"
+        or not isinstance(check_rows, list)
+        or not check_rows
+        or any(not isinstance(row, dict) or row.get("status") != "passed" for row in check_rows)
+        or normalized_checks_input != normalized_csv_input
+    ):
+        raise ValueError("deterministic evidence checks are incomplete or not all passed")
+    review_summary = manifest.get("review_summary")
+    custody = review_summary.get("custody", {}) if isinstance(review_summary, dict) else {}
+    if custody.get("private_freeze_status") != "passed" or custody.get("exact_kms_match") is not True:
+        raise ValueError("deterministic report lacks passed exact-KMS custody")
+    version_fields = (
+        "freeze_receipt_version_id",
+        "stage_provenance_receipt_version_id",
+    )
+    if any(not str(custody.get(field, "")).strip() for field in version_fields):
+        raise ValueError("deterministic custody lacks exact receipt VersionIds")
+    custody_hashes = {
+        key: require_sha256(value, f"deterministic custody {key}")
+        for key, value in custody.items()
+        if key.endswith("_sha256")
+    }
+    if not custody_hashes:
+        raise ValueError("deterministic custody lacks hash-bound receipts")
+    tools = read_json(artifact_path_from_root("tool_versions.json"))
+    if (
+        not isinstance(tools, dict)
+        or set(tools) != {"bwa", "samtools", "bcftools", "gatk"}
+        or any(not str(value).strip() for value in tools.values())
+    ):
+        raise ValueError("Diana WGS tool version inventory is missing or malformed")
+    return {
+        "deterministic_report_sha256": sha256_file(paths["report.md"]),
+        "deterministic_manifest_sha256": sha256_file(paths["report_manifest.json"]),
+        "deterministic_support_sha256": dict(sorted(support.items())),
+        "artifact_sha256": artifact_hashes,
+        "artifact_count": len(artifact_hashes),
+        "custody": {
+            "private_freeze_status": "passed",
+            "exact_kms_match": True,
+            **{field: str(custody[field]) for field in version_fields},
+            **custody_hashes,
+        },
+        "tool_versions": {str(key): str(value) for key, value in sorted(tools.items())},
+    }
 
 
 def diana_wgs_readiness_rows(summary: Mapping[str, Any], blockers: list[str]) -> list[dict[str, Any]]:
@@ -953,21 +1253,64 @@ def markdown_table(rows: Sequence[Mapping[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def diana_wgs_forbidden_tokens() -> list[str]:
+    summary = read_json_or_empty("diana_hrd_summary.json")
+    input_summary = summary.get("input", {}) if isinstance(summary.get("input"), dict) else {}
+    tokens = [str(input_summary.get(key, "")).strip() for key in ("dataset", "pair")]
+    raw = os.environ.get("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON", "").strip()
+    if raw:
+        supplied = json.loads(raw)
+        if not isinstance(supplied, list) or any(not isinstance(value, str) for value in supplied):
+            raise ValueError("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON must be a JSON string array")
+        tokens.extend(value.strip() for value in supplied)
+    return sorted({token for token in tokens if token}, key=str.casefold)
+
+
+def scan_generated_packet(paths: Sequence[Path], forbidden_tokens: Sequence[str]) -> None:
+    findings: list[str] = []
+    for path in paths:
+        lowered = path.read_text(encoding="utf-8").casefold()
+        for token in forbidden_tokens:
+            if token.casefold() in lowered:
+                findings.append(f"{path.name}: forbidden identifier token")
+    if findings:
+        for path in paths:
+            path.unlink(missing_ok=True)
+        raise ValueError("Diana WGS generated-output identifier scan failed: " + "; ".join(findings))
+
+
 def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
-    evidence_rows, adapter_rows, blockers = EVIDENCE_BUILDERS[spec.sample_set]()
     output_dir = f"{RESULT_ROOT}/{spec.sample_set}/{packet_run_id}"
     ensure_dir(path_from_root(output_dir))
-    artifacts = artifact_index(spec.artifacts)
+    if spec.sample_set == "diana_wgs":
+        for name in PACKET_REPORT_FILES:
+            path_from_root(f"{output_dir}/{name}").unlink(missing_ok=True)
+    evidence_rows, adapter_rows, blockers = EVIDENCE_BUILDERS[spec.sample_set]()
+    deterministic_binding = (
+        diana_wgs_deterministic_binding() if spec.sample_set == "diana_wgs" else None
+    )
+    artifacts = artifact_index(
+        spec.artifacts, logical_paths_only=spec.sample_set == "diana_wgs"
+    )
     missing_artifacts = [row["path"] for row in artifacts if row["exists"] != "yes"]
     if missing_artifacts:
         blockers.extend(f"Missing artifact: {path}" for path in missing_artifacts)
 
-    write_json(path_from_root(f"{output_dir}/input_evidence_index.json"), {"sampleSet": spec.sample_set, "artifacts": artifacts})
-    write_csv(path_from_root(f"{output_dir}/sample_validation_summary.csv"), evidence_rows)
-    write_csv(path_from_root(f"{output_dir}/hrd_adapter_status.csv"), adapter_rows)
-    write_json(path_from_root(f"{output_dir}/research_context_sources.json"), research_context(spec, evidence_rows))
+    input_index_path = path_from_root(f"{output_dir}/input_evidence_index.json")
+    evidence_summary_path = path_from_root(f"{output_dir}/sample_validation_summary.csv")
+    adapter_status_path = path_from_root(f"{output_dir}/hrd_adapter_status.csv")
+    research_context_path = path_from_root(f"{output_dir}/research_context_sources.json")
+    next_actions_path = path_from_root(f"{output_dir}/next_actions.md")
+    reviewer_packet_path = path_from_root(f"{output_dir}/reviewer_packet.md")
+    report_path = path_from_root(f"{output_dir}/report.md")
+    report_manifest_path = path_from_root(f"{output_dir}/report_manifest.json")
+
+    write_json(input_index_path, {"sampleSet": spec.sample_set, "artifacts": artifacts})
+    write_csv(evidence_summary_path, evidence_rows)
+    write_csv(adapter_status_path, adapter_rows)
+    write_json(research_context_path, research_context(spec, evidence_rows))
     write_text(
-        path_from_root(f"{output_dir}/next_actions.md"),
+        next_actions_path,
         "\n".join(
             [
                 f"# Next Actions: {spec.title}",
@@ -983,35 +1326,119 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
             ]
         ),
     )
-    write_text(
-        path_from_root(f"{output_dir}/reviewer_packet.md"),
-        "\n".join(
-            [
-                f"# {spec.title}",
-                "",
-                f"Run ID: `{packet_run_id}`",
-                "",
-                "## Use Case",
-                spec.use_case,
-                "",
-                "## Allowed Conclusion",
-                spec.allowed_conclusion,
-                "",
-                "## Sample Evidence",
-                markdown_table(evidence_rows),
-                "",
-                "## HRD Adapter Status",
-                markdown_table(adapter_rows),
-                "",
-                "## Blockers",
-                *(f"- {blocker}" for blocker in blockers),
-                *(["- None beyond the listed adapter no-call boundaries."] if not blockers else []),
-                "",
-                "## Research Context Boundary",
-                "Use external databases only to enrich observed sample events. Do not use literature or database context to override missing inputs, failed QC, or no-call adapter states.",
-            ]
-        ),
+    process_lines = (
+        [
+            "## Deterministic custody and process",
+            "",
+            f"Deterministic report SHA-256: `{deterministic_binding['deterministic_report_sha256']}`.",
+            f"Deterministic manifest SHA-256: `{deterministic_binding['deterministic_manifest_sha256']}`.",
+            f"Artifact binding: {deterministic_binding['artifact_count']}/{len(DIANA_WGS_DETERMINISTIC_INPUTS)} required worker artifacts matched the deterministic input inventory.",
+            "Private freeze custody: passed; exact destination KMS match: yes; exact receipt VersionIds retained.",
+            "",
+            "### Tool versions",
+            "",
+            markdown_table(
+                [
+                    {"tool": tool, "version": version}
+                    for tool, version in deterministic_binding["tool_versions"].items()
+                ]
+            ),
+            "",
+        ]
+        if deterministic_binding
+        else []
     )
+    reviewer_report = "\n".join(
+        [
+            f"# {spec.title}",
+            "",
+            f"Run ID: `{packet_run_id}`",
+            "",
+            "## Use Case",
+            spec.use_case,
+            "",
+            "## Allowed Conclusion",
+            spec.allowed_conclusion,
+            "",
+            "## Sample Evidence",
+            markdown_table(evidence_rows),
+            "",
+            "## HRD Adapter Status",
+            markdown_table(adapter_rows),
+            "",
+            *process_lines,
+            "## Blockers",
+            *(f"- {blocker}" for blocker in blockers),
+            *(["- None beyond the listed adapter no-call boundaries."] if not blockers else []),
+            "",
+            "## Research Context Boundary",
+            "Use external databases only to enrich observed sample events. Do not use literature or database context to override missing inputs, failed QC, or no-call adapter states.",
+        ]
+    )
+    write_text(reviewer_packet_path, reviewer_report)
+    write_text(report_path, reviewer_report)
+    evidence_status = packet_evidence_status(evidence_rows)
+    generated_paths = {
+        "input_evidence_index.json": input_index_path,
+        "sample_validation_summary.csv": evidence_summary_path,
+        "hrd_adapter_status.csv": adapter_status_path,
+        "research_context_sources.json": research_context_path,
+        "next_actions.md": next_actions_path,
+        "reviewer_packet.md": reviewer_packet_path,
+    }
+    source_sha256 = (
+        dict(deterministic_binding["artifact_sha256"])
+        if deterministic_binding
+        else {
+            f"source_artifact_{index:03d}": str(row["sha256"])
+            for index, row in enumerate(artifacts, 1)
+            if row.get("sha256")
+        }
+    )
+    report_manifest = {
+        "schema_version": 1,
+        "method_id": f"rosalind_{spec.sample_set}",
+        "report_kind": "rosalind_hrd_reviewer_packet",
+        "evidence_status": evidence_status,
+        "authorized_hrd_state": "no_call",
+        "classification_authorized": False,
+        "classification_qc_status": "not_applicable",
+        "support_sha256": {
+            name: sha256_file(path) for name, path in sorted(generated_paths.items())
+        },
+        "source_sha256": source_sha256,
+        "report_sha256": sha256_file(report_path),
+        "review_summary": {
+            "overall": {
+                "evidence_status": evidence_status,
+                "authorized_hrd_state": "no_call",
+            },
+            "packet_type": spec.sample_set,
+            "allowed_conclusion": spec.allowed_conclusion,
+            "evidence": [
+                {
+                    key: str(row.get(key, ""))
+                    for key in ("evidence_id", "status", "detail", "caveat")
+                }
+                for row in evidence_rows
+            ],
+            "adapters": [
+                {
+                    key: str(row.get(key, ""))
+                    for key in ("adapter", "state", "blocker", "next_action")
+                }
+                for row in adapter_rows
+            ],
+            "blockers": list(blockers),
+            **({"provenance": deterministic_binding} if deterministic_binding else {}),
+        },
+    }
+    write_json(report_manifest_path, report_manifest)
+    if spec.sample_set == "diana_wgs":
+        scan_generated_packet(
+            [*generated_paths.values(), report_path, report_manifest_path],
+            diana_wgs_forbidden_tokens(),
+        )
     return {
         "sampleSet": spec.sample_set,
         "title": spec.title,
@@ -1021,6 +1448,9 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
         "blockers": blockers,
         "missingArtifacts": missing_artifacts,
         "allowedConclusion": spec.allowed_conclusion,
+        "evidenceStatus": evidence_status,
+        "reportManifest": f"{output_dir}/report_manifest.json",
+        "reportManifestSha256": sha256_file(report_manifest_path),
     }
 
 
