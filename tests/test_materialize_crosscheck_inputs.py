@@ -151,16 +151,44 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         head_arguments, head_region = aws_json.call_args.args
         self.assertEqual(head_region, "us-east-1")
         self.assertEqual(
-            head_arguments[-2:], ["--version-id", "frozen-version"]
+            head_arguments,
+            [
+                "s3api",
+                "head-object",
+                "--bucket",
+                "diana-omics-private-results-000000000000-us-east-1",
+                "--key",
+                "runs/subject01/input.vcf.gz",
+                "--checksum-mode",
+                "ENABLED",
+                "--version-id",
+                "frozen-version",
+            ],
         )
 
         with tempfile.TemporaryDirectory() as tmp, patch.object(module, "run") as run:
             destination = Path(tmp) / "input.vcf.gz"
             module.download(uri, destination, "us-east-1", "frozen-version")
         command = run.call_args.args[0]
-        self.assertIn("get-object", command)
-        self.assertEqual(command[command.index("--version-id") + 1], "frozen-version")
-        self.assertEqual(command[command.index("--checksum-mode") + 1], "ENABLED")
+        self.assertEqual(
+            command,
+            [
+                module.AWS,
+                "s3api",
+                "get-object",
+                "--bucket",
+                "diana-omics-private-results-000000000000-us-east-1",
+                "--key",
+                "runs/subject01/input.vcf.gz",
+                "--version-id",
+                "frozen-version",
+                "--checksum-mode",
+                "ENABLED",
+                str(destination),
+                "--region",
+                "us-east-1",
+            ],
+        )
 
     def test_script_bytes_match_registered_materializer_revision(self):
         self.assertEqual(
@@ -203,10 +231,28 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
             ) as aws_json, patch.object(module, "head", return_value=metadata):
                 receipt = module.upload(source, uri, kms, "us-east-1")
         put_arguments = aws_json.call_args_list[1].args[0]
-        self.assertIn("--if-none-match", put_arguments)
         self.assertEqual(
-            put_arguments[put_arguments.index("--metadata") + 1],
-            f"sha256={digest}",
+            put_arguments,
+            [
+                "s3api",
+                "put-object",
+                "--bucket",
+                "diana-omics-private-results-000000000000-us-east-1",
+                "--key",
+                "runs/subject01/output.json",
+                "--body",
+                str(source),
+                "--if-none-match",
+                "*",
+                "--server-side-encryption",
+                "aws:kms",
+                "--sse-kms-key-id",
+                kms,
+                "--checksum-algorithm",
+                "SHA256",
+                "--metadata",
+                f"sha256={digest}",
+            ],
         )
         self.assertEqual(receipt["version_id"], "output-version")
         self.assertEqual(receipt["sha256"], digest)
