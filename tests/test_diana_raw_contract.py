@@ -4,7 +4,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from diana_omics import utils
-from diana_omics.commands.diana_intake import plan_diana_raw_handoff, stage_diana_raw_analysis
+from diana_omics.commands.diana_intake import (
+    build_diana_raw_samplesheet_from_delivery,
+    plan_diana_raw_handoff,
+    stage_diana_raw_analysis,
+)
 from diana_omics.commands.diana_intake.verify_diana_raw import validate_rows
 from diana_omics.diana_raw import DIANA_RAW_COLUMNS, diana_raw_contract, template_rows
 
@@ -82,6 +86,133 @@ class DianaRawContractTest(unittest.TestCase):
         rows[0]["data_type"] = "BAM"
         errors, _warnings, _summary = validate_rows(rows, require_files=False)
         self.assertIn("DNA row DIANA-TUMOR-DNA data_type BAM must provide bam and bai.", errors)
+
+    def test_maps_uploaded_delivery_manifest_to_strict_samplesheet(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / "manifest.csv"
+            checksums = root / "checksums.sha256"
+            output = root / "diana_raw_inputs.csv"
+            rows = [
+                _delivery_row("wgs", "DRF-normal", "matched_normal", "Personalis WGS", "FASTQ", "Normal/sample_L001_R1_001.fastq.gz", "a" * 64),
+                _delivery_row("wgs", "DRF-normal", "matched_normal", "Personalis WGS", "FASTQ", "Normal/sample_L001_R2_001.fastq.gz", "b" * 64),
+                _delivery_row("wgs", "DRF-tumor", "tumor", "Personalis WGS", "FASTQ", "Tumor/sample_L005_R1_001.fastq.gz", "c" * 64),
+                _delivery_row("wgs", "DRF-tumor", "tumor", "Personalis WGS", "FASTQ", "Tumor/sample_L005_R2_001.fastq.gz", "d" * 64),
+                _delivery_row(
+                    "immunoid",
+                    "DNA_E019_S01",
+                    "tumor",
+                    "Personalis ImmunoID NeXT",
+                    "BAM",
+                    "DNA/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bam",
+                    "e" * 64,
+                    reference_build="hs37d5",
+                ),
+                _delivery_row(
+                    "immunoid",
+                    "DNA_E019_S01",
+                    "tumor",
+                    "Personalis ImmunoID NeXT",
+                    "BAI",
+                    "DNA/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bai",
+                    "f" * 64,
+                    reference_build="hs37d5",
+                ),
+                _delivery_row(
+                    "immunoid",
+                    "RNA_E019_S01",
+                    "tumor",
+                    "Personalis ImmunoID NeXT",
+                    "FASTQ",
+                    "RNA/RNA_E019_S01_tumor_rna_reads1.fastq.gz",
+                    "1" * 64,
+                ),
+                _delivery_row(
+                    "immunoid",
+                    "RNA_E019_S01",
+                    "tumor",
+                    "Personalis ImmunoID NeXT",
+                    "FASTQ",
+                    "RNA/RNA_E019_S01_tumor_rna_reads2.fastq.gz",
+                    "2" * 64,
+                ),
+            ]
+            utils.write_csv(manifest, rows)
+            checksums.write_text("".join(f"{row['sha256']}  {row['relative_path']}\n" for row in rows), encoding="utf-8")
+
+            with (
+                patch.object(build_diana_raw_samplesheet_from_delivery, "path_from_root", lambda relative: root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "DIANA_RAW_DELIVERY_MANIFEST": manifest.name,
+                        "DIANA_RAW_DELIVERY_CHECKSUMS": checksums.name,
+                        "DIANA_RAW_SAMPLESHEET": output.name,
+                        "DIANA_RAW_DELIVERY_ROOT": "staged",
+                    },
+                    clear=False,
+                ),
+            ):
+                build_diana_raw_samplesheet_from_delivery.main()
+
+            mapped = utils.parse_csv(utils.read_text(output))
+            self.assertEqual(len(mapped), 3)
+            self.assertEqual({row["data_type"] for row in mapped}, {"FASTQ", "RNA_FASTQ"})
+            self.assertTrue(all(row["sample_id"] for row in mapped))
+            self.assertTrue(all(path.startswith("staged/") for row in mapped for path in [row["fastq_1"], row["fastq_2"], row["rna_fastq_1"], row["rna_fastq_2"]] if path))
+
+            errors, warnings, summary = validate_rows(mapped, require_files=False)
+            self.assertEqual(errors, [])
+            self.assertEqual(warnings, [])
+            self.assertEqual(summary["matchedPairIds"], ["DIANA_WGS_wgs"])
+
+            mapping = utils.read_json(root / "results/diana_raw_intake/delivery_manifest_mapping.json")
+            self.assertEqual(mapping["summary"]["manifestRows"], 8)
+            self.assertEqual(mapping["summary"]["mappedRows"], 3)
+            self.assertEqual(mapping["summary"]["skippedRows"], 1)
+            self.assertEqual(mapping["skipped"][0]["reason"], "bam_reference_not_selected_analysis_reference")
+
+    def test_delivery_manifest_mapping_rejects_checksum_drift(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / "manifest.csv"
+            checksums = root / "checksums.sha256"
+            row = _delivery_row("wgs", "DRF-normal", "matched_normal", "Personalis WGS", "FASTQ", "Normal/sample_L001_R1_001.fastq.gz", "a" * 64)
+            utils.write_csv(manifest, [row])
+            checksums.write_text(f"{'b' * 64}  {row['relative_path']}\n", encoding="utf-8")
+
+            with (
+                patch.object(build_diana_raw_samplesheet_from_delivery, "path_from_root", lambda relative: root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "DIANA_RAW_DELIVERY_MANIFEST": manifest.name,
+                        "DIANA_RAW_DELIVERY_CHECKSUMS": checksums.name,
+                    },
+                    clear=False,
+                ),
+                self.assertRaises(SystemExit),
+            ):
+                build_diana_raw_samplesheet_from_delivery.main()
+
+            mapping = utils.read_json(root / "results/diana_raw_intake/delivery_manifest_mapping.json")
+            self.assertEqual(mapping["status"], "failed")
+            self.assertIn("Delivery manifest SHA-256 does not match", mapping["errors"][0])
+
+    def test_delivery_manifest_mapping_records_missing_inputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with (
+                patch.object(build_diana_raw_samplesheet_from_delivery, "path_from_root", lambda relative: root / relative),
+                patch.dict("os.environ", {}, clear=True),
+                self.assertRaises(SystemExit),
+            ):
+                build_diana_raw_samplesheet_from_delivery.main()
+
+            mapping = utils.read_json(root / "results/diana_raw_intake/delivery_manifest_mapping.json")
+            self.assertEqual(mapping["status"], "failed")
+            self.assertIn("Missing delivery manifest", mapping["errors"][0])
+            self.assertIn("Missing delivery checksums", mapping["errors"][1])
 
     def test_stage_plan_refreshes_rosalind_intake_packet(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -161,6 +292,32 @@ class DianaRawContractTest(unittest.TestCase):
             self.assertIn("verify:diana-raw", strict["command_or_action"])
             markdown = utils.read_text(root / "results/diana_raw_intake/dinah_handoff_plan.md")
             self.assertIn("No AWS Batch or S3 upload for human data until permission is explicit.", markdown)
+
+
+def _delivery_row(
+    dataset: str,
+    sample_id: str,
+    role: str,
+    assay: str,
+    data_type: str,
+    relative_path: str,
+    sha256: str,
+    *,
+    reference_build: str = "not_applicable",
+) -> dict[str, str]:
+    return {
+        "dataset": dataset,
+        "sample_id": sample_id,
+        "role": role,
+        "assay": assay,
+        "data_type": data_type,
+        "relative_path": relative_path,
+        "size_bytes": "42",
+        "sha256": sha256,
+        "reference_build": reference_build,
+        "source_vendor": "Personalis",
+        "notes": "synthetic",
+    }
 
 
 if __name__ == "__main__":

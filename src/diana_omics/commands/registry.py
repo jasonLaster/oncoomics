@@ -22,6 +22,9 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "analyze:rna": CommandSpec("diana_omics.commands.hrd_context.build_rna_context"),
     "audit:raw-tools": CommandSpec("diana_omics.commands.raw_validation.audit_raw_tools"),
     "build:alignment-smoke": CommandSpec("diana_omics.commands.alignment_validation.build_alignment_smoke_assets"),
+    "build:diana-samplesheet-from-delivery": CommandSpec(
+        "diana_omics.commands.diana_intake.build_diana_raw_samplesheet_from_delivery"
+    ),
     "build:diana-template": CommandSpec("diana_omics.commands.diana_intake.build_diana_raw_template"),
     "build:packet": CommandSpec("diana_omics.commands.hrd_context.build_reviewer_packet"),
     "build:panel": CommandSpec("diana_omics.commands.hrd_context.build_reference_panel"),
@@ -192,6 +195,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
         "Create, verify, and stage the future Diana raw-data handoff contract.",
         (
             "build:diana-template",
+            "build:diana-samplesheet-from-delivery",
             "plan:diana-raw-handoff",
             "verify:diana-raw",
             "stage:diana-raw",

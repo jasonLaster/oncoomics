@@ -255,6 +255,15 @@ The Diana operator performs the read-side checks that the sender cannot perform:
    `sha256sum -c checksums.sha256` from the delivery root.
 4. Map the source manifest into `manifests/diana_raw_inputs.csv`, preserving
    dataset and assay boundaries, sample roles, pairing, and reference build.
+   For a GCE manifest/checksum pair that uses the header above:
+
+   ```sh
+   DIANA_RAW_DELIVERY_MANIFEST=data/raw/diana/${BATCH_NAME}/manifest.csv \
+   DIANA_RAW_DELIVERY_CHECKSUMS=data/raw/diana/${BATCH_NAME}/checksums.sha256 \
+   DIANA_RAW_DELIVERY_ROOT=data/raw/diana/${BATCH_NAME} \
+   DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
+   PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-samplesheet-from-delivery
+   ```
 5. Run strict intake validation:
 
    ```sh

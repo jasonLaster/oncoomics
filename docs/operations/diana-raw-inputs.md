@@ -53,6 +53,41 @@ Each row should identify:
 - tumor purity or tumor content when known
 - source/vendor notes
 
+## Map A Delivered GCE/S3 Manifest
+
+If the sender followed the GCE upload guide, keep their `manifest.csv` and
+`checksums.sha256` with the accepted local delivery and generate the strict
+Diana samplesheet from those two small text files:
+
+```sh
+DIANA_RAW_DELIVERY_MANIFEST=data/raw/diana/2026-07-14-echo-personalis/manifest.csv \
+DIANA_RAW_DELIVERY_CHECKSUMS=data/raw/diana/2026-07-14-echo-personalis/checksums.sha256 \
+DIANA_RAW_DELIVERY_ROOT=data/raw/diana/2026-07-14-echo-personalis \
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
+PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-samplesheet-from-delivery
+```
+
+The mapper:
+
+- verifies the sender's manifest SHA-256 values against `checksums.sha256`;
+- normalizes `matched_normal` to the strict `normal` role;
+- pairs `reads1`/`reads2` and `R1`/`R2` FASTQ records;
+- writes one strict row per FASTQ lane pair;
+- keeps the selected Diana analysis reference on FASTQ rows because raw FASTQs
+  are not intrinsically tied to the sender's alignment reference;
+- skips delivered BAMs when their `reference_build` is not compatible with the
+  selected analysis reference;
+- skips RNA BAMs because the strict intake contract represents RNA FASTQs only.
+
+After mapping, stage files locally and run strict validation with file checks
+enabled:
+
+```sh
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \
+DIANA_RAW_REQUIRE_DATA=1 \
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw
+```
+
 ## Arrival Checklist
 
 When the files arrive:

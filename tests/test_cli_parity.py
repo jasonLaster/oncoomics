@@ -17,6 +17,7 @@ class CliParityTest(unittest.TestCase):
             "benchmark:full-wes",
             "benchmark:sra-range",
             "build:alignment-smoke",
+            "build:diana-samplesheet-from-delivery",
             "build:diana-template",
             "build:packet",
             "build:panel",

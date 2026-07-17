@@ -101,6 +101,41 @@ Each row should identify:
 - tumor purity or tumor content when known
 - source/vendor notes
 
+## Map A Delivered GCE/S3 Manifest
+
+If the sender followed the GCE upload guide, keep their `manifest.csv` and
+`checksums.sha256` with the accepted local delivery and generate the strict
+Diana samplesheet from those two small text files:
+
+```sh
+DIANA_RAW_DELIVERY_MANIFEST=data/raw/diana/2026-07-14-echo-personalis/manifest.csv \\
+DIANA_RAW_DELIVERY_CHECKSUMS=data/raw/diana/2026-07-14-echo-personalis/checksums.sha256 \\
+DIANA_RAW_DELIVERY_ROOT=data/raw/diana/2026-07-14-echo-personalis \\
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \\
+PYTHONPATH=src /usr/bin/python3 -m diana_omics build:diana-samplesheet-from-delivery
+```
+
+The mapper:
+
+- verifies the sender's manifest SHA-256 values against `checksums.sha256`;
+- normalizes `matched_normal` to the strict `normal` role;
+- pairs `reads1`/`reads2` and `R1`/`R2` FASTQ records;
+- writes one strict row per FASTQ lane pair;
+- keeps the selected Diana analysis reference on FASTQ rows because raw FASTQs
+  are not intrinsically tied to the sender's alignment reference;
+- skips delivered BAMs when their `reference_build` is not compatible with the
+  selected analysis reference;
+- skips RNA BAMs because the strict intake contract represents RNA FASTQs only.
+
+After mapping, stage files locally and run strict validation with file checks
+enabled:
+
+```sh
+DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv \\
+DIANA_RAW_REQUIRE_DATA=1 \\
+PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw
+```
+
 ## Arrival Checklist
 
 When the files arrive:
@@ -109,8 +144,9 @@ When the files arrive:
 2. Confirm tumor-normal pairing and use the same `pair_id` for matched DNA rows.
 3. Confirm the reference build, contig naming, and index files before compute.
 4. Record tumor purity, tumor content, normal type, platform, and vendor notes when known.
-5. Confirm whether cloud upload is allowed for any human data before scheduling Batch or S3 work.
-6. Rerun `plan:diana-raw-handoff` after filling the samplesheet to capture the current state before strict validation.
+5. Confirm that cloud upload, storage, and the proposed analysis destination are approved for the data classification before scheduling Batch or S3 work.
+6. Verify the delivery manifest, source-side SHA-256 values, object count, total bytes, indexes, and reference metadata before intake.
+7. Rerun `plan:diana-raw-handoff` after filling the samplesheet to capture the current state before strict validation.
 
 ## S3 Inbox Location
 
@@ -120,9 +156,22 @@ Diana's raw files should be uploaded or transferred to this inbox prefix:
 {DIANA_RAW_S3_INBOX_URI}/
 ```
 
-Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the Nextflow work bucket. The `cache/phase3_wgs/` prefix is for public validation assets and cloud-generated cache files, not Diana's private raw data.
+Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the
+Nextflow work bucket. The `diana/inbox/` prefix is public-read storage for
+approved deliveries: anonymous users may list and download current object
+versions, while anonymous writes and deletes stay denied.
 
-Detailed upload and bucket-to-bucket transfer instructions live in `docs/operations/diana-raw-s3-upload.md`.
+Uploads require Diana-issued credentials scoped to one assigned
+`YYYY-MM-DD-source-name/` prefix. Never email credentials. Use destination
+SSE-S3 (`AES256`) so direct public downloads do not need AWS KMS grants.
+
+If anonymous writes succeed, treat the deployed access policy as a security
+incident and stop intake until it is remediated.
+
+See [Diana Public Raw S3 Upload And Transfer](diana-raw-s3-upload.md) for
+authenticated upload and bucket-to-bucket transfer instructions.
+See [Diana Public Analysis Downloads](diana-public-data-download.md) for public
+read and outbound transfer instructions.
 
 ## Validate The Files
 
@@ -202,7 +251,7 @@ Artifacts:
 
 The project can now accept Diana raw FASTQ, BAM, or CRAM paths through `manifests/diana_raw_inputs.csv`, plan the handoff with `PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff`, and validate paths with `PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw`.
 
-Private S3 intake prefix:
+Public-read S3 intake prefix:
 
 ```text
 {DIANA_RAW_S3_INBOX_URI}
