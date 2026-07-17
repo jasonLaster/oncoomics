@@ -611,10 +611,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
             write_diana_wgs_worker_artifacts(artifact_root)
             deterministic_root = write_deterministic_report(output_root / "deterministic", artifact_root)
             (deterministic_root / "evidence_checks.json").write_text("{}\n", encoding="utf-8")
-            stale_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
-            stale_dir.mkdir(parents=True)
-            (stale_dir / "report.md").write_text("stale\n", encoding="utf-8")
-            (stale_dir / "report_manifest.json").write_text("{}\n", encoding="utf-8")
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
             with (
                 patch.object(packet, "path_from_root", lambda relative: output_root / relative),
                 patch.dict(
@@ -627,8 +624,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(ValueError, "support hash differs"):
                     packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
-            self.assertFalse((stale_dir / "report.md").exists())
-            self.assertFalse((stale_dir / "report_manifest.json").exists())
+            self.assertEqual(list(output_dir.glob("*")), [])
 
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)
@@ -651,6 +647,83 @@ class RosalindHrdPacketTest(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(ValueError, "one passed tumor and one passed normal"):
                     packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+    def test_diana_wgs_packet_rejects_existing_packet_files_create_only(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(
+                output_root / "deterministic",
+                artifact_root,
+            )
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+                output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+                original_bytes = {
+                    path.name: path.read_bytes() for path in output_dir.iterdir()
+                }
+                (deterministic_root / "evidence_checks.json").write_text(
+                    "{}\n", encoding="utf-8"
+                )
+
+                with self.assertRaisesRegex(ValueError, "already contains packet files"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertEqual(
+                {path.name: path.read_bytes() for path in output_dir.iterdir()},
+                original_bytes,
+            )
+
+    def test_diana_wgs_packet_cleans_current_attempt_after_install_failure(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(
+                output_root / "deterministic",
+                artifact_root,
+            )
+            copied: list[str] = []
+            original_copy = packet.copy_diana_wgs_packet_file
+
+            def fail_after_first_copy(source: Path, destination: Path) -> None:
+                if copied:
+                    raise ValueError("synthetic install failure")
+                original_copy(source, destination)
+                copied.append(destination.name)
+
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "copy_diana_wgs_packet_file",
+                    side_effect=fail_after_first_copy,
+                ),
+            ):
+                with self.assertRaisesRegex(ValueError, "synthetic install failure"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertEqual(copied, ["input_evidence_index.json"])
+            self.assertEqual(list(output_dir.glob("*")), [])
 
     def test_diana_wgs_packet_rejects_stale_extra_output(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:

@@ -844,8 +844,53 @@ def prepare_output_dir(output: Path, expected_names: Iterable[str]) -> None:
             + ", ".join(sorted(invalid))
         )
 
-    for name in expected:
-        (output / name).unlink(missing_ok=True)
+    existing = sorted(path.name for path in output.iterdir() if path.name in expected)
+    if existing:
+        raise ValueError(
+            "report output already contains packet files: " + ", ".join(existing)
+        )
+
+
+def copy_create_only(source: Path, destination: Path) -> None:
+    with source.open("rb") as source_handle:
+        try:
+            file_descriptor = os.open(
+                destination,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o644,
+            )
+        except FileExistsError as error:
+            raise ValueError(
+                "report output packet already exists: " + destination.name
+            ) from error
+
+        try:
+            destination_handle = os.fdopen(file_descriptor, "wb")
+        except Exception:
+            os.close(file_descriptor)
+            destination.unlink(missing_ok=True)
+            raise
+
+        try:
+            with destination_handle:
+                for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
+                    destination_handle.write(chunk)
+        except Exception:
+            destination.unlink(missing_ok=True)
+            raise
+
+
+def install_packet_create_only(staged_paths: Iterable[Path], output: Path) -> None:
+    installed: list[Path] = []
+    try:
+        for path in staged_paths:
+            destination = output / path.name
+            copy_create_only(path, destination)
+            installed.append(destination)
+    except Exception:
+        for path in installed:
+            path.unlink(missing_ok=True)
+        raise
 
 
 def main() -> None:
@@ -1920,9 +1965,10 @@ def main() -> None:
         findings = scan_outputs(staged_paths, tokens)
         if findings:
             raise SystemExit("Fail-closed: sample/vendor identifier scan failed:\n" + "\n".join(f"{row['path']}: {row['token']}" for row in findings))
-        output.mkdir(parents=True, exist_ok=True)
-        for path in staged_paths:
-            os.replace(path, output / path.name)
+        try:
+            install_packet_create_only(staged_paths, output)
+        except ValueError as error:
+            raise SystemExit("Fail-closed: " + str(error)) from error
     snapshot_guard.cleanup()
     print(f"Wrote deterministic full-WGS report: {output / 'report.md'}")
     print(f"Validated checks: {len(checks)}/{len(checks)} passed")

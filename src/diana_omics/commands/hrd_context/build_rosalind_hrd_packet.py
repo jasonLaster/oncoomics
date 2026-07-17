@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -1306,8 +1307,49 @@ def prepare_diana_wgs_output_dir(output: Path, expected_files: Iterable[str]) ->
             + ", ".join(sorted(invalid))
         )
 
-    for name in expected:
-        (output / name).unlink(missing_ok=True)
+    existing = sorted(path.name for path in output.iterdir() if path.name in expected)
+    if existing:
+        raise ValueError(
+            "Diana WGS packet output already contains packet files: "
+            + ", ".join(existing)
+        )
+
+
+def copy_diana_wgs_packet_file(source: Path, destination: Path) -> None:
+    try:
+        descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    except FileExistsError as error:
+        raise ValueError(
+            "Diana WGS packet output already exists: " + destination.name
+        ) from error
+
+    try:
+        with source.open("rb") as source_handle, os.fdopen(
+            descriptor, "wb"
+        ) as destination_handle:
+            descriptor = -1
+            for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
+                destination_handle.write(chunk)
+            destination_handle.flush()
+            os.fsync(destination_handle.fileno())
+    except Exception:
+        if descriptor >= 0:
+            os.close(descriptor)
+        destination.unlink(missing_ok=True)
+        raise
+
+
+def install_diana_wgs_packet(staged_paths: Sequence[Path], output: Path) -> None:
+    installed: list[Path] = []
+    try:
+        for path in staged_paths:
+            destination = output / path.name
+            copy_diana_wgs_packet_file(path, destination)
+            installed.append(destination)
+    except Exception:
+        for path in installed:
+            path.unlink(missing_ok=True)
+        raise
 
 
 def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
@@ -1315,8 +1357,24 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
     output_path = path_from_root(output_dir)
     if spec.sample_set == "diana_wgs":
         prepare_diana_wgs_output_dir(output_path, PACKET_REPORT_FILES)
-    else:
-        ensure_dir(output_path)
+        with tempfile.TemporaryDirectory(
+            prefix=f".{output_path.name}.", dir=output_path.parent
+        ) as staging:
+            return write_packet_to_dir(
+                spec, packet_run_id, output_dir, Path(staging), output_path
+            )
+
+    ensure_dir(output_path)
+    return write_packet_to_dir(spec, packet_run_id, output_dir, output_path, None)
+
+
+def write_packet_to_dir(
+    spec: PacketSpec,
+    packet_run_id: str,
+    output_dir: str,
+    output_path: Path,
+    final_output_path: Path | None,
+) -> dict[str, Any]:
     evidence_rows, adapter_rows, blockers = EVIDENCE_BUILDERS[spec.sample_set]()
     deterministic_binding = (
         diana_wgs_deterministic_binding() if spec.sample_set == "diana_wgs" else None
@@ -1328,14 +1386,14 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
     if missing_artifacts:
         blockers.extend(f"Missing artifact: {path}" for path in missing_artifacts)
 
-    input_index_path = path_from_root(f"{output_dir}/input_evidence_index.json")
-    evidence_summary_path = path_from_root(f"{output_dir}/sample_validation_summary.csv")
-    adapter_status_path = path_from_root(f"{output_dir}/hrd_adapter_status.csv")
-    research_context_path = path_from_root(f"{output_dir}/research_context_sources.json")
-    next_actions_path = path_from_root(f"{output_dir}/next_actions.md")
-    reviewer_packet_path = path_from_root(f"{output_dir}/reviewer_packet.md")
-    report_path = path_from_root(f"{output_dir}/report.md")
-    report_manifest_path = path_from_root(f"{output_dir}/report_manifest.json")
+    input_index_path = output_path / "input_evidence_index.json"
+    evidence_summary_path = output_path / "sample_validation_summary.csv"
+    adapter_status_path = output_path / "hrd_adapter_status.csv"
+    research_context_path = output_path / "research_context_sources.json"
+    next_actions_path = output_path / "next_actions.md"
+    reviewer_packet_path = output_path / "reviewer_packet.md"
+    report_path = output_path / "report.md"
+    report_manifest_path = output_path / "report_manifest.json"
 
     write_json(input_index_path, {"sampleSet": spec.sample_set, "artifacts": artifacts})
     write_csv(evidence_summary_path, evidence_rows)
@@ -1466,11 +1524,15 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
         },
     }
     write_json(report_manifest_path, report_manifest)
+    packet_files = [*generated_paths.values(), report_path, report_manifest_path]
     if spec.sample_set == "diana_wgs":
         scan_generated_packet(
-            [*generated_paths.values(), report_path, report_manifest_path],
+            packet_files,
             diana_wgs_forbidden_tokens(),
         )
+    report_manifest_sha256 = sha256_file(report_manifest_path)
+    if final_output_path is not None:
+        install_diana_wgs_packet(packet_files, final_output_path)
     return {
         "sampleSet": spec.sample_set,
         "title": spec.title,
@@ -1482,7 +1544,7 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
         "allowedConclusion": spec.allowed_conclusion,
         "evidenceStatus": evidence_status,
         "reportManifest": f"{output_dir}/report_manifest.json",
-        "reportManifestSha256": sha256_file(report_manifest_path),
+        "reportManifestSha256": report_manifest_sha256,
     }
 
 

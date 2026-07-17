@@ -1078,6 +1078,53 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertIn("variant_summary_counts", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
 
+    def test_existing_packet_files_fail_create_only_and_remain_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            first = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            original_hashes = {
+                path.name: sha256(path)
+                for path in fixture.output.iterdir()
+                if path.is_file()
+            }
+            summary_path = fixture.artifacts / "diana_hrd_summary.json"
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            summary["overall_hrd_status"] = "unexpected"
+            write_json(summary_path, summary)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "report output already contains packet files",
+                result.stdout + result.stderr,
+            )
+            self.assertEqual(
+                {
+                    path.name: sha256(path)
+                    for path in fixture.output.iterdir()
+                    if path.is_file()
+                },
+                original_hashes,
+            )
+
+    def test_preexisting_report_fails_create_only(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            fixture.output.mkdir()
+            stale_report = fixture.output / "report.md"
+            stale_report.write_text("stale report\n", encoding="utf-8")
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "report output already contains packet files: report.md",
+                result.stdout + result.stderr,
+            )
+            self.assertEqual(stale_report.read_text(encoding="utf-8"), "stale report\n")
+
     def test_stale_extra_output_fails_before_report_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
             fixture = SyntheticFixture(Path(temporary))
