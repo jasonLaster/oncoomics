@@ -836,7 +836,7 @@ class SyntheticFixture:
         write_json(
             self.aux / "crosscheck-materialization.json",
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "status": "passed",
                 "generated_at_utc": "2026-07-17T00:00:01+00:00",
                 "run_alias": "subject01",

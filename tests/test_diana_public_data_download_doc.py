@@ -94,6 +94,9 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             "scripts/freeze_stage_provenance.py",
             "scripts/freeze_final_artifacts.py",
             "scripts/materialize_frozen_artifacts.py",
+            "scripts/submit_materializer_v4.py",
+            "scripts/render_materializer_capture_command.py",
+            "scripts/download_materializer_staged_validation.py",
             "scripts/stage_deterministic_wgs_report.py",
         ):
             self.assertIn(script, text)
@@ -104,8 +107,16 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
         self.assertIn('--output "$RUN_ROOT/terminal.stage-freeze.json"', text)
         self.assertIn('--output "$RUN_ROOT/terminal.final-freeze.json"', text)
         self.assertLess(
-            text.index("scripts/capture_batch_provenance.py"),
-            text.index("scripts/materialize_frozen_artifacts.py"),
+            text.index("python3 scripts/capture_batch_provenance.py"),
+            text.index("python3 scripts/materialize_frozen_artifacts.py"),
+        )
+        self.assertLess(
+            text.index("python3 scripts/materialize_frozen_artifacts.py"),
+            text.index("python3 scripts/submit_materializer_v4.py"),
+        )
+        self.assertLess(
+            text.index("python3 scripts/download_materializer_staged_validation.py"),
+            text.index("python3 scripts/stage_deterministic_wgs_report.py"),
         )
 
 

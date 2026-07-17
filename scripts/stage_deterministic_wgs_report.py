@@ -1462,7 +1462,7 @@ def main() -> None:
     add_check(
         checks,
         "crosscheck_materialization_custody",
-        crosscheck_materialization.get("schema_version") == 1
+        crosscheck_materialization.get("schema_version") == 2
         and crosscheck_materialization.get("status") == "passed"
         and crosscheck_materialization.get("run_alias") == "subject01"
         and valid_sha256(crosscheck_materialization.get("script_sha256"))

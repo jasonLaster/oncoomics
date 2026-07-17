@@ -1,0 +1,161 @@
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import stat
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import render_materializer_capture_command as MODULE  # noqa: E402
+
+
+class RenderMaterializerCaptureCommandTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.root = Path(self.temporary.name)
+        self.request_path = self.root / "request.json"
+        self.response_path = self.root / "response.json"
+        self.output = self.root / "capture-command.sh"
+        self.capture_output = self.root / "capture.json"
+        self.anchor_output = self.root / "anchor.json"
+        self.receipt_output = self.root / "receipt.json"
+        self.job_id = "12345678-1234-1234-1234-123456789abc"
+        self.parameters = {
+            "source_vcf_version_id": "source-vcf-version",
+            "source_vcf_index_version_id": "source-vcf-index-version",
+            "source_matrix_version_id": "source-matrix-version",
+            "source_vcf_sha256": "a" * 64,
+            "source_vcf_index_sha256": "b" * 64,
+            "source_matrix_sha256": "c" * 64,
+            "reference_fasta_version_id": "reference-fasta-version",
+            "reference_fai_version_id": "reference-fai-version",
+        }
+        self.request = {
+            "status": "submission_authorized",
+            "run_id": MODULE.RUN_ID,
+            "submit_job_request": {
+                "jobName": "diana-wgs-hrd-materialize-20260716T033101Z",
+                "retryStrategy": {"attempts": 1},
+                "parameters": {
+                    name: self.parameters[name] for name in MODULE.PARAMETER_NAMES
+                },
+            },
+        }
+        self.response = self.bound_response(self.request)
+
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
+    def bound_response(self, request: dict) -> dict:
+        self.request_path.write_text(
+            json.dumps(request, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return {
+            "schema_version": 1,
+            "status": "submitted",
+            "run_id": MODULE.RUN_ID,
+            "request_receipt": {
+                "path": str(self.request_path.resolve()),
+                "sha256": hashlib.sha256(self.request_path.read_bytes()).hexdigest(),
+            },
+            "submit_job_request_sha256": hashlib.sha256(
+                MODULE.canonical_bytes(request["submit_job_request"])
+            ).hexdigest(),
+            "response": {
+                "jobName": request["submit_job_request"]["jobName"],
+                "jobId": self.job_id,
+                "jobArn": f"{MODULE.AWS_BATCH_ARN_PREFIX}{self.job_id}",
+            },
+            "checks": {
+                "request_receipt_mode_0600": True,
+                "exact_job_name": True,
+                "job_id_and_arn": True,
+                "one_shot_no_retry": True,
+            },
+        }
+
+    def args(self) -> object:
+        self.request_path.write_text(
+            json.dumps(self.request, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        self.response_path.write_text(
+            json.dumps(self.response, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return type(
+            "Args",
+            (),
+            {
+                "request_receipt": self.request_path,
+                "response_receipt": self.response_path,
+                "output": self.output,
+                "capture_output": self.capture_output,
+                "anchor_output": self.anchor_output,
+                "receipt_output": self.receipt_output,
+                "expected_receipt_prefix": (
+                    f"{MODULE.DETERMINISTIC_DESTINATION_PREFIX}/provenance/"
+                    "crosscheck-materialization-receipts/"
+                ),
+                "expected_kms_key_arn": MODULE.KMS_KEY_ARN,
+                "region": MODULE.REGION,
+            },
+        )()
+
+    def test_renders_exact_capture_command_from_bound_receipts(self) -> None:
+        command = MODULE.render_from_files(self.args())
+
+        self.assertIn("capture_materializer_terminal.py", command)
+        self.assertIn(f"--job-id {self.job_id}", command)
+        self.assertIn(
+            "crosscheck-materialization-receipts/", command
+        )
+        self.assertNotIn("<", command)
+        for name, value in self.parameters.items():
+            self.assertIn(f"--expected-parameter {name}={value}", command)
+
+    def test_refuses_to_render_from_tampered_request(self) -> None:
+        self.response = self.bound_response(self.request)
+        self.request["submit_job_request"]["parameters"]["source_vcf_sha256"] = "d" * 64
+
+        with self.assertRaisesRegex(ValueError, "not bound to the request"):
+            MODULE.render_from_files(self.args())
+
+    def test_requires_all_materializer_parameters(self) -> None:
+        mutations = {
+            "missing": lambda params: params.pop("source_vcf_version_id"),
+            "bad_sha": lambda params: params.__setitem__("source_vcf_sha256", "A" * 64),
+            "whitespace": lambda params: params.__setitem__(
+                "source_matrix_version_id", "version with spaces"
+            ),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label):
+                request = copy.deepcopy(self.request)
+                mutate(request["submit_job_request"]["parameters"])
+                self.response = self.bound_response(request)
+                self.request = request
+
+                with self.assertRaises(ValueError):
+                    MODULE.render_from_files(self.args())
+
+    def test_write_once_uses_mode_0600_and_refuses_replacement(self) -> None:
+        MODULE.write_once(self.output, "one\n")
+
+        self.assertEqual(self.output.read_text(encoding="utf-8"), "one\n")
+        self.assertEqual(stat.S_IMODE(self.output.stat().st_mode), 0o600)
+        with self.assertRaises(FileExistsError):
+            MODULE.write_once(self.output, "two\n")
+
+
+if __name__ == "__main__":
+    unittest.main()

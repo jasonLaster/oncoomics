@@ -1,0 +1,852 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import copy
+import hashlib
+import json
+import os
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import submit_materializer_v4 as MODULE  # noqa: E402
+
+
+class SubmitMaterializerV4Tests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.root = Path(self.temporary.name)
+        self.run_id = "diana-wgs-hrd-20260716T033101Z"
+        self.job_id = "6f827d44-d19b-4a6c-9126-d65189aa66cf"
+        self.kms = "arn:aws:kms:us-east-1:172630973301:key/45aa290c-d70c-4d86-9c8d-c4a76f1ff97f"
+        self.private_bucket = "diana-omics-private-results-172630973301-us-east-1"
+        self.final_prefix = f"runs/subject01/{self.run_id}/deterministic/artifacts/"
+        self.final_freeze = self.root / "final-freeze.json"
+        self.final_anchor = self.root / "final-freeze-anchor.json"
+        self.exact_materialization = self.root / "exact-materialization.json"
+        self.reference_freeze = self.root / "reference-freeze-receipt.json"
+        self.reference_sha = self.root / "reference-sha256.json"
+        self.script_anchor = self.root / "materializer-script-freeze-anchor.json"
+        self.registration = self.root / "materializer-registration-receipt.v4.json"
+        self.job_definition = self.root / "materializer-job-definition.v4.json"
+        self.request_output = self.root / "request.json"
+        self.response_output = self.root / "response.json"
+        self._write_final_receipts()
+        self._write_reference_receipts()
+        self._write_registration_receipts()
+
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
+    def _write(self, path: Path, value: dict) -> None:
+        path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    def _write_final_receipts(self) -> None:
+        rows = []
+        materialized_rows = []
+        for index, relative in enumerate(MODULE.SOURCE_RELATIVES.values(), start=1):
+            key = self.final_prefix + relative
+            version = f"exact-version-{index}"
+            checksum = f"exact-checksum-{index}"
+            sha = f"{index}" * 64
+            destination = {
+                "bucket": self.private_bucket,
+                "key": key,
+                "version_id": version,
+                "bytes": 100 + index,
+                "etag": f'"etag-{index}"',
+                "checksums": {"ChecksumCRC64NVME": checksum},
+                "checksum_type": "FULL_OBJECT",
+                "server_side_encryption": "aws:kms",
+                "kms_key_id": self.kms,
+            }
+            rows.append(
+                {
+                    "relative_key": relative,
+                    "source": {
+                        "bucket": "work",
+                        "key": relative,
+                        "version_id": f"source-{index}",
+                        "bytes": 100 + index,
+                        "etag": f'"source-{index}"',
+                        "checksums": {"ChecksumCRC64NVME": checksum},
+                        "checksum_type": "FULL_OBJECT",
+                    },
+                    "destination": destination,
+                    "status": "passed",
+                    "checks": {
+                        "listed_inventory_stable": True,
+                        "source_stable": True,
+                        "size_matches": True,
+                        "common_checksum_matches": True,
+                        "exact_kms_matches": True,
+                        "destination_versioned": True,
+                        "copy_response_version_matches": True,
+                    },
+                }
+            )
+            materialized_rows.append(
+                {
+                    "relative_key": relative,
+                    "bucket": self.private_bucket,
+                    "key": key,
+                    "version_id": version,
+                    "bytes": 100 + index,
+                    "checksums": {"ChecksumCRC64NVME": checksum},
+                    "checksum_type": "FULL_OBJECT",
+                    "server_side_encryption": "aws:kms",
+                    "kms_key_id": self.kms,
+                    "sha256": sha,
+                    "checks": {
+                        "version_id": True,
+                        "content_length": True,
+                        "local_bytes": True,
+                        "checksums": True,
+                        "checksum_type": True,
+                        "sse": True,
+                        "kms": True,
+                    },
+                }
+            )
+        freeze = {
+            "schema_version": 1,
+            "status": "passed",
+            "run_id": self.run_id,
+            "batch_job_id": self.job_id,
+            "batch_status": "SUCCEEDED",
+            "destination_prefix": f"s3://{self.private_bucket}/{self.final_prefix}",
+            "kms_key_arn": self.kms,
+            "destination_bucket_versioning": "Enabled",
+            "destination_initial_version_history_count": 0,
+            "receipt_anchor_strategy": "sha256_content_addressed_create_only",
+            "object_count": len(rows),
+            "passed_count": len(rows),
+            "initial_inventory_identity": [
+                {
+                    "relative_key": row["relative_key"],
+                    "key": row["source"]["key"],
+                    "bytes": row["source"]["bytes"],
+                    "etag": row["source"]["etag"],
+                    "version_id": row["source"]["version_id"],
+                }
+                for row in rows
+            ],
+            "final_inventory_identity": [
+                {
+                    "relative_key": row["relative_key"],
+                    "key": row["source"]["key"],
+                    "bytes": row["source"]["bytes"],
+                    "etag": row["source"]["etag"],
+                    "version_id": row["source"]["version_id"],
+                }
+                for row in rows
+            ],
+            "destination_inventory": [
+                {
+                    "relative_key": row["relative_key"],
+                    "key": row["destination"]["key"],
+                    "version_id": row["destination"]["version_id"],
+                    "bytes": row["destination"]["bytes"],
+                    "etag": row["destination"]["etag"],
+                    "checksums": row["destination"]["checksums"],
+                    "checksum_type": row["destination"]["checksum_type"],
+                    "kms_key_id": row["destination"]["kms_key_id"],
+                }
+                for row in rows
+            ],
+            "objects": rows,
+            "checks": {
+                "execution_receipt_bound": True,
+                "complete_source_inventory_unchanged": True,
+                "destination_exact_history_and_receipt_match": True,
+            },
+        }
+        self._write(self.final_freeze, freeze)
+        freeze_sha = MODULE.sha256_path(self.final_freeze)
+        anchor = {
+            "schema_version": 1,
+            "status": "passed",
+            "run_id": self.run_id,
+            "batch_job_id": self.job_id,
+            "receipt_sha256": freeze_sha,
+            "receipt_bytes": self.final_freeze.stat().st_size,
+            "receipt_uri": (
+                f"s3://{self.private_bucket}/runs/subject01/{self.run_id}/"
+                "deterministic/provenance/final-artifact-freeze-receipts/"
+                f"{freeze_sha}.json"
+            ),
+            "receipt_version_id": "freeze-receipt-version",
+            "checks": {name: True for name in MODULE.EXPECTED_ANCHOR_CHECKS},
+        }
+        self._write(self.final_anchor, anchor)
+        self._write(
+            self.exact_materialization,
+            {
+                "schema_version": 1,
+                "status": "passed",
+                "run_id": self.run_id,
+                "batch_job_id": self.job_id,
+                "freeze_receipt_sha256": freeze_sha,
+                "expected_kms_key_arn": self.kms,
+                "object_count": len(materialized_rows),
+                "passed_count": len(materialized_rows),
+                "objects": materialized_rows,
+            },
+        )
+
+    def _write_reference_receipts(self) -> None:
+        artifacts = {
+            "reference.fa": ("a" * 64, "reference-fasta-version", "crc-fasta"),
+            "reference.fa.fai": ("b" * 64, "reference-fai-version", "crc-fai"),
+            "reference.dict": ("c" * 64, "reference-dict-version", "crc-dict"),
+        }
+        objects = []
+        sha_rows = []
+        for index, (artifact, (digest, version_id, crc64nvme)) in enumerate(
+            artifacts.items(), start=1
+        ):
+            destination = {
+                "uri": (
+                    f"s3://{self.private_bucket}/runs/subject01/{self.run_id}/"
+                    f"deterministic/reference/{artifact}"
+                ),
+                "version_id": version_id,
+                "bytes": 200 + index,
+                "crc64nvme": crc64nvme,
+                "kms_key_id": self.kms,
+            }
+            objects.append(
+                {
+                    "status": "passed",
+                    "destination": destination,
+                    "checks": {
+                        name: True for name in MODULE.EXPECTED_REFERENCE_ROW_CHECKS
+                    },
+                }
+            )
+            sha_rows.append(
+                {
+                    "artifact": artifact,
+                    "status": "passed",
+                    "version_id": version_id,
+                    "bytes": destination["bytes"],
+                    "crc64nvme": crc64nvme,
+                    "server_side_encryption": "aws:kms",
+                    "kms_key_id": self.kms,
+                    "sha256": digest,
+                }
+            )
+
+        freeze = {
+            "schema_version": 1,
+            "status": "passed",
+            "object_count": len(objects),
+            "objects": objects,
+        }
+        self._write(self.reference_freeze, freeze)
+        self._write(
+            self.reference_sha,
+            {
+                "schema_version": 1,
+                "status": "passed",
+                "object_count": len(sha_rows),
+                "freeze_receipt_sha256": MODULE.sha256_path(
+                    self.reference_freeze
+                ),
+                "algorithm": "sha256_full_object_aws_side_stream",
+                "execution": {
+                    "hash_computation_status": "passed",
+                    "batch_terminal_status": (
+                        "FAILED_AFTER_ALL_HASHES_DURING_RECEIPT_UPLOAD"
+                    ),
+                    "image": MODULE.EXPECTED_IMAGE,
+                    "job_definition": (
+                        f"arn:aws:batch:{MODULE.REGION}:{MODULE.ACCOUNT_ID}:"
+                        "job-definition/diana-hrd-private-sha256-202607:2"
+                    ),
+                    "cloudwatch_log_group": "/aws/batch/job",
+                    "cloudwatch_events_sha256": "d" * 64,
+                },
+                "receipt_delivery": (
+                    "recovered_locally_from_complete_immutable_cloudwatch_hash_log"
+                ),
+                "script_sha256": "e" * 64,
+                "objects": sha_rows,
+            },
+        )
+
+    def _write_registration_receipts(self) -> None:
+        script_bucket = self.private_bucket
+        script_key = (
+            f"runs/subject01/{self.run_id}/preparation/scripts/"
+            "materialize_crosscheck_inputs-"
+            f"{MODULE.EXPECTED_MATERIALIZER_SHA256}.py"
+        )
+        script_source = {
+            "logical_path": "scripts/materialize_crosscheck_inputs.py",
+            "sha256": MODULE.EXPECTED_MATERIALIZER_SHA256,
+            "bytes": 32598,
+        }
+        script_object = {
+            "uri": f"s3://{script_bucket}/{script_key}",
+            "bucket": script_bucket,
+            "key": script_key,
+            "version_id": "script-version",
+            "server_side_encryption": "aws:kms",
+            "ssekms_key_id": self.kms,
+        }
+        script_checks = {
+            name: True for name in MODULE.EXPECTED_SCRIPT_ANCHOR_CHECKS
+        }
+        self._write(
+            self.script_anchor,
+            {
+                "schema_version": 1,
+                "status": "passed",
+                "source": script_source,
+                "object": script_object,
+                "checks": script_checks,
+            },
+        )
+
+        source_uris = {
+            name: (
+                f"s3://{self.private_bucket}/{self.final_prefix}{relative}"
+            )
+            for name, relative in MODULE.SOURCE_RELATIVES.items()
+        }
+        shell = (
+            "set -euo pipefail; "
+            "actual=$(sha256sum /work/materialize/materialize_crosscheck_inputs.py | awk '{print $1}'); "
+            f"test \"$actual\" = {MODULE.EXPECTED_MATERIALIZER_SHA256}; "
+            "python3 -u /work/materialize/materialize_crosscheck_inputs.py "
+            f"--bucket {script_bucket} "
+            f"--key {script_key} "
+            f"--source-vcf-uri {source_uris['source_vcf']} "
+            f"--source-vcf-index-uri {source_uris['source_vcf_index']} "
+            f"--source-matrix-uri {source_uris['source_matrix']} "
+            f"--reference-fasta-uri s3://{self.private_bucket}/runs/subject01/{self.run_id}/deterministic/reference/reference.fa "
+            f"--reference-fai-uri s3://{self.private_bucket}/runs/subject01/{self.run_id}/deterministic/reference/reference.fa.fai "
+            "--source-vcf-version-id \"$1\" "
+            "--source-vcf-index-version-id \"$2\" "
+            "--source-matrix-version-id \"$3\" "
+            "--source-vcf-sha256 \"$4\" "
+            "--source-vcf-index-sha256 \"$5\" "
+            "--source-matrix-sha256 \"$6\" "
+            "--reference-fasta-version-id \"$7\" "
+            "--reference-fai-version-id \"$8\" "
+            f"--reference-fasta-sha256 {'a' * 64} "
+            f"--reference-fai-sha256 {'b' * 64} "
+            f"--destination-prefix s3://{self.private_bucket}/runs/subject01/{self.run_id}/deterministic/final "
+            f"--receipt-prefix s3://{self.private_bucket}/runs/subject01/{self.run_id}/deterministic/provenance/crosscheck-materialization-receipts "
+            f"--kms-key-arn {self.kms} "
+            f"--version-id {script_object['version_id']} "
+            "--region us-east-1"
+        )
+        command = [
+            "bash",
+            "-lc",
+            shell,
+            "materializer",
+            *[f"Ref::{name}" for name in MODULE.PARAMETER_NAMES],
+        ]
+        definition = {
+            "jobDefinitionName": MODULE.JOB_DEFINITION_NAME,
+            "type": "container",
+            "platformCapabilities": ["EC2"],
+            "containerProperties": {
+                "image": MODULE.EXPECTED_IMAGE,
+                "jobRoleArn": MODULE.EXPECTED_JOB_ROLE_ARN,
+                "vcpus": 8,
+                "memory": 32000,
+                "command": command,
+                "environment": [{"name": "AWS_REGION", "value": MODULE.REGION}],
+                "logConfiguration": {
+                    "logDriver": "awslogs",
+                    "options": {
+                        "awslogs-group": "/aws/batch/job",
+                        "awslogs-region": MODULE.REGION,
+                        "awslogs-stream-prefix": "diana-wgs-hrd-materialize",
+                    },
+                },
+            },
+            "retryStrategy": {"attempts": 1},
+            "timeout": {"attemptDurationSeconds": 21600},
+        }
+        self._write(self.job_definition, definition)
+        expected_binding = {
+            f"${index}": name
+            for index, name in enumerate(MODULE.PARAMETER_NAMES, start=1)
+        }
+        self._write(
+            self.registration,
+            {
+                "schema_version": 3,
+                "status": "registered_not_submitted",
+                "classification_authorization": "none",
+                "authorized_hrd_state": "no_call",
+                "script_freeze": {
+                    "anchor_sha256": MODULE.sha256_path(self.script_anchor),
+                    "object": script_object,
+                    "source": script_source,
+                    "checks": script_checks,
+                },
+                "batch": {
+                    "definition_sha256": MODULE.sha256_path(
+                        self.job_definition
+                    ),
+                    "registration": {
+                        "jobDefinitionArn": MODULE.JOB_DEFINITION_ARN,
+                        "revision": 4,
+                    },
+                    "job_definition_arn": MODULE.JOB_DEFINITION_ARN,
+                    "revision": 4,
+                    "retry_attempts": 1,
+                    "timeout_seconds": 21600,
+                    "vcpus": 8,
+                    "memory_mib": 32000,
+                    "image": MODULE.EXPECTED_IMAGE,
+                    "parameter_substitution": list(MODULE.PARAMETER_NAMES),
+                    "shell_argument_binding": expected_binding,
+                },
+                "checks": {
+                    name: True for name in MODULE.EXPECTED_REGISTRATION_CHECKS
+                },
+            },
+        )
+
+    def args(self, *, submit: bool = False) -> argparse.Namespace:
+        return argparse.Namespace(
+            run_id=self.run_id,
+            final_freeze_receipt=self.final_freeze,
+            final_freeze_anchor=self.final_anchor,
+            exact_materialization_receipt=self.exact_materialization,
+            reference_freeze_receipt=self.reference_freeze,
+            reference_sha256_receipt=self.reference_sha,
+            reference_freeze_anchor=None,
+            materializer_script_anchor=self.script_anchor,
+            registration_receipt=self.registration,
+            job_definition_payload=self.job_definition,
+            request_output=self.request_output,
+            response_output=self.response_output if submit else None,
+            region=MODULE.REGION,
+            submit=submit,
+        )
+
+    def live_definition(self) -> dict:
+        local = json.loads(self.job_definition.read_text(encoding="utf-8"))
+        local.update(
+            {
+                "jobDefinitionArn": MODULE.JOB_DEFINITION_ARN,
+                "revision": 4,
+                "status": "ACTIVE",
+            }
+        )
+        local["retryStrategy"] = {"attempts": 1, "evaluateOnExit": []}
+        return local
+
+    def aws_side_effect(
+        self,
+        *,
+        image_platform: dict | None = None,
+        queue_status: str = "VALID",
+        existing_job: bool = False,
+        history: dict | None = None,
+        definition: dict | None = None,
+    ):
+        image_platform = image_platform or {"architecture": "arm64", "os": "linux"}
+        history = {"IsTruncated": False} if history is None else history
+        definition = self.live_definition() if definition is None else definition
+
+        def invoke(region: str, *arguments: str) -> dict:
+            self.assertEqual(region, MODULE.REGION)
+            operation = tuple(arguments[:2])
+            if operation == ("sts", "get-caller-identity"):
+                return {
+                    "Account": MODULE.ACCOUNT_ID,
+                    "Arn": f"arn:aws:iam::{MODULE.ACCOUNT_ID}:user/unit",
+                    "UserId": "unit",
+                }
+            if operation == ("batch", "describe-job-definitions"):
+                return {"jobDefinitions": [copy.deepcopy(definition)]}
+            if operation == ("ecr", "batch-get-image"):
+                manifest = {
+                    "schemaVersion": 2,
+                    "mediaType": "application/vnd.oci.image.index.v1+json",
+                    "manifests": [
+                        {
+                            "digest": "sha256:" + "a" * 64,
+                            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                            "platform": image_platform,
+                        },
+                        {
+                            "digest": "sha256:" + "b" * 64,
+                            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                            "platform": {"architecture": "unknown", "os": "unknown"},
+                            "annotations": {"vnd.docker.reference.type": "attestation-manifest"},
+                        },
+                    ],
+                }
+                return {
+                    "failures": [],
+                    "images": [
+                        {
+                            "imageId": {"imageDigest": MODULE.EXPECTED_IMAGE_DIGEST},
+                            "imageManifestMediaType": "application/vnd.oci.image.index.v1+json",
+                            "imageManifest": json.dumps(manifest),
+                        }
+                    ],
+                }
+            if operation == ("batch", "describe-compute-environments"):
+                return {
+                    "computeEnvironments": [
+                        {
+                            "computeEnvironmentArn": MODULE.COMPUTE_ENVIRONMENT_ARN,
+                            "computeEnvironmentName": MODULE.QUEUE_NAME,
+                            "state": "ENABLED",
+                            "status": "VALID",
+                            "computeResources": {
+                                "type": "EC2",
+                                "instanceTypes": list(MODULE.EXPECTED_INSTANCE_TYPES),
+                            },
+                        }
+                    ]
+                }
+            if operation == ("batch", "describe-job-queues"):
+                queue = {
+                    "jobQueueArn": MODULE.QUEUE_ARN,
+                    "jobQueueName": MODULE.QUEUE_NAME,
+                    "state": "ENABLED",
+                    "status": queue_status,
+                    "computeEnvironmentOrder": [
+                        {
+                            "order": 1,
+                            "computeEnvironment": MODULE.COMPUTE_ENVIRONMENT_ARN,
+                        }
+                    ],
+                }
+                return {"jobQueues": [queue]}
+            if operation == ("batch", "list-jobs"):
+                jobs = []
+                if existing_job and "SUCCEEDED" in arguments:
+                    jobs = [
+                        {
+                            "jobId": "prior",
+                            "jobName": "diana-wgs-hrd-materialize-20260716T033101Z",
+                            "status": "SUCCEEDED",
+                        }
+                    ]
+                return {"jobSummaryList": jobs}
+            if operation == ("s3api", "list-object-versions"):
+                return copy.deepcopy(history)
+            raise AssertionError(f"unexpected mocked AWS call: {arguments}")
+
+        return invoke
+
+    def run_preflight(self, *, aws=None):
+        aws = self.aws_side_effect() if aws is None else aws
+        with mock.patch.object(MODULE, "aws_json", side_effect=aws):
+            return MODULE.preflight(self.args())
+
+    def test_preflight_extracts_exact_eight_parameters_and_is_dry_run(self) -> None:
+        result = self.run_preflight()
+        self.assertEqual(result["status"], "rendered_only")
+        request = result["submit_job_request"]
+        self.assertEqual(request["jobQueue"], MODULE.QUEUE_NAME)
+        self.assertEqual(request["jobDefinition"], MODULE.JOB_DEFINITION_ARN)
+        self.assertEqual(request["retryStrategy"], {"attempts": 1})
+        self.assertEqual(list(request["parameters"]), list(MODULE.PARAMETER_NAMES))
+        self.assertEqual(request["parameters"]["source_vcf_sha256"], "1" * 64)
+        self.assertEqual(
+            request["parameters"]["reference_fasta_version_id"],
+            "reference-fasta-version",
+        )
+        self.assertEqual(
+            result["custody"]["reference"]["custody_mode"],
+            "exact_existing_freeze_plus_aws_sha_receipts",
+        )
+
+    def test_tampered_final_anchor_fails_before_aws(self) -> None:
+        anchor = json.loads(self.final_anchor.read_text(encoding="utf-8"))
+        anchor["receipt_sha256"] = "0" * 64
+        self._write(self.final_anchor, anchor)
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(ValueError, "anchor does not bind"):
+                MODULE.preflight(self.args())
+        aws.assert_not_called()
+
+    def test_tampered_local_sha_or_version_fails_before_aws(self) -> None:
+        value = json.loads(self.exact_materialization.read_text(encoding="utf-8"))
+        value["objects"][0]["sha256"] = "BAD"
+        self._write(self.exact_materialization, value)
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(ValueError, "does not bind frozen row"):
+                MODULE.preflight(self.args())
+        aws.assert_not_called()
+
+    def test_reference_sha_receipt_must_cross_bind_freeze_hash(self) -> None:
+        tampered = self.root / "reference-sha.json"
+        value = json.loads(self.reference_sha.read_text(encoding="utf-8"))
+        value["freeze_receipt_sha256"] = "0" * 64
+        self._write(tampered, value)
+        args = self.args()
+        args.reference_sha256_receipt = tampered
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(ValueError, "reference SHA-256 receipt"):
+                MODULE.preflight(args)
+        aws.assert_not_called()
+
+    def test_registration_hash_must_bind_exact_definition(self) -> None:
+        altered = self.root / "definition.json"
+        value = json.loads(self.job_definition.read_text(encoding="utf-8"))
+        value["containerProperties"]["memory"] += 1
+        self._write(altered, value)
+        args = self.args()
+        args.job_definition_payload = altered
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(ValueError, "registration receipt/definition"):
+                MODULE.preflight(args)
+        aws.assert_not_called()
+
+    def test_live_definition_drift_is_rejected(self) -> None:
+        definition = self.live_definition()
+        definition["containerProperties"]["memory"] += 1
+        with self.assertRaisesRegex(ValueError, "live materializer revision 4"):
+            self.run_preflight(aws=self.aws_side_effect(definition=definition))
+
+    def test_x86_image_or_invalid_queue_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "ARM64-only"):
+            self.run_preflight(aws=self.aws_side_effect(image_platform={"architecture": "amd64", "os": "linux"}))
+        with self.assertRaisesRegex(ValueError, "queue/compute environment"):
+            self.run_preflight(aws=self.aws_side_effect(queue_status="INVALID"))
+
+    def test_prior_exact_job_name_in_any_status_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "job name already exists"):
+            self.run_preflight(aws=self.aws_side_effect(existing_job=True))
+
+    def test_destination_version_or_delete_history_is_rejected(self) -> None:
+        for history in (
+            {"Versions": [{"Key": "prior", "VersionId": "v"}], "IsTruncated": False},
+            {
+                "DeleteMarkers": [{"Key": "prior", "VersionId": "d"}],
+                "IsTruncated": False,
+            },
+        ):
+            with self.subTest(history=history), self.assertRaisesRegex(ValueError, "object or delete-marker history"):
+                self.run_preflight(aws=self.aws_side_effect(history=history))
+
+    def test_history_and_job_pagination_fail_closed(self) -> None:
+        calls = 0
+
+        def aws(region: str, *arguments: str):
+            nonlocal calls
+            calls += 1
+            if tuple(arguments[:2]) == ("s3api", "list-object-versions"):
+                return {"IsTruncated": True}
+            return self.aws_side_effect()(region, *arguments)
+
+        with self.assertRaisesRegex(ValueError, "omitted or repeated"):
+            self.run_preflight(aws=aws)
+        self.assertGreater(calls, 0)
+
+    def test_dry_run_main_emits_exclusive_mode_0600_without_submit(self) -> None:
+        args = self.args()
+        argv = [
+            "submit_materializer_v4.py",
+            "--run-id",
+            args.run_id,
+            "--final-freeze-receipt",
+            str(args.final_freeze_receipt),
+            "--final-freeze-anchor",
+            str(args.final_freeze_anchor),
+            "--exact-materialization-receipt",
+            str(args.exact_materialization_receipt),
+            "--reference-freeze-receipt",
+            str(args.reference_freeze_receipt),
+            "--reference-sha256-receipt",
+            str(args.reference_sha256_receipt),
+            "--materializer-script-anchor",
+            str(args.materializer_script_anchor),
+            "--registration-receipt",
+            str(args.registration_receipt),
+            "--job-definition-payload",
+            str(args.job_definition_payload),
+            "--request-output",
+            str(args.request_output),
+        ]
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(MODULE, "aws_json", side_effect=self.aws_side_effect()) as aws:
+            self.assertEqual(MODULE.main(), 0)
+        self.assertTrue(self.request_output.is_file())
+        self.assertEqual(self.request_output.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(json.loads(self.request_output.read_text())["status"], "rendered_only")
+        self.assertFalse(any(call.args[1:3] == ("batch", "submit-job") for call in aws.call_args_list))
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(MODULE, "aws_json") as untouched:
+            with self.assertRaisesRegex(SystemExit, "refusing to overwrite"):
+                MODULE.main()
+        untouched.assert_not_called()
+
+    def test_submit_guard_is_required_before_receipt_or_aws(self) -> None:
+        argv = [
+            "submit_materializer_v4.py",
+            "--run-id",
+            self.run_id,
+            "--final-freeze-receipt",
+            str(self.final_freeze),
+            "--final-freeze-anchor",
+            str(self.final_anchor),
+            "--exact-materialization-receipt",
+            str(self.exact_materialization),
+            "--reference-freeze-receipt",
+            str(self.reference_freeze),
+            "--reference-sha256-receipt",
+            str(self.reference_sha),
+            "--materializer-script-anchor",
+            str(self.script_anchor),
+            "--registration-receipt",
+            str(self.registration),
+            "--job-definition-payload",
+            str(self.job_definition),
+            "--request-output",
+            str(self.request_output),
+            "--response-output",
+            str(self.response_output),
+            "--submit",
+        ]
+        with (
+            mock.patch.object(sys, "argv", argv),
+            mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch.object(MODULE, "aws_json") as aws,
+            self.assertRaisesRegex(SystemExit, "EXPENSIVE_RUN=YES"),
+        ):
+            MODULE.main()
+        aws.assert_not_called()
+        self.assertFalse(self.request_output.exists())
+        self.assertFalse(self.response_output.exists())
+
+    def test_submit_writes_distinct_request_and_response_receipts(self) -> None:
+        response = {
+            "jobName": "diana-wgs-hrd-materialize-20260716T033101Z",
+            "jobId": "12345678-1234-1234-1234-123456789abc",
+            "jobArn": ("arn:aws:batch:us-east-1:172630973301:job/12345678-1234-1234-1234-123456789abc"),
+        }
+        with (
+            mock.patch.object(MODULE, "preflight") as preflight,
+            mock.patch.object(MODULE, "submit", return_value=response) as submitter,
+            mock.patch.dict(os.environ, {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"}, clear=True),
+        ):
+            preflight.return_value = {
+                "status": "submission_authorized",
+                "run_id": self.run_id,
+                "submit_job_request": {
+                    "jobName": response["jobName"],
+                    "jobQueue": MODULE.QUEUE_NAME,
+                    "jobDefinition": MODULE.JOB_DEFINITION_ARN,
+                    "parameters": {name: "value" for name in MODULE.PARAMETER_NAMES},
+                    "retryStrategy": {"attempts": 1},
+                },
+            }
+            argv = [
+                "submit_materializer_v4.py",
+                "--run-id",
+                self.run_id,
+                "--final-freeze-receipt",
+                str(self.final_freeze),
+                "--final-freeze-anchor",
+                str(self.final_anchor),
+                "--exact-materialization-receipt",
+                str(self.exact_materialization),
+                "--reference-freeze-receipt",
+                str(self.reference_freeze),
+                "--reference-sha256-receipt",
+                str(self.reference_sha),
+                "--materializer-script-anchor",
+                str(self.script_anchor),
+                "--registration-receipt",
+                str(self.registration),
+                "--job-definition-payload",
+                str(self.job_definition),
+                "--request-output",
+                str(self.request_output),
+                "--response-output",
+                str(self.response_output),
+                "--submit",
+            ]
+            with mock.patch.object(sys, "argv", argv):
+                self.assertEqual(MODULE.main(), 0)
+        submitter.assert_called_once()
+        for path in (self.request_output, self.response_output):
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        persisted = json.loads(self.response_output.read_text(encoding="utf-8"))
+        self.assertEqual(persisted["status"], "submitted")
+        self.assertEqual(persisted["response"], response)
+        self.assertEqual(
+            persisted["request_receipt"]["sha256"],
+            hashlib.sha256(self.request_output.read_bytes()).hexdigest(),
+        )
+
+    def test_successful_submit_with_response_fsync_failure_requires_manual_reconciliation(self) -> None:
+        response = {
+            "jobName": "diana-wgs-hrd-materialize-20260716T033101Z",
+            "jobId": "12345678-1234-1234-1234-123456789abc",
+            "jobArn": ("arn:aws:batch:us-east-1:172630973301:job/12345678-1234-1234-1234-123456789abc"),
+        }
+        request = {
+            "status": "submission_authorized",
+            "run_id": self.run_id,
+            "submit_job_request": {
+                "jobName": response["jobName"],
+                "jobQueue": MODULE.QUEUE_NAME,
+                "jobDefinition": MODULE.JOB_DEFINITION_ARN,
+                "parameters": {name: "value" for name in MODULE.PARAMETER_NAMES},
+                "retryStrategy": {"attempts": 1},
+            },
+        }
+        argv = [
+            "submit_materializer_v4.py",
+            "--run-id",
+            self.run_id,
+            "--final-freeze-receipt",
+            str(self.final_freeze),
+            "--final-freeze-anchor",
+            str(self.final_anchor),
+            "--exact-materialization-receipt",
+            str(self.exact_materialization),
+            "--reference-freeze-receipt",
+            str(self.reference_freeze),
+            "--reference-sha256-receipt",
+            str(self.reference_sha),
+            "--materializer-script-anchor",
+            str(self.script_anchor),
+            "--registration-receipt",
+            str(self.registration),
+            "--job-definition-payload",
+            str(self.job_definition),
+            "--request-output",
+            str(self.request_output),
+            "--response-output",
+            str(self.response_output),
+            "--submit",
+        ]
+        with (
+            mock.patch.object(sys, "argv", argv),
+            mock.patch.object(MODULE, "preflight", return_value=request),
+            mock.patch.object(MODULE, "submit", return_value=response) as submitter,
+            mock.patch.object(MODULE, "complete_reserved", side_effect=OSError("fsync failed")),
+            mock.patch.dict(os.environ, {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"}, clear=True),
+            self.assertRaisesRegex(SystemExit, "submission succeeded.*do not retry before manual reconciliation"),
+        ):
+            MODULE.main()
+        submitter.assert_called_once()
+        self.assertTrue(self.response_output.exists())
+        self.assertEqual(self.response_output.stat().st_mode & 0o777, 0o600)
+
+
+if __name__ == "__main__":
+    unittest.main()

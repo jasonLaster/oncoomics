@@ -145,6 +145,77 @@ python3 scripts/materialize_frozen_artifacts.py \
   --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN"
 ```
 
+Render and review the ARM64 cross-check materializer request before submitting
+the one-shot Batch job. This materializer rewrites the frozen VCF/index and
+SBS96 matrix into alias-only PASS-SNV inputs, binds the hash-pinned reference
+FASTA/FAI, and publishes canonical cross-check inputs under the private
+`deterministic/final/` prefix.
+
+```bash
+python3 scripts/submit_materializer_v4.py \
+  --run-id "$RUN_ID" \
+  --final-freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
+  --final-freeze-anchor "$RUN_ROOT/terminal.final-freeze.anchor.json" \
+  --exact-materialization-receipt "$RUN_ROOT/terminal.materialize.json" \
+  --reference-freeze-receipt "$RUN_ROOT/reference-freeze-receipt.json" \
+  --reference-sha256-receipt "$RUN_ROOT/reference-sha256.json" \
+  --materializer-script-anchor "$RUN_ROOT/materializer-script-freeze-anchor.json" \
+  --registration-receipt "$RUN_ROOT/materializer-registration-receipt.v4.json" \
+  --job-definition-payload "$RUN_ROOT/materializer-job-definition.v4.json" \
+  --request-output "$RUN_ROOT/terminal.materializer.request.dry.json"
+```
+
+After the dry-run receipt shows the exact frozen source VersionIds and an empty
+cross-check output history, submit with an unused response path:
+
+```bash
+env HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES \
+  python3 scripts/submit_materializer_v4.py \
+    --run-id "$RUN_ID" \
+    --final-freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
+    --final-freeze-anchor "$RUN_ROOT/terminal.final-freeze.anchor.json" \
+    --exact-materialization-receipt "$RUN_ROOT/terminal.materialize.json" \
+    --reference-freeze-receipt "$RUN_ROOT/reference-freeze-receipt.json" \
+    --reference-sha256-receipt "$RUN_ROOT/reference-sha256.json" \
+    --materializer-script-anchor "$RUN_ROOT/materializer-script-freeze-anchor.json" \
+    --registration-receipt "$RUN_ROOT/materializer-registration-receipt.v4.json" \
+    --job-definition-payload "$RUN_ROOT/materializer-job-definition.v4.json" \
+    --request-output "$RUN_ROOT/terminal.materializer.request.json" \
+    --response-output "$RUN_ROOT/terminal.materializer.response.json" \
+    --submit
+```
+
+Once that materializer job succeeds, render and run the exact terminal-capture
+command from the bound request/response receipts. The capture downloads the
+schema-2 materialization receipt by the content-addressed S3 `VersionId` printed
+in the terminal CloudWatch payload.
+
+```bash
+python3 scripts/render_materializer_capture_command.py \
+  --request-receipt "$RUN_ROOT/terminal.materializer.request.json" \
+  --response-receipt "$RUN_ROOT/terminal.materializer.response.json" \
+  --output "$RUN_ROOT/terminal.materializer.capture-command.sh" \
+  --expected-receipt-prefix "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/deterministic/provenance/crosscheck-materialization-receipts/" \
+  --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
+  --capture-output "$RUN_ROOT/terminal.materializer.capture.json" \
+  --anchor-output "$RUN_ROOT/terminal.materializer.anchor.json" \
+  --receipt-output "$RUN_ROOT/terminal.materializer.receipt.json"
+
+bash "$RUN_ROOT/terminal.materializer.capture-command.sh"
+```
+
+Finally, materialize the `staged_input_validation.json` output by its exact
+private S3 `VersionId`; `stage_deterministic_wgs_report.py` uses these bytes
+alongside the schema-2 materialization receipt.
+
+```bash
+python3 scripts/download_materializer_staged_validation.py \
+  --materializer-receipt "$RUN_ROOT/terminal.materializer.receipt.json" \
+  --output "$RUN_ROOT/staged_input_validation.json" \
+  --verification-output "$RUN_ROOT/terminal.staged-input-validation.json" \
+  --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN"
+```
+
 Use a run-local scratch directory and publish the generated packet only after a
 dry-run receipt verifies the five-file inventory and `no_call` boundary:
 

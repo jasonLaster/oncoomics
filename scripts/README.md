@@ -11,6 +11,12 @@ Current shell utilities:
   powers `data.diana-tnbc.com`.
 - `capture_batch_provenance.py`: capture a successful full-WGS Batch execution
   and verify the exact worker source before terminal artifact freezing.
+- `capture_materializer_terminal.py`: capture a successful cross-check
+  materializer Batch job and download its content-addressed receipt by the exact
+  VersionId printed in the terminal CloudWatch payload.
+- `download_materializer_staged_validation.py`: download the materializer's
+  versioned `staged_input_validation.json` object for deterministic report
+  staging.
 - `download_exact_report_tree.py`: materialize a passed private cross-check
   report publication by exact S3 VersionId before compacting it for review.
 - `finalize_ai_review.py`: wrap a passed independent AI review in a schema-1
@@ -31,6 +37,9 @@ Current shell utilities:
 - `launch_phase3_aws_full.sh`: launch a full Phase 3 WGS AWS run with repo-specific defaults.
 - `materialize_frozen_artifacts.py`: download a passed final-artifact private
   freeze by exact S3 VersionId into a local tree for deterministic reporting.
+- `materialize_crosscheck_inputs.py`: rewrite exact frozen deterministic
+  VCF/SBS96/reference inputs into alias-only cross-check artifacts inside the
+  private results bucket.
 - `publish_private_report.py`: freeze an allowlisted HRD report packet in the
   private versioned results bucket before reviewed public release.
 - `prepare_ai_review_run.py`: build a seven-method de-identified AI review
@@ -47,6 +56,8 @@ Current shell utilities:
   handoff command.
 - `render_reviewed_publication_runbook.py`: render the ten-method reviewed
   public-publication handoff plus the public-index rebuild and publish tail.
+- `render_materializer_capture_command.py`: render the exact terminal-capture
+  command from a bound cross-check materializer request/response pair.
 - `review_phase3_aws_run.sh`: inspect a Phase 3 AWS run directory and summarize logs, traces, and exits.
 - `stage_hrd_crosscheck_report.py`: compact an exact Sequenza→scarHRD or
   SigProfiler SBS3 route replay into a three-file method packet for review
@@ -57,6 +68,9 @@ Current shell utilities:
   private/public publication steps.
 - `stage_ai_review_inputs.py`: split a hash-bound AI review bundle into
   isolated two-file reviewer input directories.
+- `submit_materializer_v4.py`: validate final freeze, reference, registration,
+  image, queue, and empty-destination custody before the one-shot ARM
+  cross-check materializer submission.
 - `validate_ai_review.py`: validate one isolated model review against its
   bundle, source manifests, pinned model, exact claims table, and no-promotion
   HRD authorization boundary without invoking a model.
