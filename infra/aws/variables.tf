@@ -52,10 +52,22 @@ variable "ondemand_max_vcpus" {
   default     = 256
 }
 
+variable "hrd_x86_max_vcpus" {
+  description = "Maximum vCPUs for the zero-idle On-Demand linux/amd64 HRD cross-check compute environment."
+  type        = number
+  default     = 128
+}
+
 variable "batch_arm_instance_families" {
   description = "ARM64 EC2 instance families for Batch. The local OrbStack image build is arm64."
   type        = list(string)
   default     = ["c7gn", "c7g", "m7g", "r7g"]
+}
+
+variable "batch_x86_instance_families" {
+  description = "Linux/amd64 EC2 instance families for private HRD cross-check Batch jobs."
+  type        = list(string)
+  default     = ["c7i", "m7i", "r7i"]
 }
 
 variable "work_bucket_lifecycle_days" {

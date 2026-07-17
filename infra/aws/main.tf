@@ -701,6 +701,49 @@ resource "aws_batch_compute_environment" "ondemand" {
   }
 }
 
+resource "aws_batch_compute_environment" "hrd_x86_ondemand" {
+  name         = "${local.name_prefix}-hrd-x86-ondemand"
+  service_role = aws_iam_service_linked_role.batch.arn
+  type         = "MANAGED"
+  state        = "ENABLED"
+
+  compute_resources {
+    type                = "EC2"
+    allocation_strategy = "BEST_FIT_PROGRESSIVE"
+    min_vcpus           = 0
+    desired_vcpus       = 0
+    max_vcpus           = var.hrd_x86_max_vcpus
+    instance_role       = aws_iam_instance_profile.batch.arn
+    instance_type       = var.batch_x86_instance_families
+    security_group_ids  = [aws_security_group.batch.id]
+    subnets             = values(aws_subnet.private)[*].id
+
+    ec2_configuration {
+      image_type = "ECS_AL2023"
+    }
+
+    launch_template {
+      launch_template_id = aws_launch_template.batch.id
+      version            = aws_launch_template.batch.latest_version
+    }
+  }
+
+  depends_on = [
+    aws_iam_role_policy.batch_instance_extra,
+    aws_iam_role_policy_attachment.batch_instance_ecs,
+    aws_iam_service_linked_role.batch
+  ]
+
+  lifecycle {
+    ignore_changes = [compute_resources[0].desired_vcpus]
+  }
+
+  tags = {
+    Architecture = "linux-amd64"
+    Workload     = "private-hrd-cross-check"
+  }
+}
+
 resource "aws_batch_job_queue" "spot" {
   name     = "${local.name_prefix}-spot"
   state    = "ENABLED"
@@ -728,6 +771,22 @@ resource "aws_batch_job_queue" "ondemand" {
   }
 }
 
+resource "aws_batch_job_queue" "hrd_x86" {
+  name     = "${local.name_prefix}-hrd-x86"
+  state    = "ENABLED"
+  priority = 20
+
+  compute_environment_order {
+    order               = 1
+    compute_environment = aws_batch_compute_environment.hrd_x86_ondemand.arn
+  }
+
+  tags = {
+    Architecture = "linux-amd64"
+    Workload     = "private-hrd-cross-check"
+  }
+}
+
 resource "local_file" "nextflow_params" {
   filename        = "${path.module}/nextflow.aws.json"
   file_permission = "0600"
@@ -736,6 +795,7 @@ resource "local_file" "nextflow_params" {
     aws_workdir             = "s3://${aws_s3_bucket.this["work"].bucket}/work"
     aws_results_dir         = "s3://${aws_s3_bucket.this["results"].bucket}/runs"
     aws_private_results_dir = "s3://${aws_s3_bucket.this["private_results"].bucket}/runs"
+    aws_hrd_x86_queue       = aws_batch_job_queue.hrd_x86.name
     aws_spot_queue          = aws_batch_job_queue.spot.name
     aws_ondemand_queue      = aws_batch_job_queue.ondemand.name
     aws_job_role            = aws_iam_role.batch_job.arn
