@@ -167,7 +167,7 @@ document.querySelector('#app').innerHTML = `
           </label>
         </div>
         <div class="tree-column-headings" aria-hidden="true">
-          <span></span><span>Latest file</span><span>Size</span>
+          <span></span><span>Latest file</span><span>Size</span><span></span>
         </div>
         <div class="tree" id="file-tree" aria-live="polite">
           ${Array.from({ length: 8 }, (_, index) => `<div class="tree-skeleton" style="--skeleton-depth: ${Math.min(index, 4)}"><span></span></div>`).join('')}
@@ -183,6 +183,12 @@ document.querySelector('#app').innerHTML = `
       <span>Reviewed index · Live S3 · Anonymous reads</span>
     </div>
   </footer>
+
+  <div class="action-menu" id="row-action-menu" role="menu" aria-label="File and folder actions" hidden>
+    <button type="button" role="menuitem" data-copy-action="s3-uri">Copy bucket path</button>
+    <button type="button" role="menuitem" data-copy-action="aws-command">Copy AWS CLI command</button>
+  </div>
+  <div class="copy-toast" id="copy-toast" role="status" aria-live="polite" hidden></div>
 `;
 
 const codeElement = document.querySelector('#markdown-code');
@@ -201,6 +207,34 @@ const escapeHtml = (value) => value
   .replaceAll("'", '&#039;');
 
 const objectUrl = (object) => `${object.source.origin}/${object.key.split('/').map(encodeURIComponent).join('/')}`;
+
+const shellQuote = (value) => `'${value.replaceAll("'", `'\\''`)}'`;
+
+const s3UriFor = (item) => `s3://${item.source.bucket}/${item.key}`;
+
+const awsCopyCommandFor = (item) => {
+  const isDirectory = item.type === 'directory';
+  const localName = item.name.split('/').filter(Boolean).at(-1) || item.source.id;
+  const destination = `./${localName}${isDirectory ? '/' : ''}`;
+  const recursiveOption = isDirectory ? ' --recursive' : '';
+  return `aws s3 cp ${shellQuote(s3UriFor(item))} ${shellQuote(destination)}${recursiveOption} --no-sign-request`;
+};
+
+const renderActionTrigger = (item) => {
+  if (!item.source) return '';
+
+  return `
+    <button
+      class="action-menu-trigger"
+      type="button"
+      aria-label="Actions for ${escapeHtml(item.name)}"
+      aria-haspopup="menu"
+      aria-expanded="false"
+      title="Actions"
+      data-s3-uri="${escapeHtml(s3UriFor(item))}"
+      data-aws-command="${escapeHtml(awsCopyCommandFor(item))}"
+    >&#8942;</button>`;
+};
 
 const formatBytes = (bytes, precise = false) => {
   if (!Number.isFinite(bytes) || bytes === 0) return '0 B';
@@ -252,6 +286,7 @@ function buildTree(items) {
         fileCount: 0,
         lastModified: new Date(0),
         source: object.source,
+        key: object.source.prefix,
       });
     }
 
@@ -273,6 +308,7 @@ function buildTree(items) {
 
       const childKey = `directory:${part}`;
       if (!directory.children.has(childKey)) {
+        const parentKey = directory.key ?? object.source.prefix;
         directory.children.set(childKey, {
           name: part,
           type: 'directory',
@@ -280,6 +316,8 @@ function buildTree(items) {
           size: 0,
           fileCount: 0,
           lastModified: new Date(0),
+          source: object.source,
+          key: `${parentKey}${part}/`,
         });
       }
       directory = directory.children.get(childKey);
@@ -312,7 +350,7 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
         <span class="file-type">${fileType}</span>
         <time class="item-date" datetime="${child.lastModified.toISOString()}" title="Updated ${child.lastModified.toISOString()}">${formatDate(child.lastModified)}</time>
         <span class="item-size">${formatBytes(child.size)}</span>
-        <a class="download-link" href="${url}" aria-label="Download ${escapeHtml(child.name)}" title="Download">↓</a>
+        ${renderActionTrigger(child)}
       </div>`;
   }).join('');
 
@@ -328,12 +366,14 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
         <span class="directory-meta">${directory.fileCount} ${directory.fileCount === 1 ? 'file' : 'files'}</span>
         <time class="item-date" datetime="${directory.lastModified.toISOString()}" title="Most recent file: ${directory.lastModified.toISOString()}">${formatDate(directory.lastModified)}</time>
         <span class="item-size">${formatBytes(directory.size)}</span>
+        ${renderActionTrigger(directory)}
       </summary>
       <div class="tree-children">${childMarkup}</div>
     </details>`;
 }
 
 function renderTree() {
+  closeActionMenu();
   const filtered = searchTerm
     ? objects.filter((object) => object.searchText.includes(searchTerm))
     : objects;
@@ -489,5 +529,104 @@ document.querySelector('#copy-instructions').addEventListener('click', async (ev
   button.textContent = 'Copied';
   window.setTimeout(() => { button.textContent = 'Copy Markdown'; }, 1800);
 });
+
+const actionMenu = document.querySelector('#row-action-menu');
+const copyToast = document.querySelector('#copy-toast');
+let activeActionTrigger = null;
+let toastTimer = null;
+
+const closeActionMenu = ({ restoreFocus = false } = {}) => {
+  if (!activeActionTrigger) return;
+  const trigger = activeActionTrigger;
+  trigger.setAttribute('aria-expanded', 'false');
+  activeActionTrigger = null;
+  actionMenu.hidden = true;
+  if (restoreFocus && document.body.contains(trigger)) trigger.focus();
+};
+
+const openActionMenu = (trigger) => {
+  closeActionMenu();
+  activeActionTrigger = trigger;
+  trigger.setAttribute('aria-expanded', 'true');
+  actionMenu.hidden = false;
+
+  const triggerRect = trigger.getBoundingClientRect();
+  const menuRect = actionMenu.getBoundingClientRect();
+  const left = Math.min(
+    window.innerWidth - menuRect.width - 8,
+    Math.max(8, triggerRect.right - menuRect.width),
+  );
+  const opensAbove = triggerRect.bottom + menuRect.height + 8 > window.innerHeight;
+  const top = opensAbove
+    ? Math.max(8, triggerRect.top - menuRect.height - 4)
+    : triggerRect.bottom + 4;
+  actionMenu.style.left = `${left}px`;
+  actionMenu.style.top = `${top}px`;
+  actionMenu.querySelector('[role="menuitem"]').focus();
+};
+
+const copyText = async (value) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  textarea.remove();
+};
+
+const showCopyToast = (message) => {
+  window.clearTimeout(toastTimer);
+  copyToast.textContent = message;
+  copyToast.hidden = false;
+  toastTimer = window.setTimeout(() => { copyToast.hidden = true; }, 1800);
+};
+
+document.addEventListener('click', async (event) => {
+  const trigger = event.target.closest('.action-menu-trigger');
+  if (trigger) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (trigger === activeActionTrigger) closeActionMenu({ restoreFocus: true });
+    else openActionMenu(trigger);
+    return;
+  }
+
+  const action = event.target.closest('[data-copy-action]');
+  if (action && activeActionTrigger) {
+    const actionName = action.dataset.copyAction;
+    const value = actionName === 's3-uri'
+      ? activeActionTrigger.dataset.s3Uri
+      : activeActionTrigger.dataset.awsCommand;
+    try {
+      await copyText(value);
+      showCopyToast(actionName === 's3-uri' ? 'Bucket path copied' : 'AWS CLI command copied');
+    } catch (error) {
+      console.error(error);
+      showCopyToast('Could not copy to clipboard');
+    }
+    closeActionMenu({ restoreFocus: true });
+    return;
+  }
+
+  if (!event.target.closest('#row-action-menu')) closeActionMenu();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && activeActionTrigger) {
+    event.preventDefault();
+    closeActionMenu({ restoreFocus: true });
+  }
+});
+
+document.querySelector('#file-tree').addEventListener('scroll', () => closeActionMenu(), { passive: true });
+window.addEventListener('resize', () => closeActionMenu(), { passive: true });
 
 loadInventory();
