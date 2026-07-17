@@ -106,6 +106,7 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             "scripts/freeze_stage_provenance.py",
             "scripts/freeze_final_artifacts.py",
             "scripts/materialize_frozen_artifacts.py",
+            "scripts/render_post_success_runbook.py",
             "scripts/submit_materializer_v4.py",
             "scripts/render_materializer_capture_command.py",
             "scripts/download_materializer_staged_validation.py",

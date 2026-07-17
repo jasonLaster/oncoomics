@@ -68,6 +68,9 @@ Current shell utilities:
   public-publication handoff plus the public-index rebuild and publish tail.
 - `render_materializer_capture_command.py`: render the exact terminal-capture
   command from a bound cross-check materializer request/response pair.
+- `render_post_success_runbook.py`: render the first post-success handoff from
+  a successful WGS Batch job through deterministic, Rosalind, and cross-check
+  packet staging.
 - `write_ai_model_catalog_receipt.py`: materialize the pinned independent
   AI-review model catalog receipt used by bundle preparation, review
   validation, and AI report finalization.

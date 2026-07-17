@@ -79,6 +79,13 @@ outputs before any local report staging:
 
 ```bash
 RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
+
+python3 scripts/render_post_success_runbook.py \
+  --output "$RUN_ROOT/post-success-runbook.md"
+```
+
+```bash
+RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
 RUN_ID=diana-wgs-hrd-20260716T033101Z
 JOB_ID=6f827d44-d19b-4a6c-9126-d65189aa66cf
 WORK_BUCKET=diana-omics-work-172630973301-us-east-1
