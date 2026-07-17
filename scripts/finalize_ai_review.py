@@ -31,6 +31,13 @@ REQUIRED_ATTESTATION = {
     "input_directory_contained_only_declared_artifacts": True,
 }
 HRD_STATES = {"no_call", "positive", "negative"}
+REVIEW_PACKET_INPUT_FILES = {
+    "claims.csv",
+    "report.md",
+    "review_manifest.json",
+    "validation.json",
+}
+REVIEW_PACKET_FILES = REVIEW_PACKET_INPUT_FILES | {"report_manifest.json"}
 
 
 def sha256(path: Path) -> str:
@@ -51,6 +58,32 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
 def require_file(path: Path, label: str) -> None:
     if not path.is_file() or path.is_symlink() or path.stat().st_size <= 0:
         raise ValueError(f"{label} must be a non-empty real file")
+
+
+def require_exact_review_dir(review_dir: Path, expected: set[str]) -> None:
+    if review_dir.is_symlink() or not review_dir.is_dir():
+        raise ValueError("review directory is missing or a symlink")
+
+    observed = {path.name for path in review_dir.iterdir()}
+    if observed != expected:
+        missing = sorted(expected - observed)
+        unexpected = sorted(observed - expected)
+        details = []
+        if missing:
+            details.append("missing " + ",".join(missing))
+        if unexpected:
+            details.append("unexpected " + ",".join(unexpected))
+        raise ValueError(
+            "review directory inventory is not exact: " + "; ".join(details)
+        )
+
+    invalid = sorted(
+        path.name
+        for path in review_dir.iterdir()
+        if path.is_symlink() or not path.is_file()
+    )
+    if invalid:
+        raise ValueError("review directory contains invalid paths: " + ",".join(invalid))
 
 
 def build_manifest(
@@ -266,23 +299,34 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
 
-    args.output.unlink(missing_ok=True)
     review_dir = args.review_dir.resolve()
-    output = args.output.resolve()
-    if output != review_dir / "report_manifest.json":
+    requested_output = args.output.parent.resolve() / args.output.name
+    output = review_dir / "report_manifest.json"
+    if requested_output != output:
         raise SystemExit(
             "Fail-closed: output must be report_manifest.json in the review directory"
         )
     try:
+        if output.is_file() or output.is_symlink():
+            output.unlink()
+        elif output.exists():
+            raise ValueError("report_manifest.json exists and is not a file")
+
+        require_exact_review_dir(review_dir, REVIEW_PACKET_INPUT_FILES)
         manifest = build_manifest(
             args.bundle_dir.resolve(),
             review_dir,
             args.reviewer,
             args.model_catalog_receipt.resolve(),
         )
+        write_atomic(output, manifest)
+        try:
+            require_exact_review_dir(review_dir, REVIEW_PACKET_FILES)
+        except ValueError:
+            output.unlink(missing_ok=True)
+            raise
     except (ValueError, json.JSONDecodeError) as error:
         raise SystemExit(f"Fail-closed: {error}") from error
-    write_atomic(output, manifest)
     print(f"Finalized schema-1 AI review report: {output}")
     return 0
 

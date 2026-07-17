@@ -146,6 +146,8 @@ class FinalizeAiReviewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)
             (review / "report.md").write_text("changed\n", encoding="utf-8")
+            outside_report = Path(temporary) / "report_manifest.json"
+            outside_report.write_text("keep me\n", encoding="utf-8")
 
             stale = self.execute(fixture, review)
             outside = subprocess.run(
@@ -171,6 +173,28 @@ class FinalizeAiReviewTests(unittest.TestCase):
             self.assertIn("output hashes", stale.stderr)
             self.assertNotEqual(outside.returncode, 0)
             self.assertIn("output must be report_manifest", outside.stderr)
+            self.assertEqual(outside_report.read_text(encoding="utf-8"), "keep me\n")
+
+    def test_rejects_extra_review_file_before_final_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            (review / "notes.md").write_text("stale scratch\n", encoding="utf-8")
+
+            finalized = self.execute(fixture, review)
+
+            self.assertNotEqual(finalized.returncode, 0)
+            self.assertIn("review directory inventory is not exact", finalized.stderr)
+            self.assertFalse((review / "report_manifest.json").exists())
+
+    def test_rejects_report_manifest_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            (review / "report_manifest.json").mkdir()
+
+            finalized = self.execute(fixture, review)
+
+            self.assertNotEqual(finalized.returncode, 0)
+            self.assertIn("report_manifest.json exists and is not a file", finalized.stderr)
 
     def test_rejects_model_catalog_and_bundle_drift(self) -> None:
         for mutate, message in (
