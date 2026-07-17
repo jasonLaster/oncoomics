@@ -14,6 +14,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+import generate_blocked_hrd_crosscheck_reports as BLOCKED_GENERATOR  # noqa: E402
+
 SPEC = importlib.util.spec_from_file_location(
     "render_ai_synthesis_runbook", SCRIPT_DIR / "render_ai_synthesis_runbook.py"
 )
@@ -224,6 +226,20 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
 
                 with self.assertRaises(ValueError):
                     MODULE.validate_private_report_receipts(receipts, manifests)
+
+    def test_report_manifest_paths_match_current_blocked_generator_dirs(self) -> None:
+        root = Path("/repo")
+        paths = MODULE.report_manifest_paths(root)
+
+        for method in BLOCKED_GENERATOR.METHODS:
+            self.assertEqual(
+                paths[method["method_id"]],
+                root
+                / ".codex-tmp/hrd-reports/blocked-crosschecks"
+                / method["directory"]
+                / "report_manifest.json",
+            )
+        self.assertEqual(tuple(paths), MODULE.REQUIRED_METHOD_IDS)
 
     def test_runbook_can_include_private_receipt_gate(self) -> None:
         summaries = (

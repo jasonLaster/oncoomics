@@ -59,6 +59,13 @@ class HrdReportInventoryTests(unittest.TestCase):
             INVENTORY.BLOCKED_CROSSCHECK_METHOD_IDS,
         )
         self.assertEqual(
+            INVENTORY.BLOCKED_CROSSCHECK_REPORT_DIRS,
+            {
+                method["method_id"]: method["directory"]
+                for method in BLOCKED.METHODS
+            },
+        )
+        self.assertEqual(
             tuple(sorted(STAGE.SUPPORTED_ROUTES)),
             tuple(sorted(INVENTORY.EXECUTABLE_CROSSCHECK_METHOD_IDS)),
         )

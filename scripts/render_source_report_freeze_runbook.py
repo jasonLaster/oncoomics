@@ -10,16 +10,13 @@ import shlex
 from pathlib import Path
 from typing import Iterable
 
-from hrd_report_inventory import REQUIRED_METHOD_IDS
+from hrd_report_inventory import (
+    BLOCKED_CROSSCHECK_REPORT_DIRS,
+    REQUIRED_METHOD_IDS,
+)
 from publish_reviewed_public_report import REGION, RUN_ID
 from render_ai_synthesis_runbook import FORBIDDEN_TOKENS, write_once
 
-
-BLOCKED_REPORT_DIRS = {
-    "facets_scarhrd_blocked": "facets-scarhrd",
-    "oncoanalyser_chord_blocked": "oncoanalyser-chord",
-    "hrdetect_blocked": "hrdetect",
-}
 
 STALE_TOKENS = (
     ".codex-tmp/hrd-reports/publish_private_report.py",
@@ -63,7 +60,7 @@ def source_packet_dirs(
         "sequenza_scarhrd": sequenza_report_dir or crosschecks / "sequenza_scarhrd",
         "sigprofiler_sbs3": sigprofiler_report_dir or crosschecks / "sigprofiler_sbs3",
     }
-    for method_id, directory in BLOCKED_REPORT_DIRS.items():
+    for method_id, directory in BLOCKED_CROSSCHECK_REPORT_DIRS.items():
         paths[method_id] = blocked / directory
     return paths
 

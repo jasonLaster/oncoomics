@@ -11,7 +11,10 @@ import shlex
 from pathlib import Path
 from typing import Any, Iterable
 
-from hrd_report_inventory import REQUIRED_METHOD_IDS
+from hrd_report_inventory import (
+    BLOCKED_CROSSCHECK_REPORT_DIRS,
+    REQUIRED_METHOD_IDS,
+)
 from prepare_ai_review_run import METHOD_ARGUMENTS
 from publish_reviewed_public_report import (
     METHOD_CONTRACTS,
@@ -29,12 +32,6 @@ MODEL_CATALOG_VERIFIED_AT = "2026-07-17T11:53:11+00:00"
 REVIEWER_A = ("openai-codex", "gpt-5.6-sol")
 REVIEWER_B = ("openai-codex", "gpt-5.6-terra")
 FORBIDDEN_TOKENS = ("E019_S01", "DRF-PSN49561", "echo-personalis", "personalis")
-
-BLOCKED_REPORT_DIRS = {
-    "facets_scarhrd_blocked": "facets-scarhrd",
-    "oncoanalyser_chord_blocked": "oncoanalyser-chord",
-    "hrdetect_blocked": "hrdetect",
-}
 
 
 def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
@@ -146,7 +143,7 @@ def report_manifest_paths(
         )
         / "report_manifest.json",
     }
-    for method_id, directory in BLOCKED_REPORT_DIRS.items():
+    for method_id, directory in BLOCKED_CROSSCHECK_REPORT_DIRS.items():
         paths[method_id] = blocked / directory / "report_manifest.json"
     return paths
 

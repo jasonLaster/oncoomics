@@ -11,6 +11,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+import generate_blocked_hrd_crosscheck_reports as BLOCKED_GENERATOR  # noqa: E402
+
 SPEC = importlib.util.spec_from_file_location(
     "render_source_report_freeze_runbook",
     SCRIPT_DIR / "render_source_report_freeze_runbook.py",
@@ -80,6 +82,32 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             next(iter(paths.values())).rmdir()
             with self.assertRaisesRegex(ValueError, "missing"):
                 MODULE.validate_packet_dirs(paths)
+
+    def test_current_blocked_generator_satisfies_renderer_packet_dirs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            blocked_root = root / ".codex-tmp/hrd-reports/blocked-crosschecks"
+            BLOCKED_GENERATOR.generate(
+                blocked_root,
+                generated_at="2026-07-17T00:00:00+00:00",
+            )
+
+            paths = MODULE.source_packet_dirs(root)
+            for method_id, path in paths.items():
+                if method_id not in MODULE.BLOCKED_CROSSCHECK_REPORT_DIRS:
+                    path.mkdir(parents=True)
+
+            MODULE.validate_packet_dirs(paths)
+            text = MODULE.render(root, "terminal")
+            for method in BLOCKED_GENERATOR.METHODS:
+                self.assertIn(
+                    f"/blocked-crosschecks/{method['directory']} "
+                    f"--method-id {method['method_id']}",
+                    text,
+                )
+            self.assertNotIn("/blocked-crosschecks/facets-scarhrd ", text)
+            self.assertNotIn("/blocked-crosschecks/oncoanalyser-chord ", text)
+            self.assertNotIn("/blocked-crosschecks/hrdetect ", text)
 
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
         prerequisites = {
