@@ -89,6 +89,65 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "lacks exact"):
             MODULE.validate_receipt(wrong_kms, KMS)
 
+    def test_head_and_get_request_exact_version_with_checksum_mode(self) -> None:
+        with patch.object(MODULE, "aws_json", return_value={"ok": True}) as aws:
+            self.assertEqual(
+                MODULE.head_object(
+                    "private-bucket",
+                    "path/to/staged_input_validation.json",
+                    "version-1",
+                    "us-east-1",
+                ),
+                {"ok": True},
+            )
+
+        aws.assert_called_once_with(
+            [
+                "s3api",
+                "head-object",
+                "--bucket",
+                "private-bucket",
+                "--key",
+                "path/to/staged_input_validation.json",
+                "--version-id",
+                "version-1",
+                "--checksum-mode",
+                "ENABLED",
+            ],
+            "us-east-1",
+        )
+
+        with tempfile.TemporaryDirectory() as value:
+            destination = Path(value) / "staged_input_validation.json"
+            with patch.object(MODULE, "aws_json", return_value={"ok": True}) as aws:
+                self.assertEqual(
+                    MODULE.get_object(
+                        "private-bucket",
+                        "path/to/staged_input_validation.json",
+                        "version-1",
+                        destination,
+                        "us-east-1",
+                    ),
+                    {"ok": True},
+                )
+
+        aws.assert_called_once_with(
+            [
+                "s3api",
+                "get-object",
+                "--bucket",
+                "private-bucket",
+                "--key",
+                "path/to/staged_input_validation.json",
+                "--version-id",
+                "version-1",
+                "--checksum-mode",
+                "ENABLED",
+                str(destination),
+            ],
+            "us-east-1",
+        )
+
     def test_materialize_downloads_exact_version_and_writes_mode_0600_receipt(self) -> None:
         payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
 
