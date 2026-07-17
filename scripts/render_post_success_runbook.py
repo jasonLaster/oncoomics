@@ -34,6 +34,9 @@ WORKER_URI = (
 PUBLIC_SOURCE_PREFIX = (
     f"s3://{PUBLIC_RESULTS_BUCKET}/runs/diana-hrd/{RUN_ID}/artifacts/"
 )
+EARLY_LOOK_ARTIFACT_ROOT = Path(
+    "results/diana_wgs_hrd/early-look-intersected-20260716T150517Z/artifacts"
+)
 
 ROUTE_SUBMISSION_PREFIX = {
     "sequenza_scarhrd": "seq",
@@ -156,7 +159,7 @@ def materializer_command(
 
 
 def stage_deterministic_command(
-    scripts: Path, deterministic: Path
+    scripts: Path, deterministic: Path, early_look_root: Path
 ) -> list[str | Path]:
     return [
         "python3",
@@ -192,7 +195,7 @@ def stage_deterministic_command(
         "--expected-kms-key-arn",
         PRIVATE_KMS_KEY_ARN,
         "--early-look-root",
-        deterministic.parent / "deterministic-early-look",
+        early_look_root,
         "--output-dir",
         deterministic / "report",
         *forbidden_flags(),
@@ -356,6 +359,28 @@ def stage_route_command(
     ]
 
 
+def required_local_inputs(root: Path) -> tuple[Path, ...]:
+    deterministic = root / ".codex-tmp/hrd-reports/deterministic-full"
+    hrd_crosschecks = root / ".codex-tmp/hrd-crosschecks"
+    early_look = root / EARLY_LOOK_ARTIFACT_ROOT
+    return (
+        deterministic / "executed-worker-freeze-receipt.json",
+        deterministic / "executed-worker-freeze-receipt-upload.json",
+        deterministic / "private-input-sha256.json",
+        deterministic / "quarantine.preflight.json",
+        deterministic / "quarantine.gather.json",
+        deterministic / "reference-freeze-receipt.json",
+        deterministic / "reference-sha256.json",
+        deterministic / "materializer-script-freeze-anchor.json",
+        deterministic / "materializer-registration-receipt.v4.json",
+        deterministic / "materializer-job-definition.v4.json",
+        hrd_crosschecks / "input-contract.pending.json",
+        early_look / "early_look_summary.json",
+        early_look / "variants/core_hrr_pass_variants.csv",
+        early_look / "coverage_cnv/coverage_cnv_bins.csv",
+    )
+
+
 def required_existing(root: Path) -> tuple[Path, ...]:
     scripts = root / "scripts"
     return (
@@ -376,6 +401,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
         scripts / "stage_hrd_crosscheck_report.py",
         scripts / "generate_blocked_hrd_crosscheck_reports.py",
         scripts / "render_source_report_freeze_runbook.py",
+        *required_local_inputs(root),
     )
 
 
@@ -384,6 +410,7 @@ def render(root: Path) -> str:
     aws_dir = root / "aws"
     reports = root / ".codex-tmp/hrd-reports"
     deterministic = reports / "deterministic-full"
+    early_look = root / EARLY_LOOK_ARTIFACT_ROOT
     pending_contract = root / ".codex-tmp/hrd-crosschecks/input-contract.pending.json"
 
     lines = [
@@ -668,7 +695,7 @@ def render(root: Path) -> str:
         ),
         "## 4. Stage deterministic and Rosalind packets",
         "",
-        block(stage_deterministic_command(scripts, deterministic)),
+        block(stage_deterministic_command(scripts, deterministic, early_look)),
         block(rosalind_command(root, deterministic)),
         "## 5. Execute and stage supported cross-check routes",
         "",

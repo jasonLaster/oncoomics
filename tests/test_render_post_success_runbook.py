@@ -66,6 +66,16 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             text,
         )
         self.assertIn(".codex-tmp/hrd-crosschecks/input-contract.pending.json", text)
+        self.assertIn(
+            "--early-look-root "
+            "/repo/results/diana_wgs_hrd/early-look-intersected-20260716T150517Z/"
+            "artifacts",
+            text,
+        )
+        self.assertNotIn(
+            "--early-look-root /repo/.codex-tmp/hrd-reports/deterministic-early-look",
+            text,
+        )
         self.assertIn("--expected-crosscheck-materializer-sha256", text)
         self.assertIn("ROSALIND_HRD_SAMPLE_SET=diana_wgs", text)
         self.assertIn("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON=", text)
@@ -181,6 +191,28 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             "/repo/.codex-tmp/hrd-crosschecks/aws/submit_route.py",
         ):
             self.assertNotIn(stale, prerequisites)
+
+    def test_required_existing_includes_precomputed_local_inputs(self) -> None:
+        prerequisites = {
+            path.as_posix() for path in MODULE.required_existing(Path("/repo"))
+        }
+
+        for path in (
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "executed-worker-freeze-receipt.json",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "reference-freeze-receipt.json",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "materializer-registration-receipt.v4.json",
+            "/repo/.codex-tmp/hrd-crosschecks/input-contract.pending.json",
+            "/repo/results/diana_wgs_hrd/early-look-intersected-20260716T150517Z/"
+            "artifacts/early_look_summary.json",
+            "/repo/results/diana_wgs_hrd/early-look-intersected-20260716T150517Z/"
+            "artifacts/variants/core_hrr_pass_variants.csv",
+            "/repo/results/diana_wgs_hrd/early-look-intersected-20260716T150517Z/"
+            "artifacts/coverage_cnv/coverage_cnv_bins.csv",
+        ):
+            self.assertIn(path, prerequisites)
 
     def test_write_once_is_mode_0600_and_refuses_replacement(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

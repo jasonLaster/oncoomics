@@ -65,9 +65,10 @@ python3 scripts/render_post_success_runbook.py \
 ```
 
 Treat the generated runbook, not this Markdown page, as the canonical command
-source. It renders the current checked-in script paths, exact receipt names,
-explicit AWS region arguments, and the wait boundaries around submitted Batch
-jobs.
+source. It validates the required precomputed custody receipts and recovered
+early-look artifacts, then renders the current checked-in script paths, exact
+receipt names, explicit AWS region arguments, and the wait boundaries around
+submitted Batch jobs.
 
 | Generated stage | Checked-in command path |
 | --- | --- |
