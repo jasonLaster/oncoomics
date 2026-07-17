@@ -29,6 +29,9 @@ Current shell utilities:
   index to `public-index/objects.json` with SHA-256 and S3 metadata custody.
 - `publish_reviewed_public_report.py`: publish an allowlisted private HRD report
   packet into the reviewed public Diana WGS alias tree.
+- `render_ai_synthesis_runbook.py`: render the post-freeze AI review,
+  validation, comparative-synthesis, and private-publication handoff from
+  seven current private publication receipts.
 - `review_phase3_aws_run.sh`: inspect a Phase 3 AWS run directory and summarize logs, traces, and exits.
 - `stage_hrd_crosscheck_report.py`: compact an exact Sequenza→scarHRD or
   SigProfiler SBS3 route replay into a three-file method packet for review
