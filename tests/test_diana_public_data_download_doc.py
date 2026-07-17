@@ -11,203 +11,134 @@ RUN_ID = "diana-wgs-hrd-20260716T033101Z"
 
 
 class DianaPublicDataDownloadDocTests(unittest.TestCase):
-    def test_rosalind_freeze_examples_use_canonical_packet_output(self) -> None:
+    def test_public_browser_documents_static_results_and_live_raw_inbox(self) -> None:
         text = DOC.read_text(encoding="utf-8")
 
-        self.assertNotIn(
-            ".codex-tmp/hrd-reports/deterministic-full/rosalind",
-            text,
-        )
+        self.assertIn("data.diana-tnbc.com", text)
+        self.assertIn("public-index/objects.json", text)
         self.assertIn(
-            'ROSALIND_PACKET="results/rosalind_hrd/diana_wgs/$RUN_ID"',
+            "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/",
             text,
         )
-        self.assertEqual(text.count('--packet-dir "$ROSALIND_PACKET"'), 2)
-        self.assertIn(
-            "$RUN_ROOT/terminal.rosalind_diana_wgs.private.json",
-            text,
-        )
+        self.assertIn("anonymous list and read", text)
+        self.assertIn("republishing `public-index/objects.json`", text)
 
-    def test_rosalind_publication_examples_reuse_terminal_receipt_names(self) -> None:
-        text = DOC.read_text(encoding="utf-8")
-
-        self.assertEqual(
-            text.count(
-                '--private-publication-receipt '
-                '"$RUN_ROOT/terminal.rosalind_diana_wgs.private.json"'
-            ),
-            2,
-        )
-        self.assertEqual(
-            text.count(
-                '--destination-prefix "s3://diana-omics-results-172630973301-us-east-1/'
-                'runs/diana-hrd-public/subject01/$RUN_ID/rosalind/"'
-            ),
-            2,
-        )
-        self.assertEqual(
-            sorted(
-                set(
-                    re.findall(
-                        r'\$RUN_ROOT/terminal\.rosalind_diana_wgs\.public(?:\.dry)?\.json',
-                        text,
-                    )
-                )
-            ),
-            [
-                "$RUN_ROOT/terminal.rosalind_diana_wgs.public.dry.json",
-                "$RUN_ROOT/terminal.rosalind_diana_wgs.public.json",
-            ],
-        )
-
-    def test_pinned_run_id_is_documented_once_for_manual_rosalind_freeze(self) -> None:
-        text = DOC.read_text(encoding="utf-8")
-
-        self.assertIn(f"RUN_ID={RUN_ID}", text)
-        self.assertIn(
-            'ROSALIND_PACKET="results/rosalind_hrd/diana_wgs/$RUN_ID"',
-            text,
-        )
-
-    def test_reviewed_publication_uses_run_scoped_ai_review_receipts(self) -> None:
-        text = DOC.read_text(encoding="utf-8")
-
-        self.assertNotIn(
-            ".codex-tmp/hrd-reports/ai-review/publication-receipts/",
-            text,
-        )
-        receipt_root = (
-            f".codex-tmp/hrd-reports/ai-review/{RUN_ID}/publication-receipts/"
-        )
-        self.assertIn(f"{receipt_root}terminal.ai-reviewer-a.private.json", text)
-        self.assertIn(f"{receipt_root}terminal.ai-reviewer-b.private.json", text)
-        self.assertIn(
-            f"{receipt_root}terminal.comparative-synthesis.private.json",
-            text,
-        )
-
-    def test_reviewed_publication_delegates_public_index_to_final_runbook(self) -> None:
-        text = DOC.read_text(encoding="utf-8")
-        final_section = text.split("## Render the AI review and synthesis handoff", 1)[1]
-
-        self.assertIn("scripts/render_reviewed_publication_runbook.py", final_section)
-        self.assertIn(
-            "then rebuilds and publishes `public-index/objects.json`",
-            final_section,
-        )
-        self.assertNotIn("scripts/build_public_results_index.py", final_section)
-        self.assertNotIn("scripts/publish_public_results_index.py", final_section)
-
-    def test_terminal_packet_docs_start_with_checked_in_freeze_commands(self) -> None:
-        text = DOC.read_text(encoding="utf-8")
-
-        for script in (
-            "scripts/capture_batch_provenance.py",
-            "scripts/freeze_stage_provenance.py",
-            "scripts/freeze_final_artifacts.py",
-            "scripts/materialize_frozen_artifacts.py",
-            "scripts/render_post_success_runbook.py",
-            "scripts/submit_materializer_v4.py",
-            "scripts/render_materializer_capture_command.py",
-            "scripts/download_materializer_staged_validation.py",
-            "aws/submit_route.py",
-            "scripts/capture_route_terminal.py",
-            "scripts/stage_deterministic_wgs_report.py",
-            "scripts/generate_blocked_hrd_crosscheck_reports.py",
-        ):
-            self.assertIn(script, text)
-        self.assertIn(
-            '--output "$RUN_ROOT/terminal.execution.succeeded.json"',
-            text,
-        )
-        self.assertIn('--output "$RUN_ROOT/terminal.stage-freeze.json"', text)
-        self.assertIn('--output "$RUN_ROOT/terminal.final-freeze.json"', text)
-        self.assertLess(
-            text.index("python3 scripts/capture_batch_provenance.py"),
-            text.index("python3 scripts/materialize_frozen_artifacts.py"),
-        )
-        self.assertLess(
-            text.index("python3 scripts/materialize_frozen_artifacts.py"),
-            text.index("python3 scripts/submit_materializer_v4.py"),
-        )
-        self.assertLess(
-            text.index("python3 scripts/download_materializer_staged_validation.py"),
-            text.index("python3 scripts/stage_deterministic_wgs_report.py"),
-        )
-        self.assertLess(
-            text.index("python3 scripts/publish_input_contract.py"),
-            text.index("python3 aws/submit_route.py"),
-        )
-        self.assertLess(
-            text.index("python3 scripts/capture_route_terminal.py"),
-            text.index("python3 scripts/download_exact_report_tree.py"),
-        )
-        self.assertLess(
-            text.index("python3 scripts/stage_hrd_crosscheck_report.py"),
-            text.index("python3 scripts/generate_blocked_hrd_crosscheck_reports.py"),
-        )
-        self.assertLess(
-            text.index("python3 scripts/generate_blocked_hrd_crosscheck_reports.py"),
-            text.index("python3 scripts/render_source_report_freeze_runbook.py"),
-        )
-
-    def test_crosscheck_contract_uses_existing_pending_template(self) -> None:
-        text = DOC.read_text(encoding="utf-8")
-
-        self.assertNotIn(
-            '--pending-contract "$RUN_ROOT/input-contract.pending.json"',
-            text,
-        )
-        self.assertIn(
-            "--pending-contract .codex-tmp/hrd-crosschecks/input-contract.pending.json",
-            text,
-        )
-
-    def test_post_success_renderer_uses_fresh_create_only_output(self) -> None:
+    def test_terminal_handoff_delegates_to_post_success_renderer(self) -> None:
         text = DOC.read_text(encoding="utf-8")
 
         self.assertIn(
             'POST_SUCCESS_RUNBOOK="$RUN_ROOT/post-success-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"',
             text,
         )
+        self.assertEqual(
+            text.count("python3 scripts/render_post_success_runbook.py"),
+            1,
+        )
         self.assertIn('--output "$POST_SUCCESS_RUNBOOK"', text)
-        self.assertNotIn('--output "$RUN_ROOT/post-success-runbook.md"', text)
 
-    def test_follow_on_runbook_renderers_use_fresh_create_only_outputs(self) -> None:
+        for generated_command in (
+            "python3 scripts/capture_batch_provenance.py",
+            "python3 scripts/freeze_stage_provenance.py",
+            "python3 scripts/freeze_final_artifacts.py",
+            "python3 scripts/materialize_frozen_artifacts.py",
+            "python3 scripts/submit_materializer_v4.py",
+            "python3 scripts/finalize_input_contract.py",
+            "python3 scripts/stage_deterministic_wgs_report.py",
+            "python3 aws/submit_route.py",
+            "python3 scripts/capture_route_terminal.py",
+            "python3 scripts/stage_hrd_crosscheck_report.py",
+            "python3 scripts/generate_blocked_hrd_crosscheck_reports.py",
+        ):
+            self.assertNotIn(generated_command, text)
+
+    def test_post_success_sequence_is_documented_without_stale_manual_args(self) -> None:
         text = DOC.read_text(encoding="utf-8")
 
-        expected = {
-            "SOURCE_FREEZE_RUNBOOK": (
-                ".codex-tmp/hrd-reports/deterministic-full/"
-                "source-freeze-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
-            ),
-            "AI_REVIEW_RUNBOOK": (
-                ".codex-tmp/hrd-reports/ai-review/"
-                "post-reports-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
-            ),
-            "REVIEWED_PUBLIC_RUNBOOK": (
-                ".codex-tmp/hrd-reports/publication/"
-                "reviewed-public-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
-            ),
-        }
-        for variable, path in expected.items():
-            self.assertIn(f'{variable}="{path}"', text)
-            self.assertIn(f'--output "${variable}"', text)
+        previous = -1
+        for script in (
+            "scripts/capture_batch_provenance.py",
+            "scripts/submit_materializer_v4.py",
+            "scripts/finalize_input_contract.py",
+            "scripts/stage_deterministic_wgs_report.py",
+            "aws/submit_route.py",
+            "scripts/stage_hrd_crosscheck_report.py",
+            "scripts/render_source_report_freeze_runbook.py",
+        ):
+            index = text.find(script, previous + 1)
+            self.assertGreater(index, previous)
+            previous = index
 
+        self.assertNotRegex(
+            text,
+            re.compile(
+                r"--crosscheck-materialization-receipt.*"
+                r"--crosscheck-materialization-receipt",
+                re.DOTALL,
+            ),
+        )
+        self.assertNotIn("SUBMISSION_ID=20260717T200000Z-sequenza1", text)
+        self.assertNotIn("ROUTE=sequenza_scarhrd", text)
         self.assertNotIn(
-            "--output .codex-tmp/hrd-reports/deterministic-full/"
-            "source-freeze-runbook.md",
+            '--source-dir ".codex-tmp/hrd-reports/route-replays/$ROUTE"',
             text,
         )
-        self.assertNotIn(
-            "--output .codex-tmp/hrd-reports/ai-review/post-reports-runbook.md",
-            text,
+
+    def test_source_freeze_and_ai_flow_are_renderer_owned(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+        freeze_section = text.split("## Freeze reviewed reports", 1)[1]
+
+        self.assertLess(
+            freeze_section.index("scripts/render_source_report_freeze_runbook.py"),
+            freeze_section.index("scripts/render_ai_synthesis_runbook.py"),
         )
-        self.assertNotIn(
-            "--output .codex-tmp/hrd-reports/publication/"
-            "reviewed-public-runbook.md",
-            text,
+        self.assertLess(
+            freeze_section.index("scripts/render_ai_synthesis_runbook.py"),
+            freeze_section.index("scripts/render_reviewed_publication_runbook.py"),
         )
+        for method_id in (
+            "deterministic_full_wgs",
+            "rosalind_diana_wgs",
+            "sequenza_scarhrd",
+            "sigprofiler_sbs3",
+            "facets_scarhrd_blocked",
+            "oncoanalyser_chord_blocked",
+            "hrdetect_blocked",
+        ):
+            self.assertIn(method_id, freeze_section)
+        self.assertIn("ten\nprivate receipts", freeze_section)
+        self.assertIn("`comparative_hrd_synthesis`", freeze_section)
+
+    def test_reviewed_publication_delegates_public_index_to_final_runbook(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+        freeze_section = text.split("## Freeze reviewed reports", 1)[1]
+
+        self.assertIn("scripts/render_reviewed_publication_runbook.py", freeze_section)
+        self.assertIn("rebuilds\n`public-index/objects.json`", freeze_section)
+        self.assertNotIn("python3 scripts/build_public_results_index.py", text)
+        self.assertNotIn("python3 scripts/publish_public_results_index.py", text)
+
+    def test_no_stale_inline_private_receipt_handoffs_remain(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+
+        stale_snippets = (
+            "--receipt-upload-output",
+            "--private-publication-upload-receipt",
+            "terminal.rosalind_diana_wgs.public.dry.json",
+            "terminal.rosalind_diana_wgs.public.json",
+            "--private-publication-receipt .codex-tmp/hrd-reports/",
+            "--output .codex-tmp/hrd-reports/deterministic-full/source-freeze-runbook.md",
+            ".codex-tmp/hrd-reports/ai-review/publication-receipts/",
+        )
+        for stale in stale_snippets:
+            self.assertNotIn(stale, text)
+
+    def test_download_examples_stay_on_public_alias_paths(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+
+        self.assertIn(f"runs/diana-hrd-public/subject01/{RUN_ID}/early-look/", text)
+        self.assertIn("https://${BUCKET}.s3.us-east-1.amazonaws.com/${KEY}", text)
+        self.assertIn("curl -C -", text)
+        self.assertIn("Do not publish private version-history receipts", text)
 
 
 if __name__ == "__main__":

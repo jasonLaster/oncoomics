@@ -18,6 +18,10 @@ from publish_reviewed_public_report import METHOD_CONTRACTS, REGION, RUN_ID
 from render_ai_synthesis_runbook import FORBIDDEN_TOKENS, write_once
 
 
+class Raw(str):
+    """Shell token that should be emitted without shell quoting."""
+
+
 STALE_TOKENS = (
     ".codex-tmp/hrd-reports/publish_private_report.py",
     ".codex-tmp/hrd-reports/ai-review/render_ai_synthesis_runbook.py",
@@ -29,11 +33,23 @@ STALE_TOKENS = (
 
 
 def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
-    return " ".join(shlex.quote(os.fspath(value)) for value in values)
+    return " ".join(
+        str(value) if isinstance(value, Raw) else shlex.quote(os.fspath(value))
+        for value in values
+    )
 
 
 def block(command: Iterable[str | os.PathLike[str]]) -> str:
     return "```bash\n" + shell_join(command) + "\n```\n"
+
+
+def bash_block(lines: Iterable[str]) -> str:
+    return "```bash\n" + "\n".join(lines) + "\n```\n"
+
+
+def timestamped_runbook_assignment(variable: str, directory: Path, stem: str) -> str:
+    prefix = shlex.quote(str(directory / f"{stem}."))
+    return f"{variable}={prefix}$(date -u +%Y%m%dT%H%M%SZ).md"
 
 
 def forbidden_flags() -> list[str]:
@@ -138,7 +154,7 @@ def publish_command(
 
 def ai_runbook_command(
     scripts: Path,
-    output: Path,
+    output: str | Path,
     receipt_paths: Iterable[Path],
 ) -> list[str | Path]:
     return [
@@ -209,14 +225,21 @@ def render(
         [
             "## 2. Render the independent AI review and synthesis handoff",
             "",
-            block(
-                ai_runbook_command(
-                    scripts,
-                    root
-                    / ".codex-tmp/hrd-reports/ai-review"
-                    / f"{receipt_stem}.post-reports-runbook.md",
-                    receipt_paths,
-                )
+            bash_block(
+                [
+                    timestamped_runbook_assignment(
+                        "AI_REVIEW_RUNBOOK",
+                        root / ".codex-tmp/hrd-reports/ai-review",
+                        f"{receipt_stem}.post-reports-runbook",
+                    ),
+                    shell_join(
+                        ai_runbook_command(
+                            scripts,
+                            Raw('"$AI_REVIEW_RUNBOOK"'),
+                            receipt_paths,
+                        )
+                    ),
+                ]
             ),
         ]
     )

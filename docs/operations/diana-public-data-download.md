@@ -52,30 +52,9 @@ These paths identify a run alias, not a patient name. Conclusions must preserve
 
 ## Stage terminal Diana WGS report packets
 
-After the full-WGS Batch job succeeds, build the deterministic report packet
-only from versioned, frozen artifacts. `scripts/stage_deterministic_wgs_report.py`
-expects:
-
-- a final frozen worker artifact tree materialized by exact S3 VersionId;
-- terminal Batch execution and executed-worker freeze receipts;
-- final-artifact and stage-provenance freeze receipts plus their S3 anchors;
-- exact cross-check materialization and staged-input validation receipts;
-- the prior early-look artifact tree for early-versus-full deltas; and
-- explicit forbidden raw/vendor tokens.
-
-The stager writes exactly the five `deterministic_full_wgs` packet files that
-the private/public publishers accept:
-
-```text
-report.md
-readiness.csv
-evidence_checks.json
-input_sha256.csv
-report_manifest.json
-```
-
-Capture the terminal Batch job and freeze its source stage and final artifact
-outputs before any local report staging:
+After the full-WGS Batch job succeeds, build every terminal source report packet
+only from versioned, frozen artifacts. The hand-maintained entry point is a
+create-only post-success renderer:
 
 ```bash
 RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
@@ -85,470 +64,76 @@ python3 scripts/render_post_success_runbook.py \
   --output "$POST_SUCCESS_RUNBOOK"
 ```
 
-```bash
-RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
-RUN_ID=diana-wgs-hrd-20260716T033101Z
-JOB_ID=6f827d44-d19b-4a6c-9126-d65189aa66cf
-WORK_BUCKET=diana-omics-work-172630973301-us-east-1
-RESULTS_BUCKET=diana-omics-results-172630973301-us-east-1
-PRIVATE_BUCKET=diana-omics-private-results-172630973301-us-east-1
+Treat the generated runbook, not this Markdown page, as the canonical command
+source. It renders the current checked-in script paths, exact receipt names,
+explicit AWS region arguments, and the wait boundaries around submitted Batch
+jobs.
 
-python3 scripts/capture_batch_provenance.py \
-  --job-id "$JOB_ID" \
-  --run-id "$RUN_ID" \
-  --worker-uri "s3://$WORK_BUCKET/runs/diana-hrd/$RUN_ID/inputs/diana_hrd_wgs_worker.py" \
-  --executed-worker-freeze-receipt "$RUN_ROOT/executed-worker-freeze-receipt.json" \
-  --executed-worker-freeze-receipt-upload "$RUN_ROOT/executed-worker-freeze-receipt-upload.json" \
-  --output "$RUN_ROOT/terminal.execution.succeeded.json" \
-  --expected-status SUCCEEDED
+| Generated stage | Checked-in command path |
+| --- | --- |
+| Capture the successful WGS Batch execution, executed worker, stage provenance, and final artifacts | `scripts/capture_batch_provenance.py`, `scripts/freeze_stage_provenance.py`, `scripts/freeze_final_artifacts.py`, `scripts/materialize_frozen_artifacts.py` |
+| Submit, wait for, and exactly capture the ARM64 cross-check materializer | `scripts/submit_materializer_v4.py`, `scripts/render_materializer_capture_command.py`, `scripts/download_materializer_staged_validation.py` |
+| Finalize and privately publish the alias-only cross-check input contract | `scripts/finalize_input_contract.py`, `scripts/check_contract.py`, `scripts/publish_input_contract.py` |
+| Stage the deterministic and Diana WGS Rosalind packets from the final frozen artifact root | `scripts/stage_deterministic_wgs_report.py`, `PYTHONPATH=src /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet` |
+| Submit, wait for, and exactly capture each executable HRD cross-check route | `aws/submit_route.py`, `scripts/capture_route_terminal.py` |
+| Compact executable cross-check outputs and render no-call packets for blocked routes | `scripts/download_exact_report_tree.py`, `scripts/stage_hrd_crosscheck_report.py`, `scripts/generate_blocked_hrd_crosscheck_reports.py` |
+| Render the seven-source private-freeze and AI-review handoff | `scripts/render_source_report_freeze_runbook.py` |
 
-python3 scripts/freeze_stage_provenance.py \
-  --job-id "$JOB_ID" \
-  --run-id "$RUN_ID" \
-  --execution-receipt "$RUN_ROOT/terminal.execution.succeeded.json" \
-  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
-  --output "$RUN_ROOT/terminal.stage-freeze.dry.json" \
-  --anchor-output "$RUN_ROOT/terminal.stage-freeze.dry.anchor.json"
+The deterministic stager writes exactly the five `deterministic_full_wgs` packet
+files that the private/public publishers accept:
 
-python3 scripts/freeze_stage_provenance.py \
-  --job-id "$JOB_ID" \
-  --run-id "$RUN_ID" \
-  --execution-receipt "$RUN_ROOT/terminal.execution.succeeded.json" \
-  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
-  --output "$RUN_ROOT/terminal.stage-freeze.json" \
-  --anchor-output "$RUN_ROOT/terminal.stage-freeze.anchor.json" \
-  --apply
-
-python3 scripts/freeze_final_artifacts.py \
-  --job-id "$JOB_ID" \
-  --run-id "$RUN_ID" \
-  --execution-receipt "$RUN_ROOT/terminal.execution.succeeded.json" \
-  --source-prefix "s3://$RESULTS_BUCKET/runs/diana-hrd/$RUN_ID/artifacts/" \
-  --destination-prefix "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/deterministic/artifacts/" \
-  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
-  --output "$RUN_ROOT/terminal.final-freeze.dry.json" \
-  --anchor-output "$RUN_ROOT/terminal.final-freeze.dry.anchor.json"
-
-python3 scripts/freeze_final_artifacts.py \
-  --job-id "$JOB_ID" \
-  --run-id "$RUN_ID" \
-  --execution-receipt "$RUN_ROOT/terminal.execution.succeeded.json" \
-  --source-prefix "s3://$RESULTS_BUCKET/runs/diana-hrd/$RUN_ID/artifacts/" \
-  --destination-prefix "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/deterministic/artifacts/" \
-  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
-  --output "$RUN_ROOT/terminal.final-freeze.json" \
-  --anchor-output "$RUN_ROOT/terminal.final-freeze.anchor.json" \
-  --apply
+```text
+report.md
+readiness.csv
+evidence_checks.json
+input_sha256.csv
+report_manifest.json
 ```
 
-Materialize the final private freeze by exact S3 `VersionId` before staging the
-report packet:
-
-```bash
-
-python3 scripts/materialize_frozen_artifacts.py \
-  --freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
-  --output-dir "$RUN_ROOT/materialized-final" \
-  --receipt-output "$RUN_ROOT/terminal.materialize.json" \
-  --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN"
-```
-
-Render and review the ARM64 cross-check materializer request before submitting
-the one-shot Batch job. This materializer rewrites the frozen VCF/index and
-SBS96 matrix into alias-only PASS-SNV inputs, binds the hash-pinned reference
-FASTA/FAI, and publishes canonical cross-check inputs under the private
-`deterministic/final/` prefix.
-
-```bash
-python3 scripts/submit_materializer_v4.py \
-  --run-id "$RUN_ID" \
-  --final-freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
-  --final-freeze-anchor "$RUN_ROOT/terminal.final-freeze.anchor.json" \
-  --exact-materialization-receipt "$RUN_ROOT/terminal.materialize.json" \
-  --reference-freeze-receipt "$RUN_ROOT/reference-freeze-receipt.json" \
-  --reference-sha256-receipt "$RUN_ROOT/reference-sha256.json" \
-  --materializer-script-anchor "$RUN_ROOT/materializer-script-freeze-anchor.json" \
-  --registration-receipt "$RUN_ROOT/materializer-registration-receipt.v4.json" \
-  --job-definition-payload "$RUN_ROOT/materializer-job-definition.v4.json" \
-  --request-output "$RUN_ROOT/terminal.materializer.request.dry.json"
-```
-
-After the dry-run receipt shows the exact frozen source VersionIds and an empty
-cross-check output history, submit with an unused response path:
-
-```bash
-env HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES \
-  python3 scripts/submit_materializer_v4.py \
-    --run-id "$RUN_ID" \
-    --final-freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
-    --final-freeze-anchor "$RUN_ROOT/terminal.final-freeze.anchor.json" \
-    --exact-materialization-receipt "$RUN_ROOT/terminal.materialize.json" \
-    --reference-freeze-receipt "$RUN_ROOT/reference-freeze-receipt.json" \
-    --reference-sha256-receipt "$RUN_ROOT/reference-sha256.json" \
-    --materializer-script-anchor "$RUN_ROOT/materializer-script-freeze-anchor.json" \
-    --registration-receipt "$RUN_ROOT/materializer-registration-receipt.v4.json" \
-    --job-definition-payload "$RUN_ROOT/materializer-job-definition.v4.json" \
-    --request-output "$RUN_ROOT/terminal.materializer.request.json" \
-    --response-output "$RUN_ROOT/terminal.materializer.response.json" \
-    --submit
-```
-
-Once that materializer job succeeds, render and run the exact terminal-capture
-command from the bound request/response receipts. The capture downloads the
-schema-2 materialization receipt by the content-addressed S3 `VersionId` printed
-in the terminal CloudWatch payload.
-
-```bash
-python3 scripts/render_materializer_capture_command.py \
-  --request-receipt "$RUN_ROOT/terminal.materializer.request.json" \
-  --response-receipt "$RUN_ROOT/terminal.materializer.response.json" \
-  --output "$RUN_ROOT/terminal.materializer.capture-command.sh" \
-  --expected-receipt-prefix "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/deterministic/provenance/crosscheck-materialization-receipts/" \
-  --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
-  --capture-output "$RUN_ROOT/terminal.materializer.capture.json" \
-  --anchor-output "$RUN_ROOT/terminal.materializer.anchor.json" \
-  --receipt-output "$RUN_ROOT/terminal.materializer.receipt.json"
-
-bash "$RUN_ROOT/terminal.materializer.capture-command.sh"
-```
-
-Finally, materialize the `staged_input_validation.json` output by its exact
-private S3 `VersionId`; `stage_deterministic_wgs_report.py` uses these bytes
-alongside the schema-2 materialization receipt.
-
-```bash
-python3 scripts/download_materializer_staged_validation.py \
-  --materializer-receipt "$RUN_ROOT/terminal.materializer.receipt.json" \
-  --output "$RUN_ROOT/staged_input_validation.json" \
-  --verification-output "$RUN_ROOT/terminal.staged-input-validation.json" \
-  --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN"
-```
-
-Finalize and publish the HRD cross-check input contract after the pending
-contract has been filled with the frozen reference set and immutable input
-BAM/BAI identities. The finalizer only accepts the exact final freeze,
-exact-version local materialization, schema-2 materializer receipt, and
-materializer anchor; the publisher performs a dry run first and only writes a
-fresh content-addressed contract object when `--apply` is present.
-
-```bash
-python3 scripts/finalize_input_contract.py \
-  --pending-contract .codex-tmp/hrd-crosschecks/input-contract.pending.json \
-  --final-freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
-  --final-freeze-anchor "$RUN_ROOT/terminal.final-freeze.anchor.json" \
-  --exact-materialization-receipt "$RUN_ROOT/terminal.materialize.json" \
-  --crosscheck-materialization-receipt "$RUN_ROOT/terminal.materializer.receipt.json" \
-  --crosscheck-materialization-anchor "$RUN_ROOT/terminal.materializer.anchor.json" \
-  --expected-crosscheck-materializer-sha256 "$HRD_CROSSCHECK_MATERIALIZER_SHA256" \
-  --output "$RUN_ROOT/input-contract.json"
-
-python3 scripts/check_contract.py \
-  --contract "$RUN_ROOT/input-contract.json" \
-  --json-out "$RUN_ROOT/input-contract.readiness.json"
-
-python3 scripts/publish_input_contract.py \
-  --contract "$RUN_ROOT/input-contract.json" \
-  --destination-prefix "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/deterministic/contracts/" \
-  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
-  --anchor-output "$RUN_ROOT/terminal.input-contract.publication.dry.json"
-
-python3 scripts/publish_input_contract.py \
-  --contract "$RUN_ROOT/input-contract.json" \
-  --destination-prefix "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/deterministic/contracts/" \
-  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
-  --anchor-output "$RUN_ROOT/terminal.input-contract.publication.json" \
-  --apply
-```
-
-Use a run-local scratch directory and publish the generated packet only after a
-dry-run receipt verifies the five-file inventory and `no_call` boundary:
-
-```bash
-python3 scripts/stage_deterministic_wgs_report.py \
-  --artifact-root "$RUN_ROOT/materialized-final" \
-  --preflight-json "$RUN_ROOT/quarantine.preflight.json" \
-  --gather-json "$RUN_ROOT/quarantine.gather.json" \
-  --sha-audit "$RUN_ROOT/private-input-sha256.json" \
-  --execution-json "$RUN_ROOT/terminal.execution.succeeded.json" \
-  --executed-worker-freeze-receipt "$RUN_ROOT/executed-worker-freeze-receipt.json" \
-  --executed-worker-freeze-receipt-upload "$RUN_ROOT/executed-worker-freeze-receipt-upload.json" \
-  --final-freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
-  --final-freeze-anchor "$RUN_ROOT/terminal.final-freeze.anchor.json" \
-  --exact-materialization-receipt "$RUN_ROOT/terminal.materialize.json" \
-  --crosscheck-materialization-receipt "$RUN_ROOT/terminal.materializer.receipt.json" \
-  --stage-provenance-receipt "$RUN_ROOT/terminal.stage-freeze.json" \
-  --stage-provenance-anchor "$RUN_ROOT/terminal.stage-freeze.anchor.json" \
-  --staged-input-validation-json "$RUN_ROOT/staged_input_validation.json" \
-  --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
-  --early-look-root .codex-tmp/hrd-reports/deterministic-early-look \
-  --output-dir "$RUN_ROOT/report" \
-  --forbidden-token E019_S01 \
-  --forbidden-token DRF-PSN49561 \
-  --forbidden-token echo-personalis \
-  --forbidden-token personalis
-```
-
-Then point the Diana WGS Rosalind packet at the same final artifact root and
-the deterministic report directory:
-
-```bash
-env \
-  ROSALIND_HRD_SAMPLE_SET=diana_wgs \
-  ROSALIND_HRD_RUN_ID=diana-wgs-hrd-20260716T033101Z \
-  ROSALIND_HRD_ARTIFACT_ROOT="$RUN_ROOT/materialized-final" \
-  ROSALIND_HRD_DETERMINISTIC_REPORT_DIR="$RUN_ROOT/report" \
-  'ROSALIND_HRD_FORBIDDEN_TOKENS_JSON=["E019_S01","DRF-PSN49561","echo-personalis","personalis"]' \
-  PYTHONPATH=src \
-  /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet
-```
-
-## Submit and capture executable cross-check routes
-
-After the input contract is published, render a one-shot dry-run request for
-each executable route. The submitter revalidates the exact contract
-publication, the pinned x86 Batch job definition, the ECR image digest, the
-route queue, the absence of an exact prior job name, and an empty
-contract-addressed output prefix.
-
-```bash
-ROUTE=sequenza_scarhrd
-SUBMISSION_ID=20260717T200000Z-sequenza1
-CONTRACT_URI="$(jq -r .receipt_uri "$RUN_ROOT/terminal.input-contract.publication.json")"
-CONTRACT_VERSION_ID="$(jq -r .receipt_version_id "$RUN_ROOT/terminal.input-contract.publication.json")"
-
-python3 aws/submit_route.py \
-  --route "$ROUTE" \
-  --contract "$RUN_ROOT/input-contract.json" \
-  --contract-uri "$CONTRACT_URI" \
-  --contract-version-id "$CONTRACT_VERSION_ID" \
-  --contract-publication-anchor "$RUN_ROOT/terminal.input-contract.publication.json" \
-  --submission-id "$SUBMISSION_ID" \
-  --request-output "$RUN_ROOT/terminal.$ROUTE.request.dry.json"
-```
-
-Inspect the dry-run request, then submit with fresh request/response receipt
-paths and both explicit operator guards:
-
-```bash
-env \
-  HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES \
-  HRD_CROSSCHECK_LICENSE_REVIEWED=YES \
-  python3 aws/submit_route.py \
-    --route "$ROUTE" \
-    --contract "$RUN_ROOT/input-contract.json" \
-    --contract-uri "$CONTRACT_URI" \
-    --contract-version-id "$CONTRACT_VERSION_ID" \
-    --contract-publication-anchor "$RUN_ROOT/terminal.input-contract.publication.json" \
-    --submission-id "$SUBMISSION_ID" \
-    --request-output "$RUN_ROOT/terminal.$ROUTE.request.json" \
-    --response-output "$RUN_ROOT/terminal.$ROUTE.response.json" \
-    --submit
-```
-
-Once the route job succeeds, capture the exact terminal publication anchor from
-CloudWatch and download the content-addressed route-publication receipt by its
-exact S3 `VersionId`:
-
-```bash
-JOB_ID="$(jq -r .job_id "$RUN_ROOT/terminal.$ROUTE.response.json")"
-CONTRACT_SHA256="$(shasum -a 256 "$RUN_ROOT/input-contract.json" | awk '{print $1}')"
-
-python3 scripts/capture_route_terminal.py \
-  --route "$ROUTE" \
-  --job-id "$JOB_ID" \
-  --expected-contract-uri "$CONTRACT_URI" \
-  --expected-contract-version-id "$CONTRACT_VERSION_ID" \
-  --expected-contract-sha256 "$CONTRACT_SHA256" \
-  --expected-output-uri "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/" \
-  --submission-id "$SUBMISSION_ID" \
-  --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
-  --capture-output "$RUN_ROOT/terminal.$ROUTE.capture.json" \
-  --receipt-output "$RUN_ROOT/terminal.$ROUTE.publication.json" \
-  --anchor-output "$RUN_ROOT/terminal.$ROUTE.publication.anchor.json"
-```
-
-## Stage executable cross-check report packets
-
-After Sequenza→scarHRD or SigProfiler SBS3 route execution succeeds, replay the
-private route-publication receipt into a local report tree by exact S3
-`VersionId`; then compact that exact replay into the three-file report packet
-accepted by the private and public publishers.
-
-For each executable route:
-
-```bash
-ROUTE=sequenza_scarhrd
-
-python3 scripts/download_exact_report_tree.py \
-  --publication-receipt "$RUN_ROOT/terminal.$ROUTE.publication.json" \
-  --publication-anchor "$RUN_ROOT/terminal.$ROUTE.publication.anchor.json" \
-  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
-  --output-dir ".codex-tmp/hrd-reports/route-replays/$ROUTE" \
-  --verification-output "$RUN_ROOT/terminal.$ROUTE.exact-report.json"
-
-python3 scripts/stage_hrd_crosscheck_report.py \
-  --source-dir ".codex-tmp/hrd-reports/route-replays/$ROUTE" \
-  --download-verification "$RUN_ROOT/terminal.$ROUTE.exact-report.json" \
-  --route "$ROUTE" \
-  --output-dir ".codex-tmp/hrd-reports/crosschecks/$ROUTE"
-```
-
-## Stage intentionally blocked cross-check report packets
-
-FACETS→scarHRD, Oncoanalyser→CHORD, and HRDetect remain descriptive no-call
-packets until their route contracts, runtimes, references, licenses, QC limits,
-and known-answer validation gates are explicitly resolved. Render those
-three-file packets before `scripts/render_source_report_freeze_runbook.py` so
-the seven-source private-freeze handoff can bind all canonical method IDs:
-
-```bash
-python3 scripts/generate_blocked_hrd_crosscheck_reports.py \
-  --output-dir .codex-tmp/hrd-reports/blocked-crosschecks
-```
-
-## Freeze and publish a reviewed report packet
-
-First freeze the reviewed local report tree in the versioned private results
-bucket with `scripts/publish_private_report.py`. The private publisher accepts
-only allowlisted files for the selected method, validates the packet manifest's
-`no_call` boundary, scans for source identifiers, and writes a
-private-publication receipt with exact S3 VersionIds, SHA-256 values, object
-sizes, and KMS custody.
-
-For the Diana WGS Rosalind packet, dry-run the private freeze first:
-
-```bash
-RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
-RUN_ID=diana-wgs-hrd-20260716T033101Z
-ROSALIND_PACKET="results/rosalind_hrd/diana_wgs/$RUN_ID"
-
-python3 scripts/publish_private_report.py \
-  --packet-dir "$ROSALIND_PACKET" \
-  --method-id rosalind_diana_wgs \
-  --receipt-output "$RUN_ROOT/terminal.rosalind_diana_wgs.private.dry.json"
-```
-
-Review the dry-run receipt, then apply with a different, unused mode-0600
-receipt path:
-
-```bash
-python3 scripts/publish_private_report.py \
-  --packet-dir "$ROSALIND_PACKET" \
-  --method-id rosalind_diana_wgs \
-  --receipt-output "$RUN_ROOT/terminal.rosalind_diana_wgs.private.json" \
-  --apply
-```
-
-Use `scripts/publish_reviewed_public_report.py` only after the corresponding
-private freeze has passed. The public publisher reads that passed
-private-publication receipt, downloads every report file by its exact private
-S3 VersionId, verifies SHA-256, bytes, and KMS custody, and runs a second
-identifier scan before any public write.
-
-The method ID pins both the accepted report inventory and destination subtree.
-It cannot publish raw data or operator-selected filenames. For the Diana WGS
-Rosalind packet, run the default dry-run first with a new local receipt path:
-
-| Method ID | Local packet root | Reviewed public destination |
-| --- | --- | --- |
-| `deterministic_full_wgs` | `scripts/stage_deterministic_wgs_report.py` output | `.../deterministic/` |
-| `rosalind_diana_wgs` | `results/rosalind_hrd/diana_wgs/<run-id>/` | `.../rosalind/` |
-
-```bash
-python3 scripts/publish_reviewed_public_report.py \
-  --private-publication-receipt "$RUN_ROOT/terminal.rosalind_diana_wgs.private.json" \
-  --method-id rosalind_diana_wgs \
-  --destination-prefix "s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/$RUN_ID/rosalind/" \
-  --receipt-output "$RUN_ROOT/terminal.rosalind_diana_wgs.public.dry.json"
-```
-
-Review the dry-run receipt and preserve the source packet's `partial_evidence`
-and `no_call` boundary. Apply with a different, unused mode-0600 receipt path:
-
-```bash
-python3 scripts/publish_reviewed_public_report.py \
-  --private-publication-receipt "$RUN_ROOT/terminal.rosalind_diana_wgs.private.json" \
-  --method-id rosalind_diana_wgs \
-  --destination-prefix "s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/$RUN_ID/rosalind/" \
-  --receipt-output "$RUN_ROOT/terminal.rosalind_diana_wgs.public.json" \
-  --apply
-```
-
-Apply mode requires an empty version history at the exact method destination,
-uses create-only SSE-S3 uploads with full-object SHA-256, and succeeds only when
-the final history contains exactly one current version per allowlisted file and
-no delete markers.
-
-## Render the AI review and synthesis handoff
-
-Use `scripts/render_source_report_freeze_runbook.py` to render the seven
-private-freeze commands for the canonical source report packets and the
-follow-on AI handoff command:
-
-```bash
-SOURCE_FREEZE_RUNBOOK=".codex-tmp/hrd-reports/deterministic-full/source-freeze-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
-
-python3 scripts/render_source_report_freeze_runbook.py \
-  --output "$SOURCE_FREEZE_RUNBOOK"
-```
-
-After all seven source report packets are privately frozen,
-`scripts/render_ai_synthesis_runbook.py` renders the two-reviewer AI handoff,
-offline comparative synthesis, and private publication commands for reviewer A,
-reviewer B, and the synthesis packet.
-
-Pass the seven private-publication receipts in the pinned method order from
-`scripts/hrd_report_inventory.py`: `deterministic_full_wgs`,
-`rosalind_diana_wgs`, `sequenza_scarhrd`, `sigprofiler_sbs3`,
-`facets_scarhrd_blocked`, `oncoanalyser_chord_blocked`, then
-`hrdetect_blocked`. The renderer validates the current private receipt schema
-with `scripts/publish_reviewed_public_report.py` and also requires each local
-`report_manifest.json` to hash to the exact row frozen in S3.
-
-```bash
-AI_REVIEW_RUNBOOK=".codex-tmp/hrd-reports/ai-review/post-reports-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
-
-python3 scripts/render_ai_synthesis_runbook.py \
-  --output "$AI_REVIEW_RUNBOOK" \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.deterministic_full_wgs.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.rosalind_diana_wgs.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.sequenza_scarhrd.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.sigprofiler_sbs3.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.facets_scarhrd_blocked.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.oncoanalyser_chord_blocked.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.hrdetect_blocked.private.json
-```
-
-The rendered runbook first materializes the pinned model-catalog receipt, then
-calls the checked-in AI review and synthesis scripts only:
-`prepare_ai_review_run.py`, `validate_ai_review.py`,
-`generate_comparative_hrd_synthesis.py`, `finalize_ai_review.py`,
-`publish_private_report.py`, and `render_reviewed_publication_runbook.py`.
-
-After the seven source packets, the two validated AI reviewer packets, and the
-comparative synthesis packet are privately frozen, render the full reviewed
-public-publication handoff:
-
-```bash
-REVIEWED_PUBLIC_RUNBOOK=".codex-tmp/hrd-reports/publication/reviewed-public-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
-
-python3 scripts/render_reviewed_publication_runbook.py \
-  --output "$REVIEWED_PUBLIC_RUNBOOK" \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.deterministic_full_wgs.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.rosalind_diana_wgs.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.sequenza_scarhrd.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.sigprofiler_sbs3.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.facets_scarhrd_blocked.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.oncoanalyser_chord_blocked.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.hrdetect_blocked.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/diana-wgs-hrd-20260716T033101Z/publication-receipts/terminal.ai-reviewer-a.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/diana-wgs-hrd-20260716T033101Z/publication-receipts/terminal.ai-reviewer-b.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/diana-wgs-hrd-20260716T033101Z/publication-receipts/terminal.comparative-synthesis.private.json
-```
-
-That final runbook emits one dry-run and one apply command per report method,
-then rebuilds and publishes `public-index/objects.json` so the new reports
+Do not start the generated post-success commands until the Batch job is
+`SUCCEEDED`. The renderer deliberately fail-closes if a checked-in helper is
+missing, and the downstream freeze/materialize steps bind every report packet
+back to exact S3 `VersionId` values.
+
+## Freeze reviewed reports and render AI/publication handoffs
+
+The post-success runbook ends by rendering the private-freeze handoff only after
+all seven local source packet directories exist. The canonical source methods
+are:
+
+| Method ID | Local packet root |
+| --- | --- |
+| `deterministic_full_wgs` | `.codex-tmp/hrd-reports/deterministic-full/report` |
+| `rosalind_diana_wgs` | `results/rosalind_hrd/diana_wgs/diana-wgs-hrd-20260716T033101Z` |
+| `sequenza_scarhrd` | `.codex-tmp/hrd-reports/crosschecks/sequenza_scarhrd` |
+| `sigprofiler_sbs3` | `.codex-tmp/hrd-reports/crosschecks/sigprofiler_sbs3` |
+| `facets_scarhrd_blocked` | `.codex-tmp/hrd-reports/blocked-crosschecks/facets_scarhrd_blocked` |
+| `oncoanalyser_chord_blocked` | `.codex-tmp/hrd-reports/blocked-crosschecks/oncoanalyser_chord_blocked` |
+| `hrdetect_blocked` | `.codex-tmp/hrd-reports/blocked-crosschecks/hrdetect_blocked` |
+
+`scripts/render_source_report_freeze_runbook.py` validates those exact packet
+inventories, freezes them through `scripts/publish_private_report.py` in the
+canonical order from `scripts/hrd_report_inventory.py`, and emits the
+`scripts/render_ai_synthesis_runbook.py` command with the resulting seven
+private-publication receipts.
+
+The AI-review renderer validates the seven private receipts against their local
+`report_manifest.json` hashes, materializes the pinned model-catalog receipt,
+prepares the de-identified seven-method reviewer bundle, validates two isolated
+reviewer outputs, generates the offline comparative HRD synthesis, and freezes
+the two AI reviewer packets plus the synthesis packet privately.
+
+Its final step renders `scripts/render_reviewed_publication_runbook.py` with ten
+private receipts: the seven source methods, the two AI reviewer packets, and
+`comparative_hrd_synthesis`. The reviewed-publication runbook then emits one
+dry-run and one apply command per report method, rebuilds
+`public-index/objects.json`, and publishes that index so new reviewed reports
 appear at `data.diana-tnbc.com`.
+
+Every renderer writes a mode-0600 runbook with create-only semantics and scans
+for raw/vendor tokens such as `E019_S01`, `DRF-PSN49561`, `echo-personalis`, and
+`personalis`. Rerender into a new timestamped path or intentionally archive the
+prior local runbook before repeating a handoff.
 
 ## Download one object
 

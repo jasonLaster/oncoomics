@@ -74,6 +74,11 @@ def bash_block(lines: Iterable[str]) -> str:
     return "```bash\n" + "\n".join(lines) + "\n```\n"
 
 
+def timestamped_runbook_assignment(variable: str, directory: Path, stem: str) -> str:
+    prefix = shlex.quote(str(directory / f"{stem}."))
+    return f"{variable}={prefix}$(date -u +%Y%m%dT%H%M%SZ).md"
+
+
 def forbidden_flags() -> list[str]:
     return [
         token
@@ -737,12 +742,21 @@ def render(root: Path) -> str:
             ),
             "## 7. Render the seven-source private-freeze and AI-review handoff",
             "",
-            block(
+            bash_block(
                 [
-                    "python3",
-                    scripts / "render_source_report_freeze_runbook.py",
-                    "--output",
-                    deterministic / "source-freeze-runbook.md",
+                    timestamped_runbook_assignment(
+                        "SOURCE_FREEZE_RUNBOOK",
+                        deterministic,
+                        "source-freeze-runbook",
+                    ),
+                    shell_join(
+                        [
+                            "python3",
+                            scripts / "render_source_report_freeze_runbook.py",
+                            "--output",
+                            Raw('"$SOURCE_FREEZE_RUNBOOK"'),
+                        ]
+                    ),
                 ]
             ),
         ]

@@ -33,12 +33,28 @@ from publish_reviewed_public_report import (
 FORBIDDEN_TOKENS = ("E019_S01", "DRF-PSN49561", "echo-personalis", "personalis")
 
 
+class Raw(str):
+    """Shell token that should be emitted without shell quoting."""
+
+
 def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
-    return " ".join(shlex.quote(os.fspath(value)) for value in values)
+    return " ".join(
+        str(value) if isinstance(value, Raw) else shlex.quote(os.fspath(value))
+        for value in values
+    )
 
 
 def block(command: Iterable[str | os.PathLike[str]]) -> str:
     return "```bash\n" + shell_join(command) + "\n```\n"
+
+
+def bash_block(lines: Iterable[str]) -> str:
+    return "```bash\n" + "\n".join(lines) + "\n```\n"
+
+
+def timestamped_runbook_assignment(variable: str, directory: Path, stem: str) -> str:
+    prefix = shlex.quote(str(directory / f"{stem}."))
+    return f"{variable}={prefix}$(date -u +%Y%m%dT%H%M%SZ).md"
 
 
 def sha256_path(path: Path) -> str:
@@ -257,7 +273,7 @@ def comparative_synthesis_command(
 
 def reviewed_publication_runbook_command(
     scripts: Path,
-    output: Path,
+    output: str | Path,
     receipt_paths: Iterable[Path],
 ) -> list[str | Path]:
     return [
@@ -524,14 +540,21 @@ def render(
             ),
             "## 8. Render the reviewed-public publication handoff",
             "",
-            block(
-                reviewed_publication_runbook_command(
-                    scripts,
-                    reports
-                    / "publication"
-                    / f"{receipt_stem}.reviewed-public-runbook.md",
-                    reviewed_publication_receipt_paths(root, receipt_stem),
-                )
+            bash_block(
+                [
+                    timestamped_runbook_assignment(
+                        "REVIEWED_PUBLIC_RUNBOOK",
+                        reports / "publication",
+                        f"{receipt_stem}.reviewed-public-runbook",
+                    ),
+                    shell_join(
+                        reviewed_publication_runbook_command(
+                            scripts,
+                            Raw('"$REVIEWED_PUBLIC_RUNBOOK"'),
+                            reviewed_publication_receipt_paths(root, receipt_stem),
+                        )
+                    ),
+                ]
             ),
         ]
     )

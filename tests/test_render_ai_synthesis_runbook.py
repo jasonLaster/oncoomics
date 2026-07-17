@@ -246,10 +246,12 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
 
         self.assertIn("/repo/scripts/render_reviewed_publication_runbook.py", text)
         self.assertIn(
-            "/repo/.codex-tmp/hrd-reports/publication/"
-            "terminal.reviewed-public-runbook.md",
+            "REVIEWED_PUBLIC_RUNBOOK=/repo/.codex-tmp/hrd-reports/publication/"
+            "terminal.reviewed-public-runbook.$(date -u +%Y%m%dT%H%M%SZ).md",
             text,
         )
+        self.assertIn('--output "$REVIEWED_PUBLIC_RUNBOOK"', text)
+        self.assertNotIn("terminal.reviewed-public-runbook.md\n", text)
         self.assertEqual(text.count("--private-publication-receipt "), 10)
 
         previous = -1

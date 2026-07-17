@@ -156,6 +156,14 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             text.index("generate_blocked_hrd_crosscheck_reports.py"),
             text.rindex("render_source_report_freeze_runbook.py"),
         )
+        self.assertIn(
+            "SOURCE_FREEZE_RUNBOOK=/repo/.codex-tmp/hrd-reports/"
+            "deterministic-full/source-freeze-runbook."
+            "$(date -u +%Y%m%dT%H%M%SZ).md",
+            text,
+        )
+        self.assertIn('--output "$SOURCE_FREEZE_RUNBOOK"', text)
+        self.assertNotIn("source-freeze-runbook.md\n", text)
 
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
         prerequisites = {
