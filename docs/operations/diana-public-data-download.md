@@ -294,6 +294,71 @@ env \
   /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet
 ```
 
+## Submit and capture executable cross-check routes
+
+After the input contract is published, render a one-shot dry-run request for
+each executable route. The submitter revalidates the exact contract
+publication, the pinned x86 Batch job definition, the ECR image digest, the
+route queue, the absence of an exact prior job name, and an empty
+contract-addressed output prefix.
+
+```bash
+ROUTE=sequenza_scarhrd
+SUBMISSION_ID=20260717T200000Z-sequenza1
+CONTRACT_URI="$(jq -r .receipt_uri "$RUN_ROOT/terminal.input-contract.publication.json")"
+CONTRACT_VERSION_ID="$(jq -r .receipt_version_id "$RUN_ROOT/terminal.input-contract.publication.json")"
+
+python3 aws/submit_route.py \
+  --route "$ROUTE" \
+  --contract "$RUN_ROOT/input-contract.json" \
+  --contract-uri "$CONTRACT_URI" \
+  --contract-version-id "$CONTRACT_VERSION_ID" \
+  --contract-publication-anchor "$RUN_ROOT/terminal.input-contract.publication.json" \
+  --submission-id "$SUBMISSION_ID" \
+  --request-output "$RUN_ROOT/terminal.$ROUTE.request.dry.json"
+```
+
+Inspect the dry-run request, then submit with fresh request/response receipt
+paths and both explicit operator guards:
+
+```bash
+env \
+  HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES \
+  HRD_CROSSCHECK_LICENSE_REVIEWED=YES \
+  python3 aws/submit_route.py \
+    --route "$ROUTE" \
+    --contract "$RUN_ROOT/input-contract.json" \
+    --contract-uri "$CONTRACT_URI" \
+    --contract-version-id "$CONTRACT_VERSION_ID" \
+    --contract-publication-anchor "$RUN_ROOT/terminal.input-contract.publication.json" \
+    --submission-id "$SUBMISSION_ID" \
+    --request-output "$RUN_ROOT/terminal.$ROUTE.request.json" \
+    --response-output "$RUN_ROOT/terminal.$ROUTE.response.json" \
+    --submit
+```
+
+Once the route job succeeds, capture the exact terminal publication anchor from
+CloudWatch and download the content-addressed route-publication receipt by its
+exact S3 `VersionId`:
+
+```bash
+JOB_ID="$(jq -r .job_id "$RUN_ROOT/terminal.$ROUTE.response.json")"
+CONTRACT_SHA256="$(shasum -a 256 "$RUN_ROOT/input-contract.json" | awk '{print $1}')"
+
+python3 scripts/capture_route_terminal.py \
+  --route "$ROUTE" \
+  --job-id "$JOB_ID" \
+  --expected-contract-uri "$CONTRACT_URI" \
+  --expected-contract-version-id "$CONTRACT_VERSION_ID" \
+  --expected-contract-sha256 "$CONTRACT_SHA256" \
+  --expected-output-uri "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/" \
+  --submission-id "$SUBMISSION_ID" \
+  --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
+  --capture-output "$RUN_ROOT/terminal.$ROUTE.capture.json" \
+  --receipt-output "$RUN_ROOT/terminal.$ROUTE.publication.json" \
+  --anchor-output "$RUN_ROOT/terminal.$ROUTE.publication.anchor.json"
+```
+
 ## Stage executable cross-check report packets
 
 After Sequenza→scarHRD or SigProfiler SBS3 route execution succeeds, replay the

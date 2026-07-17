@@ -14,6 +14,9 @@ Current shell utilities:
 - `capture_materializer_terminal.py`: capture a successful cross-check
   materializer Batch job and download its content-addressed receipt by the exact
   VersionId printed in the terminal CloudWatch payload.
+- `capture_route_terminal.py`: capture a successful Sequenza→scarHRD or
+  SigProfiler SBS3 Batch route and download its content-addressed publication
+  receipt by exact S3 VersionId.
 - `check_contract.py`: validate a finalized, alias-only HRD cross-check input
   contract before route submission.
 - `download_materializer_staged_validation.py`: download the materializer's
@@ -78,6 +81,9 @@ Current shell utilities:
 - `submit_materializer_v4.py`: validate final freeze, reference, registration,
   image, queue, and empty-destination custody before the one-shot ARM
   cross-check materializer submission.
+- `aws/submit_route.py`: validate a published input contract, exact x86 route
+  revision, image, queue, and empty output prefix before one guarded HRD
+  cross-check route submission.
 - `validate_ai_review.py`: validate one isolated model review against its
   bundle, source manifests, pinned model, exact claims table, and no-promotion
   HRD authorization boundary without invoking a model.

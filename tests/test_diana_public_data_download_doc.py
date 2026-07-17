@@ -97,6 +97,8 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             "scripts/submit_materializer_v4.py",
             "scripts/render_materializer_capture_command.py",
             "scripts/download_materializer_staged_validation.py",
+            "aws/submit_route.py",
+            "scripts/capture_route_terminal.py",
             "scripts/stage_deterministic_wgs_report.py",
         ):
             self.assertIn(script, text)
@@ -117,6 +119,14 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
         self.assertLess(
             text.index("python3 scripts/download_materializer_staged_validation.py"),
             text.index("python3 scripts/stage_deterministic_wgs_report.py"),
+        )
+        self.assertLess(
+            text.index("python3 scripts/publish_input_contract.py"),
+            text.index("python3 aws/submit_route.py"),
+        )
+        self.assertLess(
+            text.index("python3 scripts/capture_route_terminal.py"),
+            text.index("python3 scripts/download_exact_report_tree.py"),
         )
 
 

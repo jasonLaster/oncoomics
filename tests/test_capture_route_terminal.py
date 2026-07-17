@@ -1,0 +1,717 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import base64
+import copy
+import hashlib
+import importlib.util
+import json
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+HERE = Path(__file__).resolve().parent
+SCRIPT = HERE.parents[0] / "scripts" / "capture_route_terminal.py"
+SPEC = importlib.util.spec_from_file_location("capture_route_terminal", SCRIPT)
+assert SPEC and SPEC.loader
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+DOWNLOAD_SCRIPT = HERE.parents[0] / "scripts" / "download_exact_report_tree.py"
+DOWNLOAD_SPEC = importlib.util.spec_from_file_location("download_exact_report_tree", DOWNLOAD_SCRIPT)
+assert DOWNLOAD_SPEC and DOWNLOAD_SPEC.loader
+DOWNLOAD_MODULE = importlib.util.module_from_spec(DOWNLOAD_SPEC)
+DOWNLOAD_SPEC.loader.exec_module(DOWNLOAD_MODULE)
+
+
+class CaptureRouteTerminalTests(unittest.TestCase):
+    def fixture(self, route: str = "sigprofiler_sbs3") -> dict:
+        config = MODULE.ROUTES[route]
+        kms = "arn:aws:kms:us-east-1:172630973301:key/45aa290c-d70c-4d86-9c8d-c4a76f1ff97f"
+        output_uri = "s3://diana-omics-private-results-172630973301-us-east-1/runs/subject01/unit/"
+        contract_uri = output_uri + "preparation/input-contract/deadbeef.json"
+        contract_version = "exact-contract-version"
+        contract_sha = "a" * 64
+        submission_id = "20260717T200000Z-a1b2c3d4"
+        root = output_uri.rstrip("/")
+        route_output = f"{root}/crosschecks/{contract_sha}/{route}/{submission_id}/"
+        receipt_prefix = f"{root}/crosscheck-publication-receipts/{contract_sha}/{route}/{submission_id}/"
+        submission_environment = {
+            "HRD_CROSSCHECK_INPUT_CONTRACT_URI": contract_uri,
+            "HRD_CROSSCHECK_INPUT_CONTRACT_VERSION_ID": contract_version,
+            "HRD_CROSSCHECK_INPUT_CONTRACT_SHA256": contract_sha,
+            "HRD_CROSSCHECK_OUTPUT_URI": output_uri,
+            "HRD_CROSSCHECK_ROUTE_OUTPUT_URI": route_output,
+            "HRD_CROSSCHECK_PUBLICATION_RECEIPT_PREFIX": receipt_prefix,
+            "HRD_CROSSCHECK_SUBMISSION_ID": submission_id,
+        }
+        object_rows = []
+        history_audit = []
+        for index, relative_path in enumerate(
+            (
+                "report.md",
+                "report_manifest.json",
+                "upload_receipt.json",
+                "report_upload_receipt.json",
+            ),
+            start=1,
+        ):
+            sha = f"{index:x}" * 64
+            checksum = base64.b64encode(bytes.fromhex(sha)).decode()
+            key = MODULE.s3_location(route_output + relative_path)[1]
+            version_id = f"output-version-{index}"
+            object_rows.append(
+                {
+                    "relative_path": relative_path,
+                    "uri": route_output + relative_path,
+                    "key": key,
+                    "sha256": sha,
+                    "etag": f"etag-{index}",
+                    "version_id": version_id,
+                    "content_length": 100 + index,
+                    "server_side_encryption": "aws:kms",
+                    "ssekms_key_id": kms,
+                    "checksum_sha256": checksum,
+                    "checks": {name: True for name in MODULE.OBJECT_CHECKS},
+                }
+            )
+            history_audit.append(
+                {
+                    "key": key,
+                    "version_id": version_id,
+                    "sha256": sha,
+                    "checks": {name: True for name in MODULE.HISTORY_AUDIT_CHECKS},
+                }
+            )
+        receipt = {
+            "schema_version": 1,
+            "status": "passed",
+            "route": route,
+            "submission_id": submission_id,
+            "contract": {
+                "uri": contract_uri,
+                "version_id": contract_version,
+                "sha256": contract_sha,
+            },
+            "route_output_uri": route_output,
+            "route_output_initial_version_history_count": 0,
+            "route_output_bucket_versioning": "Enabled",
+            "publication_strategy": ("one_shot_create_only_exact_version_history"),
+            "objects": object_rows,
+            "history_audit": history_audit,
+            "checks": {name: True for name in MODULE.RECEIPT_CHECKS},
+        }
+        receipt_bytes = (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        receipt_sha = hashlib.sha256(receipt_bytes).hexdigest()
+        checksum = base64.b64encode(bytes.fromhex(receipt_sha)).decode()
+        receipt_uri = receipt_prefix + receipt_sha + ".json"
+        receipt_key = MODULE.s3_location(receipt_uri)[1]
+        receipt_version = "exact-publication-receipt-version"
+        metadata = {
+            "VersionId": receipt_version,
+            "ContentLength": len(receipt_bytes),
+            "ChecksumSHA256": checksum,
+            "ChecksumType": "FULL_OBJECT",
+            "ServerSideEncryption": "aws:kms",
+            "SSEKMSKeyId": kms,
+            "Metadata": {"sha256": receipt_sha},
+        }
+        terminal = {
+            "publication_anchor": {
+                "schema_version": 1,
+                "status": "passed",
+                "receipt_sha256": receipt_sha,
+                "receipt_bytes": len(receipt_bytes),
+                "receipt_uri": receipt_uri,
+                "receipt_version_id": receipt_version,
+                "route_output_uri": route_output,
+                "checks": {name: True for name in MODULE.ANCHOR_CHECKS},
+            }
+        }
+        log_stream = "hrd-crosscheck/default/exact-route-task"
+        definition_environment = [{"name": name, "value": value} for name, value in config["definition_environment"].items()]
+        effective_environment = submission_environment
+        job = {
+            "jobId": "job-1",
+            "jobName": f"subject01-{route}-unit",
+            "status": "SUCCEEDED",
+            "startedAt": 100,
+            "stoppedAt": 200,
+            "jobDefinition": config["job_definition_arn"],
+            "jobQueue": MODULE.EXPECTED_QUEUE_ARN,
+            "retryStrategy": {"attempts": 1, "evaluateOnExit": []},
+            "container": {
+                "exitCode": 0,
+                "logStreamName": log_stream,
+                "environment": [{"name": name, "value": value} for name, value in effective_environment.items()],
+            },
+            "attempts": [
+                {
+                    "container": {
+                        "exitCode": 0,
+                        "logStreamName": log_stream,
+                    }
+                }
+            ],
+        }
+        definition = {
+            "jobDefinitionArn": config["job_definition_arn"],
+            "jobDefinitionName": config["job_definition_name"],
+            "revision": 3,
+            "status": "ACTIVE",
+            "type": "container",
+            "platformCapabilities": ["EC2"],
+            "retryStrategy": {"attempts": 1, "evaluateOnExit": []},
+            "timeout": {"attemptDurationSeconds": config["timeout_seconds"]},
+            "containerProperties": {
+                "command": config["command"],
+                "image": config["image"],
+                "jobRoleArn": MODULE.EXPECTED_JOB_ROLE,
+                "vcpus": config["vcpus"],
+                "memory": config["memory"],
+                "environment": definition_environment,
+                "logConfiguration": {
+                    "logDriver": "awslogs",
+                    "options": {
+                        "awslogs-group": MODULE.LOG_GROUP,
+                        "awslogs-region": MODULE.REGION,
+                        "awslogs-stream-prefix": MODULE.LOG_STREAM_PREFIX,
+                    },
+                    "secretOptions": [],
+                },
+            },
+        }
+        queue = {
+            "jobQueueArn": MODULE.EXPECTED_QUEUE_ARN,
+            "jobQueueName": MODULE.EXPECTED_QUEUE_NAME,
+            "state": "ENABLED",
+            "status": "VALID",
+            "priority": 30,
+            "computeEnvironmentOrder": [
+                {
+                    "order": 1,
+                    "computeEnvironment": MODULE.EXPECTED_COMPUTE_ENVIRONMENT,
+                }
+            ],
+        }
+        compute = {
+            "computeEnvironmentArn": MODULE.EXPECTED_COMPUTE_ENVIRONMENT,
+            "computeEnvironmentName": MODULE.EXPECTED_QUEUE_NAME,
+            "state": "ENABLED",
+            "status": "VALID",
+            "type": "MANAGED",
+            "containerOrchestrationType": "ECS",
+            "computeResources": {
+                "type": "EC2",
+                "allocationStrategy": "BEST_FIT_PROGRESSIVE",
+                "minvCpus": 0,
+                "maxvCpus": 128,
+                "instanceTypes": ["r7i", "m7i", "c7i"],
+                "launchTemplate": {
+                    "launchTemplateId": "lt-0b2375486d24af74a",
+                    "version": "3",
+                    "overrides": [],
+                },
+                "ec2Configuration": [{"imageType": "ECS_AL2023"}],
+            },
+        }
+        history = {
+            "Versions": [
+                {
+                    "Key": receipt_key,
+                    "VersionId": receipt_version,
+                    "IsLatest": True,
+                }
+            ],
+            "DeleteMarkers": [],
+            "IsTruncated": False,
+        }
+        return {
+            "route": route,
+            "kms": kms,
+            "output_uri": output_uri,
+            "contract_uri": contract_uri,
+            "contract_version": contract_version,
+            "contract_sha": contract_sha,
+            "submission_id": submission_id,
+            "submission_environment": submission_environment,
+            "route_output": route_output,
+            "receipt_prefix": receipt_prefix,
+            "receipt": receipt,
+            "receipt_bytes": receipt_bytes,
+            "receipt_sha": receipt_sha,
+            "receipt_uri": receipt_uri,
+            "receipt_key": receipt_key,
+            "receipt_version": receipt_version,
+            "metadata": metadata,
+            "terminal": terminal,
+            "log_stream": log_stream,
+            "job": job,
+            "definition": definition,
+            "queue": queue,
+            "compute": compute,
+            "history": history,
+        }
+
+    def args(self, root: Path, fixture: dict) -> argparse.Namespace:
+        return argparse.Namespace(
+            route=fixture["route"],
+            job_id="job-1",
+            expected_contract_uri=fixture["contract_uri"],
+            expected_contract_version_id=fixture["contract_version"],
+            expected_contract_sha256=fixture["contract_sha"],
+            expected_output_uri=fixture["output_uri"],
+            submission_id=fixture["submission_id"],
+            expected_kms_key_arn=fixture["kms"],
+            capture_output=root / "terminal-capture.json",
+            receipt_output=root / "publication-receipt.json",
+            anchor_output=root / "publication-anchor.json",
+            region=MODULE.REGION,
+        )
+
+    def events(self, fixture: dict, terminal=None, trailing=None):
+        payload = fixture["terminal"] if terminal is None else terminal
+        lines = ["route startup"] + json.dumps(payload, indent=2, sort_keys=True).splitlines()
+        if trailing is not None:
+            lines.append(trailing)
+        return [
+            {
+                "timestamp": 1000 + index,
+                "ingestionTime": 2000 + index,
+                "message": line,
+            }
+            for index, line in enumerate(lines)
+        ]
+
+    def aws_side_effect(self, fixture: dict, **overrides):
+        values = {
+            "job": fixture["job"],
+            "definition": fixture["definition"],
+            "queue": fixture["queue"],
+            "compute": fixture["compute"],
+            "events": self.events(fixture),
+            "metadata": fixture["metadata"],
+            "history": fixture["history"],
+            **overrides,
+        }
+
+        def invoke(region, *arguments):
+            self.assertEqual(region, MODULE.REGION)
+            operation = tuple(arguments[:2])
+            if operation == ("batch", "describe-jobs"):
+                return {"jobs": [copy.deepcopy(values["job"])]}
+            if operation == ("batch", "describe-job-definitions"):
+                self.assertIn(
+                    MODULE.ROUTES[fixture["route"]]["job_definition_arn"],
+                    arguments,
+                )
+                return {"jobDefinitions": [copy.deepcopy(values["definition"])]}
+            if operation == ("batch", "describe-job-queues"):
+                return {"jobQueues": [copy.deepcopy(values["queue"])]}
+            if operation == ("batch", "describe-compute-environments"):
+                return {"computeEnvironments": [copy.deepcopy(values["compute"])]}
+            if operation == ("logs", "get-log-events"):
+                self.assertEqual(
+                    arguments[arguments.index("--log-stream-name") + 1],
+                    fixture["log_stream"],
+                )
+                if "--next-token" in arguments:
+                    return {"events": [], "nextForwardToken": "terminal-token"}
+                return {
+                    "events": copy.deepcopy(values["events"]),
+                    "nextForwardToken": "terminal-token",
+                }
+            if operation == ("s3api", "get-bucket-versioning"):
+                return {"Status": "Enabled"}
+            if operation == ("s3api", "head-object"):
+                self.assertIn(fixture["receipt_version"], arguments)
+                self.assertIn("--checksum-mode", arguments)
+                return copy.deepcopy(values["metadata"])
+            if operation == ("s3api", "list-object-versions"):
+                return copy.deepcopy(values["history"])
+            raise AssertionError(f"unexpected mocked AWS CLI call: {arguments}")
+
+        return invoke
+
+    def get_side_effect(self, fixture: dict, content=None, metadata=None):
+        downloaded = fixture["receipt_bytes"] if content is None else content
+        response = fixture["metadata"] if metadata is None else metadata
+
+        def invoke(region, bucket, key, version_id, destination):
+            self.assertEqual(region, MODULE.REGION)
+            self.assertEqual(key, fixture["receipt_key"])
+            self.assertEqual(version_id, fixture["receipt_version"])
+            destination.write_bytes(downloaded)
+            return copy.deepcopy(response)
+
+        return invoke
+
+    def run_capture(self, args, fixture: dict, aws=None, get=None):
+        aws = self.aws_side_effect(fixture) if aws is None else aws
+        get = self.get_side_effect(fixture) if get is None else get
+        with mock.patch.object(MODULE, "aws_json", side_effect=aws), mock.patch.object(MODULE, "get_exact_object", side_effect=get):
+            return MODULE.capture(args)
+
+    def test_both_routes_succeed_and_emit_exclusive_mode_0600_outputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            for route in MODULE.ROUTES:
+                with self.subTest(route=route):
+                    fixture = self.fixture(route)
+                    args = self.args(Path(temporary) / route, fixture)
+                    result = self.run_capture(args, fixture)
+                    self.assertEqual(result["status"], "passed")
+                    self.assertEqual(result["batch"]["route"], route)
+                    self.assertEqual(
+                        result["receipt"]["version_id"],
+                        fixture["receipt_version"],
+                    )
+                    self.assertEqual(args.receipt_output.read_bytes(), fixture["receipt_bytes"])
+                    expected_anchor = (
+                        json.dumps(
+                            fixture["terminal"]["publication_anchor"],
+                            indent=2,
+                            sort_keys=True,
+                        )
+                        + "\n"
+                    ).encode()
+                    self.assertEqual(args.anchor_output.read_bytes(), expected_anchor)
+                    for path in (
+                        args.capture_output,
+                        args.receipt_output,
+                        args.anchor_output,
+                    ):
+                        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+                    persisted = json.loads(args.capture_output.read_text())
+                    self.assertTrue(all(persisted["checks"].values()))
+                    self.assertTrue(all(persisted["batch"]["checks"].values()))
+                    anchor_binding = persisted["cloudwatch"]["publication_anchor_local"]
+                    self.assertEqual(anchor_binding["output"], str(args.anchor_output.resolve()))
+                    self.assertEqual(
+                        anchor_binding["sha256"],
+                        hashlib.sha256(expected_anchor).hexdigest(),
+                    )
+                    self.assertEqual(anchor_binding["bytes"], len(expected_anchor))
+                    receipt, rows, _, _ = DOWNLOAD_MODULE.validate_publication(
+                        args.receipt_output,
+                        args.anchor_output,
+                        fixture["kms"],
+                    )
+                    self.assertEqual(receipt["route"], route)
+                    self.assertEqual(len(rows), 4)
+
+    def test_refuses_existing_output_before_any_aws_call(self):
+        fixture = self.fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            args = self.args(Path(temporary), fixture)
+            args.receipt_output.write_text("do not replace")
+            with mock.patch.object(MODULE, "aws_json") as mocked:
+                with self.assertRaisesRegex(FileExistsError, "refusing to overwrite"):
+                    MODULE.capture(args)
+            mocked.assert_not_called()
+            self.assertEqual(args.receipt_output.read_text(), "do not replace")
+
+    def test_rejects_three_output_aliases_and_each_existing_output_preflight(self):
+        fixture = self.fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            aliases = self.args(base / "aliases", fixture)
+            aliases.anchor_output = aliases.capture_output
+            with mock.patch.object(MODULE, "aws_json") as mocked:
+                with self.assertRaisesRegex(ValueError, "must be distinct"):
+                    MODULE.capture(aliases)
+            mocked.assert_not_called()
+
+            for name in ("capture_output", "receipt_output", "anchor_output"):
+                with self.subTest(name=name):
+                    args = self.args(base / name, fixture)
+                    path = getattr(args, name)
+                    path.parent.mkdir(parents=True)
+                    path.write_text("preserve")
+                    with mock.patch.object(MODULE, "aws_json") as mocked:
+                        with self.assertRaisesRegex(FileExistsError, "refusing to overwrite"):
+                            MODULE.capture(args)
+                    mocked.assert_not_called()
+                    self.assertEqual(path.read_text(), "preserve")
+
+            symlink_args = self.args(base / "symlink", fixture)
+            symlink_args.anchor_output.parent.mkdir(parents=True)
+            symlink_args.anchor_output.symlink_to(base / "absent-target.json")
+            with mock.patch.object(MODULE, "aws_json") as mocked:
+                with self.assertRaisesRegex(FileExistsError, "refusing to overwrite"):
+                    MODULE.capture(symlink_args)
+            mocked.assert_not_called()
+            self.assertTrue(symlink_args.anchor_output.is_symlink())
+
+    def test_three_output_atomic_reservation_rolls_back_on_racing_collision(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first = root / "first.json"
+            collision = root / "collision.json"
+            third = root / "third.json"
+            real_open = MODULE.os.open
+
+            def racing_open(path, flags, mode):
+                if Path(path) == collision:
+                    collision.write_bytes(b"racer-owned")
+                    raise FileExistsError("simulated concurrent creator")
+                return real_open(path, flags, mode)
+
+            with mock.patch.object(MODULE.os, "open", side_effect=racing_open):
+                with self.assertRaises(FileExistsError):
+                    MODULE.create_private_outputs(
+                        [
+                            (first, b"first"),
+                            (collision, b"ours"),
+                            (third, b"third"),
+                        ]
+                    )
+            self.assertFalse(first.exists())
+            self.assertEqual(collision.read_bytes(), b"racer-owned")
+            self.assertFalse(third.exists())
+
+    def test_three_output_atomic_write_failure_removes_all_reserved_outputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = [root / f"{index}.json" for index in range(3)]
+            with mock.patch.object(MODULE.os, "fsync", side_effect=OSError("simulated fsync failure")):
+                with self.assertRaises(OSError):
+                    MODULE.create_private_outputs([(path, f"content-{index}".encode()) for index, path in enumerate(paths)])
+            self.assertTrue(all(not path.exists() for path in paths))
+
+    def test_rejects_wrong_revision_queue_or_non_x86_compute_environment(self):
+        fixture = self.fixture()
+        wrong_definition = copy.deepcopy(fixture["job"])
+        wrong_definition["jobDefinition"] = MODULE.ROUTES[fixture["route"]]["job_definition_arn"][:-1] + "2"
+        wrong_queue = copy.deepcopy(fixture["queue"])
+        wrong_queue["computeEnvironmentOrder"][0]["computeEnvironment"] += "-other"
+        wrong_compute = copy.deepcopy(fixture["compute"])
+        wrong_compute["computeResources"]["instanceTypes"] = ["c7g", "m7g", "r7g"]
+        cases = (
+            ("revision", {"job": wrong_definition}),
+            ("queue", {"queue": wrong_queue}),
+            ("compute", {"compute": wrong_compute}),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, overrides in cases:
+                with self.subTest(label=label), self.assertRaisesRegex(ValueError, "Batch identity failed"):
+                    self.run_capture(
+                        self.args(Path(temporary) / label, fixture),
+                        fixture,
+                        aws=self.aws_side_effect(fixture, **overrides),
+                    )
+
+    def test_rejects_forged_contract_submission_or_static_definition_override(self):
+        fixture = self.fixture()
+        cases = []
+        static_name, static_value = next(iter(MODULE.ROUTES[fixture["route"]]["definition_environment"].items()))
+        for name, value in (
+            ("HRD_CROSSCHECK_INPUT_CONTRACT_VERSION_ID", "forged-version"),
+            ("HRD_CROSSCHECK_SUBMISSION_ID", "20260717T200000Z-forged999"),
+            ("EXTRA_UNREVIEWED", "forged"),
+            (static_name, static_value),
+        ):
+            job = copy.deepcopy(fixture["job"])
+            job["container"]["environment"] = [row for row in job["container"]["environment"] if row["name"] != name]
+            job["container"]["environment"].append({"name": name, "value": value})
+            cases.append((name, job))
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, job in cases:
+                with self.subTest(label=label), self.assertRaisesRegex(ValueError, "Batch identity failed"):
+                    self.run_capture(
+                        self.args(Path(temporary) / label, fixture),
+                        fixture,
+                        aws=self.aws_side_effect(fixture, job=job),
+                    )
+
+    def test_rejects_retry_multiple_attempts_nonzero_exit_and_log_mismatch(self):
+        fixture = self.fixture()
+        jobs = []
+        retry = copy.deepcopy(fixture["job"])
+        retry["retryStrategy"] = {"attempts": 2}
+        jobs.append(retry)
+        attempts = copy.deepcopy(fixture["job"])
+        attempts["attempts"].append(copy.deepcopy(attempts["attempts"][0]))
+        jobs.append(attempts)
+        exit_one = copy.deepcopy(fixture["job"])
+        exit_one["attempts"][0]["container"]["exitCode"] = 1
+        jobs.append(exit_one)
+        wrong_log = copy.deepcopy(fixture["job"])
+        wrong_log["attempts"][0]["container"]["logStreamName"] += "-forged"
+        jobs.append(wrong_log)
+        with tempfile.TemporaryDirectory() as temporary:
+            for index, job in enumerate(jobs):
+                with self.subTest(index=index), self.assertRaises(ValueError):
+                    self.run_capture(
+                        self.args(Path(temporary) / str(index), fixture),
+                        fixture,
+                        aws=self.aws_side_effect(fixture, job=job),
+                    )
+
+    def test_terminal_parser_rejects_duplicate_anchor_and_trailing_output(self):
+        fixture = self.fixture()
+        valid = self.events(fixture)
+        duplicate = valid + valid
+        trailing = self.events(fixture, trailing="unexpected output")
+        for label, events in (("duplicate", duplicate), ("trailing", trailing)):
+            with self.subTest(label=label), self.assertRaises(ValueError):
+                MODULE.parse_terminal_payload(events)
+
+    def test_logged_anchor_cannot_redirect_receipt_or_route_output(self):
+        fixture = self.fixture()
+        redirects = []
+        receipt = copy.deepcopy(fixture["terminal"])
+        receipt["publication_anchor"]["receipt_uri"] = fixture["receipt_prefix"] + "latest.json"
+        redirects.append(receipt)
+        output = copy.deepcopy(fixture["terminal"])
+        output["publication_anchor"]["route_output_uri"] += "forged/"
+        redirects.append(output)
+        with tempfile.TemporaryDirectory() as temporary:
+            for index, terminal in enumerate(redirects):
+                with self.subTest(index=index), self.assertRaisesRegex(ValueError, "anchor failed"):
+                    self.run_capture(
+                        self.args(Path(temporary) / str(index), fixture),
+                        fixture,
+                        aws=self.aws_side_effect(fixture, events=self.events(fixture, terminal)),
+                    )
+
+    def test_receipt_rejects_contract_route_submission_and_inventory_tampering(self):
+        fixture = self.fixture()
+        receipts = []
+        contract = copy.deepcopy(fixture["receipt"])
+        contract["contract"]["version_id"] = "forged"
+        receipts.append(contract)
+        route = copy.deepcopy(fixture["receipt"])
+        route["route"] = "sequenza_scarhrd"
+        receipts.append(route)
+        submission = copy.deepcopy(fixture["receipt"])
+        submission["submission_id"] = "20260717T200000Z-forged999"
+        receipts.append(submission)
+        output = copy.deepcopy(fixture["receipt"])
+        output["objects"][0]["key"] += "-other"
+        receipts.append(output)
+        audit = copy.deepcopy(fixture["receipt"])
+        audit["history_audit"][0]["version_id"] = "forged"
+        receipts.append(audit)
+        location = {
+            "key": fixture["receipt_key"],
+            "version_id": fixture["receipt_version"],
+            "sha256": fixture["receipt_sha"],
+            "bytes": len(fixture["receipt_bytes"]),
+        }
+        args = self.args(Path("unused"), fixture)
+        history = [
+            {
+                "history_kind": "version",
+                "Key": fixture["receipt_key"],
+                "VersionId": fixture["receipt_version"],
+                "IsLatest": True,
+            }
+        ]
+        for index, receipt_value in enumerate(receipts):
+            content = (json.dumps(receipt_value, indent=2, sort_keys=True) + "\n").encode()
+            local_sha = hashlib.sha256(content).hexdigest()
+            checksum = base64.b64encode(bytes.fromhex(local_sha)).decode()
+            metadata = {
+                **fixture["metadata"],
+                "ContentLength": len(content),
+                "ChecksumSHA256": checksum,
+                "Metadata": {"sha256": local_sha},
+            }
+            local_location = {
+                **location,
+                "sha256": local_sha,
+                "bytes": len(content),
+            }
+            with self.subTest(index=index), self.assertRaises(ValueError):
+                MODULE.validate_exact_receipt(
+                    content,
+                    metadata,
+                    metadata,
+                    history,
+                    local_location,
+                    args,
+                    fixture["submission_environment"],
+                )
+
+    def test_rejects_download_sha_checksum_kms_or_receipt_history_tampering(self):
+        fixture = self.fixture()
+        bad_checksum = copy.deepcopy(fixture["metadata"])
+        bad_checksum["ChecksumSHA256"] = base64.b64encode(b"x" * 32).decode()
+        bad_kms = copy.deepcopy(fixture["metadata"])
+        bad_kms["SSEKMSKeyId"] += "-wrong"
+        deleted = copy.deepcopy(fixture["history"])
+        deleted["DeleteMarkers"] = [{"Key": fixture["receipt_key"], "VersionId": "deleted"}]
+        cases = (
+            (
+                "download-bytes",
+                self.aws_side_effect(fixture),
+                self.get_side_effect(fixture, content=b"{}\n"),
+            ),
+            (
+                "head-checksum",
+                self.aws_side_effect(fixture, metadata=bad_checksum),
+                self.get_side_effect(fixture),
+            ),
+            (
+                "get-kms",
+                self.aws_side_effect(fixture),
+                self.get_side_effect(fixture, metadata=bad_kms),
+            ),
+            (
+                "delete-history",
+                self.aws_side_effect(fixture, history=deleted),
+                self.get_side_effect(fixture),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, aws, get in cases:
+                with self.subTest(label=label), self.assertRaises(ValueError):
+                    self.run_capture(
+                        self.args(Path(temporary) / label, fixture),
+                        fixture,
+                        aws=aws,
+                        get=get,
+                    )
+
+    def test_exact_get_cli_includes_logged_version_and_checksum_mode(self):
+        fixture = self.fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "receipt.json"
+
+            def command(command, **kwargs):
+                self.assertEqual(command[0:3], ["aws", "s3api", "get-object"])
+                self.assertEqual(
+                    command[command.index("--version-id") + 1],
+                    fixture["receipt_version"],
+                )
+                self.assertEqual(command[command.index("--checksum-mode") + 1], "ENABLED")
+                self.assertEqual(command[-1], str(destination))
+                self.assertTrue(kwargs["text"])
+                return json.dumps(fixture["metadata"])
+
+            with mock.patch.object(subprocess, "check_output", side_effect=command):
+                response = MODULE.get_exact_object(
+                    MODULE.REGION,
+                    "diana-omics-private-results-unit",
+                    "receipt.json",
+                    fixture["receipt_version"],
+                    destination,
+                )
+            self.assertEqual(response["VersionId"], fixture["receipt_version"])
+
+    def test_private_create_is_exclusive_and_mode_0600(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "private.json"
+            MODULE.create_private(path, b"first")
+            self.assertEqual(path.read_bytes(), b"first")
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            with self.assertRaises(FileExistsError):
+                MODULE.create_private(path, b"replacement")
+            self.assertEqual(path.read_bytes(), b"first")
+
+
+if __name__ == "__main__":
+    unittest.main()
