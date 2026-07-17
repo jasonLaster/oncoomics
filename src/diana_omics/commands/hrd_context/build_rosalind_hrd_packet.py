@@ -6,7 +6,7 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 from ...paths import path_from_root
 from ...utils import ensure_dir, iso_now, parse_csv, read_json, read_text, write_csv, write_json, write_text
@@ -1279,12 +1279,44 @@ def scan_generated_packet(paths: Sequence[Path], forbidden_tokens: Sequence[str]
         raise ValueError("Diana WGS generated-output identifier scan failed: " + "; ".join(findings))
 
 
+def prepare_diana_wgs_output_dir(output: Path, expected_files: Iterable[str]) -> None:
+    expected = set(expected_files)
+    if output.is_symlink():
+        raise ValueError("Diana WGS packet output may not be a symlink")
+    if output.exists() and not output.is_dir():
+        raise ValueError(f"Diana WGS packet output is not a directory: {output}")
+
+    ensure_dir(output)
+
+    unexpected: list[str] = []
+    invalid: list[str] = []
+    for path in output.iterdir():
+        if path.name not in expected:
+            unexpected.append(path.name)
+        elif path.is_symlink() or not path.is_file():
+            invalid.append(path.name)
+    if unexpected:
+        raise ValueError(
+            "Diana WGS packet output contains unexpected existing files: "
+            + ", ".join(sorted(unexpected))
+        )
+    if invalid:
+        raise ValueError(
+            "Diana WGS packet output contains invalid existing packet paths: "
+            + ", ".join(sorted(invalid))
+        )
+
+    for name in expected:
+        (output / name).unlink(missing_ok=True)
+
+
 def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
     output_dir = f"{RESULT_ROOT}/{spec.sample_set}/{packet_run_id}"
-    ensure_dir(path_from_root(output_dir))
+    output_path = path_from_root(output_dir)
     if spec.sample_set == "diana_wgs":
-        for name in PACKET_REPORT_FILES:
-            path_from_root(f"{output_dir}/{name}").unlink(missing_ok=True)
+        prepare_diana_wgs_output_dir(output_path, PACKET_REPORT_FILES)
+    else:
+        ensure_dir(output_path)
     evidence_rows, adapter_rows, blockers = EVIDENCE_BUILDERS[spec.sample_set]()
     deterministic_binding = (
         diana_wgs_deterministic_binding() if spec.sample_set == "diana_wgs" else None

@@ -652,6 +652,37 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "one passed tumor and one passed normal"):
                     packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
 
+    def test_diana_wgs_packet_rejects_stale_extra_output(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(
+                output_root / "deterministic",
+                artifact_root,
+            )
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+            output_dir.mkdir(parents=True)
+            utils.write_text(output_dir / "unexpected.txt", "stale")
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                with self.assertRaisesRegex(ValueError, "unexpected existing files"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertEqual(
+                sorted(path.name for path in output_dir.iterdir()),
+                ["unexpected.txt"],
+            )
+
     def test_diana_wgs_packet_identifier_scan_removes_generated_outputs(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)
