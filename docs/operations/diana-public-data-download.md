@@ -187,6 +187,47 @@ uses create-only SSE-S3 uploads with full-object SHA-256, and succeeds only when
 the final history contains exactly one current version per allowlisted file and
 no delete markers.
 
+## Render the AI review and synthesis handoff
+
+Use `scripts/render_source_report_freeze_runbook.py` to render the seven
+private-freeze commands for the canonical source report packets and the
+follow-on AI handoff command:
+
+```bash
+python3 scripts/render_source_report_freeze_runbook.py \
+  --output .codex-tmp/hrd-reports/deterministic-full/source-freeze-runbook.md
+```
+
+After all seven source report packets are privately frozen,
+`scripts/render_ai_synthesis_runbook.py` renders the two-reviewer AI handoff,
+offline comparative synthesis, and private publication commands for reviewer A,
+reviewer B, and the synthesis packet.
+
+Pass the seven private-publication receipts in the pinned method order from
+`scripts/hrd_report_inventory.py`: `deterministic_full_wgs`,
+`rosalind_diana_wgs`, `sequenza_scarhrd`, `sigprofiler_sbs3`,
+`facets_scarhrd_blocked`, `oncoanalyser_chord_blocked`, then
+`hrdetect_blocked`. The renderer validates the current private receipt schema
+with `scripts/publish_reviewed_public_report.py` and also requires each local
+`report_manifest.json` to hash to the exact row frozen in S3.
+
+```bash
+python3 scripts/render_ai_synthesis_runbook.py \
+  --output .codex-tmp/hrd-reports/ai-review/post-reports-runbook.md \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.deterministic_full_wgs.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.rosalind_diana_wgs.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.sequenza_scarhrd.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.sigprofiler_sbs3.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.facets_scarhrd_blocked.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.oncoanalyser_chord_blocked.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.hrdetect_blocked.private.json
+```
+
+The rendered runbook calls the checked-in AI review and synthesis scripts only:
+`prepare_ai_review_run.py`, `validate_ai_review.py`,
+`generate_comparative_hrd_synthesis.py`, `finalize_ai_review.py`, and
+`publish_private_report.py`.
+
 After publication, rebuild and publish `public-index/objects.json` so the new
 report appears at `data.diana-tnbc.com`:
 

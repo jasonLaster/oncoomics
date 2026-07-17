@@ -32,6 +32,9 @@ Current shell utilities:
 - `render_ai_synthesis_runbook.py`: render the post-freeze AI review,
   validation, comparative-synthesis, and private-publication handoff from
   seven current private publication receipts.
+- `render_source_report_freeze_runbook.py`: render the private-freeze commands
+  for the seven canonical source HRD report packets plus the exact-receipt AI
+  handoff command.
 - `review_phase3_aws_run.sh`: inspect a Phase 3 AWS run directory and summarize logs, traces, and exits.
 - `stage_hrd_crosscheck_report.py`: compact an exact Sequenza→scarHRD or
   SigProfiler SBS3 route replay into a three-file method packet for review
