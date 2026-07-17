@@ -141,10 +141,14 @@ sizes, and KMS custody.
 For the Diana WGS Rosalind packet, dry-run the private freeze first:
 
 ```bash
+RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
+RUN_ID=diana-wgs-hrd-20260716T033101Z
+ROSALIND_PACKET="results/rosalind_hrd/diana_wgs/$RUN_ID"
+
 python3 scripts/publish_private_report.py \
-  --packet-dir .codex-tmp/hrd-reports/deterministic-full/rosalind/ \
+  --packet-dir "$ROSALIND_PACKET" \
   --method-id rosalind_diana_wgs \
-  --receipt-output .codex-tmp/hrd-reports/deterministic-full/rosalind-private-publication.dry.json
+  --receipt-output "$RUN_ROOT/terminal.rosalind_diana_wgs.private.dry.json"
 ```
 
 Review the dry-run receipt, then apply with a different, unused mode-0600
@@ -152,9 +156,9 @@ receipt path:
 
 ```bash
 python3 scripts/publish_private_report.py \
-  --packet-dir .codex-tmp/hrd-reports/deterministic-full/rosalind/ \
+  --packet-dir "$ROSALIND_PACKET" \
   --method-id rosalind_diana_wgs \
-  --receipt-output .codex-tmp/hrd-reports/deterministic-full/rosalind-private-publication.json \
+  --receipt-output "$RUN_ROOT/terminal.rosalind_diana_wgs.private.json" \
   --apply
 ```
 
@@ -175,10 +179,10 @@ Rosalind packet, run the default dry-run first with a new local receipt path:
 
 ```bash
 python3 scripts/publish_reviewed_public_report.py \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/rosalind-private-publication.json \
+  --private-publication-receipt "$RUN_ROOT/terminal.rosalind_diana_wgs.private.json" \
   --method-id rosalind_diana_wgs \
-  --destination-prefix s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/rosalind/ \
-  --receipt-output .codex-tmp/hrd-reports/deterministic-full/rosalind-publication.dry.json
+  --destination-prefix "s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/$RUN_ID/rosalind/" \
+  --receipt-output "$RUN_ROOT/terminal.rosalind_diana_wgs.public.dry.json"
 ```
 
 Review the dry-run receipt and preserve the source packet's `partial_evidence`
@@ -186,10 +190,10 @@ and `no_call` boundary. Apply with a different, unused mode-0600 receipt path:
 
 ```bash
 python3 scripts/publish_reviewed_public_report.py \
-  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/rosalind-private-publication.json \
+  --private-publication-receipt "$RUN_ROOT/terminal.rosalind_diana_wgs.private.json" \
   --method-id rosalind_diana_wgs \
-  --destination-prefix s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/rosalind/ \
-  --receipt-output .codex-tmp/hrd-reports/deterministic-full/rosalind-publication.json \
+  --destination-prefix "s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/$RUN_ID/rosalind/" \
+  --receipt-output "$RUN_ROOT/terminal.rosalind_diana_wgs.public.json" \
   --apply
 ```
 
