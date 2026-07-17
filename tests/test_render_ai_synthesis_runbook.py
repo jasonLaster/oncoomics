@@ -296,6 +296,104 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             ],
         )
 
+    def test_comparative_synthesis_command_has_exact_run_scoped_argv(self) -> None:
+        command = MODULE.comparative_synthesis_command(
+            Path("/repo/scripts"),
+            MODULE.report_manifest_paths(Path("/repo")),
+            Path(
+                "/repo/.codex-tmp/hrd-reports/ai-review/"
+                f"{MODULE.RUN_ID}/bundle"
+            ),
+            Path(
+                "/repo/.codex-tmp/hrd-reports/ai-review/"
+                f"{MODULE.RUN_ID}/reviewer-a"
+            ),
+            Path(
+                "/repo/.codex-tmp/hrd-reports/ai-review/"
+                f"{MODULE.RUN_ID}/reviewer-b"
+            ),
+            Path("/repo/.codex-tmp/hrd-reports/synthesis" f"/{MODULE.RUN_ID}"),
+        )
+
+        self.assertEqual(
+            command,
+            [
+                "python3",
+                Path("/repo/scripts/generate_comparative_hrd_synthesis.py"),
+                "--source-manifest",
+                Path(
+                    "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+                    "report/report_manifest.json"
+                ),
+                "--source-manifest",
+                Path(
+                    "/repo/results/rosalind_hrd/diana_wgs/"
+                    f"{MODULE.RUN_ID}/report_manifest.json"
+                ),
+                "--source-manifest",
+                Path(
+                    "/repo/.codex-tmp/hrd-reports/crosschecks/"
+                    "sequenza_scarhrd/report_manifest.json"
+                ),
+                "--source-manifest",
+                Path(
+                    "/repo/.codex-tmp/hrd-reports/crosschecks/"
+                    "sigprofiler_sbs3/report_manifest.json"
+                ),
+                "--source-manifest",
+                Path(
+                    "/repo/.codex-tmp/hrd-reports/blocked-crosschecks/"
+                    "facets_scarhrd_blocked/report_manifest.json"
+                ),
+                "--source-manifest",
+                Path(
+                    "/repo/.codex-tmp/hrd-reports/blocked-crosschecks/"
+                    "oncoanalyser_chord_blocked/report_manifest.json"
+                ),
+                "--source-manifest",
+                Path(
+                    "/repo/.codex-tmp/hrd-reports/blocked-crosschecks/"
+                    "hrdetect_blocked/report_manifest.json"
+                ),
+                "--require-method",
+                "deterministic_full_wgs",
+                "--require-method",
+                "rosalind_diana_wgs",
+                "--require-method",
+                "sequenza_scarhrd",
+                "--require-method",
+                "sigprofiler_sbs3",
+                "--require-method",
+                "facets_scarhrd_blocked",
+                "--require-method",
+                "oncoanalyser_chord_blocked",
+                "--require-method",
+                "hrdetect_blocked",
+                "--review-bundle",
+                Path(
+                    "/repo/.codex-tmp/hrd-reports/ai-review/"
+                    f"{MODULE.RUN_ID}/bundle/review_bundle.json"
+                ),
+                "--bundle-manifest",
+                Path(
+                    "/repo/.codex-tmp/hrd-reports/ai-review/"
+                    f"{MODULE.RUN_ID}/bundle/bundle_manifest.json"
+                ),
+                "--reviewer-a-dir",
+                Path(
+                    "/repo/.codex-tmp/hrd-reports/ai-review/"
+                    f"{MODULE.RUN_ID}/reviewer-a"
+                ),
+                "--reviewer-b-dir",
+                Path(
+                    "/repo/.codex-tmp/hrd-reports/ai-review/"
+                    f"{MODULE.RUN_ID}/reviewer-b"
+                ),
+                "--output-dir",
+                Path("/repo/.codex-tmp/hrd-reports/synthesis" f"/{MODULE.RUN_ID}"),
+            ],
+        )
+
     def test_renderer_materializes_pinned_model_catalog_receipt(self) -> None:
         text = MODULE.render(Path("/repo"), "terminal")
         catalog = (

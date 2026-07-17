@@ -229,6 +229,32 @@ def reviewed_publication_receipt_paths(root: Path, receipt_stem: str) -> tuple[P
     return tuple(receipt_paths[method_id] for method_id in REPORT_METHOD_IDS)
 
 
+def comparative_synthesis_command(
+    scripts: Path,
+    manifests: dict[str, Path],
+    bundle: Path,
+    reviewer_a: Path,
+    reviewer_b: Path,
+    synthesis: Path,
+) -> list[str | Path]:
+    return [
+        "python3",
+        scripts / "generate_comparative_hrd_synthesis.py",
+        *manifest_flags(manifests),
+        *require_method_flags(),
+        "--review-bundle",
+        bundle / "review_bundle.json",
+        "--bundle-manifest",
+        bundle / "bundle_manifest.json",
+        "--reviewer-a-dir",
+        reviewer_a,
+        "--reviewer-b-dir",
+        reviewer_b,
+        "--output-dir",
+        synthesis,
+    ]
+
+
 def reviewed_publication_runbook_command(
     scripts: Path,
     output: Path,
@@ -427,22 +453,14 @@ def render(
             "## 5. Generate the comparative synthesis",
             "",
             block(
-                [
-                    "python3",
-                    scripts / "generate_comparative_hrd_synthesis.py",
-                    *manifest_flags(manifests),
-                    *require_method_flags(),
-                    "--review-bundle",
-                    bundle / "review_bundle.json",
-                    "--bundle-manifest",
-                    bundle / "bundle_manifest.json",
-                    "--reviewer-a-dir",
+                comparative_synthesis_command(
+                    scripts,
+                    manifests,
+                    bundle,
                     reviewer_a,
-                    "--reviewer-b-dir",
                     reviewer_b,
-                    "--output-dir",
                     synthesis,
-                ]
+                )
             ),
             "## 6. Finalize AI reviewer report manifests",
             "",
