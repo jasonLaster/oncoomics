@@ -11,6 +11,12 @@ import shlex
 from pathlib import Path
 from typing import Any, Iterable
 
+from ai_model_catalog import (
+    MODEL_CATALOG_RECEIPT,
+    MODEL_CATALOG_VERIFIED_AT,
+    REVIEWER_A,
+    REVIEWER_B,
+)
 from hrd_report_inventory import (
     BLOCKED_CROSSCHECK_REPORT_DIRS,
     REPORT_METHOD_IDS,
@@ -18,20 +24,12 @@ from hrd_report_inventory import (
 )
 from prepare_ai_review_run import METHOD_ARGUMENTS
 from publish_reviewed_public_report import (
-    METHOD_CONTRACTS,
-    PRIVATE_BUCKET,
-    PRIVATE_KMS_KEY_ARN,
     REGION,
     RUN_ID,
     SUBJECT_ALIAS,
     validate_private_receipt,
 )
 
-
-MODEL_CATALOG_RECEIPT = "model-catalog-receipt.20260717T115311Z.json"
-MODEL_CATALOG_VERIFIED_AT = "2026-07-17T11:53:11+00:00"
-REVIEWER_A = ("openai-codex", "gpt-5.6-sol")
-REVIEWER_B = ("openai-codex", "gpt-5.6-terra")
 FORBIDDEN_TOKENS = ("E019_S01", "DRF-PSN49561", "echo-personalis", "personalis")
 
 
@@ -250,7 +248,6 @@ def reviewed_publication_runbook_command(
 
 
 def required_existing(root: Path) -> tuple[Path, ...]:
-    reports = root / ".codex-tmp/hrd-reports"
     scripts = root / "scripts"
     return (
         scripts / "hrd_report_inventory.py",
@@ -260,7 +257,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
         scripts / "generate_comparative_hrd_synthesis.py",
         scripts / "publish_private_report.py",
         scripts / "render_reviewed_publication_runbook.py",
-        reports / "ai-review" / MODEL_CATALOG_RECEIPT,
+        scripts / "write_ai_model_catalog_receipt.py",
     )
 
 
@@ -287,10 +284,10 @@ def render(
 ) -> str:
     reports = root / ".codex-tmp/hrd-reports"
     scripts = root / "scripts"
-    catalog = reports / "ai-review" / MODEL_CATALOG_RECEIPT
     manifests = report_manifest_paths(root, sigprofiler_report_dir, sequenza_report_dir)
 
     run_root = reports / "ai-review" / RUN_ID
+    catalog = run_root / MODEL_CATALOG_RECEIPT
     bundle = run_root / "bundle"
     reviewer_inputs = run_root / "reviewer-inputs"
     reviewer_a = run_root / "reviewer-a"
@@ -332,7 +329,18 @@ def render(
 
     lines.extend(
         [
-            "## 1. Prepare the seven-method AI review run",
+            "## 1. Materialize the pinned model catalog receipt",
+            "",
+            block(
+                [
+                    "python3",
+                    scripts / "write_ai_model_catalog_receipt.py",
+                    "--output",
+                    catalog,
+                    "--attest-models-latest",
+                ]
+            ),
+            "## 2. Prepare the seven-method AI review run",
             "",
             block(
                 [
@@ -358,7 +366,7 @@ def render(
                     *forbidden_flags(),
                 ]
             ),
-            "## 2. Invoke reviewers in isolated sessions",
+            "## 3. Invoke reviewers in isolated sessions",
             "",
             f"- Reviewer A receives only "
             f"`{reviewer_inputs / 'reviewer-a-input/review_bundle.json'}` and "
@@ -371,7 +379,7 @@ def render(
             f"write only `report.md`, `claims.csv`, and `review_manifest.json` "
             f"into `{reviewer_b}`.",
             "",
-            "## 3. Validate isolated reviewer outputs",
+            "## 4. Validate isolated reviewer outputs",
             "",
             block(
                 [
@@ -407,7 +415,7 @@ def render(
                     *forbidden_flags(),
                 ]
             ),
-            "## 4. Generate the comparative synthesis",
+            "## 5. Generate the comparative synthesis",
             "",
             block(
                 [
@@ -427,7 +435,7 @@ def render(
                     synthesis,
                 ]
             ),
-            "## 5. Finalize AI reviewer report manifests",
+            "## 6. Finalize AI reviewer report manifests",
             "",
             block(
                 [
@@ -461,7 +469,7 @@ def render(
                     reviewer_b / "report_manifest.json",
                 ]
             ),
-            "## 6. Publish reviewed private AI and synthesis reports",
+            "## 7. Publish reviewed private AI and synthesis reports",
             "",
             block(
                 publish_command(
@@ -487,7 +495,7 @@ def render(
                     receipt_root / f"{receipt_stem}.comparative-synthesis",
                 )
             ),
-            "## 7. Render the reviewed-public publication handoff",
+            "## 8. Render the reviewed-public publication handoff",
             "",
             block(
                 reviewed_publication_runbook_command(

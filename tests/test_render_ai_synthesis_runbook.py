@@ -15,6 +15,7 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 import generate_blocked_hrd_crosscheck_reports as BLOCKED_GENERATOR  # noqa: E402
+import publish_reviewed_public_report as PUBLISH  # noqa: E402
 
 SPEC = importlib.util.spec_from_file_location(
     "render_ai_synthesis_runbook", SCRIPT_DIR / "render_ai_synthesis_runbook.py"
@@ -45,12 +46,12 @@ def write_receipts(root: Path, manifest_paths: dict[str, Path]) -> list[Path]:
     receipt_root = root / "receipts"
     receipt_root.mkdir(exist_ok=True)
     for method_id in MODULE.REQUIRED_METHOD_IDS:
-        expected = tuple(sorted(MODULE.METHOD_CONTRACTS[method_id]["files"]))
+        expected = tuple(sorted(PUBLISH.METHOD_CONTRACTS[method_id]["files"]))
         prefix = (
-            f"s3://{MODULE.PRIVATE_BUCKET}/runs/{MODULE.SUBJECT_ALIAS}/"
+            f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{MODULE.SUBJECT_ALIAS}/"
             f"{MODULE.RUN_ID}/reports/{method_id}/revisions/{'a' * 64}/"
         )
-        key_prefix = prefix.removeprefix(f"s3://{MODULE.PRIVATE_BUCKET}/")
+        key_prefix = prefix.removeprefix(f"s3://{PUBLISH.PRIVATE_BUCKET}/")
         rows = []
         for index, relative in enumerate(expected, 1):
             sha256 = (
@@ -62,16 +63,16 @@ def write_receipts(root: Path, manifest_paths: dict[str, Path]) -> list[Path]:
             rows.append(
                 {
                     "relative_path": relative,
-                    "bucket": MODULE.PRIVATE_BUCKET,
+                    "bucket": PUBLISH.PRIVATE_BUCKET,
                     "key": key,
-                    "uri": f"s3://{MODULE.PRIVATE_BUCKET}/{key}",
+                    "uri": f"s3://{PUBLISH.PRIVATE_BUCKET}/{key}",
                     "version_id": f"version-{index}",
                     "bytes": index + 100,
                     "sha256": sha256,
                     "checksum_sha256": checksum_from_digest(sha256),
                     "checksum_type": "FULL_OBJECT",
                     "server_side_encryption": "aws:kms",
-                    "kms_key_id": MODULE.PRIVATE_KMS_KEY_ARN,
+                    "kms_key_id": PUBLISH.PRIVATE_KMS_KEY_ARN,
                     "status": "passed",
                     "checks": {"version_id": True, "kms": True},
                 }
@@ -83,7 +84,7 @@ def write_receipts(root: Path, manifest_paths: dict[str, Path]) -> list[Path]:
             "run_id": MODULE.RUN_ID,
             "method_id": method_id,
             "destination_prefix": prefix,
-            "kms_key_arn": MODULE.PRIVATE_KMS_KEY_ARN,
+            "kms_key_arn": PUBLISH.PRIVATE_KMS_KEY_ARN,
             "expected_files": list(expected),
             "object_count": len(expected),
             "passed_count": len(expected),
@@ -149,6 +150,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         }
 
         for expected in (
+            "/repo/scripts/write_ai_model_catalog_receipt.py",
             "/repo/scripts/hrd_report_inventory.py",
             "/repo/scripts/prepare_ai_review_run.py",
             "/repo/scripts/validate_ai_review.py",
@@ -156,8 +158,6 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "/repo/scripts/generate_comparative_hrd_synthesis.py",
             "/repo/scripts/publish_private_report.py",
             "/repo/scripts/render_reviewed_publication_runbook.py",
-            "/repo/.codex-tmp/hrd-reports/ai-review/"
-            "model-catalog-receipt.20260717T115311Z.json",
         ):
             self.assertIn(expected, prerequisites)
         for stale in (
@@ -202,7 +202,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "wrong_prefix": lambda receipt: receipt.update(
                 {
                     "destination_prefix": (
-                        f"s3://{MODULE.PRIVATE_BUCKET}/runs/"
+                        f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/"
                         f"{MODULE.SUBJECT_ALIAS}/{MODULE.RUN_ID}/reports/other_method/"
                     )
                 }
@@ -268,6 +268,22 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             f"{MODULE.RUN_ID}/publication-receipts/"
             "terminal.ai-reviewer-a.private.json",
             text,
+        )
+
+    def test_renderer_materializes_pinned_model_catalog_receipt(self) -> None:
+        text = MODULE.render(Path("/repo"), "terminal")
+        catalog = (
+            "/repo/.codex-tmp/hrd-reports/ai-review/"
+            f"{MODULE.RUN_ID}/"
+            "model-catalog-receipt.20260717T115311Z.json"
+        )
+
+        self.assertIn("/repo/scripts/write_ai_model_catalog_receipt.py", text)
+        self.assertIn(f"--output {catalog}", text)
+        self.assertIn("--attest-models-latest", text)
+        self.assertLess(
+            text.index("write_ai_model_catalog_receipt.py"),
+            text.index("prepare_ai_review_run.py"),
         )
         self.assertNotIn(
             "/repo/.codex-tmp/hrd-reports/ai-review/publication-receipts/",

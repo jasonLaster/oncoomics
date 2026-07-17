@@ -507,10 +507,11 @@ python3 scripts/render_ai_synthesis_runbook.py \
   --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.hrdetect_blocked.private.json
 ```
 
-The rendered runbook calls the checked-in AI review and synthesis scripts only:
+The rendered runbook first materializes the pinned model-catalog receipt, then
+calls the checked-in AI review and synthesis scripts only:
 `prepare_ai_review_run.py`, `validate_ai_review.py`,
-`generate_comparative_hrd_synthesis.py`, `finalize_ai_review.py`, and
-`publish_private_report.py`.
+`generate_comparative_hrd_synthesis.py`, `finalize_ai_review.py`,
+`publish_private_report.py`, and `render_reviewed_publication_runbook.py`.
 
 After the seven source packets, the two validated AI reviewer packets, and the
 comparative synthesis packet are privately frozen, render the full reviewed
