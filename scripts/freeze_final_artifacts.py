@@ -263,6 +263,7 @@ def list_objects(bucket: str, prefix: str, region: str) -> list[dict[str, Any]]:
     """Return the complete current-object inventory for one prefix."""
     objects: list[dict[str, Any]] = []
     continuation_token = ""
+    seen_tokens: set[str] = set()
     while True:
         arguments = [
             "s3api",
@@ -286,6 +287,9 @@ def list_objects(bucket: str, prefix: str, region: str) -> list[dict[str, Any]]:
         continuation_token = str(page.get("NextContinuationToken", ""))
         if not continuation_token:
             raise RuntimeError("Truncated S3 inventory omitted NextContinuationToken")
+        if continuation_token in seen_tokens:
+            raise RuntimeError("S3 object inventory pagination did not advance")
+        seen_tokens.add(continuation_token)
 
 
 def snapshot_inventory(bucket: str, prefix: str, region: str) -> list[dict[str, Any]]:

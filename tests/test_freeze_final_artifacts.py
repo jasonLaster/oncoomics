@@ -143,7 +143,36 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 [{"Key": "prefix/one"}, {"Key": "prefix/two"}],
             )
         self.assertEqual(mocked.call_count, 2)
-        self.assertIn("--continuation-token", mocked.call_args_list[1].args[0])
+        self.assertEqual(
+            mocked.call_args_list[0].args,
+            (
+                [
+                    "s3api",
+                    "list-objects-v2",
+                    "--bucket",
+                    "bucket",
+                    "--prefix",
+                    "prefix/",
+                ],
+                "us-east-1",
+            ),
+        )
+        self.assertEqual(
+            mocked.call_args_list[1].args,
+            (
+                [
+                    "s3api",
+                    "list-objects-v2",
+                    "--bucket",
+                    "bucket",
+                    "--prefix",
+                    "prefix/",
+                    "--continuation-token",
+                    "next-page",
+                ],
+                "us-east-1",
+            ),
+        )
 
     def test_list_objects_rejects_missing_continuation_token(self) -> None:
         with patch.object(
@@ -152,6 +181,16 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             return_value={"IsTruncated": True, "Contents": []},
         ):
             with self.assertRaisesRegex(RuntimeError, "NextContinuationToken"):
+                MODULE.list_objects("bucket", "prefix/", "us-east-1")
+
+    def test_list_objects_rejects_stalled_pagination(self) -> None:
+        stalled = {
+            "IsTruncated": True,
+            "NextContinuationToken": "same-page",
+            "Contents": [{"Key": "prefix/one"}],
+        }
+        with patch.object(MODULE, "aws_json", side_effect=[stalled, stalled]):
+            with self.assertRaisesRegex(RuntimeError, "did not advance"):
                 MODULE.list_objects("bucket", "prefix/", "us-east-1")
 
     def test_version_history_consumes_versions_and_delete_markers_across_pages(self) -> None:
