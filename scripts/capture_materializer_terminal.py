@@ -224,6 +224,7 @@ def version_history(region: str, bucket: str, key: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     key_marker = ""
     version_marker = ""
+    seen_markers: set[tuple[str, str]] = set()
     for _ in range(100):
         arguments = [
             "s3api",
@@ -247,8 +248,14 @@ def version_history(region: str, bucket: str, key: str) -> list[dict[str, Any]]:
             return rows
         key_marker = str(page.get("NextKeyMarker", ""))
         version_marker = str(page.get("NextVersionIdMarker", ""))
-        if not key_marker:
-            raise ValueError("truncated receipt history omitted NextKeyMarker")
+        if not key_marker or not version_marker:
+            raise ValueError(
+                "truncated receipt history omitted its next key/version markers"
+            )
+        marker = (key_marker, version_marker)
+        if marker in seen_markers:
+            raise ValueError("S3 receipt history pagination did not advance")
+        seen_markers.add(marker)
     raise ValueError("S3 receipt history pagination exceeded the safety limit")
 
 

@@ -378,6 +378,82 @@ class CaptureRouteTerminalTests(unittest.TestCase):
         with mock.patch.object(MODULE, "aws_json", side_effect=aws), mock.patch.object(MODULE, "get_exact_object", side_effect=get):
             return MODULE.capture(args)
 
+    def test_receipt_history_consumes_key_and_version_markers(self):
+        fixture = self.fixture()
+        pages = [
+            {
+                "IsTruncated": True,
+                "Versions": [{"Key": fixture["receipt_key"], "VersionId": "v1"}],
+                "DeleteMarkers": [],
+                "NextKeyMarker": fixture["receipt_key"],
+                "NextVersionIdMarker": "v1",
+            },
+            {
+                "IsTruncated": False,
+                "Versions": [],
+                "DeleteMarkers": [
+                    {"Key": fixture["receipt_key"], "VersionId": "d1"}
+                ],
+            },
+        ]
+
+        with mock.patch.object(MODULE, "aws_json", side_effect=pages) as aws_json:
+            self.assertEqual(
+                MODULE.version_history(MODULE.REGION, "bucket", fixture["receipt_key"]),
+                [
+                    {
+                        "Key": fixture["receipt_key"],
+                        "VersionId": "v1",
+                        "history_kind": "version",
+                    },
+                    {
+                        "Key": fixture["receipt_key"],
+                        "VersionId": "d1",
+                        "history_kind": "delete_marker",
+                    },
+                ],
+            )
+
+        self.assertEqual(
+            aws_json.call_args_list[1].args,
+            (
+                MODULE.REGION,
+                "s3api",
+                "list-object-versions",
+                "--bucket",
+                "bucket",
+                "--prefix",
+                fixture["receipt_key"],
+                "--key-marker",
+                fixture["receipt_key"],
+                "--version-id-marker",
+                "v1",
+            ),
+        )
+
+    def test_receipt_history_rejects_missing_or_stalled_markers(self):
+        fixture = self.fixture()
+        missing_version = {
+            "IsTruncated": True,
+            "Versions": [],
+            "DeleteMarkers": [],
+            "NextKeyMarker": fixture["receipt_key"],
+        }
+        with mock.patch.object(MODULE, "aws_json", return_value=missing_version):
+            with self.assertRaisesRegex(ValueError, "key/version markers"):
+                MODULE.version_history(MODULE.REGION, "bucket", fixture["receipt_key"])
+
+        stalled = {
+            "IsTruncated": True,
+            "Versions": [],
+            "DeleteMarkers": [],
+            "NextKeyMarker": fixture["receipt_key"],
+            "NextVersionIdMarker": "v1",
+        }
+        with mock.patch.object(MODULE, "aws_json", side_effect=[stalled, stalled]):
+            with self.assertRaisesRegex(ValueError, "did not advance"):
+                MODULE.version_history(MODULE.REGION, "bucket", fixture["receipt_key"])
+
     def test_both_routes_succeed_and_emit_exclusive_mode_0600_outputs(self):
         with tempfile.TemporaryDirectory() as temporary:
             for route in MODULE.ROUTES:
