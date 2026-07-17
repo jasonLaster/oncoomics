@@ -163,6 +163,25 @@ Required packet sections:
 
 If all required adapters pass, the packet can report the locked HRD score and component values. If any required adapter is missing, it should report a no-call or partial evidence state with the exact blocker.
 
+For the terminal Diana WGS run, bind Rosalind to both the final worker artifact
+root and the deterministic report packet staged from frozen artifacts:
+
+```sh
+env \
+  ROSALIND_HRD_SAMPLE_SET=diana_wgs \
+  ROSALIND_HRD_RUN_ID=<run_id> \
+  ROSALIND_HRD_ARTIFACT_ROOT=<materialized-final-artifact-root> \
+  ROSALIND_HRD_DETERMINISTIC_REPORT_DIR=<deterministic_full_wgs-report-dir> \
+  PYTHONPATH=src \
+  /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet
+```
+
+The deterministic directory must contain `report.md`, `readiness.csv`,
+`evidence_checks.json`, `input_sha256.csv`, and `report_manifest.json` from
+`scripts/stage_deterministic_wgs_report.py`; Rosalind treats that custody-bound
+packet as the deterministic source of record and preserves its
+`partial_evidence` / `no_call` boundary.
+
 ## Score Policy
 
 Use these terms consistently:

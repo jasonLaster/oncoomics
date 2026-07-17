@@ -28,9 +28,10 @@ Current shell utilities:
 - `stage_hrd_crosscheck_report.py`: compact an exact Sequenza→scarHRD or
   SigProfiler SBS3 route replay into a three-file method packet for review
   bundling and private freeze.
-- `stage_deterministic_wgs_report.py`: validate frozen Diana full-WGS worker
-  artifacts and custody receipts into the five-file `deterministic_full_wgs`
-  packet consumed by Rosalind, AI-review, and private/public publication steps.
+- `stage_deterministic_wgs_report.py`: validate terminal frozen Diana full-WGS
+  worker artifacts and custody receipts into the five-file
+  `deterministic_full_wgs` packet consumed by Rosalind, AI-review, and
+  private/public publication steps.
 - `stage_ai_review_inputs.py`: split a hash-bound AI review bundle into
   isolated two-file reviewer input directories.
 - `validate_ai_review.py`: validate one isolated model review against its

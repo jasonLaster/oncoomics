@@ -50,6 +50,74 @@ s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/
 These paths identify a run alias, not a patient name. Conclusions must preserve
 `partial_evidence`, `blocked`, and `no_call` boundaries from the source reports.
 
+## Stage terminal Diana WGS report packets
+
+After the full-WGS Batch job succeeds, build the deterministic report packet
+only from versioned, frozen artifacts. `scripts/stage_deterministic_wgs_report.py`
+expects:
+
+- a final frozen worker artifact tree materialized by exact S3 VersionId;
+- terminal Batch execution and executed-worker freeze receipts;
+- final-artifact and stage-provenance freeze receipts plus their S3 anchors;
+- exact cross-check materialization and staged-input validation receipts;
+- the prior early-look artifact tree for early-versus-full deltas; and
+- explicit forbidden raw/vendor tokens.
+
+The stager writes exactly the five `deterministic_full_wgs` packet files that
+the private/public publishers accept:
+
+```text
+report.md
+readiness.csv
+evidence_checks.json
+input_sha256.csv
+report_manifest.json
+```
+
+Use a run-local scratch directory and publish the generated packet only after a
+dry-run receipt verifies the five-file inventory and `no_call` boundary:
+
+```bash
+RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
+
+python3 scripts/stage_deterministic_wgs_report.py \
+  --artifact-root "$RUN_ROOT/materialized-final" \
+  --preflight-json "$RUN_ROOT/quarantine.preflight.json" \
+  --gather-json "$RUN_ROOT/quarantine.gather.json" \
+  --sha-audit "$RUN_ROOT/private-input-sha256.json" \
+  --execution-json "$RUN_ROOT/terminal.execution.succeeded.json" \
+  --executed-worker-freeze-receipt "$RUN_ROOT/executed-worker-freeze-receipt.json" \
+  --executed-worker-freeze-receipt-upload "$RUN_ROOT/executed-worker-freeze-receipt-upload.json" \
+  --final-freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
+  --final-freeze-anchor "$RUN_ROOT/terminal.final-freeze.anchor.json" \
+  --exact-materialization-receipt "$RUN_ROOT/terminal.materialize.json" \
+  --crosscheck-materialization-receipt "$RUN_ROOT/terminal.materializer.receipt.json" \
+  --stage-provenance-receipt "$RUN_ROOT/terminal.stage-freeze.json" \
+  --stage-provenance-anchor "$RUN_ROOT/terminal.stage-freeze.anchor.json" \
+  --staged-input-validation-json "$RUN_ROOT/staged_input_validation.json" \
+  --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
+  --early-look-root .codex-tmp/hrd-reports/deterministic-early-look \
+  --output-dir "$RUN_ROOT/report" \
+  --forbidden-token E019_S01 \
+  --forbidden-token DRF-PSN49561 \
+  --forbidden-token echo-personalis \
+  --forbidden-token personalis
+```
+
+Then point the Diana WGS Rosalind packet at the same final artifact root and
+the deterministic report directory:
+
+```bash
+env \
+  ROSALIND_HRD_SAMPLE_SET=diana_wgs \
+  ROSALIND_HRD_RUN_ID=diana-wgs-hrd-20260716T033101Z \
+  ROSALIND_HRD_ARTIFACT_ROOT="$RUN_ROOT/materialized-final" \
+  ROSALIND_HRD_DETERMINISTIC_REPORT_DIR="$RUN_ROOT/report" \
+  'ROSALIND_HRD_FORBIDDEN_TOKENS_JSON=["E019_S01","DRF-PSN49561","echo-personalis","personalis"]' \
+  PYTHONPATH=src \
+  /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet
+```
+
 ## Freeze and publish a reviewed report packet
 
 First freeze the reviewed local report tree in the versioned private results
@@ -88,6 +156,11 @@ identifier scan before any public write.
 The method ID pins both the accepted report inventory and destination subtree.
 It cannot publish raw data or operator-selected filenames. For the Diana WGS
 Rosalind packet, run the default dry-run first with a new local receipt path:
+
+| Method ID | Local packet root | Reviewed public destination |
+| --- | --- | --- |
+| `deterministic_full_wgs` | `scripts/stage_deterministic_wgs_report.py` output | `.../deterministic/` |
+| `rosalind_diana_wgs` | `results/rosalind_hrd/diana_wgs/<run-id>/` | `.../rosalind/` |
 
 ```bash
 python3 scripts/publish_reviewed_public_report.py \
