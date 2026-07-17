@@ -35,6 +35,77 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
             self.assertFalse(any(output.parent.glob(".execution.json.*.tmp")))
 
+    def test_failure_receipt_replaces_only_the_current_reservation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = {
+                "run_id": "run-1",
+                "job_id": "job-1",
+                "expected_status": "SUCCEEDED",
+                "region": "us-east-1",
+                "output": Path(temporary) / "execution.json",
+            }
+            MODULE.reserve_json(context["output"], MODULE.reserved_payload(context))
+
+            MODULE.write_failure_if_reserved(
+                context,
+                SystemExit("Fail-closed: Batch job status is RUNNING"),
+            )
+
+            self.assertEqual(
+                json.loads(context["output"].read_text()),
+                {
+                    **MODULE.reserved_payload(context),
+                    "status": "failed",
+                    "error": "Fail-closed: Batch job status is RUNNING",
+                },
+            )
+
+    def test_failure_receipt_preserves_existing_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "execution.json"
+            context = {
+                "run_id": "run-1",
+                "job_id": "job-1",
+                "expected_status": "SUCCEEDED",
+                "region": "us-east-1",
+                "output": output,
+            }
+            MODULE.reserve_json(output, {"status": "passed"})
+
+            MODULE.write_failure_if_reserved(
+                context,
+                SystemExit(
+                    "Fail-closed: provenance output already exists; preserve it "
+                    "and use a new path"
+                ),
+            )
+
+            self.assertEqual(json.loads(output.read_text()), {"status": "passed"})
+
+    def test_failure_receipt_preserves_prior_reservations(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = {
+                "run_id": "run-1",
+                "job_id": "job-1",
+                "expected_status": "SUCCEEDED",
+                "region": "us-east-1",
+                "output": Path(temporary) / "execution.json",
+            }
+            MODULE.reserve_json(context["output"], MODULE.reserved_payload(context))
+
+            MODULE.write_failure_if_reserved(
+                context,
+                SystemExit(
+                    "Fail-closed: provenance output already exists; preserve it "
+                    "and use a new path"
+                ),
+            )
+
+            self.assertEqual(
+                json.loads(context["output"].read_text()),
+                MODULE.reserved_payload(context),
+            )
+
     def _command(
         self,
         command_id: str,

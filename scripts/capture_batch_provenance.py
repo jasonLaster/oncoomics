@@ -107,6 +107,75 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def parse_failure_context() -> dict[str, Any]:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--job-id")
+    parser.add_argument("--run-id")
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--expected-status")
+    parser.add_argument("--region", default="us-east-1")
+    args, _ = parser.parse_known_args()
+    return {
+        "run_id": args.run_id,
+        "job_id": args.job_id,
+        "expected_status": args.expected_status,
+        "region": args.region,
+        "output": args.output,
+    }
+
+
+def reserved_payload(context: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "status": "reserved",
+        "run_id": context["run_id"],
+        "job_id": context["job_id"],
+        "expected_status": context["expected_status"],
+        "region": context["region"],
+    }
+
+
+def failure_error(error: BaseException) -> str:
+    if isinstance(error, SystemExit):
+        return str(error.code if error.code is not None else "SystemExit")
+    return f"{type(error).__name__}: {error}"
+
+
+def is_output_collision(error: BaseException) -> bool:
+    return isinstance(error, SystemExit) and "provenance output already exists" in str(
+        error.code
+    )
+
+
+def write_failure_if_reserved(
+    context: dict[str, Any], error: BaseException
+) -> None:
+    output = context.get("output")
+    if (
+        not isinstance(output, Path)
+        or output.is_symlink()
+        or not output.is_file()
+        or is_output_collision(error)
+    ):
+        return
+
+    try:
+        current = json.loads(output.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if current != reserved_payload(context):
+        return
+
+    write_json_atomic(
+        output,
+        {
+            **current,
+            "status": "failed",
+            "error": failure_error(error),
+        },
+    )
+
+
 def sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
@@ -838,4 +907,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    failure_context = parse_failure_context()
+    try:
+        main()
+    except SystemExit as error:
+        write_failure_if_reserved(failure_context, error)
+        raise
+    except Exception as error:
+        write_failure_if_reserved(failure_context, error)
+        raise
