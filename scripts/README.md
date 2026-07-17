@@ -28,4 +28,7 @@ Current shell utilities:
   bundling and private freeze.
 - `stage_ai_review_inputs.py`: split a hash-bound AI review bundle into
   isolated two-file reviewer input directories.
+- `validate_ai_review.py`: validate one isolated model review against its
+  bundle, source manifests, pinned model, exact claims table, and no-promotion
+  HRD authorization boundary without invoking a model.
 - `aws-silly-ec2`: legacy disposable EC2 smoke utility. It is not part of the omics validation path and is intentionally absent from the main docs.
