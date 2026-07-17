@@ -377,7 +377,10 @@ data "aws_iam_policy_document" "s3_tls" {
     content {
       sid       = "AllowPublicListResults"
       effect    = "Allow"
-      actions   = ["s3:ListBucket"]
+      actions = [
+        "s3:ListBucket",
+        "s3:ListBucketVersions",
+      ]
       resources = [each.value.arn]
       principals {
         type        = "*"
@@ -392,7 +395,10 @@ data "aws_iam_policy_document" "s3_tls" {
     content {
       sid       = "AllowPublicReadResults"
       effect    = "Allow"
-      actions   = ["s3:GetObject"]
+      actions = [
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+      ]
       resources = ["${each.value.arn}/*"]
       principals {
         type        = "*"
