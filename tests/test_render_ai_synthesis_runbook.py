@@ -145,6 +145,19 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         self.assertNotIn("--expected-file", text)
         self.assertNotIn("--receipt-upload-output", text)
 
+    def test_ai_private_receipt_table_drives_publish_and_handoff(self) -> None:
+        text = MODULE.render(Path("/repo"), "terminal")
+
+        self.assertEqual(
+            tuple(method_id for method_id, _ in MODULE.AI_PRIVATE_RECEIPT_STEMS),
+            (*MODULE.AI_REVIEW_METHOD_IDS, *MODULE.COMPARATIVE_METHOD_IDS),
+        )
+        for receipt_path in MODULE.ai_private_receipt_paths(
+            Path("/repo"), "terminal"
+        ):
+            self.assertIn(f"--receipt-output {receipt_path}", text)
+            self.assertIn(f"--private-publication-receipt {receipt_path}", text)
+
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
         prerequisites = {
             path.as_posix() for path in MODULE.required_existing(Path("/repo"))

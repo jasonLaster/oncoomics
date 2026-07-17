@@ -18,7 +18,9 @@ from ai_model_catalog import (
     REVIEWER_B,
 )
 from hrd_report_inventory import (
+    AI_REVIEW_METHOD_IDS,
     BLOCKED_CROSSCHECK_REPORT_DIRS,
+    COMPARATIVE_METHOD_IDS,
     REPORT_METHOD_IDS,
     REQUIRED_METHOD_IDS,
 )
@@ -36,6 +38,11 @@ from render_reviewed_publication_runbook import (
 from runbook_io import unique_paths, write_once
 
 FORBIDDEN_TOKENS = ("E019_S01", "DRF-PSN49561", "echo-personalis", "personalis")
+AI_PRIVATE_RECEIPT_STEMS = (
+    (AI_REVIEW_METHOD_IDS[0], "ai-reviewer-a"),
+    (AI_REVIEW_METHOD_IDS[1], "ai-reviewer-b"),
+    (COMPARATIVE_METHOD_IDS[0], "comparative-synthesis"),
+)
 
 
 class Raw(str):
@@ -310,10 +317,9 @@ def ai_private_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
         / RUN_ID
         / "publication-receipts"
     )
-    return (
-        receipt_root / f"{receipt_stem}.ai-reviewer-a.private.json",
-        receipt_root / f"{receipt_stem}.ai-reviewer-b.private.json",
-        receipt_root / f"{receipt_stem}.comparative-synthesis.private.json",
+    return tuple(
+        receipt_root / f"{receipt_stem}.{stem}.private.json"
+        for _, stem in AI_PRIVATE_RECEIPT_STEMS
     )
 
 
@@ -365,6 +371,11 @@ def render(
     reviewer_b = run_root / "reviewer-b"
     synthesis = reports / "synthesis" / RUN_ID
     receipt_root = run_root / "publication-receipts"
+    ai_private_packet_dirs = {
+        AI_REVIEW_METHOD_IDS[0]: reviewer_a,
+        AI_REVIEW_METHOD_IDS[1]: reviewer_b,
+        COMPARATIVE_METHOD_IDS[0]: synthesis,
+    }
 
     lines = [
         "# Diana WGS independent AI review and synthesis handoff",
@@ -534,30 +545,17 @@ def render(
             ),
             "## 7. Publish reviewed private AI and synthesis reports",
             "",
-            block(
-                publish_command(
-                    scripts,
-                    reviewer_a,
-                    "ai_review_reviewer_a",
-                    receipt_root / f"{receipt_stem}.ai-reviewer-a",
+            *[
+                block(
+                    publish_command(
+                        scripts,
+                        ai_private_packet_dirs[method_id],
+                        method_id,
+                        receipt_root / f"{receipt_stem}.{receipt_suffix}",
+                    )
                 )
-            ),
-            block(
-                publish_command(
-                    scripts,
-                    reviewer_b,
-                    "ai_review_reviewer_b",
-                    receipt_root / f"{receipt_stem}.ai-reviewer-b",
-                )
-            ),
-            block(
-                publish_command(
-                    scripts,
-                    synthesis,
-                    "comparative_hrd_synthesis",
-                    receipt_root / f"{receipt_stem}.comparative-synthesis",
-                )
-            ),
+                for method_id, receipt_suffix in AI_PRIVATE_RECEIPT_STEMS
+            ],
             "## 8. Render the reviewed-public publication handoff",
             "",
             bash_block(
