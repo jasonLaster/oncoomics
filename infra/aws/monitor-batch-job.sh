@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LOG_GROUP="${AWS_BATCH_LOG_GROUP:-/aws/batch/diana-omics-prod-use1}"
+LOG_GROUP="${AWS_BATCH_LOG_GROUP:-/aws/batch/job}"
 REGION="${AWS_REGION:-us-east-1}"
 INTERVAL="${AWS_MONITOR_INTERVAL:-60}"
 SINCE="${AWS_LOG_SINCE:-2m}"
@@ -18,7 +18,7 @@ Examples:
   infra/aws/monitor-batch-job.sh 5f6c56d5-3e9d-4c56-8346-2942a225211c
   infra/aws/monitor-batch-job.sh 5f6c56d5-3e9d-4c56-8346-2942a225211c --once
   infra/aws/monitor-batch-job.sh 5f6c56d5-3e9d-4c56-8346-2942a225211c --follow
-  AWS_REGION=us-east-1 AWS_BATCH_LOG_GROUP=/aws/batch/diana-omics-prod-use1 infra/aws/monitor-batch-job.sh JOB_ID
+  AWS_REGION=us-east-1 AWS_BATCH_LOG_GROUP=/aws/batch/job infra/aws/monitor-batch-job.sh JOB_ID
 USAGE
 }
 

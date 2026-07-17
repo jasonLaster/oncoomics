@@ -136,7 +136,7 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:stub
 Confirm:
 
 - AWS Batch job succeeds.
-- CloudWatch logs appear under `/aws/batch/diana-omics-prod-use1`.
+- CloudWatch logs appear under `/aws/batch/job`.
 - S3 work objects appear under the `diana-omics-work-...` bucket.
 - No raw data was uploaded from local.
 
