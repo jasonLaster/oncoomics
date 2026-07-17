@@ -909,6 +909,32 @@ class SyntheticFixture:
 
 @unittest.skipUnless(shutil.which("bcftools"), "bcftools is required for the indexed-VCF E2E fixture")
 class StageDeterministicWgsReportTests(unittest.TestCase):
+    def test_packet_file_install_is_create_only_and_fsynced(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-input-snapshot-") as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+
+            with patch.object(
+                REPORT_MODULE.os,
+                "fsync",
+                wraps=REPORT_MODULE.os.fsync,
+            ) as fsync:
+                REPORT_MODULE.copy_create_only(source, destination)
+
+            self.assertEqual(destination.read_bytes(), b"one\n")
+            self.assertEqual(fsync.call_count, 1)
+
+            source.write_bytes(b"two\n")
+            with self.assertRaisesRegex(
+                ValueError,
+                "report output packet already exists",
+            ):
+                REPORT_MODULE.copy_create_only(source, destination)
+
+            self.assertEqual(destination.read_bytes(), b"one\n")
+
     def test_stable_snapshot_is_independent_of_later_source_changes(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-input-snapshot-") as temporary:
             root = Path(temporary)

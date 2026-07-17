@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -20,6 +21,7 @@ from hrd_report_inventory import (  # noqa: E402
     inventory_payload,
     inventory_sha256,
 )
+import generate_comparative_hrd_synthesis as GENERATE  # noqa: E402
 import publish_private_report as PUBLISH_PRIVATE  # noqa: E402
 
 GENERATOR = SCRIPT_DIR / "generate_comparative_hrd_synthesis.py"
@@ -332,6 +334,32 @@ class SynthesisFixture:
 
 
 class GenerateSynthesisTests(unittest.TestCase):
+    def test_synthesis_packet_install_is_create_only_and_fsynced(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+
+            with mock.patch.object(
+                GENERATE.os,
+                "fsync",
+                wraps=GENERATE.os.fsync,
+            ) as fsync:
+                GENERATE.copy_create_only(source, destination)
+
+            self.assertEqual(destination.read_bytes(), b"one\n")
+            self.assertEqual(fsync.call_count, 1)
+
+            source.write_bytes(b"two\n")
+            with self.assertRaisesRegex(
+                ValueError,
+                "synthesis output packet already exists",
+            ):
+                GENERATE.copy_create_only(source, destination)
+
+            self.assertEqual(destination.read_bytes(), b"one\n")
+
     def test_generates_descriptive_report_table_and_schema_one_manifest(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             fixture = SynthesisFixture(Path(temporary))

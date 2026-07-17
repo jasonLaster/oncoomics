@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -150,6 +151,32 @@ class AiReviewBundleFixture:
 
 
 class BuildAiReviewBundleTests(unittest.TestCase):
+    def test_bundle_file_install_is_create_only_and_fsynced(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "review_bundle.json"
+            source.write_bytes(b"one\n")
+
+            with mock.patch.object(
+                BUILD.os,
+                "fsync",
+                wraps=BUILD.os.fsync,
+            ) as fsync:
+                BUILD.copy_create_only(source, destination)
+
+            self.assertEqual(destination.read_bytes(), b"one\n")
+            self.assertEqual(fsync.call_count, 1)
+
+            source.write_bytes(b"two\n")
+            with self.assertRaisesRegex(
+                ValueError,
+                "AI review bundle output already exists",
+            ):
+                BUILD.copy_create_only(source, destination)
+
+            self.assertEqual(destination.read_bytes(), b"one\n")
+
     def test_builds_bundle_for_staged_two_file_reviewer_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))

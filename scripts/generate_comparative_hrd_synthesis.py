@@ -765,6 +765,8 @@ def copy_create_only(source: Path, destination: Path) -> None:
             with destination_handle:
                 for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
                     destination_handle.write(chunk)
+                destination_handle.flush()
+                os.fsync(destination_handle.fileno())
         except Exception:
             destination.unlink(missing_ok=True)
             raise

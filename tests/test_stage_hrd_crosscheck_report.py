@@ -84,6 +84,32 @@ def write_route_report(source: Path, route: str = "sigprofiler_sbs3") -> Path:
 
 
 class StageHrdCrosscheckReportTests(unittest.TestCase):
+    def test_packet_file_install_is_create_only_and_fsynced(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+
+            with mock.patch.object(
+                STAGE.os,
+                "fsync",
+                wraps=STAGE.os.fsync,
+            ) as fsync:
+                STAGE.copy_create_only(source, destination)
+
+            self.assertEqual(destination.read_bytes(), b"one\n")
+            self.assertEqual(fsync.call_count, 1)
+
+            source.write_bytes(b"two\n")
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged cross-check packet already exists",
+            ):
+                STAGE.copy_create_only(source, destination)
+
+            self.assertEqual(destination.read_bytes(), b"one\n")
+
     def test_stage_compacts_route_tree_and_remains_publishable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
