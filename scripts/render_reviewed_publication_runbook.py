@@ -164,6 +164,18 @@ def required_existing(root: Path) -> tuple[Path, ...]:
     )
 
 
+def required_absent(root: Path, receipt_stem: str) -> tuple[Path, ...]:
+    return (
+        *(
+            receipt_output(root, receipt_stem, method_id, suffix)
+            for method_id in REPORT_METHOD_IDS
+            for suffix in (".dry", "")
+        ),
+        root / ".codex-tmp/public-index" / f"public-index.{receipt_stem}.dry.json",
+        root / ".codex-tmp/public-index" / f"public-index.{receipt_stem}.json",
+    )
+
+
 def render(
     root: Path,
     receipt_paths: Iterable[Path],
@@ -271,6 +283,16 @@ def main() -> int:
         )
     if args.output.exists() or args.output.is_symlink():
         raise SystemExit(f"Fail-closed: output already exists: {args.output}")
+    preexisting = [
+        path
+        for path in required_absent(root, args.receipt_stem)
+        if path.exists() or path.is_symlink()
+    ]
+    if preexisting:
+        raise SystemExit(
+            "Fail-closed: reviewed-public create-only outputs already exist: "
+            + ", ".join(str(path) for path in preexisting)
+        )
 
     try:
         receipt_summaries = validate_private_report_receipts(

@@ -179,6 +179,13 @@ def required_existing(root: Path) -> tuple[Path, ...]:
     )
 
 
+def required_absent(root: Path, receipt_stem: str) -> tuple[Path, ...]:
+    return tuple(
+        receipt_path(root, receipt_stem, method_id)
+        for method_id in REQUIRED_METHOD_IDS
+    )
+
+
 def render(
     root: Path,
     receipt_stem: str,
@@ -277,6 +284,16 @@ def main() -> int:
         )
     except ValueError as error:
         raise SystemExit(f"Fail-closed: {error}") from error
+    preexisting = [
+        path
+        for path in required_absent(root, args.receipt_stem)
+        if path.exists() or path.is_symlink()
+    ]
+    if preexisting:
+        raise SystemExit(
+            "Fail-closed: source private-freeze create-only outputs already exist: "
+            + ", ".join(str(path) for path in preexisting)
+        )
     if args.output.exists() or args.output.is_symlink():
         raise SystemExit(f"Fail-closed: output already exists: {args.output}")
 

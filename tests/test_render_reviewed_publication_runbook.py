@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -222,6 +223,66 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                 "/repo/scripts/publish_public_results_index.py",
             },
         )
+
+    def test_required_absent_includes_publication_receipts(self) -> None:
+        outputs = [
+            path.as_posix()
+            for path in MODULE.required_absent(Path("/repo"), "unit")
+        ]
+
+        self.assertEqual(
+            outputs[:20],
+            [
+                (
+                    "/repo/.codex-tmp/hrd-reports/publication/"
+                    f"unit.{method_id}.public{suffix}.json"
+                )
+                for method_id in MODULE.REPORT_METHOD_IDS
+                for suffix in (".dry", "")
+            ],
+        )
+        self.assertEqual(
+            outputs[20:],
+            [
+                "/repo/.codex-tmp/public-index/public-index.unit.dry.json",
+                "/repo/.codex-tmp/public-index/public-index.unit.json",
+            ],
+        )
+
+    def test_main_rejects_preexisting_publication_receipts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for path in MODULE.required_existing(root):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("{}\n", encoding="utf-8")
+            receipts = write_receipts(root)
+
+            stale = (
+                root
+                / ".codex-tmp/hrd-reports/publication/"
+                "terminal.rosalind_diana_wgs.public.json"
+            )
+            stale.parent.mkdir(parents=True, exist_ok=True)
+            stale.write_text("{}\n", encoding="utf-8")
+            output = root / "reviewed-public.md"
+
+            argv = [
+                "render_reviewed_publication_runbook.py",
+                "--output",
+                str(output),
+                "--root",
+                str(root),
+            ]
+            for receipt in receipts:
+                argv.extend(["--private-publication-receipt", str(receipt)])
+
+            with (
+                patch.object(sys, "argv", argv),
+                self.assertRaisesRegex(SystemExit, "create-only outputs"),
+            ):
+                MODULE.main()
+
+            self.assertFalse(output.exists())
 
     def test_runbook_can_include_private_receipt_gate(self) -> None:
         summaries = (

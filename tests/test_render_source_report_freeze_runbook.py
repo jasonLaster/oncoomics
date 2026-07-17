@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -205,6 +206,51 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                 "/repo/scripts/render_ai_synthesis_runbook.py",
             },
         )
+
+    def test_required_absent_includes_source_private_receipts(self) -> None:
+        self.assertEqual(
+            [path.as_posix() for path in MODULE.required_absent(Path("/repo"), "unit")],
+            [
+                "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+                f"unit.{method_id}.private.json"
+                for method_id in MODULE.REQUIRED_METHOD_IDS
+            ],
+        )
+
+    def test_main_rejects_preexisting_source_receipts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for path in MODULE.required_existing(root):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("{}\n", encoding="utf-8")
+            write_packet_dirs(MODULE.source_packet_dirs(root))
+
+            stale = MODULE.receipt_path(
+                root,
+                "terminal",
+                "sigprofiler_sbs3",
+            )
+            stale.parent.mkdir(parents=True, exist_ok=True)
+            stale.symlink_to(root / "missing")
+            output = root / "source-freeze.md"
+
+            with (
+                patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "render_source_report_freeze_runbook.py",
+                        "--output",
+                        str(output),
+                        "--root",
+                        str(root),
+                    ],
+                ),
+                self.assertRaisesRegex(SystemExit, "create-only outputs"),
+            ):
+                MODULE.main()
+
+            self.assertFalse(output.exists())
 
     def test_write_once_is_mode_0600_and_refuses_replacement(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
