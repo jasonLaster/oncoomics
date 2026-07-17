@@ -10,7 +10,6 @@ import html
 import json
 import os
 import re
-import tempfile
 import unicodedata
 from datetime import datetime
 from pathlib import Path
@@ -1060,6 +1059,27 @@ def require_exact_review_output_dir(review_dir: Path) -> None:
         )
 
 
+def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None:
+    payload = (
+        json.dumps(validation, indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    try:
+        file_descriptor = os.open(
+            path,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+    except FileExistsError as error:
+        raise ValueError("validation.json already exists") from error
+
+    try:
+        with os.fdopen(file_descriptor, "wb") as handle:
+            handle.write(payload)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle-dir", required=True, type=Path)
@@ -1073,10 +1093,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     review_dir = args.review_dir.resolve()
     validation_path = review_dir / "validation.json"
-    if validation_path.is_file() or validation_path.is_symlink():
-        validation_path.unlink()
 
     try:
+        if validation_path.exists() or validation_path.is_symlink():
+            raise ValueError("validation.json already exists")
         if args.reviewer == "B" and args.other_review_dir is None:
             raise ValueError(
                 "reviewer B requires --other-review-dir for validated reviewer A"
@@ -1221,17 +1241,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "forbidden_token_count": len(forbidden),
     }
 
-    review_dir.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        "w",
-        dir=review_dir,
-        delete=False,
-        encoding="utf-8",
-    ) as handle:
-        json.dump(validation, handle, indent=2, sort_keys=True)
-        handle.write("\n")
-        temporary = Path(handle.name)
-    os.replace(temporary, validation_path)
+    try:
+        write_validation_create_only(validation_path, validation)
+    except ValueError as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
     print(
         f"Validated independent reviewer {args.reviewer}: "
         f"{len(claims)} claims; authorized state {authorized}"

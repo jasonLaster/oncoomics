@@ -251,20 +251,33 @@ class ValidateAiReviewTests(unittest.TestCase):
                 [f"E{index:03d}" for index in range(1, 8)],
             )
 
-    def test_rejects_hrd_promotion_and_removes_stale_validation(self) -> None:
+    def test_rejects_existing_validation_create_only_and_preserves_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))
             fixture.build()
             review = Path(temporary) / "review-a"
             fixture.write_review(review)
             self.assertEqual(fixture.validate(review).returncode, 0)
+            original = (review / "validation.json").read_bytes()
 
             write_claims(review / "claims.csv", proposed_state="positive")
             failed = fixture.validate(review)
 
             self.assertNotEqual(failed.returncode, 0)
+            self.assertIn("validation.json already exists", failed.stderr)
+            self.assertEqual((review / "validation.json").read_bytes(), original)
+
+    def test_rejects_hrd_promotion(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review = Path(temporary) / "review-a"
+            fixture.write_review(review, proposed_state="positive")
+
+            failed = fixture.validate(review)
+
+            self.assertNotEqual(failed.returncode, 0)
             self.assertIn("classification promotion", failed.stderr)
-            self.assertFalse((review / "validation.json").exists())
 
     def test_rejects_changed_spelled_or_derived_numbers(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -282,6 +295,7 @@ class ValidateAiReviewTests(unittest.TestCase):
                 0,
                 (review / "validation.json").read_text(),
             )
+            (review / "validation.json").unlink(missing_ok=True)
 
             report = review / "report.md"
             report.write_text(
@@ -299,6 +313,7 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertNotEqual(changed.returncode, 0)
             self.assertIn("changes or invents", changed.stderr)
 
+            (review / "validation.json").unlink(missing_ok=True)
             fixture.write_review(
                 review,
                 body="The safe summary reports three coverage bins [C001|E001].",
@@ -309,6 +324,7 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertNotEqual(spelled.returncode, 0)
             self.assertIn("spells out or derives", spelled.stderr)
 
+            (review / "validation.json").unlink(missing_ok=True)
             fixture.write_review(
                 review,
                 body="The summary values must not be combined as 3 / 1.5% "
@@ -429,6 +445,7 @@ class ValidateAiReviewTests(unittest.TestCase):
             )
             self.assertEqual(validated.returncode, 0, validated.stdout + validated.stderr)
 
+            (review_b / "validation.json").unlink()
             fixture.write_review(
                 review_b,
                 reviewer="B",
