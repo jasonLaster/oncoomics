@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import csv
 import json
+import stat
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -230,6 +232,28 @@ class ValidateReviewFixture(AiReviewBundleFixture):
 
 
 class ValidateAiReviewTests(unittest.TestCase):
+    def test_validation_receipt_is_born_private_create_only_and_fsynced(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "validation.json"
+            with mock.patch.object(
+                VALIDATE.os,
+                "fsync",
+                wraps=VALIDATE.os.fsync,
+            ) as fsync:
+                VALIDATE.write_validation_create_only(output, {"status": "passed"})
+
+            self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
+            self.assertEqual(
+                json.loads(output.read_text(encoding="utf-8")),
+                {"status": "passed"},
+            )
+            self.assertEqual(fsync.call_count, 1)
+
+            original = output.read_bytes()
+            with self.assertRaisesRegex(ValueError, "validation.json already exists"):
+                VALIDATE.write_validation_create_only(output, {"status": "failed"})
+            self.assertEqual(output.read_bytes(), original)
+
     def test_validates_independent_review_against_schema_2_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))

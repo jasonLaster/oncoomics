@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
@@ -301,6 +302,22 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def write_file_create_only(path: Path, data: bytes) -> None:
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
 def require_new_directory(path: Path) -> None:
     if path.exists() or path.is_symlink():
         raise FileExistsError(f"blocked cross-check output already exists: {path}")
@@ -383,9 +400,12 @@ def generate(output_root: Path, generated_at: str) -> list[Path]:
             "sources": method["sources"],
         }
         spec_path = target / "method_spec.json"
-        spec_path.write_bytes(json_bytes(spec))
+        write_file_create_only(spec_path, json_bytes(spec))
         report_path = target / "report.md"
-        report_path.write_text(render_report(method, generated_at), encoding="utf-8")
+        write_file_create_only(
+            report_path,
+            render_report(method, generated_at).encode("utf-8"),
+        )
         manifest = {
             "schema_version": 1,
             "method_id": method["method_id"],
@@ -429,7 +449,7 @@ def generate(output_root: Path, generated_at: str) -> list[Path]:
             "report_sha256": sha256_file(report_path),
         }
         manifest_path = target / "report_manifest.json"
-        manifest_path.write_bytes(json_bytes(manifest))
+        write_file_create_only(manifest_path, json_bytes(manifest))
         written.extend((spec_path, report_path, manifest_path))
     return written
 

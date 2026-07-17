@@ -1063,6 +1063,7 @@ def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None
     payload = (
         json.dumps(validation, indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
+    file_descriptor = -1
     try:
         file_descriptor = os.open(
             path,
@@ -1074,10 +1075,16 @@ def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None
 
     try:
         with os.fdopen(file_descriptor, "wb") as handle:
+            file_descriptor = -1
             handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
     except Exception:
         path.unlink(missing_ok=True)
         raise
+    finally:
+        if file_descriptor >= 0:
+            os.close(file_descriptor)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

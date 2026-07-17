@@ -272,6 +272,7 @@ def build_manifest(
 
 def write_create_only(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = -1
     try:
         descriptor = os.open(
             path,
@@ -283,11 +284,17 @@ def write_create_only(path: Path, value: dict[str, Any]) -> None:
 
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            descriptor = -1
             json.dump(value, handle, indent=2, sort_keys=True)
             handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
     except Exception:
         path.unlink(missing_ok=True)
         raise
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

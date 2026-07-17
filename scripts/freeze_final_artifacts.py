@@ -69,9 +69,11 @@ def write_json_atomic(
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     staging = path.with_name(f".{path.name}.tmp-{os.getpid()}")
+    descriptor = -1
     try:
-        with staging.open("x", encoding="utf-8") as handle:
-            os.chmod(staging, 0o600)
+        descriptor = os.open(staging, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            descriptor = -1
             json.dump(value, handle, indent=2, sort_keys=True)
             handle.write("\n")
             handle.flush()
@@ -82,6 +84,8 @@ def write_json_atomic(
             staging.replace(path)
         fsync_directory(path.parent)
     finally:
+        if descriptor >= 0:
+            os.close(descriptor)
         staging.unlink(missing_ok=True)
 
 

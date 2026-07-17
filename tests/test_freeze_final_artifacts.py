@@ -369,6 +369,30 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 {"status": "initial"},
             )
 
+    def test_create_only_receipt_is_born_mode_0600(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            path = Path(value) / "receipt.json"
+            original_open = MODULE.os.open
+            opened: list[tuple[int, int]] = []
+
+            def spy_open(path_value, flags, mode=0o777, *args, **kwargs):
+                if Path(path_value).name.startswith(".receipt.json.tmp-"):
+                    opened.append((flags, mode))
+                return original_open(path_value, flags, mode, *args, **kwargs)
+
+            with patch.object(MODULE.os, "open", side_effect=spy_open):
+                MODULE.write_json_atomic(path, {"status": "initial"}, create=True)
+
+            self.assertEqual(
+                opened,
+                [(MODULE.os.O_WRONLY | MODULE.os.O_CREAT | MODULE.os.O_EXCL, 0o600)],
+            )
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8")),
+                {"status": "initial"},
+            )
+
     def test_receipt_put_is_create_only(self) -> None:
         with patch.object(MODULE, "aws_json", return_value={"VersionId": "v1"}) as mocked:
             MODULE.put_receipt(

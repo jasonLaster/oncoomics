@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import stat
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 TEST_DIR = Path(__file__).resolve().parent
@@ -95,6 +97,31 @@ class FinalizeAiReviewTests(unittest.TestCase):
         if validated.returncode != 0:
             raise AssertionError(validated.stderr + validated.stdout)
         return fixture, review
+
+    def test_final_manifest_is_born_private_create_only_and_fsynced(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report_manifest.json"
+            with mock.patch.object(
+                FINALIZE.os,
+                "fsync",
+                wraps=FINALIZE.os.fsync,
+            ) as fsync:
+                FINALIZE.write_create_only(output, {"status": "passed"})
+
+            self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
+            self.assertEqual(
+                load_json(output),
+                {"status": "passed"},
+            )
+            self.assertEqual(fsync.call_count, 1)
+
+            original = output.read_bytes()
+            with self.assertRaisesRegex(
+                ValueError,
+                "report_manifest.json already exists",
+            ):
+                FINALIZE.write_create_only(output, {"status": "failed"})
+            self.assertEqual(output.read_bytes(), original)
 
     def test_wraps_passed_ai_review_for_private_publication(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -3,10 +3,12 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import stat
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
@@ -34,6 +36,24 @@ def sha256(path: Path) -> str:
 
 
 class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
+    def test_packet_files_are_create_only_fsynced_public_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report.md"
+            with mock.patch.object(
+                GENERATOR.os,
+                "fsync",
+                wraps=GENERATOR.os.fsync,
+            ) as fsync:
+                GENERATOR.write_file_create_only(output, b"first\n")
+
+            self.assertEqual(output.read_bytes(), b"first\n")
+            self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o644)
+            self.assertEqual(fsync.call_count, 1)
+
+            with self.assertRaises(FileExistsError):
+                GENERATOR.write_file_create_only(output, b"second\n")
+            self.assertEqual(output.read_bytes(), b"first\n")
+
     def test_reports_preserve_blocked_no_call_state(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "blocked"
