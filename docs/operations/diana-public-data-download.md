@@ -228,6 +228,28 @@ The rendered runbook calls the checked-in AI review and synthesis scripts only:
 `generate_comparative_hrd_synthesis.py`, `finalize_ai_review.py`, and
 `publish_private_report.py`.
 
+After the seven source packets, the two validated AI reviewer packets, and the
+comparative synthesis packet are privately frozen, render the full reviewed
+public-publication handoff:
+
+```bash
+python3 scripts/render_reviewed_publication_runbook.py \
+  --output .codex-tmp/hrd-reports/publication/reviewed-public-runbook.md \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.deterministic_full_wgs.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.rosalind_diana_wgs.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.sequenza_scarhrd.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.sigprofiler_sbs3.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.facets_scarhrd_blocked.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.oncoanalyser_chord_blocked.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.hrdetect_blocked.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/publication-receipts/terminal.ai-reviewer-a.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/publication-receipts/terminal.ai-reviewer-b.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/publication-receipts/terminal.comparative-synthesis.private.json
+```
+
+That final runbook emits one dry-run and one apply command per report method,
+then rebuilds and publishes `public-index/objects.json`.
+
 After publication, rebuild and publish `public-index/objects.json` so the new
 report appears at `data.diana-tnbc.com`:
 
