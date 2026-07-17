@@ -1,0 +1,477 @@
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import importlib.util
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+SCRIPT = SCRIPT_DIR / "publish_reviewed_public_report.py"
+SPEC = importlib.util.spec_from_file_location("publish_reviewed_public_report", SCRIPT)
+assert SPEC and SPEC.loader
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+
+def digest(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def checksum(value: bytes) -> str:
+    return base64.b64encode(hashlib.sha256(value).digest()).decode("ascii")
+
+
+class Fixture:
+    def __init__(self, root: Path, method_id: str = "rosalind_diana_wgs") -> None:
+        self.root = root
+        self.method_id = method_id
+        self.files = tuple(sorted(MODULE.METHOD_CONTRACTS[method_id]["files"]))
+        self.private_prefix = (
+            f"runs/{MODULE.SUBJECT_ALIAS}/{MODULE.RUN_ID}/reports/{method_id}/"
+        )
+        self.packet = root / "packet"
+        self.packet.mkdir()
+        self.receipt_path = root / "private-publication.json"
+        self.output_path = root / "public-publication.json"
+        self.payloads: dict[str, bytes] = {}
+        self._write_packet()
+        self.rebuild_receipt()
+
+    def _write_packet(self) -> None:
+        for name in self.files:
+            if name == "report_manifest.json":
+                continue
+            path = self.packet / name
+            if name == "report.md":
+                path.write_text("# Reviewed HRD evidence\n\nOverall HRD remains no_call.\n")
+            elif name.endswith(".json"):
+                path.write_text(json.dumps({"status": "partial_evidence", "file": name}) + "\n")
+            elif name.endswith(".csv"):
+                path.write_text("field,value\nstatus,partial_evidence\n")
+            else:
+                path.write_text("# Reviewed support\n")
+        support = {
+            name: digest((self.packet / name).read_bytes())
+            for name in self.files
+            if name not in {"report.md", "report_manifest.json"}
+        }
+        manifest = {
+            "schema_version": 1,
+            "method_id": self.method_id,
+            "report_kind": "reviewed_hrd_evidence",
+            "evidence_status": "partial_evidence",
+            "authorized_hrd_state": "no_call",
+            "classification_authorized": False,
+            "classification_qc_status": "not_applicable",
+            "report_sha256": digest((self.packet / "report.md").read_bytes()),
+            "support_sha256": support,
+            "source_sha256": {"frozen_input": "a" * 64},
+            "review_summary": {
+                "overall": {
+                    "evidence_status": "partial_evidence",
+                    "authorized_hrd_state": "no_call",
+                }
+            },
+        }
+        (self.packet / "report_manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+        )
+
+    def rebuild_receipt(self) -> None:
+        self.payloads = {name: (self.packet / name).read_bytes() for name in self.files}
+        rows = []
+        for index, name in enumerate(self.files, 1):
+            payload = self.payloads[name]
+            sha = digest(payload)
+            key = self.private_prefix + name
+            rows.append(
+                {
+                    "relative_path": name,
+                    "bucket": MODULE.PRIVATE_BUCKET,
+                    "key": key,
+                    "uri": f"s3://{MODULE.PRIVATE_BUCKET}/{key}",
+                    "version_id": f"private-version-{index}",
+                    "bytes": len(payload),
+                    "sha256": sha,
+                    "checksum_sha256": checksum(payload),
+                    "checksum_type": "FULL_OBJECT",
+                    "server_side_encryption": "aws:kms",
+                    "kms_key_id": MODULE.PRIVATE_KMS_KEY_ARN,
+                    "status": "passed",
+                    "checks": {
+                        "bytes": True,
+                        "checksum_sha256": True,
+                        "checksum_type": True,
+                        "kms": True,
+                        "metadata_sha256": True,
+                        "sse": True,
+                        "version_id": True,
+                    },
+                }
+            )
+        receipt = {
+            "schema_version": 1,
+            "status": "passed",
+            "subject_alias": MODULE.SUBJECT_ALIAS,
+            "run_id": MODULE.RUN_ID,
+            "method_id": self.method_id,
+            "destination_prefix": f"s3://{MODULE.PRIVATE_BUCKET}/{self.private_prefix}",
+            "kms_key_arn": MODULE.PRIVATE_KMS_KEY_ARN,
+            "expected_files": list(self.files),
+            "object_count": len(rows),
+            "passed_count": len(rows),
+            "objects": rows,
+        }
+        self.receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
+
+    def mutate_manifest(self, **updates: object) -> None:
+        path = self.packet / "report_manifest.json"
+        value = json.loads(path.read_text())
+        value.update(updates)
+        path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+        self.rebuild_receipt()
+
+    def args(self, *, apply: bool = False, destination: str | None = None) -> argparse.Namespace:
+        prefix = MODULE.PUBLIC_ROOT + MODULE.METHOD_CONTRACTS[self.method_id]["destination"]
+        return argparse.Namespace(
+            private_publication_receipt=self.receipt_path,
+            method_id=self.method_id,
+            destination_prefix=destination or f"s3://{MODULE.PUBLIC_BUCKET}/{prefix}",
+            receipt_output=self.output_path,
+            forbidden_token=[],
+            region=MODULE.REGION,
+            apply=apply,
+        )
+
+
+class FakeAws:
+    def __init__(self, fixture: Fixture) -> None:
+        self.fixture = fixture
+        receipt = json.loads(fixture.receipt_path.read_text())
+        self.sources = {row["key"]: row for row in receipt["objects"]}
+        self.public: dict[str, dict[str, object]] = {}
+        self.put_calls: list[list[str]] = []
+        self.get_calls: list[tuple[str, str]] = []
+        self.preexisting_history: list[dict[str, object]] = []
+        self.inject_delete_marker = False
+        self.null_put_version = False
+        self.literal_null_put_version = False
+        self.wrong_destination_checksum = False
+        self.wrong_source_version = False
+        self.wrong_source_kms = False
+        self.corrupt_download = False
+
+    def source_metadata(self, row: dict[str, object]) -> dict[str, object]:
+        return {
+            "VersionId": "wrong-version" if self.wrong_source_version else row["version_id"],
+            "ContentLength": row["bytes"],
+            "ChecksumType": "FULL_OBJECT",
+            "ChecksumSHA256": row["checksum_sha256"],
+            "ServerSideEncryption": "aws:kms",
+            "SSEKMSKeyId": "arn:aws:kms:us-east-1:000000000000:key/wrong"
+            if self.wrong_source_kms
+            else MODULE.PRIVATE_KMS_KEY_ARN,
+            "Metadata": {"sha256": row["sha256"]},
+        }
+
+    @staticmethod
+    def value(arguments: list[str], name: str) -> str:
+        return arguments[arguments.index(name) + 1]
+
+    def aws_json(self, arguments: list[str], region: str) -> dict[str, object]:
+        self.assert_region(region)
+        operation = tuple(arguments[:2])
+        if operation == ("s3api", "get-bucket-versioning"):
+            return {"Status": "Enabled"}
+        if operation == ("s3api", "list-object-versions"):
+            prefix = self.value(arguments, "--prefix")
+            if self.preexisting_history:
+                return {"Versions": self.preexisting_history, "DeleteMarkers": []}
+            versions = [
+                {
+                    "Key": key,
+                    "VersionId": row["VersionId"],
+                    "IsLatest": True,
+                    "Size": row["ContentLength"],
+                }
+                for key, row in sorted(self.public.items())
+                if key.startswith(prefix)
+            ]
+            markers = (
+                [{"Key": prefix + "deleted", "VersionId": "deleted-version", "IsLatest": True}]
+                if self.inject_delete_marker and versions
+                else []
+            )
+            return {"Versions": versions, "DeleteMarkers": markers}
+        if operation == ("s3api", "head-object"):
+            bucket = self.value(arguments, "--bucket")
+            key = self.value(arguments, "--key")
+            if bucket == MODULE.PRIVATE_BUCKET:
+                return self.source_metadata(self.sources[key])
+            return dict(self.public[key])
+        if operation == ("s3api", "put-object"):
+            self.put_calls.append(list(arguments))
+            if self.null_put_version:
+                return {}
+            key = self.value(arguments, "--key")
+            body = Path(self.value(arguments, "--body"))
+            payload = body.read_bytes()
+            version = f"public-version-{len(self.public) + 1}"
+            metadata = json.loads(self.value(arguments, "--metadata"))
+            observed_checksum = checksum(payload)
+            if self.wrong_destination_checksum:
+                observed_checksum = checksum(b"different")
+            self.public[key] = {
+                "VersionId": "null" if self.literal_null_put_version else version,
+                "ContentLength": len(payload),
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": observed_checksum,
+                "ServerSideEncryption": "AES256",
+                "Metadata": metadata,
+                "ContentType": self.value(arguments, "--content-type"),
+            }
+            return {
+                "VersionId": "null" if self.literal_null_put_version else version,
+                "ChecksumSHA256": observed_checksum,
+            }
+        raise AssertionError(f"unexpected AWS call: {arguments}")
+
+    def download_exact(
+        self,
+        bucket: str,
+        key: str,
+        version_id: str,
+        destination: Path,
+        region: str,
+    ) -> dict[str, object]:
+        self.assert_region(region)
+        self.get_calls.append((key, version_id))
+        row = self.sources[key]
+        if version_id != row["version_id"]:
+            raise AssertionError("publisher did not request the receipt VersionId")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        payload = self.fixture.payloads[str(row["relative_path"])]
+        destination.write_bytes(payload + (b"corrupt" if self.corrupt_download else b""))
+        return self.source_metadata(row)
+
+    def assert_region(self, region: str) -> None:
+        if region != MODULE.REGION:
+            raise AssertionError(f"wrong region: {region}")
+
+
+class PublishReviewedPublicReportTests(unittest.TestCase):
+    def execute(self, fixture: Fixture, fake: FakeAws, *, apply: bool = False) -> dict[str, object]:
+        with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json), mock.patch.object(
+            MODULE, "download_exact", side_effect=fake.download_exact
+        ):
+            return MODULE.run(fixture.args(apply=apply))
+
+    def test_dry_run_validates_all_exact_private_versions_without_uploading(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            result = self.execute(fixture, fake)
+            self.assertEqual(result["status"], "dry_run")
+            self.assertEqual(len(result["source_objects"]), 8)
+            self.assertEqual(result["destination_objects"], [])
+            self.assertEqual(len(fake.get_calls), 8)
+            self.assertEqual(fake.put_calls, [])
+            self.assertEqual(fixture.output_path.stat().st_mode & 0o777, 0o600)
+
+    def test_apply_uses_create_only_sse_s3_sha256_and_exact_final_history(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            result = self.execute(fixture, fake, apply=True)
+            self.assertEqual(result["status"], "passed")
+            self.assertEqual(len(result["destination_objects"]), 8)
+            self.assertTrue(result["checks"]["destination_exact_one_version_no_delete_history"])
+            for call in fake.put_calls:
+                self.assertEqual(FakeAws.value(call, "--if-none-match"), "*")
+                self.assertEqual(FakeAws.value(call, "--server-side-encryption"), "AES256")
+                self.assertEqual(FakeAws.value(call, "--checksum-algorithm"), "SHA256")
+                key = FakeAws.value(call, "--key")
+                self.assertTrue(key.startswith(MODULE.PUBLIC_ROOT + "rosalind/"))
+
+    def test_rejects_nonpassed_private_receipt_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            receipt = json.loads(fixture.receipt_path.read_text())
+            receipt["status"] = "in_progress"
+            fixture.receipt_path.write_text(json.dumps(receipt))
+            with mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")):
+                with self.assertRaisesRegex(ValueError, "not exact and passed"):
+                    MODULE.run(fixture.args())
+
+    def test_rejects_unallowlisted_or_reserved_private_file(self) -> None:
+        for relative in ("raw.fastq.gz", "_publication"):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                receipt = json.loads(fixture.receipt_path.read_text())
+                receipt["objects"][0]["relative_path"] = relative
+                fixture.receipt_path.write_text(json.dumps(receipt))
+                with self.assertRaisesRegex(
+                    ValueError, "unsafe report path|inventory|object is not exact"
+                ):
+                    MODULE.validate_private_receipt(fixture.receipt_path, fixture.method_id)
+
+    def test_rejects_null_private_receipt_version(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            receipt = json.loads(fixture.receipt_path.read_text())
+            receipt["objects"][0]["version_id"] = "null"
+            fixture.receipt_path.write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(ValueError, "object is not exact"):
+                MODULE.validate_private_receipt(fixture.receipt_path, fixture.method_id)
+
+    def test_rejects_destination_outside_exact_method_child(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            args = fixture.args(
+                destination=f"s3://{MODULE.PUBLIC_BUCKET}/{MODULE.PUBLIC_ROOT}raw/"
+            )
+            with self.assertRaisesRegex(ValueError, "exact reviewed public child"):
+                MODULE.run(args)
+
+    def test_rejects_preexisting_destination_history_before_source_get(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            fake.preexisting_history = [
+                {
+                    "Key": MODULE.PUBLIC_ROOT + "rosalind/report.md",
+                    "VersionId": "old",
+                    "IsLatest": True,
+                    "Size": 1,
+                }
+            ]
+            with self.assertRaisesRegex(ValueError, "prior version"):
+                self.execute(fixture, fake)
+            self.assertEqual(fake.get_calls, [])
+            self.assertEqual(json.loads(fixture.output_path.read_text())["status"], "failed")
+
+    def test_rejects_wrong_source_version_or_kms_before_upload(self) -> None:
+        for field in ("wrong_source_version", "wrong_source_kms"):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                fake = FakeAws(fixture)
+                setattr(fake, field, True)
+                with self.assertRaisesRegex(ValueError, "exact-version head failed"):
+                    self.execute(fixture, fake, apply=True)
+                self.assertEqual(fake.put_calls, [])
+
+    def test_rejects_local_get_sha_mismatch_before_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            fake.corrupt_download = True
+            with self.assertRaisesRegex(ValueError, "exact-version GET failed"):
+                self.execute(fixture, fake, apply=True)
+            self.assertEqual(fake.put_calls, [])
+
+    def test_second_scan_rejects_forbidden_identifier_before_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            report = fixture.packet / "report.md"
+            report.write_text("# Reviewed\n\npersonalis direct label\n")
+            fixture.mutate_manifest(report_sha256=digest(report.read_bytes()))
+            fake = FakeAws(fixture)
+            with self.assertRaisesRegex(ValueError, "forbidden identifier"):
+                self.execute(fixture, fake, apply=True)
+            self.assertEqual(fake.put_calls, [])
+
+    def test_second_scan_rejects_escaped_json_forbidden_identifier_before_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            support_name = "research_context_sources.json"
+            support = fixture.packet / support_name
+            support.write_text('{"note":"P\\u0065rsonalis escaped label"}\n')
+            manifest_path = fixture.packet / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["support_sha256"][support_name] = digest(support.read_bytes())
+            manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+            fixture.rebuild_receipt()
+            fake = FakeAws(fixture)
+            with self.assertRaisesRegex(ValueError, "forbidden identifier"):
+                self.execute(fixture, fake, apply=True)
+            self.assertEqual(fake.put_calls, [])
+
+    def test_manifest_cannot_promote_no_call_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fixture.mutate_manifest(
+                authorized_hrd_state="positive", classification_authorized=True
+            )
+            fake = FakeAws(fixture)
+            with self.assertRaisesRegex(ValueError, "no-call contract"):
+                self.execute(fixture, fake, apply=True)
+            self.assertEqual(fake.put_calls, [])
+
+    def test_apply_rejects_null_destination_version(self) -> None:
+        for flag in ("null_put_version", "literal_null_put_version"):
+            with self.subTest(flag=flag), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                fake = FakeAws(fixture)
+                setattr(fake, flag, True)
+                with self.assertRaisesRegex(ValueError, "omitted a non-null VersionId"):
+                    self.execute(fixture, fake, apply=True)
+                self.assertEqual(
+                    json.loads(fixture.output_path.read_text())["status"], "failed"
+                )
+
+    def test_apply_rejects_destination_checksum_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            fake.wrong_destination_checksum = True
+            with self.assertRaisesRegex(ValueError, "destination verification failed"):
+                self.execute(fixture, fake, apply=True)
+
+    def test_apply_rejects_delete_marker_in_final_history(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            fake.inject_delete_marker = True
+            with self.assertRaisesRegex(ValueError, "one expected version"):
+                self.execute(fixture, fake, apply=True)
+            self.assertEqual(json.loads(fixture.output_path.read_text())["status"], "failed")
+
+    def test_deterministic_and_crosscheck_contracts_are_supported(self) -> None:
+        for method in ("deterministic_full_wgs", "facets_scarhrd_blocked"):
+            with self.subTest(method=method), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary), method)
+                fake = FakeAws(fixture)
+                result = self.execute(fixture, fake)
+                self.assertEqual(result["status"], "dry_run")
+                self.assertEqual(len(result["source_objects"]), len(fixture.files))
+
+    def test_existing_receipt_output_is_never_replaced(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fixture.output_path.write_text("preserve\n")
+            fake = FakeAws(fixture)
+            with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json):
+                with self.assertRaises(FileExistsError):
+                    MODULE.run(fixture.args())
+            self.assertEqual(fixture.output_path.read_text(), "preserve\n")
+
+    def test_private_receipt_symlink_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            target = fixture.receipt_path
+            linked = fixture.root / "linked-receipt.json"
+            linked.symlink_to(target)
+            with self.assertRaisesRegex(ValueError, "must be a real file"):
+                MODULE.validate_private_receipt(linked, fixture.method_id)
+
+
+if __name__ == "__main__":
+    unittest.main()

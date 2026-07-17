@@ -8,7 +8,7 @@ import datetime as dt
 import json
 import pathlib
 import subprocess
-from typing import Any
+from typing import Any, Sequence
 
 REGION = "us-east-1"
 BUCKET = "diana-omics-results-172630973301-us-east-1"
@@ -38,44 +38,62 @@ FORBIDDEN_PREFIXES = (
 
 
 def list_prefix(prefix: str) -> list[dict[str, Any]]:
-    command = [
-        "aws",
-        "s3api",
-        "list-objects-v2",
-        "--region",
-        REGION,
-        "--bucket",
-        BUCKET,
-        "--prefix",
-        prefix,
-        "--output",
-        "json",
-    ]
-    result = subprocess.run(command, check=True, text=True, capture_output=True)
-    response = json.loads(result.stdout)
     objects: list[dict[str, Any]] = []
-    for item in response.get("Contents", []):
-        key = item["Key"]
-        if not key.startswith(prefix):
-            raise RuntimeError(f"S3 returned an object outside {prefix}: {key}")
-        if any(key.startswith(blocked) for blocked in FORBIDDEN_PREFIXES):
-            raise RuntimeError(f"Refusing to index private object: {key}")
-        if key.endswith("/"):
-            continue
-        objects.append(
-            {
-                "key": key,
-                "size": item["Size"],
-                "last_modified": item["LastModified"],
-            }
-        )
-    return objects
+    continuation_token = ""
+    seen_tokens: set[str] = set()
+
+    while True:
+        command = [
+            "aws",
+            "s3api",
+            "list-objects-v2",
+            "--region",
+            REGION,
+            "--bucket",
+            BUCKET,
+            "--prefix",
+            prefix,
+            "--output",
+            "json",
+        ]
+        if continuation_token:
+            command.extend(["--continuation-token", continuation_token])
+        result = subprocess.run(command, check=True, text=True, capture_output=True)
+        response = json.loads(result.stdout)
+        contents = response.get("Contents", [])
+        if not isinstance(contents, list) or any(
+            not isinstance(item, dict) for item in contents
+        ):
+            raise RuntimeError(f"S3 returned malformed objects for {prefix}")
+        for item in contents:
+            key = item["Key"]
+            if not key.startswith(prefix):
+                raise RuntimeError(f"S3 returned an object outside {prefix}: {key}")
+            if any(key.startswith(blocked) for blocked in FORBIDDEN_PREFIXES):
+                raise RuntimeError(f"Refusing to index private object: {key}")
+            if key.endswith("/"):
+                continue
+            objects.append(
+                {
+                    "key": key,
+                    "size": item["Size"],
+                    "last_modified": item["LastModified"],
+                }
+            )
+
+        if response.get("IsTruncated") is not True:
+            return objects
+        next_token = str(response.get("NextContinuationToken", ""))
+        if not next_token or next_token in seen_tokens:
+            raise RuntimeError(f"S3 pagination did not advance for {prefix}")
+        seen_tokens.add(next_token)
+        continuation_token = next_token
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=pathlib.Path, required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     objects: list[dict[str, Any]] = []
     for prefix in PUBLIC_PREFIXES:

@@ -1,0 +1,335 @@
+#!/usr/bin/env python3
+"""Publish the reviewed public object index after report publication."""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import json
+import os
+import re
+import subprocess
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Sequence
+
+from build_public_results_index import BUCKET, FORBIDDEN_PREFIXES, PUBLIC_PREFIXES
+
+REGION = "us-east-1"
+INDEX_KEY = "public-index/objects.json"
+CLASSIFICATION = "reviewed-public-index"
+CHECKSUM_TYPE = "FULL_OBJECT"
+SERVER_SIDE_ENCRYPTION = "AES256"
+CACHE_CONTROL = "max-age=300"
+CONTENT_TYPE = "application/json"
+SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+VERSION_ID = re.compile(r"^\S+$")
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def canonical_bytes(value: Any) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def checksum_sha256(digest: str) -> str:
+    return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
+
+
+def non_null_version_id(value: str) -> bool:
+    return value != "null" and VERSION_ID.fullmatch(value) is not None
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("public index must be a JSON object")
+    return value
+
+
+def write_private_atomic(path: Path, value: dict[str, Any], *, create: bool) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise ValueError("receipt output may not be a symlink")
+    if create:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        temporary: Path | None = None
+    else:
+        if not path.is_file() or path.is_symlink():
+            raise ValueError("reserved receipt output is missing")
+        descriptor, raw = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+        os.fchmod(descriptor, 0o600)
+        temporary = Path(raw)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(canonical_bytes(value))
+            handle.flush()
+            os.fsync(handle.fileno())
+        if temporary is not None:
+            os.replace(temporary, path)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def public_index_object(row: Any) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        raise ValueError("public index contains a malformed object row")
+    key = row.get("key")
+    size = row.get("size")
+    last_modified = row.get("last_modified")
+    if (
+        not isinstance(key, str)
+        or not key
+        or key.endswith("/")
+        or any(key.startswith(blocked) for blocked in FORBIDDEN_PREFIXES)
+        or not any(key.startswith(prefix) for prefix in PUBLIC_PREFIXES)
+        or not isinstance(size, int)
+        or size < 0
+        or not isinstance(last_modified, str)
+        or not last_modified
+    ):
+        raise ValueError(f"public index object is not allowlisted: {row}")
+    return {"key": key, "size": size, "last_modified": last_modified}
+
+
+def validate_public_index(path: Path) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("public index must be a real file")
+    digest = sha256(path)
+    if not SHA256_HEX.fullmatch(digest):
+        raise ValueError("public index SHA-256 is malformed")
+    payload = load_json(path)
+    objects = payload.get("objects")
+    if (
+        payload.get("schema_version") != 1
+        or payload.get("bucket") != BUCKET
+        or payload.get("classification")
+        != "reviewed_public_validation_and_alias_only_analysis_outputs"
+        or payload.get("prefixes") != list(PUBLIC_PREFIXES)
+        or not isinstance(objects, list)
+    ):
+        raise ValueError("public index contract is malformed")
+    normalized = [public_index_object(row) for row in objects]
+    keys = [row["key"] for row in normalized]
+    if (
+        len(keys) != len(set(keys))
+        or keys != sorted(keys)
+        or payload.get("object_count") != len(normalized)
+        or payload.get("total_size") != sum(row["size"] for row in normalized)
+    ):
+        raise ValueError("public index inventory is not exact")
+    return {
+        "sha256": digest,
+        "bytes": path.stat().st_size,
+        "object_count": len(normalized),
+        "total_size": sum(row["size"] for row in normalized),
+    }
+
+
+def aws_json(arguments: list[str], region: str) -> dict[str, Any]:
+    completed = subprocess.run(
+        ["aws", *arguments, "--region", region, "--output", "json"],
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    value = json.loads(completed.stdout) if completed.stdout.strip() else {}
+    if not isinstance(value, dict):
+        raise ValueError("AWS command returned a non-object")
+    return value
+
+
+def head_object(bucket: str, key: str, region: str, version_id: str = "") -> dict[str, Any]:
+    arguments = [
+        "s3api",
+        "head-object",
+        "--bucket",
+        bucket,
+        "--key",
+        key,
+        "--checksum-mode",
+        "ENABLED",
+    ]
+    if version_id:
+        arguments.extend(["--version-id", version_id])
+    return aws_json(arguments, region)
+
+
+def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, Any]:
+    metadata = {
+        "classification": CLASSIFICATION,
+        "sha256": custody["sha256"],
+    }
+    response = aws_json(
+        [
+            "s3api",
+            "put-object",
+            "--bucket",
+            BUCKET,
+            "--key",
+            INDEX_KEY,
+            "--body",
+            str(path),
+            "--content-type",
+            CONTENT_TYPE,
+            "--cache-control",
+            CACHE_CONTROL,
+            "--server-side-encryption",
+            SERVER_SIDE_ENCRYPTION,
+            "--checksum-algorithm",
+            "SHA256",
+            "--metadata",
+            json.dumps(metadata, sort_keys=True, separators=(",", ":")),
+        ],
+        region,
+    )
+    version_id = str(response.get("VersionId", ""))
+    if not non_null_version_id(version_id):
+        raise ValueError("public index put omitted a non-null VersionId")
+    expected_checksum = checksum_sha256(custody["sha256"])
+    exact = head_object(BUCKET, INDEX_KEY, region, version_id)
+    current = head_object(BUCKET, INDEX_KEY, region)
+    checks = {
+        "version_exact": exact.get("VersionId") == current.get("VersionId") == version_id,
+        "bytes_exact": int(exact.get("ContentLength", -1))
+        == int(current.get("ContentLength", -2))
+        == custody["bytes"],
+        "checksum_type": exact.get("ChecksumType")
+        == current.get("ChecksumType")
+        == CHECKSUM_TYPE,
+        "checksum_sha256": exact.get("ChecksumSHA256")
+        == current.get("ChecksumSHA256")
+        == expected_checksum,
+        "sse_s3": exact.get("ServerSideEncryption")
+        == current.get("ServerSideEncryption")
+        == SERVER_SIDE_ENCRYPTION,
+        "metadata": exact.get("Metadata") == current.get("Metadata") == metadata,
+        "cache_control": exact.get("CacheControl")
+        == current.get("CacheControl")
+        == CACHE_CONTROL,
+        "content_type": exact.get("ContentType") == current.get("ContentType") == CONTENT_TYPE,
+    }
+    if not all(checks.values()):
+        raise ValueError(f"public index destination verification failed: {checks}")
+    return {
+        "bucket": BUCKET,
+        "key": INDEX_KEY,
+        "uri": f"s3://{BUCKET}/{INDEX_KEY}",
+        "version_id": version_id,
+        "bytes": custody["bytes"],
+        "sha256": custody["sha256"],
+        "checksum_sha256": expected_checksum,
+        "server_side_encryption": SERVER_SIDE_ENCRYPTION,
+        "status": "passed",
+        "checks": checks,
+    }
+
+
+def run(args: argparse.Namespace) -> dict[str, Any]:
+    custody = validate_public_index(args.index)
+    receipt: dict[str, Any] = {
+        "schema_version": 1,
+        "status": "preflighting",
+        "generated_at_utc": now(),
+        "apply": bool(args.apply),
+        "index": {
+            "path": str(args.index.resolve()),
+            **custody,
+        },
+        "destination": {
+            "bucket": BUCKET,
+            "key": INDEX_KEY,
+            "uri": f"s3://{BUCKET}/{INDEX_KEY}",
+        },
+        "checks": {
+            "index_schema": True,
+            "index_allowlisted_prefixes": True,
+            "index_sorted_unique_keys": True,
+        },
+    }
+    write_private_atomic(args.receipt_output, receipt, create=True)
+    try:
+        if args.apply:
+            versioning = aws_json(
+                ["s3api", "get-bucket-versioning", "--bucket", BUCKET],
+                args.region,
+            )
+            if versioning.get("Status") != "Enabled":
+                raise ValueError(f"bucket versioning is not enabled: {BUCKET}")
+            receipt["checks"]["destination_bucket_versioning"] = True
+            receipt["status"] = "in_progress"
+            write_private_atomic(args.receipt_output, receipt, create=False)
+            receipt["destination_object"] = upload_index(args.index, custody, args.region)
+            receipt["checks"].update(
+                {
+                    "destination_sse_s3": True,
+                    "destination_full_object_sha256": True,
+                    "destination_current_version_exact": True,
+                }
+            )
+            receipt["status"] = "passed"
+        else:
+            receipt["status"] = "dry_run"
+        receipt["completed_at_utc"] = now()
+        write_private_atomic(args.receipt_output, receipt, create=False)
+        return receipt
+    except Exception as error:
+        receipt["status"] = "failed"
+        receipt["failed_at_utc"] = now()
+        receipt["error"] = f"{type(error).__name__}: {error}"
+        write_private_atomic(args.receipt_output, receipt, create=False)
+        raise
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Publish public-index/objects.json after reviewed report publication."
+    )
+    parser.add_argument("--index", required=True, type=Path)
+    parser.add_argument("--receipt-output", required=True, type=Path)
+    parser.add_argument("--region", default=REGION, choices=(REGION,))
+    parser.add_argument("--apply", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        result = run(args)
+    except (
+        FileExistsError,
+        OSError,
+        ValueError,
+        json.JSONDecodeError,
+        subprocess.CalledProcessError,
+    ) as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
+    print(
+        json.dumps(
+            {
+                "status": result["status"],
+                "object_count": result["index"]["object_count"],
+                "total_size": result["index"]["total_size"],
+                "receipt_output": str(args.receipt_output),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
