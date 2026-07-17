@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import shlex
 import stat
 import sys
 import tempfile
@@ -114,14 +115,41 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
     def test_renders_exact_capture_command_from_bound_receipts(self) -> None:
         command = MODULE.render_from_files(self.args())
 
-        self.assertIn("capture_materializer_terminal.py", command)
-        self.assertIn(f"--job-id {self.job_id}", command)
-        self.assertIn(
-            "crosscheck-materialization-receipts/", command
+        lines = command.splitlines()
+        self.assertEqual(lines[:2], ["#!/usr/bin/env bash", "set -euo pipefail"])
+        self.assertEqual(
+            shlex.split(lines[2]),
+            [
+                "python3",
+                str(SCRIPT_DIR / "capture_materializer_terminal.py"),
+                "--job-id",
+                self.job_id,
+                *[
+                    token
+                    for name in MODULE.PARAMETER_NAMES
+                    for token in (
+                        "--expected-parameter",
+                        f"{name}={self.parameters[name]}",
+                    )
+                ],
+                "--expected-receipt-prefix",
+                (
+                    f"{MODULE.DETERMINISTIC_DESTINATION_PREFIX}/provenance/"
+                    "crosscheck-materialization-receipts/"
+                ),
+                "--expected-kms-key-arn",
+                MODULE.KMS_KEY_ARN,
+                "--capture-output",
+                str(self.capture_output),
+                "--anchor-output",
+                str(self.anchor_output),
+                "--receipt-output",
+                str(self.receipt_output),
+                "--region",
+                MODULE.REGION,
+            ],
         )
         self.assertNotIn("<", command)
-        for name, value in self.parameters.items():
-            self.assertIn(f"--expected-parameter {name}={value}", command)
 
     def test_refuses_to_render_from_tampered_request(self) -> None:
         self.response = self.bound_response(self.request)
