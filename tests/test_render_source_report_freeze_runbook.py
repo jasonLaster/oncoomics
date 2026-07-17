@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import shutil
 import stat
 import sys
 import tempfile
@@ -20,6 +21,13 @@ SPEC = importlib.util.spec_from_file_location(
 assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+
+
+def write_packet_dirs(paths: dict[str, Path]) -> None:
+    for method_id, path in paths.items():
+        path.mkdir(parents=True)
+        for relative in MODULE.METHOD_CONTRACTS[method_id]["files"]:
+            (path / relative).write_text("packet file\n", encoding="utf-8")
 
 
 class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
@@ -71,16 +79,28 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             paths = MODULE.source_packet_dirs(root)
-            for path in paths.values():
-                path.mkdir(parents=True)
+            write_packet_dirs(paths)
             MODULE.validate_packet_dirs(paths)
 
             reordered = dict(reversed(list(paths.items())))
             with self.assertRaisesRegex(ValueError, "pinned seven-method order"):
                 MODULE.validate_packet_dirs(reordered)
 
-            next(iter(paths.values())).rmdir()
+            shutil.rmtree(next(iter(paths.values())))
             with self.assertRaisesRegex(ValueError, "missing"):
+                MODULE.validate_packet_dirs(paths)
+
+    def test_validate_packet_dirs_rejects_non_exact_packet_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+
+            (paths["deterministic_full_wgs"] / "notes.md").write_text(
+                "stale scratch\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "inventory is not exact"):
                 MODULE.validate_packet_dirs(paths)
 
     def test_current_blocked_generator_satisfies_renderer_packet_dirs(self) -> None:
@@ -93,9 +113,12 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             )
 
             paths = MODULE.source_packet_dirs(root)
-            for method_id, path in paths.items():
-                if method_id not in MODULE.BLOCKED_CROSSCHECK_REPORT_DIRS:
-                    path.mkdir(parents=True)
+            source_paths = {
+                method_id: path
+                for method_id, path in paths.items()
+                if method_id not in MODULE.BLOCKED_CROSSCHECK_REPORT_DIRS
+            }
+            write_packet_dirs(source_paths)
 
             MODULE.validate_packet_dirs(paths)
             text = MODULE.render(root, "terminal")

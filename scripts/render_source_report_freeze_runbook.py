@@ -14,7 +14,7 @@ from hrd_report_inventory import (
     BLOCKED_CROSSCHECK_REPORT_DIRS,
     REQUIRED_METHOD_IDS,
 )
-from publish_reviewed_public_report import REGION, RUN_ID
+from publish_reviewed_public_report import METHOD_CONTRACTS, REGION, RUN_ID
 from render_ai_synthesis_runbook import FORBIDDEN_TOKENS, write_once
 
 
@@ -77,6 +77,33 @@ def validate_packet_dirs(paths: dict[str, Path]) -> None:
     ]
     if missing:
         raise ValueError("source packet directories are missing: " + ", ".join(missing))
+
+    for method_id, path in paths.items():
+        expected = set(METHOD_CONTRACTS[method_id]["files"])
+        observed = {child.name for child in path.iterdir()}
+        if observed != expected:
+            missing_files = sorted(expected - observed)
+            unexpected = sorted(observed - expected)
+            details = []
+            if missing_files:
+                details.append("missing " + ",".join(missing_files))
+            if unexpected:
+                details.append("unexpected " + ",".join(unexpected))
+            raise ValueError(
+                f"{method_id} packet directory inventory is not exact: "
+                + "; ".join(details)
+            )
+
+        invalid = sorted(
+            child.name
+            for child in path.iterdir()
+            if child.is_symlink() or not child.is_file()
+        )
+        if invalid:
+            raise ValueError(
+                f"{method_id} packet directory contains invalid paths: "
+                + ",".join(invalid)
+            )
 
 
 def receipt_path(root: Path, receipt_stem: str, method_id: str) -> Path:
