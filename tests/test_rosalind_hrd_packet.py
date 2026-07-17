@@ -1,10 +1,97 @@
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Dict, Optional
 from unittest.mock import patch
 
 from diana_omics import utils
 from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as packet
+
+
+def write_diana_wgs_worker_artifacts(root: Path, readiness_overrides: Optional[Dict[str, str]] = None) -> None:
+    readiness_overrides = readiness_overrides or {}
+    readiness = [
+        {
+            "evidence_surface": surface,
+            "status": readiness_overrides.get(surface, status),
+            "detail": detail,
+        }
+        for surface, status, detail in (
+            ("source_sha256", "ready", "Payload checksums passed."),
+            ("wgs_alignment", "ready", "Tumor and normal alignment passed."),
+            ("matched_normal_somatic_variants", "ready", "Matched-normal calling passed."),
+            ("coverage_cnv", "partial_evidence", "Coverage bins are not allele-specific."),
+            ("sbs96", "partial_evidence", "SBS96 input exists without SBS3 assignment."),
+            ("sv", "partial_evidence", "BAM-derived counts are not an SV callset."),
+            ("scarHRD", "no_call", "Allele-specific segments and purity/ploidy are absent."),
+            ("CHORD", "no_call", "A validated production SV callset is absent."),
+            ("HRDetect", "no_call", "The calibrated integrated feature model is absent."),
+            ("overall_hrd", "no_call", "No defensible scalar HRD classification is available."),
+        )
+    ]
+    utils.write_json(
+        root / "diana_hrd_summary.json",
+        {
+            "status": "no_call",
+            "evidence_status": "partial_evidence",
+            "run_id": "unit-worker-run",
+            "input": {
+                "dataset": "SENSITIVE-DATASET-LABEL",
+                "pair": "SENSITIVE-PAIR-ID",
+                "lanes": 2,
+                "reference": "hg38 analysis reference",
+                "source_integrity": "passed",
+            },
+            "hrd_readiness": readiness,
+            "boundary": "Research-use output with no clinical or scalar HRD conclusion authorized.",
+        },
+    )
+    utils.write_csv(root / "hrd_readiness.csv", readiness)
+    alignment_rows = [
+        {"status": "passed", "role": "tumor", "total_reads": 100, "mapped_reads": 98},
+        {"status": "passed", "role": "normal", "total_reads": 100, "mapped_reads": 99},
+    ]
+    utils.write_json(root / "alignment/bam_validation_summary.json", {"status": "passed", "rows": alignment_rows})
+    utils.write_json(
+        root / "variants/mutect2_summary.json",
+        {
+            "status": "passed",
+            "total_filtered_records": 321,
+            "pass_records": 123,
+            "pass_snvs": 100,
+            "pass_indels": 23,
+            "brca1_brca2_pass_region_records": 1,
+        },
+    )
+    utils.write_csv(
+        root / "variants/brca1_brca2_pass_variants.csv",
+        [{"contig": "chr17", "position": "100", "annotation_status": "region_only_requires_variant_annotation_review"}],
+    )
+    utils.write_json(
+        root / "cnv/coverage_cnv_summary.json",
+        {"status": "partial_evidence", "bin_count": 600, "relative_gain_bins": 4, "relative_loss_bins": 5},
+    )
+    utils.write_csv(root / "cnv/coverage_cnv_bins.csv", [{"contig": "chr1", "start": 0, "end": 5_000_000}])
+    utils.write_json(
+        root / "signatures/signature_assignment_summary.json",
+        {
+            "status": "partial_evidence",
+            "usable_snv_records": 100,
+            "sigprofiler_assignment_status": "input_ready_threshold_met",
+            "sbs3_status": "no_call_signature_assignment_and_threshold_policy_not_locked",
+        },
+    )
+    utils.write_csv(root / "signatures/wgs_sbs96_matrix.csv", [{"mutation_type": "C>A", "count": 1}])
+    sv_rows = [
+        {"status": "partial_evidence", "role": "tumor", "discordant_mapped_pairs": 20, "supplementary_alignments": 10},
+        {"status": "partial_evidence", "role": "normal", "discordant_mapped_pairs": 8, "supplementary_alignments": 3},
+    ]
+    utils.write_json(
+        root / "sv/sv_evidence_summary.json",
+        {"status": "partial_evidence", "rows": sv_rows, "production_sv_callset_status": "no_call"},
+    )
+    utils.write_csv(root / "sv/sv_evidence_summary.csv", sv_rows)
+    utils.write_json(root / "tool_versions.json", {"samtools": "samtools 1.20"})
 
 
 class RosalindHrdPacketTest(unittest.TestCase):
@@ -243,6 +330,129 @@ class RosalindHrdPacketTest(unittest.TestCase):
             artifact_index = utils.read_json(output_root / "results/rosalind_hrd/hcc1395_wes/unit/input_evidence_index.json")
             self.assertTrue(str(artifact_root) in artifact_index["artifacts"][0]["resolved_path"])
 
+    def test_diana_wgs_packet_consumes_worker_artifact_root_without_exposing_input_labels(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict("os.environ", {"ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root)}),
+            ):
+                summary = packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertEqual(summary["missingArtifacts"], [])
+            self.assertEqual(summary["blockers"], [])
+            evidence_rows = utils.parse_csv(
+                utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/sample_validation_summary.csv")
+            )
+            self.assertEqual(
+                {row["evidence_id"] for row in evidence_rows},
+                {
+                    "wgs_run_boundary",
+                    "wgs_alignment",
+                    "matched_normal_somatic_variants",
+                    "hrr_region_small_variants",
+                    "coverage_cnv",
+                    "sbs96_input",
+                    "bam_derived_sv_evidence",
+                },
+            )
+            adapter_rows = utils.parse_csv(
+                utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/hrd_adapter_status.csv")
+            )
+            self.assertEqual({row["state"] for row in adapter_rows}, {"ready", "partial_evidence", "no_call"})
+            self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "scarHRD")["state"], "no_call")
+            self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "SBS3")["state"], "no_call")
+            reviewer = utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/reviewer_packet.md")
+            self.assertIn("does not support a scalar or categorical HRD conclusion", reviewer)
+            self.assertNotIn("SENSITIVE-PAIR-ID", reviewer)
+            self.assertNotIn("SENSITIVE-DATASET-LABEL", reviewer)
+
+    def test_diana_wgs_packet_clamps_unsupported_adapter_promotions(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(
+                artifact_root,
+                readiness_overrides={"coverage_cnv": "ready", "scarHRD": "ready", "overall_hrd": "ready"},
+            )
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict("os.environ", {"ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root)}),
+            ):
+                summary = packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertTrue(any("coverage_cnv attempted promotion to ready" in blocker for blocker in summary["blockers"]))
+            self.assertTrue(any("scarHRD attempted promotion to ready" in blocker for blocker in summary["blockers"]))
+            self.assertTrue(any("overall_hrd attempted promotion to ready" in blocker for blocker in summary["blockers"]))
+            adapter_rows = utils.parse_csv(
+                utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/hrd_adapter_status.csv")
+            )
+            self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "Coverage CNV proxy")["state"], "partial_evidence")
+            self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "scarHRD")["state"], "no_call")
+            self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "Overall HRD classification")["state"], "no_call")
+
+    def test_diana_wgs_packet_does_not_turn_missing_sidecars_into_zero_count_findings(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            for relative in (
+                "alignment/bam_validation_summary.json",
+                "variants/mutect2_summary.json",
+                "cnv/coverage_cnv_summary.json",
+                "signatures/signature_assignment_summary.json",
+                "sv/sv_evidence_summary.json",
+            ):
+                (artifact_root / relative).unlink()
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict("os.environ", {"ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root)}),
+            ):
+                summary = packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertEqual(len(summary["missingArtifacts"]), 5)
+            evidence_rows = utils.parse_csv(
+                utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/sample_validation_summary.csv")
+            )
+            evidence = {row["evidence_id"]: row for row in evidence_rows}
+            self.assertIn("unavailable", evidence["wgs_alignment"]["detail"])
+            self.assertIn("no negative finding is inferred", evidence["hrr_region_small_variants"]["detail"])
+            self.assertIn("no zero-count finding", evidence["bam_derived_sv_evidence"]["detail"])
+            reviewer = utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/reviewer_packet.md")
+            self.assertNotIn("0/0 tumor/normal alignment rows", reviewer)
+            self.assertNotIn("Rows: 0; discordant mapped pairs: 0", reviewer)
+            self.assertNotIn("No PASS records were emitted", reviewer)
+            context = utils.read_json(output_root / "results/rosalind_hrd/diana_wgs/unit/research_context_sources.json")
+            self.assertEqual(context["status"], "deferred_until_observed_sample_events")
+
+    def test_diana_wgs_packet_flags_disagreement_between_readiness_csv_and_summary(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            worker_summary = utils.read_json(artifact_root / "diana_hrd_summary.json")
+            next(row for row in worker_summary["hrd_readiness"] if row["evidence_surface"] == "wgs_alignment")["status"] = "no_call"
+            utils.write_json(artifact_root / "diana_hrd_summary.json", worker_summary)
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict("os.environ", {"ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root)}),
+            ):
+                summary = packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertTrue(any("readiness CSV disagrees" in blocker for blocker in summary["blockers"]))
+            adapter_rows = utils.parse_csv(
+                utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/hrd_adapter_status.csv")
+            )
+            alignment = next(row for row in adapter_rows if row["adapter"] == "WGS alignment")
+            self.assertEqual(alignment["state"], "no_call")
+            self.assertIn("no state promotion", alignment["blocker"])
+
     def test_hg008_packet_surfaces_sv_truth_asset_blocker(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -376,6 +586,19 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 )
             plan = utils.read_text(root / "results/rosalind_hrd/unit/cloud_materialization_plan.md")
         self.assertIn("export ROSALIND_HRD_SAMPLE_SET=hcc1395_wgs", plan)
+
+    def test_cloud_materialization_plan_identifies_diana_wgs_artifact_directory_boundary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch.object(packet, "path_from_root", lambda relative: root / relative):
+                packet.write_cloud_materialization_plan(
+                    "results/rosalind_hrd/unit",
+                    "unit",
+                    [{"sampleSet": "diana_wgs", "missingArtifacts": ["diana_hrd_summary.json"]}],
+                )
+            plan = utils.read_text(root / "results/rosalind_hrd/unit/cloud_materialization_plan.md")
+        self.assertIn("artifact directory that directly contains `diana_hrd_summary.json`", plan)
+        self.assertIn("Do not point it at the parent run directory", plan)
 
     def test_diana_raw_intake_packet_marks_waiting_input_path(self):
         with tempfile.TemporaryDirectory() as tmp:

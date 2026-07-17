@@ -24,8 +24,13 @@ output "nextflow_work_bucket" {
 }
 
 output "results_bucket" {
-  description = "S3 bucket for cloud-generated Diana Omics results."
+  description = "S3 bucket for reviewed public-validation Diana Omics results."
   value       = aws_s3_bucket.this["results"].bucket
+}
+
+output "private_results_bucket" {
+  description = "Private, versioned, KMS-encrypted bucket for sensitive analysis results and reports."
+  value       = aws_s3_bucket.this["private_results"].bucket
 }
 
 output "raw_inputs_bucket" {
