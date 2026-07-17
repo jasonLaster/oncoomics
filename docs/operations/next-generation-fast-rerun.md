@@ -10,6 +10,12 @@ For the executive runtime and cost comparison, see [fast-rerun-performance-cost-
 
 The superseded CPU scatter design is preserved as a historical artifact in [historical/2026-07-16-cpu-fast-rerun-plan.md](historical/2026-07-16-cpu-fast-rerun-plan.md). It is not an active fallback.
 
+For the live July WGS run, do not race the running CPU evidence job with an ad
+hoc GPU recomputation. The only immediate GPU-side action is the P5en quota
+request; keep the CPU job alive, and use the GPU architecture only after the
+requested quota, isolated Batch environment, and Parabricks smoke gate are in
+place.
+
 For the next run of the current tumor/matched-normal pair, do **not** rerun FASTQ alignment or BAM gathering. Reuse the two validated duplicate-marked BAMs as an immutable input checkpoint and rerun only the evidence DAG. For later FASTQ-origin runs, replace the lane-alignment-plus-gather critical path with parallel Parabricks `fq2bam` jobs only after a separate BAM and known-answer non-inferiority gate passes.
 
 The speed targets are:
@@ -120,6 +126,10 @@ Quota and capacity contract:
 | --- | ---: | --- |
 | Immediate BAM-to-evidence rerun | 192 On-Demand P vCPUs | One `p5en.48xlarge` caller job. |
 | Later parallel tumor/normal `fq2bam` | 384 On-Demand P vCPUs | Two `p5en.48xlarge` alignment jobs running concurrently. |
+
+Request the EC2 `Running On-Demand P instances` quota in `us-east-2` at 384
+vCPUs. That quota covers both the immediate one-P5en caller job and the later
+two-P5en parallel alignment target.
 
 An EC2 offering and approved quota do not guarantee live capacity. The launch step should fail clearly if `p5en.48xlarge` cannot be placed; it should not silently switch instance type, region, caller, or Spot capacity. An operator can retry the same idempotent job without invalidating completed checkpoints.
 
@@ -268,7 +278,7 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
 2. Freeze the validated BAM pair, indices, reference, PoN, germline, and common-sites resources into an immutable input manifest with SHA-256 values.
 3. Implement the checked-in Parabricks evidence DAG and pointer-only result publication.
 4. Create the `us-east-2` private cache, KMS key, ECR mirrors, Batch compute environments, queues, job definitions, and CloudWatch dashboard.
-5. Request 192 On-Demand P vCPUs in `us-east-2`; request 384 before the later parallel `fq2bam` gate.
+5. Request 384 On-Demand P vCPUs in `us-east-2` so the same approved quota can cover one immediate P5en caller job and the later two-P5en parallel `fq2bam` gate.
 
 ### After quota approval
 

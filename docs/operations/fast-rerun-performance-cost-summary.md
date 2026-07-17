@@ -18,6 +18,11 @@ The speed ranges are engineering projections, not measured P5en or isolated-CPU 
 
 The operational decision remains: implement the GPU plan assuming quota lands, and retain the CPU plan only as a historical artifact. The GPU premium buys the shortest turnaround; it is not expected to make this single On-Demand rerun cheaper.
 
+For the live July WGS run, do not race the running CPU evidence job with an ad
+hoc P5en recomputation. The quota request is the only immediate GPU-side action;
+new GPU compute should wait for approved quota, an isolated `p5en.48xlarge`
+Batch queue, and a bounded Parabricks smoke gate.
+
 ## Today's measured baseline
 
 The live run has already established a 14.2-hour lower bound and was still running at the observation point:
