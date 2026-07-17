@@ -279,6 +279,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
 
         self.assertIn("/repo/scripts/write_ai_model_catalog_receipt.py", text)
         self.assertIn(f"--output {catalog}", text)
+        self.assertIn(f"--model-catalog-receipt {catalog}", text)
         self.assertIn("--attest-models-latest", text)
         self.assertLess(
             text.index("write_ai_model_catalog_receipt.py"),
@@ -291,14 +292,21 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
 
     def test_model_catalog_receipt_stays_outside_prepare_output_dir(self) -> None:
         root = Path("/repo")
+        catalog = (
+            root
+            / ".codex-tmp/hrd-reports/ai-review/model-catalog-receipts"
+            / MODULE.RUN_ID
+            / MODULE.MODEL_CATALOG_RECEIPT
+        )
         run_root = (
             root
             / ".codex-tmp/hrd-reports/ai-review"
             / MODULE.RUN_ID
         )
 
+        self.assertEqual(MODULE.model_catalog_receipt_path(root), catalog)
         self.assertFalse(
-            MODULE.model_catalog_receipt_path(root).is_relative_to(run_root)
+            catalog.is_relative_to(run_root)
         )
 
     def test_runbook_can_include_private_receipt_gate(self) -> None:
