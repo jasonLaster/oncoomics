@@ -338,6 +338,8 @@ def required_existing(root: Path) -> tuple[Path, ...]:
         scripts / "generate_comparative_hrd_synthesis.py",
         scripts / "publish_private_report.py",
         scripts / "render_reviewed_publication_runbook.py",
+        scripts / "build_public_results_index.py",
+        scripts / "publish_public_results_index.py",
         scripts / "write_ai_model_catalog_receipt.py",
     )
 

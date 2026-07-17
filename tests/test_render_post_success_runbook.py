@@ -191,6 +191,8 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertIn("/repo/scripts/prepare_ai_review_run.py", prerequisites)
         self.assertIn("/repo/scripts/build_ai_review_bundle.py", prerequisites)
         self.assertIn("/repo/scripts/render_reviewed_publication_runbook.py", prerequisites)
+        self.assertIn("/repo/scripts/build_public_results_index.py", prerequisites)
+        self.assertIn("/repo/scripts/publish_public_results_index.py", prerequisites)
         for stale in (
             "/repo/.codex-tmp/hrd-reports/stage_crosscheck_report.py",
             "/repo/.codex-tmp/hrd-crosschecks/aws/submit_route.py",

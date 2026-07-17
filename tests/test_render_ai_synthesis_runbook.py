@@ -160,6 +160,8 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "/repo/scripts/generate_comparative_hrd_synthesis.py",
             "/repo/scripts/publish_private_report.py",
             "/repo/scripts/render_reviewed_publication_runbook.py",
+            "/repo/scripts/build_public_results_index.py",
+            "/repo/scripts/publish_public_results_index.py",
         ):
             self.assertIn(expected, prerequisites)
         for stale in (
