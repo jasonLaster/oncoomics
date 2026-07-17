@@ -98,17 +98,32 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         self.assertEqual(result["VersionId"], "destination-version")
         arguments, region = mocked.call_args.args
         self.assertEqual(region, "us-east-1")
-        self.assertIn(
-            "source-bucket/path%20with%20space/final.vcf.gz?versionId=source%2Fversion%2Bid",
+        self.assertEqual(
             arguments,
+            [
+                "s3api",
+                "copy-object",
+                "--copy-source",
+                (
+                    "source-bucket/path%20with%20space/final.vcf.gz"
+                    "?versionId=source%2Fversion%2Bid"
+                ),
+                "--copy-source-if-match",
+                '"etag"',
+                "--bucket",
+                "destination-bucket",
+                "--key",
+                "frozen/final.vcf.gz",
+                "--if-none-match",
+                "*",
+                "--server-side-encryption",
+                "aws:kms",
+                "--sse-kms-key-id",
+                "arn:aws:kms:us-east-1:1:key/test",
+                "--checksum-algorithm",
+                "CRC64NVME",
+            ],
         )
-        self.assertIn("--copy-source-if-match", arguments)
-        self.assertIn('"etag"', arguments)
-        self.assertIn("--checksum-algorithm", arguments)
-        self.assertIn("CRC64NVME", arguments)
-        self.assertIn("--sse-kms-key-id", arguments)
-        self.assertIn("--if-none-match", arguments)
-        self.assertIn("*", arguments)
 
     def test_list_objects_consumes_every_page(self) -> None:
         pages = [
@@ -248,9 +263,31 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             MODULE.put_receipt(
                 Path("receipt.json"), "bucket", "key", "kms", "us-east-1"
             )
-        arguments, _region = mocked.call_args.args
-        self.assertIn("--if-none-match", arguments)
-        self.assertIn("*", arguments)
+        arguments, region = mocked.call_args.args
+        self.assertEqual(region, "us-east-1")
+        self.assertEqual(
+            arguments,
+            [
+                "s3api",
+                "put-object",
+                "--bucket",
+                "bucket",
+                "--key",
+                "key",
+                "--body",
+                "receipt.json",
+                "--if-none-match",
+                "*",
+                "--server-side-encryption",
+                "aws:kms",
+                "--sse-kms-key-id",
+                "kms",
+                "--checksum-algorithm",
+                "SHA256",
+                "--content-type",
+                "application/json",
+            ],
+        )
 
     def test_main_persists_copy_version_and_history_when_post_copy_head_fails(self) -> None:
         run_id = "run-id"
