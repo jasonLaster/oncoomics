@@ -70,6 +70,11 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertIn("ROSALIND_HRD_SAMPLE_SET=diana_wgs", text)
         self.assertIn("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON=", text)
         self.assertIn("build:rosalind-hrd-packet", text)
+        self.assertNotIn(f"{MODULE.REGION} {MODULE.REGION}", text)
+        self.assertNotIn(
+            f"{MODULE.PRIVATE_KMS_KEY_ARN} {MODULE.PRIVATE_KMS_KEY_ARN}",
+            text,
+        )
 
         materializer_submit = text.index("terminal.materializer.request.json")
         materializer_wait = text.index("Wait for the submitted materializer job")
@@ -126,7 +131,11 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         )
 
         self.assertNotIn("--response-output", dry_run)
+        self.assertEqual(dry_run.count("--region"), 1)
+        self.assertEqual(dry_run[dry_run.index("--region") + 1], MODULE.REGION)
+        self.assertEqual(dry_run[-1], MODULE.REGION)
         self.assertEqual(apply.count("--response-output"), 1)
+        self.assertEqual(apply.count("--region"), 1)
         self.assertEqual(apply[apply.index("--response-output") + 1], response)
         self.assertIn("HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES", apply)
         self.assertIn("HRD_CROSSCHECK_LICENSE_REVIEWED=YES", apply)
