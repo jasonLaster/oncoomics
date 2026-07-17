@@ -12,7 +12,7 @@ Artifacts:
 
 The project can now accept Diana raw FASTQ, BAM, or CRAM paths through `manifests/diana_raw_inputs.csv`, plan the handoff with `PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff`, and validate paths with `PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw`.
 
-Private S3 intake prefix:
+Public-read S3 intake prefix:
 
 ```text
 s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox

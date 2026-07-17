@@ -73,19 +73,22 @@ Diana's raw files should be uploaded or transferred to this inbox prefix:
 s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/
 ```
 
-Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the Nextflow work bucket. The `diana/inbox/` prefix is private controlled-access storage. It must not permit anonymous list, metadata, or read access.
+Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the
+Nextflow work bucket. The `diana/inbox/` prefix is public-read storage for
+approved deliveries: anonymous users may list and download current object
+versions, while anonymous writes and deletes stay denied.
 
 Uploads require Diana-issued credentials scoped to one assigned
 `YYYY-MM-DD-source-name/` prefix. Never email credentials. Use destination
-SSE-KMS with key `45aa290c-d70c-4d86-9c8d-c4a76f1ff97f` unless the actual
-scoped policy supplied by the Diana operator requires bucket-default KMS. Do
-not substitute `AES256` or use `--no-sign-request`.
+SSE-S3 (`AES256`) so direct public downloads do not need AWS KMS grants.
 
-If anonymous access succeeds, treat the deployed access policy as a security
+If anonymous writes succeed, treat the deployed access policy as a security
 incident and stop intake until it is remediated.
 
-See [Diana Private Raw S3 Upload And Transfer](diana-raw-s3-upload.md) for authenticated upload and bucket-to-bucket transfer instructions.
-See [Diana Private Raw Data Retrieval](diana-public-data-download.md) for authorized read and outbound transfer instructions. The legacy filename is retained to avoid breaking links; the data is not public.
+See [Diana Public Raw S3 Upload And Transfer](diana-raw-s3-upload.md) for
+authenticated upload and bucket-to-bucket transfer instructions.
+See [Diana Public Analysis Downloads](diana-public-data-download.md) for public
+read and outbound transfer instructions.
 
 ## Validate The Files
 

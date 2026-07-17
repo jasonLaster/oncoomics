@@ -81,6 +81,8 @@ data "aws_iam_policy_document" "bootstrap_local_cli" {
       "kms:*",
       "logs:*",
       "servicequotas:GetServiceQuota",
+      "servicequotas:ListRequestedServiceQuotaChangeHistory",
+      "servicequotas:ListRequestedServiceQuotaChangeHistoryByQuota",
       "servicequotas:ListServiceQuotas",
       "servicequotas:RequestServiceQuotaIncrease",
       "ssm:CancelCommand",
@@ -257,9 +259,9 @@ resource "aws_s3_bucket_public_access_block" "this" {
 
   bucket                  = each.value.id
   block_public_acls       = true
-  block_public_policy     = each.key == "results" ? false : true
+  block_public_policy     = contains(["raw", "results"], each.key) ? false : true
   ignore_public_acls      = true
-  restrict_public_buckets = each.key == "results" ? false : true
+  restrict_public_buckets = contains(["raw", "results"], each.key) ? false : true
 }
 
 resource "aws_s3_bucket_ownership_controls" "this" {
@@ -269,6 +271,18 @@ resource "aws_s3_bucket_ownership_controls" "this" {
 
   rule {
     object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+resource "aws_s3_bucket_cors_configuration" "raw_public_read" {
+  bucket = aws_s3_bucket.this["raw"].id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag", "Content-Length", "Last-Modified"]
+    max_age_seconds = 3600
   }
 }
 
@@ -291,8 +305,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
 
   rule {
     apply_server_side_encryption_by_default {
-      kms_master_key_id = each.key == "results" ? null : aws_kms_key.main.arn
-      sse_algorithm     = each.key == "results" ? "AES256" : "aws:kms"
+      kms_master_key_id = contains(["raw", "results"], each.key) ? null : aws_kms_key.main.arn
+      sse_algorithm     = contains(["raw", "results"], each.key) ? "AES256" : "aws:kms"
     }
   }
 }
@@ -328,6 +342,123 @@ data "aws_iam_policy_document" "s3_tls" {
       test     = "Bool"
       variable = "aws:SecureTransport"
       values   = ["false"]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "raw" ? [1] : []
+
+    content {
+      sid     = "AllowPublicListDianaInbox"
+      effect  = "Allow"
+      actions = ["s3:ListBucket"]
+      resources = [
+        each.value.arn
+      ]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+      condition {
+        test     = "StringLike"
+        variable = "s3:prefix"
+        values = [
+          local.diana_raw_inbox_prefix,
+          "${local.diana_raw_inbox_prefix}/",
+          "${local.diana_raw_inbox_prefix}/*"
+        ]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "raw" ? [1] : []
+
+    content {
+      sid     = "AllowPublicReadDianaInbox"
+      effect  = "Allow"
+      actions = ["s3:GetObject"]
+      resources = [
+        "${each.value.arn}/${local.diana_raw_inbox_prefix}/*"
+      ]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "raw" ? [1] : []
+
+    content {
+      sid     = "AllowAnyAwsPrincipalWriteDianaInbox"
+      effect  = "Allow"
+      actions = ["s3:PutObject"]
+      resources = [
+        "${each.value.arn}/${local.diana_raw_inbox_prefix}/*"
+      ]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+      condition {
+        test     = "StringNotEquals"
+        variable = "aws:PrincipalType"
+        values   = ["Anonymous"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "raw" ? [1] : []
+
+    content {
+      sid     = "DenyNonPubliclyReadableEncryptionDianaInbox"
+      effect  = "Deny"
+      actions = ["s3:PutObject"]
+      resources = [
+        "${each.value.arn}/${local.diana_raw_inbox_prefix}/*"
+      ]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+      condition {
+        test     = "Null"
+        variable = "s3:x-amz-server-side-encryption"
+        values   = ["false"]
+      }
+      condition {
+        test     = "StringNotEquals"
+        variable = "s3:x-amz-server-side-encryption"
+        values   = ["AES256"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "raw" ? [1] : []
+
+    content {
+      sid    = "AllowAnyAwsPrincipalManageMultipartDianaInbox"
+      effect = "Allow"
+      actions = [
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ]
+      resources = [
+        "${each.value.arn}/${local.diana_raw_inbox_prefix}/*"
+      ]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+      condition {
+        test     = "StringNotEquals"
+        variable = "aws:PrincipalType"
+        values   = ["Anonymous"]
+      }
     }
   }
 

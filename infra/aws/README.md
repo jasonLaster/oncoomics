@@ -10,7 +10,10 @@ Do not upload raw data or generated analysis data from a developer workstation o
 - The Docker image is built with `.dockerignore` rules that exclude raw/generated data.
 - Cloud runs must fetch public/reference inputs fresh inside AWS Batch task workspaces.
 - S3 `results` objects should be produced by the cloud job that writes them.
-- An approved external raw delivery is a separate custody workflow: it must use the private `diana/inbox/YYYY-MM-DD-source-name/` prefix, Diana-issued scoped credentials, destination SSE-KMS, a manifest, and source SHA-256 checksums as documented in `docs/operations/diana-raw-s3-upload.md`.
+- An approved external raw delivery is a separate custody workflow: it must use
+  the public-read `diana/inbox/YYYY-MM-DD-source-name/` prefix, Diana-issued
+  scoped write credentials, destination SSE-S3, a manifest, and source SHA-256
+  checksums as documented in `docs/operations/diana-raw-s3-upload.md`.
 
 ## Bootstrap
 
@@ -68,6 +71,10 @@ analysis outputs from raw inputs and durable restricted custody copies:
   bucket to an allowlisted public prefix without weakening the custody copy.
   The private bucket uses SSE-KMS, versioning, bucket-owner-enforced ownership,
   TLS-only access, and all four S3 public-access-block controls.
+- `diana-omics-raw-inputs-...` exposes current objects under `diana/inbox/` for
+  public list/read, while keeping public writes disabled. Approved senders upload
+  with scoped credentials and SSE-S3 so browser and anonymous CLI downloads work
+  without KMS grants.
 - `diana-omics-work-...` is private scratch space with lifecycle expiry, not the
   sole durable copy of a report.
 
@@ -265,24 +272,24 @@ raw-upload inbox. The Batch job role can read and write it so private cloud jobs
 can publish their own results without routing data through a developer
 workstation.
 
-The required custody contract for `diana/inbox/` is private controlled access:
+The required custody contract for `diana/inbox/` is public-read,
+scoped-write access:
 
 - Every sender uses Diana-issued IAM credentials scoped to one assigned
   `YYYY-MM-DD-source-name/` prefix.
-- The prefix must not allow anonymous list, metadata, or read operations. Never
-  use `--no-sign-request` or publish direct object URLs.
-- Uploads use destination SSE-KMS key
-  `45aa290c-d70c-4d86-9c8d-c4a76f1ff97f` unless the actual scoped policy
-  explicitly requires bucket-default KMS. Never substitute `AES256`.
+- The `diana/inbox/` prefix allows anonymous list and current-object reads.
+  Anonymous writes are denied.
+- Uploads use destination SSE-S3 (`AES256`) so public downloads do not need KMS
+  grants.
 - Credentials are exchanged through the approved secret manager or one-time
   secret channel, never email, tickets, logs, or source control.
 - Every delivery includes `manifest.csv` and source-side
-  `checksums.sha256`; an authorized Diana operator validates KMS metadata,
+  `checksums.sha256`; an authorized Diana operator validates encryption,
   inventory, and checksums before analysis.
 
-If anonymous access to the inbox succeeds, treat the deployed stack as
-misconfigured and stop intake until the access policy is remediated. Documentation
-does not override the actual scoped IAM and bucket policies.
+If anonymous writes to the inbox succeed, treat the deployed stack as
+misconfigured and stop intake until the access policy is remediated.
+Documentation does not override the actual scoped IAM and bucket policies.
 
 After any failed or interrupted AWS run, refresh the local diagnostic report:
 

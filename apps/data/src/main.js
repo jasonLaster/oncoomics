@@ -12,18 +12,35 @@ const PUBLIC_INDEX_URL = 'https://diana-omics-results-172630973301-us-east-1.s3.
 const PUBLIC_SOURCES = [
   {
     id: 'results',
-    name: 'Public validation results',
-    treeName: 'validation-results',
+    name: 'Reviewed analysis results',
+    treeName: 'analysis/results',
     bucket: 'diana-omics-results-172630973301-us-east-1',
     region: 'us-east-1',
-    description: 'Reviewed outputs from public benchmark datasets and validation runs.',
+    indexUrl: PUBLIC_INDEX_URL,
+    description: 'Reviewed validation outputs and alias-only Diana analysis reports.',
+    statusLabel: 'Indexed',
+    loadingLabel: 'Loading reviewed index…',
+  },
+  {
+    id: 'raw-inputs',
+    name: 'Diana input',
+    treeName: 'diana/input',
+    bucket: 'diana-omics-raw-inputs-172630973301-us-east-1',
+    region: 'us-east-1',
+    prefix: 'diana/inbox/',
+    description: 'Public FASTQ, BAM, manifest, and checksum objects delivered to the Diana inbox.',
+    statusLabel: 'Live',
+    loadingLabel: 'Loading live inventory…',
+    downloadDirectory: 'diana-input',
   },
 ].map((source) => ({
   ...source,
+  prefix: source.prefix ?? '',
   origin: `https://${source.bucket}.s3.${source.region}.amazonaws.com`,
+  s3Uri: `s3://${source.bucket}/${source.prefix ?? ''}`,
 }));
 
-const markdownInstructions = `## Download the reviewed object index
+const markdownInstructions = `## Download the reviewed analysis index
 
 \`\`\`bash
 curl --fail --location \\
@@ -31,12 +48,22 @@ curl --fail --location \\
   --output diana-public-objects.json
 \`\`\`
 
-## Download a validation result
+## Download a reviewed analysis result
 
 Copy a direct file URL from the browser, then run:
 
 \`\`\`bash
 curl --fail --location --remote-name 'DIRECT_FILE_URL'
+\`\`\`
+
+## Download the Diana input files
+
+\`\`\`bash
+aws s3 cp \\
+  s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/ \\
+  ./diana-input/ \\
+  --recursive \\
+  --no-sign-request
 \`\`\``;
 
 const highlightMarkdownWithBash = (source) => {
@@ -63,15 +90,15 @@ document.querySelector('#app').innerHTML = `
       <span class="brand-mark" aria-hidden="true">D<span>/</span></span>
       <span>Diana Omics</span>
     </a>
-    <span class="access-badge"><i></i> Reviewed public data</span>
+    <span class="access-badge"><i></i> Public S3 data</span>
   </header>
 
   <main class="shell" id="top">
     <section class="intro">
       <div>
-        <p class="eyebrow">Public validation dataset</p>
-        <h1>Diana Omics validation results</h1>
-        <p class="intro-copy">Browse reviewed current outputs from public benchmark datasets and validation runs. No AWS account or credentials are required for these indexed files.</p>
+        <p class="eyebrow">Open genomic dataset</p>
+        <h1>Diana Omics public data</h1>
+        <p class="intro-copy">Browse reviewed current analysis outputs and raw Diana inbox deliveries. No AWS account or credentials are required for these public files.</p>
       </div>
       <dl class="dataset-stats" aria-label="Dataset summary">
         <div><dt>Files</dt><dd id="object-count">—</dd></div>
@@ -82,8 +109,8 @@ document.querySelector('#app').innerHTML = `
 
     <section class="source-section" aria-labelledby="sources-heading">
       <div class="source-heading">
-        <p class="eyebrow">Reviewed object index</p>
-        <h2 id="sources-heading">Public validation results</h2>
+        <p class="eyebrow">Public S3 sources</p>
+        <h2 id="sources-heading">Live data surfaces</h2>
       </div>
       <div class="source-grid">
         ${PUBLIC_SOURCES.map((source) => `
@@ -93,10 +120,10 @@ document.querySelector('#app').innerHTML = `
               <span class="source-state"><i></i><span>Loading</span></span>
             </div>
             <p>${source.description}</p>
-            <code>${PUBLIC_INDEX_URL}</code>
+            <code>${source.indexUrl ?? source.s3Uri}</code>
             <div class="source-stats" aria-live="polite">
               <strong>—</strong>
-              <span>Loading reviewed index…</span>
+              <span>${source.loadingLabel}</span>
             </div>
           </article>`).join('')}
       </div>
@@ -106,8 +133,8 @@ document.querySelector('#app').innerHTML = `
       <div class="download-copy">
         <p class="eyebrow">Download guide</p>
         <h2 id="download-heading">Get the data</h2>
-        <p>Download individual public validation files directly, or use the reviewed index to select current objects for transfer.</p>
-        <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/validation/known-answer-datasets.md">Review dataset provenance and validation scope <span aria-hidden="true">→</span></a>
+        <p>Download individual public objects directly, use the reviewed index for report outputs, or copy the live Diana inbox with anonymous S3 reads.</p>
+        <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/operations/diana-public-data-download.md">Open the full download guide <span aria-hidden="true">→</span></a>
       </div>
       <div class="code-card">
         <div class="code-bar">
@@ -121,8 +148,8 @@ document.querySelector('#app').innerHTML = `
     <section class="tree-section" aria-labelledby="files-heading">
       <div class="section-heading">
         <div>
-          <h2 id="files-heading">Reviewed public files</h2>
-          <p id="inventory-status">Loading reviewed index…</p>
+          <h2 id="files-heading">Public files</h2>
+          <p id="inventory-status">Loading public inventories…</p>
         </div>
         <div class="tree-actions">
           <button id="expand-all" type="button">Expand all</button>
@@ -132,11 +159,11 @@ document.querySelector('#app').innerHTML = `
 
       <div class="tree-panel">
         <div class="tree-toolbar">
-          <div class="path-label"><span>s3</span><code>reviewed public index</code></div>
+          <div class="path-label"><span>s3</span><code>${PUBLIC_SOURCES.length} public sources</code></div>
           <label class="search-field">
             <span aria-hidden="true">⌕</span>
-            <span class="sr-only">Search files and folders</span>
-            <input id="tree-search" type="search" placeholder="Search files and folders" autocomplete="off" />
+            <span class="sr-only">Search files, folders, and buckets</span>
+            <input id="tree-search" type="search" placeholder="Search files, folders, and buckets" autocomplete="off" />
           </label>
         </div>
         <div class="tree-column-headings" aria-hidden="true">
@@ -152,8 +179,8 @@ document.querySelector('#app').innerHTML = `
 
   <footer>
     <div class="shell footer-inner">
-      <span>Diana Omics Public Validation Data</span>
-      <span>Reviewed index · Amazon S3 · Direct downloads</span>
+      <span>Diana Omics Open Data</span>
+      <span>Reviewed index · Live S3 · Anonymous reads</span>
     </div>
   </footer>
 `;
@@ -315,18 +342,20 @@ function renderTree() {
   if (!filtered.length) {
     treeElement.innerHTML = objects.length
       ? '<div class="empty-tree">No files or folders match that search.</div>'
-      : '<div class="empty-tree error">The reviewed public index is currently unavailable. Refresh to try again.</div>';
+      : '<div class="empty-tree error">The public inventories are currently unavailable. Refresh to try again.</div>';
   } else {
     treeElement.innerHTML = renderDirectory(buildTree(filtered), 0, true);
   }
 
   const suffix = searchTerm ? ` matching “${searchTerm}”` : '';
-  const failureNotice = failedSourceCount ? ' · index unavailable' : '';
-  document.querySelector('#inventory-status').textContent = `${filtered.length.toLocaleString()} of ${objects.length.toLocaleString()} reviewed public files${suffix}${failureNotice}`;
+  const failureNotice = failedSourceCount ? ' · inventory unavailable' : '';
+  document.querySelector('#inventory-status').textContent = `${filtered.length.toLocaleString()} of ${objects.length.toLocaleString()} public files${suffix}${failureNotice}`;
 }
 
 async function fetchInventory(source) {
-  const response = await fetch(PUBLIC_INDEX_URL, { cache: 'no-store' });
+  if (!source.indexUrl) return fetchS3Inventory(source);
+
+  const response = await fetch(source.indexUrl, { cache: 'no-store' });
   if (!response.ok) throw new Error(`${source.name} index returned ${response.status}`);
 
   const inventory = await response.json();
@@ -355,6 +384,48 @@ async function fetchInventory(source) {
   };
 }
 
+async function fetchS3Inventory(source) {
+  const collected = [];
+  let continuationToken = '';
+
+  do {
+    const query = new URLSearchParams({ 'list-type': '2', prefix: source.prefix, 'max-keys': '1000' });
+    if (continuationToken) query.set('continuation-token', continuationToken);
+    const response = await fetch(`${source.origin}/?${query}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`${source.name} inventory returned ${response.status}`);
+
+    const xml = new DOMParser().parseFromString(await response.text(), 'application/xml');
+    if (xml.querySelector('parsererror, Error')) throw new Error(`${source.name} inventory response was not readable`);
+
+    xml.querySelectorAll('Contents').forEach((entry) => {
+      const key = entry.querySelector('Key')?.textContent ?? '';
+      if (!key || key.endsWith('/') || !key.startsWith(source.prefix)) return;
+
+      const size = Number(entry.querySelector('Size')?.textContent ?? 0);
+      const lastModified = new Date(entry.querySelector('LastModified')?.textContent ?? 0);
+      if (!Number.isFinite(size) || Number.isNaN(lastModified.getTime())) return;
+
+      collected.push({
+        key,
+        relativeKey: key.slice(source.prefix.length),
+        source,
+        searchText: `${source.name} ${source.bucket} ${source.treeName} ${key}`.toLowerCase(),
+        size,
+        lastModified,
+      });
+    });
+
+    continuationToken = xml.querySelector('IsTruncated')?.textContent === 'true'
+      ? xml.querySelector('NextContinuationToken')?.textContent ?? ''
+      : '';
+  } while (continuationToken);
+
+  return {
+    generatedAt: null,
+    objects: collected,
+  };
+}
+
 function updateSourceCard(source, sourceObjects, generatedAt = null, error = null) {
   const card = document.querySelector(`#source-${source.id}`);
   const state = card.querySelector('.source-state');
@@ -364,13 +435,13 @@ function updateSourceCard(source, sourceObjects, generatedAt = null, error = nul
     card.classList.add('source-error');
     state.classList.add('error');
     state.querySelector('span').textContent = 'Unavailable';
-    stats.innerHTML = '<strong>—</strong><span>Refresh to retry the reviewed index.</span>';
+    stats.innerHTML = '<strong>—</strong><span>Refresh to retry this inventory.</span>';
     return;
   }
 
   const bytes = sourceObjects.reduce((sum, object) => sum + object.size, 0);
   const newest = sourceObjects.reduce((latest, object) => object.lastModified > latest ? object.lastModified : latest, new Date(0));
-  state.querySelector('span').textContent = 'Indexed';
+  state.querySelector('span').textContent = source.statusLabel;
   const generatedLabel = generatedAt ? ` · index ${formatDate(generatedAt)}` : '';
   const latestLabel = sourceObjects.length ? ` · latest file ${formatDate(newest)}` : '';
   stats.innerHTML = `<strong>${sourceObjects.length.toLocaleString()} files</strong><span>${formatBytes(bytes, true)}${latestLabel}${generatedLabel}</span>`;

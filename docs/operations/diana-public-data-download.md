@@ -1,22 +1,29 @@
 # Diana Public Analysis Downloads
 
-Use this guide to browse, cite, or copy reviewed Diana Omics analysis outputs.
-The public surface is intentionally available to outside collaborators without
-AWS credentials. Raw deliveries, FASTQs, BAMs, and direct identifiers are not
-part of this surface.
+Use this guide to browse, cite, or copy public Diana Omics data. The public
+surface is intentionally available to outside collaborators without AWS
+credentials and includes both reviewed analysis outputs and current raw inbox
+deliveries.
 
 ## Browse the reviewed index
 
 Browse the live file tree at [data.diana-tnbc.com](https://data.diana-tnbc.com/).
-The site reads the reviewed static index at:
+The site reads reviewed analysis outputs from the static index at:
 
 ```text
 https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/public-index/objects.json
 ```
 
-The index contains only current objects under exact Terraform-allowlisted
-prefixes. The bucket does not allow anonymous bucket listing, object-version
-listing, or historical-version reads.
+The site also lists the current public Diana inbox directly from:
+
+```text
+s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/
+```
+
+The results index contains only current objects under exact Terraform-allowlisted
+prefixes. The raw-inputs bucket allows anonymous list and read for current
+objects under `diana/inbox/` so new accepted deliveries appear without
+republishing `public-index/objects.json`.
 
 ## Diana WGS HRD analysis
 
@@ -42,6 +49,87 @@ s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/
 
 These paths identify a run alias, not a patient name. Conclusions must preserve
 `partial_evidence`, `blocked`, and `no_call` boundaries from the source reports.
+
+## Freeze and publish a reviewed report packet
+
+First freeze the reviewed local report tree in the versioned private results
+bucket with `scripts/publish_private_report.py`. The private publisher accepts
+only allowlisted files for the selected method, validates the packet manifest's
+`no_call` boundary, scans for source identifiers, and writes a
+private-publication receipt with exact S3 VersionIds, SHA-256 values, object
+sizes, and KMS custody.
+
+For the Diana WGS Rosalind packet, dry-run the private freeze first:
+
+```bash
+python3 scripts/publish_private_report.py \
+  --packet-dir .codex-tmp/hrd-reports/deterministic-full/rosalind/ \
+  --method-id rosalind_diana_wgs \
+  --receipt-output .codex-tmp/hrd-reports/deterministic-full/rosalind-private-publication.dry.json
+```
+
+Review the dry-run receipt, then apply with a different, unused mode-0600
+receipt path:
+
+```bash
+python3 scripts/publish_private_report.py \
+  --packet-dir .codex-tmp/hrd-reports/deterministic-full/rosalind/ \
+  --method-id rosalind_diana_wgs \
+  --receipt-output .codex-tmp/hrd-reports/deterministic-full/rosalind-private-publication.json \
+  --apply
+```
+
+Use `scripts/publish_reviewed_public_report.py` only after the corresponding
+private freeze has passed. The public publisher reads that passed
+private-publication receipt, downloads every report file by its exact private
+S3 VersionId, verifies SHA-256, bytes, and KMS custody, and runs a second
+identifier scan before any public write.
+
+The method ID pins both the accepted report inventory and destination subtree.
+It cannot publish raw data or operator-selected filenames. For the Diana WGS
+Rosalind packet, run the default dry-run first with a new local receipt path:
+
+```bash
+python3 scripts/publish_reviewed_public_report.py \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/rosalind-private-publication.json \
+  --method-id rosalind_diana_wgs \
+  --destination-prefix s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/rosalind/ \
+  --receipt-output .codex-tmp/hrd-reports/deterministic-full/rosalind-publication.dry.json
+```
+
+Review the dry-run receipt and preserve the source packet's `partial_evidence`
+and `no_call` boundary. Apply with a different, unused mode-0600 receipt path:
+
+```bash
+python3 scripts/publish_reviewed_public_report.py \
+  --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/rosalind-private-publication.json \
+  --method-id rosalind_diana_wgs \
+  --destination-prefix s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/rosalind/ \
+  --receipt-output .codex-tmp/hrd-reports/deterministic-full/rosalind-publication.json \
+  --apply
+```
+
+Apply mode requires an empty version history at the exact method destination,
+uses create-only SSE-S3 uploads with full-object SHA-256, and succeeds only when
+the final history contains exactly one current version per allowlisted file and
+no delete markers.
+
+After publication, rebuild and publish `public-index/objects.json` so the new
+report appears at `data.diana-tnbc.com`:
+
+```bash
+python3 scripts/build_public_results_index.py \
+  --output .codex-tmp/public-index/objects.json
+
+python3 scripts/publish_public_results_index.py \
+  --index .codex-tmp/public-index/objects.json \
+  --receipt-output .codex-tmp/public-index/public-index.dry.json
+
+python3 scripts/publish_public_results_index.py \
+  --index .codex-tmp/public-index/objects.json \
+  --receipt-output .codex-tmp/public-index/public-index.json \
+  --apply
+```
 
 ## Download one object
 
@@ -88,8 +176,9 @@ surface for deterministic, Rosalind, and cross-check reports.
   research context distinct.
 - Do not promote a public `no_call` or `partial_evidence` report into a clinical
   conclusion.
-- Do not copy raw uploads, FASTQs, BAMs, direct identifiers, or private
-  version-history receipts into a public prefix.
+- Keep raw uploads under `s3://diana-omics-raw-inputs-.../diana/inbox/`; do not
+  copy them into the results-bucket report prefixes.
+- Do not publish private version-history receipts.
 
 ## Related documentation
 

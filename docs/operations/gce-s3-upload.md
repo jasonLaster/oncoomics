@@ -1,7 +1,10 @@
 # GCE To Diana S3 Upload
 
 Use this sender checklist to deliver one or more datasets from a Google Compute
-Engine VM or Google Cloud Storage into the Diana Omics private, write-only S3 inbox. The process is vendor-agnostic: dataset and organization names belong only in the assigned batch name and manifest, not in the access model.
+Engine VM or Google Cloud Storage into the Diana Omics public-read,
+sender-scoped S3 inbox. The process is vendor-agnostic: dataset and
+organization names belong only in the assigned batch name and manifest, not in
+the access model.
 
 ## Delivery Destination
 
@@ -50,22 +53,17 @@ credentials into tickets or logs. The temporary
 credentials should:
 
 - List and write only the assigned batch prefix.
-- Prevent object reads, deletes, parent-inbox listing, and writes elsewhere.
+- Prevent deletes, parent-inbox listing, and writes elsewhere.
 - Expire shortly after the expected delivery window.
 
-The destination must use AWS KMS encryption. Unless the actual scoped policy
-supplied by the Diana operator explicitly requires bucket-default KMS, uploads
-must request `aws:kms` with destination key
-`45aa290c-d70c-4d86-9c8d-c4a76f1ff97f`. If the policy requires bucket-default
-KMS, omit encryption request flags and let the bucket apply its configured KMS
-key. Never substitute `AES256` or a sender-owned key. AWS S3 uses multipart
-upload for large genomics files; the credential and KMS policies must include
-only the operations needed for multipart upload without granting object-read
-access.
+The destination must use S3-managed `AES256` encryption so public reads work
+without AWS KMS grants. AWS S3 uses multipart upload for large genomics files;
+the credential policy must include only the operations needed for multipart
+upload beneath the assigned prefix.
 
-The inbox must not allow anonymous list, metadata, or read operations. Never use
-`--no-sign-request` or publish direct object URLs. If anonymous access succeeds,
-stop and report a security incident to the Diana operator.
+Uploaded objects under `diana/inbox/` are publicly listable and readable. The
+scoped sender credentials are still required for writes because anonymous
+`PutObject` is denied.
 
 ## 1. Prepare The Delivery
 
@@ -198,13 +196,11 @@ Set the assigned batch name and paths:
 : "${DELIVERY_ROOT:=/mnt/diana-delivery}"
 BATCH_NAME=YYYY-MM-DD-source-name
 DEST="s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/${BATCH_NAME}/"
-SSE_ARGS=(--sse aws:kms --sse-kms-key-id 45aa290c-d70c-4d86-9c8d-c4a76f1ff97f)
+SSE_ARGS=(--sse AES256)
 ```
 
 Replace `BATCH_NAME` with the exact value supplied by the Diana operator. Review
-the planned object paths first. Only when the operator confirms that the actual
-scoped policy requires bucket-default KMS, replace the array with
-`SSE_ARGS=()`.
+the planned object paths first.
 
 ```bash
 aws s3 cp "$DELIVERY_ROOT/data/" "${DEST}data/" --recursive "${SSE_ARGS[@]}" --dryrun --region us-east-1
@@ -219,9 +215,9 @@ aws s3 cp "$DELIVERY_ROOT/checksums.sha256" "${DEST}checksums.sha256" "${SSE_ARG
 ```
 
 The AWS CLI automatically uses multipart upload for large files. If a command is
-interrupted, rerun the same command. Because the credentials cannot read or
-delete objects, contact the Diana operator before changing a key that has already
-been uploaded; do not upload a correction under an ambiguous duplicate name.
+interrupted, rerun the same command. Contact the Diana operator before changing
+a key that has already been uploaded; do not upload a correction under an
+ambiguous duplicate name.
 
 ## 4. Confirm Delivery
 
@@ -231,9 +227,9 @@ List the exact delivery prefix and report the final object count and total size:
 aws s3 ls "$DEST" --recursive --summarize --region us-east-1
 ```
 
-The sender's scoped credentials may list the assigned prefix for this summary,
-but they must not read, inspect, delete, or anonymously access objects. The
-Diana operator performs read-side metadata and checksum validation.
+The sender's scoped credentials may list the assigned prefix for this summary.
+Anyone can independently list and download the finished public objects without
+AWS credentials.
 
 Send the Diana operator:
 
@@ -253,8 +249,7 @@ unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_DEFAULT_REGI
 The Diana operator performs the read-side checks that the sender cannot perform:
 
 1. List the exact prefix and reconcile object count and bytes with the sender.
-2. Use authenticated `head-object` to confirm size, `aws:kms` encryption, and the
-   destination KMS key required by the actual scoped policy for representative
+2. Use `head-object` to confirm size and `AES256` encryption for representative
    data, manifest, and checksum objects.
 3. Copy the accepted delivery into an approved analysis staging location and run
    `sha256sum -c checksums.sha256` from the delivery root.

@@ -1,8 +1,8 @@
-# Diana Omics Public Validation Results
+# Diana Omics Public Data
 
-Vite landing page for reviewed Diana Omics results generated from public benchmark datasets and validation runs.
+Vite landing page for public Diana Omics data.
 
-The file browser fetches a reviewed static object index from:
+The file browser fetches reviewed analysis outputs from a static object index:
 
 `https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/public-index/objects.json`
 
@@ -21,7 +21,16 @@ The index schema is:
 }
 ```
 
-Only objects included in that reviewed index appear in the browser. File links use direct HTTPS URLs for current object versions; the site does not enumerate the bucket.
+The browser also lists current public raw inbox objects directly from:
+
+```text
+s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/
+```
+
+The results-bucket index is intentionally static and reviewed. The raw inbox is
+publicly listable and readable under `diana/inbox/` so accepted external
+deliveries appear without rebuilding the index. File links use direct HTTPS URLs
+for current object versions.
 
 ```bash
 npm install
