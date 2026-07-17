@@ -46,6 +46,7 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
     rows: list[dict[str, Any]] = []
     key_marker = ""
     version_marker = ""
+    seen_markers: set[tuple[str, str]] = set()
     while True:
         arguments = [
             "s3api", "list-object-versions", "--bucket", bucket, "--prefix", prefix
@@ -64,8 +65,12 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
             return rows
         key_marker = str(page.get("NextKeyMarker", ""))
         version_marker = str(page.get("NextVersionIdMarker", ""))
-        if not key_marker:
-            raise ValueError("truncated S3 history omitted NextKeyMarker")
+        if not key_marker or not version_marker:
+            raise ValueError("truncated S3 history omitted its next key/version markers")
+        marker = (key_marker, version_marker)
+        if marker in seen_markers:
+            raise ValueError("S3 version history pagination did not advance")
+        seen_markers.add(marker)
 
 
 def head(bucket: str, key: str, version_id: str, region: str) -> dict[str, Any]:

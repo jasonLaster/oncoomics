@@ -456,6 +456,80 @@ class CustodyHandoffTests(unittest.TestCase):
             self.assertEqual(value["receipt_version_id"], version)
             self.assertTrue(value["recovered_existing_version"])
 
+    def test_contract_version_history_consumes_key_and_version_markers(self):
+        pages = [
+            {
+                "IsTruncated": True,
+                "Versions": [{"Key": "prefix/contract.json", "VersionId": "v1"}],
+                "DeleteMarkers": [],
+                "NextKeyMarker": "prefix/contract.json",
+                "NextVersionIdMarker": "v1",
+            },
+            {
+                "IsTruncated": False,
+                "Versions": [],
+                "DeleteMarkers": [{"Key": "prefix/old.json", "VersionId": "d1"}],
+            },
+        ]
+
+        with patch.object(publisher, "aws_json", side_effect=pages) as aws_json:
+            self.assertEqual(
+                publisher.version_history(BUCKET, "prefix/", "us-east-1"),
+                [
+                    {
+                        "Key": "prefix/contract.json",
+                        "VersionId": "v1",
+                        "history_kind": "version",
+                    },
+                    {
+                        "Key": "prefix/old.json",
+                        "VersionId": "d1",
+                        "history_kind": "delete_marker",
+                    },
+                ],
+            )
+
+        self.assertEqual(
+            aws_json.call_args_list[1].args,
+            (
+                [
+                    "s3api",
+                    "list-object-versions",
+                    "--bucket",
+                    BUCKET,
+                    "--prefix",
+                    "prefix/",
+                    "--key-marker",
+                    "prefix/contract.json",
+                    "--version-id-marker",
+                    "v1",
+                ],
+                "us-east-1",
+            ),
+        )
+
+    def test_contract_version_history_rejects_missing_or_stalled_markers(self):
+        missing_version = {
+            "IsTruncated": True,
+            "Versions": [],
+            "DeleteMarkers": [],
+            "NextKeyMarker": "prefix/contract.json",
+        }
+        with patch.object(publisher, "aws_json", return_value=missing_version):
+            with self.assertRaisesRegex(ValueError, "key/version markers"):
+                publisher.version_history(BUCKET, "prefix/", "us-east-1")
+
+        stalled = {
+            "IsTruncated": True,
+            "Versions": [],
+            "DeleteMarkers": [],
+            "NextKeyMarker": "prefix/contract.json",
+            "NextVersionIdMarker": "v1",
+        }
+        with patch.object(publisher, "aws_json", side_effect=[stalled, stalled]):
+            with self.assertRaisesRegex(ValueError, "did not advance"):
+                publisher.version_history(BUCKET, "prefix/", "us-east-1")
+
 
 if __name__ == "__main__":
     unittest.main()
