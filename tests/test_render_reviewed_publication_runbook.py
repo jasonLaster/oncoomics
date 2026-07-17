@@ -94,6 +94,45 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             self.assertIn(MODULE.destination_prefix(method_id), text)
             previous = index
 
+    def test_publish_command_has_exact_dry_and_apply_argv(self) -> None:
+        receipt = Path("/receipts/deterministic_full_wgs.json")
+        output = Path("/receipts/deterministic_full_wgs.public.json")
+        scripts = Path("/repo/scripts")
+
+        dry_command = MODULE.publish_command(
+            scripts,
+            receipt,
+            "deterministic_full_wgs",
+            output,
+            apply=False,
+        )
+        apply_command = MODULE.publish_command(
+            scripts,
+            receipt,
+            "deterministic_full_wgs",
+            output,
+            apply=True,
+        )
+
+        self.assertEqual(
+            dry_command,
+            [
+                "python3",
+                Path("/repo/scripts/publish_reviewed_public_report.py"),
+                "--private-publication-receipt",
+                receipt,
+                "--method-id",
+                "deterministic_full_wgs",
+                "--destination-prefix",
+                MODULE.destination_prefix("deterministic_full_wgs"),
+                "--receipt-output",
+                output,
+                "--region",
+                MODULE.REGION,
+            ],
+        )
+        self.assertEqual(apply_command, [*dry_command, "--apply"])
+
     def test_renderer_rebuilds_and_publishes_public_index(self) -> None:
         receipts = [
             Path(f"/receipts/{method_id}.json")
@@ -107,6 +146,39 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
         self.assertIn("/repo/.codex-tmp/public-index/public-index.json", text)
         for stale in MODULE.STALE_TOKENS:
             self.assertNotIn(stale, text)
+
+    def test_index_commands_have_exact_build_dry_and_apply_argv(self) -> None:
+        index = Path("/repo/.codex-tmp/public-index/objects.json")
+        commands = MODULE.index_commands(Path("/repo"))
+
+        self.assertEqual(
+            commands,
+            [
+                [
+                    "python3",
+                    Path("/repo/scripts/build_public_results_index.py"),
+                    "--output",
+                    index,
+                ],
+                [
+                    "python3",
+                    Path("/repo/scripts/publish_public_results_index.py"),
+                    "--index",
+                    index,
+                    "--receipt-output",
+                    Path("/repo/.codex-tmp/public-index/public-index.dry.json"),
+                ],
+                [
+                    "python3",
+                    Path("/repo/scripts/publish_public_results_index.py"),
+                    "--index",
+                    index,
+                    "--receipt-output",
+                    Path("/repo/.codex-tmp/public-index/public-index.json"),
+                    "--apply",
+                ],
+            ],
+        )
 
     def test_private_receipt_gate_accepts_current_checked_in_receipts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
