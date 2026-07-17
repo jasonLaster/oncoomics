@@ -6,6 +6,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -18,6 +20,28 @@ if str(TEST_DIR) not in sys.path:
 import hrd_report_inventory as INVENTORY  # noqa: E402
 import prepare_ai_review_run as PREPARE  # noqa: E402
 from test_build_ai_review_bundle import AiReviewBundleFixture, write_json  # noqa: E402
+
+
+def namespace(fixture: AiReviewBundleFixture, output_dir: Path) -> SimpleNamespace:
+    by_method = dict(zip(INVENTORY.REQUIRED_METHOD_IDS, fixture.manifests))
+    args = {
+        argument: by_method[method_id]
+        for method_id, argument in PREPARE.METHOD_ARGUMENTS
+    }
+    args.update(
+        {
+            "output_dir": output_dir,
+            "subject_alias": "subject01",
+            "model_catalog_receipt": fixture.catalog_receipt,
+            "model_catalog_verified_at": fixture.catalog_verified_at,
+            "reviewer_a_provider": "synthetic-provider-a",
+            "reviewer_a_model_id": "synthetic-model-a-current",
+            "reviewer_b_provider": "synthetic-provider-b",
+            "reviewer_b_model_id": "synthetic-model-b-current",
+            "forbidden_token": ["DirectIdentifier"],
+        }
+    )
+    return SimpleNamespace(**args)
 
 
 def command(fixture: AiReviewBundleFixture, output_dir: Path) -> list[str]:
@@ -210,6 +234,30 @@ class PrepareAiReviewRunTests(unittest.TestCase):
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("output already exists", result.stderr)
+
+    def test_cleans_current_attempt_after_install_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            output = Path(temporary) / "ai-review"
+            moved: list[str] = []
+            real_move = PREPARE.move_staged_entry
+
+            def fail_after_first_move(source: Path, destination: Path) -> None:
+                if moved:
+                    raise ValueError("synthetic install failure")
+                real_move(source, destination)
+                moved.append(destination.name)
+
+            with mock.patch.object(
+                PREPARE,
+                "move_staged_entry",
+                side_effect=fail_after_first_move,
+            ):
+                with self.assertRaisesRegex(ValueError, "synthetic install failure"):
+                    PREPARE.prepare(namespace(fixture, output))
+
+            self.assertEqual(moved, ["bundle"])
+            self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":

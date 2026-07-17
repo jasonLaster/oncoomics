@@ -7,7 +7,6 @@ import argparse
 import hashlib
 import json
 import os
-import tempfile
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -271,23 +270,24 @@ def build_manifest(
     }
 
 
-def write_atomic(path: Path, value: dict[str, Any]) -> None:
+def write_create_only(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-    temporary = Path(name)
     try:
-        os.fchmod(descriptor, 0o600)
+        descriptor = os.open(
+            path,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+    except FileExistsError as error:
+        raise ValueError("report_manifest.json already exists") from error
+
+    try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            descriptor = -1
             json.dump(value, handle, indent=2, sort_keys=True)
             handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
-        temporary.unlink(missing_ok=True)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -317,7 +317,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.reviewer,
             args.model_catalog_receipt.resolve(),
         )
-        write_atomic(output, manifest)
+        write_create_only(output, manifest)
         try:
             require_exact_review_dir(review_dir, REVIEW_PACKET_FILES)
         except ValueError:

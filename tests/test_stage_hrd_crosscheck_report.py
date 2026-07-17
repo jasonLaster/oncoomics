@@ -171,6 +171,32 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "output already exists"):
                 STAGE.stage(source, verification, output, "sequenza_scarhrd")
 
+    def test_stage_cleans_current_attempt_after_install_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            output = root / "staged"
+            copied: list[str] = []
+            real_copy = STAGE.copy_create_only
+
+            def fail_after_first_copy(source_path: Path, destination: Path) -> None:
+                if copied:
+                    raise ValueError("synthetic install failure")
+                real_copy(source_path, destination)
+                copied.append(destination.name)
+
+            with mock.patch.object(
+                STAGE,
+                "copy_create_only",
+                side_effect=fail_after_first_copy,
+            ):
+                with self.assertRaisesRegex(ValueError, "synthetic install failure"):
+                    STAGE.stage(source, verification, output, "sigprofiler_sbs3")
+
+            self.assertEqual(copied, ["method_spec.json"])
+            self.assertFalse(output.exists())
+
     def test_stage_rejects_output_inside_exact_replay(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

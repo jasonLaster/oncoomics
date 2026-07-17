@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -126,6 +127,51 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def copy_create_only(source: Path, destination: Path) -> None:
+    try:
+        file_descriptor = os.open(
+            destination,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o644,
+        )
+    except FileExistsError as error:
+        raise ValueError(
+            "staged cross-check packet already exists: " + destination.name
+        ) from error
+
+    try:
+        with source.open("rb") as source_handle, os.fdopen(
+            file_descriptor, "wb"
+        ) as destination_handle:
+            for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
+                destination_handle.write(chunk)
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
+
+
+def install_staged_packet(staging: Path, output_dir: Path) -> None:
+    try:
+        output_dir.mkdir(mode=0o700)
+    except FileExistsError as error:
+        raise ValueError(f"output already exists: {output_dir}") from error
+
+    installed: list[Path] = []
+    try:
+        for name in ("method_spec.json", "report.md", "report_manifest.json"):
+            destination = output_dir / name
+            copy_create_only(staging / name, destination)
+            installed.append(destination)
+    except Exception:
+        for path in installed:
+            path.unlink(missing_ok=True)
+        try:
+            output_dir.rmdir()
+        except OSError:
+            pass
+        raise
+
+
 def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: str) -> None:
     if route not in SUPPORTED_ROUTES:
         raise ValueError(f"unsupported executable cross-check route: {route}")
@@ -142,11 +188,12 @@ def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: st
     if not source_dir.is_dir() or source_dir.is_symlink():
         raise ValueError("exact route replay must be a real directory")
 
-    staging = output_dir.parent / f".{output_dir.name}.staging"
-    if staging.exists() or staging.is_symlink():
-        raise ValueError(f"staging path already exists: {staging}")
-    staging.mkdir(parents=True, mode=0o700)
-    try:
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix=f".{output_dir.name}.",
+        dir=output_dir.parent,
+    ) as temporary:
+        staging = Path(temporary)
         shutil.copyfile(require_source_file(source_dir, "report.md"), staging / "report.md")
         shutil.copyfile(
             require_source_file(source_dir, "report_manifest.json"),
@@ -200,10 +247,7 @@ def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: st
             "report_sha256": sha256(staging / "report.md"),
         }
         write_json(staging / "report_manifest.json", manifest)
-        os.replace(staging, output_dir)
-    finally:
-        if staging.exists():
-            shutil.rmtree(staging)
+        install_staged_packet(staging, output_dir)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

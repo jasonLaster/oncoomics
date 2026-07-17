@@ -272,6 +272,24 @@ def validate_postconditions(
     }
 
 
+def move_staged_entry(source: Path, destination: Path) -> None:
+    source.rename(destination)
+
+
+def install_staged_run(staging: Path, output: Path) -> None:
+    try:
+        output.mkdir(mode=0o700)
+    except FileExistsError as error:
+        raise ValueError(f"output already exists: {output}") from error
+
+    try:
+        for child in sorted(staging.iterdir(), key=lambda path: path.name):
+            move_staged_entry(child, output / child.name)
+    except Exception:
+        shutil.rmtree(output, ignore_errors=True)
+        raise
+
+
 def prepare(args: argparse.Namespace) -> dict[str, Any]:
     output = args.output_dir.resolve()
     if output.exists() or output.is_symlink():
@@ -339,7 +357,7 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
         }
         write_json(staging / "prepare_ai_review_run_receipt.json", receipt)
 
-        os.replace(staging, output)
+        install_staged_run(staging, output)
         keep_staging = True
         return receipt
     finally:
