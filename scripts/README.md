@@ -9,6 +9,8 @@ Current shell utilities:
   model.
 - `build_public_results_index.py`: build the reviewed static S3 object index that
   powers `data.diana-tnbc.com`.
+- `finalize_ai_review.py`: wrap a passed independent AI review in a schema-1
+  HRD report manifest that can be privately frozen.
 - `generate_blocked_hrd_crosscheck_reports.py`: render FACETS→scarHRD,
   Oncoanalyser→CHORD, and HRDetect no-call packets for routes that are not yet
   executable or clinically authorized.

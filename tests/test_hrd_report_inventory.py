@@ -46,6 +46,10 @@ class HrdReportInventoryTests(unittest.TestCase):
     def test_publisher_contracts_follow_pinned_method_inventory(self) -> None:
         self.assertEqual(
             tuple(PUBLISH.METHOD_CONTRACTS),
+            INVENTORY.REPORT_METHOD_IDS,
+        )
+        self.assertEqual(
+            tuple(PUBLISH.METHOD_CONTRACTS)[: len(INVENTORY.REQUIRED_METHOD_IDS)],
             INVENTORY.REQUIRED_METHOD_IDS,
         )
 
@@ -76,6 +80,9 @@ class HrdReportInventoryTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "exact order"):
             INVENTORY.require_pinned_methods(reordered, "test inventory")
+
+        with self.assertRaisesRegex(ValueError, "report inventory"):
+            INVENTORY.require_report_methods(reordered, "test inventory")
 
         with self.assertRaisesRegex(ValueError, "differs"):
             INVENTORY.require_inventory_binding(payload, "0" * 64, "test binding")

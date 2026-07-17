@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from hrd_report_inventory import require_pinned_methods
+from hrd_report_inventory import require_report_methods
 
 REGION = "us-east-1"
 ACCOUNT_ID = "172630973301"
@@ -64,6 +64,18 @@ CROSSCHECK_FILES = (
     "report.md",
     "report_manifest.json",
 )
+AI_REVIEW_FILES = (
+    "claims.csv",
+    "report.md",
+    "report_manifest.json",
+    "review_manifest.json",
+    "validation.json",
+)
+SYNTHESIS_FILES = (
+    "agreement_disagreement.csv",
+    "report.md",
+    "report_manifest.json",
+)
 METHOD_CONTRACTS: dict[str, dict[str, Any]] = {
     "deterministic_full_wgs": {
         "files": DETERMINISTIC_FILES,
@@ -93,8 +105,20 @@ METHOD_CONTRACTS: dict[str, dict[str, Any]] = {
         "files": CROSSCHECK_FILES,
         "destination": "crosschecks/hrdetect_blocked/",
     },
+    "ai_review_reviewer_a": {
+        "files": AI_REVIEW_FILES,
+        "destination": "ai-review/reviewer-a/",
+    },
+    "ai_review_reviewer_b": {
+        "files": AI_REVIEW_FILES,
+        "destination": "ai-review/reviewer-b/",
+    },
+    "comparative_hrd_synthesis": {
+        "files": SYNTHESIS_FILES,
+        "destination": "ai-review/comparative-synthesis/",
+    },
 }
-require_pinned_methods(tuple(METHOD_CONTRACTS), "reviewed public report method contracts")
+require_report_methods(tuple(METHOD_CONTRACTS), "reviewed public report method contracts")
 DEFAULT_FORBIDDEN_TOKENS = (
     "DRF-PSN49561",
     "E019_S01",

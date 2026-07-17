@@ -20,6 +20,14 @@ REQUIRED_METHOD_IDS = (
 )
 EXECUTABLE_CROSSCHECK_METHOD_IDS = REQUIRED_METHOD_IDS[2:4]
 BLOCKED_CROSSCHECK_METHOD_IDS = REQUIRED_METHOD_IDS[4:]
+AI_REVIEW_METHOD_IDS = (
+    "ai_review_reviewer_a",
+    "ai_review_reviewer_b",
+)
+COMPARATIVE_METHOD_IDS = ("comparative_hrd_synthesis",)
+REPORT_METHOD_IDS = (
+    REQUIRED_METHOD_IDS + AI_REVIEW_METHOD_IDS + COMPARATIVE_METHOD_IDS
+)
 
 
 def inventory_payload() -> dict[str, Any]:
@@ -43,6 +51,17 @@ def require_pinned_methods(values: Sequence[str], label: str) -> list[str]:
     if observed != expected:
         raise ValueError(
             f"{label} must equal the pinned seven-method inventory in exact order; "
+            f"expected={expected!r} observed={observed!r}"
+        )
+    return observed
+
+
+def require_report_methods(values: Sequence[str], label: str) -> list[str]:
+    observed = [str(value) for value in values]
+    expected = list(REPORT_METHOD_IDS)
+    if observed != expected:
+        raise ValueError(
+            f"{label} must equal the pinned report inventory in exact order; "
             f"expected={expected!r} observed={observed!r}"
         )
     return observed
