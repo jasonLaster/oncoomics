@@ -94,6 +94,33 @@ def reserve_json(path: Path, value: dict[str, Any]) -> None:
     fsync_directory(path.parent)
 
 
+def install_file_create_only(source: Path, destination: Path) -> None:
+    try:
+        file_descriptor = os.open(
+            destination,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+    except FileExistsError as error:
+        raise FileExistsError(
+            "refusing to replace local materializer output"
+        ) from error
+
+    try:
+        with source.open("rb") as source_handle, os.fdopen(
+            file_descriptor, "wb"
+        ) as destination_handle:
+            file_descriptor = -1
+            for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
+                destination_handle.write(chunk)
+    except Exception:
+        if file_descriptor >= 0:
+            os.close(file_descriptor)
+        destination.unlink(missing_ok=True)
+        raise
+    source.unlink()
+
+
 def parse_s3(uri: str) -> tuple[str, str]:
     parsed = urlparse(uri)
     key = parsed.path.lstrip("/")
@@ -311,7 +338,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
         if result["status"] != "passed":
             raise ValueError(f"download validation failed: {checks}")
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        os.replace(staging, output_path)
+        install_file_create_only(staging, output_path)
         fsync_directory(output_path.parent)
         write_json_atomic(verify_path, result)
         return result

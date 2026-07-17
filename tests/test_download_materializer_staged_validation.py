@@ -275,6 +275,88 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                 "failed",
             )
 
+    def test_late_existing_output_records_failed_receipt_without_replacement(
+        self,
+    ) -> None:
+        payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            output = root / "staged_input_validation.json"
+            verification = root / "verification.json"
+            receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            def get_object(
+                _bucket: str,
+                _key: str,
+                _version_id: str,
+                destination: Path,
+                _region: str,
+            ) -> dict:
+                destination.write_bytes(payload)
+                return {
+                    "VersionId": "version-1",
+                    "ContentLength": len(payload),
+                    "ChecksumSHA256": checksum(payload),
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                }
+
+            real_validate_download = MODULE.validate_download
+
+            def validate_download(
+                row: dict,
+                head: dict,
+                get: dict,
+                local_path: Path,
+                expected_kms: str,
+            ) -> dict:
+                checks = real_validate_download(row, head, get, local_path, expected_kms)
+                output.write_bytes(b"keep me\n")
+                return checks
+
+            with patch.object(
+                MODULE,
+                "head_object",
+                return_value={
+                    "VersionId": "version-1",
+                    "ContentLength": len(payload),
+                    "ChecksumSHA256": checksum(payload),
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                },
+            ), patch.object(
+                MODULE, "get_object", side_effect=get_object
+            ), patch.object(
+                MODULE, "validate_download", side_effect=validate_download
+            ):
+                with self.assertRaisesRegex(
+                    FileExistsError, "refusing to replace local materializer output"
+                ):
+                    MODULE.materialize(
+                        argparse.Namespace(
+                            materializer_receipt=receipt_path,
+                            output=output,
+                            verification_output=verification,
+                            expected_kms_key_arn=KMS,
+                            region="us-east-1",
+                        )
+                    )
+
+            self.assertEqual(output.read_bytes(), b"keep me\n")
+            self.assertFalse((root / ".staged_input_validation.json.staging").exists())
+            failed = json.loads(verification.read_text(encoding="utf-8"))
+            self.assertEqual(failed["status"], "failed")
+            self.assertIn(
+                "FileExistsError: refusing to replace local materializer output",
+                failed["error"],
+            )
 
 if __name__ == "__main__":
     unittest.main()
