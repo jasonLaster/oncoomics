@@ -1,0 +1,247 @@
+from __future__ import annotations
+
+import json
+import stat
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import materialize_frozen_artifacts as MODULE  # noqa: E402
+
+
+class MaterializeFrozenArtifactsTests(unittest.TestCase):
+    def freeze_fixture(self, root: Path, kms: str) -> Path:
+        receipt = root / "freeze.json"
+        receipt.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "status": "passed",
+                    "run_id": "synthetic-run",
+                    "batch_job_id": "synthetic-job",
+                    "kms_key_arn": kms,
+                    "destination_prefix": (
+                        "s3://diana-omics-private-results-test/"
+                        "runs/subject01/synthetic-run/deterministic/artifacts/"
+                    ),
+                    "object_count": 1,
+                    "objects": [
+                        {
+                            "relative_key": "variants/final.vcf.gz",
+                            "status": "passed",
+                            "destination": {
+                                "bucket": "diana-omics-private-results-test",
+                                "key": (
+                                    "runs/subject01/synthetic-run/deterministic/"
+                                    "artifacts/variants/final.vcf.gz"
+                                ),
+                                "version_id": "exact-version",
+                                "bytes": 5,
+                                "checksums": {"ChecksumCRC64NVME": "checksum"},
+                                "checksum_type": "FULL_OBJECT",
+                            },
+                        }
+                    ],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return receipt
+
+    def args(self, freeze: Path, output: Path, receipt: Path, kms: str) -> list[str]:
+        return [
+            "--freeze-receipt",
+            str(freeze),
+            "--output-dir",
+            str(output),
+            "--receipt-output",
+            str(receipt),
+            "--expected-kms-key-arn",
+            kms,
+        ]
+
+    def test_safe_relative_rejects_traversal(self) -> None:
+        self.assertEqual(
+            MODULE.safe_relative("variants/final.vcf.gz"),
+            "variants/final.vcf.gz",
+        )
+        for value in ("", "/absolute", "../escape", "variants/../../escape"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                MODULE.safe_relative(value)
+
+    def test_exact_version_bytes_checksum_and_kms_bind_local_sha(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "artifact"
+            path.write_bytes(b"exact frozen bytes")
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            expected = {
+                "version_id": "frozen-version",
+                "bytes": path.stat().st_size,
+                "checksums": {"ChecksumCRC64NVME": "checksum"},
+                "checksum_type": "FULL_OBJECT",
+            }
+            response = {
+                "VersionId": "frozen-version",
+                "ContentLength": path.stat().st_size,
+                "ChecksumCRC64NVME": "checksum",
+                "ChecksumType": "FULL_OBJECT",
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": kms,
+            }
+            row = MODULE.validate_materialized(expected, response, path, kms)
+            self.assertEqual(row["sha256"], MODULE.sha256(path))
+            self.assertTrue(all(row["checks"].values()))
+
+            for field, value in (
+                ("VersionId", "other-version"),
+                ("ChecksumCRC64NVME", "other-checksum"),
+                ("SSEKMSKeyId", kms + "-other"),
+            ):
+                altered = dict(response)
+                altered[field] = value
+                with self.subTest(field=field), self.assertRaisesRegex(
+                    ValueError, "materialization checks failed"
+                ):
+                    MODULE.validate_materialized(expected, altered, path, kms)
+
+    def test_positive_bytes_and_checksum_are_required(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "empty"
+            path.write_bytes(b"")
+            with self.assertRaisesRegex(ValueError, "positive byte count"):
+                MODULE.validate_materialized(
+                    {
+                        "version_id": "v",
+                        "bytes": 0,
+                        "checksums": {"ChecksumCRC64NVME": "c"},
+                        "checksum_type": "FULL_OBJECT",
+                    },
+                    {},
+                    path,
+                    "kms",
+                )
+
+    def test_stages_then_atomically_publishes_exact_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+
+            def fake_get(
+                bucket: str, key: str, version_id: str, destination: Path, region: str
+            ) -> dict[str, object]:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(b"exact")
+                return {
+                    "VersionId": version_id,
+                    "ContentLength": 5,
+                    "ChecksumCRC64NVME": "checksum",
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": kms,
+                }
+
+            with patch.object(MODULE, "get_exact_object", side_effect=fake_get):
+                self.assertEqual(
+                    MODULE.main(self.args(freeze, output, receipt, kms)),
+                    0,
+                )
+
+            self.assertEqual((output / "variants/final.vcf.gz").read_bytes(), b"exact")
+            payload = json.loads(receipt.read_text(encoding="utf-8"))
+            self.assertEqual(payload["status"], "passed")
+            self.assertEqual(payload["passed_count"], 1)
+            self.assertEqual(stat.S_IMODE(receipt.stat().st_mode), 0o600)
+            self.assertFalse((root / ".materialized.staging").exists())
+
+    def test_failure_removes_staging_but_preserves_reserved_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+
+            with patch.object(
+                MODULE,
+                "get_exact_object",
+                side_effect=RuntimeError("synthetic failure"),
+            ), self.assertRaisesRegex(SystemExit, "synthetic failure"):
+                MODULE.main(self.args(freeze, output, receipt, kms))
+
+            payload = json.loads(receipt.read_text(encoding="utf-8"))
+            self.assertEqual(payload["status"], "failed")
+            self.assertEqual(stat.S_IMODE(receipt.stat().st_mode), 0o600)
+            self.assertFalse(output.exists())
+            self.assertFalse((root / ".materialized.staging").exists())
+
+    def test_prepared_receipt_recovers_cutover_without_redownload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            output = root / "materialized"
+            staging = root / ".materialized.staging"
+            staged_file = staging / "variants/final.vcf.gz"
+            staged_file.parent.mkdir(parents=True)
+            staged_file.write_bytes(b"exact")
+            receipt = root / "materialization.json"
+            prepared = {
+                "schema_version": 1,
+                "status": "prepared",
+                "run_id": "synthetic-run",
+                "batch_job_id": "synthetic-job",
+                "script_sha256": MODULE.sha256(SCRIPT_DIR / "materialize_frozen_artifacts.py"),
+                "freeze_receipt_sha256": MODULE.sha256(freeze),
+                "expected_kms_key_arn": kms,
+                "materialization_dir": str(output.resolve()),
+                "object_count": 1,
+                "objects": [
+                    {
+                        "relative_key": "variants/final.vcf.gz",
+                        "bytes": 5,
+                        "sha256": MODULE.sha256(staged_file),
+                    }
+                ],
+            }
+            MODULE.reserve_json(receipt, prepared)
+
+            with patch.object(MODULE, "get_exact_object") as get_exact:
+                self.assertEqual(
+                    MODULE.main(self.args(freeze, output, receipt, kms)),
+                    0,
+                )
+
+            get_exact.assert_not_called()
+            self.assertEqual((output / "variants/final.vcf.gz").read_bytes(), b"exact")
+            payload = json.loads(receipt.read_text(encoding="utf-8"))
+            self.assertEqual(payload["status"], "passed")
+            self.assertTrue(payload["recovered_prepared_cutover"])
+
+    def test_existing_unrelated_receipt_is_never_replaced(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            receipt = root / "materialization.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+
+            with self.assertRaisesRegex(SystemExit, "belongs to another operation"):
+                MODULE.main(self.args(freeze, root / "materialized", receipt, kms))
+
+            self.assertEqual(receipt.read_text(encoding="utf-8"), '{"status":"passed"}\n')
+
+
+if __name__ == "__main__":
+    unittest.main()

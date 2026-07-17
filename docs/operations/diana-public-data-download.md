@@ -74,12 +74,23 @@ input_sha256.csv
 report_manifest.json
 ```
 
-Use a run-local scratch directory and publish the generated packet only after a
-dry-run receipt verifies the five-file inventory and `no_call` boundary:
+Materialize the final private freeze by exact S3 `VersionId` before staging the
+report packet:
 
 ```bash
 RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
 
+python3 scripts/materialize_frozen_artifacts.py \
+  --freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
+  --output-dir "$RUN_ROOT/materialized-final" \
+  --receipt-output "$RUN_ROOT/terminal.materialize.json" \
+  --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN"
+```
+
+Use a run-local scratch directory and publish the generated packet only after a
+dry-run receipt verifies the five-file inventory and `no_call` boundary:
+
+```bash
 python3 scripts/stage_deterministic_wgs_report.py \
   --artifact-root "$RUN_ROOT/materialized-final" \
   --preflight-json "$RUN_ROOT/quarantine.preflight.json" \

@@ -21,6 +21,8 @@ Current shell utilities:
   inventory shared by deterministic, Rosalind, cross-check, and AI-review
   reporting.
 - `launch_phase3_aws_full.sh`: launch a full Phase 3 WGS AWS run with repo-specific defaults.
+- `materialize_frozen_artifacts.py`: download a passed final-artifact private
+  freeze by exact S3 VersionId into a local tree for deterministic reporting.
 - `publish_private_report.py`: freeze an allowlisted HRD report packet in the
   private versioned results bucket before reviewed public release.
 - `prepare_ai_review_run.py`: build a seven-method de-identified AI review
