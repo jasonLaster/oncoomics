@@ -707,6 +707,37 @@ def write_agreement(path: Path, rows: Sequence[Dict[str, str]]) -> None:
         writer.writerows(rows)
 
 
+def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
+    expected = set(expected_files)
+    if output.is_symlink():
+        raise ValueError("synthesis output may not be a symlink")
+    if output.exists() and not output.is_dir():
+        raise ValueError(f"synthesis output is not a directory: {output}")
+
+    output.mkdir(parents=True, exist_ok=True)
+
+    unexpected: List[str] = []
+    invalid: List[str] = []
+    for path in output.iterdir():
+        if path.name not in expected:
+            unexpected.append(path.name)
+        elif path.is_symlink() or not path.is_file():
+            invalid.append(path.name)
+    if unexpected:
+        raise ValueError(
+            "synthesis output contains unexpected existing files: "
+            + ", ".join(sorted(unexpected))
+        )
+    if invalid:
+        raise ValueError(
+            "synthesis output contains invalid existing packet paths: "
+            + ", ".join(sorted(invalid))
+        )
+
+    for filename in expected:
+        (output / filename).unlink(missing_ok=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-manifest", action="append", required=True, type=Path)
@@ -719,11 +750,10 @@ def main() -> None:
     args = parser.parse_args()
 
     output = args.output_dir.resolve()
-    output.mkdir(parents=True, exist_ok=True)
-    for filename in OUTPUT_FILES:
-        stale = output / filename
-        if stale.is_file() or stale.is_symlink():
-            stale.unlink()
+    try:
+        prepare_output_dir(output, OUTPUT_FILES)
+    except ValueError as error:
+        raise SystemExit("Fail-closed: " + str(error)) from error
     required_methods = [str(value).strip() for value in args.require_method]
     if (
         not required_methods

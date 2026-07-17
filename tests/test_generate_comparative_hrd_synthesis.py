@@ -380,6 +380,32 @@ class GenerateSynthesisTests(unittest.TestCase):
             self.assertIn("method inventory", result.stdout + result.stderr)
             self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
 
+    def test_stale_extra_output_fails_before_removing_prior_packet(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            self.assertEqual(fixture.run().returncode, 0)
+            (fixture.output_dir / "unexpected.txt").write_text(
+                "stale\n",
+                encoding="utf-8",
+            )
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "synthesis output contains unexpected existing files",
+                result.stdout + result.stderr,
+            )
+            self.assertEqual(
+                sorted(path.name for path in fixture.output_dir.iterdir()),
+                [
+                    "agreement_disagreement.csv",
+                    "report.md",
+                    "report_manifest.json",
+                    "unexpected.txt",
+                ],
+            )
+
     def test_omitted_reordered_added_and_tampered_inventory_fail_closed(self) -> None:
         method_sets = (
             list(REQUIRED_METHOD_IDS[:-1]),
