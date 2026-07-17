@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "method_id": "rosalind_hcc1395_wgs",
+  "report_kind": "rosalind_hrd_reviewer_packet",
+  "evidence_status": "partial_evidence",
+  "authorized_hrd_state": "no_call",
+  "classification_authorized": false,
+  "classification_qc_status": "not_applicable",
+  "support_sha256": {
+    "hrd_adapter_status.csv": "36ce5450e9decf5f0c80d6ec13c535c171892214fd84dedd5aedd9b3ccdc7151",
+    "input_evidence_index.json": "7ccec1c51feb29e47a7fedacea04a78b9ef989219e1eb2317bceecddc9e228cb",
+    "next_actions.md": "1737cc42f92982664118d870b0615280919b31549a37a053fe46966de9295008",
+    "research_context_sources.json": "288840c1b53b1e4535342a399b456f6fc94fae1c46e9a7d46274f76ae48a9846",
+    "reviewer_packet.md": "81b8cf1e02918898a6b3420df06e8171c7d1df75d492ddc01041b1f4ca30e123",
+    "sample_validation_summary.csv": "ffbe4f4e01dcdfb36c80e7bef26d77ea300e014f90f728bec4026a7a618803b4"
+  },
+  "source_sha256": {
+    "source_artifact_001": "88c19f090cf2c96e585a4dff591d2ac2cb3c0d34b0ae39fe3e93fd53ec1c0686",
+    "source_artifact_002": "18602597a5f3a0ee421cc2196afc41c407cc1e9cd5944d5877e0a17a97462f30",
+    "source_artifact_003": "1a34d97ee9fea675933ad7a2bac50b97ba7606412edffcbbc0a9965c89728a8a",
+    "source_artifact_004": "81d7ef0ca68836c1bf8ccdeb767cf1fb5cbb176fcf2f301a9c20a552b028c56f",
+    "source_artifact_005": "b0bf2fbf6b37ba70e5b4548918b2bf2a6c51d8a6fd5dd2b21c7ce622f2039cb1",
+    "source_artifact_006": "c7622b97569756bec76479e95792b482159f14e96a2fd0916115c8937b0b9bda",
+    "source_artifact_007": "93b9a3e78635972fba2665e4fb7bd178f67ec193aae736d03780b834a3c50d20",
+    "source_artifact_008": "ced5c0a4a01f2211e84d25a779c9291c750b4986b250eb20f339aac85500176a"
+  },
+  "report_sha256": "81b8cf1e02918898a6b3420df06e8171c7d1df75d492ddc01041b1f4ca30e123",
+  "review_summary": {
+    "overall": {
+      "evidence_status": "partial_evidence",
+      "authorized_hrd_state": "no_call"
+    },
+    "packet_type": "hcc1395_wgs",
+    "allowed_conclusion": "This sample exercises the WGS evidence surfaces needed for HRD review. It remains a partial HRD evidence packet until allele-specific CNV/LOH, production SV calls, signature thresholds, CHORD/scarHRD/HRDetect policy, and known-answer performance are locked.",
+    "evidence": [
+      {
+        "evidence_id": "wgs_pair_validation",
+        "status": "passed",
+        "detail": "Full-source FASTQs: True; read pairs per end: 568040077; BAM validation: passed.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "small_variant_lane",
+        "status": "passed",
+        "detail": "Truth-depth eligible variants: 300; exact PASS matches: 268.",
+        "caveat": "Public-BAM timing runs may skip local variant calling; do not infer HRD score readiness from this alone."
+      },
+      {
+        "evidence_id": "coverage_cnv_bins",
+        "status": "passed",
+        "detail": "631 coverage CNV bins generated.",
+        "caveat": "Coverage bins are not allele-specific CNV/LOH segments."
+      },
+      {
+        "evidence_id": "sbs96_matrix",
+        "status": "passed",
+        "detail": "265 usable SNV records for SBS96.",
+        "caveat": "SBS3 interpretation remains no-call until thresholds and known-answer performance are locked."
+      },
+      {
+        "evidence_id": "sv_evidence",
+        "status": "passed",
+        "detail": "SV evidence rows: 2; discordant mapped pairs: 39983763; CHORD statuses: not_assessable_requires_validated_sv_caller_vcf.",
+        "caveat": "CHORD and HRDetect need validated SV caller VCF/BEDPE, not metadata-only evidence."
+      },
+      {
+        "evidence_id": "sv_caller_readiness",
+        "status": "passed",
+        "detail": "Candidate SV caller rows: 4; discordant mapped pairs in sidecar: 39983763; ready for clinical interpretation: no.",
+        "caveat": "Use this as a readiness gate only after it agrees with the current SV evidence summary."
+      },
+      {
+        "evidence_id": "cnv_loh_readiness",
+        "status": "passed",
+        "detail": "CNV bins: 631; allele-specific segments available: no; ready for clinical interpretation: no.",
+        "caveat": "Coverage bins remain a plumbing check, not scarHRD-ready allele-specific CNV/LOH evidence."
+      }
+    ],
+    "adapters": [
+      {
+        "adapter": "SigProfilerAssignment",
+        "state": "input_ready_threshold_met",
+        "blocker": "Classification is deferred for low mutation count; the matrix is a real VCF-derived output, not a proxy.",
+        "next_action": "Promote to ready only after the required production adapter and known-answer validation pass."
+      },
+      {
+        "adapter": "scarHRD",
+        "state": "not_assessable_without_allele_specific_segments",
+        "blocker": "scarHRD needs allele-specific segmented CN calls; this run validates WGS coverage-bin plumbing only.",
+        "next_action": "Promote to ready only after the required production adapter and known-answer validation pass."
+      },
+      {
+        "adapter": "CHORD",
+        "state": "not_assessable_requires_validated_sv_caller_vcf",
+        "blocker": "CHORD-style interpretation needs full-depth SNV/indel/SV/CNV feature inputs; this validates the feature lanes.",
+        "next_action": "Promote to ready only after the required production adapter and known-answer validation pass."
+      },
+      {
+        "adapter": "sigprofiler_sbs3",
+        "state": "no_call",
+        "blocker": "SBS3 interpretation thresholds and known-answer performance are not locked.",
+        "next_action": "validated SBS96/SBS288 mutation matrix plus reconstruction metrics and locked minimum-mutation policy"
+      },
+      {
+        "adapter": "scarhrd",
+        "state": "no_call",
+        "blocker": "Allele-specific CNV/LOH segments are not available.",
+        "next_action": "validated allele-specific copy-number segments with total/minor copy number purity and ploidy"
+      },
+      {
+        "adapter": "chord",
+        "state": "no_call",
+        "blocker": "Validated production SV caller VCF/BEDPE input is not available.",
+        "next_action": "validated somatic SNV/indel features plus production SV caller VCF or BEDPE and CNV context"
+      },
+      {
+        "adapter": "hrdetect",
+        "state": "no_call",
+        "blocker": "Integrated HRDetect-style feature classes and model calibration are not complete.",
+        "next_action": "locked six-feature HRD model inputs including substitution signatures indel signatures rearrangement signatures and CNV/LOH features"
+      }
+    ],
+    "blockers": []
+  }
+}

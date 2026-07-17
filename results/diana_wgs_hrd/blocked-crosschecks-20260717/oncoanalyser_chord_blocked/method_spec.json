@@ -1,0 +1,60 @@
+{
+  "alias_scope": [
+    "subject01_tumor",
+    "subject01_normal"
+  ],
+  "blockers": [
+    "The active contract contains no original FASTQ lane hashes or alias-only lane mapping for this route.",
+    "The HMF reference and resource identities are not frozen.",
+    "The workflow process images are tag-based and unmirrored rather than digest-attested.",
+    "The x86 controller and Batch runtime are not applied and tested.",
+    "No durable CHORD result parser is present, and license and intended-use review is incomplete.",
+    "Known-answer performance, QC limits, interpretation thresholds, and change-control authorization are not locked."
+  ],
+  "classification_authorization": "none",
+  "evidence_status": "blocked",
+  "execution_status": "not_run",
+  "explicit_no_patient_result": "The method was not run and no patient result was generated, inferred, or reported.",
+  "intended_computation": [
+    "Run nf-core/oncoanalyser in WGTS mode against the selected GRCh38_hmf resource bundle.",
+    "Independently align and process the paired WGS lanes, call small variants with SAGE, structural variants with ESVEE, and allele-specific copy number, purity, and ploidy with AMBER, COBALT, and PURPLE.",
+    "Give CHORD the PURPLE somatic small-variant VCF, PURPLE structural-variant VCF, and exact reference resources.",
+    "Compute SNV, indel, and structural-variant contexts and the CHORD probability and category fields, subject to CHORD QC and Diana validation policy."
+  ],
+  "interpretation_status": "no_call",
+  "method_id": "oncoanalyser_chord_blocked",
+  "next_gate": "Reconcile and hash the alias-only FASTQ lanes and HMF resources; mirror every process image by digest with SBOM and provenance; apply and test the x86 Nextflow runtime and CHORD parser; then pass dry-run and known-answer validation before paired-WGS execution or interpretation.",
+  "patient_result": "none",
+  "prerequisites": [
+    "Original checksummed paired tumor and normal FASTQ lanes with an alias-only lane mapping and samplesheet.",
+    "Exact GRCh38_hmf reference and WiGiTS resource identities, with every file bound to SHA-256.",
+    "An nf-core/oncoanalyser commit and compatible Nextflow version pinned in the route contract.",
+    "Every workflow process image mirrored and pinned by immutable digest with license review, SBOM, and provenance.",
+    "A tested linux/amd64 Nextflow controller and Batch runtime plus a durable, validated CHORD output parser.",
+    "Passed dry-run and known-answer validation with locked QC, classification, and change-control policy."
+  ],
+  "schema_version": 1,
+  "sources": [
+    {
+      "label": "nf-core/oncoanalyser 2.3.0",
+      "revision": "234fd82acc16a3beb01bf301900d83346b6ec812",
+      "url": "https://github.com/nf-core/oncoanalyser/tree/234fd82acc16a3beb01bf301900d83346b6ec812"
+    },
+    {
+      "label": "oncoanalyser usage contract",
+      "revision": "234fd82acc16a3beb01bf301900d83346b6ec812",
+      "url": "https://github.com/nf-core/oncoanalyser/blob/234fd82acc16a3beb01bf301900d83346b6ec812/docs/usage.md"
+    },
+    {
+      "label": "oncoanalyser CHORD module",
+      "revision": "234fd82acc16a3beb01bf301900d83346b6ec812",
+      "url": "https://github.com/nf-core/oncoanalyser/blob/234fd82acc16a3beb01bf301900d83346b6ec812/modules/local/chord/main.nf"
+    },
+    {
+      "label": "HMF CHORD 2.1.2 source",
+      "revision": "ecb124834636dc722a2450375fa6126bc86689f9",
+      "url": "https://github.com/hartwigmedical/hmftools/tree/ecb124834636dc722a2450375fa6126bc86689f9/chord"
+    }
+  ],
+  "title": "Oncoanalyser and CHORD"
+}

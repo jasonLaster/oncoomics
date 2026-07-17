@@ -1,0 +1,61 @@
+{
+  "sampleSet": "hcc1395_wgs",
+  "artifacts": [
+    {
+      "path": "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+      "resolved_path": "artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/phase3_wgs_summary.json",
+      "exists": "yes",
+      "bytes": 1282,
+      "sha256": "88c19f090cf2c96e585a4dff591d2ac2cb3c0d34b0ae39fe3e93fd53ec1c0686"
+    },
+    {
+      "path": "results/phase3_wgs_smoke/bam_validation_summary.csv",
+      "resolved_path": "artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/bam_validation_summary.csv",
+      "exists": "yes",
+      "bytes": 1802,
+      "sha256": "18602597a5f3a0ee421cc2196afc41c407cc1e9cd5944d5877e0a17a97462f30"
+    },
+    {
+      "path": "results/phase3_wgs_smoke/coverage_cnv_summary.json",
+      "resolved_path": "artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/coverage_cnv_summary.json",
+      "exists": "yes",
+      "bytes": 636,
+      "sha256": "1a34d97ee9fea675933ad7a2bac50b97ba7606412edffcbbc0a9965c89728a8a"
+    },
+    {
+      "path": "results/phase3_wgs_smoke/signature_assignment_summary.json",
+      "resolved_path": "artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/signature_assignment_summary.json",
+      "exists": "yes",
+      "bytes": 787,
+      "sha256": "81d7ef0ca68836c1bf8ccdeb767cf1fb5cbb176fcf2f301a9c20a552b028c56f"
+    },
+    {
+      "path": "results/phase3_wgs_smoke/sv_evidence_summary.json",
+      "resolved_path": "artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/sv_evidence_summary.json",
+      "exists": "yes",
+      "bytes": 1672,
+      "sha256": "b0bf2fbf6b37ba70e5b4548918b2bf2a6c51d8a6fd5dd2b21c7ce622f2039cb1"
+    },
+    {
+      "path": "results/phase3_wgs_smoke/hrd_tool_readiness_summary.json",
+      "resolved_path": "artifacts/phase3_wgs_selective5/results/phase3_wgs_smoke/hrd_tool_readiness_summary.json",
+      "exists": "yes",
+      "bytes": 1464,
+      "sha256": "c7622b97569756bec76479e95792b482159f14e96a2fd0916115c8937b0b9bda"
+    },
+    {
+      "path": "results/clinicalization/hrd_interpretation_readiness_summary.json",
+      "resolved_path": "artifacts/phase3_wgs_selective5/results/clinicalization/hrd_interpretation_readiness_summary.json",
+      "exists": "yes",
+      "bytes": 3196,
+      "sha256": "93b9a3e78635972fba2665e4fb7bd178f67ec193aae736d03780b834a3c50d20"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wgs_summary.json",
+      "resolved_path": "artifacts/phase3_wgs_selective5/results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wgs_summary.json",
+      "exists": "yes",
+      "bytes": 2130,
+      "sha256": "ced5c0a4a01f2211e84d25a779c9291c750b4986b250eb20f339aac85500176a"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+# FACETS to scarHRD — blocked method report
+
+- execution_status: `not_run`
+- evidence_status: `blocked`
+- interpretation_status: `no_call`
+- classification_authorization: `none`
+- patient_result: `none`
+- generated_at: `2026-07-17T19:30:00+00:00`
+
+The method was not run. This artifact contains no patient result, reports no inferred result, and authorizes no HRD classification.
+
+## Alias scope
+
+`subject01_tumor`, `subject01_normal`
+
+No direct identifiers, source object names, or patient-derived values are included.
+
+## Intended computation — not executed
+
+- Run snp-pileup against paired tumor and normal alignments using an attested common-polymorphic-SNP resource.
+- Run the FACETS two-pass fit to estimate purity, ploidy, and EM allele-specific copy-number segments.
+- Structurally validate total and minor copy number before adapting segments to the explicit scarHRD input schema.
+- Compute HRD-LOH, TAI, LST, and their sum with scarHRD using the declared GRCh38 reference.
+
+## Exact prerequisites
+
+- Final alias-only tumor and normal BAMs plus BAI indexes, each bound to SHA-256.
+- Exact GRCh38 FASTA, FAI, and sequence dictionary identities with matching contig style across every input.
+- A common-polymorphic-SNP VCF plus index selected for the same GRCh38 build and bound to SHA-256.
+- A linux/amd64 FACETS, facets-suite, snp-pileup, and scarHRD runtime pinned by immutable image digest with SBOM and provenance.
+- Passed structural gates for SNP evidence, chromosome representation, finite purity and ploidy, integer allele-specific copy number, and critical FACETS flags.
+- A known-answer validation set and locked QC and interpretation thresholds approved before any result is classified.
+
+## Current blockers
+
+- The active method contract does not include an attested common-polymorphic-SNP VCF and index or an enabled FACETS route.
+- The FACETS image has not been built, pushed, or attested by immutable digest, and the required x86 execution runtime is not applied.
+- The snp-pileup source checkout has no detected license file, so execution is blocked until an explicit license determination is recorded.
+- Known-answer performance, fit acceptance criteria, QC limits, and interpretation thresholds are not locked.
+
+## Next gate
+
+Resolve the snp-pileup license review; select, hash, and reference-attest the common-SNP VCF; add the alias-only FACETS route; publish the digest-pinned x86 image with SBOM and provenance; then pass structural and known-answer validation before authorizing interpretation.
+
+## Primary sources
+
+- [FACETS v0.6.2](https://github.com/mskcc/facets/tree/f3c93ee65b09fc57aaed22a2eb9faa05586a9dc0) — `f3c93ee65b09fc57aaed22a2eb9faa05586a9dc0`
+- [facets-suite 2.0.10](https://github.com/mskcc/facets-suite/tree/7d54d0f67e3136bd60d94ad810a9c855df113096) — `7d54d0f67e3136bd60d94ad810a9c855df113096`
+- [scarHRD 0.1.1 source](https://github.com/sztup/scarHRD/tree/c98f8bc42ed0810393a98677d415114360616725) — `c98f8bc42ed0810393a98677d415114360616725`
+- [snp-pileup source](https://github.com/mskcc/htstools/tree/9e793b2da3a5094015d3c3b9b6d3cfe18282867d) — `9e793b2da3a5094015d3c3b9b6d3cfe18282867d`
+
+## Interpretation boundary
+
+Execution remains `not_run`; evidence remains `blocked`; interpretation remains `no_call`; classification authorization remains `none`. No patient result exists in this report or its manifest.
