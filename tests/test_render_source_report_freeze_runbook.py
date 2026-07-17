@@ -58,8 +58,65 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             text,
         )
         self.assertEqual(text.count("--private-publication-receipt "), 7)
+        previous = -1
+        for method_id in MODULE.REQUIRED_METHOD_IDS:
+            receipt = MODULE.receipt_path(Path("/repo"), "terminal", method_id)
+            index = text.find(
+                f"--private-publication-receipt {receipt}",
+                previous + 1,
+            )
+            self.assertGreater(index, previous)
+            previous = index
         for stale in MODULE.STALE_TOKENS:
             self.assertNotIn(stale, text)
+
+    def test_ai_runbook_command_has_exact_output_argv(self) -> None:
+        output = Path("/repo/.codex-tmp/hrd-reports/ai-review/runbook.md")
+        command = MODULE.ai_runbook_command(
+            Path("/repo/scripts"),
+            output,
+            [Path("/receipts/a.json"), Path("/receipts/b.json")],
+        )
+
+        self.assertEqual(
+            command,
+            [
+                "python3",
+                Path("/repo/scripts/render_ai_synthesis_runbook.py"),
+                "--output",
+                output,
+                "--private-publication-receipt",
+                Path("/receipts/a.json"),
+                "--private-publication-receipt",
+                Path("/receipts/b.json"),
+            ],
+        )
+
+    def test_publish_command_has_exact_apply_argv(self) -> None:
+        command = MODULE.publish_command(
+            Path("/repo/scripts"),
+            Path("/packets/deterministic"),
+            "deterministic_full_wgs",
+            Path("/receipts/deterministic.json"),
+        )
+
+        self.assertEqual(
+            command,
+            [
+                "python3",
+                Path("/repo/scripts/publish_private_report.py"),
+                "--packet-dir",
+                Path("/packets/deterministic"),
+                "--method-id",
+                "deterministic_full_wgs",
+                "--receipt-output",
+                Path("/receipts/deterministic.json"),
+                "--region",
+                MODULE.REGION,
+                *MODULE.forbidden_flags(),
+                "--apply",
+            ],
+        )
 
     def test_source_packet_dirs_match_required_methods(self) -> None:
         paths = MODULE.source_packet_dirs(Path("/repo"))
