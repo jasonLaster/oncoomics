@@ -1,0 +1,7 @@
+adapter,state,blocker,next_action
+HRR SNV/indel evidence,partial_evidence,Small-variant evidence exists but HRR event curation is not a final HRD score.,Curate observed HRR events if Diana WES/WGS calls contain them.
+Biallelic/LOH evidence,no_call,Allele-specific CNV/LOH segments are unavailable.,Run allele-specific CNV/LOH tooling before assessing second hits.
+SBS3,no_call,WES is not sufficient for locked genome-wide SBS3 interpretation.,Use WGS mutation matrix plus locked thresholds.
+scarHRD,no_call,Allele-specific total/minor copy-number segments are unavailable.,Generate FACETS/ASCAT/PURPLE-like segments.
+CHORD,no_call,Validated SV caller VCF/BEDPE and full feature vector are unavailable.,Run validated SV/CNV/small-variant feature adapters.
+HRDetect-style model,no_call,Integrated calibrated feature vector is unavailable.,Lock component adapters and model calibration before scoring.

@@ -1,0 +1,68 @@
+{
+  "sampleSet": "colo829",
+  "artifacts": [
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_platform_illumina_hiseqx.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_platform_illumina_hiseqx.json",
+      "exists": "yes",
+      "bytes": 2671,
+      "sha256": "77dc3e9f2d43529906d683452c27145243bc5c4c21c112fff7ba374da18ad9ab"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_platform_pacbio_sequel.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_platform_pacbio_sequel.json",
+      "exists": "yes",
+      "bytes": 2618,
+      "sha256": "543300e07c1bf353e5c26ae58ea9b8ade22a1aea42b62fd627e085a2b78d703f"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_platform_ont_minion.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_platform_ont_minion.json",
+      "exists": "yes",
+      "bytes": 2712,
+      "sha256": "0bd1be0bee08ddaa51cc4f1997d3a734ebb4ffe94552b89c61519d67d2044d8a"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_platform_illumina_novaseq_phased.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_platform_illumina_novaseq_phased.json",
+      "exists": "yes",
+      "bytes": 2713,
+      "sha256": "3908625ac1bae166b94ac960f130575f1cf0bd67d219bb15a72ba8307bb84cf3"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_sv_cna_truth_asset.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_sv_cna_truth_asset.json",
+      "exists": "yes",
+      "bytes": 1076,
+      "sha256": "006f2a783815a185c25056ed968bedaaee839e85c9b65fced9fb8ca0a79326b1"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/colo829/sv_cna_reciprocal_overlap_summary.json",
+      "exists": "yes",
+      "bytes": 4193,
+      "sha256": "854808e69d1b7a13c25d8be794c746c7f5a6d69e8f6c0098ced5af19f029a717"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_illumina.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_illumina.json",
+      "exists": "yes",
+      "bytes": 1229,
+      "sha256": "1dd54878d98c6a577a0b597d802155069114951d103f17d8cbe7cad9532bcd92"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_long_read.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/colo829_purity_long_read.json",
+      "exists": "yes",
+      "bytes": 1366,
+      "sha256": "a3905309717605277838a2248491e919aa8e27d0b72d35f12a82adace5c9ffa0"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/colo829_purity/purity_recall_table_summary.json",
+      "exists": "yes",
+      "bytes": 2708,
+      "sha256": "9885c77c61f453b7a1cad3dcf037c540563023017dcfecc590797c93e878bf13"
+    }
+  ]
+}

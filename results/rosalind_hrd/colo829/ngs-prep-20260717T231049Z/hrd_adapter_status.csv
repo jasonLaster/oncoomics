@@ -1,0 +1,5 @@
+adapter,state,blocker,next_action
+BRAF driver guardrail,partial_evidence,BRAF V600E pileup recovery is confirmed across available platforms.,Use as a tumor-normal handling guardrail only.
+SV/CNA benchmark,blocked,No build-matched Diana SV/CNA callset exists.,Fetch or generate build-matched COLO829 calls and run reciprocal overlap.
+Purity sensitivity benchmark,blocked,Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested.,Transfer selected dilution BAM/FASTQ inputs and index locally before running purity recall.
+HRD interpretation,no_call,Driver recovery does not establish HRD status.,Run full SV/CNA/signature evidence before any HRD interpretation.

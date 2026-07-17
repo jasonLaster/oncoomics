@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "method_id": "rosalind_colo829",
+  "report_kind": "rosalind_hrd_reviewer_packet",
+  "evidence_status": "partial_evidence",
+  "authorized_hrd_state": "no_call",
+  "classification_authorized": false,
+  "classification_qc_status": "not_applicable",
+  "support_sha256": {
+    "hrd_adapter_status.csv": "c65275b2fd593236adf2bdc09fe970a99b983755924e62768ff06ce53a64bcaa",
+    "input_evidence_index.json": "1cd4bd7a45514d1bcf511d350c8daadd8bcb36db012c0f09318e1f0786b007c1",
+    "next_actions.md": "285edf2acfe5f82fa5af0dbeb9184ca010c565caf899ba8cebf3632ddc344da9",
+    "research_context_sources.json": "39e9cf15c809a4a8a63d4f5835de81e2f402f352c428d43d966c8898034b6494",
+    "reviewer_packet.md": "cf8a69945c109dbbc07ce159af2fed03dea7131ef33ca3c105c0b66ee0efdb0a",
+    "sample_validation_summary.csv": "316695a2e7eb7a5d4a3f3456e305f89dffa0d7c441c0bb84331213b15fd272f0"
+  },
+  "source_sha256": {
+    "source_artifact_001": "77dc3e9f2d43529906d683452c27145243bc5c4c21c112fff7ba374da18ad9ab",
+    "source_artifact_002": "543300e07c1bf353e5c26ae58ea9b8ade22a1aea42b62fd627e085a2b78d703f",
+    "source_artifact_003": "0bd1be0bee08ddaa51cc4f1997d3a734ebb4ffe94552b89c61519d67d2044d8a",
+    "source_artifact_004": "3908625ac1bae166b94ac960f130575f1cf0bd67d219bb15a72ba8307bb84cf3",
+    "source_artifact_005": "006f2a783815a185c25056ed968bedaaee839e85c9b65fced9fb8ca0a79326b1",
+    "source_artifact_006": "854808e69d1b7a13c25d8be794c746c7f5a6d69e8f6c0098ced5af19f029a717",
+    "source_artifact_007": "1dd54878d98c6a577a0b597d802155069114951d103f17d8cbe7cad9532bcd92",
+    "source_artifact_008": "a3905309717605277838a2248491e919aa8e27d0b72d35f12a82adace5c9ffa0",
+    "source_artifact_009": "9885c77c61f453b7a1cad3dcf037c540563023017dcfecc590797c93e878bf13"
+  },
+  "report_sha256": "cf8a69945c109dbbc07ce159af2fed03dea7131ef33ca3c105c0b66ee0efdb0a",
+  "review_summary": {
+    "overall": {
+      "evidence_status": "partial_evidence",
+      "authorized_hrd_state": "no_call"
+    },
+    "packet_type": "colo829",
+    "allowed_conclusion": "COLO829 is an independent tumor-normal and driver-recovery guardrail. It does not establish HRD status until full SV/CNA/signature evidence is generated and benchmarked.",
+    "evidence": [
+      {
+        "evidence_id": "colo829_platform_illumina_hiseqx",
+        "status": "expanded_non_dry_passed",
+        "detail": "COLO829 Illumina HiSeq X tumor has BRAF V600E ALT fraction 0.670968 while normal ALT fraction is 0.0.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "colo829_platform_pacbio_sequel",
+        "status": "expanded_non_dry_passed",
+        "detail": "COLO829 PacBio Sequel tumor has BRAF V600E ALT fraction 0.568182 while normal ALT fraction is 0.018868.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "colo829_platform_ont_minion",
+        "status": "expanded_non_dry_passed",
+        "detail": "COLO829 Oxford Nanopore MinION tumor has BRAF V600E ALT fraction 0.610169 while normal ALT fraction is 0.04.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "colo829_platform_illumina_novaseq_phased",
+        "status": "expanded_non_dry_passed",
+        "detail": "COLO829 Illumina NovaSeq phased tumor has BRAF V600E ALT fraction 0.753846 while normal ALT fraction is 0.0.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "sv_cna_truth_asset",
+        "status": "expanded_non_dry_gap_identified",
+        "detail": "COLO829 SV/CNA truth assets are present but no build-matched Diana SV/CNA callset exists.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "sv_cna_reciprocal_overlap",
+        "status": "bounded_non_dry_gap_identified",
+        "detail": "COLO829 SV/CNA truth assets are present, but no SV/CNA caller output or reciprocal-overlap result was generated.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "purity_illumina_metadata",
+        "status": "expanded_non_dry_blocked_remote_index_missing",
+        "detail": "COLO829 purity illumina metadata exposes 5 runs across levels 10, 20, 25, 50, 75 but submitted BAM indexes are missing for remote slicing.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "purity_long_read_metadata",
+        "status": "expanded_non_dry_blocked_remote_index_missing",
+        "detail": "COLO829 purity long_read metadata exposes 10 runs across levels 10, 20, 25, 50, 75 but submitted BAM indexes are missing for remote slicing.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "purity_recall_table",
+        "status": "bounded_non_dry_blocked_remote_index_missing",
+        "detail": "COLO829 dilution BAMs are public but cannot be remotely region-sliced because ENA does not expose submitted BAI files for selected levels.",
+        "caveat": ""
+      }
+    ],
+    "adapters": [
+      {
+        "adapter": "BRAF driver guardrail",
+        "state": "partial_evidence",
+        "blocker": "BRAF V600E pileup recovery is confirmed across available platforms.",
+        "next_action": "Use as a tumor-normal handling guardrail only."
+      },
+      {
+        "adapter": "SV/CNA benchmark",
+        "state": "blocked",
+        "blocker": "No build-matched Diana SV/CNA callset exists.",
+        "next_action": "Fetch or generate build-matched COLO829 calls and run reciprocal overlap."
+      },
+      {
+        "adapter": "Purity sensitivity benchmark",
+        "state": "blocked",
+        "blocker": "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested.",
+        "next_action": "Transfer selected dilution BAM/FASTQ inputs and index locally before running purity recall."
+      },
+      {
+        "adapter": "HRD interpretation",
+        "state": "no_call",
+        "blocker": "Driver recovery does not establish HRD status.",
+        "next_action": "Run full SV/CNA/signature evidence before any HRD interpretation."
+      }
+    ],
+    "blockers": [
+      "COLO829 submitted BAMs and fetched hg38-lifted truth still require build reconciliation.",
+      "No Diana SV/CNA callset exists.",
+      "COLO829 submitted BAMs are GRCh37-style while the fetched SV truth VCF is hg38-lifted.",
+      "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested."
+    ]
+  }
+}

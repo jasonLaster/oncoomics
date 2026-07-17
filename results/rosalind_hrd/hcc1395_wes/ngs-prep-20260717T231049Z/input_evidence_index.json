@@ -1,0 +1,40 @@
+{
+  "sampleSet": "hcc1395_wes",
+  "artifacts": [
+    {
+      "path": "results/full_wes_benchmark/full_wes_benchmark_summary.json",
+      "resolved_path": "results/full_wes_benchmark/full_wes_benchmark_summary.json",
+      "exists": "yes",
+      "bytes": 1514,
+      "sha256": "eee7a120d93a14769799d463087827c25ab211bd524cf597b947ad45c43cfd18"
+    },
+    {
+      "path": "results/full_wes_benchmark/truth_overlap_benchmark_summary.json",
+      "resolved_path": "results/full_wes_benchmark/truth_overlap_benchmark_summary.json",
+      "exists": "yes",
+      "bytes": 4925,
+      "sha256": "8181f5b85543592315a1511517ef755f0d66efc0b726e2ab52279c3db8f555f0"
+    },
+    {
+      "path": "results/full_wes_benchmark/full_wes_fastq_validation.csv",
+      "resolved_path": "results/full_wes_benchmark/full_wes_fastq_validation.csv",
+      "exists": "yes",
+      "bytes": 1053,
+      "sha256": "00b280d57d5eda6e808d332df046be45a829a7ec8af72d55234b29dadbe71e0e"
+    },
+    {
+      "path": "results/full_wes_benchmark/full_wes_bam_validation.csv",
+      "resolved_path": "results/full_wes_benchmark/full_wes_bam_validation.csv",
+      "exists": "yes",
+      "bytes": 2242,
+      "sha256": "ebd0045b1cb6e1b1ecc115c836d7afe09d18a58aa6cea8311a682e1380fe421a"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wes_summary.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wes_summary.json",
+      "exists": "yes",
+      "bytes": 2209,
+      "sha256": "6fcd346362f9b74932e1951f4d00dc9487bd907e251113bba624716130da6cee"
+    }
+  ]
+}

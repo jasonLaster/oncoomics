@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "method_id": "rosalind_hcc1395_wes",
+  "report_kind": "rosalind_hrd_reviewer_packet",
+  "evidence_status": "partial_evidence",
+  "authorized_hrd_state": "no_call",
+  "classification_authorized": false,
+  "classification_qc_status": "not_applicable",
+  "support_sha256": {
+    "hrd_adapter_status.csv": "44f5dcb681e5ebb3126de106366e237c1e0e3d858a67988c9151dca94984f2ac",
+    "input_evidence_index.json": "a3ca01df3327676d518834a9be56cb647c8245befa535816822c0dff0d0c83af",
+    "next_actions.md": "c1dd7b5866445e73c9f6a53a89d6210de4c99738bff0432bc93fc7ea5902d1c0",
+    "research_context_sources.json": "fe3cfdf0c09a6ff97b8622a0195beec3e4c02ae78e3cb1cca39a4435dab2a3de",
+    "reviewer_packet.md": "bf6709ea74f0f08a6e67e869132f194c886ab60356648d110e18ccf3ef9ad0e6",
+    "sample_validation_summary.csv": "8e5e410c2635779d7d573638bf25133bbeb52da235f56d82fabbfdc2e3677441"
+  },
+  "source_sha256": {
+    "source_artifact_001": "eee7a120d93a14769799d463087827c25ab211bd524cf597b947ad45c43cfd18",
+    "source_artifact_002": "8181f5b85543592315a1511517ef755f0d66efc0b726e2ab52279c3db8f555f0",
+    "source_artifact_003": "00b280d57d5eda6e808d332df046be45a829a7ec8af72d55234b29dadbe71e0e",
+    "source_artifact_004": "ebd0045b1cb6e1b1ecc115c836d7afe09d18a58aa6cea8311a682e1380fe421a",
+    "source_artifact_005": "6fcd346362f9b74932e1951f4d00dc9487bd907e251113bba624716130da6cee"
+  },
+  "report_sha256": "bf6709ea74f0f08a6e67e869132f194c886ab60356648d110e18ccf3ef9ad0e6",
+  "review_summary": {
+    "overall": {
+      "evidence_status": "partial_evidence",
+      "authorized_hrd_state": "no_call"
+    },
+    "packet_type": "hcc1395_wes",
+    "allowed_conclusion": "This sample demonstrates WES small-variant and caller-readiness behavior. It does not support a genome-wide HRD scar, SV, SBS3, CHORD, or HRDetect-style score.",
+    "evidence": [
+      {
+        "evidence_id": "fastq_validation",
+        "status": "passed",
+        "detail": "4/4 FASTQ rows passed validation.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "bam_validation",
+        "status": "passed",
+        "detail": "2/2 BAM rows passed validation.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "somatic_small_variant_truth_overlap",
+        "status": "passed",
+        "detail": "1122 exact PASS truth matches; recall 0.8585; precision 0.9842.",
+        "caveat": "WES truth-overlap evidence does not establish genome-wide HRD signatures, SVs, or scarHRD."
+      },
+      {
+        "evidence_id": "contamination",
+        "status": "passed",
+        "detail": "Contamination estimate 0.0.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "truth_overlap_detail",
+        "status": "passed",
+        "detail": "Detailed truth-overlap summary is present.",
+        "caveat": ""
+      }
+    ],
+    "adapters": [
+      {
+        "adapter": "HRR SNV/indel evidence",
+        "state": "partial_evidence",
+        "blocker": "Small-variant evidence exists but HRR event curation is not a final HRD score.",
+        "next_action": "Curate observed HRR events if Diana WES/WGS calls contain them."
+      },
+      {
+        "adapter": "Biallelic/LOH evidence",
+        "state": "no_call",
+        "blocker": "Allele-specific CNV/LOH segments are unavailable.",
+        "next_action": "Run allele-specific CNV/LOH tooling before assessing second hits."
+      },
+      {
+        "adapter": "SBS3",
+        "state": "no_call",
+        "blocker": "WES is not sufficient for locked genome-wide SBS3 interpretation.",
+        "next_action": "Use WGS mutation matrix plus locked thresholds."
+      },
+      {
+        "adapter": "scarHRD",
+        "state": "no_call",
+        "blocker": "Allele-specific total/minor copy-number segments are unavailable.",
+        "next_action": "Generate FACETS/ASCAT/PURPLE-like segments."
+      },
+      {
+        "adapter": "CHORD",
+        "state": "no_call",
+        "blocker": "Validated SV caller VCF/BEDPE and full feature vector are unavailable.",
+        "next_action": "Run validated SV/CNV/small-variant feature adapters."
+      },
+      {
+        "adapter": "HRDetect-style model",
+        "state": "no_call",
+        "blocker": "Integrated calibrated feature vector is unavailable.",
+        "next_action": "Lock component adapters and model calibration before scoring."
+      }
+    ],
+    "blockers": []
+  }
+}

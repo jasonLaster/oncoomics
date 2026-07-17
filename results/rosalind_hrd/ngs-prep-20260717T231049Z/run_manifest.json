@@ -1,0 +1,64 @@
+{
+  "generatedAt": "2026-07-17T23:10:49.698Z",
+  "runId": "ngs-prep-20260717T231049Z",
+  "sampleSets": [
+    "hcc1395_wes",
+    "hcc1395_wgs",
+    "colo829"
+  ],
+  "packetRoot": "results/rosalind_hrd",
+  "artifactRoot": "repo_root",
+  "artifactRootMode": "repo_root",
+  "packets": [
+    {
+      "sampleSet": "hcc1395_wes",
+      "title": "SEQC2/HCC1395 WES HRD Readiness Packet",
+      "outputDir": "results/rosalind_hrd/hcc1395_wes/ngs-prep-20260717T231049Z",
+      "evidenceRows": 5,
+      "adapterRows": 6,
+      "blockers": [],
+      "missingArtifacts": [],
+      "allowedConclusion": "This sample demonstrates WES small-variant and caller-readiness behavior. It does not support a genome-wide HRD scar, SV, SBS3, CHORD, or HRDetect-style score.",
+      "evidenceStatus": "partial_evidence",
+      "reportManifest": "results/rosalind_hrd/hcc1395_wes/ngs-prep-20260717T231049Z/report_manifest.json",
+      "reportManifestSha256": "4545f5d5a2c3006960c41bb28ad32cbaf655b1fab35d6cc8a8719103a9b91684"
+    },
+    {
+      "sampleSet": "hcc1395_wgs",
+      "title": "SEQC2/HCC1395 WGS HRD Evidence-Surface Packet",
+      "outputDir": "results/rosalind_hrd/hcc1395_wgs/ngs-prep-20260717T231049Z",
+      "evidenceRows": 7,
+      "adapterRows": 7,
+      "blockers": [
+        "Current SV evidence summary has no discordant mapped-pair counts; regenerate full SV evidence before using WGS as the flagship HRD packet."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "This sample exercises the WGS evidence surfaces needed for HRD review. It remains a partial HRD evidence packet until allele-specific CNV/LOH, production SV calls, signature thresholds, CHORD/scarHRD/HRDetect policy, and known-answer performance are locked.",
+      "evidenceStatus": "partial_evidence",
+      "reportManifest": "results/rosalind_hrd/hcc1395_wgs/ngs-prep-20260717T231049Z/report_manifest.json",
+      "reportManifestSha256": "31ee2a742ac1810f6183974d5f813f1e0b3295ee299fc72cf7dae2ed0995062a"
+    },
+    {
+      "sampleSet": "colo829",
+      "title": "COLO829/COLO829BL Tumor-Normal Guardrail Packet",
+      "outputDir": "results/rosalind_hrd/colo829/ngs-prep-20260717T231049Z",
+      "evidenceRows": 9,
+      "adapterRows": 4,
+      "blockers": [
+        "COLO829 submitted BAMs and fetched hg38-lifted truth still require build reconciliation.",
+        "No Diana SV/CNA callset exists.",
+        "COLO829 submitted BAMs are GRCh37-style while the fetched SV truth VCF is hg38-lifted.",
+        "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "COLO829 is an independent tumor-normal and driver-recovery guardrail. It does not establish HRD status until full SV/CNA/signature evidence is generated and benchmarked.",
+      "evidenceStatus": "partial_evidence",
+      "reportManifest": "results/rosalind_hrd/colo829/ngs-prep-20260717T231049Z/report_manifest.json",
+      "reportManifestSha256": "38195c49ce77ebad8ae9c2a2ef6ddc4a511a531b1a99661aec4c8673dfb8f00a"
+    }
+  ],
+  "sourcePattern": {
+    "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
+    "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats."
+  }
+}
