@@ -53,6 +53,16 @@ output "ondemand_queue" {
   value       = aws_batch_job_queue.ondemand.name
 }
 
+output "hrd_x86_compute_environment" {
+  description = "Zero-idle linux/amd64 AWS Batch compute environment for private HRD cross-checks."
+  value       = aws_batch_compute_environment.hrd_x86_ondemand.name
+}
+
+output "hrd_x86_queue" {
+  description = "AWS Batch queue name for private linux/amd64 HRD cross-checks."
+  value       = aws_batch_job_queue.hrd_x86.name
+}
+
 output "batch_job_role_arn" {
   description = "IAM role ARN used by Batch jobs."
   value       = aws_iam_role.batch_job.arn

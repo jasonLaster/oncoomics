@@ -78,6 +78,40 @@ The image push defaults to `us-east-1` and the current git SHA. Override it with
 
 AWS Batch mounts the host-side AWS CLI path configured in `nextflow.config` into task containers. The Batch launch template creates `/opt/diana-aws/bin/aws` on each EC2 host so Nextflow can stage S3 work files while the container image still carries the Python code and bioinformatics tools.
 
+## Private HRD x86 Cross-Checks
+
+The stack includes a separate On-Demand `linux/amd64` Batch lane for private
+HRD cross-check tooling that is unavailable in the ARM image:
+
+- Compute environment: `<project>-<environment>-hrd-x86-ondemand`
+- Queue: `<project>-<environment>-hrd-x86`
+- Instance families: `c7i`, `m7i`, and `r7i`
+- Capacity: `min_vcpus = 0`, `desired_vcpus = 0`, and
+  `hrd_x86_max_vcpus = 128` by default
+
+It reuses the encrypted Batch launch template, private subnets, no-ingress
+security group, Batch instance profile and service role, and the existing job
+and CloudWatch log roles. It has no ARM fallback and Terraform does not
+register an analysis job definition. With no submitted jobs it has no EC2
+instances or idle compute charge.
+
+Terraform writes `aws_hrd_x86_queue` and `aws_private_results_dir` to
+`infra/aws/nextflow.aws.json`. A future cross-check must also supply an
+immutable image that was built for `linux/amd64`; the normal `container` value
+may refer to the existing ARM image and must not be reused by assumption:
+
+```sh
+nextflow run main.nf \
+  -profile awsbatch_hrd_x86 \
+  -params-file infra/aws/nextflow.aws.json \
+  --hrd_x86_container 'ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/IMAGE@sha256:DIGEST' \
+  --workflow WORKFLOW
+```
+
+The profile writes published results to the private results bucket. Planning
+or provisioning this lane does not submit a job; analysis job definitions and
+submissions require a separate reviewed change.
+
 ## Smoke Test
 
 Run a cloud-side stub only. This submits a real AWS Batch job but does not fetch data or run analysis:
