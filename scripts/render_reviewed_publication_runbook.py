@@ -22,7 +22,7 @@ from publish_reviewed_public_report import (
     SUBJECT_ALIAS,
     validate_private_receipt,
 )
-from render_ai_synthesis_runbook import write_once
+from runbook_io import write_once
 
 
 STALE_TOKENS = (
@@ -158,6 +158,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
     scripts = root / "scripts"
     return (
         scripts / "hrd_report_inventory.py",
+        scripts / "runbook_io.py",
         scripts / "publish_reviewed_public_report.py",
         scripts / "build_public_results_index.py",
         scripts / "publish_public_results_index.py",

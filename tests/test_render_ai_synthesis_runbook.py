@@ -16,6 +16,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 import generate_blocked_hrd_crosscheck_reports as BLOCKED_GENERATOR  # noqa: E402
 import publish_reviewed_public_report as PUBLISH  # noqa: E402
+import render_reviewed_publication_runbook as REVIEWED_PUBLIC  # noqa: E402
 
 SPEC = importlib.util.spec_from_file_location(
     "render_ai_synthesis_runbook", SCRIPT_DIR / "render_ai_synthesis_runbook.py"
@@ -160,6 +161,8 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "/repo/scripts/generate_comparative_hrd_synthesis.py",
             "/repo/scripts/publish_private_report.py",
             "/repo/scripts/render_reviewed_publication_runbook.py",
+            "/repo/scripts/runbook_io.py",
+            "/repo/scripts/publish_reviewed_public_report.py",
             "/repo/scripts/build_public_results_index.py",
             "/repo/scripts/publish_public_results_index.py",
         ):
@@ -197,6 +200,16 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "/repo/.codex-tmp/public-index/public-index.unit.json",
         ):
             self.assertIn(path, outputs)
+
+    def test_required_absent_reuses_reviewed_public_renderer_contract(self) -> None:
+        required_absent = MODULE.required_absent(Path("/repo"), "unit")
+        reviewed_public = REVIEWED_PUBLIC.required_absent(Path("/repo"), "unit")
+
+        start = required_absent.index(reviewed_public[0])
+        self.assertEqual(
+            required_absent[start : start + len(reviewed_public)],
+            reviewed_public,
+        )
 
     def test_main_rejects_preexisting_child_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

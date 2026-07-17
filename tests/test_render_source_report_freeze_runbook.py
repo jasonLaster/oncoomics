@@ -210,6 +210,8 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                 "/repo/scripts/finalize_ai_review.py",
                 "/repo/scripts/generate_comparative_hrd_synthesis.py",
                 "/repo/scripts/render_reviewed_publication_runbook.py",
+                "/repo/scripts/runbook_io.py",
+                "/repo/scripts/publish_reviewed_public_report.py",
                 "/repo/scripts/build_public_results_index.py",
                 "/repo/scripts/publish_public_results_index.py",
                 "/repo/scripts/write_ai_model_catalog_receipt.py",

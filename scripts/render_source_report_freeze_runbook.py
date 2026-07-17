@@ -19,8 +19,8 @@ from render_ai_synthesis_runbook import (
     FORBIDDEN_TOKENS,
     required_absent as ai_required_absent,
     required_existing as ai_required_existing,
-    write_once,
 )
+from runbook_io import unique_paths, write_once
 
 
 class Raw(str):
@@ -177,11 +177,13 @@ def ai_runbook_command(
 
 def required_existing(root: Path) -> tuple[Path, ...]:
     scripts = root / "scripts"
-    return (
-        scripts / "hrd_report_inventory.py",
-        scripts / "publish_private_report.py",
-        scripts / "render_ai_synthesis_runbook.py",
-        *ai_required_existing(root),
+    return unique_paths(
+        (
+            scripts / "hrd_report_inventory.py",
+            scripts / "publish_private_report.py",
+            scripts / "render_ai_synthesis_runbook.py",
+            *ai_required_existing(root),
+        )
     )
 
 

@@ -29,6 +29,11 @@ from publish_reviewed_public_report import (
     SUBJECT_ALIAS,
     validate_private_receipt,
 )
+from render_reviewed_publication_runbook import (
+    required_absent as reviewed_public_required_absent,
+    required_existing as reviewed_public_required_existing,
+)
+from runbook_io import unique_paths, write_once
 
 FORBIDDEN_TOKENS = ("E019_S01", "DRF-PSN49561", "echo-personalis", "personalis")
 
@@ -312,35 +317,22 @@ def ai_private_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
     )
 
 
-def reviewed_public_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
-    return (
-        *(
-            root
-            / ".codex-tmp/hrd-reports/publication"
-            / f"{receipt_stem}.{method_id}.public{suffix}.json"
-            for method_id in REPORT_METHOD_IDS
-            for suffix in (".dry", "")
-        ),
-        root / ".codex-tmp/public-index" / f"public-index.{receipt_stem}.dry.json",
-        root / ".codex-tmp/public-index" / f"public-index.{receipt_stem}.json",
-    )
-
-
 def required_existing(root: Path) -> tuple[Path, ...]:
     scripts = root / "scripts"
-    return (
-        scripts / "hrd_report_inventory.py",
-        scripts / "prepare_ai_review_run.py",
-        scripts / "build_ai_review_bundle.py",
-        scripts / "stage_ai_review_inputs.py",
-        scripts / "validate_ai_review.py",
-        scripts / "finalize_ai_review.py",
-        scripts / "generate_comparative_hrd_synthesis.py",
-        scripts / "publish_private_report.py",
-        scripts / "render_reviewed_publication_runbook.py",
-        scripts / "build_public_results_index.py",
-        scripts / "publish_public_results_index.py",
-        scripts / "write_ai_model_catalog_receipt.py",
+    return unique_paths(
+        (
+            scripts / "hrd_report_inventory.py",
+            scripts / "prepare_ai_review_run.py",
+            scripts / "build_ai_review_bundle.py",
+            scripts / "stage_ai_review_inputs.py",
+            scripts / "validate_ai_review.py",
+            scripts / "finalize_ai_review.py",
+            scripts / "generate_comparative_hrd_synthesis.py",
+            scripts / "publish_private_report.py",
+            scripts / "render_reviewed_publication_runbook.py",
+            *reviewed_public_required_existing(root),
+            scripts / "write_ai_model_catalog_receipt.py",
+        )
     )
 
 
@@ -350,22 +342,8 @@ def required_absent(root: Path, receipt_stem: str) -> tuple[Path, ...]:
         root / ".codex-tmp/hrd-reports/ai-review" / RUN_ID,
         root / ".codex-tmp/hrd-reports/synthesis" / RUN_ID,
         *ai_private_receipt_paths(root, receipt_stem),
-        *reviewed_public_receipt_paths(root, receipt_stem),
+        *reviewed_public_required_absent(root, receipt_stem),
     )
-
-
-def write_once(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            descriptor = -1
-            handle.write(text)
-            handle.flush()
-            os.fsync(handle.fileno())
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
 
 
 def render(

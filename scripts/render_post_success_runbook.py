@@ -22,11 +22,12 @@ from publish_reviewed_public_report import (
     RUN_ID,
     SUBJECT_ALIAS,
 )
-from render_ai_synthesis_runbook import FORBIDDEN_TOKENS, write_once
+from render_ai_synthesis_runbook import FORBIDDEN_TOKENS
 from render_source_report_freeze_runbook import (
     required_absent as source_required_absent,
     required_existing as source_required_existing,
 )
+from runbook_io import unique_paths, write_once
 
 
 JOB_ID = "6f827d44-d19b-4a6c-9126-d65189aa66cf"
@@ -390,26 +391,28 @@ def required_local_inputs(root: Path) -> tuple[Path, ...]:
 
 def required_existing(root: Path) -> tuple[Path, ...]:
     scripts = root / "scripts"
-    return (
-        root / "aws/submit_route.py",
-        scripts / "capture_batch_provenance.py",
-        scripts / "freeze_stage_provenance.py",
-        scripts / "freeze_final_artifacts.py",
-        scripts / "materialize_frozen_artifacts.py",
-        scripts / "submit_materializer_v4.py",
-        scripts / "render_materializer_capture_command.py",
-        scripts / "download_materializer_staged_validation.py",
-        scripts / "finalize_input_contract.py",
-        scripts / "check_contract.py",
-        scripts / "publish_input_contract.py",
-        scripts / "stage_deterministic_wgs_report.py",
-        scripts / "capture_route_terminal.py",
-        scripts / "download_exact_report_tree.py",
-        scripts / "stage_hrd_crosscheck_report.py",
-        scripts / "generate_blocked_hrd_crosscheck_reports.py",
-        scripts / "render_source_report_freeze_runbook.py",
-        *source_required_existing(root),
-        *required_local_inputs(root),
+    return unique_paths(
+        (
+            root / "aws/submit_route.py",
+            scripts / "capture_batch_provenance.py",
+            scripts / "freeze_stage_provenance.py",
+            scripts / "freeze_final_artifacts.py",
+            scripts / "materialize_frozen_artifacts.py",
+            scripts / "submit_materializer_v4.py",
+            scripts / "render_materializer_capture_command.py",
+            scripts / "download_materializer_staged_validation.py",
+            scripts / "finalize_input_contract.py",
+            scripts / "check_contract.py",
+            scripts / "publish_input_contract.py",
+            scripts / "stage_deterministic_wgs_report.py",
+            scripts / "capture_route_terminal.py",
+            scripts / "download_exact_report_tree.py",
+            scripts / "stage_hrd_crosscheck_report.py",
+            scripts / "generate_blocked_hrd_crosscheck_reports.py",
+            scripts / "render_source_report_freeze_runbook.py",
+            *source_required_existing(root),
+            *required_local_inputs(root),
+        )
     )
 
 
