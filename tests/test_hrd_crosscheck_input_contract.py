@@ -277,6 +277,22 @@ class CustodyFixture:
 
 
 class CustodyHandoffTests(unittest.TestCase):
+    def test_finalizer_writes_contract_create_only_mode_0600(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "input-contract.json"
+            finalizer.write_new_json(output, {"status": "passed"})
+
+            self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
+            self.assertEqual(
+                json.loads(output.read_text(encoding="utf-8")),
+                {"status": "passed"},
+            )
+
+            original = output.read_bytes()
+            with self.assertRaises(FileExistsError):
+                finalizer.write_new_json(output, {"status": "failed"})
+            self.assertEqual(output.read_bytes(), original)
+
     def test_contract_check_writes_readiness_receipt_create_only(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
