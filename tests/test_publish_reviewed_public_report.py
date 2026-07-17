@@ -301,6 +301,80 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 key = FakeAws.value(call, "--key")
                 self.assertTrue(key.startswith(MODULE.PUBLIC_ROOT + "rosalind/"))
 
+    def test_version_history_consumes_key_and_version_markers(self) -> None:
+        pages = [
+            {
+                "IsTruncated": True,
+                "Versions": [{"Key": "prefix/report.md", "VersionId": "v1"}],
+                "DeleteMarkers": [],
+                "NextKeyMarker": "prefix/report.md",
+                "NextVersionIdMarker": "v1",
+            },
+            {
+                "IsTruncated": False,
+                "Versions": [],
+                "DeleteMarkers": [{"Key": "prefix/old.md", "VersionId": "d1"}],
+            },
+        ]
+
+        with mock.patch.object(MODULE, "aws_json", side_effect=pages) as aws_json:
+            self.assertEqual(
+                MODULE.version_history("bucket", "prefix/", MODULE.REGION),
+                [
+                    {
+                        "Key": "prefix/old.md",
+                        "VersionId": "d1",
+                        "history_kind": "delete_marker",
+                    },
+                    {
+                        "Key": "prefix/report.md",
+                        "VersionId": "v1",
+                        "history_kind": "version",
+                    },
+                ],
+            )
+
+        self.assertEqual(
+            aws_json.call_args_list[1].args,
+            (
+                [
+                    "s3api",
+                    "list-object-versions",
+                    "--bucket",
+                    "bucket",
+                    "--prefix",
+                    "prefix/",
+                    "--key-marker",
+                    "prefix/report.md",
+                    "--version-id-marker",
+                    "v1",
+                ],
+                MODULE.REGION,
+            ),
+        )
+
+    def test_version_history_rejects_missing_or_stalled_markers(self) -> None:
+        missing_version = {
+            "IsTruncated": True,
+            "Versions": [],
+            "DeleteMarkers": [],
+            "NextKeyMarker": "prefix/report.md",
+        }
+        with mock.patch.object(MODULE, "aws_json", return_value=missing_version):
+            with self.assertRaisesRegex(ValueError, "key/version markers"):
+                MODULE.version_history("bucket", "prefix/", MODULE.REGION)
+
+        stalled = {
+            "IsTruncated": True,
+            "Versions": [],
+            "DeleteMarkers": [],
+            "NextKeyMarker": "prefix/report.md",
+            "NextVersionIdMarker": "v1",
+        }
+        with mock.patch.object(MODULE, "aws_json", side_effect=[stalled, stalled]):
+            with self.assertRaisesRegex(ValueError, "did not advance"):
+                MODULE.version_history("bucket", "prefix/", MODULE.REGION)
+
     def test_rejects_nonpassed_private_receipt_before_aws(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))

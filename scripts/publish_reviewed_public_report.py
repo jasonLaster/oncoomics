@@ -256,6 +256,7 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
     rows: list[dict[str, Any]] = []
     key_marker = ""
     version_marker = ""
+    seen_markers: set[tuple[str, str]] = set()
     while True:
         arguments = [
             "s3api",
@@ -279,8 +280,14 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
             break
         next_key = str(page.get("NextKeyMarker", ""))
         next_version = str(page.get("NextVersionIdMarker", ""))
-        if not next_key or (next_key, next_version) == (key_marker, version_marker):
+        if not next_key or not next_version:
+            raise ValueError(
+                "truncated destination history omitted its next key/version markers"
+            )
+        marker = (next_key, next_version)
+        if marker in seen_markers:
             raise ValueError("destination version history pagination did not advance")
+        seen_markers.add(marker)
         key_marker, version_marker = next_key, next_version
     return sorted(
         rows,
