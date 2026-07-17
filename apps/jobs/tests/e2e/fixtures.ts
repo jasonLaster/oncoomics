@@ -73,6 +73,23 @@ export const jobsPayload = {
       dependsOn: ["job-gather-complete"],
       progress: null,
     },
+    {
+      id: "job-archive-complete",
+      name: "Archived validation",
+      status: "SUCCEEDED",
+      statusReason: null,
+      queue: "diana-omics-production",
+      createdAt: BASE_TIME - 30 * 60 * 60_000,
+      startedAt: BASE_TIME - 29.8 * 60 * 60_000,
+      stoppedAt: BASE_TIME - 29.5 * 60 * 60_000,
+      timeoutSeconds: 21_600,
+      attempts: 1,
+      runId: "run-archive-v2-e2e",
+      stage: "delivery",
+      logStreamName: "diana/run-archive-v2-e2e/delivery",
+      dependsOn: ["job-filter-complete"],
+      progress: null,
+    },
   ],
 };
 
@@ -155,7 +172,7 @@ export async function installApiMocks(
   await page.route(/\/api\/jobs(?:\?.*)?$/, async (route) => {
     jobRequests.push(route.request().url());
     await route.fulfill({
-      json: { ...jobsPayload, generatedAt: new Date().toISOString() },
+      json: jobsPayload,
     });
   });
 

@@ -5,6 +5,7 @@ import {
   DescribeJobsCommand,
   ListJobsCommand,
   type JobDetail,
+  type JobSummary,
   type JobStatus,
 } from "@aws-sdk/client-batch";
 import {
@@ -139,6 +140,26 @@ function chunk<T>(items: T[], size: number): T[][] {
     chunks.push(items.slice(index, index + size));
   }
   return chunks;
+}
+
+async function listJobSummaries(jobQueue: string, jobStatus: JobStatus) {
+  const summaries: JobSummary[] = [];
+  let nextToken: string | undefined;
+
+  do {
+    const response = await batch.send(
+      new ListJobsCommand({
+        jobQueue,
+        jobStatus,
+        maxResults: 100,
+        nextToken,
+      }),
+    );
+    summaries.push(...(response.jobSummaryList || []));
+    nextToken = response.nextToken;
+  } while (nextToken);
+
+  return summaries;
 }
 
 function commandText(job: JobDetail): string {
@@ -560,20 +581,12 @@ export async function listViewerJobs() {
     .map((queue) => queue.jobQueueName)
     .filter((queue): queue is string => Boolean(queue));
 
-  const cutoff = Date.now() - 24 * 60 * 60 * 1_000;
   const summaries = (
     await Promise.all(
       queues.flatMap((jobQueue) =>
         [...ACTIVE_STATUSES, ...TERMINAL_STATUSES].map(async (jobStatus) => {
-          const response = await batch.send(
-            new ListJobsCommand({ jobQueue, jobStatus, maxResults: 100 }),
-          );
-          return (response.jobSummaryList || [])
-            .filter(
-              (job) =>
-                ACTIVE_STATUSES.includes(jobStatus) || (job.createdAt || 0) >= cutoff,
-            )
-            .map((job) => ({ ...job, sourceQueue: jobQueue }));
+          const summaries = await listJobSummaries(jobQueue, jobStatus);
+          return summaries.map((job) => ({ ...job, sourceQueue: jobQueue }));
         }),
       ),
     )

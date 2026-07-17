@@ -19,6 +19,7 @@ const ACTIVE_INVENTORY_REFRESH_SECONDS = 30;
 const IDLE_INVENTORY_REFRESH_SECONDS = 120;
 const ACTIVE_DETAIL_REFRESH_SECONDS = 10;
 const TERMINAL_LOG_REFRESH_SECONDS = 60;
+const RECENT_JOB_WINDOW_MS = 24 * 60 * 60 * 1_000;
 const LOG_PAGE_SIZE = 250;
 const LEFT_RAIL_KEY = "diana-viewer-v2:left-rail-collapsed";
 const RIGHT_RAIL_KEY = "diana-viewer-v2:right-rail-collapsed";
@@ -679,8 +680,20 @@ export function JobViewer() {
           .includes(normalizedJobSearch),
       )
     : jobs;
+  const generatedAt = Date.parse(payload?.generatedAt || "");
+  const recentJobCutoff =
+    (Number.isFinite(generatedAt) ? generatedAt : Number.POSITIVE_INFINITY) -
+    RECENT_JOB_WINDOW_MS;
   const activeJobs = visibleJobs.filter((job) => ACTIVE_STATUSES.has(job.status));
-  const recentJobs = visibleJobs.filter((job) => !ACTIVE_STATUSES.has(job.status));
+  const terminalJobs = visibleJobs.filter(
+    (job) => !ACTIVE_STATUSES.has(job.status),
+  );
+  const recentJobs = terminalJobs.filter(
+    (job) => (job.createdAt || 0) >= recentJobCutoff,
+  );
+  const olderJobs = terminalJobs.filter(
+    (job) => (job.createdAt || 0) < recentJobCutoff,
+  );
 
   const displayedLogs = logs?.jobId === selectedId ? logs : null;
   const adaptedLogs = useMemo(
@@ -930,6 +943,14 @@ export function JobViewer() {
             <JobGroup
               title="Last 24 hours"
               jobs={recentJobs}
+              selectedId={selectedId}
+              onSelect={selectJob}
+            />
+          )}
+          {olderJobs.length > 0 && (
+            <JobGroup
+              title="All jobs"
+              jobs={olderJobs}
               selectedId={selectedId}
               onSelect={selectJob}
             />

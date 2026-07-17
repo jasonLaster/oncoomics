@@ -37,7 +37,11 @@ test.describe("viewer v2 desktop workspace", () => {
   test("selects a job and presents structured overview progress", async ({ page }) => {
     const selectedJob = page.getByRole("button", { name: /Diana HRD evidence/ });
     const failedJob = page.getByRole("button", { name: /Filter failure sentinel/ });
+    const archivedJob = page.getByRole("button", { name: /Archived validation/ });
 
+    await expect(page.getByRole("heading", { name: /Running now/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Last 24 hours/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /All jobs/ })).toBeVisible();
     await expect(selectedJob).toHaveAttribute("aria-pressed", "true");
     const metrics = page.getByLabel("Run metrics");
     await expect(metrics.getByText("37.5%", { exact: true })).toBeVisible();
@@ -55,6 +59,10 @@ test.describe("viewer v2 desktop workspace", () => {
     await expect(selectedJob).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByRole("heading", { name: "Filter failure sentinel" })).toBeVisible();
     await expect(page.getByText(/retry budget was exhausted/i)).toBeVisible();
+
+    await archivedJob.click();
+    await expect(archivedJob).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("heading", { name: "Archived validation" })).toBeVisible();
   });
 });
 
