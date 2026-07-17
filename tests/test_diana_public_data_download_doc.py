@@ -100,6 +100,7 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             "aws/submit_route.py",
             "scripts/capture_route_terminal.py",
             "scripts/stage_deterministic_wgs_report.py",
+            "scripts/generate_blocked_hrd_crosscheck_reports.py",
         ):
             self.assertIn(script, text)
         self.assertIn(
@@ -127,6 +128,14 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
         self.assertLess(
             text.index("python3 scripts/capture_route_terminal.py"),
             text.index("python3 scripts/download_exact_report_tree.py"),
+        )
+        self.assertLess(
+            text.index("python3 scripts/stage_hrd_crosscheck_report.py"),
+            text.index("python3 scripts/generate_blocked_hrd_crosscheck_reports.py"),
+        )
+        self.assertLess(
+            text.index("python3 scripts/generate_blocked_hrd_crosscheck_reports.py"),
+            text.index("python3 scripts/render_source_report_freeze_runbook.py"),
         )
 
 

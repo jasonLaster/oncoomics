@@ -385,6 +385,19 @@ python3 scripts/stage_hrd_crosscheck_report.py \
   --output-dir ".codex-tmp/hrd-reports/crosschecks/$ROUTE"
 ```
 
+## Stage intentionally blocked cross-check report packets
+
+FACETS→scarHRD, Oncoanalyser→CHORD, and HRDetect remain descriptive no-call
+packets until their route contracts, runtimes, references, licenses, QC limits,
+and known-answer validation gates are explicitly resolved. Render those
+three-file packets before `scripts/render_source_report_freeze_runbook.py` so
+the seven-source private-freeze handoff can bind all canonical method IDs:
+
+```bash
+python3 scripts/generate_blocked_hrd_crosscheck_reports.py \
+  --output-dir .codex-tmp/hrd-reports/blocked-crosschecks
+```
+
 ## Freeze and publish a reviewed report packet
 
 First freeze the reviewed local report tree in the versioned private results
