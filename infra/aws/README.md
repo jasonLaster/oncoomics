@@ -4,12 +4,13 @@ This Terraform stack provisions the AWS Batch, S3, ECR, IAM, and network resourc
 
 ## Non-Negotiable Data Rule
 
-Do not upload local raw data or local generated analysis data.
+Do not upload raw data or generated analysis data from a developer workstation or the normal analysis workflow.
 
 - Do not upload `data/raw`, local FASTQ/BAM/CRAM/VCF files, local `data/processed`, or local `results` artifacts.
 - The Docker image is built with `.dockerignore` rules that exclude raw/generated data.
 - Cloud runs must fetch public/reference inputs fresh inside AWS Batch task workspaces.
 - S3 `results` objects should be produced by the cloud job that writes them.
+- An approved external raw delivery is a separate custody workflow: it must use the private `diana/inbox/YYYY-MM-DD-source-name/` prefix, Diana-issued scoped credentials, destination SSE-KMS, a manifest, and source SHA-256 checksums as documented in `docs/operations/diana-raw-s3-upload.md`.
 
 ## Bootstrap
 
@@ -192,9 +193,24 @@ Do not upload Diana files under `cache/phase3_wgs/`, `s3://diana-omics-results-.
 
 Detailed upload and bucket-to-bucket transfer instructions live in `docs/operations/diana-raw-s3-upload.md`.
 
-The `diana/inbox/` prefix is publicly listable and downloadable. Objects in
-that prefix must use S3-managed `AES256` encryption; SSE-KMS objects cannot be
-served to anonymous S3 requests.
+The required custody contract for `diana/inbox/` is private controlled access:
+
+- Every sender uses Diana-issued IAM credentials scoped to one assigned
+  `YYYY-MM-DD-source-name/` prefix.
+- The prefix must not allow anonymous list, metadata, or read operations. Never
+  use `--no-sign-request` or publish direct object URLs.
+- Uploads use destination SSE-KMS key
+  `45aa290c-d70c-4d86-9c8d-c4a76f1ff97f` unless the actual scoped policy
+  explicitly requires bucket-default KMS. Never substitute `AES256`.
+- Credentials are exchanged through the approved secret manager or one-time
+  secret channel, never email, tickets, logs, or source control.
+- Every delivery includes `manifest.csv` and source-side
+  `checksums.sha256`; an authorized Diana operator validates KMS metadata,
+  inventory, and checksums before analysis.
+
+If anonymous access to the inbox succeeds, treat the deployed stack as
+misconfigured and stop intake until the access policy is remediated. Documentation
+does not override the actual scoped IAM and bucket policies.
 
 After any failed or interrupted AWS run, refresh the local diagnostic report:
 

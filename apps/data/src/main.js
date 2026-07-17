@@ -7,40 +7,37 @@ import './styles.css';
 hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('markdown', markdown);
 
+const PUBLIC_INDEX_URL = 'https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/public-index/objects.json';
+
 const PUBLIC_SOURCES = [
   {
     id: 'results',
-    name: 'Analysis results',
-    treeName: 'analysis-results',
+    name: 'Public validation results',
+    treeName: 'validation-results',
     bucket: 'diana-omics-results-172630973301-us-east-1',
     region: 'us-east-1',
-    prefix: '',
-    description: 'Run outputs, exact inputs, handoff packets, manifests, and the public version archive.',
-    downloadDirectory: 'diana-results',
-  },
-  {
-    id: 'raw-inputs',
-    name: 'Raw inputs',
-    treeName: 'raw-inputs',
-    bucket: 'diana-omics-raw-inputs-172630973301-us-east-1',
-    region: 'us-east-1',
-    prefix: 'diana/inbox/',
-    description: 'Validated public Diana intake files under the diana/inbox prefix.',
-    downloadDirectory: 'diana-raw-inputs',
+    description: 'Reviewed outputs from public benchmark datasets and validation runs.',
   },
 ].map((source) => ({
   ...source,
   origin: `https://${source.bucket}.s3.${source.region}.amazonaws.com`,
-  s3Uri: `s3://${source.bucket}/${source.prefix}`,
 }));
 
-const markdownInstructions = PUBLIC_SOURCES.map((source) => `## Download ${source.name.toLowerCase()}
+const markdownInstructions = `## Download the reviewed object index
 
 \`\`\`bash
-aws s3 cp ${source.s3Uri} ./${source.downloadDirectory}/ \\
-  --recursive \\
-  --no-sign-request
-\`\`\``).join('\n\n');
+curl --fail --location \\
+  '${PUBLIC_INDEX_URL}' \\
+  --output diana-public-objects.json
+\`\`\`
+
+## Download a validation result
+
+Copy a direct file URL from the browser, then run:
+
+\`\`\`bash
+curl --fail --location --remote-name 'DIRECT_FILE_URL'
+\`\`\``;
 
 const highlightMarkdownWithBash = (source) => {
   const fencePattern = /```bash\n([\s\S]*?)\n```/g;
@@ -66,15 +63,15 @@ document.querySelector('#app').innerHTML = `
       <span class="brand-mark" aria-hidden="true">D<span>/</span></span>
       <span>Diana Omics</span>
     </a>
-    <span class="access-badge"><i></i> Public data</span>
+    <span class="access-badge"><i></i> Reviewed public data</span>
   </header>
 
   <main class="shell" id="top">
     <section class="intro">
       <div>
-        <p class="eyebrow">Open genomic dataset</p>
-        <h1>Diana Omics data</h1>
-        <p class="intro-copy">Browse every currently public Diana S3 object across analysis results and raw inputs. No AWS account or credentials are required.</p>
+        <p class="eyebrow">Public validation dataset</p>
+        <h1>Diana Omics validation results</h1>
+        <p class="intro-copy">Browse reviewed current outputs from public benchmark datasets and validation runs. No AWS account or credentials are required for these indexed files.</p>
       </div>
       <dl class="dataset-stats" aria-label="Dataset summary">
         <div><dt>Files</dt><dd id="object-count">—</dd></div>
@@ -85,8 +82,8 @@ document.querySelector('#app').innerHTML = `
 
     <section class="source-section" aria-labelledby="sources-heading">
       <div class="source-heading">
-        <p class="eyebrow">Public S3 sources</p>
-        <h2 id="sources-heading">Two live data surfaces</h2>
+        <p class="eyebrow">Reviewed object index</p>
+        <h2 id="sources-heading">Public validation results</h2>
       </div>
       <div class="source-grid">
         ${PUBLIC_SOURCES.map((source) => `
@@ -96,10 +93,10 @@ document.querySelector('#app').innerHTML = `
               <span class="source-state"><i></i><span>Loading</span></span>
             </div>
             <p>${source.description}</p>
-            <code>${source.s3Uri}</code>
+            <code>${PUBLIC_INDEX_URL}</code>
             <div class="source-stats" aria-live="polite">
               <strong>—</strong>
-              <span>Loading live inventory…</span>
+              <span>Loading reviewed index…</span>
             </div>
           </article>`).join('')}
       </div>
@@ -109,8 +106,8 @@ document.querySelector('#app').innerHTML = `
       <div class="download-copy">
         <p class="eyebrow">Download guide</p>
         <h2 id="download-heading">Get the data</h2>
-        <p>Download either public source locally or transfer the data to another S3 bucket, Google Cloud, a GCE disk, or Box.</p>
-        <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/operations/diana-public-data-download.md">Open the full download guide <span aria-hidden="true">→</span></a>
+        <p>Download individual public validation files directly, or use the reviewed index to select current objects for transfer.</p>
+        <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/validation/known-answer-datasets.md">Review dataset provenance and validation scope <span aria-hidden="true">→</span></a>
       </div>
       <div class="code-card">
         <div class="code-bar">
@@ -124,8 +121,8 @@ document.querySelector('#app').innerHTML = `
     <section class="tree-section" aria-labelledby="files-heading">
       <div class="section-heading">
         <div>
-          <h2 id="files-heading">All public files</h2>
-          <p id="inventory-status">Loading live inventories…</p>
+          <h2 id="files-heading">Reviewed public files</h2>
+          <p id="inventory-status">Loading reviewed index…</p>
         </div>
         <div class="tree-actions">
           <button id="expand-all" type="button">Expand all</button>
@@ -135,11 +132,11 @@ document.querySelector('#app').innerHTML = `
 
       <div class="tree-panel">
         <div class="tree-toolbar">
-          <div class="path-label"><span>s3</span><code>${PUBLIC_SOURCES.length} public sources</code></div>
+          <div class="path-label"><span>s3</span><code>reviewed public index</code></div>
           <label class="search-field">
             <span aria-hidden="true">⌕</span>
-            <span class="sr-only">Search files, folders, and buckets</span>
-            <input id="tree-search" type="search" placeholder="Search files, folders, and buckets" autocomplete="off" />
+            <span class="sr-only">Search files and folders</span>
+            <input id="tree-search" type="search" placeholder="Search files and folders" autocomplete="off" />
           </label>
         </div>
         <div class="tree-column-headings" aria-hidden="true">
@@ -155,8 +152,8 @@ document.querySelector('#app').innerHTML = `
 
   <footer>
     <div class="shell footer-inner">
-      <span>Diana Omics Open Data</span>
-      <span>Live indexes · Amazon S3 · Anonymous reads</span>
+      <span>Diana Omics Public Validation Data</span>
+      <span>Reviewed index · Amazon S3 · Direct downloads</span>
     </div>
   </footer>
 `;
@@ -167,7 +164,6 @@ codeElement.classList.add('hljs');
 
 let objects = [];
 let searchTerm = '';
-let loadedSourceCount = 0;
 let failedSourceCount = 0;
 
 const escapeHtml = (value) => value
@@ -294,7 +290,7 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
   }).join('');
 
   const startsOpen = Boolean(searchTerm) || isRoot || depth <= 1;
-  const sourceTitle = directory.source ? ` title="${escapeHtml(directory.source.s3Uri)}"` : '';
+  const sourceTitle = directory.source ? ` title="${escapeHtml(directory.source.description)}"` : '';
 
   return `
     <details class="tree-directory${isRoot ? ' root-directory' : ''}"${startsOpen ? ' open' : ''}>
@@ -319,52 +315,47 @@ function renderTree() {
   if (!filtered.length) {
     treeElement.innerHTML = objects.length
       ? '<div class="empty-tree">No files or folders match that search.</div>'
-      : '<div class="empty-tree error">No public inventories are currently available. Refresh to try again.</div>';
+      : '<div class="empty-tree error">The reviewed public index is currently unavailable. Refresh to try again.</div>';
   } else {
     treeElement.innerHTML = renderDirectory(buildTree(filtered), 0, true);
   }
 
   const suffix = searchTerm ? ` matching “${searchTerm}”` : '';
-  const failureNotice = failedSourceCount ? ` · ${failedSourceCount} source unavailable` : '';
-  document.querySelector('#inventory-status').textContent = `${filtered.length.toLocaleString()} of ${objects.length.toLocaleString()} files across ${loadedSourceCount} public ${loadedSourceCount === 1 ? 'source' : 'sources'}${suffix}${failureNotice}`;
+  const failureNotice = failedSourceCount ? ' · index unavailable' : '';
+  document.querySelector('#inventory-status').textContent = `${filtered.length.toLocaleString()} of ${objects.length.toLocaleString()} reviewed public files${suffix}${failureNotice}`;
 }
 
 async function fetchInventory(source) {
-  const collected = [];
-  let continuationToken = '';
+  const response = await fetch(PUBLIC_INDEX_URL, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`${source.name} index returned ${response.status}`);
 
-  do {
-    const query = new URLSearchParams({ 'list-type': '2', prefix: source.prefix, 'max-keys': '1000' });
-    if (continuationToken) query.set('continuation-token', continuationToken);
-    const response = await fetch(`${source.origin}/?${query}`);
-    if (!response.ok) throw new Error(`${source.name} inventory returned ${response.status}`);
+  const inventory = await response.json();
+  if (!Array.isArray(inventory.objects)) throw new Error(`${source.name} index did not contain an objects array`);
 
-    const xml = new DOMParser().parseFromString(await response.text(), 'application/xml');
-    if (xml.querySelector('parsererror, Error')) throw new Error(`${source.name} inventory response was not readable`);
+  const generatedAt = new Date(inventory.generated_at);
+  const collected = inventory.objects.flatMap((entry) => {
+    const key = typeof entry.key === 'string' ? entry.key : '';
+    const size = Number(entry.size);
+    const lastModified = new Date(entry.last_modified);
+    if (!key || key.endsWith('/') || !Number.isFinite(size) || Number.isNaN(lastModified.getTime())) return [];
 
-    xml.querySelectorAll('Contents').forEach((entry) => {
-      const key = entry.querySelector('Key')?.textContent ?? '';
-      if (!key || key.endsWith('/')) return;
-      const relativeKey = source.prefix ? key.slice(source.prefix.length) : key;
-      collected.push({
-        key,
-        relativeKey,
-        source,
-        searchText: `${source.name} ${source.bucket} ${source.treeName} ${key}`.toLowerCase(),
-        size: Number(entry.querySelector('Size')?.textContent ?? 0),
-        lastModified: new Date(entry.querySelector('LastModified')?.textContent ?? 0),
-      });
-    });
+    return [{
+      key,
+      relativeKey: key,
+      source,
+      searchText: `${source.name} ${source.treeName} ${key}`.toLowerCase(),
+      size,
+      lastModified,
+    }];
+  });
 
-    continuationToken = xml.querySelector('IsTruncated')?.textContent === 'true'
-      ? xml.querySelector('NextContinuationToken')?.textContent ?? ''
-      : '';
-  } while (continuationToken);
-
-  return collected;
+  return {
+    generatedAt: Number.isNaN(generatedAt.getTime()) ? null : generatedAt,
+    objects: collected,
+  };
 }
 
-function updateSourceCard(source, sourceObjects, error = null) {
+function updateSourceCard(source, sourceObjects, generatedAt = null, error = null) {
   const card = document.querySelector(`#source-${source.id}`);
   const state = card.querySelector('.source-state');
   const stats = card.querySelector('.source-stats');
@@ -373,15 +364,16 @@ function updateSourceCard(source, sourceObjects, error = null) {
     card.classList.add('source-error');
     state.classList.add('error');
     state.querySelector('span').textContent = 'Unavailable';
-    stats.innerHTML = '<strong>—</strong><span>Refresh to retry this inventory.</span>';
+    stats.innerHTML = '<strong>—</strong><span>Refresh to retry the reviewed index.</span>';
     return;
   }
 
   const bytes = sourceObjects.reduce((sum, object) => sum + object.size, 0);
   const newest = sourceObjects.reduce((latest, object) => object.lastModified > latest ? object.lastModified : latest, new Date(0));
-  state.querySelector('span').textContent = 'Live';
-  const latestLabel = sourceObjects.length ? ` · latest ${formatDate(newest)}` : '';
-  stats.innerHTML = `<strong>${sourceObjects.length.toLocaleString()} files</strong><span>${formatBytes(bytes, true)}${latestLabel}</span>`;
+  state.querySelector('span').textContent = 'Indexed';
+  const generatedLabel = generatedAt ? ` · index ${formatDate(generatedAt)}` : '';
+  const latestLabel = sourceObjects.length ? ` · latest file ${formatDate(newest)}` : '';
+  stats.innerHTML = `<strong>${sourceObjects.length.toLocaleString()} files</strong><span>${formatBytes(bytes, true)}${latestLabel}${generatedLabel}</span>`;
 }
 
 async function loadInventory() {
@@ -390,12 +382,11 @@ async function loadInventory() {
   inventories.forEach((result, index) => {
     const source = PUBLIC_SOURCES[index];
     if (result.status === 'fulfilled') {
-      loadedSourceCount += 1;
-      objects.push(...result.value);
-      updateSourceCard(source, result.value);
+      objects.push(...result.value.objects);
+      updateSourceCard(source, result.value.objects, result.value.generatedAt);
     } else {
       failedSourceCount += 1;
-      updateSourceCard(source, [], result.reason);
+      updateSourceCard(source, [], null, result.reason);
       console.error(result.reason);
     }
   });
