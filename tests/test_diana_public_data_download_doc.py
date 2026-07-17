@@ -86,6 +86,18 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             text,
         )
 
+    def test_reviewed_publication_delegates_public_index_to_final_runbook(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+        final_section = text.split("## Render the AI review and synthesis handoff", 1)[1]
+
+        self.assertIn("scripts/render_reviewed_publication_runbook.py", final_section)
+        self.assertIn(
+            "then rebuilds and publishes `public-index/objects.json`",
+            final_section,
+        )
+        self.assertNotIn("scripts/build_public_results_index.py", final_section)
+        self.assertNotIn("scripts/publish_public_results_index.py", final_section)
+
     def test_terminal_packet_docs_start_with_checked_in_freeze_commands(self) -> None:
         text = DOC.read_text(encoding="utf-8")
 

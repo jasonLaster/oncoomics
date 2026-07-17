@@ -532,24 +532,8 @@ python3 scripts/render_reviewed_publication_runbook.py \
 ```
 
 That final runbook emits one dry-run and one apply command per report method,
-then rebuilds and publishes `public-index/objects.json`.
-
-After publication, rebuild and publish `public-index/objects.json` so the new
-report appears at `data.diana-tnbc.com`:
-
-```bash
-python3 scripts/build_public_results_index.py \
-  --output .codex-tmp/public-index/objects.json
-
-python3 scripts/publish_public_results_index.py \
-  --index .codex-tmp/public-index/objects.json \
-  --receipt-output .codex-tmp/public-index/public-index.dry.json
-
-python3 scripts/publish_public_results_index.py \
-  --index .codex-tmp/public-index/objects.json \
-  --receipt-output .codex-tmp/public-index/public-index.json \
-  --apply
-```
+then rebuilds and publishes `public-index/objects.json` so the new reports
+appear at `data.diana-tnbc.com`.
 
 ## Download one object
 
