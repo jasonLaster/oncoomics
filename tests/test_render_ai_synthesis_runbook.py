@@ -10,7 +10,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -273,7 +272,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
     def test_renderer_materializes_pinned_model_catalog_receipt(self) -> None:
         text = MODULE.render(Path("/repo"), "terminal")
         catalog = (
-            "/repo/.codex-tmp/hrd-reports/ai-review/"
+            "/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/"
             f"{MODULE.RUN_ID}/"
             "model-catalog-receipt.20260717T115311Z.json"
         )
@@ -288,6 +287,18 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         self.assertNotIn(
             "/repo/.codex-tmp/hrd-reports/ai-review/publication-receipts/",
             text,
+        )
+
+    def test_model_catalog_receipt_stays_outside_prepare_output_dir(self) -> None:
+        root = Path("/repo")
+        run_root = (
+            root
+            / ".codex-tmp/hrd-reports/ai-review"
+            / MODULE.RUN_ID
+        )
+
+        self.assertFalse(
+            MODULE.model_catalog_receipt_path(root).is_relative_to(run_root)
         )
 
     def test_runbook_can_include_private_receipt_gate(self) -> None:

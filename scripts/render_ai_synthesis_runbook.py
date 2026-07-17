@@ -247,6 +247,15 @@ def reviewed_publication_runbook_command(
     ]
 
 
+def model_catalog_receipt_path(root: Path) -> Path:
+    return (
+        root
+        / ".codex-tmp/hrd-reports/ai-review/model-catalog-receipts"
+        / RUN_ID
+        / MODEL_CATALOG_RECEIPT
+    )
+
+
 def required_existing(root: Path) -> tuple[Path, ...]:
     scripts = root / "scripts"
     return (
@@ -287,7 +296,7 @@ def render(
     manifests = report_manifest_paths(root, sigprofiler_report_dir, sequenza_report_dir)
 
     run_root = reports / "ai-review" / RUN_ID
-    catalog = run_root / MODEL_CATALOG_RECEIPT
+    catalog = model_catalog_receipt_path(root)
     bundle = run_root / "bundle"
     reviewer_inputs = run_root / "reviewer-inputs"
     reviewer_a = run_root / "reviewer-a"
