@@ -112,6 +112,34 @@ PACKET_SPECS: dict[str, PacketSpec] = {
             "results/diana_raw_intake/dinah_handoff_plan.json",
         ),
     ),
+    "diana_wgs": PacketSpec(
+        sample_set="diana_wgs",
+        title="Diana WGS HRD Evidence Review Packet",
+        use_case=(
+            "Review sample-derived matched tumor-normal WGS evidence after source integrity, alignment, small-variant, "
+            "coverage-CNV, SBS96-input, and BAM-derived SV evidence generation."
+        ),
+        allowed_conclusion=(
+            "This packet records sample-derived WGS evidence and its current readiness boundaries. It does not support a "
+            "scalar or categorical HRD conclusion until allele-specific CNV/LOH and purity/ploidy, a validated production "
+            "SV callset, locked SBS3 assignment policy, and calibrated scarHRD, CHORD, and HRDetect-style adapters pass "
+            "their validation gates."
+        ),
+        artifacts=(
+            "diana_hrd_summary.json",
+            "hrd_readiness.csv",
+            "alignment/bam_validation_summary.json",
+            "variants/mutect2_summary.json",
+            "variants/brca1_brca2_pass_variants.csv",
+            "cnv/coverage_cnv_summary.json",
+            "cnv/coverage_cnv_bins.csv",
+            "signatures/signature_assignment_summary.json",
+            "signatures/wgs_sbs96_matrix.csv",
+            "sv/sv_evidence_summary.json",
+            "sv/sv_evidence_summary.csv",
+            "tool_versions.json",
+        ),
+    ),
 }
 
 
@@ -599,17 +627,307 @@ def diana_raw_intake_evidence() -> tuple[list[dict[str, str]], list[dict[str, st
     return evidence, adapters, blockers
 
 
+DIANA_WGS_READINESS_SURFACES = (
+    "source_sha256",
+    "wgs_alignment",
+    "matched_normal_somatic_variants",
+    "coverage_cnv",
+    "sbs96",
+    "sv",
+    "scarHRD",
+    "CHORD",
+    "HRDetect",
+    "overall_hrd",
+)
+DIANA_WGS_PARTIAL_ONLY_SURFACES = {"coverage_cnv", "sbs96", "sv"}
+DIANA_WGS_NO_CALL_SURFACES = {"scarHRD", "CHORD", "HRDetect", "overall_hrd"}
+
+
+def diana_wgs_readiness_rows(summary: Mapping[str, Any], blockers: list[str]) -> list[dict[str, Any]]:
+    csv_rows: list[dict[str, Any]] = read_csv_or_empty("hrd_readiness.csv")
+    embedded = summary.get("hrd_readiness", [])
+    embedded_rows = [dict(row) for row in embedded if isinstance(row, dict)] if isinstance(embedded, list) else []
+    if csv_rows and embedded_rows:
+        fields = ("evidence_surface", "status", "detail")
+        csv_contract = sorted(tuple(str(row.get(field, "")) for field in fields) for row in csv_rows)
+        embedded_contract = sorted(tuple(str(row.get(field, "")) for field in fields) for row in embedded_rows)
+        if csv_contract != embedded_contract:
+            blockers.append("Diana WGS readiness CSV disagrees with the readiness contract embedded in diana_hrd_summary.json.")
+            csv_by_surface = {str(row.get("evidence_surface", "")): row for row in csv_rows if row.get("evidence_surface")}
+            embedded_by_surface = {
+                str(row.get("evidence_surface", "")): row for row in embedded_rows if row.get("evidence_surface")
+            }
+            reconciled: list[dict[str, Any]] = []
+            for surface in sorted(set(csv_by_surface) | set(embedded_by_surface)):
+                csv_row = csv_by_surface.get(surface)
+                embedded_row = embedded_by_surface.get(surface)
+                row = dict(csv_row or embedded_row or {})
+                if not csv_row or not embedded_row or csv_row.get("status") != embedded_row.get("status"):
+                    row["status"] = "no_call"
+                    row["detail"] = "Readiness artifacts disagree for this surface; no state promotion is accepted."
+                reconciled.append(row)
+            return reconciled
+    elif csv_rows:
+        blockers.append("Diana WGS summary is missing its embedded readiness contract; no CSV-only state promotion is accepted.")
+        return [
+            {
+                **row,
+                "status": "no_call",
+                "detail": "The summary readiness contract is missing; no CSV-only state promotion is accepted.",
+            }
+            for row in csv_rows
+        ]
+    return csv_rows or embedded_rows
+
+
+def bounded_diana_wgs_state(surface: str, state: str, blockers: list[str]) -> str:
+    if state not in {"ready", "partial_evidence", "no_call"}:
+        blockers.append(f"Diana WGS readiness surface {surface} has unsupported state {state or 'missing'}.")
+        return "no_call"
+    if surface in DIANA_WGS_NO_CALL_SURFACES and state != "no_call":
+        blockers.append(
+            f"Diana WGS readiness surface {surface} attempted promotion to {state}; the current packet contract preserves no_call."
+        )
+        return "no_call"
+    if surface in DIANA_WGS_PARTIAL_ONLY_SURFACES and state == "ready":
+        blockers.append(
+            f"Diana WGS readiness surface {surface} attempted promotion to ready; the current evidence supports partial_evidence only."
+        )
+        return "partial_evidence"
+    return state
+
+
+def diana_wgs_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
+    summary = read_json_or_empty("diana_hrd_summary.json")
+    alignment = read_json_or_empty("alignment/bam_validation_summary.json")
+    variants = read_json_or_empty("variants/mutect2_summary.json")
+    cnv = read_json_or_empty("cnv/coverage_cnv_summary.json")
+    signatures = read_json_or_empty("signatures/signature_assignment_summary.json")
+    sv = read_json_or_empty("sv/sv_evidence_summary.json")
+    blockers: list[str] = []
+    readiness_rows = diana_wgs_readiness_rows(summary, blockers)
+
+    summary_status = str(summary.get("status", "missing"))
+    evidence_status = str(summary.get("evidence_status", "missing"))
+    if summary_status != "no_call":
+        blockers.append(
+            f"Diana WGS summary status is {summary_status}; this packet requires the worker's explicit no_call HRD boundary."
+        )
+    if evidence_status != "partial_evidence":
+        blockers.append(
+            f"Diana WGS summary evidence_status is {evidence_status}; expected partial_evidence from the current worker schema."
+        )
+    if not summary.get("boundary"):
+        blockers.append("Diana WGS summary is missing its interpretation boundary.")
+
+    alignment_rows = alignment.get("rows", []) if isinstance(alignment.get("rows"), list) else []
+    alignment_rows = [row for row in alignment_rows if isinstance(row, dict)]
+    passed_alignment_rows = sum(str(row.get("status", "")) == "passed" for row in alignment_rows)
+    total_reads = sum(as_int(row.get("total_reads")) for row in alignment_rows)
+    mapped_reads = sum(as_int(row.get("mapped_reads")) for row in alignment_rows)
+    alignment_status = str(alignment.get("status", "missing"))
+    if alignment_status != "passed":
+        blockers.append("Diana WGS alignment validation did not pass.")
+    if alignment_status == "passed" and alignment_rows:
+        alignment_detail = (
+            f"{passed_alignment_rows}/{len(alignment_rows)} tumor/normal alignment rows passed; "
+            f"mapped reads: {mapped_reads}/{total_reads}."
+        )
+    else:
+        alignment_detail = "Alignment validation metrics are unavailable; no read counts are reported."
+
+    variant_status = str(variants.get("status", "missing"))
+    if variant_status != "passed":
+        blockers.append("Diana WGS matched-normal small-variant generation did not pass.")
+    hrr_region_records = as_int(variants.get("brca1_brca2_pass_region_records"))
+    hrr_region_records_available = variant_status == "passed" and has_value(variants.get("brca1_brca2_pass_region_records"))
+    if variant_status == "passed":
+        variant_detail = (
+            f"Filtered records: {variants.get('total_filtered_records', 'unknown')}; "
+            f"PASS: {variants.get('pass_records', 'unknown')} "
+            f"({variants.get('pass_snvs', 'unknown')} SNVs, {variants.get('pass_indels', 'unknown')} indels)."
+        )
+    else:
+        variant_detail = "Matched-normal small-variant metrics are unavailable; no variant counts are reported."
+    if not hrr_region_records_available:
+        hrr_status = "no_call"
+        hrr_detail = "The bounded HRR-region record count is unavailable; no negative finding is inferred."
+    elif hrr_region_records > 0:
+        hrr_status = "partial_evidence"
+        hrr_detail = f"Observed HRR-region PASS records requiring annotation: {hrr_region_records}."
+    else:
+        hrr_status = "no_call"
+        hrr_detail = "The completed bounded HRR-region extraction reported zero PASS records."
+
+    cnv_status = str(cnv.get("status", "missing"))
+    if cnv and has_value(cnv.get("bin_count")):
+        cnv_detail = (
+            f"Normalized bins: {cnv.get('bin_count')}; relative gains: "
+            f"{cnv.get('relative_gain_bins', 'unknown')}; relative losses: {cnv.get('relative_loss_bins', 'unknown')}."
+        )
+    else:
+        cnv_detail = "Coverage-CNV metrics are unavailable; no bin or gain/loss counts are reported."
+
+    signature_status = str(signatures.get("status", "missing"))
+    if signatures and has_value(signatures.get("usable_snv_records")):
+        signature_detail = (
+            f"Usable PASS SNVs: {signatures.get('usable_snv_records')}; "
+            f"assignment readiness: {signatures.get('sigprofiler_assignment_status', 'unknown')}."
+        )
+    else:
+        signature_detail = "SBS96 input metrics are unavailable; no usable-SNV count or SBS3 assignment is inferred."
+
+    sv_rows = sv.get("rows", []) if isinstance(sv.get("rows"), list) else []
+    sv_rows = [row for row in sv_rows if isinstance(row, dict)]
+    discordant_pairs = sum(as_int(row.get("discordant_mapped_pairs")) for row in sv_rows)
+    supplementary_alignments = sum(as_int(row.get("supplementary_alignments")) for row in sv_rows)
+    sv_status = str(sv.get("status", "missing"))
+    if sv_rows:
+        sv_detail = (
+            f"Rows: {len(sv_rows)}; discordant mapped pairs: {discordant_pairs}; "
+            f"supplementary alignments: {supplementary_alignments}."
+        )
+    else:
+        sv_detail = "BAM-derived SV metrics are unavailable; no zero-count finding or production SV callset is inferred."
+    readiness_surfaces = [str(row.get("evidence_surface", "")) for row in readiness_rows if row.get("evidence_surface")]
+    duplicate_surfaces = sorted({surface for surface in readiness_surfaces if readiness_surfaces.count(surface) > 1})
+    if duplicate_surfaces:
+        blockers.append(f"Diana WGS readiness contract has duplicate surfaces: {', '.join(duplicate_surfaces)}.")
+    readiness_by_surface = {
+        str(row.get("evidence_surface", "")): row
+        for row in readiness_rows
+        if row.get("evidence_surface")
+    }
+    missing_surfaces = [surface for surface in DIANA_WGS_READINESS_SURFACES if surface not in readiness_by_surface]
+    if missing_surfaces:
+        blockers.append(f"Diana WGS readiness contract is missing surfaces: {', '.join(missing_surfaces)}.")
+
+    evidence = [
+        evidence_row(
+            "wgs_run_boundary",
+            summary_status,
+            (
+                f"Overall HRD status: {summary_status}; evidence status: {evidence_status}; "
+                f"reference: {summary.get('input', {}).get('reference', 'unknown') if isinstance(summary.get('input'), dict) else 'unknown'}."
+            ),
+            "diana_hrd_summary.json",
+            "The worker explicitly emits sample-derived evidence with an overall HRD no-call boundary.",
+        ),
+        evidence_row(
+            "wgs_alignment",
+            alignment_status,
+            alignment_detail,
+            "alignment/bam_validation_summary.json",
+        ),
+        evidence_row(
+            "matched_normal_somatic_variants",
+            variant_status,
+            variant_detail,
+            "variants/mutect2_summary.json",
+            "Research-use matched-normal calls require annotation and reviewer assessment.",
+        ),
+        evidence_row(
+            "hrr_region_small_variants",
+            hrr_status,
+            hrr_detail,
+            "variants/brca1_brca2_pass_variants.csv",
+            "Region membership alone does not establish pathogenicity, germline/somatic origin, biallelic loss, or HRD.",
+        ),
+        evidence_row(
+            "coverage_cnv",
+            cnv_status,
+            cnv_detail,
+            "cnv/coverage_cnv_summary.json",
+            "Coverage bins are not allele-specific CNV/LOH segments and are not scarHRD input.",
+        ),
+        evidence_row(
+            "sbs96_input",
+            signature_status,
+            signature_detail,
+            "signatures/signature_assignment_summary.json",
+            "An SBS96 matrix is not an SBS3 assignment; SBS3 remains no_call.",
+        ),
+        evidence_row(
+            "bam_derived_sv_evidence",
+            sv_status,
+            sv_detail,
+            "sv/sv_evidence_summary.json",
+            "BAM-derived counts are not a validated production SV callset and cannot support CHORD scoring.",
+        ),
+    ]
+
+    labels = {
+        "source_sha256": "Source SHA-256 integrity",
+        "wgs_alignment": "WGS alignment",
+        "matched_normal_somatic_variants": "Matched-normal somatic variants",
+        "coverage_cnv": "Coverage CNV proxy",
+        "sbs96": "SBS96 input matrix",
+        "sv": "BAM-derived SV evidence",
+        "scarHRD": "scarHRD",
+        "CHORD": "CHORD",
+        "HRDetect": "HRDetect-style model",
+        "overall_hrd": "Overall HRD classification",
+    }
+    next_actions = {
+        "source_sha256": "Retain the checksum audit with this run.",
+        "wgs_alignment": "Retain BAM validation and reference provenance.",
+        "matched_normal_somatic_variants": "Annotate and review observed variants without promoting them to an HRD score.",
+        "coverage_cnv": "Generate allele-specific total/minor copy-number segments with purity/ploidy.",
+        "sbs96": "Run a validated signature assignment adapter and lock SBS3 thresholds.",
+        "sv": "Generate a validated production SV VCF or BEDPE callset.",
+        "scarHRD": "Supply validated allele-specific segments and purity/ploidy before scoring.",
+        "CHORD": "Supply validated SV/CNV/small-variant feature adapters before scoring.",
+        "HRDetect": "Lock all component adapters and validate a calibrated model before scoring.",
+        "overall_hrd": "Keep no_call until every required component and integration policy passes validation.",
+    }
+    adapters: list[dict[str, str]] = []
+    for surface in DIANA_WGS_READINESS_SURFACES:
+        row = readiness_by_surface.get(surface, {})
+        state = bounded_diana_wgs_state(surface, str(row.get("status", "")), blockers)
+        adapters.append(
+            adapter_row(
+                labels[surface],
+                state,
+                "" if state == "ready" else str(row.get("detail") or "Missing or incomplete readiness evidence."),
+                next_actions[surface],
+            )
+        )
+    adapters.extend(
+        [
+            adapter_row(
+                "Biallelic HRR/LOH evidence",
+                "no_call",
+                "No allele-specific CNV/LOH and curated second-hit assessment is present.",
+                "Integrate annotated HRR events with allele-specific segments and purity-aware review.",
+            ),
+            adapter_row(
+                "SBS3",
+                "no_call",
+                str(signatures.get("sbs3_status", "Signature assignment and threshold policy are not locked.")),
+                "Run validated signature assignment and known-answer calibration before interpreting SBS3.",
+            ),
+        ]
+    )
+    return evidence, adapters, blockers
+
+
 EVIDENCE_BUILDERS = {
     "hcc1395_wes": hcc1395_wes_evidence,
     "hcc1395_wgs": hcc1395_wgs_evidence,
     "hg008": hg008_evidence,
     "colo829": colo829_evidence,
     "diana_raw_intake": diana_raw_intake_evidence,
+    "diana_wgs": diana_wgs_evidence,
 }
 
 
 def research_context(spec: PacketSpec, evidence_rows: Sequence[Mapping[str, str]]) -> dict[str, Any]:
-    observed = [row for row in evidence_rows if any(token in row.get("detail", "") for token in ("BRAF", "BRCA", "HRR"))]
+    observed = [
+        row
+        for row in evidence_rows
+        if row.get("status") not in {"no_call", "missing", "blocked"}
+        and any(token in row.get("detail", "") for token in ("BRAF", "BRCA", "HRR"))
+    ]
     return {
         "status": "deferred_until_observed_sample_events" if not observed else "candidate_context_available",
         "boundary": "Research context may enrich observed events, but it must not override failed QC, missing adapters, or HRD no-call states.",
@@ -708,6 +1026,7 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
 
 def write_cloud_materialization_plan(root: str, packet_run_id: str, packet_summaries: Sequence[Mapping[str, Any]]) -> None:
     sample_sets = ",".join(str(packet.get("sampleSet", "")) for packet in packet_summaries if packet.get("sampleSet"))
+    includes_diana_wgs = any(packet.get("sampleSet") == "diana_wgs" for packet in packet_summaries)
     required_prefixes = sorted(
         {
             str(Path(path).parts[0])
@@ -739,6 +1058,15 @@ def write_cloud_materialization_plan(root: str, packet_run_id: str, packet_summa
                 "",
                 "Materialize the artifact root so paths like `results/phase3_wgs_smoke/phase3_wgs_summary.json` resolve under `$ROSALIND_HRD_ARTIFACT_ROOT`.",
                 "",
+                *(
+                    [
+                        "For `diana_wgs`, point `ROSALIND_HRD_ARTIFACT_ROOT` at the worker artifact directory that directly contains `diana_hrd_summary.json`, `hrd_readiness.csv`, and the `alignment/`, `variants/`, `cnv/`, `signatures/`, and `sv/` directories.",
+                        "Do not point it at the parent run directory unless those artifacts have been materialized at that level.",
+                        "",
+                    ]
+                    if includes_diana_wgs
+                    else []
+                ),
                 "## Typical Prefixes",
                 "",
                 "- `results/full_wes_benchmark/`",
