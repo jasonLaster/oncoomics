@@ -20,6 +20,8 @@ Current shell utilities:
 - `launch_phase3_aws_full.sh`: launch a full Phase 3 WGS AWS run with repo-specific defaults.
 - `publish_private_report.py`: freeze an allowlisted HRD report packet in the
   private versioned results bucket before reviewed public release.
+- `prepare_ai_review_run.py`: build a seven-method de-identified AI review
+  bundle and stage exact two-file input directories for reviewers A and B.
 - `publish_public_results_index.py`: publish a freshly built reviewed object
   index to `public-index/objects.json` with SHA-256 and S3 metadata custody.
 - `publish_reviewed_public_report.py`: publish an allowlisted private HRD report
