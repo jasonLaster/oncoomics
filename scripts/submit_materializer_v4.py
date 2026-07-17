@@ -871,7 +871,7 @@ def require_empty_history(uri: str, region: str) -> dict[str, Any]:
             return {"uri": uri, "page_count": page_count, "history_count": 0}
         next_key = str(page.get("NextKeyMarker", ""))
         next_version = str(page.get("NextVersionIdMarker", ""))
-        if not next_key or (next_key, next_version) in observed:
+        if not next_key or not next_version or (next_key, next_version) in observed:
             raise ValueError("truncated S3 version history omitted or repeated its marker")
         observed.add((next_key, next_version))
         key_marker, version_marker = next_key, next_version

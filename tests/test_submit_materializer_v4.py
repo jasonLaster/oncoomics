@@ -642,6 +642,44 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             with self.subTest(history=history), self.assertRaisesRegex(ValueError, "object or delete-marker history"):
                 self.run_preflight(aws=self.aws_side_effect(history=history))
 
+    def test_empty_history_consumes_key_and_version_markers(self) -> None:
+        uri = (
+            f"s3://{self.private_bucket}/runs/subject01/{self.run_id}/"
+            "deterministic/provenance/crosscheck-materialization-receipts/"
+        )
+        pages = [
+            {
+                "IsTruncated": True,
+                "NextKeyMarker": "next-key",
+                "NextVersionIdMarker": "next-version",
+            },
+            {"IsTruncated": False},
+        ]
+
+        with mock.patch.object(MODULE, "aws_json", side_effect=pages) as aws_json:
+            self.assertEqual(
+                MODULE.require_empty_history(uri, MODULE.REGION),
+                {"uri": uri, "page_count": 2, "history_count": 0},
+            )
+
+        self.assertEqual(
+            aws_json.call_args_list[1].args,
+            (
+                MODULE.REGION,
+                "s3api",
+                "list-object-versions",
+                "--bucket",
+                self.private_bucket,
+                "--prefix",
+                f"runs/subject01/{self.run_id}/"
+                "deterministic/provenance/crosscheck-materialization-receipts/",
+                "--key-marker",
+                "next-key",
+                "--version-id-marker",
+                "next-version",
+            ),
+        )
+
     def test_history_and_job_pagination_fail_closed(self) -> None:
         calls = 0
 
@@ -655,6 +693,17 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "omitted or repeated"):
             self.run_preflight(aws=aws)
         self.assertGreater(calls, 0)
+
+        with mock.patch.object(
+            MODULE,
+            "aws_json",
+            return_value={"IsTruncated": True, "NextKeyMarker": "next-key"},
+        ):
+            with self.assertRaisesRegex(ValueError, "omitted or repeated"):
+                MODULE.require_empty_history(
+                    f"s3://{self.private_bucket}/runs/subject01/{self.run_id}/empty/",
+                    MODULE.REGION,
+                )
 
     def test_dry_run_main_emits_exclusive_mode_0600_without_submit(self) -> None:
         args = self.args()
