@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import importlib.util
 import json
+import stat
 import sys
 import tempfile
 import unittest
@@ -276,6 +277,40 @@ class CustodyFixture:
 
 
 class CustodyHandoffTests(unittest.TestCase):
+    def test_contract_check_writes_readiness_receipt_create_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            readiness = root / "input-contract.readiness.json"
+            write_json(contract, CustodyFixture().finalize())
+            argv = [
+                "check_contract.py",
+                "--contract",
+                str(contract),
+                "--json-out",
+                str(readiness),
+            ]
+
+            with patch.object(sys, "argv", argv):
+                self.assertEqual(checker.main(), 0)
+
+            self.assertEqual(stat.S_IMODE(readiness.stat().st_mode), 0o600)
+            self.assertEqual(
+                json.loads(readiness.read_text(encoding="utf-8")),
+                checker.validate(json.loads(contract.read_text(encoding="utf-8"))),
+            )
+
+            original = readiness.read_bytes()
+            with (
+                patch.object(sys, "argv", argv),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "contract readiness output already exists",
+                ),
+            ):
+                checker.main()
+            self.assertEqual(readiness.read_bytes(), original)
+
     def test_finalizer_binds_all_three_outputs_and_attests_final_primary(self):
         contract = CustodyFixture().finalize()
         self.assertTrue(contract["attestations"]["final_primary_wgs_artifacts"])

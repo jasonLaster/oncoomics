@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -206,6 +207,22 @@ def validate(contract: dict) -> dict:
     }
 
 
+def write_text_once(path: Path, value: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise FileExistsError(f"refusing to overwrite symlink: {path}")
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            descriptor = -1
+            handle.write(value)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--contract", required=True, type=Path)
@@ -216,7 +233,12 @@ def main() -> int:
     rendered = json.dumps(result, indent=2, sort_keys=True)
     print(rendered)
     if args.json_out:
-        args.json_out.write_text(rendered + "\n")
+        try:
+            write_text_once(args.json_out, rendered + "\n")
+        except FileExistsError as error:
+            raise SystemExit(
+                f"Fail-closed: contract readiness output already exists: {args.json_out}"
+            ) from error
     return 0 if result["overall_status"] == "ready" or args.allow_blocked else 2
 
 
