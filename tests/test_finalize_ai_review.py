@@ -194,7 +194,19 @@ class FinalizeAiReviewTests(unittest.TestCase):
             finalized = self.execute(fixture, review)
 
             self.assertNotEqual(finalized.returncode, 0)
-            self.assertIn("report_manifest.json exists and is not a file", finalized.stderr)
+            self.assertIn("report_manifest.json already exists", finalized.stderr)
+
+    def test_refuses_to_replace_existing_report_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            manifest = review / "report_manifest.json"
+            manifest.write_text("keep me\n", encoding="utf-8")
+
+            finalized = self.execute(fixture, review)
+
+            self.assertNotEqual(finalized.returncode, 0)
+            self.assertIn("report_manifest.json already exists", finalized.stderr)
+            self.assertEqual(manifest.read_text(encoding="utf-8"), "keep me\n")
 
     def test_rejects_model_catalog_and_bundle_drift(self) -> None:
         for mutate, message in (

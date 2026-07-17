@@ -307,10 +307,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "Fail-closed: output must be report_manifest.json in the review directory"
         )
     try:
-        if output.is_file() or output.is_symlink():
-            output.unlink()
-        elif output.exists():
-            raise ValueError("report_manifest.json exists and is not a file")
+        if output.exists() or output.is_symlink():
+            raise ValueError("report_manifest.json already exists")
 
         require_exact_review_dir(review_dir, REVIEW_PACKET_INPUT_FILES)
         manifest = build_manifest(
