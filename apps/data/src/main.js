@@ -248,6 +248,12 @@ const formatDate = (date) => new Intl.DateTimeFormat('en-US', {
   month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
 }).format(date);
 
+const xmlElements = (parent, tagName) => Array.from(parent.getElementsByTagNameNS('*', tagName));
+
+const xmlElement = (parent, tagName) => xmlElements(parent, tagName)[0] ?? null;
+
+const xmlText = (parent, tagName) => xmlElement(parent, tagName)?.textContent ?? '';
+
 const typeForKey = (key) => {
   if (key.endsWith('.fastq.gz') || key.endsWith('.fq.gz')) return 'FASTQ';
   if (key.endsWith('.vcf.gz') || key.endsWith('.vcf')) return 'VCF';
@@ -435,14 +441,16 @@ async function fetchS3Inventory(source) {
     if (!response.ok) throw new Error(`${source.name} inventory returned ${response.status}`);
 
     const xml = new DOMParser().parseFromString(await response.text(), 'application/xml');
-    if (xml.querySelector('parsererror, Error')) throw new Error(`${source.name} inventory response was not readable`);
+    if (xml.querySelector('parsererror') || xmlElement(xml, 'Error')) {
+      throw new Error(`${source.name} inventory response was not readable`);
+    }
 
-    xml.querySelectorAll('Contents').forEach((entry) => {
-      const key = entry.querySelector('Key')?.textContent ?? '';
+    xmlElements(xml, 'Contents').forEach((entry) => {
+      const key = xmlText(entry, 'Key');
       if (!key || key.endsWith('/') || !key.startsWith(source.prefix)) return;
 
-      const size = Number(entry.querySelector('Size')?.textContent ?? 0);
-      const lastModified = new Date(entry.querySelector('LastModified')?.textContent ?? 0);
+      const size = Number(xmlText(entry, 'Size'));
+      const lastModified = new Date(xmlText(entry, 'LastModified'));
       if (!Number.isFinite(size) || Number.isNaN(lastModified.getTime())) return;
 
       collected.push({
@@ -455,8 +463,8 @@ async function fetchS3Inventory(source) {
       });
     });
 
-    continuationToken = xml.querySelector('IsTruncated')?.textContent === 'true'
-      ? xml.querySelector('NextContinuationToken')?.textContent ?? ''
+    continuationToken = xmlText(xml, 'IsTruncated') === 'true'
+      ? xmlText(xml, 'NextContinuationToken')
       : '';
   } while (continuationToken);
 
