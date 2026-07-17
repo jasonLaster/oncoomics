@@ -1,46 +1,33 @@
 # Diana WGS HRD early-look handoff
 
-This directory is the Git-tracked handoff for the Diana matched tumor-normal
-WGS early-look run. The complete evidence bundle is anonymously available in
-public S3; Git intentionally retains the reports and public manifest, not local
-mirrors of large evidence objects.
+This Git-tracked handoff documents the matched tumor-normal WGS early-look run.
+The reviewed analysis is publicly available under a pseudonymous alias; Git
+retains the narrative handoff rather than local mirrors of evidence objects.
 
 - Full-run ID: `diana-wgs-hrd-20260716T033101Z`
 - Successful early-look ID: `early-look-intersected-20260716T150517Z`
 - Successful AWS Batch job: `a1aa4109-4b38-46a4-9b58-bfe6335b02d4`
 - Early-look completion: 2026-07-16 08:32:54 PDT
-- Packet materialized locally: 2026-07-16
 - Evidence state: `partial_evidence`
 - Overall HRD state: `no_call`
 
-Start with [HANDOFF.md](HANDOFF.md), then follow [NEXT_STEPS.md](NEXT_STEPS.md).
-Public access details and download commands are in [PUBLIC_DATA.md](PUBLIC_DATA.md).
-Object sizes, ETags, encryption, and direct URLs are indexed in
-[PUBLIC_S3_MANIFEST.tsv](PUBLIC_S3_MANIFEST.tsv).
+Start with [HANDOFF.md](HANDOFF.md), then [NEXT_STEPS.md](NEXT_STEPS.md).
+Current public URLs and the publication boundary are in
+[PUBLIC_DATA.md](PUBLIC_DATA.md).
 
-## Public dataset
+## Public analysis boundary
 
-- S3: `s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/`
-- HTTPS: <https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/?list-type=2&prefix=runs%2Fdiana-hrd%2Fdiana-wgs-hrd-20260716T033101Z%2Fearly-look%2Fearly-look-intersected-20260716T150517Z%2F>
-- Machine-readable summary: <https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/artifacts/early_look_summary.json>
+The data owner explicitly authorized unrestricted public distribution of the
+analysis. The reviewed public alias contains small derived analysis and report
+artifacts reheadered to `subject01_normal` and `subject01_tumor`. Raw FASTQs,
+BAMs, contamination pileups, direct source identifiers, operational logs, and
+version-history/custody inventories remain outside the public alias.
 
-## Public object map
+`PUBLIC_S3_MANIFEST.tsv` is retained only as a historical record of the original
+2026-07-16 publication. Its old paths and broad bucket-access statements are
+superseded by the current publication manifest linked from `PUBLIC_DATA.md`.
 
-- `artifacts/`: all objects emitted by the successful early-look job,
-  including complete contamination pileups, coverage-CNV bins, QC, and VCFs.
-- `handoff/annotations/`: Ensembl consequence annotation for the
-  filtered callset.
-- `inputs/validated_bams/`: validated tumor/normal BAMs, indexes, and QC sidecars.
-- `inputs/caller_resources/`: exact GATK, PoN, gnomAD, and common-sites inputs.
-- `inputs/reference/`: exact hg38 analysis reference and indexes.
-- `handoff/references/`: Ensembl release 116 GFF3/checksums and dated ClinVar page
-  snapshots for the two reviewed BRCA variants.
-- `handoff/provenance/`: AWS Batch descriptions, CloudWatch log, worker scripts, and
-  S3 artifact inventory.
-
-## Data-handling boundary
-
-The dataset owner explicitly authorized unrestricted public distribution on
-2026-07-16. All current objects in the results bucket are anonymously listable
-and readable; no AWS credentials or presigned URLs are required. See
-`PUBLIC_DATA.md` for the separate noncurrent-version boundary.
+The recovered pre-data Rosalind packets are also public for protocol provenance,
+but are explicitly labeled superseded because they report
+`waiting_for_diana_raw_data` and `no_call`. Current HRD interpretation must use
+the deterministic early-look evidence and the final frozen WGS contract.

@@ -24,7 +24,7 @@ output "nextflow_work_bucket" {
 }
 
 output "results_bucket" {
-  description = "S3 bucket for reviewed public-validation Diana Omics results."
+  description = "S3 bucket for exact-allowlisted public validation and alias-only analysis outputs."
   value       = aws_s3_bucket.this["results"].bucket
 }
 

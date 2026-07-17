@@ -1,60 +1,32 @@
-# Public S3 access
+# Public analysis access
 
-The entire current object namespace of
-`diana-omics-results-172630973301-us-east-1` is anonymously listable and
-readable over HTTPS. All 838 current objects use SSE-S3 (`AES256`), and
-insecure HTTP requests remain denied.
-The same access, encryption, and CORS configuration is declared in
-`infra/aws/main.tf` so a future Terraform apply preserves this public state.
-
-## Early-look run
+The dataset owner authorized unrestricted public distribution of the Diana WGS
+analysis for collaborator access and public cross-reference. The reviewed public
+surface is pseudonymous and available without AWS credentials at:
 
 ```text
-s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/
+s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/
 ```
 
-Browse the run as S3 XML:
+Browse exact public keys through:
 
-<https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/?list-type=2&prefix=runs%2Fdiana-hrd%2Fdiana-wgs-hrd-20260716T033101Z%2Fearly-look%2Fearly-look-intersected-20260716T150517Z%2F>
+- [data.diana-tnbc.com](https://data.diana-tnbc.com/)
+- [public-index/objects.json](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/public-index/objects.json)
 
-The Git-tracked `PUBLIC_S3_MANIFEST.tsv` records each public object present
-when this packet was published, including bytes, ETag, encryption, and URL;
-the manifest excludes only its own S3 object.
-
-## Version-history boundary
-
-Bucket versioning remains enabled. Noncurrent versions do not appear in the
-normal public object listing and are not included in the public manifest. A
-2026-07-16 audit found 1,461 noncurrent versions: 15 use SSE-S3 and 1,446 retain
-historical SSE-KMS encryption. SSE-KMS versions cannot be downloaded
-anonymously because anonymous readers cannot receive `kms:Decrypt`.
-
-Making historical version content public would require copying it into a new
-SSE-S3 archive namespace and deciding whether to delete the original version
-history. That destructive migration was not performed by this publication.
-
-Download the full run anonymously:
-
-```bash
-aws s3 sync \
-  s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/ \
-  ./early-look-intersected-20260716T150517Z/ \
-  --no-sign-request --only-show-errors
-```
-
-List the entire public results bucket:
-
-```bash
-aws s3 ls s3://diana-omics-results-172630973301-us-east-1/ \
-  --recursive --human-readable --summarize --no-sign-request
-```
+Anonymous bucket listing and historical-version reads remain denied. The public
+alias contains reviewed summaries, QC, coarse coverage-CNV evidence, filtered
+HRR VCFs reheadered to `subject01_normal` and `subject01_tumor`, variant review,
+and superseded pre-data Rosalind protocol packets. It excludes raw FASTQs, BAMs,
+contamination pileups, direct source identifiers, logs, and custody inventories.
 
 ## Direct result links
 
-- [Public S3 manifest](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/handoff/PUBLIC_S3_MANIFEST.tsv)
-- [Early-look summary](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/artifacts/early_look_summary.json)
-- [PASS HRR variants](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/artifacts/variants/core_hrr_pass_variants.csv)
-- [Filtered VCF](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/artifacts/variants/core_hrr.mutect2.filtered.vcf.gz)
-- [Coverage-CNV bins](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/artifacts/coverage_cnv/coverage_cnv_bins.csv)
-- [Contamination summary](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/artifacts/contamination/contamination_summary.json)
-- [BAM QC summary](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/early-look/early-look-intersected-20260716T150517Z/artifacts/qc/bam_qc_summary.json)
+- [Publication manifest](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/publication_manifest.json)
+- [Early-look summary](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/early-look/artifacts/early_look_summary.json)
+- [HRR variant summary](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/early-look/artifacts/variants/core_hrr_variant_summary.json)
+- [PASS HRR variants](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/early-look/artifacts/variants/core_hrr_pass_variants.csv)
+- [Filtered HRR VCF](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/early-look/artifacts/variants/core_hrr.mutect2.filtered.vcf.gz)
+- [Coverage-CNV bins](https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/early-look/artifacts/coverage_cnv/coverage_cnv_bins.csv)
+
+The early-look state remains `partial_evidence`, and overall HRD remains
+`no_call`. Public availability does not widen that interpretation boundary.

@@ -1,0 +1,67 @@
+{
+  "generatedAt": "2026-07-17T17:26:09.476Z",
+  "runId": "rosalind-hrd-pivot-20260717",
+  "sampleSets": [
+    "hcc1395_wgs",
+    "hg008",
+    "colo829"
+  ],
+  "packetRoot": "results/rosalind_hrd",
+  "artifactRoot": "repo_root",
+  "artifactRootMode": "repo_root",
+  "packets": [
+    {
+      "sampleSet": "hcc1395_wgs",
+      "title": "SEQC2/HCC1395 WGS HRD Evidence-Surface Packet",
+      "outputDir": "results/rosalind_hrd/hcc1395_wgs/rosalind-hrd-pivot-20260717",
+      "evidenceRows": 7,
+      "adapterRows": 7,
+      "blockers": [
+        "Current SV evidence summary has no discordant mapped-pair counts; regenerate full SV evidence before using WGS as the flagship HRD packet."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "This sample exercises the WGS evidence surfaces needed for HRD review. It remains a partial HRD evidence packet until allele-specific CNV/LOH, production SV calls, signature thresholds, CHORD/scarHRD/HRDetect policy, and known-answer performance are locked.",
+      "evidenceStatus": "partial_evidence",
+      "reportManifest": "results/rosalind_hrd/hcc1395_wgs/rosalind-hrd-pivot-20260717/report_manifest.json",
+      "reportManifestSha256": "e001e71b3b868550aaf5a5ef25e3f3e584f120991e062e26a6b16c71e3a8f18a"
+    },
+    {
+      "sampleSet": "hg008",
+      "title": "GIAB HG008 Truth-Set Readiness Packet",
+      "outputDir": "results/rosalind_hrd/hg008/rosalind-hrd-pivot-20260717",
+      "evidenceRows": 4,
+      "adapterRows": 4,
+      "blockers": [
+        "No Diana-generated CNV segment callset exists for HG008; current HG008 CNV evidence is bounded depth-direction validation, not segment-level reciprocal overlap.",
+        "No Diana-generated SV callset exists for HG008; SV reciprocal-overlap against v0.5 truth remains unrun."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "HG008 is a truth-set validation sample. It should improve confidence in caller correctness and CNV/SV benchmarking, not produce a Diana-style HRD interpretation.",
+      "evidenceStatus": "partial_evidence",
+      "reportManifest": "results/rosalind_hrd/hg008/rosalind-hrd-pivot-20260717/report_manifest.json",
+      "reportManifestSha256": "70c19a335ca71510e13eb55fcfadce58e0fe68372c07ea9f67976b74b2733cb8"
+    },
+    {
+      "sampleSet": "colo829",
+      "title": "COLO829/COLO829BL Tumor-Normal Guardrail Packet",
+      "outputDir": "results/rosalind_hrd/colo829/rosalind-hrd-pivot-20260717",
+      "evidenceRows": 9,
+      "adapterRows": 4,
+      "blockers": [
+        "COLO829 submitted BAMs and fetched hg38-lifted truth still require build reconciliation.",
+        "No Diana SV/CNA callset exists.",
+        "COLO829 submitted BAMs are GRCh37-style while the fetched SV truth VCF is hg38-lifted.",
+        "Selected purity BAMs require full transfer or local indexing before monotonic recall can be tested."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "COLO829 is an independent tumor-normal and driver-recovery guardrail. It does not establish HRD status until full SV/CNA/signature evidence is generated and benchmarked.",
+      "evidenceStatus": "partial_evidence",
+      "reportManifest": "results/rosalind_hrd/colo829/rosalind-hrd-pivot-20260717/report_manifest.json",
+      "reportManifestSha256": "ef2bb82407de920ac0ca8b2f55054464573fc112b49bf957a6d71f28a3542976"
+    }
+  ],
+  "sourcePattern": {
+    "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
+    "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats."
+  }
+}

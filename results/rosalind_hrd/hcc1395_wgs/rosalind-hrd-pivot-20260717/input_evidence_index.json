@@ -1,0 +1,61 @@
+{
+  "sampleSet": "hcc1395_wgs",
+  "artifacts": [
+    {
+      "path": "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+      "resolved_path": "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+      "exists": "yes",
+      "bytes": 1362,
+      "sha256": "c2fadf9fa727232604e4191e286ffb39d336e7e7fda4261b49d2672e48cc15c2"
+    },
+    {
+      "path": "results/phase3_wgs_smoke/bam_validation_summary.csv",
+      "resolved_path": "results/phase3_wgs_smoke/bam_validation_summary.csv",
+      "exists": "yes",
+      "bytes": 1854,
+      "sha256": "e7b829de50b3555fef32a1257e84ecec8ec5d097aca61809fc16d502d3e0b6ba"
+    },
+    {
+      "path": "results/phase3_wgs_smoke/coverage_cnv_summary.json",
+      "resolved_path": "results/phase3_wgs_smoke/coverage_cnv_summary.json",
+      "exists": "yes",
+      "bytes": 756,
+      "sha256": "517c006c75ca2b2e6914af87767a3e2e98c064eb71781698cadabde99f8fa927"
+    },
+    {
+      "path": "results/phase3_wgs_smoke/signature_assignment_summary.json",
+      "resolved_path": "results/phase3_wgs_smoke/signature_assignment_summary.json",
+      "exists": "yes",
+      "bytes": 718,
+      "sha256": "c28a44da6387298a0539dc9e27eb259eebc2ca48ce558ed19487527bd636caf4"
+    },
+    {
+      "path": "results/phase3_wgs_smoke/sv_evidence_summary.json",
+      "resolved_path": "results/phase3_wgs_smoke/sv_evidence_summary.json",
+      "exists": "yes",
+      "bytes": 1564,
+      "sha256": "71a0fb3b9538db01669f5defdee4bbf61197b73e16f88165737c1b1b44567b00"
+    },
+    {
+      "path": "results/phase3_wgs_smoke/hrd_tool_readiness_summary.json",
+      "resolved_path": "results/phase3_wgs_smoke/hrd_tool_readiness_summary.json",
+      "exists": "yes",
+      "bytes": 1477,
+      "sha256": "e084fe5f4c43ab797179423eb41f75e10789a78b8148ea0d884b5c1fff86383b"
+    },
+    {
+      "path": "results/clinicalization/hrd_interpretation_readiness_summary.json",
+      "resolved_path": "results/clinicalization/hrd_interpretation_readiness_summary.json",
+      "exists": "yes",
+      "bytes": 3209,
+      "sha256": "1beeef2a33abbffff145259c9f83a0a813b6c31c86f351c7ebe22b651fc544ae"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wgs_summary.json",
+      "resolved_path": "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wgs_summary.json",
+      "exists": "yes",
+      "bytes": 2130,
+      "sha256": "ced5c0a4a01f2211e84d25a779c9291c750b4986b250eb20f339aac85500176a"
+    }
+  ]
+}

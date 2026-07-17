@@ -1,123 +1,98 @@
-# Diana Private Raw Data Retrieval
+# Diana Public Analysis Downloads
 
-> The filename is retained to avoid breaking existing links. Diana raw data is not a public dataset.
+Use this guide to browse, cite, or copy reviewed Diana Omics analysis outputs.
+The public surface is intentionally available to outside collaborators without
+AWS credentials. Raw deliveries, FASTQs, BAMs, and direct identifiers are not
+part of this surface.
 
-Use this document when an authorized Diana operator needs to retrieve or transfer an accepted private delivery. The raw inbox must not be anonymously listable or readable. Do not use `--no-sign-request`, public object URLs, or the legacy public file-tree workflow.
+## Browse the reviewed index
 
-If anonymous S3 listing, `head-object`, or download succeeds, stop and report a security incident. Do not treat successful anonymous access as authorization.
-
-## Private Source
-
-Work only within the approved batch prefix:
+Browse the live file tree at [data.diana-tnbc.com](https://data.diana-tnbc.com/).
+The site reads the reviewed static index at:
 
 ```text
-s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/
+https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/public-index/objects.json
 ```
 
-Retrieval requires an authenticated Diana-approved principal with read access to that batch. Sender upload credentials are intentionally write-only and must not be reused for retrieval.
+The index contains only current objects under exact Terraform-allowlisted
+prefixes. The bucket does not allow anonymous bucket listing, object-version
+listing, or historical-version reads.
 
-Never email AWS credentials. Exchange access keys, secret keys, session tokens, or credential files only through the approved secret manager or one-time secret channel. Keep credentials out of source control, tickets, command logs, and transfer manifests.
+## Diana WGS HRD analysis
 
-## Before Retrieval
+The public root for the current alias-only WGS analysis is:
 
-- Confirm the expected IAM ARN, batch prefix, access expiration, and approved destination.
-- Confirm the destination is private, encrypted, and approved for the data classification.
-- Ensure there is enough space for the selected files and checksum verification.
-- Keep delivery structure intact so indexes, manifests, and checksum files remain beside their data.
-- Do not copy private raw data to personal storage, Box, public GCS/S3, or another service without explicit data-owner approval.
-
-Verify the authenticated identity:
-
-```sh
-aws sts get-caller-identity --query Arn --output text
+```text
+s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/
 ```
 
-Stop if it does not exactly match the expected authorized ARN.
+The recovered early-look analysis is under:
 
-## Retrieve To An Approved Local Or Attached Disk
+```text
+s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/early-look/
+```
 
-Preview the signed inventory:
+Final deterministic, Rosalind, and cross-check reports should be published as
+reviewed subtrees under the same alias-only root. The corresponding Rosalind
+HRD packet root is:
+
+```text
+s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/rosalind/
+```
+
+These paths identify a run alias, not a patient name. Conclusions must preserve
+`partial_evidence`, `blocked`, and `no_call` boundaries from the source reports.
+
+## Download one object
+
+Use the live index to find a key, then convert it to a direct HTTPS URL:
 
 ```bash
-SOURCE="s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/"
-DEST="/approved/private-storage/YYYY-MM-DD-source-name/"
+BUCKET=diana-omics-results-172630973301-us-east-1
+KEY='runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/early-look/artifacts/early_look_summary.json'
 
-aws s3 ls "$SOURCE" --recursive --human-readable --summarize --region us-east-1
-aws s3 sync "$SOURCE" "$DEST" --dryrun --region us-east-1
+curl --fail --location --remote-name \
+  "https://${BUCKET}.s3.us-east-1.amazonaws.com/${KEY}"
 ```
 
-Retrieve the delivery:
+Use `curl -C -` to resume a partial large download.
 
-```sh
-aws s3 sync "$SOURCE" "$DEST" --region us-east-1 --only-show-errors
-```
+## Download a reviewed subtree
 
-Rerun the same command after an interruption. `sync` resumes at object boundaries.
+The results bucket intentionally denies anonymous listing, so discover exact
+keys from `public-index/objects.json`. Download those keys individually, or use
+an authenticated collaborator identity when a managed bulk transfer requires
+S3 listing.
 
-## Retrieve On Google Compute Engine
-
-Use an approved GCE VM and encrypted persistent disk. Install AWS CLI v2 as described in [GCE to Diana private S3 upload](gce-s3-upload.md), load approved read credentials through the secure channel, verify the expected ARN, and run the authenticated `aws s3 sync` command above. Do not use anonymous flags.
-
-To copy the verified delivery into an approved private GCS bucket:
-
-```sh
-gcloud storage rsync \
-  /approved/private-storage/YYYY-MM-DD-source-name/ \
-  gs://APPROVED-PRIVATE-BUCKET/YYYY-MM-DD-source-name/ \
-  --recursive
-```
-
-Confirm the active Google principal and destination IAM policy before copying. A direct managed S3-to-GCS transfer requires a separately approved, time-bound AWS read credential; do not place its credential file in email or source control.
-
-## Copy To Another Approved S3 Bucket
-
-The authenticated principal needs source read access and destination list/write access. Add the destination's approved encryption settings:
+For a small anonymous manifest-driven copy:
 
 ```bash
-SOURCE="s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/"
-DEST="s3://APPROVED-PRIVATE-BUCKET/YYYY-MM-DD-source-name/"
+curl --fail --location \
+  'https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/public-index/objects.json' \
+  --output diana-public-objects.json
 
-aws s3 sync "$SOURCE" "$DEST" \
-  --source-region us-east-1 \
-  --region DESTINATION-REGION \
-  --sse aws:kms \
-  --sse-kms-key-id DESTINATION-KMS-KEY-ID \
-  --only-show-errors
+jq -r '.objects[] | select(.key | startswith("runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/early-look/")) | .key' \
+  diana-public-objects.json
 ```
 
-The destination key and permissions must be approved for this dataset. Do not reuse the Diana inbox key automatically for another account or bucket.
+Use the recorded byte size and any report manifest SHA-256 values to verify the
+copy. Method-report manifests are the canonical integrity and provenance
+surface for deterministic, Rosalind, and cross-check reports.
 
-## Verify The Retrieved Copy
+## Citation and cross-reference policy
 
-From the delivery root, reconcile the manifest and run the supplied SHA-256 checks:
+- Cite the direct HTTPS object URL and the run identifier.
+- Prefer `report.md`, `report_manifest.json`, packet indexes, and explicit
+  publication receipts over transient logs.
+- Keep public validation evidence, sample-derived evidence, and external
+  research context distinct.
+- Do not promote a public `no_call` or `partial_evidence` report into a clinical
+  conclusion.
+- Do not copy raw uploads, FASTQs, BAMs, direct identifiers, or private
+  version-history receipts into a public prefix.
 
-```sh
-cd /approved/private-storage/YYYY-MM-DD-source-name
-sha256sum -c checksums.sha256
-```
-
-On macOS:
-
-```sh
-shasum -a 256 -c checksums.sha256
-```
-
-Do not accept the retrieval until object count, total bytes, manifest entries, and every checksum agree. Record the source prefix, authorized ARN, transfer time, destination, and verification result in the private custody log.
-
-Remove temporary credentials when complete:
-
-```sh
-unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_DEFAULT_REGION
-```
-
-## Troubleshooting
-
-- `AccessDenied` is expected when a principal lacks authorized list/read access; do not retry anonymously.
-- A sender's upload credential normally cannot retrieve or inspect objects.
-- KMS failures require both S3 read permission and decrypt permission on the source key.
-- If the approved destination changes, stop and obtain updated authorization rather than redirecting the transfer ad hoc.
-
-## Related Documentation
+## Related documentation
 
 - [Diana raw input intake contract](diana-raw-inputs.md)
-- [Diana private raw S3 upload and transfer guide](diana-raw-s3-upload.md)
+- [GCE to Diana S3 upload](gce-s3-upload.md)
+- [Rosalind HRD workflow](../rosalind/hrd-workflow.md)

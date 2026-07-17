@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a static index for explicitly reviewed public S3 result prefixes."""
+"""Build a static index for explicitly reviewed public S3 analysis prefixes."""
 
 from __future__ import annotations
 
@@ -10,10 +10,10 @@ import pathlib
 import subprocess
 from typing import Any
 
-
 REGION = "us-east-1"
 BUCKET = "diana-omics-results-172630973301-us-east-1"
 PUBLIC_PREFIXES = (
+    "runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/",
     "runs/known_answer_bounded_non_dry/",
     "runs/known_answer_expanded_cohort/",
     "runs/known_answer_public_findings/",
@@ -29,7 +29,7 @@ PUBLIC_PREFIXES = (
     "runs/rosalind_hrd/cloud-selective5-20260617/",
 )
 FORBIDDEN_PREFIXES = (
-    "runs/diana-hrd/",
+    "runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/",
     "runs/diana-raw-intake/",
     "runs/rosalind_hrd/cloud-diana-raw-intake-20260617/",
     "runs/rosalind_hrd/cloud-diana-raw-intake-handoff-20260617/",
@@ -90,7 +90,7 @@ def main() -> int:
         "schema_version": 1,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "bucket": BUCKET,
-        "classification": "reviewed_public_validation_outputs",
+        "classification": "reviewed_public_validation_and_alias_only_analysis_outputs",
         "prefixes": list(PUBLIC_PREFIXES),
         "object_count": len(objects),
         "total_size": sum(item["size"] for item in objects),

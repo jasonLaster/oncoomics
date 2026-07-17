@@ -24,11 +24,13 @@ locals {
 
   diana_raw_inbox_prefix = "diana/inbox"
 
-  # Public access is opt-in per reviewed public-validation run. Never grant
-  # bucket listing, version listing, historical-version reads, or a wildcard
-  # object read on the results bucket.
+  # Public access is opt-in per reviewed validation or alias-only analysis run.
+  # Never grant bucket listing, version listing, historical-version reads, or a
+  # wildcard object read on the results bucket. Raw inputs, BAMs, and direct
+  # identifiers remain outside these prefixes.
   public_results_prefixes = [
     "public-index",
+    "runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z",
     "runs/known_answer_bounded_non_dry",
     "runs/known_answer_expanded_cohort",
     "runs/known_answer_public_findings",
@@ -342,6 +344,31 @@ data "aws_iam_policy_document" "s3_tls" {
       principals {
         type        = "*"
         identifiers = ["*"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = each.key == "results" ? [1] : []
+
+    content {
+      sid    = "DenyExternalReadDianaWgsHrd20260716"
+      effect = "Deny"
+      actions = [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ]
+      resources = [
+        "${each.value.arn}/runs/diana-hrd/diana-wgs-hrd-20260716T033101Z/*"
+      ]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+      condition {
+        test     = "StringNotEquals"
+        variable = "aws:PrincipalAccount"
+        values   = [data.aws_caller_identity.current.account_id]
       }
     }
   }

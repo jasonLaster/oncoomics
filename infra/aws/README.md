@@ -53,16 +53,21 @@ AWS_IMAGE_TAG=24d8a65-awswrap2 PYTHONPATH=src /usr/bin/python3 -m diana_omics in
 
 The active SRA stack uses account-local AWS credentials and `us-east-1`. It writes `infra/aws/nextflow.aws.json`, which is ignored by git and used by the AWS Nextflow scripts. The original `us-west-1` stack is legacy for this workload because cross-region SRA reads benchmarked much slower.
 
-The stack deliberately separates reviewed public-validation outputs from
-sensitive analysis outputs:
+The stack deliberately separates reviewed public validation and alias-only
+analysis outputs from raw inputs and durable restricted custody copies:
 
-- `diana-omics-results-...` exposes only the exact reviewed public prefixes in
-  Terraform. Never write patient-derived or otherwise sensitive artifacts to
-  it.
-- `diana-omics-private-results-...` is the durable destination for sensitive
-  analysis results, method reports, provenance, and reviewer packets. It uses
-  SSE-KMS, versioning, bucket-owner-enforced ownership, TLS-only access, and all
-  four S3 public-access-block controls.
+- `diana-omics-results-...` exposes only exact reviewed prefixes in Terraform.
+  Public Diana analysis belongs under `runs/diana-hrd-public/<subject-alias>/<run>/`
+  and must use aliases rather than direct identifiers. The original worker run
+  prefix remains explicitly denied to external readers. Raw uploads, BAM inputs,
+  pileup evidence, and custody/version-history manifests do not belong in the
+  public alias tree.
+- `diana-omics-private-results-...` is the durable, versioned custody source for
+  analysis artifacts, method reports, provenance, reviewer packets, and any
+  restricted inputs. Reviewed alias-only report trees can be copied from this
+  bucket to an allowlisted public prefix without weakening the custody copy.
+  The private bucket uses SSE-KMS, versioning, bucket-owner-enforced ownership,
+  TLS-only access, and all four S3 public-access-block controls.
 - `diana-omics-work-...` is private scratch space with lifecycle expiry, not the
   sole durable copy of a report.
 
