@@ -7,26 +7,36 @@ import './styles.css';
 hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('markdown', markdown);
 
-const BUCKET = 'diana-omics-raw-inputs-172630973301-us-east-1';
-const REGION = 'us-east-1';
-const PREFIX = 'diana/inbox/';
-const S3_ORIGIN = `https://${BUCKET}.s3.${REGION}.amazonaws.com`;
-const S3_URI = `s3://${BUCKET}/${PREFIX}`;
+const PUBLIC_INDEX_URL = 'https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/public-index/objects.json';
 
-const markdownInstructions = `## Download everything
+const PUBLIC_SOURCES = [
+  {
+    id: 'results',
+    name: 'Public validation results',
+    treeName: 'validation-results',
+    bucket: 'diana-omics-results-172630973301-us-east-1',
+    region: 'us-east-1',
+    description: 'Reviewed outputs from public benchmark datasets and validation runs.',
+  },
+].map((source) => ({
+  ...source,
+  origin: `https://${source.bucket}.s3.${source.region}.amazonaws.com`,
+}));
+
+const markdownInstructions = `## Download the reviewed object index
 
 \`\`\`bash
-aws s3 cp ${S3_URI} ./diana-inbox/ \\
-  --recursive \\
-  --no-sign-request
+curl --fail --location \\
+  '${PUBLIC_INDEX_URL}' \\
+  --output diana-public-objects.json
 \`\`\`
 
-## Download one directory
+## Download a validation result
+
+Copy a direct file URL from the browser, then run:
 
 \`\`\`bash
-aws s3 cp ${S3_URI}2026-07-14-echo-personalis/data/wgs/ ./wgs/ \\
-  --recursive \\
-  --no-sign-request
+curl --fail --location --remote-name 'DIRECT_FILE_URL'
 \`\`\``;
 
 const highlightMarkdownWithBash = (source) => {
@@ -53,15 +63,15 @@ document.querySelector('#app').innerHTML = `
       <span class="brand-mark" aria-hidden="true">D<span>/</span></span>
       <span>Diana Omics</span>
     </a>
-    <span class="access-badge"><i></i> Public data</span>
+    <span class="access-badge"><i></i> Reviewed public data</span>
   </header>
 
   <main class="shell" id="top">
     <section class="intro">
       <div>
-        <p class="eyebrow">Open genomic dataset</p>
-        <h1>Diana Omics data</h1>
-        <p class="intro-copy">Browse the folders below or download files directly. No AWS account or credentials are required.</p>
+        <p class="eyebrow">Public validation dataset</p>
+        <h1>Diana Omics validation results</h1>
+        <p class="intro-copy">Browse reviewed current outputs from public benchmark datasets and validation runs. No AWS account or credentials are required for these indexed files.</p>
       </div>
       <dl class="dataset-stats" aria-label="Dataset summary">
         <div><dt>Files</dt><dd id="object-count">—</dd></div>
@@ -70,12 +80,34 @@ document.querySelector('#app').innerHTML = `
       </dl>
     </section>
 
+    <section class="source-section" aria-labelledby="sources-heading">
+      <div class="source-heading">
+        <p class="eyebrow">Reviewed object index</p>
+        <h2 id="sources-heading">Public validation results</h2>
+      </div>
+      <div class="source-grid">
+        ${PUBLIC_SOURCES.map((source) => `
+          <article class="source-card" id="source-${source.id}">
+            <div class="source-card-heading">
+              <h3>${source.name}</h3>
+              <span class="source-state"><i></i><span>Loading</span></span>
+            </div>
+            <p>${source.description}</p>
+            <code>${PUBLIC_INDEX_URL}</code>
+            <div class="source-stats" aria-live="polite">
+              <strong>—</strong>
+              <span>Loading reviewed index…</span>
+            </div>
+          </article>`).join('')}
+      </div>
+    </section>
+
     <section class="download-section" aria-labelledby="download-heading">
       <div class="download-copy">
         <p class="eyebrow">Download guide</p>
         <h2 id="download-heading">Get the data</h2>
-        <p>Download locally or transfer the dataset to another S3 bucket, Google Cloud, a GCE disk, or Box.</p>
-        <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/operations/diana-public-data-download.md">Open the full download guide <span aria-hidden="true">→</span></a>
+        <p>Download individual public validation files directly, or use the reviewed index to select current objects for transfer.</p>
+        <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/validation/known-answer-datasets.md">Review dataset provenance and validation scope <span aria-hidden="true">→</span></a>
       </div>
       <div class="code-card">
         <div class="code-bar">
@@ -89,8 +121,8 @@ document.querySelector('#app').innerHTML = `
     <section class="tree-section" aria-labelledby="files-heading">
       <div class="section-heading">
         <div>
-          <h2 id="files-heading">Files</h2>
-          <p id="inventory-status">Loading live inventory…</p>
+          <h2 id="files-heading">Reviewed public files</h2>
+          <p id="inventory-status">Loading reviewed index…</p>
         </div>
         <div class="tree-actions">
           <button id="expand-all" type="button">Expand all</button>
@@ -100,12 +132,15 @@ document.querySelector('#app').innerHTML = `
 
       <div class="tree-panel">
         <div class="tree-toolbar">
-          <div class="path-label"><span>s3</span><code>${S3_URI}</code></div>
+          <div class="path-label"><span>s3</span><code>reviewed public index</code></div>
           <label class="search-field">
             <span aria-hidden="true">⌕</span>
             <span class="sr-only">Search files and folders</span>
             <input id="tree-search" type="search" placeholder="Search files and folders" autocomplete="off" />
           </label>
+        </div>
+        <div class="tree-column-headings" aria-hidden="true">
+          <span></span><span>Latest file</span><span>Size</span>
         </div>
         <div class="tree" id="file-tree" aria-live="polite">
           ${Array.from({ length: 8 }, (_, index) => `<div class="tree-skeleton" style="--skeleton-depth: ${Math.min(index, 4)}"><span></span></div>`).join('')}
@@ -117,8 +152,8 @@ document.querySelector('#app').innerHTML = `
 
   <footer>
     <div class="shell footer-inner">
-      <span>Diana Omics Open Data</span>
-      <span>Live index · Amazon S3 · Anonymous reads</span>
+      <span>Diana Omics Public Validation Data</span>
+      <span>Reviewed index · Amazon S3 · Direct downloads</span>
     </div>
   </footer>
 `;
@@ -129,6 +164,7 @@ codeElement.classList.add('hljs');
 
 let objects = [];
 let searchTerm = '';
+let failedSourceCount = 0;
 
 const escapeHtml = (value) => value
   .replaceAll('&', '&amp;')
@@ -137,7 +173,7 @@ const escapeHtml = (value) => value
   .replaceAll('"', '&quot;')
   .replaceAll("'", '&#039;');
 
-const objectUrl = (key) => `${S3_ORIGIN}/${key.split('/').map(encodeURIComponent).join('/')}`;
+const objectUrl = (object) => `${object.source.origin}/${object.key.split('/').map(encodeURIComponent).join('/')}`;
 
 const formatBytes = (bytes, precise = false) => {
   if (!Number.isFinite(bytes) || bytes === 0) return '0 B';
@@ -148,27 +184,59 @@ const formatBytes = (bytes, precise = false) => {
 };
 
 const formatDate = (date) => new Intl.DateTimeFormat('en-US', {
-  month: 'short', day: 'numeric', year: 'numeric'
+  month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
 }).format(date);
 
 const typeForKey = (key) => {
-  if (key.endsWith('.fastq.gz')) return 'FASTQ';
+  if (key.endsWith('.fastq.gz') || key.endsWith('.fq.gz')) return 'FASTQ';
+  if (key.endsWith('.vcf.gz') || key.endsWith('.vcf')) return 'VCF';
   if (key.endsWith('.bam')) return 'BAM';
   if (key.endsWith('.bai')) return 'BAI';
   if (key.endsWith('.sha256') || key.endsWith('checksum.txt')) return 'SHA-256';
   if (key.endsWith('.csv')) return 'CSV';
+  if (key.endsWith('.tsv')) return 'TSV';
+  if (key.endsWith('.json')) return 'JSON';
+  if (key.endsWith('.md')) return 'MD';
+  if (key.endsWith('.html')) return 'HTML';
+  if (key.endsWith('.bed')) return 'BED';
+  if (key.endsWith('.fa') || key.endsWith('.fasta')) return 'FASTA';
+  if (key.endsWith('.py')) return 'PY';
   return 'FILE';
 };
 
 function buildTree(items) {
-  const root = { name: 'diana/inbox', type: 'directory', children: new Map(), size: 0, fileCount: 0 };
+  const root = {
+    name: 'Diana public S3',
+    type: 'directory',
+    children: new Map(),
+    size: 0,
+    fileCount: 0,
+    lastModified: new Date(0),
+  };
 
   items.forEach((object) => {
-    const parts = object.key.slice(PREFIX.length).split('/');
-    let directory = root;
+    const sourceKey = `source:${object.source.id}`;
+    if (!root.children.has(sourceKey)) {
+      root.children.set(sourceKey, {
+        name: object.source.treeName,
+        type: 'directory',
+        children: new Map(),
+        size: 0,
+        fileCount: 0,
+        lastModified: new Date(0),
+        source: object.source,
+      });
+    }
+
+    root.size += object.size;
+    root.fileCount += 1;
+    if (object.lastModified > root.lastModified) root.lastModified = object.lastModified;
+    let directory = root.children.get(sourceKey);
     directory.size += object.size;
     directory.fileCount += 1;
+    if (object.lastModified > directory.lastModified) directory.lastModified = object.lastModified;
 
+    const parts = object.relativeKey.split('/').filter(Boolean);
     parts.forEach((part, index) => {
       const isFile = index === parts.length - 1;
       if (isFile) {
@@ -178,11 +246,19 @@ function buildTree(items) {
 
       const childKey = `directory:${part}`;
       if (!directory.children.has(childKey)) {
-        directory.children.set(childKey, { name: part, type: 'directory', children: new Map(), size: 0, fileCount: 0 });
+        directory.children.set(childKey, {
+          name: part,
+          type: 'directory',
+          children: new Map(),
+          size: 0,
+          fileCount: 0,
+          lastModified: new Date(0),
+        });
       }
       directory = directory.children.get(childKey);
       directory.size += object.size;
       directory.fileCount += 1;
+      if (object.lastModified > directory.lastModified) directory.lastModified = object.lastModified;
     });
   });
 
@@ -201,26 +277,29 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
     if (child.type === 'directory') return renderDirectory(child, depth + 1);
 
     const fileType = typeForKey(child.key);
+    const url = objectUrl(child);
     return `
       <div class="tree-file" style="--depth: ${depth + 1}">
         <span class="file-glyph" aria-hidden="true"></span>
-        <a class="file-name" href="${objectUrl(child.key)}" title="Download ${escapeHtml(child.name)}">${escapeHtml(child.name)}</a>
+        <a class="file-name" href="${url}" title="Download ${escapeHtml(child.name)}">${escapeHtml(child.name)}</a>
         <span class="file-type">${fileType}</span>
+        <time class="item-date" datetime="${child.lastModified.toISOString()}" title="Updated ${child.lastModified.toISOString()}">${formatDate(child.lastModified)}</time>
         <span class="item-size">${formatBytes(child.size)}</span>
-        <a class="download-link" href="${objectUrl(child.key)}" aria-label="Download ${escapeHtml(child.name)}" title="Download">↓</a>
+        <a class="download-link" href="${url}" aria-label="Download ${escapeHtml(child.name)}" title="Download">↓</a>
       </div>`;
   }).join('');
 
-  const collapsedByDefault = depth === 3 && ['immunoid', 'wgs'].includes(directory.name.toLowerCase());
-  const startsOpen = Boolean(searchTerm) || !collapsedByDefault;
+  const startsOpen = Boolean(searchTerm) || isRoot || depth <= 1;
+  const sourceTitle = directory.source ? ` title="${escapeHtml(directory.source.description)}"` : '';
 
   return `
     <details class="tree-directory${isRoot ? ' root-directory' : ''}"${startsOpen ? ' open' : ''}>
-      <summary style="--depth: ${depth}">
+      <summary style="--depth: ${depth}"${sourceTitle}>
         <span class="chevron" aria-hidden="true"></span>
         <span class="folder-glyph" aria-hidden="true"></span>
         <strong>${escapeHtml(directory.name)}</strong>
         <span class="directory-meta">${directory.fileCount} ${directory.fileCount === 1 ? 'file' : 'files'}</span>
+        <time class="item-date" datetime="${directory.lastModified.toISOString()}" title="Most recent file: ${directory.lastModified.toISOString()}">${formatDate(directory.lastModified)}</time>
         <span class="item-size">${formatBytes(directory.size)}</span>
       </summary>
       <div class="tree-children">${childMarkup}</div>
@@ -229,65 +308,95 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
 
 function renderTree() {
   const filtered = searchTerm
-    ? objects.filter((object) => object.key.toLowerCase().includes(searchTerm))
+    ? objects.filter((object) => object.searchText.includes(searchTerm))
     : objects;
   const treeElement = document.querySelector('#file-tree');
 
   if (!filtered.length) {
-    treeElement.innerHTML = '<div class="empty-tree">No files or folders match that search.</div>';
+    treeElement.innerHTML = objects.length
+      ? '<div class="empty-tree">No files or folders match that search.</div>'
+      : '<div class="empty-tree error">The reviewed public index is currently unavailable. Refresh to try again.</div>';
   } else {
     treeElement.innerHTML = renderDirectory(buildTree(filtered), 0, true);
   }
 
   const suffix = searchTerm ? ` matching “${searchTerm}”` : '';
-  document.querySelector('#inventory-status').textContent = `${filtered.length} of ${objects.length} files${suffix}`;
+  const failureNotice = failedSourceCount ? ' · index unavailable' : '';
+  document.querySelector('#inventory-status').textContent = `${filtered.length.toLocaleString()} of ${objects.length.toLocaleString()} reviewed public files${suffix}${failureNotice}`;
 }
 
-async function fetchInventory() {
-  const collected = [];
-  let continuationToken = '';
+async function fetchInventory(source) {
+  const response = await fetch(PUBLIC_INDEX_URL, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`${source.name} index returned ${response.status}`);
 
-  do {
-    const query = new URLSearchParams({ 'list-type': '2', prefix: PREFIX, 'max-keys': '1000' });
-    if (continuationToken) query.set('continuation-token', continuationToken);
-    const response = await fetch(`${S3_ORIGIN}/?${query}`);
-    if (!response.ok) throw new Error(`S3 returned ${response.status}`);
+  const inventory = await response.json();
+  if (!Array.isArray(inventory.objects)) throw new Error(`${source.name} index did not contain an objects array`);
 
-    const xml = new DOMParser().parseFromString(await response.text(), 'application/xml');
-    if (xml.querySelector('parsererror, Error')) throw new Error('S3 inventory response was not readable');
+  const generatedAt = new Date(inventory.generated_at);
+  const collected = inventory.objects.flatMap((entry) => {
+    const key = typeof entry.key === 'string' ? entry.key : '';
+    const size = Number(entry.size);
+    const lastModified = new Date(entry.last_modified);
+    if (!key || key.endsWith('/') || !Number.isFinite(size) || Number.isNaN(lastModified.getTime())) return [];
 
-    xml.querySelectorAll('Contents').forEach((entry) => {
-      const key = entry.querySelector('Key')?.textContent ?? '';
-      if (!key || key.endsWith('/')) return;
-      collected.push({
-        key,
-        size: Number(entry.querySelector('Size')?.textContent ?? 0),
-        lastModified: new Date(entry.querySelector('LastModified')?.textContent ?? 0),
-      });
-    });
+    return [{
+      key,
+      relativeKey: key,
+      source,
+      searchText: `${source.name} ${source.treeName} ${key}`.toLowerCase(),
+      size,
+      lastModified,
+    }];
+  });
 
-    continuationToken = xml.querySelector('IsTruncated')?.textContent === 'true'
-      ? xml.querySelector('NextContinuationToken')?.textContent ?? ''
-      : '';
-  } while (continuationToken);
+  return {
+    generatedAt: Number.isNaN(generatedAt.getTime()) ? null : generatedAt,
+    objects: collected,
+  };
+}
 
-  return collected;
+function updateSourceCard(source, sourceObjects, generatedAt = null, error = null) {
+  const card = document.querySelector(`#source-${source.id}`);
+  const state = card.querySelector('.source-state');
+  const stats = card.querySelector('.source-stats');
+
+  if (error) {
+    card.classList.add('source-error');
+    state.classList.add('error');
+    state.querySelector('span').textContent = 'Unavailable';
+    stats.innerHTML = '<strong>—</strong><span>Refresh to retry the reviewed index.</span>';
+    return;
+  }
+
+  const bytes = sourceObjects.reduce((sum, object) => sum + object.size, 0);
+  const newest = sourceObjects.reduce((latest, object) => object.lastModified > latest ? object.lastModified : latest, new Date(0));
+  state.querySelector('span').textContent = 'Indexed';
+  const generatedLabel = generatedAt ? ` · index ${formatDate(generatedAt)}` : '';
+  const latestLabel = sourceObjects.length ? ` · latest file ${formatDate(newest)}` : '';
+  stats.innerHTML = `<strong>${sourceObjects.length.toLocaleString()} files</strong><span>${formatBytes(bytes, true)}${latestLabel}${generatedLabel}</span>`;
 }
 
 async function loadInventory() {
-  try {
-    objects = await fetchInventory();
-    const bytes = objects.reduce((sum, object) => sum + object.size, 0);
-    const newest = objects.reduce((latest, object) => object.lastModified > latest ? object.lastModified : latest, new Date(0));
-    document.querySelector('#object-count').textContent = objects.length.toLocaleString();
-    document.querySelector('#total-size').textContent = formatBytes(bytes, true);
-    document.querySelector('#last-updated').textContent = formatDate(newest);
-    renderTree();
-  } catch (error) {
-    document.querySelector('#file-tree').innerHTML = '<div class="empty-tree error">The live inventory could not be loaded. Refresh to try again.</div>';
-    document.querySelector('#inventory-status').textContent = 'Inventory unavailable';
-    console.error(error);
-  }
+  const inventories = await Promise.allSettled(PUBLIC_SOURCES.map((source) => fetchInventory(source)));
+
+  inventories.forEach((result, index) => {
+    const source = PUBLIC_SOURCES[index];
+    if (result.status === 'fulfilled') {
+      objects.push(...result.value.objects);
+      updateSourceCard(source, result.value.objects, result.value.generatedAt);
+    } else {
+      failedSourceCount += 1;
+      updateSourceCard(source, [], null, result.reason);
+      console.error(result.reason);
+    }
+  });
+
+  const bytes = objects.reduce((sum, object) => sum + object.size, 0);
+  const newest = objects.reduce((latest, object) => object.lastModified > latest ? object.lastModified : latest, new Date(0));
+  document.querySelector('#object-count').textContent = objects.length.toLocaleString();
+  document.querySelector('#total-size').textContent = formatBytes(bytes, true);
+  document.querySelector('#last-updated').textContent = objects.length ? formatDate(newest) : 'Unavailable';
+  renderTree();
 }
 
 document.querySelector('#tree-search').addEventListener('input', (event) => {

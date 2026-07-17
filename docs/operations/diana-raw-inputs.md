@@ -61,8 +61,9 @@ When the files arrive:
 2. Confirm tumor-normal pairing and use the same `pair_id` for matched DNA rows.
 3. Confirm the reference build, contig naming, and index files before compute.
 4. Record tumor purity, tumor content, normal type, platform, and vendor notes when known.
-5. Confirm whether cloud upload is allowed for any human data before scheduling Batch or S3 work.
-6. Rerun `plan:diana-raw-handoff` after filling the samplesheet to capture the current state before strict validation.
+5. Confirm that cloud upload, storage, and the proposed analysis destination are approved for the data classification before scheduling Batch or S3 work.
+6. Verify the delivery manifest, source-side SHA-256 values, object count, total bytes, indexes, and reference metadata before intake.
+7. Rerun `plan:diana-raw-handoff` after filling the samplesheet to capture the current state before strict validation.
 
 ## S3 Inbox Location
 
@@ -72,10 +73,19 @@ Diana's raw files should be uploaded or transferred to this inbox prefix:
 s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/
 ```
 
-Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the Nextflow work bucket. The `diana/inbox/` prefix is publicly listable and downloadable; upload only material approved for unrestricted public distribution.
+Do not place Diana files under `cache/phase3_wgs/`, the results bucket, or the Nextflow work bucket. The `diana/inbox/` prefix is private controlled-access storage. It must not permit anonymous list, metadata, or read access.
 
-See [Diana Raw S3 Upload And Transfer](diana-raw-s3-upload.md) for upload and bucket-to-bucket transfer instructions.
-See [Diana Public Data Downloads](diana-public-data-download.md) for public download and outbound transfer instructions.
+Uploads require Diana-issued credentials scoped to one assigned
+`YYYY-MM-DD-source-name/` prefix. Never email credentials. Use destination
+SSE-KMS with key `45aa290c-d70c-4d86-9c8d-c4a76f1ff97f` unless the actual
+scoped policy supplied by the Diana operator requires bucket-default KMS. Do
+not substitute `AES256` or use `--no-sign-request`.
+
+If anonymous access succeeds, treat the deployed access policy as a security
+incident and stop intake until it is remediated.
+
+See [Diana Private Raw S3 Upload And Transfer](diana-raw-s3-upload.md) for authenticated upload and bucket-to-bucket transfer instructions.
+See [Diana Private Raw Data Retrieval](diana-public-data-download.md) for authorized read and outbound transfer instructions. The legacy filename is retained to avoid breaking links; the data is not public.
 
 ## Validate The Files
 

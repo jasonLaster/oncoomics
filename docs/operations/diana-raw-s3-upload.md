@@ -1,92 +1,160 @@
-# Diana Raw S3 Upload And Transfer
+# Diana Private Raw S3 Upload And Transfer
 
-Use this when Diana raw files need to land in the Diana Omics S3 inbox.
+Use this guide when an approved sender needs to deliver private raw files to the Diana Omics S3 inbox. The instructions are sender- and vendor-agnostic; the sender may upload from a workstation, VM, or another cloud bucket.
 
-## Destination
+## Private Destination
 
-Upload or transfer only to:
-
-```text
-s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/
-```
-
-Keep each delivery under a batch-specific folder:
+The Diana operator assigns one batch prefix:
 
 ```text
 s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/
 ```
 
-Do not upload Diana files under `cache/phase3_wgs/`, `s3://diana-omics-results-...`, or `s3://diana-omics-work-...`.
+Upload only to that exact prefix. Do not place Diana files under `cache/phase3_wgs/`, `s3://diana-omics-results-...`, or `s3://diana-omics-work-...`.
 
-## Access Model
+The inbox is private controlled-access storage. It must not allow anonymous listing, `head-object`, or downloads. Never use `--no-sign-request`, publish direct object URLs, or describe this prefix as a public dataset. If anonymous access succeeds, stop the transfer and report a security incident to the Diana operator.
 
-The inbox is a public-read landing zone with authenticated uploads:
+## Access And Credential Handoff
 
-- Any authenticated AWS principal can upload objects to `diana/inbox/*` when the request uses S3-managed `AES256` encryption.
-- Anyone can list the `diana/inbox/` prefix and download its objects without AWS credentials.
-- Uploaders do not need presigned URLs.
-- Uploaders do not get delete access from this policy.
-- Bucket-owner-enforced ownership makes uploaded objects owned by the Diana Omics bucket owner.
-- Public objects use S3-managed `AES256` encryption because S3 does not permit anonymous reads of SSE-KMS objects.
+Every upload requires Diana-issued AWS credentials for an IAM principal scoped to the assigned batch prefix. A typical sender policy permits only:
 
-Only upload data that is approved for unrestricted public distribution. This prefix is not appropriate for private or controlled-access data.
+- `s3:ListBucket` constrained to the assigned prefix.
+- Object and multipart-upload writes beneath the assigned prefix.
+- The minimum KMS encrypt/data-key operations required by the destination policy.
 
-For external teams without an AWS account, provision temporary credentials with
-an identity policy that restricts listing and writes to one batch prefix. Send
-credentials through an approved secret-sharing channel, never email or a source
-repository. Deactivate the access key after delivery acceptance.
+The sender must not receive object reads, deletes, parent-prefix listing, or access to another batch. The Diana operator should deactivate the credentials immediately after acceptance.
 
-For deliveries originating in Google Cloud, use the sender checklist in
-`docs/operations/gce-s3-upload.md`.
+The operator may email the non-secret guide, assigned prefix, expected IAM ARN, and expiration time. Do not email any AWS access key, secret access key, session token, credential file, or secret-sharing URL containing the credentials. Exchange credentials only through the approved secret manager or one-time secret channel, separately from ordinary email and tickets. Never commit credentials or paste them into logs.
 
-## What To Include
+## Destination Encryption
 
-Each delivery should include:
-
-- Raw FASTQ, BAM, CRAM, VCF, CNV, SV, fusion, or report files.
-- Required index files, such as BAI or CRAI.
-- A file manifest with sample IDs, file names, assay type, tumor/normal role, reference build, and source/vendor.
-- Checksums from the source system, preferably SHA-256.
-
-## Upload From Local Files
-
-Use `aws s3 cp --recursive` or individual `aws s3 cp` commands:
+Use destination SSE-KMS. Unless the scoped policy supplied by the Diana operator explicitly requires bucket-default KMS with no request headers, pass:
 
 ```sh
-aws s3 cp /path/to/diana-files/ s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/ --recursive --sse AES256 --region us-east-1 --only-show-errors
+--sse aws:kms --sse-kms-key-id 45aa290c-d70c-4d86-9c8d-c4a76f1ff97f
 ```
 
-Upload the manifest and checksum files into the same batch folder:
+If the operator confirms that the actual scoped policy requires bucket-default KMS, omit both flags and let the bucket apply its default KMS key. The scoped policy is authoritative. Do not substitute `AES256`, a sender-owned key, or an unapproved KMS key. The Diana operator must verify the resulting `aws:kms` metadata and expected destination key after upload.
+
+## Delivery Contents
+
+Keep raw and derived source files under `data/`. Include required indexes, source QC, and reports. Include:
+
+- `manifest.csv`, one row per delivered object.
+- `checksums.sha256`, generated from the source files before upload.
+
+Recommended manifest header:
+
+```csv
+dataset,sample_id,role,assay,data_type,relative_path,size_bytes,sha256,reference_build,source_vendor,notes
+```
+
+Preserve the source's sample identifiers and explicitly record assay, tumor/normal or RNA role, pairing, reference build, file type, byte size, SHA-256, and provenance. Do not infer that files from different assays or workflows are interchangeable.
+
+Generate checksums from the delivery root:
 
 ```sh
-aws s3 cp manifest.csv s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/manifest.csv --sse AES256 --region us-east-1 --only-show-errors
-aws s3 cp checksums.sha256 s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/checksums.sha256 --sse AES256 --region us-east-1 --only-show-errors
+find data -type f -print0 | sort -z | xargs -0 sha256sum > checksums.sha256
 ```
 
-## Transfer From Bucket A To Our Bucket
+Confirm every data file appears exactly once in both the manifest and checksum file.
 
-The source bucket owner must grant the transfer principal read access to `s3://SOURCE-BUCKET/SOURCE-PREFIX/`. Then run:
+## Configure AWS CLI Credentials
+
+Load the securely supplied credentials without writing the secret to shell history:
 
 ```sh
-aws s3 cp s3://SOURCE-BUCKET/SOURCE-PREFIX/ s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/ --recursive --sse AES256 --source-region SOURCE-REGION --region us-east-1 --only-show-errors
+read -r -p "AWS access key ID: " AWS_ACCESS_KEY_ID
+read -r -s -p "AWS secret access key: " AWS_SECRET_ACCESS_KEY
+echo
+export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+export AWS_DEFAULT_REGION=us-east-1
 ```
 
-If the source files use a source KMS key, the transfer principal also needs decrypt permission on that source key. The destination copy must still specify `--sse AES256` so the result is anonymously readable.
-
-## Verify The Transfer
-
-The uploader can list the inbox prefix after upload:
+If the operator supplied a temporary session token, read and export it the same way:
 
 ```sh
-aws s3 ls s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/ --recursive --summarize --region us-east-1
+read -r -s -p "AWS session token: " AWS_SESSION_TOKEN
+echo
+export AWS_SESSION_TOKEN
 ```
 
-Spot-check one object without credentials:
+Verify the identity before transferring anything:
 
 ```sh
-aws s3api head-object --bucket diana-omics-raw-inputs-172630973301-us-east-1 --key diana/inbox/YYYY-MM-DD-source-name/example.fastq.gz --region us-east-1 --no-sign-request
+aws sts get-caller-identity --query Arn --output text
 ```
 
-The uploader and Diana operator can both verify the public object metadata, prefix listing, and source-side checksums without credentials.
+It must exactly match the expected ARN supplied by the Diana operator.
 
-Compare the delivered checksum manifest against the source checksums before using the files for intake validation. Do not run Diana interpretation from inbox files until manifests, tumor-normal pairing, references, indexes, and checksums pass validation.
+## Upload Local Files
+
+Set the destination and encryption arguments in Bash:
+
+```bash
+DEST="s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/"
+SSE_ARGS=(--sse aws:kms --sse-kms-key-id 45aa290c-d70c-4d86-9c8d-c4a76f1ff97f)
+```
+
+Only when the operator says the scoped policy requires bucket-default KMS, use `SSE_ARGS=()` instead.
+
+Preview and then upload the data. Upload the manifest and checksum file last:
+
+```bash
+aws s3 cp data/ "${DEST}data/" --recursive "${SSE_ARGS[@]}" --dryrun --region us-east-1
+aws s3 cp data/ "${DEST}data/" --recursive "${SSE_ARGS[@]}" --region us-east-1 --only-show-errors
+aws s3 cp manifest.csv "${DEST}manifest.csv" "${SSE_ARGS[@]}" --region us-east-1 --only-show-errors
+aws s3 cp checksums.sha256 "${DEST}checksums.sha256" "${SSE_ARGS[@]}" --region us-east-1 --only-show-errors
+```
+
+The AWS CLI uses multipart upload for large files. Rerun an interrupted command. Because the sender cannot read or delete existing objects, contact the Diana operator before replacing or correcting an uploaded key.
+
+## Transfer From Another S3 Bucket
+
+The transfer principal also needs source `ListBucket`/`GetObject` access and source-key decrypt permission when applicable. Use the same approved destination SSE-KMS mode:
+
+```bash
+SOURCE="s3://SOURCE-BUCKET/SOURCE-PREFIX/"
+DEST="s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/"
+SSE_ARGS=(--sse aws:kms --sse-kms-key-id 45aa290c-d70c-4d86-9c8d-c4a76f1ff97f)
+
+aws s3 cp "$SOURCE" "${DEST}data/" \
+  --recursive \
+  "${SSE_ARGS[@]}" \
+  --source-region SOURCE-REGION \
+  --region us-east-1 \
+  --only-show-errors
+```
+
+Use `SSE_ARGS=()` only when the Diana operator confirms bucket-default KMS is required by the actual scoped policy.
+
+## Sender Confirmation
+
+If the scoped credentials include prefix-constrained listing, record the signed inventory:
+
+```sh
+aws s3 ls "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/YYYY-MM-DD-source-name/" --recursive --summarize --region us-east-1
+```
+
+Send the operator only the object count, total bytes, manifest/checksum filenames, and any warnings or retries. Do not send credentials. The sender's inability to read objects is expected.
+
+Then remove credentials from the environment:
+
+```sh
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_DEFAULT_REGION
+```
+
+## Diana Operator Acceptance
+
+Using an authorized Diana read principal, the operator must:
+
+1. Reconcile the signed prefix inventory with the sender's object count and total bytes.
+2. Run `head-object` on representative data, manifest, and checksum objects. Confirm `ServerSideEncryption` is `aws:kms` and that the KMS key matches the approved destination policy.
+3. Stage the private delivery in an approved private analysis location and run `sha256sum -c checksums.sha256` from the delivery root.
+4. Reconcile every file, size, checksum, assay, role, pairing, index, and reference build against `manifest.csv`.
+5. Run strict Diana raw intake validation only after those checks pass.
+6. Deactivate the sender credentials immediately after acceptance.
+
+Do not begin interpretation from inbox files until custody, checksum, reference, index, and tumor-normal pairing checks pass.
+
+For Google Compute Engine, follow [GCE to Diana private S3 upload](gce-s3-upload.md).
