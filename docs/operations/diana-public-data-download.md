@@ -216,6 +216,42 @@ python3 scripts/download_materializer_staged_validation.py \
   --expected-kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN"
 ```
 
+Finalize and publish the HRD cross-check input contract after the pending
+contract has been filled with the frozen reference set and immutable input
+BAM/BAI identities. The finalizer only accepts the exact final freeze,
+exact-version local materialization, schema-2 materializer receipt, and
+materializer anchor; the publisher performs a dry run first and only writes a
+fresh content-addressed contract object when `--apply` is present.
+
+```bash
+python3 scripts/finalize_input_contract.py \
+  --pending-contract "$RUN_ROOT/input-contract.pending.json" \
+  --final-freeze-receipt "$RUN_ROOT/terminal.final-freeze.json" \
+  --final-freeze-anchor "$RUN_ROOT/terminal.final-freeze.anchor.json" \
+  --exact-materialization-receipt "$RUN_ROOT/terminal.materialize.json" \
+  --crosscheck-materialization-receipt "$RUN_ROOT/terminal.materializer.receipt.json" \
+  --crosscheck-materialization-anchor "$RUN_ROOT/terminal.materializer.anchor.json" \
+  --expected-crosscheck-materializer-sha256 "$HRD_CROSSCHECK_MATERIALIZER_SHA256" \
+  --output "$RUN_ROOT/input-contract.json"
+
+python3 scripts/check_contract.py \
+  --contract "$RUN_ROOT/input-contract.json" \
+  --json-out "$RUN_ROOT/input-contract.readiness.json"
+
+python3 scripts/publish_input_contract.py \
+  --contract "$RUN_ROOT/input-contract.json" \
+  --destination-prefix "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/deterministic/contracts/" \
+  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
+  --anchor-output "$RUN_ROOT/terminal.input-contract.publication.dry.json"
+
+python3 scripts/publish_input_contract.py \
+  --contract "$RUN_ROOT/input-contract.json" \
+  --destination-prefix "s3://$PRIVATE_BUCKET/runs/subject01/$RUN_ID/deterministic/contracts/" \
+  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
+  --anchor-output "$RUN_ROOT/terminal.input-contract.publication.json" \
+  --apply
+```
+
 Use a run-local scratch directory and publish the generated packet only after a
 dry-run receipt verifies the five-file inventory and `no_call` boundary:
 

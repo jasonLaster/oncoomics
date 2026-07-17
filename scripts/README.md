@@ -14,6 +14,8 @@ Current shell utilities:
 - `capture_materializer_terminal.py`: capture a successful cross-check
   materializer Batch job and download its content-addressed receipt by the exact
   VersionId printed in the terminal CloudWatch payload.
+- `check_contract.py`: validate a finalized, alias-only HRD cross-check input
+  contract before route submission.
 - `download_materializer_staged_validation.py`: download the materializer's
   versioned `staged_input_validation.json` object for deterministic report
   staging.
@@ -21,6 +23,9 @@ Current shell utilities:
   report publication by exact S3 VersionId before compacting it for review.
 - `finalize_ai_review.py`: wrap a passed independent AI review in a schema-1
   HRD report manifest that can be privately frozen.
+- `finalize_input_contract.py`: bind final frozen VCF, VCF index, SBS96, and
+  staged-input validation receipts into the HRD cross-check route input
+  contract.
 - `freeze_final_artifacts.py`: copy a successful deterministic artifact tree
   into versioned private storage with exact destination VersionIds.
 - `freeze_stage_provenance.py`: freeze terminal WGS preflight/gather evidence
@@ -42,6 +47,8 @@ Current shell utilities:
   private results bucket.
 - `publish_private_report.py`: freeze an allowlisted HRD report packet in the
   private versioned results bucket before reviewed public release.
+- `publish_input_contract.py`: publish a finalized HRD cross-check input
+  contract as a create-only, content-addressed, exact-VersionId private object.
 - `prepare_ai_review_run.py`: build a seven-method de-identified AI review
   bundle and stage exact two-file input directories for reviewers A and B.
 - `publish_public_results_index.py`: publish a freshly built reviewed object
