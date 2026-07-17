@@ -10,7 +10,10 @@ import shlex
 from pathlib import Path
 from typing import Iterable
 
-from hrd_report_inventory import EXECUTABLE_CROSSCHECK_METHOD_IDS
+from hrd_report_inventory import (
+    BLOCKED_CROSSCHECK_REPORT_DIRS,
+    EXECUTABLE_CROSSCHECK_METHOD_IDS,
+)
 from publish_reviewed_public_report import (
     ACCOUNT_ID,
     PRIVATE_BUCKET,
@@ -402,6 +405,67 @@ def required_existing(root: Path) -> tuple[Path, ...]:
         scripts / "generate_blocked_hrd_crosscheck_reports.py",
         scripts / "render_source_report_freeze_runbook.py",
         *required_local_inputs(root),
+    )
+
+
+def required_absent(root: Path) -> tuple[Path, ...]:
+    reports = root / ".codex-tmp/hrd-reports"
+    deterministic = reports / "deterministic-full"
+    rosalind = root / "results/rosalind_hrd/diana_wgs" / RUN_ID
+    blocked = reports / "blocked-crosschecks"
+
+    terminal_outputs = [
+        "terminal.execution.succeeded.json",
+        "terminal.stage-freeze.dry.json",
+        "terminal.stage-freeze.dry.anchor.json",
+        "terminal.stage-freeze.json",
+        "terminal.stage-freeze.anchor.json",
+        "terminal.final-freeze.dry.json",
+        "terminal.final-freeze.dry.anchor.json",
+        "terminal.final-freeze.json",
+        "terminal.final-freeze.anchor.json",
+        "terminal.materialize.json",
+        "terminal.materializer.request.dry.json",
+        "terminal.materializer.request.json",
+        "terminal.materializer.response.json",
+        "terminal.materializer.capture-command.sh",
+        "terminal.materializer.capture.json",
+        "terminal.materializer.anchor.json",
+        "terminal.materializer.receipt.json",
+        "staged_input_validation.json",
+        "terminal.staged-input-validation.json",
+        "input-contract.json",
+        "input-contract.readiness.json",
+        "terminal.input-contract.publication.dry.json",
+        "terminal.input-contract.publication.json",
+    ]
+
+    route_outputs: list[Path] = []
+    for route in EXECUTABLE_CROSSCHECK_METHOD_IDS:
+        route_outputs.extend(
+            [
+                deterministic / f"terminal.{route}.request.dry.json",
+                deterministic / f"terminal.{route}.request.json",
+                deterministic / f"terminal.{route}.response.json",
+                deterministic / f"terminal.{route}.capture.json",
+                deterministic / f"terminal.{route}.publication.json",
+                deterministic / f"terminal.{route}.publication.anchor.json",
+                deterministic / f"terminal.{route}.exact-report.json",
+                reports / "route-replays" / route,
+                reports / "crosschecks" / route,
+            ]
+        )
+
+    return (
+        *(deterministic / name for name in terminal_outputs),
+        deterministic / "materialized-final",
+        deterministic / "report",
+        rosalind,
+        *route_outputs,
+        *(
+            blocked / directory
+            for directory in BLOCKED_CROSSCHECK_REPORT_DIRS.values()
+        ),
     )
 
 
@@ -808,6 +872,14 @@ def main() -> int:
         raise SystemExit(
             "Fail-closed: missing post-success runbook prerequisites: "
             + ", ".join(str(path) for path in missing)
+        )
+    preexisting = [
+        path for path in required_absent(root) if path.exists() or path.is_symlink()
+    ]
+    if preexisting:
+        raise SystemExit(
+            "Fail-closed: post-success create-only outputs already exist: "
+            + ", ".join(str(path) for path in preexisting)
         )
     if args.output.exists() or args.output.is_symlink():
         raise SystemExit(f"Fail-closed: output already exists: {args.output}")

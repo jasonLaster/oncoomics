@@ -152,6 +152,8 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "/repo/scripts/write_ai_model_catalog_receipt.py",
             "/repo/scripts/hrd_report_inventory.py",
             "/repo/scripts/prepare_ai_review_run.py",
+            "/repo/scripts/build_ai_review_bundle.py",
+            "/repo/scripts/stage_ai_review_inputs.py",
             "/repo/scripts/validate_ai_review.py",
             "/repo/scripts/finalize_ai_review.py",
             "/repo/scripts/generate_comparative_hrd_synthesis.py",

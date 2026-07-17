@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -213,6 +214,95 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             "artifacts/coverage_cnv/coverage_cnv_bins.csv",
         ):
             self.assertIn(path, prerequisites)
+
+    def test_required_absent_includes_fixed_create_only_outputs(self) -> None:
+        outputs = {path.as_posix() for path in MODULE.required_absent(Path("/repo"))}
+
+        for path in (
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.execution.succeeded.json",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.stage-freeze.json",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.materializer.capture-command.sh",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.materializer.receipt.json",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "input-contract.json",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.sequenza_scarhrd.request.dry.json",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.sigprofiler_sbs3.exact-report.json",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "materialized-final",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/report",
+            "/repo/results/rosalind_hrd/diana_wgs/"
+            f"{MODULE.RUN_ID}",
+            "/repo/.codex-tmp/hrd-reports/route-replays/"
+            "sequenza_scarhrd",
+            "/repo/.codex-tmp/hrd-reports/crosschecks/"
+            "sigprofiler_sbs3",
+            "/repo/.codex-tmp/hrd-reports/blocked-crosschecks/"
+            "hrdetect_blocked",
+        ):
+            self.assertIn(path, outputs)
+
+        self.assertNotIn(
+            "/repo/.codex-tmp/hrd-reports/blocked-crosschecks",
+            outputs,
+        )
+
+    def test_preexisting_outputs_include_broken_symlinks(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            stale = (
+                root
+                / ".codex-tmp/hrd-reports/deterministic-full/"
+                "terminal.execution.succeeded.json"
+            )
+            stale.parent.mkdir(parents=True)
+            stale.symlink_to(root / "missing")
+
+            preexisting = [
+                path
+                for path in MODULE.required_absent(root)
+                if path.exists() or path.is_symlink()
+            ]
+
+            self.assertEqual(preexisting, [stale])
+
+    def test_main_rejects_preexisting_create_only_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for path in MODULE.required_existing(root):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("{}\n", encoding="utf-8")
+
+            stale = (
+                root
+                / ".codex-tmp/hrd-reports/deterministic-full/"
+                "terminal.materializer.receipt.json"
+            )
+            stale.write_text("{}\n", encoding="utf-8")
+            output = root / "post-success.md"
+
+            with (
+                patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "render_post_success_runbook.py",
+                        "--output",
+                        str(output),
+                        "--root",
+                        str(root),
+                    ],
+                ),
+                self.assertRaisesRegex(SystemExit, "create-only outputs"),
+            ):
+                MODULE.main()
+
+            self.assertFalse(output.exists())
 
     def test_write_once_is_mode_0600_and_refuses_replacement(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
