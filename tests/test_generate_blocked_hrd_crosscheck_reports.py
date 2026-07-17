@@ -96,6 +96,24 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             for relative in first_files:
                 self.assertEqual((first / relative).read_bytes(), (second / relative).read_bytes())
 
+    def test_generation_refuses_existing_method_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+            existing = output / GENERATOR.METHODS[0]["directory"]
+            existing.mkdir(parents=True)
+            (existing / "unexpected.txt").write_text("stale\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                FileExistsError,
+                "blocked cross-check output already exists",
+            ):
+                GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+
+            self.assertEqual(
+                sorted(path.name for path in existing.iterdir()),
+                ["unexpected.txt"],
+            )
+
     def test_generated_packets_match_private_publication_contracts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "blocked"

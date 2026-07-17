@@ -301,6 +301,11 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def require_new_directory(path: Path) -> None:
+    if path.exists() or path.is_symlink():
+        raise FileExistsError(f"blocked cross-check output already exists: {path}")
+
+
 def render_report(spec: dict[str, Any], generated_at: str) -> str:
     lines = [
         f"# {spec['title']} — blocked method report",
@@ -359,7 +364,8 @@ def generate(output_root: Path, generated_at: str) -> list[Path]:
     written: list[Path] = []
     for method in METHODS:
         target = output_root / str(method["directory"])
-        target.mkdir(parents=True, exist_ok=True)
+        require_new_directory(target)
+        target.mkdir(parents=True)
         spec = {
             "schema_version": 1,
             "method_id": method["method_id"],
