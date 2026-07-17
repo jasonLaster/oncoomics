@@ -285,17 +285,47 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertNotEqual(built.returncode, 0)
             self.assertIn("positive/negative manifest state lacks", built.stderr)
 
-    def test_removes_stale_bundle_before_failing_closed(self) -> None:
+    def test_existing_bundle_files_fail_create_only_and_remain_unchanged(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))
             self.assertEqual(fixture.run().returncode, 0)
+            original_hashes = {
+                filename: BUILD.sha256(fixture.bundle_dir / filename)
+                for filename in BUILD.BUNDLE_FILENAMES
+            }
             fixture.update_manifest(0, {"review_summary": {}})
 
             built = fixture.run()
 
             self.assertNotEqual(built.returncode, 0)
-            self.assertIn("missing non-empty review_summary", built.stderr)
-            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+            self.assertIn(
+                "AI review bundle output already contains bundle files",
+                built.stderr,
+            )
+            self.assertEqual(
+                {
+                    filename: BUILD.sha256(fixture.bundle_dir / filename)
+                    for filename in original_hashes
+                },
+                original_hashes,
+            )
+
+    def test_preexisting_prompt_fails_create_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            fixture.bundle_dir.mkdir()
+            stale_prompt = fixture.bundle_dir / "reviewer-a.prompt.md"
+            stale_prompt.write_text("stale prompt\n", encoding="utf-8")
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn(
+                "AI review bundle output already contains bundle files: "
+                "reviewer-a.prompt.md",
+                built.stderr,
+            )
+            self.assertEqual(stale_prompt.read_text(encoding="utf-8"), "stale prompt\n")
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ import tempfile
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable, Sequence
 from urllib.parse import unquote
 
 from hrd_report_inventory import (
@@ -357,6 +357,83 @@ def authorized_state(rows: list[dict[str, Any]]) -> str:
     return next(iter(classified), "no_call")
 
 
+def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
+    expected = set(expected_files)
+    if output.is_symlink():
+        raise ValueError("AI review bundle output may not be a symlink")
+    if output.exists() and not output.is_dir():
+        raise ValueError(f"AI review bundle output is not a directory: {output}")
+
+    output.mkdir(parents=True, exist_ok=True)
+
+    unexpected: list[str] = []
+    invalid: list[str] = []
+    for path in output.iterdir():
+        if path.name not in expected:
+            unexpected.append(path.name)
+        elif path.is_symlink() or not path.is_file():
+            invalid.append(path.name)
+    if unexpected:
+        raise ValueError(
+            "AI review bundle output contains unexpected existing files: "
+            + ", ".join(sorted(unexpected))
+        )
+    if invalid:
+        raise ValueError(
+            "AI review bundle output contains invalid existing bundle paths: "
+            + ", ".join(sorted(invalid))
+        )
+
+    existing = sorted(path.name for path in output.iterdir() if path.name in expected)
+    if existing:
+        raise ValueError(
+            "AI review bundle output already contains bundle files: "
+            + ", ".join(existing)
+        )
+
+
+def copy_create_only(source: Path, destination: Path) -> None:
+    with source.open("rb") as source_handle:
+        try:
+            file_descriptor = os.open(
+                destination,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o644,
+            )
+        except FileExistsError as error:
+            raise ValueError(
+                "AI review bundle output already exists: " + destination.name
+            ) from error
+
+        try:
+            destination_handle = os.fdopen(file_descriptor, "wb")
+        except Exception:
+            os.close(file_descriptor)
+            destination.unlink(missing_ok=True)
+            raise
+
+        try:
+            with destination_handle:
+                for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
+                    destination_handle.write(chunk)
+        except Exception:
+            destination.unlink(missing_ok=True)
+            raise
+
+
+def install_bundle_create_only(staged_paths: Sequence[Path], output: Path) -> None:
+    installed: list[Path] = []
+    try:
+        for path in staged_paths:
+            destination = output / path.name
+            copy_create_only(path, destination)
+            installed.append(destination)
+    except Exception:
+        for path in installed:
+            path.unlink(missing_ok=True)
+        raise
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", action="append", required=True, type=Path)
@@ -379,11 +456,10 @@ def main() -> None:
     args = parser.parse_args()
 
     output = args.output_dir.resolve()
-    output.mkdir(parents=True, exist_ok=True)
-    for filename in BUNDLE_FILENAMES:
-        stale = output / filename
-        if stale.is_file() or stale.is_symlink():
-            stale.unlink()
+    try:
+        prepare_output_dir(output, BUNDLE_FILENAMES)
+    except ValueError as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
 
     forbidden = [token.strip() for token in args.forbidden_token if token.strip()]
     if not forbidden:
@@ -605,9 +681,13 @@ def main() -> None:
         manifest_path = staging / "bundle_manifest.json"
         manifest_path.write_bytes(json_bytes(manifest))
 
-        output.mkdir(parents=True, exist_ok=True)
-        for path in (bundle_path, *prompt_paths.values(), manifest_path):
-            os.replace(path, output / path.name)
+        try:
+            install_bundle_create_only(
+                (bundle_path, *prompt_paths.values(), manifest_path),
+                output,
+            )
+        except ValueError as error:
+            raise SystemExit(f"Fail-closed: {error}") from error
 
     print(f"Wrote de-identified AI review bundle: {output}")
     print(f"Authorized HRD state: {ceiling}; no model invoked")
