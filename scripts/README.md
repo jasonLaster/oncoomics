@@ -68,6 +68,9 @@ Current shell utilities:
   public-publication handoff plus the public-index rebuild and publish tail.
 - `render_materializer_capture_command.py`: render the exact terminal-capture
   command from a bound cross-check materializer request/response pair.
+- `write_ai_model_catalog_receipt.py`: materialize the pinned independent
+  AI-review model catalog receipt used by bundle preparation, review
+  validation, and AI report finalization.
 - `review_phase3_aws_run.sh`: inspect a Phase 3 AWS run directory and summarize logs, traces, and exits.
 - `stage_hrd_crosscheck_report.py`: compact an exact Sequenza→scarHRD or
   SigProfiler SBS3 route replay into a three-file method packet for review

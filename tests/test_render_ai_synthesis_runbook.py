@@ -269,6 +269,28 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             text,
         )
 
+    def test_reviewed_publication_runbook_command_has_exact_output_argv(self) -> None:
+        output = Path("/repo/.codex-tmp/hrd-reports/publication/runbook.md")
+        command = MODULE.reviewed_publication_runbook_command(
+            Path("/repo/scripts"),
+            output,
+            [Path("/receipts/a.json"), Path("/receipts/b.json")],
+        )
+
+        self.assertEqual(
+            command,
+            [
+                "python3",
+                Path("/repo/scripts/render_reviewed_publication_runbook.py"),
+                "--output",
+                output,
+                "--private-publication-receipt",
+                Path("/receipts/a.json"),
+                "--private-publication-receipt",
+                Path("/receipts/b.json"),
+            ],
+        )
+
     def test_renderer_materializes_pinned_model_catalog_receipt(self) -> None:
         text = MODULE.render(Path("/repo"), "terminal")
         catalog = (
