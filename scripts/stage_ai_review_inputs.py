@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""Stage exact two-file model input directories from an AI review bundle."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Sequence
+
+
+ROLES = ("A", "B")
+ROLE_DIRS = {"A": "reviewer-a-input", "B": "reviewer-b-input"}
+ROLE_PROMPTS = {"A": "reviewer-a.prompt.md", "B": "reviewer-b.prompt.md"}
+HEX64 = set("0123456789abcdef")
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_object(path: Path, label: str) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return value
+
+
+def write_once(path: Path, data: bytes) -> None:
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def write_json_once(path: Path, value: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_once(
+        path,
+        (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8"),
+    )
+
+
+def require_file(path: Path, expected_sha256: str, label: str) -> None:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
+        raise ValueError(f"{label} is not a non-empty real file")
+    observed = sha256(path)
+    if observed != expected_sha256:
+        raise ValueError(f"{label} SHA-256 mismatch")
+
+
+def require_sha(value: Any, label: str) -> str:
+    digest = str(value).lower()
+    if len(digest) != 64 or set(digest) - HEX64:
+        raise ValueError(f"{label} is malformed")
+    return digest
+
+
+def validate_bundle(bundle_dir: Path) -> dict[str, str]:
+    bundle_manifest = load_object(
+        bundle_dir / "bundle_manifest.json",
+        "bundle_manifest.json",
+    )
+    if bundle_manifest.get("schema_version") != 2:
+        raise ValueError("unsupported bundle_manifest.json schema")
+
+    prompt_hashes = bundle_manifest.get("prompt_sha256")
+    if not isinstance(prompt_hashes, dict) or set(prompt_hashes) != set(ROLES):
+        raise ValueError("bundle manifest lacks exact prompt hashes")
+
+    bundle_hash = require_sha(
+        bundle_manifest.get("review_bundle_sha256", ""),
+        "review_bundle.json SHA-256",
+    )
+    require_file(bundle_dir / "review_bundle.json", bundle_hash, "review_bundle.json")
+
+    output = {"review_bundle.json": bundle_hash}
+    for role in ROLES:
+        prompt = ROLE_PROMPTS[role]
+        prompt_hash = require_sha(
+            prompt_hashes[role],
+            f"{prompt} SHA-256",
+        )
+        require_file(bundle_dir / prompt, prompt_hash, prompt)
+        output[prompt] = prompt_hash
+
+    return output
+
+
+def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str, Any]:
+    bundle_dir = bundle_dir.resolve()
+    output_root = output_root.resolve()
+    receipt_output = receipt_output.resolve()
+    hashes = validate_bundle(bundle_dir)
+
+    if receipt_output.exists() or receipt_output.is_symlink():
+        raise FileExistsError(f"receipt already exists: {receipt_output}")
+
+    destinations = {role: output_root / ROLE_DIRS[role] for role in ROLES}
+    for destination in destinations.values():
+        if destination.exists() or destination.is_symlink():
+            raise FileExistsError(f"reviewer input directory exists: {destination}")
+
+    output_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix=".ai-review-inputs.",
+        dir=output_root,
+    ) as temporary:
+        temporary_root = Path(temporary)
+        for role in ROLES:
+            role_dir = temporary_root / ROLE_DIRS[role]
+            role_dir.mkdir(mode=0o700)
+            write_once(
+                role_dir / "review_bundle.json",
+                (bundle_dir / "review_bundle.json").read_bytes(),
+            )
+            write_once(
+                role_dir / ROLE_PROMPTS[role],
+                (bundle_dir / ROLE_PROMPTS[role]).read_bytes(),
+            )
+            observed = sorted(path.name for path in role_dir.iterdir())
+            expected = sorted(("review_bundle.json", ROLE_PROMPTS[role]))
+            if observed != expected:
+                raise ValueError(f"reviewer {role} staged inventory is not exact")
+
+        for role in ROLES:
+            os.rename(temporary_root / ROLE_DIRS[role], destinations[role])
+
+    receipt = {
+        "schema_version": 1,
+        "status": "passed",
+        "generated_at": now(),
+        "bundle_dir": str(bundle_dir),
+        "output_root": str(output_root),
+        "reviewers": {
+            role: {
+                "directory": str(destinations[role]),
+                "files": {
+                    "review_bundle.json": {
+                        "sha256": hashes["review_bundle.json"],
+                        "mode_0600": (
+                            (destinations[role] / "review_bundle.json").stat().st_mode
+                            & 0o777
+                        )
+                        == 0o600,
+                    },
+                    ROLE_PROMPTS[role]: {
+                        "sha256": hashes[ROLE_PROMPTS[role]],
+                        "mode_0600": (
+                            (destinations[role] / ROLE_PROMPTS[role]).stat().st_mode
+                            & 0o777
+                        )
+                        == 0o600,
+                    },
+                },
+                "exact_two_file_inventory": sorted(
+                    path.name for path in destinations[role].iterdir()
+                ),
+                "mode_0700": (destinations[role].stat().st_mode & 0o777) == 0o700,
+            }
+            for role in ROLES
+        },
+        "checks": {
+            "bundle_manifest_bound": True,
+            "reviewer_a_two_file_inventory": True,
+            "reviewer_b_two_file_inventory": True,
+            "no_cross_prompt": True,
+        },
+    }
+    write_json_once(receipt_output, receipt)
+    return receipt
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--bundle-dir", required=True, type=Path)
+    parser.add_argument("--output-root", required=True, type=Path)
+    parser.add_argument("--receipt-output", required=True, type=Path)
+    args = parser.parse_args(argv)
+
+    try:
+        receipt = stage(args.bundle_dir, args.output_root, args.receipt_output)
+    except (FileExistsError, OSError, ValueError, json.JSONDecodeError) as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
+
+    print(
+        json.dumps(
+            {
+                "status": receipt["status"],
+                "reviewer_a_input": receipt["reviewers"]["A"]["directory"],
+                "reviewer_b_input": receipt["reviewers"]["B"]["directory"],
+                "receipt_output": str(args.receipt_output),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

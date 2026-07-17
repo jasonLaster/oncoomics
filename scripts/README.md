@@ -23,4 +23,6 @@ Current shell utilities:
 - `stage_hrd_crosscheck_report.py`: compact an exact Sequenza→scarHRD or
   SigProfiler SBS3 route replay into a three-file method packet for review
   bundling and private freeze.
+- `stage_ai_review_inputs.py`: split a hash-bound AI review bundle into
+  isolated two-file reviewer input directories.
 - `aws-silly-ec2`: legacy disposable EC2 smoke utility. It is not part of the omics validation path and is intentionally absent from the main docs.
