@@ -817,6 +817,37 @@ def build_input_rows(
     return rows
 
 
+def prepare_output_dir(output: Path, expected_names: Iterable[str]) -> None:
+    expected = set(expected_names)
+    if output.is_symlink():
+        raise ValueError("report output may not be a symlink")
+    if output.exists() and not output.is_dir():
+        raise ValueError(f"report output is not a directory: {output}")
+
+    output.mkdir(parents=True, exist_ok=True)
+
+    unexpected: list[str] = []
+    invalid: list[str] = []
+    for path in output.iterdir():
+        if path.name not in expected:
+            unexpected.append(path.name)
+        elif path.is_symlink() or not path.is_file():
+            invalid.append(path.name)
+    if unexpected:
+        raise ValueError(
+            "report output contains unexpected existing files: "
+            + ", ".join(sorted(unexpected))
+        )
+    if invalid:
+        raise ValueError(
+            "report output contains invalid existing packet paths: "
+            + ", ".join(sorted(invalid))
+        )
+
+    for name in expected:
+        (output / name).unlink(missing_ok=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a private deterministic full-WGS evidence report after strict validation.")
     parser.add_argument("--artifact-root", required=True, type=Path, help="Materialized final worker artifacts directory.")
@@ -857,9 +888,10 @@ def main() -> None:
         or output.is_relative_to(source_early_root)
     ):
         raise SystemExit("Fail-closed: report output must be outside input trees")
-    output.mkdir(parents=True, exist_ok=True)
-    for name in OUTPUT_NAMES:
-        (output / name).unlink(missing_ok=True)
+    try:
+        prepare_output_dir(output, OUTPUT_NAMES)
+    except ValueError as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
     external_sources = {
         "preflight": args.preflight_json,
         "gather": args.gather_json,

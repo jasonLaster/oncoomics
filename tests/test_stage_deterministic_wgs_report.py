@@ -1078,6 +1078,38 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertIn("variant_summary_counts", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
 
+    def test_stale_extra_output_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            fixture.output.mkdir()
+            (fixture.output / "unexpected.txt").write_text("stale\n", encoding="utf-8")
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "report output contains unexpected existing files",
+                result.stdout + result.stderr,
+            )
+            self.assertEqual(
+                sorted(path.name for path in fixture.output.iterdir()),
+                ["unexpected.txt"],
+            )
+
+    def test_expected_output_name_directory_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            (fixture.output / "report.md").mkdir(parents=True)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "report output contains invalid existing packet paths",
+                result.stdout + result.stderr,
+            )
+            self.assertTrue((fixture.output / "report.md").is_dir())
+
     def test_missing_effective_job_timeout_fails_before_report_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
             fixture = SyntheticFixture(Path(temporary))
