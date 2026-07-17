@@ -196,7 +196,7 @@ codeElement.innerHTML = highlightMarkdownWithBash(markdownInstructions);
 codeElement.classList.add('hljs');
 
 let objects = [];
-let searchTerm = '';
+let searchQuery = '';
 let failedSourceCount = 0;
 
 const escapeHtml = (value) => value
@@ -219,6 +219,12 @@ const awsCopyCommandFor = (item) => {
   const recursiveOption = isDirectory ? ' --recursive' : '';
   return `aws s3 cp ${shellQuote(s3UriFor(item))} ${shellQuote(destination)}${recursiveOption} --no-sign-request`;
 };
+
+const normalizeSearch = (value) => value.toLowerCase().replace(/[^a-z0-9.]+/g, ' ');
+
+const searchTextFor = (...parts) => normalizeSearch(parts.join(' '));
+
+const searchTokens = () => normalizeSearch(searchQuery).trim().split(/\s+/).filter(Boolean);
 
 const renderActionTrigger = (item) => {
   if (!item.source) return '';
@@ -360,7 +366,7 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
       </div>`;
   }).join('');
 
-  const startsOpen = Boolean(searchTerm) || isRoot || depth <= 1;
+  const startsOpen = Boolean(searchQuery) || isRoot || depth <= 1;
   const sourceTitle = directory.source ? ` title="${escapeHtml(directory.source.description)}"` : '';
 
   return `
@@ -380,8 +386,9 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
 
 function renderTree() {
   closeActionMenu();
-  const filtered = searchTerm
-    ? objects.filter((object) => object.searchText.includes(searchTerm))
+  const tokens = searchTokens();
+  const filtered = tokens.length
+    ? objects.filter((object) => tokens.every((token) => object.searchText.includes(token)))
     : objects;
   const treeElement = document.querySelector('#file-tree');
 
@@ -393,7 +400,7 @@ function renderTree() {
     treeElement.innerHTML = renderDirectory(buildTree(filtered), 0, true);
   }
 
-  const suffix = searchTerm ? ` matching “${searchTerm}”` : '';
+  const suffix = searchQuery ? ` matching “${searchQuery}”` : '';
   const failureNotice = failedSourceCount ? ' · inventory unavailable' : '';
   document.querySelector('#inventory-status').textContent = `${filtered.length.toLocaleString()} of ${objects.length.toLocaleString()} public files${suffix}${failureNotice}`;
 }
@@ -418,7 +425,7 @@ async function fetchInventory(source) {
       key,
       relativeKey: key,
       source,
-      searchText: `${source.name} ${source.treeName} ${key}`.toLowerCase(),
+      searchText: searchTextFor(source.name, source.treeName, key),
       size,
       lastModified,
     }];
@@ -457,7 +464,7 @@ async function fetchS3Inventory(source) {
         key,
         relativeKey: key.slice(source.prefix.length),
         source,
-        searchText: `${source.name} ${source.bucket} ${source.treeName} ${key}`.toLowerCase(),
+        searchText: searchTextFor(source.name, source.bucket, source.treeName, key),
         size,
         lastModified,
       });
@@ -519,7 +526,7 @@ async function loadInventory() {
 }
 
 document.querySelector('#tree-search').addEventListener('input', (event) => {
-  searchTerm = event.target.value.trim().toLowerCase();
+  searchQuery = event.target.value.trim();
   renderTree();
 });
 
