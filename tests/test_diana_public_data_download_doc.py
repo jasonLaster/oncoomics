@@ -69,6 +69,23 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             text,
         )
 
+    def test_reviewed_publication_uses_run_scoped_ai_review_receipts(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+
+        self.assertNotIn(
+            ".codex-tmp/hrd-reports/ai-review/publication-receipts/",
+            text,
+        )
+        receipt_root = (
+            f".codex-tmp/hrd-reports/ai-review/{RUN_ID}/publication-receipts/"
+        )
+        self.assertIn(f"{receipt_root}terminal.ai-reviewer-a.private.json", text)
+        self.assertIn(f"{receipt_root}terminal.ai-reviewer-b.private.json", text)
+        self.assertIn(
+            f"{receipt_root}terminal.comparative-synthesis.private.json",
+            text,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

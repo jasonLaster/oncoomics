@@ -129,6 +129,32 @@ env \
   /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet
 ```
 
+## Stage executable cross-check report packets
+
+After Sequenza→scarHRD or SigProfiler SBS3 route execution succeeds, replay the
+private route-publication receipt into a local report tree by exact S3
+`VersionId`; then compact that exact replay into the three-file report packet
+accepted by the private and public publishers.
+
+For each executable route:
+
+```bash
+ROUTE=sequenza_scarhrd
+
+python3 scripts/download_exact_report_tree.py \
+  --publication-receipt "$RUN_ROOT/terminal.$ROUTE.publication.json" \
+  --publication-anchor "$RUN_ROOT/terminal.$ROUTE.publication.anchor.json" \
+  --kms-key-arn "$DIANA_PRIVATE_RESULTS_KMS_KEY_ARN" \
+  --output-dir ".codex-tmp/hrd-reports/route-replays/$ROUTE" \
+  --verification-output "$RUN_ROOT/terminal.$ROUTE.exact-report.json"
+
+python3 scripts/stage_hrd_crosscheck_report.py \
+  --source-dir ".codex-tmp/hrd-reports/route-replays/$ROUTE" \
+  --download-verification "$RUN_ROOT/terminal.$ROUTE.exact-report.json" \
+  --route "$ROUTE" \
+  --output-dir ".codex-tmp/hrd-reports/crosschecks/$ROUTE"
+```
+
 ## Freeze and publish a reviewed report packet
 
 First freeze the reviewed local report tree in the versioned private results
@@ -257,9 +283,9 @@ python3 scripts/render_reviewed_publication_runbook.py \
   --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.facets_scarhrd_blocked.private.json \
   --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.oncoanalyser_chord_blocked.private.json \
   --private-publication-receipt .codex-tmp/hrd-reports/deterministic-full/terminal.hrdetect_blocked.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/publication-receipts/terminal.ai-reviewer-a.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/publication-receipts/terminal.ai-reviewer-b.private.json \
-  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/publication-receipts/terminal.comparative-synthesis.private.json
+  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/diana-wgs-hrd-20260716T033101Z/publication-receipts/terminal.ai-reviewer-a.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/diana-wgs-hrd-20260716T033101Z/publication-receipts/terminal.ai-reviewer-b.private.json \
+  --private-publication-receipt .codex-tmp/hrd-reports/ai-review/diana-wgs-hrd-20260716T033101Z/publication-receipts/terminal.comparative-synthesis.private.json
 ```
 
 That final runbook emits one dry-run and one apply command per report method,

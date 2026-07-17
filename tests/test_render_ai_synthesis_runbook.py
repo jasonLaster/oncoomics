@@ -155,6 +155,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "/repo/scripts/finalize_ai_review.py",
             "/repo/scripts/generate_comparative_hrd_synthesis.py",
             "/repo/scripts/publish_private_report.py",
+            "/repo/scripts/render_reviewed_publication_runbook.py",
             "/repo/.codex-tmp/hrd-reports/ai-review/"
             "model-catalog-receipt.20260717T115311Z.json",
         ):
@@ -240,6 +241,38 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 / "report_manifest.json",
             )
         self.assertEqual(tuple(paths), MODULE.REQUIRED_METHOD_IDS)
+
+    def test_renderer_hands_ten_private_receipts_to_public_renderer(self) -> None:
+        text = MODULE.render(Path("/repo"), "terminal")
+
+        self.assertIn("/repo/scripts/render_reviewed_publication_runbook.py", text)
+        self.assertIn(
+            "/repo/.codex-tmp/hrd-reports/publication/reviewed-public-runbook.md",
+            text,
+        )
+        self.assertEqual(text.count("--private-publication-receipt "), 10)
+
+        previous = -1
+        for receipt_path in MODULE.reviewed_publication_receipt_paths(
+            Path("/repo"), "terminal"
+        ):
+            index = text.find(
+                f"--private-publication-receipt {receipt_path}",
+                previous + 1,
+            )
+            self.assertGreater(index, previous)
+            previous = index
+
+        self.assertIn(
+            "/repo/.codex-tmp/hrd-reports/ai-review/"
+            f"{MODULE.RUN_ID}/publication-receipts/"
+            "terminal.ai-reviewer-a.private.json",
+            text,
+        )
+        self.assertNotIn(
+            "/repo/.codex-tmp/hrd-reports/ai-review/publication-receipts/",
+            text,
+        )
 
     def test_runbook_can_include_private_receipt_gate(self) -> None:
         summaries = (

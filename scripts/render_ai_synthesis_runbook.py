@@ -13,6 +13,7 @@ from typing import Any, Iterable
 
 from hrd_report_inventory import (
     BLOCKED_CROSSCHECK_REPORT_DIRS,
+    REPORT_METHOD_IDS,
     REQUIRED_METHOD_IDS,
 )
 from prepare_ai_review_run import METHOD_ARGUMENTS
@@ -206,6 +207,48 @@ def publish_command(
     ]
 
 
+def reviewed_publication_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
+    reports = root / ".codex-tmp/hrd-reports"
+    source_receipt_root = reports / "deterministic-full"
+    ai_receipt_root = reports / "ai-review" / RUN_ID / "publication-receipts"
+    receipt_paths = {
+        method_id: source_receipt_root / f"{receipt_stem}.{method_id}.private.json"
+        for method_id in REQUIRED_METHOD_IDS
+    }
+    receipt_paths.update(
+        {
+            "ai_review_reviewer_a": (
+                ai_receipt_root / f"{receipt_stem}.ai-reviewer-a.private.json"
+            ),
+            "ai_review_reviewer_b": (
+                ai_receipt_root / f"{receipt_stem}.ai-reviewer-b.private.json"
+            ),
+            "comparative_hrd_synthesis": (
+                ai_receipt_root / f"{receipt_stem}.comparative-synthesis.private.json"
+            ),
+        }
+    )
+    return tuple(receipt_paths[method_id] for method_id in REPORT_METHOD_IDS)
+
+
+def reviewed_publication_runbook_command(
+    scripts: Path,
+    output: Path,
+    receipt_paths: Iterable[Path],
+) -> list[str | Path]:
+    return [
+        "python3",
+        scripts / "render_reviewed_publication_runbook.py",
+        "--output",
+        output,
+        *[
+            token
+            for path in receipt_paths
+            for token in ("--private-publication-receipt", path)
+        ],
+    ]
+
+
 def required_existing(root: Path) -> tuple[Path, ...]:
     reports = root / ".codex-tmp/hrd-reports"
     scripts = root / "scripts"
@@ -216,6 +259,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
         scripts / "finalize_ai_review.py",
         scripts / "generate_comparative_hrd_synthesis.py",
         scripts / "publish_private_report.py",
+        scripts / "render_reviewed_publication_runbook.py",
         reports / "ai-review" / MODEL_CATALOG_RECEIPT,
     )
 
@@ -441,6 +485,15 @@ def render(
                     synthesis,
                     "comparative_hrd_synthesis",
                     receipt_root / f"{receipt_stem}.comparative-synthesis",
+                )
+            ),
+            "## 7. Render the reviewed-public publication handoff",
+            "",
+            block(
+                reviewed_publication_runbook_command(
+                    scripts,
+                    reports / "publication/reviewed-public-runbook.md",
+                    reviewed_publication_receipt_paths(root, receipt_stem),
                 )
             ),
         ]
