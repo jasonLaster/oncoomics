@@ -221,11 +221,22 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             if operation == ("batch", "describe-compute-environments"):
                 return {"computeEnvironments": [copy.deepcopy(values["compute"])]}
             if operation == ("logs", "get-log-events"):
-                self.assertIn("--log-stream-name", arguments)
-                stream_index = arguments.index("--log-stream-name") + 1
-                self.assertEqual(arguments[stream_index], self.log_stream)
+                expected_log_arguments = (
+                    "logs",
+                    "get-log-events",
+                    "--log-group-name",
+                    MODULE.LOG_GROUP,
+                    "--log-stream-name",
+                    self.log_stream,
+                    "--start-from-head",
+                )
                 if "--next-token" in arguments:
+                    self.assertEqual(
+                        arguments,
+                        (*expected_log_arguments, "--next-token", "terminal-token"),
+                    )
                     return {"events": [], "nextForwardToken": "terminal-token"}
+                self.assertEqual(arguments, expected_log_arguments)
                 return {
                     "events": copy.deepcopy(values["events"]),
                     "nextForwardToken": "terminal-token",
