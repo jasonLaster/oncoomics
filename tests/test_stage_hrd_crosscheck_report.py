@@ -5,6 +5,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -125,6 +126,31 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     root / "staged",
                     "sigprofiler_sbs3",
                 )
+
+    def test_stage_rejects_copy_that_differs_from_exact_replay(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            real_copy = STAGE.shutil.copyfile
+
+            def copy_with_mutated_report(source_path: Path, destination: Path) -> None:
+                real_copy(source_path, destination)
+                if destination.name == "report.md":
+                    destination.write_text("mutated after validation\n", encoding="utf-8")
+
+            with mock.patch.object(
+                STAGE.shutil,
+                "copyfile",
+                side_effect=copy_with_mutated_report,
+            ):
+                with self.assertRaisesRegex(ValueError, "stale for report.md"):
+                    STAGE.stage(
+                        source,
+                        verification,
+                        root / "staged",
+                        "sigprofiler_sbs3",
+                    )
 
     def test_stage_rejects_wrong_route_and_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

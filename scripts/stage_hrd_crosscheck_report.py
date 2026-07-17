@@ -142,17 +142,20 @@ def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: st
     if not source_dir.is_dir() or source_dir.is_symlink():
         raise ValueError("exact route replay must be a real directory")
 
-    source_manifest = load_json(
-        source_dir / "report_manifest.json", "route report manifest"
-    )
-    summary = require_download_verification(verification_path, source_dir, route)
-
     staging = output_dir.parent / f".{output_dir.name}.staging"
     if staging.exists() or staging.is_symlink():
         raise ValueError(f"staging path already exists: {staging}")
     staging.mkdir(parents=True, mode=0o700)
     try:
         shutil.copyfile(require_source_file(source_dir, "report.md"), staging / "report.md")
+        shutil.copyfile(
+            require_source_file(source_dir, "report_manifest.json"),
+            staging / "report_manifest.json",
+        )
+        summary = require_download_verification(verification_path, staging, route)
+        source_manifest = load_json(
+            staging / "report_manifest.json", "route report manifest"
+        )
         method_spec = {
             "schema_version": 1,
             "method_id": route,
