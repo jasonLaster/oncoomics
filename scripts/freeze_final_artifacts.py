@@ -49,6 +49,14 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def load_json(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -56,7 +64,9 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+def write_json_atomic(
+    path: Path, value: dict[str, Any], *, create: bool = False
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     staging = path.with_name(f".{path.name}.tmp-{os.getpid()}")
     try:
@@ -66,7 +76,11 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
-        staging.replace(path)
+        if create:
+            os.link(staging, path)
+        else:
+            staging.replace(path)
+        fsync_directory(path.parent)
     finally:
         staging.unlink(missing_ok=True)
 
@@ -678,7 +692,7 @@ def main() -> int:
         "initial_inventory_identity": inventory_identity(initial_inventory),
         "objects": [],
     }
-    write_json_atomic(args.output, receipt)
+    write_json_atomic(args.output, receipt, create=True)
 
     try:
         for initial_row in initial_inventory:
@@ -867,7 +881,7 @@ def main() -> int:
             "receipt_version_id": "",
             "checks": {},
         }
-        write_json_atomic(args.anchor_output, anchor)
+        write_json_atomic(args.anchor_output, anchor, create=True)
         try:
             if version_history(destination_bucket, receipt_key, args.region):
                 raise RuntimeError(

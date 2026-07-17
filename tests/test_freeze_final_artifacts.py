@@ -352,6 +352,23 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "never overwritten"):
                 MODULE.require_new_output(path, "receipt")
 
+    def test_create_only_receipt_write_preserves_late_existing_output(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            path = Path(value) / "receipt.json"
+            MODULE.write_json_atomic(path, {"status": "initial"}, create=True)
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8")),
+                {"status": "initial"},
+            )
+
+            with self.assertRaises(FileExistsError):
+                MODULE.write_json_atomic(path, {"status": "replacement"}, create=True)
+
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8")),
+                {"status": "initial"},
+            )
+
     def test_receipt_put_is_create_only(self) -> None:
         with patch.object(MODULE, "aws_json", return_value={"VersionId": "v1"}) as mocked:
             MODULE.put_receipt(
