@@ -9,6 +9,7 @@ import stat
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -134,6 +135,25 @@ class StageAiReviewInputsTests(unittest.TestCase):
             STAGE.stage(self.bundle, self.output_root, self.receipt)
 
         self.assertFalse(self.output_root.exists())
+        self.assertFalse(self.receipt.exists())
+
+    def test_rejects_staged_bytes_that_differ_from_bundle_manifest(self) -> None:
+        real_write_once = STAGE.write_once
+
+        def write_tampered_once(path: Path, data: bytes) -> None:
+            real_write_once(path, data)
+            if path.name == "reviewer-a.prompt.md":
+                path.write_text("tampered during staging\n", encoding="utf-8")
+
+        with mock.patch.object(
+            STAGE,
+            "write_once",
+            side_effect=write_tampered_once,
+        ):
+            with self.assertRaisesRegex(ValueError, "reviewer A .* SHA-256 mismatch"):
+                STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse((self.output_root / "reviewer-a-input").exists())
         self.assertFalse(self.receipt.exists())
 
     def test_refuses_existing_reviewer_directories(self) -> None:

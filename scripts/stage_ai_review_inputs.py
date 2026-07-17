@@ -136,6 +136,16 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
                 role_dir / ROLE_PROMPTS[role],
                 (bundle_dir / ROLE_PROMPTS[role]).read_bytes(),
             )
+            require_file(
+                role_dir / "review_bundle.json",
+                hashes["review_bundle.json"],
+                f"reviewer {role} review_bundle.json",
+            )
+            require_file(
+                role_dir / ROLE_PROMPTS[role],
+                hashes[ROLE_PROMPTS[role]],
+                f"reviewer {role} {ROLE_PROMPTS[role]}",
+            )
             observed = sorted(path.name for path in role_dir.iterdir())
             expected = sorted(("review_bundle.json", ROLE_PROMPTS[role]))
             if observed != expected:
