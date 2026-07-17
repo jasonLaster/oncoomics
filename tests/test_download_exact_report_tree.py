@@ -106,6 +106,85 @@ class ExactReportDownloadTests(unittest.TestCase):
             }
         ]
 
+    def test_version_history_consumes_key_and_version_markers(self) -> None:
+        pages = [
+            {
+                "IsTruncated": True,
+                "Versions": [{"Key": f"{PREFIX}report.md", "VersionId": "v1"}],
+                "DeleteMarkers": [],
+                "NextKeyMarker": f"{PREFIX}report.md",
+                "NextVersionIdMarker": "v1",
+            },
+            {
+                "IsTruncated": False,
+                "Versions": [],
+                "DeleteMarkers": [{"Key": f"{PREFIX}old.md", "VersionId": "d1"}],
+            },
+        ]
+
+        with patch.object(MODULE, "aws_json", side_effect=pages) as aws_json:
+            self.assertEqual(
+                MODULE.version_history(BUCKET, PREFIX, "us-east-1"),
+                [
+                    {
+                        "Key": f"{PREFIX}report.md",
+                        "VersionId": "v1",
+                        "history_kind": "version",
+                    },
+                    {
+                        "Key": f"{PREFIX}old.md",
+                        "VersionId": "d1",
+                        "history_kind": "delete_marker",
+                    },
+                ],
+            )
+
+        self.assertEqual(
+            aws_json.call_args_list[1].args,
+            (
+                [
+                    "s3api",
+                    "list-object-versions",
+                    "--bucket",
+                    BUCKET,
+                    "--prefix",
+                    PREFIX,
+                    "--key-marker",
+                    f"{PREFIX}report.md",
+                    "--version-id-marker",
+                    "v1",
+                ],
+                "us-east-1",
+            ),
+        )
+
+    def test_version_history_rejects_missing_version_marker(self) -> None:
+        with patch.object(
+            MODULE,
+            "aws_json",
+            return_value={
+                "IsTruncated": True,
+                "Versions": [],
+                "DeleteMarkers": [],
+                "NextKeyMarker": f"{PREFIX}report.md",
+            },
+        ):
+            with self.assertRaisesRegex(ValueError, "key/version markers"):
+                MODULE.version_history(BUCKET, PREFIX, "us-east-1")
+
+    def test_version_history_rejects_stalled_pagination(self) -> None:
+        page = {
+            "IsTruncated": True,
+            "Versions": [],
+            "DeleteMarkers": [],
+            "NextKeyMarker": f"{PREFIX}report.md",
+            "NextVersionIdMarker": "v1",
+        }
+
+        with patch.object(MODULE, "aws_json", side_effect=[page, page]):
+            with self.assertRaisesRegex(ValueError, "did not advance"):
+                MODULE.version_history(BUCKET, PREFIX, "us-east-1")
+
     def test_exact_version_history_and_download_are_both_required(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
