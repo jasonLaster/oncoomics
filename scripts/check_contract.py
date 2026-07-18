@@ -210,12 +210,7 @@ def validate(contract: dict) -> dict:
 def write_text_once(path: Path, value: str) -> None:
     if path.exists() or path.is_symlink():
         raise FileExistsError(f"contract readiness output already exists: {path}")
-    if path.parent.is_symlink():
-        raise ValueError(
-            f"contract readiness output parent may not be a symlink: {path.parent}"
-        )
-    if path.parent.exists() and not path.parent.is_dir():
-        raise NotADirectoryError(path.parent)
+    require_safe_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -227,6 +222,26 @@ def write_text_once(path: Path, value: str) -> None:
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def require_safe_output_parent(path: Path) -> None:
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise ValueError(
+                f"contract readiness output parent may not be a symlink: {parent}"
+            )
+        if parent == parent.parent:
+            raise ValueError(
+                f"contract readiness output has no existing parent: {path}"
+            )
+        parent = parent.parent
+    if parent.is_symlink():
+        raise ValueError(
+            f"contract readiness output parent may not be a symlink: {parent}"
+        )
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
 
 
 def main() -> int:

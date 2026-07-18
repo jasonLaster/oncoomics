@@ -309,6 +309,22 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "input-contract.json").exists())
 
+    def test_finalizer_rejects_output_below_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-contracts"
+            real_parent.mkdir()
+            linked_parent = root / "linked-contracts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                finalizer.write_new_json(
+                    linked_parent / "missing" / "input-contract.json",
+                    {"status": "passed"},
+                )
+
+            self.assertFalse((real_parent / "missing").exists())
+
     def test_contract_check_writes_readiness_receipt_create_only(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -358,6 +374,22 @@ class CustodyHandoffTests(unittest.TestCase):
                 )
 
             self.assertFalse((real_parent / "input-contract.readiness.json").exists())
+
+    def test_contract_check_rejects_output_below_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-readiness"
+            real_parent.mkdir()
+            linked_parent = root / "linked-readiness"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                checker.write_text_once(
+                    linked_parent / "missing" / "input-contract.readiness.json",
+                    "{}\n",
+                )
+
+            self.assertFalse((real_parent / "missing").exists())
 
     def test_finalizer_binds_all_three_outputs_and_attests_final_primary(self):
         contract = CustodyFixture().finalize()
