@@ -332,6 +332,26 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
                 self.assertFalse((root / "staged-real").exists())
 
+    def test_stage_rejects_output_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            real_parent = root / "staged-real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "staged-linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "output parent may not be a symlink"):
+                STAGE.stage(
+                    source,
+                    verification,
+                    linked_parent / "missing" / "staged",
+                    "sigprofiler_sbs3",
+                )
+
+            self.assertFalse((real_parent / "missing").exists())
+
     def test_stage_cleans_current_attempt_after_install_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
