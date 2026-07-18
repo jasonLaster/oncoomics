@@ -154,6 +154,7 @@ class CliParityTest(unittest.TestCase):
         self.assertIn("benchmark:known-answer", TASKS)
         self.assertIn("aws:hrd-packet:cloud-submit", TASKS)
         self.assertIn("nf:aws:sra-bench:tiny", TASKS)
+        self.assertIn("nf:phase3-wgs-fast:stub", TASKS)
         self.assertIn("nf:aws:phase3-wgs-fast:gpu-smoke", TASKS)
         self.assertIn("nf:aws:phase3-wgs-fast:execute", TASKS)
         self.assertIn("nf:aws:known-answer-bounded-non-dry", TASKS)
@@ -204,8 +205,15 @@ class CliParityTest(unittest.TestCase):
             self.assertEqual(LEGACY_PHASE3_AWS_FULL_ENV, TASKS[name].required_env)
 
         self.assertIsNone(TASKS["nf:aws:phase3-wgs-fast:gpu-smoke"].required_env)
+        self.assertIsNone(TASKS["nf:phase3-wgs-fast:stub"].required_env)
         self.assertIsNone(TASKS["nf:aws:phase3-wgs:stub"].required_env)
         self.assertIsNone(TASKS["nf:aws:phase3-wgs:dev"].required_env)
+
+    def test_phase3_fast_local_stub_exercises_execute_branch_synthetically(self):
+        task = TASKS["nf:phase3-wgs-fast:stub"]
+
+        self.assertFalse(task.accepts_args)
+        self.assertEqual(("bash", "scripts/run_phase3_wgs_fast_stub.sh"), task.steps[0].argv)
 
     def test_phase3_fast_aws_execute_task_uses_guarded_p5en_path(self):
         task = TASKS["nf:aws:phase3-wgs-fast:execute"]

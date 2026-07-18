@@ -86,6 +86,18 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:docker:phase3-wgs:stub
 
 The image includes the repo skeleton, manifests, docs, result summaries, Python package, Java 17, BWA, samtools, bcftools, seqkit, sra-tools, pigz, aria2, curl, unzip, and rsync. It does not bake bulky `data/raw` files into the image.
 
+Use the local fast stub to exercise the new resumable Diana BAM-to-report DAG
+with synthetic receipts, synthetic outputs, and downshifted Parabricks resource
+requests:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs-fast:stub
+```
+
+This runs `phase3_wgs_fast` in `-stub-run` execute mode through the
+deterministic WGS report, Rosalind `diana_wgs` packet, and blocked HRD
+cross-check packets without staging BAMs, calling Parabricks, or touching S3.
+
 ## AWS Batch
 
 AWS Batch requires account-specific ECR, queue, region, and S3 workdir values. Prefer the task aliases after the AWS config has been generated:

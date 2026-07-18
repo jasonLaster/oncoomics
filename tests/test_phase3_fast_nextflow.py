@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MAIN_NF = ROOT / "main.nf"
 NEXTFLOW_CONFIG = ROOT / "nextflow.config"
 NEXT_GEN_DOC = ROOT / "docs/operations/next-generation-fast-rerun.md"
+FAST_STUB_SCRIPT = ROOT / "scripts/run_phase3_wgs_fast_stub.sh"
 
 
 class Phase3FastNextflowTests(unittest.TestCase):
@@ -134,6 +135,28 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("`FAST_INPUT_MANIFEST`", text)
         self.assertIn("`FAST_REPLICATION_PLAN`", text)
         self.assertIn("`FAST_REPLICATE_INPUTS`", text)
+
+    def test_local_fast_stub_exercises_full_execute_branch_without_large_resources(self) -> None:
+        script = FAST_STUB_SCRIPT.read_text(encoding="utf-8")
+
+        for receipt in (
+            "private_freeze",
+            "private_sha256",
+            "reference_freeze",
+            "reference_sha256",
+            "bam_validation",
+            "contig_compatibility",
+            "caller_resource",
+        ):
+            self.assertIn(f"--phase3_fast_{receipt}_receipt", script)
+
+        self.assertIn("--workflow phase3_wgs_fast", script)
+        self.assertIn("--phase3_fast_replication_mode apply", script)
+        self.assertIn("--phase3_fast_small_variant_mode execute", script)
+        self.assertIn("--phase3_fast_parabricks_cpus 1", script)
+        self.assertIn("--phase3_fast_parabricks_memory '1 GB'", script)
+        self.assertIn("--phase3_fast_forbidden_tokens_json", script)
+        self.assertIn("-stub-run", script)
 
     def test_replication_plan_consumes_input_manifest_output(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")

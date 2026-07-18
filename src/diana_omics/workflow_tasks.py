@@ -239,6 +239,7 @@ TASKS: dict[str, Task] = {
         )
     ),
     "nf:phase3-sra-benchmark": _task(_nextflow("-profile", "local", "--workflow", "phase3_sra_benchmark")),
+    "nf:phase3-wgs-fast:stub": _task(_tool("bash", "scripts/run_phase3_wgs_fast_stub.sh")),
     "nf:known-answer-public-findings": _task(_nextflow("-profile", "local", "--workflow", "known_answer_public_findings")),
     "nf:known-answer-bounded-non-dry": _task(_nextflow("-profile", "local", "--workflow", "known_answer_bounded_non_dry")),
     "nf:known-answer-expanded-cohort": _task(_nextflow("-profile", "local", "--workflow", "known_answer_expanded_cohort")),

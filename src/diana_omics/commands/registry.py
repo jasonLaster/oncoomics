@@ -288,6 +288,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "nf:phase3-fetch:dev",
             "nf:phase3-fetch:full",
             "nf:phase3-sra-benchmark",
+            "nf:phase3-wgs-fast:stub",
             "nf:phase3-wgs:stub",
             "nf:docker:phase3-wgs:stub",
             "nf:phase3-wgs:dev",
