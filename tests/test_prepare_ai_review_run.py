@@ -437,6 +437,26 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 "stray staged AI input\n",
             )
 
+    def test_install_rejects_symlinked_parent_before_creating_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            staging.mkdir()
+            (staging / "bundle").mkdir()
+            (staging / "bundle" / "payload.json").write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                PREPARE.install_staged_run(staging, linked_parent / "ai-review")
+
+            self.assertFalse((real_parent / "ai-review").exists())
+
     def test_install_fsyncs_parent_and_output_directories(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

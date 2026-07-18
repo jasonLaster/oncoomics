@@ -315,6 +315,9 @@ def resolve_new_output(path: Path) -> Path:
 
 
 def install_staged_run(staging: Path, output: Path) -> None:
+    if output.is_symlink():
+        raise ValueError(f"output may not be a symlink: {output}")
+    require_no_symlinked_ancestors(output, "output")
     try:
         output.mkdir(mode=0o700)
     except FileExistsError as error:
