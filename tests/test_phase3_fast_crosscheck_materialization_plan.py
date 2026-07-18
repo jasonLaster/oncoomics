@@ -106,6 +106,10 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
             final_manifest["input_sources"]["bam_pair"]["tumor"]["bam"]["sha256"],
             plan["sequenza_scarhrd"]["alias_input_contract"]["artifacts"]["tumor_bam"]["sha256"],
         )
+        self.assertNotIn(
+            "sample_id",
+            plan["sequenza_scarhrd"]["alias_input_contract"]["artifacts"]["tumor_bam"],
+        )
         self.assertEqual(
             "tumor.bam.bai",
             plan["sequenza_scarhrd"]["alias_input_contract"]["planned_alias_outputs"]["tumor_bai"],
@@ -120,6 +124,17 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
         self.assertNotIn(str(root), json.dumps(plan))
         self.assertNotIn("commands", plan)
         self.assertNotIn("inputs", plan)
+
+    def test_rejects_unaliased_sequenza_bam_contract(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = _final_evidence(Path(tmp))
+        manifest["input_sources"]["bam_pair"]["tumor"]["bam"]["sample_id"] = "source_tumor"
+
+        with self.assertRaisesRegex(crosscheck_plan.ManifestError, "subject01_tumor"):
+            crosscheck_plan.build_phase3_fast_crosscheck_materialization_plan(
+                manifest,
+                final_evidence_sha256=SHA_4,
+            )
 
     def test_rejects_promoted_sbs3_boundary(self) -> None:
         with TemporaryDirectory() as tmp:

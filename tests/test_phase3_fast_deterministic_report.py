@@ -145,6 +145,10 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                 "tumor_bam"
             ],
         )
+        self.assertNotIn(
+            "sample_id",
+            crosscheck_input_plans["routes"]["sequenza_scarhrd"]["alias_input_contract"]["artifacts"]["tumor_bam"],
+        )
         self.assertFalse(
             crosscheck_input_plans["routes"]["sequenza_scarhrd"]["alias_input_contract"]["attestations"][
                 "validated_sequenza_scarhrd_runtime"

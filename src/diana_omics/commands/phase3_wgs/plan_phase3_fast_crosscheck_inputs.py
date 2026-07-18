@@ -8,6 +8,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
+from .crosscheck_contracts import sequenza_alias_input_contract
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 
 DEFAULT_FINAL_EVIDENCE = "manifests/phase3_wgs_fast/final_evidence_manifest.json"
@@ -85,62 +86,6 @@ def _sample_source_blob(value: Any, label: str) -> dict[str, Any]:
     }
 
 
-def _sequenza_alias_input_contract(
-    *,
-    run: Mapping[str, Any],
-    reference: Mapping[str, Any],
-    tumor: Mapping[str, Any],
-    normal: Mapping[str, Any],
-    method_parameters: Mapping[str, Any],
-) -> dict[str, Any]:
-    run_alias = _require_string(run.get("subject_alias"), "run.subject_alias")
-    return {
-        "schema_version": 1,
-        "route": "sequenza_scarhrd",
-        "status": "blocked",
-        "run_alias": run_alias,
-        "reference": {
-            "build": "GRCh38",
-            "fasta": _source_blob(reference.get("fasta"), "input_sources.reference.fasta"),
-            "fai": _source_blob(reference.get("fai"), "input_sources.reference.fai"),
-            "sequence_dictionary": _source_blob(
-                reference.get("sequence_dictionary"),
-                "input_sources.reference.sequence_dictionary",
-            ),
-        },
-        "artifacts": {
-            "tumor_bam": _sample_source_blob(tumor.get("bam"), "input_sources.bam_pair.tumor.bam"),
-            "tumor_bai": _sample_source_blob(tumor.get("bai"), "input_sources.bam_pair.tumor.bai"),
-            "normal_bam": _sample_source_blob(normal.get("bam"), "input_sources.bam_pair.normal.bam"),
-            "normal_bai": _sample_source_blob(normal.get("bai"), "input_sources.bam_pair.normal.bai"),
-        },
-        "method_parameters": {
-            "sequenza": {
-                "female": method_parameters["sequenza"]["female"],
-            },
-        },
-        "planned_aliases": {
-            "tumor_sample": f"{run_alias}_tumor",
-            "normal_sample": f"{run_alias}_normal",
-        },
-        "planned_alias_outputs": {
-            "tumor_bam": "tumor.bam",
-            "tumor_bai": "tumor.bam.bai",
-            "normal_bam": "normal.bam",
-            "normal_bai": "normal.bam.bai",
-            "staged_validation": "staged_input_validation.json",
-        },
-        "attestations": {
-            "input_sha256_verified": True,
-            "bam_quickcheck_passed": True,
-            "bam_reference_digest_matched": True,
-            "no_direct_identifiers_in_aliases": True,
-            "final_bam_contract_published": False,
-            "validated_sequenza_scarhrd_runtime": False,
-        },
-    }
-
-
 def _final_artifact(value: Any, role: str) -> dict[str, Any]:
     row = _require_mapping(value, f"artifacts.small_variants.filter_mutect.{role}")
     return {
@@ -206,8 +151,8 @@ def build_phase3_fast_crosscheck_materialization_plan(
         for materializer_role, reference_role in REFERENCE_ROLES.items()
     }
     run = dict(_require_mapping(final_evidence.get("run"), "run"))
-    sequenza_alias_contract = _sequenza_alias_input_contract(
-        run=run,
+    sequenza_alias_contract = sequenza_alias_input_contract(
+        run_alias=run.get("subject_alias"),
         reference=reference,
         tumor=tumor,
         normal=normal,
