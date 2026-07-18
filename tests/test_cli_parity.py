@@ -43,6 +43,7 @@ class CliParityTest(unittest.TestCase):
             "join:phase3-fast-evidence",
             "plan:diana-raw-handoff",
             "plan:known-answer-benchmarks",
+            "publish:phase3-fast-final-evidence",
             "replicate:phase3-fast-inputs",
             "run:known-answer-bounded-non-dry",
             "run:known-answer-expanded-cohort",

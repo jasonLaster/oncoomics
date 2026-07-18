@@ -20,7 +20,9 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("Track the 384 On-Demand P vCPU request", text)
         self.assertIn("FAST_BAM_CNV_SV_EVIDENCE", text)
         self.assertIn("FAST_EVIDENCE_JOIN", text)
+        self.assertIn("FAST_VERIFY_AND_PUBLISH", text)
         self.assertIn("evidence_join_manifest.json", text)
+        self.assertIn("final_evidence_manifest.json", text)
 
     def test_next_generation_doc_tracks_bam_qc_plan_seam(self) -> None:
         text = NEXT_GEN.read_text(encoding="utf-8")

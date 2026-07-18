@@ -25,6 +25,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_FILTER_MUTECT_PLAN", text)
         self.assertIn("process FAST_BAM_CNV_SV_EVIDENCE", text)
         self.assertIn("process FAST_EVIDENCE_JOIN", text)
+        self.assertIn("process FAST_VERIFY_AND_PUBLISH", text)
         self.assertNotIn("process FAST_STAGE_INPUTS", text)
         self.assertIn("workflow PHASE3_WGS_FAST", text)
         self.assertIn("'phase3_wgs_fast'", text)
@@ -60,6 +61,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_wgs_fast_cnv_evidence_receipt", text)
         self.assertIn("phase3_wgs_fast_sv_evidence_receipt", text)
         self.assertIn("phase3_wgs_fast_evidence_join_manifest", text)
+        self.assertIn("phase3_wgs_fast_final_evidence_manifest", text)
         self.assertIn("phase3_wgs_fast_filter_mutect_plan", text)
 
     def test_fast_input_manifest_receipts_are_nextflow_path_inputs(self) -> None:
@@ -269,7 +271,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         text = MAIN_NF.read_text(encoding="utf-8")
 
         process = text[text.index("process FAST_MUTECT_PARABRICKS_FILTER") :]
-        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        process = process[: process.index("process FAST_BAM_CNV_SV_EVIDENCE")]
         self.assertIn("label 'gpu_parabricks'", process)
         self.assertIn("run:phase3-fast-parabricks-mutect", process)
         self.assertIn("run:phase3-fast-filter-mutect", process)
@@ -321,7 +323,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         text = MAIN_NF.read_text(encoding="utf-8")
 
         process = text[text.index("process FAST_BAM_CNV_SV_EVIDENCE") :]
-        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        process = process[: process.index("process FAST_EVIDENCE_JOIN")]
         self.assertIn("label 'cpu_io'", process)
         self.assertIn("stage:phase3-fast-inputs", process)
         self.assertIn("build:phase3-fast-bam-qc-plan", process)
@@ -371,7 +373,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         text = MAIN_NF.read_text(encoding="utf-8")
 
         process = text[text.index("process FAST_EVIDENCE_JOIN") :]
-        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        process = process[: process.index("process FAST_VERIFY_AND_PUBLISH")]
         self.assertIn("label 'cpu_io'", process)
         self.assertIn("path small_variant_artifact_export", process)
         self.assertNotIn("path(small_staged_inputs_manifest)", process)
@@ -404,6 +406,38 @@ class Phase3FastNextflowTests(unittest.TestCase):
         )
         self.assertIn("tuple(bam_qc_receipt, cnv_evidence_receipt, sv_evidence_receipt)", text)
         self.assertIn("FAST_EVIDENCE_JOIN(small_variant_export_for_join, aux_receipts_for_join)", text)
+
+    def test_verify_and_publish_consumes_joined_evidence_artifacts(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_VERIFY_AND_PUBLISH") :]
+        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        self.assertIn("label 'cpu_io'", process)
+        self.assertIn("path evidence_join_manifest", process)
+        self.assertIn("path small_variant_artifacts", process)
+        self.assertIn("path(bam_qc_results)", process)
+        self.assertIn("path(cnv_evidence_results)", process)
+        self.assertIn("path(sv_evidence_results)", process)
+        self.assertIn("workspace/manifests/phase3_wgs_fast/final_evidence_manifest.json", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/final", process)
+        self.assertIn(
+            'export PHASE3_WGS_FAST_EVIDENCE_JOIN="\\$PWD/${evidence_join_manifest}"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_SMALL_VARIANT_ARTIFACT_ROOT="\\$PWD/${small_variant_artifacts}"',
+            process,
+        )
+        self.assertIn("publish:phase3-fast-final-evidence", process)
+        self.assertIn(
+            "small_variant_artifacts_for_publish = FAST_MUTECT_PARABRICKS_FILTER.out.map",
+            text,
+        )
+        self.assertIn(
+            "aux_artifacts_for_publish = FAST_BAM_CNV_SV_EVIDENCE.out.map",
+            text,
+        )
+        self.assertIn("FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out", text)
 
 
 if __name__ == "__main__":

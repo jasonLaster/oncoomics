@@ -1448,6 +1448,60 @@ process FAST_EVIDENCE_JOIN {
     """
 }
 
+process FAST_VERIFY_AND_PUBLISH {
+    tag "fast_verify_and_publish_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/final", mode: 'copy', overwrite: true
+
+    input:
+    path evidence_join_manifest
+    path small_variant_artifacts
+    tuple path(bam_qc_results),
+          path(cnv_evidence_results),
+          path(sv_evidence_results)
+
+    output:
+    tuple path('workspace/manifests/phase3_wgs_fast/final_evidence_manifest.json'),
+          path('workspace/results/phase3_wgs_fast/final')
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_EVIDENCE_JOIN="\$PWD/${evidence_join_manifest}"
+    export PHASE3_WGS_FAST_SMALL_VARIANT_ARTIFACT_ROOT="\$PWD/${small_variant_artifacts}"
+    export PHASE3_WGS_FAST_BAM_QC_ARTIFACT_ROOT="\$PWD/${bam_qc_results}"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_ARTIFACT_ROOT="\$PWD/${cnv_evidence_results}"
+    export PHASE3_WGS_FAST_SV_EVIDENCE_ARTIFACT_ROOT="\$PWD/${sv_evidence_results}"
+    export PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT="\$PWD/workspace/results/phase3_wgs_fast/final"
+    export PHASE3_WGS_FAST_FINAL_EVIDENCE_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/final_evidence_manifest.json"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics publish:phase3-fast-final-evidence
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    mkdir -p workspace/results/phase3_wgs_fast/final/artifacts
+    cat > workspace/manifests/phase3_wgs_fast/final_evidence_manifest.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_final_evidence_manifest",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call",
+        "scarhrd_use": "no_call_requires_allele_specific_cnv_loh_segments",
+        "chord_use": "no_call_requires_validated_production_sv_caller_vcf",
+        "hrdetect_use": "no_call_requires_validated_structural_variant_features"
+      }
+    }
+    JSON
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -1520,6 +1574,28 @@ workflow PHASE3_WGS_FAST {
                 sv_evidence_results -> tuple(bam_qc_receipt, cnv_evidence_receipt, sv_evidence_receipt)
             }
             FAST_EVIDENCE_JOIN(small_variant_export_for_join, aux_receipts_for_join)
+            small_variant_artifacts_for_publish = FAST_MUTECT_PARABRICKS_FILTER.out.map {
+                small_staged_inputs_manifest,
+                parabricks_mutect_plan,
+                parabricks_mutect_receipt,
+                filter_mutect_plan,
+                filter_mutect_receipt,
+                small_variant_artifact_export,
+                small_variant_artifacts -> small_variant_artifacts
+            }
+            aux_artifacts_for_publish = FAST_BAM_CNV_SV_EVIDENCE.out.map {
+                aux_staged_inputs_manifest,
+                bam_qc_plan,
+                bam_qc_receipt,
+                cnv_evidence_plan,
+                cnv_evidence_receipt,
+                sv_evidence_plan,
+                sv_evidence_receipt,
+                bam_qc_results,
+                cnv_evidence_results,
+                sv_evidence_results -> tuple(bam_qc_results, cnv_evidence_results, sv_evidence_results)
+            }
+            FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out, small_variant_artifacts_for_publish, aux_artifacts_for_publish)
         } else {
             FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
             FAST_BAM_QC_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)

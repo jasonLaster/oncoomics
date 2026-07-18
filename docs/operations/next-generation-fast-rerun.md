@@ -364,6 +364,10 @@ worker-local implementation details.
 CNV, and SV receipts, validates the shared workflow/run identity and no-call
 boundaries, and writes one pointer-only `evidence_join_manifest.json` with the
 SHA-256 of each receipt as the contract for later verification and reporting.
+`FAST_VERIFY_AND_PUBLISH` then rehashes the exact small-variant, BAM QC, CNV,
+and SV files staged from those branches, copies them into a single portable
+final artifact tree, and writes a path-redacted `final_evidence_manifest.json`
+whose artifact entries use relative paths only.
 
 ### Gate 1: P5en and Parabricks smoke
 
