@@ -422,6 +422,86 @@ class GenerateSynthesisTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
+    def test_synthesis_staged_file_write_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            root = Path(temporary)
+            output = root / "report.md"
+            real_fsync_directory = GENERATE.fsync_directory
+
+            def tamper_after_directory_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_bytes(b"tampered\n")
+
+            with (
+                mock.patch.object(
+                    GENERATE,
+                    "fsync_directory",
+                    side_effect=tamper_after_directory_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "changed during write"),
+            ):
+                GENERATE.write_staged_text(output, "# report\n")
+
+            self.assertFalse(output.exists())
+
+    def test_synthesis_rejects_stale_staged_report_manifest_binding(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            GENERATE.write_staged_text(report, "# Report\n")
+            GENERATE.write_agreement(agreement, [])
+            GENERATE.write_staged_bytes(
+                staging / "report_manifest.json",
+                GENERATE.canonical_json_bytes(
+                    {
+                        "report_sha256": sha256(report),
+                        "agreement_disagreement_sha256": sha256(agreement),
+                        "support_sha256": {
+                            "agreement_disagreement.csv": sha256(agreement),
+                        },
+                    }
+                ),
+            )
+
+            report.write_text("tampered\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis manifest is stale for report.md",
+            ):
+                GENERATE.require_staged_report_manifest(staging)
+
+    def test_synthesis_rejects_stale_staged_agreement_manifest_binding(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            GENERATE.write_staged_text(report, "# Report\n")
+            GENERATE.write_agreement(agreement, [])
+            GENERATE.write_staged_bytes(
+                staging / "report_manifest.json",
+                GENERATE.canonical_json_bytes(
+                    {
+                        "report_sha256": sha256(report),
+                        "agreement_disagreement_sha256": sha256(agreement),
+                        "support_sha256": {
+                            "agreement_disagreement.csv": sha256(agreement),
+                        },
+                    }
+                ),
+            )
+
+            agreement.write_text("tampered\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis manifest is stale for agreement_disagreement.csv",
+            ):
+                GENERATE.require_staged_report_manifest(staging)
+
     def test_synthesis_install_failure_removes_only_installed_packet_files(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
             root = Path(temporary)

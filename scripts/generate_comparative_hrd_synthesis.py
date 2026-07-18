@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import os
 import re
@@ -101,6 +102,14 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def canonical_json_bytes(value: Dict[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def sha256_bytes(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
 
 
 def load_object(path: Path, label: str) -> Dict[str, Any]:
@@ -729,10 +738,11 @@ def render_report(
 
 
 def write_agreement(path: Path, rows: Sequence[Dict[str, str]]) -> None:
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=AGREEMENT_FIELDS, lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
+    handle = io.StringIO(newline="")
+    writer = csv.DictWriter(handle, fieldnames=AGREEMENT_FIELDS, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    write_staged_text(path, handle.getvalue())
 
 
 def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
@@ -781,6 +791,75 @@ def require_safe_new_packet(path: Path) -> Path:
     if path.exists():
         raise ValueError("synthesis output packet already exists: " + path.name)
     return path.resolve()
+
+
+def require_safe_new_staged_file(path: Path) -> Path:
+    require_no_symlinked_ancestors(path, "staged synthesis packet")
+    if path.is_symlink():
+        raise ValueError("staged synthesis packet may not be a symlink: " + path.name)
+    if path.exists():
+        raise ValueError("staged synthesis packet already exists: " + path.name)
+    return path.resolve()
+
+
+def require_staged_bytes(path: Path, expected_sha256: str) -> None:
+    path = require_real_nonempty_file(path, "staged synthesis packet")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError("staged synthesis packet mode is not 0600: " + str(path))
+    if sha256(path) != expected_sha256:
+        raise ValueError("staged synthesis packet changed during write: " + path.name)
+
+
+def write_staged_bytes(path: Path, payload: bytes) -> None:
+    expected_sha256 = sha256_bytes(payload)
+    path = require_safe_new_staged_file(path)
+    file_descriptor = -1
+    try:
+        file_descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(file_descriptor, "wb") as handle:
+            file_descriptor = -1
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        fsync_directory(path.parent)
+        require_staged_bytes(path, expected_sha256)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    finally:
+        if file_descriptor >= 0:
+            os.close(file_descriptor)
+
+
+def write_staged_text(path: Path, text: str) -> None:
+    write_staged_bytes(path, text.encode("utf-8"))
+
+
+def require_staged_report_manifest(staging: Path) -> None:
+    manifest = load_object(staging / "report_manifest.json", "staged synthesis packet")
+    expected = [
+        ("report.md", str(manifest.get("report_sha256", ""))),
+        (
+            "agreement_disagreement.csv",
+            str(manifest.get("agreement_disagreement_sha256", "")),
+        ),
+    ]
+    support_hashes = manifest.get("support_sha256")
+    if not isinstance(support_hashes, dict):
+        raise ValueError("comparative synthesis manifest lacks support hashes")
+    expected.append(
+        (
+            "agreement_disagreement.csv",
+            str(support_hashes.get("agreement_disagreement.csv", "")),
+        )
+    )
+
+    for filename, expected_sha256 in expected:
+        observed_sha256 = sha256(
+            require_real_nonempty_file(staging / filename, "staged synthesis packet")
+        )
+        if observed_sha256 != expected_sha256:
+            raise ValueError("comparative synthesis manifest is stale for " + filename)
 
 
 def copy_create_only(source: Path, destination: Path) -> None:
@@ -920,7 +999,7 @@ def main() -> None:
         staging = Path(temporary)
         report_path = staging / "report.md"
         agreement_path = staging / "agreement_disagreement.csv"
-        report_path.write_text(report, encoding="utf-8")
+        write_staged_text(report_path, report)
         write_agreement(agreement_path, agreement_rows)
         status_counts: Dict[str, int] = {}
         for row in agreement_rows:
@@ -1021,7 +1100,8 @@ def main() -> None:
             },
         }
         manifest_path = staging / "report_manifest.json"
-        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        write_staged_bytes(manifest_path, canonical_json_bytes(manifest))
+        require_staged_report_manifest(staging)
         try:
             install_packet_create_only(
                 (report_path, agreement_path, manifest_path),
