@@ -208,9 +208,18 @@ def copy_create_only(source: Path, destination: Path) -> None:
                 destination_handle.write(chunk)
             destination_handle.flush()
             os.fsync(destination_handle.fileno())
+        fsync_directory(destination.parent)
     except Exception:
         destination.unlink(missing_ok=True)
         raise
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def copy_route_support_files(source_dir: Path, staging: Path) -> None:
@@ -245,6 +254,7 @@ def install_staged_packet(staging: Path, output_dir: Path) -> None:
             destination = output_dir / name
             copy_create_only(staging / name, destination)
             installed.append(destination)
+        fsync_directory(output_dir)
     except Exception:
         shutil.rmtree(output_dir, ignore_errors=True)
         raise

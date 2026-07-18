@@ -123,7 +123,7 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 STAGE.copy_create_only(source, destination)
 
             self.assertEqual(destination.read_bytes(), b"one\n")
-            self.assertEqual(fsync.call_count, 1)
+            self.assertEqual(fsync.call_count, 2)
 
             source.write_bytes(b"two\n")
             with self.assertRaisesRegex(
@@ -133,6 +133,46 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 STAGE.copy_create_only(source, destination)
 
             self.assertEqual(destination.read_bytes(), b"one\n")
+
+    def test_packet_file_install_removes_partial_after_file_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+
+            with (
+                mock.patch.object(
+                    STAGE.os,
+                    "fsync",
+                    side_effect=OSError("synthetic file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                STAGE.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_packet_file_install_removes_partial_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+
+            with (
+                mock.patch.object(
+                    STAGE.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                STAGE.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
 
     def test_stage_compacts_route_tree_and_remains_publishable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -426,6 +466,36 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     "synthetic untracked install failure",
                 ):
                     STAGE.stage(source, verification, output, "sigprofiler_sbs3")
+
+            self.assertFalse(output.exists())
+
+    def test_stage_cleans_output_after_final_directory_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "staged"
+            staging.mkdir()
+            for name in ("method_spec.json", "report.md", "report_manifest.json"):
+                path = staging / name
+                path.write_text(f"{name}\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    STAGE,
+                    "fsync_directory",
+                    side_effect=(
+                        None,
+                        None,
+                        None,
+                        OSError("synthetic packet directory fsync failure"),
+                    ),
+                ),
+                self.assertRaisesRegex(
+                    OSError,
+                    "synthetic packet directory fsync failure",
+                ),
+            ):
+                STAGE.install_staged_packet(staging, output)
 
             self.assertFalse(output.exists())
 
