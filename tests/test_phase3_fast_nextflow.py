@@ -19,6 +19,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_CACHE_MANIFEST", text)
         self.assertIn("process FAST_STAGING_PLAN", text)
         self.assertIn("process FAST_PARABRICKS_MUTECT_PLAN", text)
+        self.assertIn("process FAST_FILTER_MUTECT_PLAN", text)
         self.assertNotIn("process FAST_STAGE_INPUTS", text)
         self.assertIn("workflow PHASE3_WGS_FAST", text)
         self.assertIn("'phase3_wgs_fast'", text)
@@ -30,6 +31,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("build:phase3-fast-cache-manifest", text)
         self.assertIn("stage:phase3-fast-inputs", text)
         self.assertIn("build:phase3-fast-parabricks-mutect-plan", text)
+        self.assertIn("build:phase3-fast-filter-mutect-plan", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/input_manifest.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/replication_plan.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/replication_receipt.json", text)
@@ -37,8 +39,10 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("workspace/manifests/phase3_wgs_fast/staging_plan.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json", text)
+        self.assertIn("workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json", text)
         self.assertIn("phase3_wgs_fast_staged_inputs_manifest", text)
         self.assertIn("phase3_wgs_fast_parabricks_mutect_plan", text)
+        self.assertIn("phase3_wgs_fast_filter_mutect_plan", text)
 
     def test_fast_input_manifest_receipts_are_nextflow_path_inputs(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")
@@ -72,6 +76,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             "phase3_fast_parabricks_memory",
             "phase3_fast_parabricks_num_gpus",
             "phase3_fast_parabricks_output_root",
+            "phase3_fast_filter_mutect_output_root",
             "phase3_fast_gatk_version",
             "phase3_fast_source_commit",
             "phase3_fast_run_id",
@@ -100,6 +105,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("FAST_CACHE_MANIFEST(FAST_REPLICATE_INPUTS.out)", text)
         self.assertIn("FAST_STAGING_PLAN(FAST_CACHE_MANIFEST.out)", text)
         self.assertIn("FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)", text)
+        self.assertIn("FAST_FILTER_MUTECT_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
         self.assertIn("phase3_fast_replication_mode.toString().replace('-', '_') == 'apply'", text)
         self.assertIn('export PHASE3_WGS_FAST_INPUT_MANIFEST="\\$PWD/${input_manifest}"', text)
         self.assertIn('export PHASE3_WGS_FAST_CACHE_PREFIX="${params.phase3_fast_cache_prefix}"', text)
@@ -135,6 +141,23 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn('export PHASE3_WGS_FAST_PARABRICKS_OUTPUT_ROOT="${params.phase3_fast_parabricks_output_root}"', text)
         self.assertIn('export PHASE3_WGS_FAST_PARABRICKS_NUM_GPUS="${params.phase3_fast_parabricks_num_gpus}"', text)
 
+    def test_filter_mutect_plan_consumes_parabricks_handoff_tuple(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "tuple path('workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json'), "
+            "path('workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json')",
+            text,
+        )
+        self.assertIn("tuple path(staged_inputs_manifest), path(parabricks_mutect_plan)", text)
+        self.assertIn('export PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST="\\$PWD/${staged_inputs_manifest}"', text)
+        self.assertIn('export PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN="\\$PWD/${parabricks_mutect_plan}"', text)
+        self.assertIn(
+            'export PHASE3_WGS_FAST_FILTER_MUTECT_PLAN_OUTPUT="\\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json"',
+            text,
+        )
+        self.assertIn('export PHASE3_WGS_FAST_FILTER_MUTECT_OUTPUT_ROOT="${params.phase3_fast_filter_mutect_output_root}"', text)
+
     def test_fast_planning_and_gpu_processes_have_separate_aws_labels(self) -> None:
         main = MAIN_NF.read_text(encoding="utf-8")
         config = NEXTFLOW_CONFIG.read_text(encoding="utf-8")
@@ -149,6 +172,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_fast_parabricks_memory = '1900 GB'", config)
         self.assertIn("phase3_fast_parabricks_num_gpus = 8", config)
         self.assertIn("phase3_fast_parabricks_output_root = '/scratch/diana/phase3_wgs_fast/parabricks_mutect'", config)
+        self.assertIn("phase3_fast_filter_mutect_output_root = '/scratch/diana/phase3_wgs_fast/filter_mutect'", config)
 
 
 if __name__ == "__main__":

@@ -66,6 +66,7 @@ params.phase3_fast_parabricks_cpus = params.phase3_fast_parabricks_cpus ?: 192
 params.phase3_fast_parabricks_memory = params.phase3_fast_parabricks_memory ?: '1900 GB'
 params.phase3_fast_parabricks_num_gpus = params.phase3_fast_parabricks_num_gpus ?: 8
 params.phase3_fast_parabricks_output_root = params.phase3_fast_parabricks_output_root ?: '/scratch/diana/phase3_wgs_fast/parabricks_mutect'
+params.phase3_fast_filter_mutect_output_root = params.phase3_fast_filter_mutect_output_root ?: '/scratch/diana/phase3_wgs_fast/filter_mutect'
 params.phase3_fast_gatk_version = params.phase3_fast_gatk_version ?: '4.6.2.0'
 params.phase3_fast_source_commit = params.phase3_fast_source_commit ?: ''
 params.phase3_fast_run_id = params.phase3_fast_run_id ?: 'diana-wgs-hrd-20260716T033101Z'
@@ -916,8 +917,7 @@ process FAST_PARABRICKS_MUTECT_PLAN {
     path staging_plan
 
     output:
-    path 'workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json'
-    path 'workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json'
+    tuple path('workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json'), path('workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json')
 
     script:
     """
@@ -951,6 +951,49 @@ process FAST_PARABRICKS_MUTECT_PLAN {
     {
       "schema_version": 1,
       "manifest_type": "phase3_wgs_fast_parabricks_mutect_plan",
+      "status": "stubbed",
+      "commands": {},
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
+process FAST_FILTER_MUTECT_PLAN {
+    tag "fast_filter_mutect_plan_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/filter_mutect_plan", mode: 'copy', overwrite: true
+
+    input:
+    tuple path(staged_inputs_manifest), path(parabricks_mutect_plan)
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST="\$PWD/${staged_inputs_manifest}"
+    export PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN="\$PWD/${parabricks_mutect_plan}"
+    export PHASE3_WGS_FAST_FILTER_MUTECT_PLAN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json"
+    export PHASE3_WGS_FAST_FILTER_MUTECT_OUTPUT_ROOT="${params.phase3_fast_filter_mutect_output_root}"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-filter-mutect-plan
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_filter_mutect_plan",
       "status": "stubbed",
       "commands": {},
       "interpretation": {
@@ -1004,6 +1047,7 @@ workflow PHASE3_WGS_FAST {
         FAST_CACHE_MANIFEST(FAST_REPLICATE_INPUTS.out)
         FAST_STAGING_PLAN(FAST_CACHE_MANIFEST.out)
         FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
+        FAST_FILTER_MUTECT_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
     }
 }
 
