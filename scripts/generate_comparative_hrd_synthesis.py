@@ -837,8 +837,8 @@ def write_staged_text(path: Path, text: str) -> None:
     write_staged_bytes(path, text.encode("utf-8"))
 
 
-def require_staged_report_manifest(staging: Path) -> None:
-    manifest = load_object(staging / "report_manifest.json", "staged synthesis packet")
+def require_synthesis_report_manifest(packet_dir: Path) -> None:
+    manifest = load_object(packet_dir / "report_manifest.json", "synthesis packet")
     expected = [
         ("report.md", str(manifest.get("report_sha256", ""))),
         (
@@ -858,7 +858,7 @@ def require_staged_report_manifest(staging: Path) -> None:
 
     for filename, expected_sha256 in expected:
         observed_sha256 = sha256(
-            require_real_nonempty_file(staging / filename, "staged synthesis packet")
+            require_real_nonempty_file(packet_dir / filename, "synthesis packet")
         )
         if observed_sha256 != expected_sha256:
             raise ValueError("comparative synthesis manifest is stale for " + filename)
@@ -915,9 +915,13 @@ def fsync_directory(path: Path) -> None:
 
 def install_packet_create_only(staged_paths: Sequence[Path], output: Path) -> None:
     installed: List[Path] = []
+    expected_hashes: Dict[Path, str] = {}
     try:
         for path in staged_paths:
             destination = output / path.name
+            expected_hashes[destination] = sha256(
+                require_real_nonempty_file(path, "staged synthesis packet")
+            )
             destination_preexisted = destination.exists() or destination.is_symlink()
             try:
                 copy_create_only(path, destination)
@@ -927,6 +931,17 @@ def install_packet_create_only(staged_paths: Sequence[Path], output: Path) -> No
                 raise
             installed.append(destination)
         fsync_directory(output)
+        for destination, expected_sha256 in expected_hashes.items():
+            installed_path = require_real_nonempty_file(
+                destination,
+                "synthesis output packet",
+            )
+            if sha256(installed_path) != expected_sha256:
+                raise ValueError(
+                    "synthesis output packet changed during install: "
+                    + destination.name
+                )
+        require_synthesis_report_manifest(output)
     except Exception:
         for path in reversed(installed):
             path.unlink(missing_ok=True)
@@ -1103,7 +1118,7 @@ def main() -> None:
         }
         manifest_path = staging / "report_manifest.json"
         write_staged_bytes(manifest_path, canonical_json_bytes(manifest))
-        require_staged_report_manifest(staging)
+        require_synthesis_report_manifest(staging)
         try:
             install_packet_create_only(
                 (report_path, agreement_path, manifest_path),

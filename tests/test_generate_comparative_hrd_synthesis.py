@@ -479,7 +479,7 @@ class GenerateSynthesisTests(unittest.TestCase):
                 ValueError,
                 "comparative synthesis manifest is stale for report.md",
             ):
-                GENERATE.require_staged_report_manifest(staging)
+                GENERATE.require_synthesis_report_manifest(staging)
 
     def test_synthesis_rejects_stale_staged_agreement_manifest_binding(
         self,
@@ -509,7 +509,7 @@ class GenerateSynthesisTests(unittest.TestCase):
                 ValueError,
                 "comparative synthesis manifest is stale for agreement_disagreement.csv",
             ):
-                GENERATE.require_staged_report_manifest(staging)
+                GENERATE.require_synthesis_report_manifest(staging)
 
     def test_synthesis_install_failure_removes_only_installed_packet_files(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
@@ -632,6 +632,93 @@ class GenerateSynthesisTests(unittest.TestCase):
                 self.assertRaisesRegex(
                     OSError,
                     "synthetic synthesis directory fsync failure",
+                ),
+            ):
+                GENERATE.install_packet_create_only(staged_paths, output)
+
+            self.assertTrue(output.is_dir())
+            self.assertEqual([], list(output.iterdir()))
+
+    def test_synthesis_install_removes_installed_files_after_stale_installed_manifest(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "synthesis"
+            staging.mkdir()
+            output.mkdir()
+
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            GENERATE.write_agreement(agreement, [])
+            GENERATE.write_staged_bytes(
+                manifest,
+                GENERATE.canonical_json_bytes(
+                    {
+                        "report_sha256": sha256(report),
+                        "agreement_disagreement_sha256": "0" * 64,
+                        "support_sha256": {
+                            "agreement_disagreement.csv": "0" * 64,
+                        },
+                    }
+                ),
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis manifest is stale for "
+                "agreement_disagreement.csv",
+            ):
+                GENERATE.install_packet_create_only(
+                    (report, agreement, manifest),
+                    output,
+                )
+
+            self.assertTrue(output.is_dir())
+            self.assertEqual([], list(output.iterdir()))
+
+    def test_synthesis_install_rechecks_installed_files_after_final_directory_fsync(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "synthesis"
+            staging.mkdir()
+            output.mkdir()
+            staged_paths = []
+            for name in (
+                "report.md",
+                "agreement_disagreement.csv",
+                "report_manifest.json",
+            ):
+                path = staging / name
+                path.write_text(f"{name}\n", encoding="utf-8")
+                staged_paths.append(path)
+
+            real_fsync_directory = GENERATE.fsync_directory
+
+            def tamper_after_output_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                if path == output:
+                    (output / "agreement_disagreement.csv").write_text(
+                        "tampered after final output fsync\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    GENERATE,
+                    "fsync_directory",
+                    side_effect=tamper_after_output_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "synthesis output packet changed during install: "
+                    "agreement_disagreement.csv",
                 ),
             ):
                 GENERATE.install_packet_create_only(staged_paths, output)
