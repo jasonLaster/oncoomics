@@ -977,6 +977,37 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertFalse(receipt.exists())
 
+    def test_create_receipt_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+            original_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                original_fsync_directory(parent)
+                receipt.write_text(
+                    json.dumps({"status": "tampered"}) + "\n",
+                    encoding="utf-8",
+                )
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private output changed during write",
+                ),
+            ):
+                MODULE.write_private_atomic(
+                    receipt,
+                    {"status": "preflighting"},
+                    create=True,
+                )
+
+            self.assertFalse(receipt.exists())
+
     def test_replace_receipt_fsyncs_parent_after_atomic_replace(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             receipt = Path(temporary) / "receipt.json"
@@ -1001,6 +1032,45 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             self.assertEqual(
                 json.loads(receipt.read_text(encoding="utf-8")),
                 {"status": "dry_run"},
+            )
+
+    def test_replace_receipt_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+            MODULE.write_private_atomic(
+                receipt,
+                {"status": "preflighting"},
+                create=True,
+            )
+            original_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                original_fsync_directory(parent)
+                receipt.write_text(
+                    json.dumps({"status": "tampered"}) + "\n",
+                    encoding="utf-8",
+                )
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private output changed during write",
+                ),
+            ):
+                MODULE.write_private_atomic(
+                    receipt,
+                    {"status": "dry_run"},
+                    create=False,
+                )
+
+            self.assertEqual(
+                json.loads(receipt.read_text(encoding="utf-8")),
+                {"status": "tampered"},
             )
 
     def test_private_receipt_symlink_is_rejected(self) -> None:

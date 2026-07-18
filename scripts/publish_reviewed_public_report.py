@@ -167,6 +167,10 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
 def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
@@ -233,33 +237,46 @@ def fsync_directory(path: Path) -> None:
 def write_private_atomic(path: Path, value: dict[str, Any], *, create: bool) -> None:
     require_safe_receipt_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    if create:
-        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        temporary: Path | None = None
-    else:
-        if not path.is_file() or (path.stat().st_mode & 0o777) != 0o600:
-            raise ValueError("reserved receipt output is missing or not mode 0600")
-        descriptor, raw = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-        os.fchmod(descriptor, 0o600)
-        temporary = Path(raw)
+    data = canonical_bytes(value)
+    expected_sha256 = sha256_bytes(data)
+    descriptor, raw = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    os.fchmod(descriptor, 0o600)
+    temporary = Path(raw)
+    linked = False
     try:
+        if not create:
+            if not path.is_file() or (path.stat().st_mode & 0o777) != 0o600:
+                raise ValueError("reserved receipt output is missing or not mode 0600")
         with os.fdopen(descriptor, "wb") as handle:
             descriptor = -1
-            handle.write(canonical_bytes(value))
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
-        if temporary is not None:
+        if create:
+            os.link(temporary, path)
+            linked = True
+        else:
             os.replace(temporary, path)
         fsync_directory(path.parent)
+        require_installed_private_output(path, expected_sha256)
     except Exception:
-        if temporary is None:
+        if create and linked:
             path.unlink(missing_ok=True)
         raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
-        if temporary is not None:
-            temporary.unlink(missing_ok=True)
+        temporary.unlink(missing_ok=True)
+
+
+def require_installed_private_output(path: Path, expected_sha256: str) -> None:
+    require_safe_receipt_output_parent(path)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"private output changed during write: {path}")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"private output mode is not 0600: {path}")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"private output changed during write: {path}")
 
 
 def aws_json(arguments: list[str], region: str) -> dict[str, Any]:
