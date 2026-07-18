@@ -144,7 +144,7 @@ def require_validation_receipt_packet_sha256s(
     validate_forbidden_token_inventory(payload, expected_forbidden_tokens_sha256)
 
     packet_sha256s: dict[str, str] = {}
-    for expected_method_id, packet in zip(PHASE3_FAST_VALIDATED_METHOD_IDS, packets, strict=True):
+    for expected_method_id, packet in zip(PHASE3_FAST_VALIDATED_METHOD_IDS, packets):
         if not isinstance(packet, dict):
             raise ValueError("report packet validation receipt packet rows must be objects")
         method_id = packet.get("method_id")
