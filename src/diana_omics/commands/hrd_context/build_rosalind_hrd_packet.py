@@ -786,6 +786,10 @@ PACKET_REPORT_FILES = {
     "report.md",
     "report_manifest.json",
 }
+PACKET_REPORT_SUPPORT_FILES = PACKET_REPORT_FILES - {
+    "report.md",
+    "report_manifest.json",
+}
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 EXPECTED_SBS96 = {
     (mutation, f"{left}[{mutation}]{right}")
@@ -1995,6 +1999,45 @@ def scan_generated_packet(paths: Sequence[Path], forbidden_tokens: Sequence[str]
         raise ValueError("Diana WGS generated-output identifier scan failed: " + "; ".join(findings))
 
 
+def require_sha256(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not HEX64.fullmatch(value):
+        raise ValueError(f"{label} must be a SHA-256 hex digest")
+    return value
+
+
+def require_bound_packet_file(packet_dir: Path, name: str, digest: Any) -> None:
+    if name != Path(name).name:
+        raise ValueError("Rosalind report manifest contains a non-local support path")
+
+    expected_sha256 = require_sha256(digest, f"{name} SHA-256")
+    path = require_real_nonempty_file(packet_dir / name, f"Rosalind packet {name}")
+    if sha256_file(path) != expected_sha256:
+        raise ValueError(f"Rosalind report manifest is stale for {name}")
+
+
+def require_rosalind_report_manifest(packet_dir: Path) -> None:
+    manifest = read_json(
+        require_real_nonempty_file(
+            packet_dir / "report_manifest.json", "Rosalind report manifest"
+        )
+    )
+    if not isinstance(manifest, Mapping):
+        raise ValueError("Rosalind report manifest must be a JSON object")
+
+    support_sha256 = manifest.get("support_sha256")
+    if not isinstance(support_sha256, Mapping):
+        raise ValueError("Rosalind report manifest support_sha256 must be an object")
+
+    if set(support_sha256) != PACKET_REPORT_SUPPORT_FILES:
+        raise ValueError("Rosalind report manifest support files changed")
+
+    require_bound_packet_file(packet_dir, "report.md", manifest.get("report_sha256"))
+    for name, digest in support_sha256.items():
+        if not isinstance(name, str):
+            raise ValueError("Rosalind report manifest support files changed")
+        require_bound_packet_file(packet_dir, name, digest)
+
+
 def prepare_diana_wgs_output_dir(output: Path, expected_files: Iterable[str]) -> None:
     expected = set(expected_files)
     if output.is_symlink():
@@ -2100,6 +2143,7 @@ def install_diana_wgs_packet(staged_paths: Sequence[Path], output: Path) -> None
                 raise
             installed.append(destination)
         fsync_directory(output)
+        require_rosalind_report_manifest(output)
     except Exception:
         for path in reversed(installed):
             path.unlink(missing_ok=True)
@@ -2347,11 +2391,17 @@ def write_packet_to_dir(
     }
     write_json_create_only(report_manifest_path, report_manifest)
     packet_files = [*generated_paths.values(), report_path, report_manifest_path]
-    if spec.sample_set == "diana_wgs":
-        scan_generated_packet(
-            packet_files,
-            forbidden_tokens,
-        )
+    try:
+        require_rosalind_report_manifest(output_path)
+        if spec.sample_set == "diana_wgs":
+            scan_generated_packet(
+                packet_files,
+                forbidden_tokens,
+            )
+    except Exception:
+        for path in packet_files:
+            path.unlink(missing_ok=True)
+        raise
     report_manifest_sha256 = sha256_file(report_manifest_path)
     if final_output_path is not None:
         install_diana_wgs_packet(packet_files, final_output_path)

@@ -234,6 +234,28 @@ def write_phase3_fast_deterministic_report(root: Path) -> tuple[Path, Path]:
     return deterministic_root, final_root
 
 
+def write_staged_rosalind_packet(root: Path) -> list[Path]:
+    root.mkdir(parents=True, exist_ok=True)
+    for name in packet.PACKET_REPORT_SUPPORT_FILES:
+        (root / name).write_text(f"{name}\n", encoding="utf-8")
+    (root / "report.md").write_text("report\n", encoding="utf-8")
+    utils.write_json(
+        root / "report_manifest.json",
+        {
+            "schema_version": 1,
+            "method_id": "rosalind_diana_wgs",
+            "support_sha256": {
+                name: hashlib.sha256((root / name).read_bytes()).hexdigest()
+                for name in packet.PACKET_REPORT_SUPPORT_FILES
+            },
+            "report_sha256": hashlib.sha256(
+                (root / "report.md").read_bytes()
+            ).hexdigest(),
+        },
+    )
+    return [root / name for name in packet.PACKET_REPORT_FILES]
+
+
 class RosalindHrdPacketTest(unittest.TestCase):
     def test_packet_file_writes_are_create_only_and_fsynced(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1289,20 +1311,19 @@ class RosalindHrdPacketTest(unittest.TestCase):
             root = Path(temporary)
             staging = root / "staging"
             output = root / "output"
-            staging.mkdir()
             output.mkdir()
-
-            for name in ("report.md", "report_manifest.json"):
-                (staging / name).write_text(f"{name}\n", encoding="utf-8")
+            staged_paths = write_staged_rosalind_packet(staging)
 
             with (
                 patch.object(
                     packet,
                     "fsync_directory",
-                    side_effect=(
-                        None,
-                        None,
-                        OSError("synthetic final directory fsync failure"),
+                    side_effect=lambda path: (
+                        (_ for _ in ()).throw(
+                            OSError("synthetic final directory fsync failure")
+                        )
+                        if path == output
+                        else None
                     ),
                 ),
                 self.assertRaisesRegex(
@@ -1310,10 +1331,90 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     "synthetic final directory fsync failure",
                 ),
             ):
-                packet.install_diana_wgs_packet(
-                    [staging / "report.md", staging / "report_manifest.json"],
-                    output,
-                )
+                packet.install_diana_wgs_packet(staged_paths, output)
+
+            self.assertEqual(list(output.iterdir()), [])
+
+    def test_diana_wgs_packet_rejects_stale_staged_report_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(
+                output_root / "deterministic",
+                artifact_root,
+            )
+            real_fsync_directory = packet.fsync_directory
+            tampered = False
+
+            def tamper_after_manifest_fsync(path: Path) -> None:
+                nonlocal tampered
+                real_fsync_directory(path)
+                if tampered:
+                    return
+                for manifest in (
+                    output_root / "results/rosalind_hrd/diana_wgs"
+                ).glob(".unit.*/report_manifest.json"):
+                    (manifest.parent / "reviewer_packet.md").write_text(
+                        "tampered packet\n",
+                        encoding="utf-8",
+                    )
+                    tampered = True
+
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "fsync_directory",
+                    side_effect=tamper_after_manifest_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "Rosalind report manifest is stale for reviewer_packet.md",
+                ),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertTrue(tampered)
+            self.assertEqual(list(output_dir.iterdir()), [])
+
+    def test_diana_wgs_packet_cleans_current_attempt_after_final_manifest_stale(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "output"
+            output.mkdir()
+            staged_paths = write_staged_rosalind_packet(staging)
+            real_fsync_directory = packet.fsync_directory
+
+            def tamper_after_final_directory_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                if path == output:
+                    (output / "reviewer_packet.md").write_text(
+                        "tampered final packet\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                patch.object(
+                    packet,
+                    "fsync_directory",
+                    side_effect=tamper_after_final_directory_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "Rosalind report manifest is stale for reviewer_packet.md",
+                ),
+            ):
+                packet.install_diana_wgs_packet(staged_paths, output)
 
             self.assertEqual(list(output.iterdir()), [])
 
