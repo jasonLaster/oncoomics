@@ -613,8 +613,8 @@ class SyntheticFixture:
                 {
                     "relative_key": relative,
                     "source": {
-                        "bucket": "diana-omics-results-test",
-                        "key": f"runs/diana-hrd/{RUN_ID}/artifacts/{relative}",
+                        "bucket": "diana-omics-work-test",
+                        "key": f"runs/diana-hrd/{RUN_ID}/private-results/final/artifacts/{relative}",
                         "version_id": "source-version",
                         "bytes": path.stat().st_size,
                         "etag": "synthetic",
@@ -623,7 +623,7 @@ class SyntheticFixture:
                     },
                     "destination": {
                         "bucket": "diana-omics-private-results-test",
-                        "key": f"runs/subject01/{RUN_ID}/deterministic/artifacts/{relative}",
+                        "key": f"runs/subject01/{RUN_ID}/deterministic/final/{relative}",
                         "version_id": f"destination-version-{index}",
                         "bytes": path.stat().st_size,
                         "etag": "synthetic",
@@ -654,8 +654,8 @@ class SyntheticFixture:
                     "path": str(self.aux / "execution.json"),
                     "sha256": sha256(self.aux / "execution.json"),
                 },
-                "source_prefix": f"s3://diana-omics-results-test/runs/diana-hrd/{RUN_ID}/artifacts/",
-                "destination_prefix": f"s3://diana-omics-private-results-test/runs/subject01/{RUN_ID}/deterministic/artifacts/",
+                "source_prefix": f"s3://diana-omics-work-test/runs/diana-hrd/{RUN_ID}/private-results/final/artifacts/",
+                "destination_prefix": f"s3://diana-omics-private-results-test/runs/subject01/{RUN_ID}/deterministic/final/",
                 "kms_key_arn": KMS_ARN,
                 "script_sha256": "e" * 64,
                 "destination_bucket_versioning": "Enabled",

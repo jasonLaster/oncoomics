@@ -251,7 +251,7 @@ def validate_final_sources(
     if not isinstance(expected_count, int) or isinstance(expected_count, bool) or expected_count <= 0:
         raise ValueError("final freeze object_count must be a positive integer")
     job_id = str(freeze.get("batch_job_id", ""))
-    expected_prefix = f"s3://diana-omics-private-results-{ACCOUNT_ID}-{REGION}/runs/subject01/{run_id}/deterministic/artifacts/"
+    expected_prefix = f"s3://diana-omics-private-results-{ACCOUNT_ID}-{REGION}/runs/subject01/{run_id}/deterministic/final/"
     freeze_rows = require_unique_rows(
         freeze.get("objects"),
         key_field="relative_key",
@@ -301,7 +301,7 @@ def validate_final_sources(
         row_checks = row.get("checks")
         if not isinstance(source, dict) or not isinstance(destination, dict):
             raise ValueError(f"final freeze row lacks source/destination: {relative}")
-        expected_key = f"runs/subject01/{run_id}/deterministic/artifacts/{relative}"
+        expected_key = f"runs/subject01/{run_id}/deterministic/final/{relative}"
         row_valid = (
             row.get("status") == "passed"
             and passed_checks(row_checks, exact=EXPECTED_FINAL_ROW_CHECKS)

@@ -729,13 +729,13 @@ def validate_final_freeze_provenance(
     source_prefix = str(receipt.get("source_prefix", ""))
     destination_prefix = str(receipt.get("destination_prefix", ""))
     source_match = re.fullmatch(
-        rf"s3://(diana-omics-results-([^/]+))/"
-        rf"(runs/diana-hrd/{re.escape(run_id)}/artifacts/)",
+        rf"s3://(diana-omics-work-([^/]+))/"
+        rf"(runs/diana-hrd/{re.escape(run_id)}/private-results/final/artifacts/)",
         source_prefix,
     )
     destination_match = re.fullmatch(
         rf"s3://(diana-omics-private-results-([^/]+))/"
-        rf"(runs/subject01/{re.escape(run_id)}/deterministic/artifacts/)",
+        rf"(runs/subject01/{re.escape(run_id)}/deterministic/final/)",
         destination_prefix,
     )
     source_bucket = source_match.group(1) if source_match else ""
@@ -1698,13 +1698,10 @@ def main() -> None:
         "staged_input_validation.json",
     }
     freeze_destination_prefix = str(final_freeze.get("destination_prefix", ""))
-    artifact_suffix = "/deterministic/artifacts/"
+    final_suffix = "/deterministic/final/"
     crosscheck_output_prefix = ""
-    if freeze_destination_prefix.endswith(artifact_suffix):
-        crosscheck_output_prefix = (
-            freeze_destination_prefix[: -len(artifact_suffix)]
-            + "/deterministic/final/"
-        )
+    if freeze_destination_prefix.endswith(final_suffix):
+        crosscheck_output_prefix = freeze_destination_prefix
     crosscheck_outputs_valid = (
         bool(crosscheck_output_prefix)
         and set(crosscheck_outputs) == expected_crosscheck_output_names

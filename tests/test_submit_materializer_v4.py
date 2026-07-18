@@ -27,7 +27,7 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         self.job_id = "6f827d44-d19b-4a6c-9126-d65189aa66cf"
         self.kms = "arn:aws:kms:us-east-1:172630973301:key/45aa290c-d70c-4d86-9c8d-c4a76f1ff97f"
         self.private_bucket = "diana-omics-private-results-172630973301-us-east-1"
-        self.final_prefix = f"runs/subject01/{self.run_id}/deterministic/artifacts/"
+        self.final_prefix = f"runs/subject01/{self.run_id}/deterministic/final/"
         self.final_freeze = self.root / "final-freeze.json"
         self.final_anchor = self.root / "final-freeze-anchor.json"
         self.exact_materialization = self.root / "exact-materialization.json"
