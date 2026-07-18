@@ -489,27 +489,47 @@ def validate_identity(region: str) -> dict[str, Any]:
 
 
 def create_private(path: Path, content: bytes) -> None:
+    require_safe_new_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
-        with os.fdopen(descriptor, "wb") as handle:
-            descriptor = -1
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                descriptor = -1
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            if (path.stat().st_mode & 0o777) != 0o600:
+                raise ValueError(f"private output mode is not 0600: {path}")
+            fsync_directory(path.parent)
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
-    if (path.stat().st_mode & 0o777) != 0o600:
-        raise ValueError(f"private output mode is not 0600: {path}")
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def reserve_private(path: Path) -> int:
+    require_safe_new_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    if (path.stat().st_mode & 0o777) != 0o600:
+    try:
+        if (path.stat().st_mode & 0o777) != 0o600:
+            raise ValueError(f"private output mode is not 0600: {path}")
+        fsync_directory(path.parent)
+    except Exception:
         os.close(descriptor)
-        raise ValueError(f"private output mode is not 0600: {path}")
+        path.unlink(missing_ok=True)
+        raise
     return descriptor
 
 
@@ -526,14 +546,25 @@ def require_new_outputs(paths: Iterable[Path]) -> None:
     if len(set(resolved)) != len(resolved):
         raise ValueError("private request/response output paths must be distinct")
     for path in values:
-        if path.is_symlink():
-            raise FileExistsError(f"private output may not be a symlink: {path}")
-        if path.parent.is_symlink():
-            raise FileExistsError(
-                f"private output parent may not be a symlink: {path.parent}"
-            )
+        require_safe_new_output_parent(path)
         if path.exists():
             raise FileExistsError(f"refusing to overwrite private output: {path}")
+
+
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_safe_new_output_parent(path: Path) -> None:
+    if path.is_symlink():
+        raise FileExistsError(f"private output may not be a symlink: {path}")
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise FileExistsError(
+                f"private output parent may not be a symlink: {parent}"
+            )
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
 
 
 def build_submission_environment(

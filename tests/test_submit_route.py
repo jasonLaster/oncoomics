@@ -331,6 +331,63 @@ class SubmitRouteTests(unittest.TestCase):
             self.assertFalse(self.request.exists())
             self.assertFalse(self.response.exists())
 
+    def test_request_receipt_fsyncs_parent_directory(self) -> None:
+        with mock.patch.object(
+            MODULE,
+            "fsync_directory",
+            wraps=MODULE.fsync_directory,
+        ) as fsync_directory:
+            MODULE.create_private(self.request, b'{"status":"passed"}\n')
+
+        fsync_directory.assert_called_once_with(self.request.parent)
+
+    def test_request_receipt_is_removed_after_parent_fsync_failure(self) -> None:
+        with (
+            mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                side_effect=OSError("synthetic request parent fsync failure"),
+            ),
+            self.assertRaisesRegex(
+                OSError,
+                "synthetic request parent fsync failure",
+            ),
+        ):
+            MODULE.create_private(self.request, b'{"status":"passed"}\n')
+
+        self.assertFalse(self.request.exists())
+
+    def test_response_reservation_fsyncs_parent_directory(self) -> None:
+        descriptor = -1
+        try:
+            with mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                wraps=MODULE.fsync_directory,
+            ) as fsync_directory:
+                descriptor = MODULE.reserve_private(self.response)
+
+            fsync_directory.assert_called_once_with(self.response.parent)
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
+
+    def test_response_reservation_is_removed_after_parent_fsync_failure(self) -> None:
+        with (
+            mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                side_effect=OSError("synthetic response parent fsync failure"),
+            ),
+            self.assertRaisesRegex(
+                OSError,
+                "synthetic response parent fsync failure",
+            ),
+        ):
+            MODULE.reserve_private(self.response)
+
+        self.assertFalse(self.response.exists())
+
     def test_submit_captures_job_id_and_arn_in_distinct_mode_0600_receipt(self) -> None:
         receipt = self.preflight_receipt()
         job_id = "12345678-1234-1234-1234-123456789abc"
@@ -451,6 +508,8 @@ class SubmitRouteTests(unittest.TestCase):
             MODULE.require_new_outputs([linked_output])
         with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
             MODULE.require_new_outputs([linked_parent / "request.json"])
+        with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+            MODULE.require_new_outputs([linked_parent / "missing" / "request.json"])
 
     def test_symlinked_request_path_fails_before_preflight(self) -> None:
         real_parent = self.root / "real-parent"
