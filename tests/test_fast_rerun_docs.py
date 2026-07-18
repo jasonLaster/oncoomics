@@ -44,6 +44,8 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("exact split/discordant read evidence plan", text)
         self.assertIn("mechanical supplementary/split-read and discordant-pair evidence", text)
         self.assertIn("CHORD or HRDetect use remains `no_call`", text)
+        self.assertIn("run:phase3-fast-sv-evidence", text)
+        self.assertIn("zero-byte discordant-pair SAM", text)
 
     def test_fast_rerun_summary_does_not_revive_the_cpu_retry(self) -> None:
         text = SUMMARY.read_text(encoding="utf-8")

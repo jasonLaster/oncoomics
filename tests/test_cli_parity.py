@@ -50,6 +50,7 @@ class CliParityTest(unittest.TestCase):
             "run:phase3-fast-cnv-evidence",
             "run:phase3-fast-filter-mutect",
             "run:phase3-fast-parabricks-mutect",
+            "run:phase3-fast-sv-evidence",
             "smoke:alignment",
             "smoke:full-reference",
             "smoke:human-reference",

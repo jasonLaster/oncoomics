@@ -66,6 +66,7 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "run:phase3-fast-parabricks-mutect": CommandSpec(
         "diana_omics.commands.phase3_wgs.run_phase3_fast_parabricks_mutect"
     ),
+    "run:phase3-fast-sv-evidence": CommandSpec("diana_omics.commands.phase3_wgs.run_phase3_fast_sv_evidence"),
     "export:phase3-fast-small-variants": CommandSpec(
         "diana_omics.commands.phase3_wgs.export_phase3_fast_small_variant_artifacts"
     ),
@@ -186,6 +187,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "run:phase3-fast-cnv-evidence",
             "run:phase3-fast-filter-mutect",
             "run:phase3-fast-parabricks-mutect",
+            "run:phase3-fast-sv-evidence",
             "export:phase3-fast-small-variants",
             "stage:phase3-fast-inputs",
             "validate:phase3-wgs",

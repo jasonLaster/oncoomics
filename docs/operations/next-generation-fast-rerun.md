@@ -310,6 +310,13 @@ mechanical supplementary/split-read and discordant-pair evidence from the tumor
 and normal BAMs. It is still only a mechanical WGS evidence plan: downstream
 CHORD or HRDetect use remains `no_call` until a validated production SV caller
 VCF is present.
+`run:phase3-fast-sv-evidence` clears each declared `idxstats`,
+supplementary-alignment count, and discordant-pair SAM output before execution,
+runs only those pinned `samtools` commands, permits a zero-byte discordant-pair SAM
+when a BAM has no reads with the planned flags, requires non-empty
+`idxstats` and supplementary-count files, parses each count as one non-negative
+integer, hashes every role output, and writes a completed SHA-256 receipt while
+keeping CHORD and HRDetect `no_call`.
 `FAST_MUTECT_PARABRICKS` must consume that plan, run only those three pinned
 argument vectors in order on the same staged GPU worker, and write a completed
 receipt that copies the plan inputs and outputs plus the plan SHA-256 and
