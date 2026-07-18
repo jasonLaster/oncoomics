@@ -69,6 +69,12 @@ def _sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _read_evidence_join(path: Path) -> Mapping[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ManifestError(f"evidence_join must be a real manifest file: {path}")
+    return _require_mapping(read_json(path), "evidence_join")
+
+
 def _require_safe_destination_path(path: Path, label: str) -> None:
     if path.is_symlink():
         raise ManifestError(f"{label} may not be a symlink: {path}")
@@ -363,7 +369,7 @@ def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
     join_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_EVIDENCE_JOIN", DEFAULT_EVIDENCE_JOIN))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_FINAL_EVIDENCE_OUTPUT", DEFAULT_OUTPUT))
     manifest = build_phase3_fast_final_evidence_manifest(
-        read_json(join_path),
+        _read_evidence_join(join_path),
         evidence_join_sha256=_sha256_path(join_path),
         small_variant_artifact_root=path_from_root(
             os.environ.get("PHASE3_WGS_FAST_SMALL_VARIANT_ARTIFACT_ROOT", DEFAULT_SMALL_VARIANT_ARTIFACT_ROOT)

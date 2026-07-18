@@ -7,11 +7,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_evidence_join import SHA_4, SHA_5, SHA_6, SHA_7, phase3_fast_receipts
-
 from diana_omics.commands.phase3_wgs import join_phase3_fast_evidence as join_evidence
 from diana_omics.commands.phase3_wgs import publish_phase3_fast_final_evidence as final_evidence
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_evidence_join import SHA_4, SHA_5, SHA_6, SHA_7, phase3_fast_receipts
 
 
 def _sha256_path(path: Path) -> str:
@@ -101,6 +100,35 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(output_path, output)
         self.assertEqual(expected_join_sha256, manifest["source"]["evidence_join_manifest_sha256"])
         self.assertIn('"manifest_type": "phase3_wgs_fast_final_evidence_manifest"', output_text)
+
+    def test_environment_command_rejects_missing_directory_or_symlinked_join(self) -> None:
+        cases = ("missing", "directory", "symlink")
+        for bad_kind in cases:
+            with self.subTest(bad_kind=bad_kind), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_join = root / "real-join.json"
+                bad_join = root / f"join-{bad_kind}.json"
+                write_json(real_join, _join_manifest(root))
+                if bad_kind == "directory":
+                    bad_join.mkdir()
+                elif bad_kind == "symlink":
+                    bad_join.symlink_to(real_join)
+
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_EVIDENCE_JOIN": str(bad_join),
+                        "PHASE3_WGS_FAST_SMALL_VARIANT_ARTIFACT_ROOT": str(root / "small_variant_export"),
+                        "PHASE3_WGS_FAST_BAM_QC_ARTIFACT_ROOT": str(root / "bam_qc"),
+                        "PHASE3_WGS_FAST_CNV_EVIDENCE_ARTIFACT_ROOT": str(root / "cnv_evidence"),
+                        "PHASE3_WGS_FAST_SV_EVIDENCE_ARTIFACT_ROOT": str(root / "sv_evidence"),
+                        "PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT": str(root / "final"),
+                        "PHASE3_WGS_FAST_FINAL_EVIDENCE_OUTPUT": str(root / "final-manifest.json"),
+                    },
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(final_evidence.ManifestError, "evidence_join"):
+                        final_evidence.load_manifest_from_environment()
 
     def test_rejects_non_completed_join(self) -> None:
         with TemporaryDirectory() as tmp:
