@@ -2,12 +2,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RECEIPTS_DIR="$(mktemp -d "${TMPDIR:-/tmp}/diana-phase3-fast-stub.XXXXXX")"
-
-cleanup() {
-  rm -rf "${RECEIPTS_DIR}"
-}
-trap cleanup EXIT
+mkdir -p "${ROOT}/.codex-tmp"
+RUN_ROOT="$(mktemp -d "${ROOT}/.codex-tmp/phase3-fast-stub.XXXXXX")"
+RECEIPTS_DIR="${RUN_ROOT}/receipts"
+LOG_DIR="${RUN_ROOT}/logs"
+WORK_DIR="${RUN_ROOT}/work"
+OUT_DIR="${RUN_ROOT}/out"
+mkdir -p "${RECEIPTS_DIR}" "${LOG_DIR}" "${WORK_DIR}" "${OUT_DIR}"
 
 for receipt in \
   private-freeze \
@@ -21,9 +22,11 @@ for receipt in \
 done
 
 cd "${ROOT}"
-mkdir -p logs
-nextflow -log logs/nextflow.log run main.nf -profile local \
+echo "Writing Phase 3 fast stub outputs under ${RUN_ROOT}"
+nextflow -log "${LOG_DIR}/nextflow.log" run main.nf -profile local \
+  -work-dir "${WORK_DIR}" \
   --workflow phase3_wgs_fast \
+  --outdir "${OUT_DIR}" \
   --phase3_fast_private_freeze_receipt "${RECEIPTS_DIR}/private-freeze.json" \
   --phase3_fast_private_sha256_receipt "${RECEIPTS_DIR}/private-sha256.json" \
   --phase3_fast_reference_freeze_receipt "${RECEIPTS_DIR}/reference-freeze.json" \

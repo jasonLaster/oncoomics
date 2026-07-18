@@ -200,7 +200,12 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("--phase3_fast_generated_at 2026-07-16T03:31:01+00:00", script)
         self.assertIn("--phase3_fast_forbidden_tokens_json", script)
         self.assertIn("-stub-run", script)
-        self.assertLess(script.index("mkdir -p logs"), script.index("nextflow -log logs/nextflow.log"))
+        self.assertIn('.codex-tmp/phase3-fast-stub.XXXXXX', script)
+        self.assertIn('nextflow -log "${LOG_DIR}/nextflow.log"', script)
+        self.assertIn('-work-dir "${WORK_DIR}"', script)
+        self.assertIn('--outdir "${OUT_DIR}"', script)
+        self.assertNotIn("logs/nextflow.log", script)
+        self.assertNotIn("rm -rf", script)
         self.assertIn("--parabricks_container", script)
 
     def test_input_manifest_derives_parabricks_digest_from_runtime_container(self) -> None:
@@ -583,6 +588,29 @@ class Phase3FastNextflowTests(unittest.TestCase):
         )
         self.assertIn(
             "aux_artifacts_for_publish = FAST_BAM_CNV_SV_EVIDENCE.out.map",
+            text,
+        )
+        self.assertIn(
+            (
+                "aux_staged_inputs_manifest,\n"
+                "                bam_qc_plan,\n"
+                "                bam_qc_receipt,\n"
+                "                cnv_evidence_plan,\n"
+                "                cnv_evidence_receipt,\n"
+                "                sv_evidence_plan,\n"
+                "                sv_evidence_receipt,\n"
+                "                bam_qc_results,\n"
+                "                cnv_evidence_results,\n"
+                "                sv_evidence_results -> tuple(bam_qc_results, cnv_evidence_results, sv_evidence_results)"
+            ),
+            text,
+        )
+        self.assertNotIn(
+            (
+                "bam_qc_results,\n"
+                "                bam_qc_results,\n"
+                "                cnv_evidence_results"
+            ),
             text,
         )
         self.assertIn("FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out", text)
