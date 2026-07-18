@@ -11,8 +11,18 @@ from pathlib import Path
 from ai_model_catalog import MODEL_CATALOG_VERIFIED_AT, model_catalog_receipt
 
 
-def write_once(path: Path, text: str) -> None:
+def prepare_create_only_output(path: Path) -> None:
+    if path.exists() or path.is_symlink():
+        raise SystemExit(f"Fail-closed: output already exists: {path}")
+    for parent in path.parents:
+        if parent.is_symlink():
+            raise SystemExit(f"Fail-closed: output parent is a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise SystemExit(f"Fail-closed: output parent is not a directory: {parent}")
     path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def write_once(path: Path, text: str) -> None:
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
@@ -43,8 +53,7 @@ def main() -> int:
             "Fail-closed: --attest-models-latest is required for "
             f"{MODEL_CATALOG_VERIFIED_AT}"
         )
-    if args.output.exists() or args.output.is_symlink():
-        raise SystemExit(f"Fail-closed: output already exists: {args.output}")
+    prepare_create_only_output(args.output)
 
     payload = json.dumps(model_catalog_receipt(), indent=2, sort_keys=True) + "\n"
     write_once(args.output, payload)
