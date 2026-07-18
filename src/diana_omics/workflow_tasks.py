@@ -42,7 +42,7 @@ PHASE3_FAST_AWS_EXECUTE_ENV = {"ALLOW_PHASE3_FAST_AWS_EXECUTE": "YES"}
 PHASE3_FAST_AWS_EXECUTE_DESCRIPTION = (
     "Phase 3 fast AWS execute mode runs the full Diana BAM-to-evidence P5en/Parabricks path. "
     "Set ALLOW_PHASE3_FAST_AWS_EXECUTE=YES only after Gate 0 receipts, P5en quota, a pinned image, "
-    "the GPU smoke gate, and the forbidden-token scan inventory have been reviewed."
+    "the PHASE3_FAST_GPU_SMOKE_RESULT gpu_smoke.json, and the forbidden-token scan inventory have been reviewed."
 )
 
 
@@ -681,7 +681,7 @@ TASKS: dict[str, Task] = {
         ),
     ),
     "nf:aws:phase3-wgs-fast:execute": _phase3_fast_aws_execute_task(
-        _py("verify:phase3-fast-gpu-smoke"),
+        _py("verify:phase3-fast-aws-execute"),
         _nextflow(
             "-profile",
             "awsbatch_gpu",

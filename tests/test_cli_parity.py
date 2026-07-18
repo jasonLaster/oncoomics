@@ -87,6 +87,7 @@ class CliParityTest(unittest.TestCase):
             "verify:orthogonal",
             "verify:outputs",
             "verify:phase3-outputs",
+            "verify:phase3-fast-aws-execute",
             "verify:phase3-fast-gpu-smoke",
             "verify:phase3-fast-staged-inputs",
             "verify:plan",
@@ -221,7 +222,7 @@ class CliParityTest(unittest.TestCase):
 
         self.assertTrue(task.accepts_args)
         self.assertEqual(2, len(task.steps))
-        self.assertEqual("verify:phase3-fast-gpu-smoke", task.steps[0].argv[-1])
+        self.assertEqual("verify:phase3-fast-aws-execute", task.steps[0].argv[-1])
         self.assertFalse(task.steps[0].append_args)
         self.assertTrue(task.steps[1].append_args)
         self.assertEqual(PHASE3_FAST_AWS_EXECUTE_ENV, task.required_env)
@@ -279,7 +280,7 @@ class CliParityTest(unittest.TestCase):
             run_task("nf:aws:phase3-wgs-fast:execute", extra_args)
 
         self.assertEqual(2, run.call_count)
-        self.assertEqual("verify:phase3-fast-gpu-smoke", run.call_args_list[0].args[0][-1])
+        self.assertEqual("verify:phase3-fast-aws-execute", run.call_args_list[0].args[0][-1])
         argv = run.call_args_list[1].args[0]
         env = run.call_args_list[1].kwargs["env"]
         self.assertEqual("phase3_wgs_fast", argv[argv.index("--workflow") + 1])
