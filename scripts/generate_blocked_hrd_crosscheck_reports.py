@@ -321,8 +321,7 @@ def write_file_create_only(path: Path, data: bytes) -> None:
 def prepare_output_root(output_root: Path) -> Path:
     if output_root.is_symlink():
         raise ValueError("blocked cross-check output may not be a symlink")
-    if output_root.parent.is_symlink():
-        raise ValueError("blocked cross-check output parent may not be a symlink")
+    require_safe_output_parent(output_root)
     if output_root.exists() and not output_root.is_dir():
         raise ValueError(f"blocked cross-check output is not a directory: {output_root}")
 
@@ -335,6 +334,26 @@ def prepare_output_root(output_root: Path) -> Path:
 
     output_root.mkdir(parents=True, exist_ok=True)
     return output_root.resolve()
+
+
+def require_safe_output_parent(output_root: Path) -> None:
+    parent = output_root.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise ValueError(
+                f"blocked cross-check output parent may not be a symlink: {parent}"
+            )
+        if parent == parent.parent:
+            raise ValueError(
+                f"blocked cross-check output has no existing parent: {output_root}"
+            )
+        parent = parent.parent
+    if parent.is_symlink():
+        raise ValueError(
+            f"blocked cross-check output parent may not be a symlink: {parent}"
+        )
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
 
 
 def render_report(spec: dict[str, Any], generated_at: str) -> str:

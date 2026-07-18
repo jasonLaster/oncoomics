@@ -172,6 +172,26 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
             self.assertFalse(real_output.exists())
 
+    def test_rejects_output_below_symlinked_parent_without_writing_packets(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "blocked-real"
+            real_parent.mkdir()
+            linked_parent = root / "blocked-link"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            output = linked_parent / "missing" / "blocked"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "blocked cross-check output parent may not be a symlink",
+            ):
+                GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+
+            self.assertFalse((real_parent / "missing").exists())
+
     def test_generated_packets_match_private_publication_contracts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "blocked"
