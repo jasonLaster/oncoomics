@@ -237,8 +237,8 @@ def load_mirror_digest(
 
 def load_receipt_from_environment() -> tuple[dict[str, Any], Path]:
     path = path_from_root(os.environ.get("PARABRICKS_MIRROR_RECEIPT", DEFAULT_RECEIPT))
-    if not path.exists():
-        raise MirrorReceiptError(f"Missing Parabricks mirror receipt: {path}")
+    if path.is_symlink() or not path.is_file():
+        raise MirrorReceiptError(f"Parabricks mirror receipt must be a real file: {path}")
     receipt = read_json(path)
     if not isinstance(receipt, dict):
         raise MirrorReceiptError(f"{path} must contain a JSON object")

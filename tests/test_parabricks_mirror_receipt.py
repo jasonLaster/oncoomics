@@ -137,6 +137,29 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
         self.assertEqual(path, loaded_path)
         self.assertEqual("parabricks_mirror_receipt", payload["manifest_type"])
 
+    def test_environment_loader_rejects_missing_directory_or_symlinked_receipts(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_receipt = root / "real-parabricks-mirror.json"
+            write_json(real_receipt, receipt())
+
+            cases = {
+                "directory": root / "directory",
+                "missing": root / "missing.json",
+                "symlink": root / "symlink.json",
+            }
+            cases["directory"].mkdir()
+            cases["symlink"].symlink_to(real_receipt)
+
+            for label, path in cases.items():
+                with self.subTest(label=label), patch.dict(
+                    "os.environ",
+                    {"PARABRICKS_MIRROR_RECEIPT": str(path)},
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(verify.MirrorReceiptError, "real file"):
+                        verify.load_receipt_from_environment()
+
     @patch("diana_omics.commands.phase3_wgs.verify_parabricks_mirror_receipt.subprocess.run")
     def test_loads_destination_image_digest_from_ecr(self, run) -> None:
         run.return_value = subprocess.CompletedProcess(
