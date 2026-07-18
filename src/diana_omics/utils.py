@@ -222,7 +222,9 @@ def run_command(command: str, log_path: Optional[str] = None, max_buffer: Option
     with tempfile.TemporaryDirectory(prefix="diana-omics-command-") as tmpdir:
         stdout_path = Path(tmpdir) / "stdout.txt"
         stderr_path = Path(tmpdir) / "stderr.txt"
-        with stdout_path.open("w+", encoding="utf-8") as stdout_handle, stderr_path.open("w+", encoding="utf-8") as stderr_handle:
+        with stdout_path.open("w+", encoding="utf-8", errors="replace") as stdout_handle, stderr_path.open(
+            "w+", encoding="utf-8", errors="replace"
+        ) as stderr_handle:
             process = subprocess.Popen(
                 ["bash", "-lc", command],
                 cwd=path_from_root(""),
@@ -334,9 +336,7 @@ def quickcheck_bam(relative_bam: str) -> bool:
     path = path_from_root(relative_bam)
     if not path.exists():
         return False
-    result = subprocess.run(
-        ["samtools", "quickcheck", "-v", str(path)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
-    )
+    result = subprocess.run(["samtools", "quickcheck", "-v", str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
     return result.returncode == 0
 
 
@@ -356,9 +356,11 @@ def median(values: Iterable[float]) -> Optional[float]:
 
 def tool_version(tool: str) -> str:
     result = subprocess.run(
-        ["bash", "-lc", f"{tool} 2>&1 | head -n 8"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
+        ["bash", "-lc", f"{tool} 2>&1 | head -n 8"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
     )
-    return f"{result.stdout}{result.stderr}".strip()
+    stdout = result.stdout.decode("utf-8", errors="replace")
+    stderr = result.stderr.decode("utf-8", errors="replace")
+    return f"{stdout}{stderr}".strip()
 
 
 def parse_bcftools_norm_summary(log_text: str) -> dict[str, int]:

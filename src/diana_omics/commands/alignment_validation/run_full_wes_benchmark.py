@@ -330,9 +330,11 @@ def parse_contamination_table(relative_path: str) -> dict[str, str]:
 
 def tool_version(tool: str) -> str:
     result = subprocess.run(
-        ["bash", "-lc", f"{tool} 2>&1 | head -n 8"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
+        ["bash", "-lc", f"{tool} 2>&1 | head -n 8"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
     )
-    return f"{result.stdout}{result.stderr}".strip()
+    stdout = result.stdout.decode("utf-8", errors="replace")
+    stderr = result.stderr.decode("utf-8", errors="replace")
+    return f"{stdout}{stderr}".strip()
 
 
 def fastq_validation_outputs() -> list[str]:

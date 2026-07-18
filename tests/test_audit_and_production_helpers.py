@@ -149,6 +149,13 @@ class AuditAndProductionHelpersTest(unittest.TestCase):
             {"total": 123, "mapped": 120, "properly_paired": 110, "duplicates": 7},
         )
 
+    def test_full_wes_tool_version_replaces_invalid_utf8(self):
+        with patch.object(run_full_wes_benchmark.subprocess, "run") as run:
+            run.return_value.stdout = b"samtools 1.23\n"
+            run.return_value.stderr = b"\xab noisy plugin banner"
+
+            self.assertEqual(run_full_wes_benchmark.tool_version("samtools"), "samtools 1.23\n� noisy plugin banner")
+
 
 if __name__ == "__main__":
     unittest.main()

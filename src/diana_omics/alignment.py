@@ -10,9 +10,11 @@ from .utils import capture_command, ensure_dir, quote_shell_arg, round_value, ru
 
 def tool_version(tool: str, lines: int = 8) -> str:
     result = subprocess.run(
-        ["bash", "-lc", f"{tool} 2>&1 | head -n {lines}"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
+        ["bash", "-lc", f"{tool} 2>&1 | head -n {lines}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
     )
-    return f"{result.stdout}{result.stderr}".strip()
+    stdout = result.stdout.decode("utf-8", errors="replace")
+    stderr = result.stderr.decode("utf-8", errors="replace")
+    return f"{stdout}{stderr}".strip()
 
 
 def read_group(row: dict[str, str]) -> str:

@@ -69,6 +69,16 @@ class UtilsTest(unittest.TestCase):
     def test_run_command_honors_max_buffer(self):
         self.assertEqual(utils.run_command("printf 123456", max_buffer=3), "456")
 
+    def test_run_command_replaces_invalid_utf8(self):
+        self.assertEqual(utils.run_command("printf 'samtools\\253\\n'"), "samtools�\n")
+
+    def test_tool_version_replaces_invalid_utf8(self):
+        with patch.object(utils.subprocess, "run") as run:
+            run.return_value.stdout = b"samtools\xab\n"
+            run.return_value.stderr = b""
+
+            self.assertEqual(utils.tool_version("samtools"), "samtools�")
+
     def test_math_and_clinical_helpers(self):
         self.assertEqual(utils.to_number("4.5"), 4.5)
         self.assertIsNone(utils.to_number("bad"))

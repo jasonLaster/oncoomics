@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from diana_omics import alignment
 from diana_omics.commands import build_reviewer_packet, run_full_reference_smoke
@@ -43,6 +44,13 @@ class ReportAndAlignmentHelpersTest(unittest.TestCase):
     def test_parse_vcf_stats(self):
         stats = "SN\t0\tnumber of records:\t3\nSN\t0\tnumber of SNPs:\t2\nSN\t0\tnumber of indels:\t1\n"
         self.assertEqual(run_full_reference_smoke.parse_vcf_stats(stats), {"records": 3, "snps": 2, "indels": 1})
+
+    def test_tool_version_replaces_invalid_utf8(self):
+        with patch.object(alignment.subprocess, "run") as run:
+            run.return_value.stdout = b"samtools 1.16\n"
+            run.return_value.stderr = b"\xab noisy plugin banner"
+
+            self.assertEqual(alignment.tool_version("samtools"), "samtools 1.16\n� noisy plugin banner")
 
 
 if __name__ == "__main__":
