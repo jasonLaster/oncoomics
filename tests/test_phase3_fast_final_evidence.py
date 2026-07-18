@@ -315,6 +315,35 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
 
             self.assertEqual([], [path for path in output_root.rglob("*") if path.is_file()])
 
+    def test_rejects_and_removes_tampered_installed_final_artifact(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "final"
+            join_manifest = _join_manifest(root)
+            original_replace = Path.replace
+
+            def replace_then_tamper(source: Path, target: Path) -> Path:
+                installed = original_replace(source, target)
+                Path(target).write_bytes(b"tampered installed final artifact\n")
+                return installed
+
+            with patch.object(Path, "replace", replace_then_tamper):
+                with self.assertRaisesRegex(
+                    final_evidence.ManifestError,
+                    "installed bytes and sha256",
+                ):
+                    final_evidence.build_phase3_fast_final_evidence_manifest(
+                        join_manifest,
+                        evidence_join_sha256=SHA_4,
+                        small_variant_artifact_root=root / "small_variant_export",
+                        bam_qc_artifact_root=root / "bam_qc",
+                        cnv_evidence_artifact_root=root / "cnv_evidence",
+                        sv_evidence_artifact_root=root / "sv_evidence",
+                        output_root=output_root,
+                    )
+
+            self.assertEqual([], [path for path in output_root.rglob("*") if path.is_file()])
+
     def test_rejects_symlinked_output_root_without_copying_outputs(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

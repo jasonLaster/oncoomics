@@ -286,6 +286,33 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
 
             self.assertEqual([], [path for path in output_root.rglob("*") if path.is_file()])
 
+    def test_rejects_and_removes_tampered_installed_export(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "exported"
+            parabricks_receipt, filter_receipt = _receipts(root)
+            original_replace = Path.replace
+
+            def replace_then_tamper(source: Path, target: Path) -> Path:
+                installed = original_replace(source, target)
+                Path(target).write_bytes(b"tampered installed export\n")
+                return installed
+
+            with patch.object(Path, "replace", replace_then_tamper):
+                with self.assertRaisesRegex(
+                    export_small_variants.ManifestError,
+                    "exported bytes and sha256",
+                ):
+                    export_small_variants.export_phase3_fast_small_variant_artifacts(
+                        parabricks_receipt,
+                        filter_receipt,
+                        parabricks_mutect_receipt_sha256=SHA_2,
+                        filter_mutect_receipt_sha256=SHA_3,
+                        output_root=output_root,
+                    )
+
+            self.assertEqual([], [path for path in output_root.rglob("*") if path.is_file()])
+
     def test_rejects_untracked_symlinked_export_directory(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
