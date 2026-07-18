@@ -413,9 +413,19 @@ def required_local_inputs(root: Path) -> tuple[Path, ...]:
 
 def required_existing(root: Path) -> tuple[Path, ...]:
     scripts = root / "scripts"
+    src = root / "src/diana_omics"
     return unique_paths(
         (
             root / "aws/submit_route.py",
+            src / "__init__.py",
+            src / "__main__.py",
+            src / "cli.py",
+            src / "paths.py",
+            src / "utils.py",
+            src / "workflow_tasks.py",
+            src / "commands/__init__.py",
+            src / "commands/registry.py",
+            src / "commands/hrd_context/build_rosalind_hrd_packet.py",
             scripts / "capture_batch_provenance.py",
             scripts / "freeze_stage_provenance.py",
             scripts / "freeze_final_artifacts.py",

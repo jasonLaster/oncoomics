@@ -244,6 +244,14 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertIn("/repo/scripts/render_reviewed_publication_runbook.py", prerequisites)
         self.assertIn("/repo/scripts/build_public_results_index.py", prerequisites)
         self.assertIn("/repo/scripts/publish_public_results_index.py", prerequisites)
+        self.assertIn("/repo/src/diana_omics/__main__.py", prerequisites)
+        self.assertIn("/repo/src/diana_omics/cli.py", prerequisites)
+        self.assertIn("/repo/src/diana_omics/commands/registry.py", prerequisites)
+        self.assertIn(
+            "/repo/src/diana_omics/commands/hrd_context/"
+            "build_rosalind_hrd_packet.py",
+            prerequisites,
+        )
         for stale in (
             "/repo/.codex-tmp/hrd-reports/stage_crosscheck_report.py",
             "/repo/.codex-tmp/hrd-crosschecks/aws/submit_route.py",
