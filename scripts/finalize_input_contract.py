@@ -333,6 +333,12 @@ def finalize(
 
 
 def write_new_json(path: Path, value: dict[str, Any]) -> None:
+    if path.exists() or path.is_symlink():
+        raise FileExistsError(path)
+    if path.parent.is_symlink():
+        raise ValueError(f"contract output parent may not be a symlink: {path.parent}")
+    if path.parent.exists() and not path.parent.is_dir():
+        raise NotADirectoryError(path.parent)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:

@@ -120,6 +120,7 @@ def fsync_directory(path: Path) -> None:
 
 
 def reserve_json(path: Path, value: dict[str, Any]) -> None:
+    require_anchor_output(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -137,6 +138,7 @@ def reserve_json(path: Path, value: dict[str, Any]) -> None:
 
 
 def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    require_anchor_output(path)
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
@@ -155,6 +157,17 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
         if descriptor >= 0:
             os.close(descriptor)
         temporary.unlink(missing_ok=True)
+
+
+def require_anchor_output(path: Path) -> None:
+    if path.is_symlink():
+        raise FileExistsError(f"contract publication anchor may not be a symlink: {path}")
+    if path.parent.is_symlink():
+        raise ValueError(
+            f"contract publication anchor parent may not be a symlink: {path.parent}"
+        )
+    if path.parent.exists() and not path.parent.is_dir():
+        raise NotADirectoryError(path.parent)
 
 
 def publication_identity_matches(
@@ -257,6 +270,10 @@ def main() -> int:
     prefix = prefix.rstrip("/") + "/"
     if contract.get("run_alias") != alias or f"/runs/{alias}/{run_id}/" not in str(contract.get("output_uri", "")):
         raise SystemExit("Fail-closed: publication prefix differs from contract run")
+    try:
+        require_anchor_output(args.anchor_output)
+    except (FileExistsError, NotADirectoryError, ValueError) as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
     versioning = aws_json(
         ["s3api", "get-bucket-versioning", "--bucket", bucket], args.region
     )
@@ -300,6 +317,8 @@ def main() -> int:
             raise SystemExit(
                 "Fail-closed: contract publication anchor was concurrently reserved"
             ) from error
+        except (NotADirectoryError, ValueError) as error:
+            raise SystemExit(f"Fail-closed: {error}") from error
     if not args.apply:
         print(json.dumps({"status": "dry_run", "contract_uri": uri}, sort_keys=True))
         return 0

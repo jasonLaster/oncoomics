@@ -293,6 +293,22 @@ class CustodyHandoffTests(unittest.TestCase):
                 finalizer.write_new_json(output, {"status": "failed"})
             self.assertEqual(output.read_bytes(), original)
 
+    def test_finalizer_rejects_symlinked_output_parent_without_writing_target(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-contracts"
+            real_parent.mkdir()
+            linked_parent = root / "linked-contracts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                finalizer.write_new_json(
+                    linked_parent / "input-contract.json",
+                    {"status": "passed"},
+                )
+
+            self.assertFalse((real_parent / "input-contract.json").exists())
+
     def test_contract_check_writes_readiness_receipt_create_only(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -326,6 +342,22 @@ class CustodyHandoffTests(unittest.TestCase):
             ):
                 checker.main()
             self.assertEqual(readiness.read_bytes(), original)
+
+    def test_contract_check_rejects_symlinked_output_parent_without_writing_target(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-readiness"
+            real_parent.mkdir()
+            linked_parent = root / "linked-readiness"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                checker.write_text_once(
+                    linked_parent / "input-contract.readiness.json",
+                    "{}\n",
+                )
+
+            self.assertFalse((real_parent / "input-contract.readiness.json").exists())
 
     def test_finalizer_binds_all_three_outputs_and_attests_final_primary(self):
         contract = CustodyFixture().finalize()
@@ -506,6 +538,56 @@ class CustodyHandoffTests(unittest.TestCase):
             self.assertEqual(value["status"], "passed")
             self.assertEqual(value["receipt_version_id"], version)
             self.assertTrue(value["recovered_existing_version"])
+
+    def test_contract_publication_rejects_symlinked_anchor_parent_without_writing_target(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-anchors"
+            real_parent.mkdir()
+            linked_parent = root / "linked-anchors"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                publisher.reserve_json(
+                    linked_parent / "anchor.json",
+                    {"status": "dry_run"},
+                )
+
+            self.assertFalse((real_parent / "anchor.json").exists())
+
+    def test_contract_publication_rejects_symlinked_anchor_parent_before_aws(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            real_parent = root / "real-anchors"
+            real_parent.mkdir()
+            linked_parent = root / "linked-anchors"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(linked_parent / "anchor.json"),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    publisher,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+                self.assertRaisesRegex(SystemExit, "parent may not be a symlink"),
+            ):
+                publisher.main()
+
+            self.assertFalse((real_parent / "anchor.json").exists())
 
     def test_contract_version_history_consumes_key_and_version_markers(self):
         pages = [

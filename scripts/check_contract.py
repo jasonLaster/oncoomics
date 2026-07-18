@@ -208,9 +208,15 @@ def validate(contract: dict) -> dict:
 
 
 def write_text_once(path: Path, value: str) -> None:
+    if path.exists() or path.is_symlink():
+        raise FileExistsError(f"contract readiness output already exists: {path}")
+    if path.parent.is_symlink():
+        raise ValueError(
+            f"contract readiness output parent may not be a symlink: {path.parent}"
+        )
+    if path.parent.exists() and not path.parent.is_dir():
+        raise NotADirectoryError(path.parent)
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.is_symlink():
-        raise FileExistsError(f"refusing to overwrite symlink: {path}")
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
@@ -239,6 +245,8 @@ def main() -> int:
             raise SystemExit(
                 f"Fail-closed: contract readiness output already exists: {args.json_out}"
             ) from error
+        except (NotADirectoryError, ValueError) as error:
+            raise SystemExit(f"Fail-closed: {error}") from error
     return 0 if result["overall_status"] == "ready" or args.allow_blocked else 2
 
 
