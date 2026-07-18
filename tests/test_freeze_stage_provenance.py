@@ -465,6 +465,31 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             self.assertFalse(path.exists())
             self.assertEqual(list(root.glob(".receipt.json.*.tmp")), [])
 
+    def test_atomic_writer_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            path = Path(value) / "receipt.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                real_fsync_directory(parent)
+                path.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "local evidence output changed during write",
+                ),
+            ):
+                MODULE.write_json_once(path, {"status": "passed"})
+
+            self.assertFalse(path.exists())
+            self.assertEqual(list(path.parent.glob(".receipt.json.*.tmp")), [])
+
     def test_atomic_writer_rejects_output_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             root = Path(value)

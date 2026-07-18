@@ -108,6 +108,7 @@ def write_bytes_once(path: Path, payload: bytes) -> None:
     """Atomically create a local receipt without replacing prior evidence."""
     require_safe_output_parent(path, "local evidence output")
     path.parent.mkdir(parents=True, exist_ok=True)
+    expected_sha256 = hashlib.sha256(payload).hexdigest()
     fd, temporary_value = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
@@ -124,12 +125,21 @@ def write_bytes_once(path: Path, payload: bytes) -> None:
         except FileExistsError as error:
             raise RuntimeError(f"refusing to replace existing local evidence: {path}") from error
         fsync_directory(path.parent)
+        require_installed_local_evidence(path, expected_sha256)
     except Exception:
         if linked:
             path.unlink(missing_ok=True)
         raise
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def require_installed_local_evidence(path: Path, expected_sha256: str) -> None:
+    require_real_downloaded_file(path, "local evidence output")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"local evidence output mode is not 0600: {path}")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"local evidence output changed during write: {path}")
 
 
 def fsync_directory(path: Path) -> None:
