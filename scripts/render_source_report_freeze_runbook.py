@@ -135,6 +135,7 @@ def ai_runbook_command(
     root: Path,
     output: str | Path,
     receipt_paths: Iterable[Path],
+    receipt_stem: str = "terminal",
 ) -> list[str | Path]:
     return [
         "python3",
@@ -143,6 +144,8 @@ def ai_runbook_command(
         output,
         "--root",
         root,
+        "--receipt-stem",
+        receipt_stem,
         *[
             token
             for path in receipt_paths
@@ -233,6 +236,7 @@ def render(
                             root,
                             Raw('"$AI_REVIEW_RUNBOOK"'),
                             receipt_paths,
+                            receipt_stem,
                         )
                     ),
                 ]

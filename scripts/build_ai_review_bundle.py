@@ -499,9 +499,15 @@ def main() -> None:
     input_hashes: dict[str, str] = {}
     observed_methods: list[str] = []
     for index, manifest_path in enumerate(args.manifest, 1):
+        if (
+            manifest_path.is_symlink()
+            or not manifest_path.is_file()
+            or manifest_path.stat().st_size == 0
+        ):
+            raise SystemExit(
+                f"Fail-closed: missing or unsafe report manifest {manifest_path}"
+            )
         path = manifest_path.resolve()
-        if not path.is_file() or path.stat().st_size == 0:
-            raise SystemExit(f"Fail-closed: missing report manifest {manifest_path}")
         manifest = load_object(path)
         if manifest.get("schema_version") != 1:
             raise SystemExit(
@@ -539,7 +545,11 @@ def main() -> None:
             raise SystemExit(f"Fail-closed: missing report SHA-256 for {method}")
 
         report_path = path.parent / "report.md"
-        if not report_path.is_file() or sha256(report_path) != report_hash:
+        if (
+            report_path.is_symlink()
+            or not report_path.is_file()
+            or sha256(report_path) != report_hash
+        ):
             raise SystemExit(f"Fail-closed: report hash mismatch for {method}")
 
         try:

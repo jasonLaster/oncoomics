@@ -51,20 +51,21 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             previous = index
 
     def test_renderer_hands_exact_receipts_to_promoted_ai_renderer(self) -> None:
-        text = MODULE.render(Path("/repo"), "terminal")
+        text = MODULE.render(Path("/repo"), "rerun")
 
         self.assertIn("/repo/scripts/render_ai_synthesis_runbook.py", text)
         self.assertIn(
             "AI_REVIEW_RUNBOOK=/repo/.codex-tmp/hrd-reports/ai-review/"
-            "terminal.post-reports-runbook.$(date -u +%Y%m%dT%H%M%SZ).md",
+            "rerun.post-reports-runbook.$(date -u +%Y%m%dT%H%M%SZ).md",
             text,
         )
         self.assertIn('--output "$AI_REVIEW_RUNBOOK" --root /repo', text)
-        self.assertNotIn("terminal.post-reports-runbook.md\n", text)
+        self.assertIn("--receipt-stem rerun", text)
+        self.assertNotIn("rerun.post-reports-runbook.md\n", text)
         self.assertEqual(text.count("--private-publication-receipt "), 7)
         previous = -1
         for method_id in MODULE.REQUIRED_METHOD_IDS:
-            receipt = MODULE.receipt_path(Path("/repo"), "terminal", method_id)
+            receipt = MODULE.receipt_path(Path("/repo"), "rerun", method_id)
             index = text.find(
                 f"--private-publication-receipt {receipt}",
                 previous + 1,
@@ -81,6 +82,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             Path("/repo"),
             output,
             [Path("/receipts/a.json"), Path("/receipts/b.json")],
+            "rerun",
         )
 
         self.assertEqual(
@@ -92,6 +94,8 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                 output,
                 "--root",
                 Path("/repo"),
+                "--receipt-stem",
+                "rerun",
                 "--private-publication-receipt",
                 Path("/receipts/a.json"),
                 "--private-publication-receipt",

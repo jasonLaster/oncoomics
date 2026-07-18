@@ -275,6 +275,7 @@ def reviewed_publication_runbook_command(
     root: Path,
     output: str | Path,
     receipt_paths: Iterable[Path],
+    receipt_stem: str = "terminal",
 ) -> list[str | Path]:
     return [
         "python3",
@@ -283,6 +284,8 @@ def reviewed_publication_runbook_command(
         output,
         "--root",
         root,
+        "--receipt-stem",
+        receipt_stem,
         *[
             token
             for path in receipt_paths
@@ -575,6 +578,7 @@ def render(
                             root,
                             Raw('"$REVIEWED_PUBLIC_RUNBOOK"'),
                             reviewed_publication_receipt_paths(root, receipt_stem),
+                            receipt_stem,
                         )
                     ),
                 ]

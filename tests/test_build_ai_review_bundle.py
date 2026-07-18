@@ -317,6 +317,38 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertIn("forbidden token found", built.stderr)
             self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
+    def test_rejects_symlinked_manifest_or_report(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+
+            manifest_fixture = AiReviewBundleFixture(root / "manifest")
+            manifest = manifest_fixture.manifests[0]
+            linked_manifest = root / "linked-report-manifest.json"
+            manifest.replace(linked_manifest)
+            manifest.symlink_to(linked_manifest)
+
+            built = manifest_fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn("missing or unsafe report manifest", built.stderr)
+            self.assertFalse(
+                (manifest_fixture.bundle_dir / "review_bundle.json").exists()
+            )
+
+            report_fixture = AiReviewBundleFixture(root / "report")
+            report = report_fixture.manifests[0].parent / "report.md"
+            linked_report = root / "linked-report.md"
+            report.replace(linked_report)
+            report.symlink_to(linked_report)
+
+            built = report_fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn("report hash mismatch", built.stderr)
+            self.assertFalse(
+                (report_fixture.bundle_dir / "review_bundle.json").exists()
+            )
+
     def test_rejects_duplicate_pinned_models(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))

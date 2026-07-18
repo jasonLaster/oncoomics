@@ -455,6 +455,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             Path("/repo"),
             output,
             [Path("/receipts/a.json"), Path("/receipts/b.json")],
+            "rerun",
         )
 
         self.assertEqual(
@@ -466,6 +467,8 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 output,
                 "--root",
                 Path("/repo"),
+                "--receipt-stem",
+                "rerun",
                 "--private-publication-receipt",
                 Path("/receipts/a.json"),
                 "--private-publication-receipt",
