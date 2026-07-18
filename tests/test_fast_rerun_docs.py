@@ -33,6 +33,18 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("--deterministic-report-dir", text)
         self.assertIn("--rosalind-report-dir", text)
         self.assertIn("--blocked-crosscheck-root", text)
+        self.assertIn(
+            "$FAST_ROOT/deterministic_report/workspace/results/phase3_wgs_fast/deterministic_report",
+            text,
+        )
+        self.assertIn(
+            "$FAST_ROOT/rosalind_hrd/workspace/results/rosalind_hrd/diana_wgs/${RUN_ID}",
+            text,
+        )
+        self.assertIn(
+            "$FAST_ROOT/blocked_crosschecks/workspace/results/phase3_wgs_fast/blocked_crosschecks",
+            text,
+        )
         self.assertIn("published, versioned,\nalias-only cross-check input contract", text)
         self.assertIn("evidence_join_manifest.json", text)
         self.assertIn("final_evidence_manifest.json", text)

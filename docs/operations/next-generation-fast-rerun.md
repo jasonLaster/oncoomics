@@ -422,12 +422,25 @@ private-freeze, independent AI-review, comparative-synthesis, and
 reviewed-public handoffs until `sequenza_scarhrd` and `sigprofiler_sbs3` have
 real executable-route report packets backed by a published, versioned,
 alias-only cross-check input contract. Once those two executable reports exist,
-render the seven-source freezer with the published fast packet directories:
-pass the Phase 3 fast deterministic report as `--deterministic-report-dir`, the
-published `diana_wgs` Rosalind packet as `--rosalind-report-dir`, the
-`phase3_wgs_fast/blocked_crosschecks` root as `--blocked-crosscheck-root`, and
-the two executable route packet directories as `--sequenza-report-dir` and
-`--sigprofiler-report-dir`.
+render the seven-source freezer with the nested packet directories that
+Nextflow publishes under the Phase 3 fast outdir:
+
+```sh
+FAST_ROOT=/path/to/phase3_wgs_fast
+RUN_ID=diana-wgs-hrd-20260716T033101Z
+
+python3 scripts/render_source_report_freeze_runbook.py \
+  --output .codex-tmp/hrd-reports/deterministic-full/source-freeze.${RUN_ID}.md \
+  --root "$PWD" \
+  --deterministic-report-dir \
+    "$FAST_ROOT/deterministic_report/workspace/results/phase3_wgs_fast/deterministic_report" \
+  --rosalind-report-dir \
+    "$FAST_ROOT/rosalind_hrd/workspace/results/rosalind_hrd/diana_wgs/${RUN_ID}" \
+  --blocked-crosscheck-root \
+    "$FAST_ROOT/blocked_crosschecks/workspace/results/phase3_wgs_fast/blocked_crosschecks" \
+  --sequenza-report-dir /path/to/sequenza_scarhrd \
+  --sigprofiler-report-dir /path/to/sigprofiler_sbs3
+```
 
 ### Gate 1: P5en and Parabricks smoke
 
