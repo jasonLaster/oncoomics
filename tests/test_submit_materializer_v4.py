@@ -870,6 +870,29 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
 
         self.assertFalse(self.response_output.exists())
 
+    def test_completed_response_receipt_rehashes_after_fsync(self) -> None:
+        descriptor = MODULE.reserve_private(self.response_output)
+        real_fsync = MODULE.os.fsync
+
+        def tamper_after_fsync(file_descriptor: int) -> None:
+            real_fsync(file_descriptor)
+            self.response_output.write_bytes(b"tampered")
+
+        with (
+            mock.patch.object(MODULE.os, "fsync", side_effect=tamper_after_fsync),
+            self.assertRaisesRegex(
+                ValueError,
+                "private output changed during write",
+            ),
+        ):
+            MODULE.complete_reserved(
+                descriptor,
+                self.response_output,
+                {"status": "submitted"},
+            )
+
+        self.assertTrue(self.response_output.exists())
+
     def test_submit_guard_is_required_before_receipt_or_aws(self) -> None:
         argv = [
             "submit_materializer_v4.py",

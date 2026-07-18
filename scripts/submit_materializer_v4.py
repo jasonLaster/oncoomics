@@ -941,12 +941,14 @@ def reserve_private(path: Path) -> int:
     return descriptor
 
 
-def complete_reserved(descriptor: int, value: dict[str, Any]) -> None:
+def complete_reserved(descriptor: int, path: Path, value: dict[str, Any]) -> None:
     content = canonical_bytes(value)
+    expected_sha256 = sha256_bytes(content)
     with os.fdopen(descriptor, "wb") as handle:
         handle.write(content)
         handle.flush()
         os.fsync(handle.fileno())
+    require_installed_private_output(path, expected_sha256)
 
 
 def require_new_outputs(paths: Iterable[Path]) -> None:
@@ -1255,7 +1257,7 @@ def main() -> int:
             "manual_reconciliation_required": True,
         }
         try:
-            complete_reserved(descriptor, response_receipt)
+            complete_reserved(descriptor, args.response_output, response_receipt)
         except Exception as receipt_error:
             raise SystemExit(
                 "Fail-closed: submission failed or is ambiguous and its reserved response receipt "
@@ -1265,7 +1267,7 @@ def main() -> int:
             f"Fail-closed: submission failed or is ambiguous; do not retry before reconciling {args.response_output}"
         ) from error
     try:
-        complete_reserved(descriptor, response_receipt)
+        complete_reserved(descriptor, args.response_output, response_receipt)
     except Exception as error:
         raise SystemExit(
             "Fail-closed: Batch submission succeeded but its reserved response receipt could not be "
