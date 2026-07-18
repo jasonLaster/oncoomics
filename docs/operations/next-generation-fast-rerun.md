@@ -239,6 +239,10 @@ PHASE3_WGS_FAST_PARABRICKS_VERSION=... \
 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:phase3-fast-input-manifest
 ```
 
+The `phase3_wgs_fast` Nextflow DAG starts with the same renderer as
+`FAST_INPUT_MANIFEST`, with each receipt staged as a real process input so
+`-resume` is keyed by receipt content rather than by a mutable local directory.
+
 ### Gate 1: P5en and Parabricks smoke
 
 Run the checked-in placement smoke after quota approval and a pinned Parabricks

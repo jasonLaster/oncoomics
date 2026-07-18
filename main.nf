@@ -46,6 +46,24 @@ params.phase3_fast_gpu_smoke_cpus = params.containsKey('phase3_fast_gpu_smoke_cp
 params.phase3_fast_gpu_smoke_memory = params.containsKey('phase3_fast_gpu_smoke_memory') ? params.phase3_fast_gpu_smoke_memory : '1900 GB'
 params.phase3_fast_gpu_smoke_expected_gpus = params.containsKey('phase3_fast_gpu_smoke_expected_gpus') ? params.phase3_fast_gpu_smoke_expected_gpus : 8
 params.phase3_fast_gpu_smoke_gpu_name = params.containsKey('phase3_fast_gpu_smoke_gpu_name') ? params.phase3_fast_gpu_smoke_gpu_name : 'H200'
+params.phase3_fast_private_freeze_receipt = params.phase3_fast_private_freeze_receipt ?: null
+params.phase3_fast_private_sha256_receipt = params.phase3_fast_private_sha256_receipt ?: null
+params.phase3_fast_reference_freeze_receipt = params.phase3_fast_reference_freeze_receipt ?: null
+params.phase3_fast_reference_sha256_receipt = params.phase3_fast_reference_sha256_receipt ?: null
+params.phase3_fast_bam_validation_receipt = params.phase3_fast_bam_validation_receipt ?: null
+params.phase3_fast_contig_compatibility_receipt = params.phase3_fast_contig_compatibility_receipt ?: null
+params.phase3_fast_caller_resource_receipt = params.phase3_fast_caller_resource_receipt ?: null
+params.phase3_fast_parameter_sha256 = params.phase3_fast_parameter_sha256 ?: null
+params.phase3_fast_parabricks_container_digest = params.phase3_fast_parabricks_container_digest ?: null
+params.phase3_fast_parabricks_version = params.phase3_fast_parabricks_version ?: null
+params.phase3_fast_gatk_version = params.phase3_fast_gatk_version ?: '4.6.2.0'
+params.phase3_fast_source_commit = params.phase3_fast_source_commit ?: ''
+params.phase3_fast_run_id = params.phase3_fast_run_id ?: 'diana-wgs-hrd-20260716T033101Z'
+params.phase3_fast_subject_alias = params.phase3_fast_subject_alias ?: 'subject01'
+params.phase3_fast_pair_id = params.phase3_fast_pair_id ?: 'subject01_tumor_normal'
+params.phase3_fast_tumor_sample_id = params.phase3_fast_tumor_sample_id ?: 'subject01_tumor'
+params.phase3_fast_normal_sample_id = params.phase3_fast_normal_sample_id ?: 'subject01_normal'
+params.phase3_fast_reference_id = params.phase3_fast_reference_id ?: 'ucsc_hg38_analysis_set_full'
 params.phase3_asset_cache_uri = params.phase3_asset_cache_uri ?: null
 params.phase3_asset_cache_mode = params.phase3_asset_cache_mode ?: 'readwrite'
 params.phase3_delete_sra_after_conversion = params.phase3_delete_sra_after_conversion ?: false
@@ -488,6 +506,65 @@ process PHASE3_WGS {
     """
 }
 
+process FAST_INPUT_MANIFEST {
+    tag "fast_input_manifest_${params.phase3_fast_run_id}"
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/input_manifest", mode: 'copy', overwrite: true
+
+    input:
+    tuple path(private_freeze_receipt), path(private_sha256_receipt), path(reference_freeze_receipt), path(reference_sha256_receipt), path(bam_validation_receipt), path(contig_compatibility_receipt), path(caller_resource_receipt)
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/input_manifest.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_PRIVATE_FREEZE_RECEIPT="\$PWD/${private_freeze_receipt}"
+    export PHASE3_WGS_FAST_PRIVATE_SHA256_RECEIPT="\$PWD/${private_sha256_receipt}"
+    export PHASE3_WGS_FAST_REFERENCE_FREEZE_RECEIPT="\$PWD/${reference_freeze_receipt}"
+    export PHASE3_WGS_FAST_REFERENCE_SHA256_RECEIPT="\$PWD/${reference_sha256_receipt}"
+    export PHASE3_WGS_FAST_BAM_VALIDATION_RECEIPT="\$PWD/${bam_validation_receipt}"
+    export PHASE3_WGS_FAST_CONTIG_COMPATIBILITY_RECEIPT="\$PWD/${contig_compatibility_receipt}"
+    export PHASE3_WGS_FAST_CALLER_RESOURCE_RECEIPT="\$PWD/${caller_resource_receipt}"
+    export PHASE3_WGS_FAST_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/input_manifest.json"
+    export PHASE3_WGS_FAST_PARAMETER_SHA256="${params.phase3_fast_parameter_sha256}"
+    export PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST="${params.phase3_fast_parabricks_container_digest}"
+    export PHASE3_WGS_FAST_PARABRICKS_VERSION="${params.phase3_fast_parabricks_version}"
+    export PHASE3_WGS_FAST_GATK_VERSION="${params.phase3_fast_gatk_version}"
+    export PHASE3_WGS_FAST_SOURCE_COMMIT="${params.phase3_fast_source_commit}"
+    export PHASE3_WGS_FAST_RUN_ID="${params.phase3_fast_run_id}"
+    export PHASE3_WGS_FAST_SUBJECT_ALIAS="${params.phase3_fast_subject_alias}"
+    export PHASE3_WGS_FAST_PAIR_ID="${params.phase3_fast_pair_id}"
+    export PHASE3_WGS_FAST_TUMOR_SAMPLE_ID="${params.phase3_fast_tumor_sample_id}"
+    export PHASE3_WGS_FAST_NORMAL_SAMPLE_ID="${params.phase3_fast_normal_sample_id}"
+    export PHASE3_WGS_FAST_REFERENCE_ID="${params.phase3_fast_reference_id}"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-input-manifest
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/input_manifest.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_input_manifest",
+      "status": "stubbed",
+      "workflow": {
+        "name": "phase3_wgs_fast"
+      },
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
 process FAST_GPU_SMOKE {
     tag "fast_gpu_smoke_${params.phase3_fast_gpu_smoke_expected_gpus}x_${params.phase3_fast_gpu_smoke_gpu_name}"
     cpus { params.phase3_fast_gpu_smoke_cpus as int }
@@ -650,11 +727,44 @@ workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
 
+workflow PHASE3_WGS_FAST {
+    requiredFastManifestParams = [
+        'phase3_fast_private_freeze_receipt',
+        'phase3_fast_private_sha256_receipt',
+        'phase3_fast_reference_freeze_receipt',
+        'phase3_fast_reference_sha256_receipt',
+        'phase3_fast_bam_validation_receipt',
+        'phase3_fast_contig_compatibility_receipt',
+        'phase3_fast_caller_resource_receipt',
+        'phase3_fast_parameter_sha256',
+        'phase3_fast_parabricks_container_digest',
+        'phase3_fast_parabricks_version',
+    ]
+    missing = requiredFastManifestParams.findAll { name ->
+        def value = params[name]
+        value == null || value.toString().trim() == ''
+    }
+    if (missing) {
+        error "phase3_wgs_fast requires: ${missing.join(', ')}"
+    }
+
+    inputReceipts = Channel.of(tuple(
+        file(params.phase3_fast_private_freeze_receipt.toString(), checkIfExists: true),
+        file(params.phase3_fast_private_sha256_receipt.toString(), checkIfExists: true),
+        file(params.phase3_fast_reference_freeze_receipt.toString(), checkIfExists: true),
+        file(params.phase3_fast_reference_sha256_receipt.toString(), checkIfExists: true),
+        file(params.phase3_fast_bam_validation_receipt.toString(), checkIfExists: true),
+        file(params.phase3_fast_contig_compatibility_receipt.toString(), checkIfExists: true),
+        file(params.phase3_fast_caller_resource_receipt.toString(), checkIfExists: true)
+    ))
+    FAST_INPUT_MANIFEST(inputReceipts)
+}
+
 workflow {
     selectedWorkflow = params.workflow.toString()
     effectivePhase3Reads = params.phase3_reads ? params.phase3_reads.toString() : '500000'
     allowFullWgs = params.allow_full_wgs.toString() == 'true'
-    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_sra_benchmark', 'known_answer_public_findings', 'known_answer_bounded_non_dry', 'known_answer_expanded_cohort', 'phase3_wgs', 'phase3_wgs_align_only', 'phase3_wgs_align_scatter', 'phase3_wgs_fast_gpu_smoke', 'phase3_wgs_monolith', 'all_public']
+    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_sra_benchmark', 'known_answer_public_findings', 'known_answer_bounded_non_dry', 'known_answer_expanded_cohort', 'phase3_wgs', 'phase3_wgs_align_only', 'phase3_wgs_align_scatter', 'phase3_wgs_fast', 'phase3_wgs_fast_gpu_smoke', 'phase3_wgs_monolith', 'all_public']
 
     if (!workflows.contains(selectedWorkflow)) {
         error "Unknown workflow '${selectedWorkflow}'. Choose one of: ${workflows.join(', ')}."
@@ -693,6 +803,8 @@ workflow {
         PHASE3_WGS_ALIGN_ONLY()
     } else if (selectedWorkflow == 'phase3_wgs_align_scatter') {
         PHASE3_WGS_ALIGN_SCATTER()
+    } else if (selectedWorkflow == 'phase3_wgs_fast') {
+        PHASE3_WGS_FAST()
     } else if (selectedWorkflow == 'phase3_wgs_fast_gpu_smoke') {
         PHASE3_WGS_FAST_GPU_SMOKE()
     } else if (selectedWorkflow == 'phase3_wgs_monolith') {
