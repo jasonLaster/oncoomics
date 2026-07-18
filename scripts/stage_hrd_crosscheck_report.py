@@ -240,12 +240,7 @@ def install_staged_packet(staging: Path, output_dir: Path) -> None:
             copy_create_only(staging / name, destination)
             installed.append(destination)
     except Exception:
-        for path in installed:
-            path.unlink(missing_ok=True)
-        try:
-            output_dir.rmdir()
-        except OSError:
-            pass
+        shutil.rmtree(output_dir, ignore_errors=True)
         raise
 
 

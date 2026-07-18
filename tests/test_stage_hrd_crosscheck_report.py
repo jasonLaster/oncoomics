@@ -378,6 +378,35 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             self.assertEqual(copied, ["method_spec.json"])
             self.assertFalse(output.exists())
 
+    def test_stage_cleans_unexpected_child_after_install_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            output = root / "staged"
+
+            def fail_with_untracked_child(
+                source_path: Path, destination: Path
+            ) -> None:
+                (destination.parent / "unexpected.tmp").write_text(
+                    "partial write\n",
+                    encoding="utf-8",
+                )
+                raise ValueError("synthetic untracked install failure")
+
+            with mock.patch.object(
+                STAGE,
+                "copy_create_only",
+                side_effect=fail_with_untracked_child,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "synthetic untracked install failure",
+                ):
+                    STAGE.stage(source, verification, output, "sigprofiler_sbs3")
+
+            self.assertFalse(output.exists())
+
     def test_stage_rejects_output_inside_exact_replay(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
