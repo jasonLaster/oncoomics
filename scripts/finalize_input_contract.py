@@ -18,7 +18,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 FINAL_OUTPUTS = {
     "somatic_vcf": "somatic.pass.vcf.gz",
@@ -34,6 +33,10 @@ SOURCE_ROLES = {
     "matrix": "sbs96_matrix",
 }
 REFERENCE_ROLES = {"fasta": "fasta", "fai": "fai"}
+
+
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
 
 
 def sha256(path: Path) -> str:
@@ -355,17 +358,11 @@ def write_new_json(path: Path, value: dict[str, Any]) -> None:
 
 
 def require_safe_output_parent(path: Path) -> None:
-    parent = path.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"contract output parent may not be a symlink: {parent}")
-        if parent == parent.parent:
-            raise ValueError(f"contract output has no existing parent: {path}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(f"contract output parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise NotADirectoryError(parent)
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
 
 
 def main() -> int:

@@ -30,6 +30,10 @@ ROUTE_REQUIREMENTS = {
 }
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def private_input(uri: str) -> bool:
     return bool(
         re.match(
@@ -229,23 +233,13 @@ def write_text_once(path: Path, value: str) -> None:
 
 
 def require_safe_output_parent(path: Path) -> None:
-    parent = path.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(
                 f"contract readiness output parent may not be a symlink: {parent}"
             )
-        if parent == parent.parent:
-            raise ValueError(
-                f"contract readiness output has no existing parent: {path}"
-            )
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(
-            f"contract readiness output parent may not be a symlink: {parent}"
-        )
-    if not parent.is_dir():
-        raise NotADirectoryError(parent)
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
 
 
 def main() -> int:
