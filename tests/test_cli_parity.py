@@ -1,10 +1,11 @@
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import diana_omics.commands as command_package
 from diana_omics.cli import _format_command_families, _load_commands
 from diana_omics.commands.registry import COMMAND_FAMILIES, COMMAND_SPECS, FAMILY_PACKAGES, TASK_ONLY_MODULES
-from diana_omics.workflow_tasks import TASKS
+from diana_omics.workflow_tasks import LEGACY_PHASE3_AWS_FULL_ENV, TASKS, run_task
 
 
 class CliParityTest(unittest.TestCase):
@@ -190,6 +191,43 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("4", argv[argv.index("--phase3_sort_threads") + 1])
         self.assertNotIn("64", argv[argv.index("--phase3_align_cpus") + 1])
 
+    def test_legacy_phase3_aws_full_tasks_require_explicit_override(self):
+        guarded_tasks = {
+            "nf:aws:phase3-wgs:full",
+            "nf:aws:phase3-wgs:full:ondemand-large",
+            "nf:aws:phase3-wgs:full:ondemand-failfast",
+            "nf:aws:phase3-wgs:monolith:full",
+        }
+
+        for name in guarded_tasks:
+            self.assertEqual(LEGACY_PHASE3_AWS_FULL_ENV, TASKS[name].required_env)
+
+        self.assertIsNone(TASKS["nf:aws:phase3-wgs-fast:gpu-smoke"].required_env)
+        self.assertIsNone(TASKS["nf:aws:phase3-wgs:stub"].required_env)
+        self.assertIsNone(TASKS["nf:aws:phase3-wgs:dev"].required_env)
+
+    @patch("diana_omics.workflow_tasks.subprocess.run")
+    def test_legacy_phase3_aws_full_task_fails_before_nextflow_without_override(self, run):
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaises(SystemExit) as error:
+                run_task("nf:aws:phase3-wgs:full")
+
+        self.assertIn("ALLOW_LEGACY_PHASE3_AWS_FULL=YES", str(error.exception))
+        run.assert_not_called()
+
+    @patch("diana_omics.workflow_tasks.subprocess.run")
+    def test_legacy_phase3_aws_full_task_runs_with_explicit_override(self, run):
+        with patch.dict("os.environ", {"ALLOW_LEGACY_PHASE3_AWS_FULL": "YES"}, clear=True):
+            run_task("nf:aws:phase3-wgs:full")
+
+        run.assert_called_once()
+        argv = run.call_args.args[0]
+        env = run.call_args.kwargs["env"]
+        self.assertEqual("nextflow", argv[0])
+        self.assertEqual("phase3_wgs", argv[argv.index("--workflow") + 1])
+        self.assertEqual("full", argv[argv.index("--phase3_reads") + 1])
+        self.assertEqual("YES", env["ALLOW_LEGACY_PHASE3_AWS_FULL"])
+
     def test_p5en_gpu_smoke_task_uses_isolated_gpu_profile(self):
         task = TASKS["nf:aws:phase3-wgs-fast:gpu-smoke"]
 
@@ -210,12 +248,16 @@ class CliParityTest(unittest.TestCase):
             ("terraform", "-chdir=infra/aws", "workspace", "select", "-or-create", "phase3-fast-use2"),
             plan_steps[0].argv,
         )
-        self.assertEqual("us-east-2", plan_steps[1].env["TF_VAR_region"])
-        self.assertEqual("prod-use2", plan_steps[1].env["TF_VAR_environment"])
-        self.assertEqual("nextflow.aws.use2.json", plan_steps[1].env["TF_VAR_nextflow_params_filename"])
+        plan_env = plan_steps[1].env
+        assert plan_env is not None
+        self.assertEqual("us-east-2", plan_env["TF_VAR_region"])
+        self.assertEqual("prod-use2", plan_env["TF_VAR_environment"])
+        self.assertEqual("nextflow.aws.use2.json", plan_env["TF_VAR_nextflow_params_filename"])
 
         use1_steps = TASKS["infra:aws:plan:use1"].steps
-        self.assertEqual("nextflow.aws.json", use1_steps[1].env["TF_VAR_nextflow_params_filename"])
+        use1_env = use1_steps[1].env
+        assert use1_env is not None
+        self.assertEqual("nextflow.aws.json", use1_env["TF_VAR_nextflow_params_filename"])
 
 
 if __name__ == "__main__":

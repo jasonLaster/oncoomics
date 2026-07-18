@@ -32,6 +32,12 @@ SRA_BENCH_RANGE_MATRIX = ",".join(
         "s5cmd_cat:8:268435456:4:s5cat-c8",
     )
 )
+LEGACY_PHASE3_AWS_FULL_ENV = {"ALLOW_LEGACY_PHASE3_AWS_FULL": "YES"}
+LEGACY_PHASE3_AWS_FULL_DESCRIPTION = (
+    "Legacy full-source AWS Phase 3 WGS CPU runs are disabled for Diana reruns. "
+    "Use the P5en/Parabricks phase3_wgs_fast path after quota and GPU smoke pass. "
+    "Set ALLOW_LEGACY_PHASE3_AWS_FULL=YES only for an explicitly approved legacy public WGS run."
+)
 
 
 @dataclass(frozen=True)
@@ -47,6 +53,7 @@ class Task:
     steps: tuple[TaskStep, ...]
     accepts_args: bool = False
     description: str = ""
+    required_env: Optional[Mapping[str, str]] = None
 
 
 def _python_bin() -> str:
@@ -103,8 +110,21 @@ def _tf_image_env(extra: Optional[Mapping[str, str]] = None) -> dict[str, str]:
     return env
 
 
-def _task(*steps: TaskStep, accepts_args: bool = False, description: str = "") -> Task:
-    return Task(tuple(steps), accepts_args=accepts_args, description=description)
+def _task(
+    *steps: TaskStep,
+    accepts_args: bool = False,
+    description: str = "",
+    required_env: Optional[Mapping[str, str]] = None,
+) -> Task:
+    return Task(tuple(steps), accepts_args=accepts_args, description=description, required_env=required_env)
+
+
+def _legacy_phase3_aws_full_task(*steps: TaskStep) -> Task:
+    return _task(
+        *steps,
+        description=LEGACY_PHASE3_AWS_FULL_DESCRIPTION,
+        required_env=LEGACY_PHASE3_AWS_FULL_ENV,
+    )
 
 
 TASKS: dict[str, Task] = {
@@ -471,7 +491,7 @@ TASKS: dict[str, Task] = {
             "500000",
         )
     ),
-    "nf:aws:phase3-wgs:full": _task(
+    "nf:aws:phase3-wgs:full": _legacy_phase3_aws_full_task(
         _nextflow(
             "-profile",
             "awsbatch_spot",
@@ -521,7 +541,7 @@ TASKS: dict[str, Task] = {
             "minimal",
         )
     ),
-    "nf:aws:phase3-wgs:full:ondemand-large": _task(
+    "nf:aws:phase3-wgs:full:ondemand-large": _legacy_phase3_aws_full_task(
         _nextflow(
             "-profile",
             "awsbatch_ondemand",
@@ -571,7 +591,7 @@ TASKS: dict[str, Task] = {
             "minimal",
         )
     ),
-    "nf:aws:phase3-wgs:full:ondemand-failfast": _task(
+    "nf:aws:phase3-wgs:full:ondemand-failfast": _legacy_phase3_aws_full_task(
         _nextflow(
             "-profile",
             "awsbatch_ondemand",
@@ -644,7 +664,7 @@ TASKS: dict[str, Task] = {
             "0",
         ),
     ),
-    "nf:aws:phase3-wgs:monolith:full": _task(
+    "nf:aws:phase3-wgs:monolith:full": _legacy_phase3_aws_full_task(
         _nextflow(
             "-profile",
             "awsbatch_ondemand",
@@ -686,6 +706,15 @@ def run_task(name: str, extra_args: Sequence[str] = ()) -> None:
     passthrough = tuple(arg for arg in extra_args if arg != "--")
     if passthrough and not task.accepts_args:
         raise SystemExit(f"{name} does not accept extra arguments: {' '.join(passthrough)}")
+    if task.required_env:
+        missing = [
+            f"{key}={expected_value}"
+            for key, expected_value in sorted(task.required_env.items())
+            if os.environ.get(key) != expected_value
+        ]
+        if missing:
+            suffix = f"\n{task.description}" if task.description else ""
+            raise SystemExit(f"{name} requires {' '.join(missing)} to run.{suffix}")
     for step in task.steps:
         env = os.environ.copy()
         if step.env:

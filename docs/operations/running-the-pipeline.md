@@ -92,10 +92,14 @@ AWS Batch requires account-specific ECR, queue, region, and S3 workdir values. P
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:known-answer-expanded-cohort
-PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full:ondemand-failfast
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
 ```
 
-The expanded known-answer cohort fetches small public assets in the Batch task and publishes clinicalization reports to S3. The full WGS AWS workflow should use the split `phase3_wgs` DAG so `nextflow -resume` can restart after completed expensive stages.
+The expanded known-answer cohort fetches small public assets in the Batch task and publishes clinicalization reports to S3. The GPU smoke alias is the bounded
+placement gate for the isolated `phase3_wgs_fast` P5en/Parabricks queue; it does not run the full WGS caller.
+
+Do not use the legacy full-source AWS CPU aliases for the current Diana tumor/matched-normal evidence rerun. They are blocked behind
+`ALLOW_LEGACY_PHASE3_AWS_FULL=YES` and kept only for explicitly approved legacy public-WGS regression runs.
 
 Resource knobs for large WGS runs:
 

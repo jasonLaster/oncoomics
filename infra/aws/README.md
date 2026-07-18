@@ -354,20 +354,23 @@ AWS profiles delete local `.sra` files after validated conversion and cache publ
 
 ## Full-Source WGS
 
-Run full WGS only by explicit command. The default script uses the Spot queue with quota-aware sizing for the
-current 32-vCPU Spot quota:
-
-```sh
-PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full
-```
-
-Full-source WGS is the acceptance-scale path and can be expensive.
-
-Do not use this legacy full-source CPU launcher for the current Diana
+Do not use these legacy full-source CPU launchers for the current Diana
 tumor/matched-normal evidence rerun. The July 2026 single-node CPU evidence
 retry was intentionally stopped before final publication; that rerun is now
 gated on the `phase3_wgs_fast` P5en/Parabricks architecture in
 `docs/operations/next-generation-fast-rerun.md`.
+
+The legacy AWS full-source CPU aliases intentionally fail unless
+`ALLOW_LEGACY_PHASE3_AWS_FULL=YES` is set. If a legacy public WGS regression run
+is explicitly approved, the default alias uses the Spot queue with quota-aware
+sizing for the current 32-vCPU Spot quota:
+
+```sh
+ALLOW_LEGACY_PHASE3_AWS_FULL=YES \
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full
+```
+
+Full-source WGS is the acceptance-scale path and can be expensive.
 
 That script requests memory-rich split alignment jobs through:
 
@@ -378,12 +381,14 @@ That script requests memory-rich split alignment jobs through:
 After EC2 quota approval, use the larger On-Demand shape if interruption risk is unacceptable:
 
 ```sh
+ALLOW_LEGACY_PHASE3_AWS_FULL=YES \
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full:ondemand-large
 ```
 
 After an alignment/I/O experiment, weak-scaling manual termination, or any run where automatic retry would blur the evidence, use the conservative On-Demand fail-fast alias instead:
 
 ```sh
+ALLOW_LEGACY_PHASE3_AWS_FULL=YES \
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full:ondemand-failfast
 ```
 
