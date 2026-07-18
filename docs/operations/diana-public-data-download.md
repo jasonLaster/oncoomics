@@ -59,8 +59,10 @@ create-only post-success renderer:
 ```bash
 RUN_ROOT=.codex-tmp/hrd-reports/deterministic-full
 POST_SUCCESS_RUNBOOK="$RUN_ROOT/post-success-runbook.$(date -u +%Y%m%dT%H%M%SZ).md"
+TERMINAL_BATCH_JOB_ID=<successful-batch-job-id>
 
 python3 scripts/render_post_success_runbook.py \
+  --terminal-job-id "$TERMINAL_BATCH_JOB_ID" \
   --output "$POST_SUCCESS_RUNBOOK"
 ```
 

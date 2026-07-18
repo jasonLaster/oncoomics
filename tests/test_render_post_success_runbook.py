@@ -22,10 +22,16 @@ assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
+TERMINAL_JOB_ID = "12345678-1234-1234-1234-123456789abc"
+
+
+def render() -> str:
+    return MODULE.render(Path("/repo"), TERMINAL_JOB_ID)
+
 
 class RenderPostSuccessRunbookTests(unittest.TestCase):
     def test_renderer_uses_checked_in_terminal_handoff_scripts(self) -> None:
-        text = MODULE.render(Path("/repo"))
+        text = render()
 
         for script in (
             "/repo/scripts/capture_batch_provenance.py",
@@ -52,10 +58,11 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             self.assertNotIn(stale, text)
 
     def test_renderer_keeps_fail_closed_guards_and_report_builders(self) -> None:
-        text = MODULE.render(Path("/repo"))
+        text = render()
 
         self.assertIn("--expected-status SUCCEEDED", text)
-        self.assertIn("--job-id 0c1e11bc-5fab-4dc0-b072-69d8e9759f52", text)
+        self.assertIn(f"--job-id {TERMINAL_JOB_ID}", text)
+        self.assertNotIn("--job-id 0c1e11bc-5fab-4dc0-b072-69d8e9759f52", text)
         self.assertNotIn("--job-id 6f827d44-d19b-4a6c-9126-d65189aa66cf", text)
         self.assertIn(
             "s3://diana-omics-work-172630973301-us-east-1/runs/diana-hrd/"
@@ -130,7 +137,7 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         )
 
     def test_routes_render_in_canonical_executable_order(self) -> None:
-        text = MODULE.render(Path("/repo"))
+        text = render()
 
         previous = -1
         for route in MODULE.EXECUTABLE_CROSSCHECK_METHOD_IDS:
@@ -194,7 +201,7 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertEqual(apply[-1], "--submit")
 
     def test_render_source_handoff_follows_all_packet_staging(self) -> None:
-        text = MODULE.render(Path("/repo"))
+        text = render()
 
         self.assertLess(
             text.index("stage_deterministic_wgs_report.py"),
@@ -349,6 +356,8 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
                         str(output),
                         "--root",
                         str(root),
+                        "--terminal-job-id",
+                        TERMINAL_JOB_ID,
                     ],
                 ),
                 self.assertRaisesRegex(SystemExit, "create-only outputs"),

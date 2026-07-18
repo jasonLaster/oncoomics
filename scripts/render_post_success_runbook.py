@@ -38,7 +38,6 @@ from runbook_io import (
 )
 
 
-JOB_ID = "0c1e11bc-5fab-4dc0-b072-69d8e9759f52"
 WORK_BUCKET = f"diana-omics-work-{ACCOUNT_ID}-{REGION}"
 PRIVATE_RUN_ROOT = f"s3://{PRIVATE_BUCKET}/runs/{SUBJECT_ALIAS}/{RUN_ID}/"
 DETERMINISTIC_PRIVATE_PREFIX = f"{PRIVATE_RUN_ROOT}deterministic/"
@@ -502,7 +501,7 @@ def required_absent(root: Path) -> tuple[Path, ...]:
     )
 
 
-def render(root: Path) -> str:
+def render(root: Path, terminal_job_id: str) -> str:
     scripts = root / "scripts"
     aws_dir = root / "aws"
     reports = root / ".codex-tmp/hrd-reports"
@@ -514,7 +513,7 @@ def render(root: Path) -> str:
         "# Post-success Diana WGS HRD handoff",
         "",
         f"- Run: `{RUN_ID}`",
-        f"- Terminal Batch job: `{JOB_ID}`",
+        f"- Terminal Batch job: `{terminal_job_id}`",
         "- Boundary: start only after that Batch job reports `SUCCEEDED`; this "
         "runbook freezes exact deterministic outputs, materializes cross-check "
         "inputs, stages deterministic/Rosalind/cross-check packets, then "
@@ -528,7 +527,7 @@ def render(root: Path) -> str:
                 "python3",
                 scripts / "capture_batch_provenance.py",
                 "--job-id",
-                JOB_ID,
+                terminal_job_id,
                 "--run-id",
                 RUN_ID,
                 "--worker-uri",
@@ -550,7 +549,7 @@ def render(root: Path) -> str:
                 "python3",
                 scripts / "freeze_stage_provenance.py",
                 "--job-id",
-                JOB_ID,
+                terminal_job_id,
                 "--run-id",
                 RUN_ID,
                 "--execution-receipt",
@@ -570,7 +569,7 @@ def render(root: Path) -> str:
                 "python3",
                 scripts / "freeze_stage_provenance.py",
                 "--job-id",
-                JOB_ID,
+                terminal_job_id,
                 "--run-id",
                 RUN_ID,
                 "--execution-receipt",
@@ -591,7 +590,7 @@ def render(root: Path) -> str:
                 "python3",
                 scripts / "freeze_final_artifacts.py",
                 "--job-id",
-                JOB_ID,
+                terminal_job_id,
                 "--run-id",
                 RUN_ID,
                 "--execution-receipt",
@@ -615,7 +614,7 @@ def render(root: Path) -> str:
                 "python3",
                 scripts / "freeze_final_artifacts.py",
                 "--job-id",
-                JOB_ID,
+                terminal_job_id,
                 "--run-id",
                 RUN_ID,
                 "--execution-receipt",
@@ -906,6 +905,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--root", default=Path.cwd(), type=Path)
+    parser.add_argument("--terminal-job-id", required=True)
     args = parser.parse_args()
 
     root = args.root.resolve()
@@ -924,7 +924,7 @@ def main() -> int:
     if args.output.exists() or args.output.is_symlink():
         raise SystemExit(f"Fail-closed: output already exists: {args.output}")
 
-    write_once(args.output, render(root))
+    write_once(args.output, render(root, args.terminal_job_id))
     print(json.dumps({"status": "rendered", "output": str(args.output)}, sort_keys=True))
     return 0
 

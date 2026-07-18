@@ -56,7 +56,10 @@ def rendered_runbooks() -> dict[str, str]:
         for method_id in REVIEWED_PUBLICATION.REPORT_METHOD_IDS
     ]
     return {
-        "post-success": POST_SUCCESS.render(root),
+        "post-success": POST_SUCCESS.render(
+            root,
+            "12345678-1234-1234-1234-123456789abc",
+        ),
         "source-report-freeze": SOURCE_REPORT_FREEZE.render(root, "unit"),
         "ai-synthesis": AI_SYNTHESIS.render(
             root,

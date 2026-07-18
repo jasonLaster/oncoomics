@@ -34,6 +34,7 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             text.count("python3 scripts/render_post_success_runbook.py"),
             1,
         )
+        self.assertIn('--terminal-job-id "$TERMINAL_BATCH_JOB_ID"', text)
         self.assertIn('--output "$POST_SUCCESS_RUNBOOK"', text)
 
         for generated_command in (
