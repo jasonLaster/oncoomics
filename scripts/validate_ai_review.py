@@ -1037,6 +1037,7 @@ def require_exact_review_output_dir(review_dir: Path) -> None:
 
 
 def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None:
+    require_safe_validation_parent(path)
     payload = (
         json.dumps(validation, indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
@@ -1062,6 +1063,15 @@ def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None
     finally:
         if file_descriptor >= 0:
             os.close(file_descriptor)
+
+
+def require_safe_validation_parent(path: Path) -> None:
+    if path.is_symlink():
+        raise ValueError("validation.json already exists")
+    if path.parent.is_symlink():
+        raise ValueError("review directory is missing or a symlink")
+    if path.parent.exists() and not path.parent.is_dir():
+        raise NotADirectoryError(path.parent)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

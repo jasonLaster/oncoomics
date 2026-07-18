@@ -283,6 +283,7 @@ def build_manifest(
 
 
 def write_create_only(path: Path, value: dict[str, Any]) -> None:
+    require_safe_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = -1
     try:
@@ -307,6 +308,15 @@ def write_create_only(path: Path, value: dict[str, Any]) -> None:
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def require_safe_parent(path: Path) -> None:
+    if path.is_symlink():
+        raise ValueError("report_manifest.json already exists")
+    if path.parent.is_symlink():
+        raise ValueError("output path may not be a symlink")
+    if path.parent.exists() and not path.parent.is_dir():
+        raise NotADirectoryError(path.parent)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

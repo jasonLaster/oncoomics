@@ -123,6 +123,22 @@ class FinalizeAiReviewTests(unittest.TestCase):
                 FINALIZE.write_create_only(output, {"status": "failed"})
             self.assertEqual(output.read_bytes(), original)
 
+    def test_final_manifest_refuses_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "review-real"
+            real_parent.mkdir()
+            linked_parent = root / "review-link"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "output path may not be a symlink"):
+                FINALIZE.write_create_only(
+                    linked_parent / "report_manifest.json",
+                    {"status": "passed"},
+                )
+
+            self.assertFalse((real_parent / "report_manifest.json").exists())
+
     def test_wraps_passed_ai_review_for_private_publication(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)
