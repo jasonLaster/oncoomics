@@ -99,7 +99,7 @@ def receipt_output(root: Path, receipt_stem: str, method_id: str, suffix: str) -
 def publish_command(
     scripts: Path,
     receipt_path: Path,
-    receipt_sha256: str | None,
+    receipt_sha256: str,
     method_id: str,
     output: Path,
     *,
@@ -119,8 +119,7 @@ def publish_command(
         "--region",
         REGION,
     ]
-    if receipt_sha256 is not None:
-        command.extend(["--private-publication-receipt-sha256", receipt_sha256])
+    command.extend(["--private-publication-receipt-sha256", receipt_sha256])
     if apply:
         command.append("--apply")
     return command
@@ -188,12 +187,34 @@ def required_absent(root: Path, receipt_stem: str) -> tuple[Path, ...]:
     )
 
 
+def require_receipt_summaries(
+    receipt_summaries: Iterable[dict[str, str | int]],
+) -> tuple[dict[str, str | int], ...]:
+    summaries = tuple(receipt_summaries)
+    method_ids = [str(summary.get("method_id", "")) for summary in summaries]
+    if method_ids != list(REPORT_METHOD_IDS):
+        raise ValueError(
+            "reviewed-public rendering requires ten private publication "
+            f"receipts in canonical order; observed={method_ids!r}"
+        )
+    for summary in summaries:
+        digest = str(summary.get("receipt_sha256", ""))
+        if len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ):
+            raise ValueError(
+                f"{summary['method_id']} private receipt SHA-256 is malformed"
+            )
+    return summaries
+
+
 def render(
     root: Path,
     receipt_paths: Iterable[Path],
     receipt_stem: str,
     receipt_summaries: tuple[dict[str, str | int], ...] = (),
 ) -> str:
+    receipt_summaries = require_receipt_summaries(receipt_summaries)
     paths = list(receipt_paths)
     scripts = root / "scripts"
     receipt_sha256_by_method = {
@@ -211,22 +232,21 @@ def render(
         "`scripts/hrd_report_inventory.py`.",
         "",
     ]
-    if receipt_summaries:
-        lines.extend(
-            [
-                "## 0. Private publication receipt gate",
-                "",
-                "The renderer bound this handoff to ten passed private publication "
-                "receipts in canonical report-method order:",
-                "",
-            ]
+    lines.extend(
+        [
+            "## 0. Private publication receipt gate",
+            "",
+            "The renderer bound this handoff to ten passed private publication "
+            "receipts in canonical report-method order:",
+            "",
+        ]
+    )
+    for summary in receipt_summaries:
+        lines.append(
+            f"- `{summary['method_id']}`: {summary['object_count']} files → "
+            f"`{summary['destination_prefix']}`"
         )
-        for summary in receipt_summaries:
-            lines.append(
-                f"- `{summary['method_id']}`: {summary['object_count']} files → "
-                f"`{summary['destination_prefix']}`"
-            )
-        lines.append("")
+    lines.append("")
 
     lines.extend(["## 1. Dry-run and apply reviewed-public reports", ""])
     for index, method_id in enumerate(REPORT_METHOD_IDS):
@@ -239,7 +259,7 @@ def render(
                     publish_command(
                         scripts,
                         receipt,
-                        receipt_sha256_by_method.get(method_id),
+                        receipt_sha256_by_method[method_id],
                         method_id,
                         receipt_output(root, receipt_stem, method_id, ".dry"),
                         apply=False,
@@ -249,7 +269,7 @@ def render(
                     publish_command(
                         scripts,
                         receipt,
-                        receipt_sha256_by_method.get(method_id),
+                        receipt_sha256_by_method[method_id],
                         method_id,
                         receipt_output(root, receipt_stem, method_id, ""),
                         apply=True,

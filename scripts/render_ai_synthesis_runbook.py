@@ -157,6 +157,27 @@ def expected_source_manifest_flags(
     ]
 
 
+def require_receipt_summaries(
+    receipt_summaries: Iterable[dict[str, str | int]],
+) -> tuple[dict[str, str | int], ...]:
+    summaries = tuple(receipt_summaries)
+    method_ids = [str(summary.get("method_id", "")) for summary in summaries]
+    if method_ids != list(REQUIRED_METHOD_IDS):
+        raise ValueError(
+            "AI synthesis rendering requires seven receipt-bound source "
+            f"manifests in canonical order; observed={method_ids!r}"
+        )
+    for summary in summaries:
+        digest = str(summary.get("report_manifest_sha256", ""))
+        if len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ):
+            raise ValueError(
+                f"{summary['method_id']} report_manifest.json SHA-256 is malformed"
+            )
+    return summaries
+
+
 def manifest_flags(paths: dict[str, Path], flag: str = "--source-manifest") -> list[str | Path]:
     return [
         token
@@ -344,6 +365,7 @@ def render(
     sequenza_report_dir: Path | None = None,
     receipt_summaries: tuple[dict[str, str | int], ...] = (),
 ) -> str:
+    receipt_summaries = require_receipt_summaries(receipt_summaries)
     reports = root / ".codex-tmp/hrd-reports"
     scripts = root / "scripts"
     manifests = report_manifest_paths(root, sigprofiler_report_dir, sequenza_report_dir)
@@ -375,23 +397,22 @@ def render(
         "receipts exactly.",
         "",
     ]
-    if receipt_summaries:
-        lines.extend(
-            [
-                "## 0. Private publication receipt gate",
-                "",
-                "The renderer bound this handoff to seven passed private "
-                "publication receipts in canonical method order:",
-                "",
-            ]
+    lines.extend(
+        [
+            "## 0. Private publication receipt gate",
+            "",
+            "The renderer bound this handoff to seven passed private "
+            "publication receipts in canonical method order:",
+            "",
+        ]
+    )
+    for summary in receipt_summaries:
+        lines.append(
+            f"- `{summary['method_id']}`: `report_manifest.json` VersionId "
+            f"`{summary['report_manifest_version_id']}`, SHA-256 "
+            f"`{summary['report_manifest_sha256']}`"
         )
-        for summary in receipt_summaries:
-            lines.append(
-                f"- `{summary['method_id']}`: `report_manifest.json` VersionId "
-                f"`{summary['report_manifest_version_id']}`, SHA-256 "
-                f"`{summary['report_manifest_sha256']}`"
-            )
-        lines.append("")
+    lines.append("")
 
     lines.extend(
         [

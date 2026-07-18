@@ -82,13 +82,39 @@ def write_receipts(root: Path) -> list[Path]:
     return receipts
 
 
+def receipt_summaries() -> tuple[dict[str, str | int], ...]:
+    return tuple(
+        {
+            "method_id": method_id,
+            "receipt": f"{method_id}.private.json",
+            "receipt_sha256": f"{index:064x}",
+            "destination_prefix": MODULE.destination_prefix(method_id),
+            "object_count": 3,
+        }
+        for index, method_id in enumerate(MODULE.REPORT_METHOD_IDS, 1)
+    )
+
+
+def render(
+    receipts: list[Path] | None = None,
+    receipt_stem: str = "terminal",
+) -> str:
+    return MODULE.render(
+        Path("/repo"),
+        receipts
+        or [Path(f"/receipts/{method_id}.json") for method_id in MODULE.REPORT_METHOD_IDS],
+        receipt_stem,
+        receipt_summaries=receipt_summaries(),
+    )
+
+
 class RenderReviewedPublicationRunbookTests(unittest.TestCase):
     def test_renderer_publishes_ten_reports_in_canonical_order(self) -> None:
         receipts = [
             Path(f"/receipts/{method_id}.json")
             for method_id in MODULE.REPORT_METHOD_IDS
         ]
-        text = MODULE.render(Path("/repo"), receipts, "terminal")
+        text = render(receipts)
 
         self.assertEqual(text.count("/repo/scripts/publish_reviewed_public_report.py"), 20)
         self.assertEqual(text.count("--private-publication-receipt "), 20)
@@ -148,7 +174,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             Path(f"/receipts/{method_id}.json")
             for method_id in MODULE.REPORT_METHOD_IDS
         ]
-        text = MODULE.render(Path("/repo"), receipts, "terminal")
+        text = render(receipts)
 
         self.assertIn("/repo/scripts/build_public_results_index.py", text)
         self.assertEqual(text.count("/repo/scripts/publish_public_results_index.py"), 2)
@@ -265,6 +291,17 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                     2,
                 )
 
+    def test_render_refuses_missing_receipt_summaries(self) -> None:
+        with self.assertRaisesRegex(ValueError, "requires ten"):
+            MODULE.render(
+                Path("/repo"),
+                [
+                    Path(f"/receipts/{method_id}.json")
+                    for method_id in MODULE.REPORT_METHOD_IDS
+                ],
+                "terminal",
+            )
+
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
         prerequisites = {
             path.as_posix() for path in MODULE.required_existing(Path("/repo"))
@@ -343,17 +380,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             self.assertFalse(output.exists())
 
     def test_runbook_can_include_private_receipt_gate(self) -> None:
-        summaries = (
-            {
-                "method_id": "comparative_hrd_synthesis",
-                "receipt": "receipt.json",
-                "receipt_sha256": "a" * 64,
-                "destination_prefix": MODULE.destination_prefix(
-                    "comparative_hrd_synthesis"
-                ),
-                "object_count": 3,
-            },
-        )
+        summaries = receipt_summaries()
 
         text = MODULE.render(
             Path("/repo"),

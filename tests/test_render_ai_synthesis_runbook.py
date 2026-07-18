@@ -98,9 +98,31 @@ def write_receipts(root: Path, manifest_paths: dict[str, Path]) -> list[Path]:
     return receipts
 
 
+def receipt_summaries() -> tuple[dict[str, str | int], ...]:
+    return tuple(
+        {
+            "method_id": method_id,
+            "receipt": f"{method_id}.private.json",
+            "destination_prefix": f"s3://private/{method_id}/",
+            "report_manifest_version_id": f"version-{index}",
+            "report_manifest_sha256": f"{index:064x}",
+            "object_count": 5,
+        }
+        for index, method_id in enumerate(MODULE.REQUIRED_METHOD_IDS, 1)
+    )
+
+
+def render(root: Path = Path("/repo"), receipt_stem: str = "terminal") -> str:
+    return MODULE.render(
+        root,
+        receipt_stem,
+        receipt_summaries=receipt_summaries(),
+    )
+
+
 class RenderAiSynthesisRunbookTests(unittest.TestCase):
     def test_renderer_prepares_ai_review_run_atomically(self) -> None:
-        text = MODULE.render(Path("/repo"), "unit")
+        text = render(receipt_stem="unit")
 
         self.assertIn("/repo/scripts/prepare_ai_review_run.py", text)
         self.assertNotIn("build_ai_review_bundle.py", text)
@@ -127,7 +149,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         )
 
     def test_renderer_validates_and_publishes_checked_in_outputs(self) -> None:
-        text = MODULE.render(Path("/repo"), "terminal")
+        text = render()
 
         self.assertEqual(text.count("--source-manifest "), 21)
         self.assertEqual(text.count("--require-method "), 7)
@@ -148,7 +170,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
 
     def test_ai_private_receipt_table_drives_publish_and_handoff(self) -> None:
         root = Path("/repo")
-        text = MODULE.render(Path("/repo"), "terminal")
+        text = render()
         receipt_paths = MODULE.ai_private_receipt_paths(root, "terminal")
 
         self.assertEqual(
@@ -367,7 +389,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         self.assertEqual(tuple(paths), MODULE.REQUIRED_METHOD_IDS)
 
     def test_renderer_hands_ten_private_receipts_to_public_renderer(self) -> None:
-        text = MODULE.render(Path("/repo"), "terminal")
+        text = render()
 
         self.assertIn("/repo/scripts/render_reviewed_publication_runbook.py", text)
         self.assertIn(
@@ -526,7 +548,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         )
 
     def test_renderer_materializes_pinned_model_catalog_receipt(self) -> None:
-        text = MODULE.render(Path("/repo"), "terminal")
+        text = render()
         catalog = (
             "/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/"
             f"{MODULE.RUN_ID}/"
@@ -566,16 +588,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         )
 
     def test_runbook_can_include_private_receipt_gate(self) -> None:
-        summaries = (
-            {
-                "method_id": "deterministic_full_wgs",
-                "receipt": "receipt.json",
-                "destination_prefix": "s3://private/",
-                "report_manifest_version_id": "version-1",
-                "report_manifest_sha256": "a" * 64,
-                "object_count": 5,
-            },
-        )
+        summaries = receipt_summaries()
 
         text = MODULE.render(
             Path("/repo"),
@@ -616,8 +629,12 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             self.assertGreater(index, previous)
             previous = index
 
+    def test_render_refuses_missing_receipt_summaries(self) -> None:
+        with self.assertRaisesRegex(ValueError, "requires seven"):
+            MODULE.render(Path("/repo"), "unit")
+
     def test_renderer_has_no_template_placeholders(self) -> None:
-        text = MODULE.render(Path("/repo"), "unit")
+        text = render(receipt_stem="unit")
 
         for placeholder in (
             "PRIVATE" + "_",

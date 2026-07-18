@@ -20,6 +20,35 @@ import render_source_report_freeze_runbook as SOURCE_REPORT_FREEZE  # noqa: E402
 BASH_FENCE = re.compile(r"```bash\n(.*?)\n```", re.DOTALL)
 
 
+def ai_receipt_summaries() -> tuple[dict[str, str | int], ...]:
+    return tuple(
+        {
+            "method_id": method_id,
+            "receipt": f"{method_id}.private.json",
+            "destination_prefix": f"s3://private/{method_id}/",
+            "report_manifest_version_id": f"version-{index}",
+            "report_manifest_sha256": f"{index:064x}",
+            "object_count": 5,
+        }
+        for index, method_id in enumerate(AI_SYNTHESIS.REQUIRED_METHOD_IDS, 1)
+    )
+
+
+def reviewed_publication_receipt_summaries() -> tuple[dict[str, str | int], ...]:
+    return tuple(
+        {
+            "method_id": method_id,
+            "receipt": f"{method_id}.private.json",
+            "receipt_sha256": f"{index:064x}",
+            "destination_prefix": REVIEWED_PUBLICATION.destination_prefix(
+                method_id
+            ),
+            "object_count": 3,
+        }
+        for index, method_id in enumerate(REVIEWED_PUBLICATION.REPORT_METHOD_IDS, 1)
+    )
+
+
 def rendered_runbooks() -> dict[str, str]:
     root = Path("/repo")
     reviewed_public_receipts = [
@@ -29,11 +58,16 @@ def rendered_runbooks() -> dict[str, str]:
     return {
         "post-success": POST_SUCCESS.render(root),
         "source-report-freeze": SOURCE_REPORT_FREEZE.render(root, "unit"),
-        "ai-synthesis": AI_SYNTHESIS.render(root, "unit"),
+        "ai-synthesis": AI_SYNTHESIS.render(
+            root,
+            "unit",
+            receipt_summaries=ai_receipt_summaries(),
+        ),
         "reviewed-publication": REVIEWED_PUBLICATION.render(
             root,
             reviewed_public_receipts,
             "unit",
+            receipt_summaries=reviewed_publication_receipt_summaries(),
         ),
     }
 
