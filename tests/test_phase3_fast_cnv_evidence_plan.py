@@ -128,6 +128,20 @@ class Phase3FastCnvEvidencePlanTests(unittest.TestCase):
                     staged_inputs_manifest_sha256=SHA_1,
                 )
 
+    def test_rejects_standard_autosome_gap(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = staged_inputs_manifest(Path(tmp))
+        manifest["reference"]["standard_contigs"] = [
+            {"contig": "chr1", "length": 10},
+            {"contig": "chr3", "length": 10},
+        ]
+
+        with self.assertRaisesRegex(cnv_evidence.ManifestError, "missing standard autosome chr2"):
+            cnv_evidence.build_phase3_fast_cnv_evidence_plan(
+                manifest,
+                staged_inputs_manifest_sha256=SHA_1,
+            )
+
     def test_rejects_relative_output_root(self) -> None:
         with TemporaryDirectory() as tmp:
             manifest = staged_inputs_manifest(Path(tmp))

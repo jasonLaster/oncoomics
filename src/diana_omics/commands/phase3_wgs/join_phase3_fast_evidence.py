@@ -31,6 +31,12 @@ def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
     return value
 
 
+def _require_string(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ManifestError(f"{label} is required")
+    return value
+
+
 def _require_hex(value: Any, label: str) -> str:
     if not isinstance(value, str) or HEX64.fullmatch(value) is None:
         raise ManifestError(f"{label} must be 64 hex characters")
@@ -108,6 +114,96 @@ def _require_input_sources(receipt: Mapping[str, Any]) -> dict[str, Any]:
     return dict(sources)
 
 
+def _source_identity(value: Any, label: str) -> dict[str, str]:
+    source = _require_mapping(value, label)
+    return {
+        "uri": _require_string(source.get("uri"), f"{label}.uri"),
+        "version_id": _require_string(source.get("version_id"), f"{label}.version_id"),
+    }
+
+
+def _nested_source_identity(value: Any, label: str) -> dict[str, str]:
+    entry = _require_mapping(value, label)
+    return _source_identity(entry.get("source"), f"{label}.source")
+
+
+def _small_variant_bam_pair_sources(input_sources: Mapping[str, Any]) -> dict[str, dict[str, dict[str, str]]]:
+    bam_pair = _require_mapping(input_sources.get("bam_pair"), "small_variant_artifact_export.input_sources.bam_pair")
+    return {
+        role: {
+            artifact: _source_identity(
+                _require_mapping(bam_pair.get(role), f"small_variant_artifact_export.input_sources.bam_pair.{role}").get(
+                    artifact
+                ),
+                f"small_variant_artifact_export.input_sources.bam_pair.{role}.{artifact}",
+            )
+            for artifact in ("bam", "bai")
+        }
+        for role in ("tumor", "normal")
+    }
+
+
+def _small_variant_reference_sources(input_sources: Mapping[str, Any]) -> dict[str, dict[str, str]]:
+    reference = _require_mapping(input_sources.get("reference"), "small_variant_artifact_export.input_sources.reference")
+    return {
+        artifact: _source_identity(
+            reference.get(artifact),
+            f"small_variant_artifact_export.input_sources.reference.{artifact}",
+        )
+        for artifact in ("fasta", "fai", "sequence_dictionary")
+    }
+
+
+def _require_bam_pair_sources_match(
+    receipt: Mapping[str, Any],
+    key: str,
+    expected: Mapping[str, Mapping[str, Mapping[str, str]]],
+) -> None:
+    inputs = _require_mapping(receipt.get("inputs"), f"{key}.inputs")
+    for role in ("tumor", "normal"):
+        role_inputs = _require_mapping(inputs.get(role), f"{key}.inputs.{role}")
+        for artifact in ("bam", "bai"):
+            observed = _nested_source_identity(
+                role_inputs.get(artifact),
+                f"{key}.inputs.{role}.{artifact}",
+            )
+            if observed != expected[role][artifact]:
+                raise ManifestError(
+                    f"{key} {role}.{artifact} input source must match small_variant_artifact_export"
+                )
+
+
+def _require_reference_sources_match(
+    receipt: Mapping[str, Any],
+    key: str,
+    expected: Mapping[str, Mapping[str, str]],
+) -> None:
+    reference = _require_mapping(
+        _require_mapping(receipt.get("inputs"), f"{key}.inputs").get("reference"),
+        f"{key}.inputs.reference",
+    )
+    for artifact in ("fasta", "fai", "sequence_dictionary"):
+        observed = _nested_source_identity(
+            reference.get(artifact),
+            f"{key}.inputs.reference.{artifact}",
+        )
+        if observed != expected[artifact]:
+            raise ManifestError(
+                f"{key} reference.{artifact} input source must match small_variant_artifact_export"
+            )
+
+
+def _require_joined_input_sources_match(
+    input_sources: Mapping[str, Any],
+    receipts: Mapping[str, Mapping[str, Any]],
+) -> None:
+    bam_pair = _small_variant_bam_pair_sources(input_sources)
+    reference = _small_variant_reference_sources(input_sources)
+    for key in ("bam_qc", "cnv_evidence", "sv_evidence"):
+        _require_bam_pair_sources_match(receipts[key], key, bam_pair)
+    _require_reference_sources_match(receipts["cnv_evidence"], "cnv_evidence", reference)
+
+
 def _require_method_parameters_match(receipts: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     method_parameters = normalize_method_parameters(receipts["small_variant_artifact_export"].get("method_parameters"))
     for key, receipt in receipts.items():
@@ -147,6 +243,8 @@ def build_phase3_fast_evidence_join_manifest(
     workflow, run = _require_workflow_and_run_match(receipts)
     method_parameters = _require_method_parameters_match(receipts)
     _require_evidence_boundaries(receipts)
+    input_sources = _require_input_sources(small_variant_artifact_export)
+    _require_joined_input_sources_match(input_sources, receipts)
 
     small_variant_source = _require_mapping(
         small_variant_artifact_export.get("source"),
@@ -185,7 +283,7 @@ def build_phase3_fast_evidence_join_manifest(
                 "metrics": dict(_require_mapping(sv_evidence_receipt.get("metrics"), "sv_evidence.metrics")),
             },
         },
-        "input_sources": _require_input_sources(small_variant_artifact_export),
+        "input_sources": input_sources,
         "interpretation": {
             "authorized_hrd_state": "no_call",
             "small_variants_use": "deterministic_sample_evidence_not_scalar_hrd",

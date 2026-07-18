@@ -9,6 +9,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json, standard_contig
+from .cnv_contigs import require_no_standard_autosome_gaps
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 from .safe_json_output import require_safe_output_path
 
@@ -148,6 +149,11 @@ def _standard_contigs(reference: Mapping[str, Any]) -> list[tuple[str, int]]:
 
     if not contigs:
         raise ManifestError("reference.standard_contigs must include at least one standard chr1-chr22/chrX/chrY contig")
+    require_no_standard_autosome_gaps(
+        (contig for contig, _ in contigs),
+        "reference.standard_contigs",
+        ManifestError,
+    )
     return contigs
 
 

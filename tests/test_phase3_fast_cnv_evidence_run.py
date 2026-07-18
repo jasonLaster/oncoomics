@@ -135,6 +135,22 @@ class Phase3FastCnvEvidenceRunTests(unittest.TestCase):
                 cnv_evidence_plan_sha256=SHA_1,
             )
 
+    def test_rejects_interval_shard_autosome_gap_before_running_bedcov(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = phase3_fast_cnv_evidence_plan(Path(tmp))
+        plan["interval_shards"][1]["contig"] = "chr3"
+        plan["commands"]["bedcov_by_contig"]["chr3"] = plan["commands"]["bedcov_by_contig"].pop("chr2")
+        runner = MaterializingBedcovRunner()
+
+        with self.assertRaisesRegex(run_cnv.ManifestError, "missing standard autosome chr2"):
+            run_cnv.run_phase3_fast_cnv_evidence(
+                plan,
+                runner=runner,
+                cnv_evidence_plan_sha256=SHA_1,
+            )
+
+        self.assertEqual([], runner.commands)
+
     def test_clears_stale_bedcov_before_requiring_fresh_materialization(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_cnv_evidence_plan(Path(tmp))

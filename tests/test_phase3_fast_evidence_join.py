@@ -192,6 +192,50 @@ class Phase3FastEvidenceJoinTests(unittest.TestCase):
                 sv_evidence_receipt_sha256=SHA_7,
             )
 
+    def test_rejects_bam_qc_inputs_from_another_cached_bam_version(self) -> None:
+        with TemporaryDirectory() as tmp:
+            receipts = list(phase3_fast_receipts(Path(tmp)))
+        receipts[1]["inputs"]["tumor"]["bam"]["source"]["version_id"] = "other-copy-version"
+
+        with self.assertRaisesRegex(join_evidence.ManifestError, "bam_qc tumor.bam input source"):
+            join_evidence.build_phase3_fast_evidence_join_manifest(
+                *receipts,
+                small_variant_artifact_export_sha256=SHA_1,
+                bam_qc_receipt_sha256=SHA_2,
+                cnv_evidence_receipt_sha256=SHA_3,
+                sv_evidence_receipt_sha256=SHA_4,
+            )
+
+    def test_rejects_cnv_inputs_from_another_reference_version(self) -> None:
+        with TemporaryDirectory() as tmp:
+            receipts = list(phase3_fast_receipts(Path(tmp)))
+        receipts[2]["inputs"]["reference"]["fasta"]["source"][
+            "uri"
+        ] = "s3://diana-omics-private-cache-us-east-2/wgs-v2/references/reference.fa/other/reference.fa"
+
+        with self.assertRaisesRegex(join_evidence.ManifestError, "cnv_evidence reference.fasta input source"):
+            join_evidence.build_phase3_fast_evidence_join_manifest(
+                *receipts,
+                small_variant_artifact_export_sha256=SHA_1,
+                bam_qc_receipt_sha256=SHA_2,
+                cnv_evidence_receipt_sha256=SHA_3,
+                sv_evidence_receipt_sha256=SHA_4,
+            )
+
+    def test_rejects_sv_inputs_from_another_cached_bai_version(self) -> None:
+        with TemporaryDirectory() as tmp:
+            receipts = list(phase3_fast_receipts(Path(tmp)))
+        receipts[3]["inputs"]["normal"]["bai"]["source"]["version_id"] = "other-copy-version"
+
+        with self.assertRaisesRegex(join_evidence.ManifestError, "sv_evidence normal.bai input source"):
+            join_evidence.build_phase3_fast_evidence_join_manifest(
+                *receipts,
+                small_variant_artifact_export_sha256=SHA_1,
+                bam_qc_receipt_sha256=SHA_2,
+                cnv_evidence_receipt_sha256=SHA_3,
+                sv_evidence_receipt_sha256=SHA_4,
+            )
+
     def test_manifest_output_rejects_symlinked_parent(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

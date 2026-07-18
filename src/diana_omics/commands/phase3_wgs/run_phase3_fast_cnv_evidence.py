@@ -12,6 +12,7 @@ from typing import Any, Mapping, Protocol, Sequence
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json, round_value, write_csv
+from .cnv_contigs import require_no_standard_autosome_gaps
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 from .safe_json_output import require_safe_output_path
 
@@ -157,6 +158,7 @@ def _planned_shards(plan: Mapping[str, Any]) -> list[dict[str, Any]]:
     if len(set(shard_contigs)) != len(shard_contigs):
         duplicate = next(contig for contig in shard_contigs if shard_contigs.count(contig) > 1)
         raise ManifestError(f"interval_shards contains duplicate contig {duplicate}")
+    require_no_standard_autosome_gaps(shard_contigs, "interval_shards", ManifestError)
     if set(commands) != set(shard_contigs):
         raise ManifestError("commands.bedcov_by_contig must contain exactly one command per interval shard")
 
