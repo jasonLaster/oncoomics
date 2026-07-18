@@ -1023,7 +1023,7 @@ process FAST_MUTECT_PARABRICKS_FILTER {
           path('workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json'),
           path('workspace/manifests/phase3_wgs_fast/filter_mutect_receipt.json'),
           path('workspace/manifests/phase3_wgs_fast/small_variant_artifact_export.json'),
-          path('workspace/results/phase3_wgs_fast/small_variant_execution')
+          path('workspace/results/phase3_wgs_fast/small_variant_execution/artifacts')
 
     script:
     """

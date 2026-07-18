@@ -219,7 +219,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             process,
         )
         self.assertIn("workspace/manifests/phase3_wgs_fast/small_variant_artifact_export.json", process)
-        self.assertIn("workspace/results/phase3_wgs_fast/small_variant_execution", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/small_variant_execution/artifacts", process)
 
         self.assertIn("smallVariantMode = params.phase3_fast_small_variant_mode.toString()", text)
         self.assertIn("smallVariantMode == 'execute'", text)

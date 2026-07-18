@@ -81,8 +81,41 @@ def _materialized(
     }
 
 
-def _copy_verified(source: Mapping[str, Any], output_root: Path, producer: str, key: str) -> dict[str, Any]:
-    source_path = Path(_require_string(source.get("local_path"), f"{producer}.{key}.local_path"))
+def _source_path(source: Mapping[str, Any], producer: str, key: str) -> Path:
+    return Path(_require_string(source.get("local_path"), f"{producer}.{key}.local_path"))
+
+
+def _destination_path(source: Mapping[str, Any], output_root: Path, producer: str, key: str) -> Path:
+    return output_root / producer / key / _source_path(source, producer, key).name
+
+
+def _prepare_output_root(output_root: Path, destinations: set[Path]) -> None:
+    if not output_root.exists():
+        return
+    if not output_root.is_dir():
+        raise ManifestError(f"output_root already exists and is not a directory: {output_root}")
+
+    unexpected = sorted(
+        path
+        for path in output_root.rglob("*")
+        if path.is_file() and path not in destinations
+    )
+    if unexpected:
+        raise ManifestError(f"output_root contains unexpected existing export files: {unexpected[0]}")
+
+    for destination in destinations:
+        if destination.exists() and not destination.is_file():
+            raise ManifestError(f"export destination exists and is not a file: {destination}")
+        destination.unlink(missing_ok=True)
+
+
+def _copy_verified(
+    source: Mapping[str, Any],
+    output_root: Path,
+    producer: str,
+    key: str,
+) -> dict[str, Any]:
+    source_path = _source_path(source, producer, key)
     expected_bytes = _require_positive_int(source.get("bytes"), f"{producer}.{key}.bytes")
     expected_sha = _require_hex(source.get("sha256"), f"{producer}.{key}.sha256")
     if not source_path.is_file():
@@ -90,7 +123,7 @@ def _copy_verified(source: Mapping[str, Any], output_root: Path, producer: str, 
     if source_path.stat().st_size != expected_bytes or _sha256_path(source_path) != expected_sha:
         raise ManifestError(f"{producer}.{key} source bytes and sha256 must still match the receipt")
 
-    destination = output_root / producer / key / source_path.name
+    destination = _destination_path(source, output_root, producer, key)
     if destination.exists() and not destination.is_file():
         raise ManifestError(f"{producer}.{key} export destination exists and is not a file: {destination}")
 
@@ -104,6 +137,8 @@ def _copy_verified(source: Mapping[str, Any], output_root: Path, producer: str, 
         temporary.unlink(missing_ok=True)
         raise ManifestError(f"{producer}.{key} export copy bytes and sha256 must match the receipt")
     temporary.replace(destination)
+    if _sha256_path(destination) != expected_sha:
+        raise ManifestError(f"{producer}.{key} exported sha256 must match the receipt")
     return {
         "source_local_path": str(source_path),
         "exported_path": str(destination),
@@ -147,32 +182,41 @@ def export_phase3_fast_small_variant_artifacts(
         raise ManifestError("FilterMutect receipt must share the Parabricks plan SHA-256")
 
     root = Path(output_root)
+    parabricks_outputs = _materialized(
+        parabricks_receipt,
+        producer="parabricks_mutect",
+        expected_keys=PARABRICKS_MUTECT_OUTPUTS,
+    )
+    filter_outputs = _materialized(
+        filter_receipt,
+        producer="filter_mutect",
+        expected_keys=FILTER_MUTECT_OUTPUTS,
+    )
+    expected_destinations = {
+        *(
+            _destination_path(row, root, "parabricks_mutect", key)
+            for key, row in parabricks_outputs.items()
+        ),
+        *(
+            _destination_path(row, root, "filter_mutect", key)
+            for key, row in filter_outputs.items()
+        ),
+    }
+    expected_count = len(PARABRICKS_MUTECT_OUTPUTS) + len(FILTER_MUTECT_OUTPUTS)
+    if len(expected_destinations) != expected_count:
+        raise ManifestError("exported artifact paths must be unique")
+    _prepare_output_root(root, expected_destinations)
+
     exports = {
         "parabricks_mutect": {
             key: _copy_verified(row, root, "parabricks_mutect", key)
-            for key, row in _materialized(
-                parabricks_receipt,
-                producer="parabricks_mutect",
-                expected_keys=PARABRICKS_MUTECT_OUTPUTS,
-            ).items()
+            for key, row in parabricks_outputs.items()
         },
         "filter_mutect": {
             key: _copy_verified(row, root, "filter_mutect", key)
-            for key, row in _materialized(
-                filter_receipt,
-                producer="filter_mutect",
-                expected_keys=FILTER_MUTECT_OUTPUTS,
-            ).items()
+            for key, row in filter_outputs.items()
         },
     }
-
-    exported_paths = [
-        artifact["exported_path"]
-        for producer in exports.values()
-        for artifact in producer.values()
-    ]
-    if len(set(exported_paths)) != len(exported_paths):
-        raise ManifestError("exported artifact paths must be unique")
 
     return {
         "schema_version": 1,

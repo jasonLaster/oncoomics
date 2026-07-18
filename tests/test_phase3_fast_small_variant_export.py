@@ -130,6 +130,43 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
 
             self.assertFalse((root / "exported").exists())
 
+    def test_rejects_untracked_stale_export_before_copying_outputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "exported"
+            stale = output_root / "filter_mutect" / "old.txt"
+            stale.parent.mkdir(parents=True)
+            stale.write_text("stale\n", encoding="utf-8")
+            parabricks_receipt, filter_receipt = _receipts(root)
+
+            with self.assertRaisesRegex(export_small_variants.ManifestError, "unexpected existing export files"):
+                export_small_variants.export_phase3_fast_small_variant_artifacts(
+                    parabricks_receipt,
+                    filter_receipt,
+                    parabricks_mutect_receipt_sha256=SHA_2,
+                    filter_mutect_receipt_sha256=SHA_3,
+                    output_root=output_root,
+                )
+
+            self.assertEqual([stale], [path for path in output_root.rglob("*") if path.is_file()])
+
+    def test_rejects_export_destination_that_is_not_a_file(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "exported"
+            parabricks_receipt, filter_receipt = _receipts(root)
+            raw_vcf_name = Path(parabricks_receipt["materialized_outputs"]["raw_vcf"]["local_path"]).name
+            (output_root / "parabricks_mutect" / "raw_vcf" / raw_vcf_name).mkdir(parents=True)
+
+            with self.assertRaisesRegex(export_small_variants.ManifestError, "export destination"):
+                export_small_variants.export_phase3_fast_small_variant_artifacts(
+                    parabricks_receipt,
+                    filter_receipt,
+                    parabricks_mutect_receipt_sha256=SHA_2,
+                    filter_mutect_receipt_sha256=SHA_3,
+                    output_root=output_root,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
