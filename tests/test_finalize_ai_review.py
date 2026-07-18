@@ -319,6 +319,36 @@ class FinalizeAiReviewTests(unittest.TestCase):
             self.assertIn("review directory inventory is not exact", finalized.stderr)
             self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_rejects_stale_support_after_final_manifest_write(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            real_write_create_only = FINALIZE.write_create_only
+
+            def tamper_after_manifest_write(path: Path, value: dict) -> None:
+                real_write_create_only(path, value)
+                (review / "claims.csv").write_text("claim,changed\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    FINALIZE,
+                    "write_create_only",
+                    side_effect=tamper_after_manifest_write,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "support hash mismatch for ai_review_reviewer_a: claims.csv",
+                ),
+            ):
+                FINALIZE.finalize(
+                    fixture.bundle_dir,
+                    review,
+                    "A",
+                    fixture.catalog_receipt,
+                    review / "report_manifest.json",
+                )
+
+            self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_report_manifest_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)

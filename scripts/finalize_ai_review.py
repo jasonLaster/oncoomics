@@ -10,7 +10,10 @@ import os
 from pathlib import Path
 from typing import Any, Sequence
 
-from build_ai_review_bundle import require_bundle_manifest
+from build_ai_review_bundle import (
+    require_bundle_manifest,
+    validate_report_manifest_support,
+)
 from hrd_report_inventory import (
     inventory_payload,
     inventory_sha256,
@@ -357,6 +360,49 @@ def require_safe_parent(path: Path) -> None:
             raise NotADirectoryError(parent)
 
 
+def finalize(
+    bundle_dir: Path,
+    review_dir: Path,
+    reviewer: str,
+    model_catalog_receipt: Path,
+    requested_output: Path,
+) -> Path:
+    bundle_dir = resolve_real_dir(bundle_dir, "bundle directory")
+    review_dir = resolve_real_dir(review_dir, "review directory")
+    model_catalog_receipt = resolve_real_file(
+        model_catalog_receipt,
+        "model catalog receipt",
+    )
+    require_safe_parent(requested_output)
+    output = review_dir / "report_manifest.json"
+    if requested_output.parent.resolve() / requested_output.name != output:
+        raise ValueError(
+            "output must be report_manifest.json in the review directory"
+        )
+    if output.exists() or output.is_symlink():
+        raise ValueError("report_manifest.json already exists")
+
+    require_exact_review_dir(review_dir, REVIEW_PACKET_INPUT_FILES)
+    manifest = build_manifest(
+        bundle_dir,
+        review_dir,
+        reviewer,
+        model_catalog_receipt,
+    )
+    write_create_only(output, manifest)
+    try:
+        require_exact_review_dir(review_dir, REVIEW_PACKET_FILES)
+        validate_report_manifest_support(
+            review_dir,
+            manifest,
+            REVIEWER_METHODS[reviewer],
+        )
+    except ValueError:
+        output.unlink(missing_ok=True)
+        raise
+    return output
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--bundle-dir", required=True, type=Path)
@@ -367,35 +413,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        bundle_dir = resolve_real_dir(args.bundle_dir, "bundle directory")
-        review_dir = resolve_real_dir(args.review_dir, "review directory")
-        model_catalog_receipt = resolve_real_file(
-            args.model_catalog_receipt,
-            "model catalog receipt",
-        )
-        require_safe_parent(args.output)
-        requested_output = args.output.parent.resolve() / args.output.name
-        output = review_dir / "report_manifest.json"
-        if requested_output != output:
-            raise ValueError(
-                "output must be report_manifest.json in the review directory"
-            )
-        if output.exists() or output.is_symlink():
-            raise ValueError("report_manifest.json already exists")
-
-        require_exact_review_dir(review_dir, REVIEW_PACKET_INPUT_FILES)
-        manifest = build_manifest(
-            bundle_dir,
-            review_dir,
+        output = finalize(
+            args.bundle_dir,
+            args.review_dir,
             args.reviewer,
-            model_catalog_receipt,
+            args.model_catalog_receipt,
+            args.output,
         )
-        write_create_only(output, manifest)
-        try:
-            require_exact_review_dir(review_dir, REVIEW_PACKET_FILES)
-        except ValueError:
-            output.unlink(missing_ok=True)
-            raise
     except (ValueError, json.JSONDecodeError) as error:
         raise SystemExit(f"Fail-closed: {error}") from error
     print(f"Finalized schema-1 AI review report: {output}")
