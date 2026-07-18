@@ -7,6 +7,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+from diana_omics.commands.phase3_wgs import export_phase3_fast_small_variant_artifacts as export_small_variants
+from diana_omics.commands.phase3_wgs import join_phase3_fast_evidence as join_evidence
+from diana_omics.commands.phase3_wgs import run_phase3_fast_bam_qc as run_bam_qc
+from diana_omics.commands.phase3_wgs import run_phase3_fast_cnv_evidence as run_cnv
+from diana_omics.commands.phase3_wgs import run_phase3_fast_filter_mutect as run_filter
+from diana_omics.commands.phase3_wgs import run_phase3_fast_sv_evidence as run_sv
+from diana_omics.utils import write_json
 from tests.test_phase3_fast_bam_qc_run import MaterializingSamtoolsRunner as BamQcRunner
 from tests.test_phase3_fast_bam_qc_run import phase3_fast_bam_qc_plan
 from tests.test_phase3_fast_cnv_evidence_run import MaterializingBedcovRunner, phase3_fast_cnv_evidence_plan
@@ -16,22 +23,43 @@ from tests.test_phase3_fast_small_variant_export import SHA_2, SHA_3
 from tests.test_phase3_fast_sv_evidence_run import MaterializingSamtoolsRunner as SvEvidenceRunner
 from tests.test_phase3_fast_sv_evidence_run import phase3_fast_sv_evidence_plan
 
-from diana_omics.commands.phase3_wgs import export_phase3_fast_small_variant_artifacts as export_small_variants
-from diana_omics.commands.phase3_wgs import join_phase3_fast_evidence as join_evidence
-from diana_omics.commands.phase3_wgs import run_phase3_fast_bam_qc as run_bam_qc
-from diana_omics.commands.phase3_wgs import run_phase3_fast_cnv_evidence as run_cnv
-from diana_omics.commands.phase3_wgs import run_phase3_fast_filter_mutect as run_filter
-from diana_omics.commands.phase3_wgs import run_phase3_fast_sv_evidence as run_sv
-from diana_omics.utils import write_json
-
 SHA_4 = "d" * 64
 SHA_5 = "e" * 64
 SHA_6 = "f" * 64
 SHA_7 = "1" * 64
+ENV_PATHS = {
+    "small_variant_artifact_export": "PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT",
+    "bam_qc": "PHASE3_WGS_FAST_BAM_QC_RECEIPT",
+    "cnv_evidence": "PHASE3_WGS_FAST_CNV_EVIDENCE_RECEIPT",
+    "sv_evidence": "PHASE3_WGS_FAST_SV_EVIDENCE_RECEIPT",
+}
 
 
 def _sha256_json(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def write_phase3_fast_receipt_files(root: Path) -> dict[str, Path]:
+    paths = {
+        "small_variant_artifact_export": root / "small-export.json",
+        "bam_qc": root / "bam-qc.json",
+        "cnv_evidence": root / "cnv.json",
+        "sv_evidence": root / "sv.json",
+    }
+    receipts = phase3_fast_receipts(root)
+    for path, receipt in zip(paths.values(), receipts):
+        write_json(path, receipt)
+    return paths
+
+
+def evidence_join_env(paths: dict[str, Path], output: Path) -> dict[str, str]:
+    return {
+        **{
+            env_name: str(paths[key])
+            for key, env_name in ENV_PATHS.items()
+        },
+        "PHASE3_WGS_FAST_EVIDENCE_JOIN_OUTPUT": str(output),
+    }
 
 
 def phase3_fast_receipts(root: Path) -> tuple[dict, dict, dict, dict]:
@@ -103,39 +131,51 @@ class Phase3FastEvidenceJoinTests(unittest.TestCase):
     def test_environment_command_writes_manifest_with_receipt_hashes(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            small_path = root / "small-export.json"
-            bam_path = root / "bam-qc.json"
-            cnv_path = root / "cnv.json"
-            sv_path = root / "sv.json"
             output_path = root / "joined.json"
-            receipts = phase3_fast_receipts(root)
-            for path, receipt in zip((small_path, bam_path, cnv_path, sv_path), receipts):
-                write_json(path, receipt)
+            paths = write_phase3_fast_receipt_files(root)
 
             with patch.dict(
                 "os.environ",
-                {
-                    "PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT": str(small_path),
-                    "PHASE3_WGS_FAST_BAM_QC_RECEIPT": str(bam_path),
-                    "PHASE3_WGS_FAST_CNV_EVIDENCE_RECEIPT": str(cnv_path),
-                    "PHASE3_WGS_FAST_SV_EVIDENCE_RECEIPT": str(sv_path),
-                    "PHASE3_WGS_FAST_EVIDENCE_JOIN_OUTPUT": str(output_path),
-                },
+                evidence_join_env(paths, output_path),
                 clear=False,
             ):
                 manifest, output = join_evidence.load_manifest_from_environment()
                 join_evidence.write_manifest(output, manifest)
             output_text = output_path.read_text(encoding="utf-8")
             expected_hashes = {
-                "small_variant_artifact_export": _sha256_json(small_path),
-                "bam_qc": _sha256_json(bam_path),
-                "cnv_evidence": _sha256_json(cnv_path),
-                "sv_evidence": _sha256_json(sv_path),
+                key: _sha256_json(path)
+                for key, path in paths.items()
             }
 
         self.assertEqual(output_path, output)
         self.assertEqual(expected_hashes, manifest["source"]["receipt_sha256"])
         self.assertIn('"manifest_type": "phase3_wgs_fast_evidence_join_manifest"', output_text)
+
+    def test_environment_command_rejects_missing_directory_or_symlinked_receipts(self) -> None:
+        cases = (
+            ("small_variant_artifact_export", "symlink"),
+            ("bam_qc", "directory"),
+            ("cnv_evidence", "missing"),
+            ("sv_evidence", "symlink"),
+        )
+        for key, bad_kind in cases:
+            with self.subTest(key=key, bad_kind=bad_kind), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                paths = write_phase3_fast_receipt_files(root)
+                bad_path = root / f"{key}-{bad_kind}.json"
+                if bad_kind == "directory":
+                    bad_path.mkdir()
+                elif bad_kind == "symlink":
+                    bad_path.symlink_to(paths[key])
+                paths[key] = bad_path
+
+                with patch.dict(
+                    "os.environ",
+                    evidence_join_env(paths, root / "joined.json"),
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(join_evidence.ManifestError, key):
+                        join_evidence.load_manifest_from_environment()
 
     def test_rejects_non_completed_receipt(self) -> None:
         with TemporaryDirectory() as tmp:

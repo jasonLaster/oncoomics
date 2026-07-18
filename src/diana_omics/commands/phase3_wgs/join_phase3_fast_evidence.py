@@ -57,6 +57,12 @@ def _sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _read_receipt(path: Path, label: str) -> Mapping[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ManifestError(f"{label} must be a real receipt file: {path}")
+    return _require_mapping(read_json(path), label)
+
+
 def _require_receipt(
     receipt: Mapping[str, Any],
     key: str,
@@ -421,10 +427,10 @@ def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
     sv_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_SV_EVIDENCE_RECEIPT", DEFAULT_SV_EVIDENCE_RECEIPT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_EVIDENCE_JOIN_OUTPUT", DEFAULT_OUTPUT))
     manifest = build_phase3_fast_evidence_join_manifest(
-        read_json(small_variant_path),
-        read_json(bam_qc_path),
-        read_json(cnv_path),
-        read_json(sv_path),
+        _read_receipt(small_variant_path, "small_variant_artifact_export"),
+        _read_receipt(bam_qc_path, "bam_qc"),
+        _read_receipt(cnv_path, "cnv_evidence"),
+        _read_receipt(sv_path, "sv_evidence"),
         small_variant_artifact_export_sha256=_sha256_path(small_variant_path),
         bam_qc_receipt_sha256=_sha256_path(bam_qc_path),
         cnv_evidence_receipt_sha256=_sha256_path(cnv_path),
