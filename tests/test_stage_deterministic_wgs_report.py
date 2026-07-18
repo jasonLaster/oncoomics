@@ -882,6 +882,34 @@ class SyntheticFixture:
                 "authorized_hrd_state": "no_call",
             },
         )
+        write_json(
+            self.aux / "input-contract.json",
+            {
+                "schema_version": 1,
+                "run_alias": "subject01",
+                "routes": ["sigprofiler_sbs3", "sequenza_scarhrd"],
+                "method_parameters": {"sequenza": {"female": True}},
+                "artifacts": {
+                    "somatic_vcf": {
+                        "sha256": outputs["somatic.pass.vcf.gz"]["sha256"],
+                        "version_id": outputs["somatic.pass.vcf.gz"]["version_id"],
+                    },
+                    "somatic_vcf_index": {
+                        "sha256": outputs["somatic.pass.vcf.gz.tbi"]["sha256"],
+                        "version_id": outputs["somatic.pass.vcf.gz.tbi"]["version_id"],
+                    },
+                    "sbs96_matrix": {
+                        "sha256": outputs["sbs96.csv"]["sha256"],
+                        "version_id": outputs["sbs96.csv"]["version_id"],
+                        "derived_from_final_pass_vcf": True,
+                    },
+                    "tumor_bam": {"sha256": "7" * 64, "version_id": "tumor-bam-version"},
+                    "tumor_bai": {"sha256": "8" * 64, "version_id": "tumor-bai-version"},
+                    "normal_bam": {"sha256": "9" * 64, "version_id": "normal-bam-version"},
+                    "normal_bai": {"sha256": "a" * 64, "version_id": "normal-bai-version"},
+                },
+            },
+        )
         crosscheck_receipt = self.aux / "crosscheck-materialization.json"
         crosscheck_receipt_sha = sha256(crosscheck_receipt)
         crosscheck_receipt_uri = (
@@ -1004,6 +1032,7 @@ class SyntheticFixture:
             "--final-freeze-anchor", str(self.aux / "final-freeze-anchor.json"),
             "--exact-materialization-receipt", str(self.aux / "exact-materialization.json"),
             "--crosscheck-materialization-receipt", str(self.aux / "crosscheck-materialization.json"),
+            "--input-contract", str(self.aux / "input-contract.json"),
             "--crosscheck-materialization-capture", str(self.aux / "crosscheck-materialization-capture.json"),
             "--crosscheck-materialization-anchor", str(self.aux / "crosscheck-materialization-anchor.json"),
             "--stage-provenance-receipt", str(self.aux / "stage-provenance.json"),
@@ -1151,7 +1180,7 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                     encoding="utf-8"
                 )
             )
-            self.assertEqual(crosscheck_input_plans["status"], "materialized")
+            self.assertEqual(crosscheck_input_plans["status"], "contract_ready")
             self.assertFalse(crosscheck_input_plans["classification_authorized"])
             self.assertEqual(
                 set(crosscheck_input_plans["routes"]),
@@ -1165,7 +1194,18 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             )
             self.assertEqual(
                 crosscheck_input_plans["routes"]["sequenza_scarhrd"]["status"],
-                "blocked",
+                "contract_ready",
+            )
+            self.assertEqual(
+                crosscheck_input_plans["routes"]["sequenza_scarhrd"][
+                    "source_sha256"
+                ],
+                {
+                    "tumor_bam": "7" * 64,
+                    "tumor_bai": "8" * 64,
+                    "normal_bam": "9" * 64,
+                    "normal_bai": "a" * 64,
+                },
             )
             self.assertNotIn(
                 "s3://", json.dumps(crosscheck_input_plans, sort_keys=True)
@@ -1449,6 +1489,24 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("crosscheck_materialization_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_missing_executable_route_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            contract_path = fixture.aux / "input-contract.json"
+            contract = json.loads(contract_path.read_text(encoding="utf-8"))
+            contract["routes"] = ["sigprofiler_sbs3"]
+            write_json(contract_path, contract)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "input contract is missing executable cross-check routes: "
+                "sequenza_scarhrd",
+                result.stdout + result.stderr,
+            )
             self.assertFalse((fixture.output / "report.md").exists())
 
     def test_changed_terminal_anchor_fails_before_report_publication(self) -> None:

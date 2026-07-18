@@ -994,6 +994,7 @@ def crosscheck_output_plan(
 
 def build_crosscheck_input_plans(
     crosscheck_materialization: dict[str, Any],
+    input_contract: dict[str, Any],
 ) -> dict[str, Any]:
     outputs = (
         crosscheck_materialization.get("outputs", {})
@@ -1010,10 +1011,40 @@ def build_crosscheck_input_plans(
         if isinstance(crosscheck_materialization.get("validation"), dict)
         else {}
     )
+    routes = input_contract.get("routes")
+    if not isinstance(routes, list):
+        raise ValueError("input contract lacks executable cross-check routes")
+    missing_routes = sorted(
+        set(("sequenza_scarhrd", "sigprofiler_sbs3")) - set(routes)
+    )
+    if missing_routes:
+        raise ValueError(
+            "input contract is missing executable cross-check routes: "
+            + ", ".join(missing_routes)
+        )
+    input_artifacts = (
+        input_contract.get("artifacts", {})
+        if isinstance(input_contract.get("artifacts"), dict)
+        else {}
+    )
+    sequenza_parameters = (
+        input_contract.get("method_parameters", {}).get("sequenza", {})
+        if isinstance(input_contract.get("method_parameters"), dict)
+        and isinstance(input_contract.get("method_parameters", {}).get("sequenza"), dict)
+        else {}
+    )
+    sequenza_inputs = {
+        name: str(
+            (input_artifacts.get(name, {}) if isinstance(input_artifacts.get(name), dict) else {}).get(
+                "sha256", ""
+            )
+        ).lower()
+        for name in ("tumor_bam", "tumor_bai", "normal_bam", "normal_bai")
+    }
     return {
         "schema_version": 1,
         "plan_type": "terminal_crosscheck_input_materialization_plan",
-        "status": "materialized",
+        "status": "contract_ready",
         "authorized_hrd_state": "no_call",
         "classification_authorized": False,
         "routes": {
@@ -1071,11 +1102,15 @@ def build_crosscheck_input_plans(
                 ],
             },
             "sequenza_scarhrd": {
-                "status": "blocked",
+                "status": "contract_ready",
                 "execution_status": "not_run",
                 "interpretation_status": "no_call",
+                "source_sha256": sequenza_inputs,
+                "method_parameters": {
+                    "female": sequenza_parameters.get("female"),
+                },
                 "blockers": [
-                    "Alias-only allele-specific copy-number and LOH segments are absent.",
+                    "Sequenza and scarHRD have not run on the finalized contract.",
                     "Purity/ploidy and scarHRD interpretation thresholds are not validated.",
                 ],
             },
@@ -1206,6 +1241,7 @@ def main() -> None:
     parser.add_argument(
         "--crosscheck-materialization-receipt", required=True, type=Path
     )
+    parser.add_argument("--input-contract", required=True, type=Path)
     parser.add_argument(
         "--crosscheck-materialization-capture", required=True, type=Path
     )
@@ -1253,6 +1289,7 @@ def main() -> None:
         "final_freeze_anchor": args.final_freeze_anchor,
         "exact_materialization": args.exact_materialization_receipt,
         "crosscheck_materialization": args.crosscheck_materialization_receipt,
+        "input_contract": args.input_contract,
         "crosscheck_materialization_capture": (
             args.crosscheck_materialization_capture
         ),
@@ -1318,6 +1355,7 @@ def main() -> None:
         "crosscheck_materialization": external_paths[
             "crosscheck_materialization"
         ],
+        "input_contract": external_paths["input_contract"],
         "crosscheck_materialization_capture": external_paths[
             "crosscheck_materialization_capture"
         ],
@@ -1367,6 +1405,7 @@ def main() -> None:
     final_freeze_anchor = load_json(paths["final_freeze_anchor"])
     exact_materialization = load_json(paths["exact_materialization"])
     crosscheck_materialization = load_json(paths["crosscheck_materialization"])
+    input_contract = load_json(paths["input_contract"])
     crosscheck_materialization_capture = load_json(
         paths["crosscheck_materialization_capture"]
     )
@@ -2294,7 +2333,8 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="deterministic-full-", dir=str(output.parent)) as temporary:
         staging = Path(temporary)
         crosscheck_input_plans = build_crosscheck_input_plans(
-            crosscheck_materialization
+            crosscheck_materialization,
+            input_contract,
         )
         staged_paths = write_outputs(
             staging,

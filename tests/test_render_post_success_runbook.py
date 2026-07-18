@@ -85,6 +85,7 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertIn("terminal.materializer.capture-command.sh", text)
         self.assertIn("--crosscheck-materialization-capture", text)
         self.assertIn("--crosscheck-materialization-anchor", text)
+        self.assertIn("--input-contract", text)
         self.assertIn("--staged-input-validation-download-receipt", text)
         self.assertIn(
             "Wait for the submitted materializer job in "

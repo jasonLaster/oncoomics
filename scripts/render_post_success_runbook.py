@@ -222,6 +222,8 @@ def stage_deterministic_command(
         deterministic / "terminal.materialize.json",
         "--crosscheck-materialization-receipt",
         deterministic / "terminal.materializer.receipt.json",
+        "--input-contract",
+        deterministic / "input-contract.json",
         "--crosscheck-materialization-capture",
         deterministic / "terminal.materializer.capture.json",
         "--crosscheck-materialization-anchor",
