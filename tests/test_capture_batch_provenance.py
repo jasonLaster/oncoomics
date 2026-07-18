@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
@@ -50,6 +51,24 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 )
 
             self.assertFalse((real_parent / "missing").exists())
+
+    def test_evidence_path_rejects_existing_dir_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-provenance"
+            real_parent.mkdir()
+            (real_parent / "existing").mkdir()
+            linked_parent = root / "linked-provenance"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            output = linked_parent / "existing" / "execution.json"
+
+            with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+                MODULE.reserve_json(output, {"status": "reserved"})
+
+            with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+                MODULE.write_json_atomic(output, {"status": "passed"})
+
+            self.assertFalse((real_parent / "existing" / "execution.json").exists())
 
     def test_evidence_replacement_rejects_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -141,6 +160,46 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 json.loads(context["output"].read_text()),
                 MODULE.reserved_payload(context),
             )
+
+    def test_main_rejects_symlinked_worker_receipt_before_reservation_or_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            freeze_receipt = root / "executed-worker-freeze-receipt.json"
+            freeze_receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            linked_freeze = root / "linked-executed-worker-freeze-receipt.json"
+            linked_freeze.symlink_to(freeze_receipt)
+            receipt_upload = root / "executed-worker-freeze-receipt-upload.json"
+            receipt_upload.write_text('{"status":"passed"}\n', encoding="utf-8")
+            output = root / "terminal.execution.succeeded.json"
+            argv = [
+                "capture_batch_provenance.py",
+                "--job-id",
+                "job-id",
+                "--run-id",
+                "run-id",
+                "--worker-uri",
+                "s3://diana-omics-work-172630973301-us-east-1/worker.py",
+                "--executed-worker-freeze-receipt",
+                str(linked_freeze),
+                "--executed-worker-freeze-receipt-upload",
+                str(receipt_upload),
+                "--output",
+                str(output),
+                "--expected-status",
+                "SUCCEEDED",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(MODULE, "aws", side_effect=AssertionError("AWS called")),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "executed-worker freeze receipt must be a real JSON file",
+                ),
+            ):
+                MODULE.main()
+
+            self.assertFalse(output.exists())
 
     def _command(
         self,

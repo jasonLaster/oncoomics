@@ -21,6 +21,10 @@ from typing import Any
 from urllib.parse import urlparse
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def aws(region: str, *args: str) -> dict[str, Any]:
     output = subprocess.check_output(
         ["aws", *args, "--region", region, "--output", "json"],
@@ -112,19 +116,13 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
 def require_safe_json_parent(path: Path) -> None:
     if path.is_symlink():
         raise FileExistsError(f"JSON output may not be a symlink: {path}")
-    parent = path.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise FileExistsError(
                 f"JSON output parent may not be a symlink: {parent}"
             )
-        if parent == parent.parent:
-            raise FileExistsError(f"JSON output has no existing parent: {path}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise FileExistsError(f"JSON output parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise NotADirectoryError(parent)
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
 
 
 def parse_failure_context() -> dict[str, Any]:
@@ -227,6 +225,8 @@ def checksums(head: dict[str, Any]) -> dict[str, str]:
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real JSON file: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError(f"{label} is not a JSON object")
@@ -491,6 +491,20 @@ def main() -> None:
     }
     if len(resolved) != 3:
         raise SystemExit("Fail-closed: provenance input/output paths must be distinct")
+    for path, label in (
+        (
+            args.executed_worker_freeze_receipt,
+            "executed-worker freeze receipt",
+        ),
+        (
+            args.executed_worker_freeze_receipt_upload,
+            "executed-worker freeze receipt upload",
+        ),
+    ):
+        try:
+            load_object(path, label)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            raise SystemExit(f"Fail-closed: invalid {label}: {error}") from error
     try:
         reserve_json(
             args.output,
