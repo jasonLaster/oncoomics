@@ -468,6 +468,36 @@ class PublicIndexTests(unittest.TestCase):
             self.assertEqual(output.read_text(encoding="utf-8"), "preserve\n")
             self.assertEqual(list(root.glob(".objects.json.*")), [])
 
+    def test_write_index_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "objects.json"
+            original_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                original_fsync_directory(parent)
+                output.write_text(
+                    json.dumps({"objects": [{"key": "tampered"}]}) + "\n",
+                    encoding="utf-8",
+                )
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "public index output changed during write",
+                ),
+            ):
+                MODULE.write_index(output, {"objects": []})
+
+            self.assertEqual(
+                json.loads(output.read_text(encoding="utf-8")),
+                {"objects": [{"key": "tampered"}]},
+            )
+
     def test_write_index_rejects_symlinked_parent_without_writing_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()

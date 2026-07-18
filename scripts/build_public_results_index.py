@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import os
 import pathlib
@@ -119,16 +120,19 @@ def write_index(path: pathlib.Path, payload: dict[str, Any]) -> None:
         raise RuntimeError(f"Refusing to write public index through symlink: {path}")
     require_safe_index_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = canonical_bytes(payload)
+    expected_sha256 = sha256_bytes(data)
     descriptor, raw = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     temporary = pathlib.Path(raw)
     try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        with os.fdopen(descriptor, "wb") as handle:
             descriptor = -1
-            handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, path)
         fsync_directory(path.parent)
+        require_installed_index(path, expected_sha256)
     finally:
         if descriptor >= 0:
             os.close(descriptor)
@@ -141,6 +145,28 @@ def fsync_directory(path: pathlib.Path) -> None:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+
+
+def canonical_bytes(value: dict[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def sha256(path: pathlib.Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def require_installed_index(path: pathlib.Path, expected_sha256: str) -> None:
+    require_real_input_file(path, "public index output")
+    if sha256(path) != expected_sha256:
+        raise RuntimeError(f"public index output changed during write: {path}")
 
 
 def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
