@@ -7,6 +7,7 @@ import argparse
 import base64
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any, Mapping
@@ -54,6 +55,14 @@ def sha256_forbidden_tokens(tokens: tuple[str, ...]) -> str:
 
 def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def require_int(value: Any, label: str) -> int:
@@ -226,9 +235,22 @@ def validate_packets(
 def write_json_create_only(path: Path, payload: Mapping[str, Any]) -> None:
     require_safe_output_path(path, "packet validation output", ValueError)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("x", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, sort_keys=True)
-        handle.write("\n")
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+                descriptor = -1
+                json.dump(payload, handle, indent=2, sort_keys=True)
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            fsync_directory(path.parent)
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:

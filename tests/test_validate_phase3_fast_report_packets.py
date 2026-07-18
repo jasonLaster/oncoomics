@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = ROOT / "scripts"
@@ -170,6 +171,7 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                 output=output,
             )
             VALIDATOR.run(args)
+            self.assertEqual(output.stat().st_mode & 0o777, 0o600)
 
             with self.assertRaises(FileExistsError):
                 VALIDATOR.run(args)
@@ -189,6 +191,22 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                 )
 
             self.assertFalse((real_parent / "report_packet_validation.json").exists())
+
+    def test_removes_partial_validation_receipt_after_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report_packet_validation.json"
+
+            with (
+                mock.patch.object(
+                    VALIDATOR.os,
+                    "fsync",
+                    side_effect=OSError("synthetic fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+            ):
+                VALIDATOR.write_json_create_only(output, {"status": "partial"})
+
+            self.assertFalse(output.exists())
 
     def test_rejects_malformed_receipt_token_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
