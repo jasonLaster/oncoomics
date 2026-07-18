@@ -879,6 +879,43 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertFalse(anchor.exists())
 
+    def test_contract_publication_rejects_contract_below_symlinked_parent_before_aws(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-contracts"
+            real_parent.mkdir()
+            contract = real_parent / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            linked_parent = root / "linked-contracts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            anchor = root / "anchor.json"
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(linked_parent / "contract.json"),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    publisher,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+                self.assertRaisesRegex(SystemExit, "parent may not be a symlink"),
+            ):
+                publisher.main()
+
+            self.assertFalse(anchor.exists())
+
     def test_contract_version_history_consumes_key_and_version_markers(self):
         pages = [
             {
