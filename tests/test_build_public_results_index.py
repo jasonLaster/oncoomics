@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import sys
@@ -60,20 +61,30 @@ def write_public_receipts(root: Path) -> list[Path]:
             ),
             "expected_files": list(expected_files),
             "checks": required_checks,
-            "destination_objects": [
+            "destination_objects": [],
+        }
+        for index, relative in enumerate(expected_files, 1):
+            digest = hashlib.sha256(f"{method_id}/{relative}".encode("utf-8")).hexdigest()
+            key = f"{PUBLISH.PUBLIC_ROOT}{contract['destination']}{relative}"
+            receipt["destination_objects"].append(
                 {
                     "relative_path": relative,
                     "bucket": MODULE.BUCKET,
-                    "key": f"{PUBLISH.PUBLIC_ROOT}{contract['destination']}{relative}",
-                    "uri": (
-                        f"s3://{MODULE.BUCKET}/"
-                        f"{PUBLISH.PUBLIC_ROOT}{contract['destination']}{relative}"
-                    ),
+                    "key": key,
+                    "uri": f"s3://{MODULE.BUCKET}/{key}",
+                    "version_id": f"{method_id}-public-version-{index}",
+                    "bytes": 100 + index,
+                    "sha256": digest,
+                    "checksum_sha256": PUBLISH.checksum_sha256(digest),
+                    "server_side_encryption": "AES256",
                     "status": "passed",
+                    "checks": {
+                        "version_exact": True,
+                        "bytes_exact": True,
+                        "checksum_sha256": True,
+                    },
                 }
-                for relative in expected_files
-            ],
-        }
+            )
         path = receipt_root / f"{method_id}.json"
         path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
         receipts.append(path)
@@ -299,6 +310,40 @@ class PublicIndexTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "not exact"):
                 MODULE.validate_reviewed_public_receipts(receipts)
+
+    def test_reviewed_public_destination_rows_must_be_exact(self) -> None:
+        cases = (
+            (
+                lambda row: row.update({"relative_path": "raw.fastq.gz"}),
+                "not exact",
+            ),
+            (
+                lambda row: row.update({"version_id": "null"}),
+                "not exact",
+            ),
+            (
+                lambda row: row.update({"checksum_sha256": "not-the-checksum"}),
+                "not exact",
+            ),
+            (
+                lambda row: row.update({"server_side_encryption": "aws:kms"}),
+                "not exact",
+            ),
+            (
+                lambda row: row.update({"checks": {"checksum_sha256": False}}),
+                "not exact",
+            ),
+        )
+
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                receipts = write_public_receipts(Path(temporary))
+                receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+                mutate(receipt["destination_objects"][0])
+                receipts[0].write_text(json.dumps(receipt), encoding="utf-8")
+
+                with self.assertRaisesRegex(RuntimeError, message):
+                    MODULE.validate_reviewed_public_receipts(receipts)
 
     def test_main_can_bind_index_build_to_reviewed_public_receipts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

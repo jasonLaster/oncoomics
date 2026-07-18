@@ -17,11 +17,15 @@ from publish_reviewed_public_report import (
     CLASSIFICATION as REVIEWED_PUBLIC_CLASSIFICATION,
 )
 from publish_reviewed_public_report import (
+    MAX_FILE_BYTES,
     METHOD_CONTRACTS,
     PUBLIC_BUCKET,
     PUBLIC_ROOT,
     RUN_ID,
+    SHA256_HEX,
     SUBJECT_ALIAS,
+    checksum_sha256,
+    non_null_version_id,
 )
 
 REGION = "us-east-1"
@@ -183,25 +187,46 @@ def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> None:
         if len(destination_objects) != len(expected_files):
             raise RuntimeError(f"{method_id} reviewed-public receipt has the wrong object count")
 
-        expected_keys = {
-            f"{PUBLIC_ROOT}{contract['destination']}{relative}"
+        expected_key_by_relative = {
+            relative: f"{PUBLIC_ROOT}{contract['destination']}{relative}"
             for relative in expected_files
         }
+        expected_keys = set(expected_key_by_relative.values())
+        observed_relative_paths = set()
         observed_keys = set()
         for row in destination_objects:
             if not isinstance(row, dict) or row.get("status") != "passed":
                 raise RuntimeError(f"{method_id} reviewed-public destination object is incomplete")
+            relative = str(row.get("relative_path", ""))
             key = str(row.get("key", ""))
+            digest = str(row.get("sha256", ""))
+            version_id = str(row.get("version_id", ""))
+            checks = row.get("checks")
+            try:
+                size = int(row.get("bytes", -1))
+            except (TypeError, ValueError):
+                size = -1
+            observed_relative_paths.add(relative)
             observed_keys.add(key)
             if (
                 row.get("bucket") != BUCKET
+                or relative not in expected_key_by_relative
+                or key != expected_key_by_relative[relative]
                 or row.get("uri") != f"s3://{BUCKET}/{key}"
-                or key not in expected_keys
+                or not non_null_version_id(version_id)
+                or not SHA256_HEX.fullmatch(digest)
+                or row.get("checksum_sha256") != checksum_sha256(digest)
+                or row.get("server_side_encryption") != "AES256"
+                or size <= 0
+                or size > MAX_FILE_BYTES
+                or not isinstance(checks, dict)
+                or not checks
+                or not all(value is True for value in checks.values())
             ):
                 raise RuntimeError(
-                    f"{method_id} reviewed-public destination object is outside the public contract"
+                    f"{method_id} reviewed-public destination object is not exact: {relative}"
                 )
-        if observed_keys != expected_keys:
+        if observed_keys != expected_keys or observed_relative_paths != set(expected_files):
             raise RuntimeError(f"{method_id} reviewed-public receipt objects do not match the public contract")
 
 
