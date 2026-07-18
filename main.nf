@@ -1564,6 +1564,48 @@ process FAST_STAGE_DETERMINISTIC_REPORT {
     """
 }
 
+process FAST_CROSSCHECK_MATERIALIZATION_PLAN {
+    tag "fast_crosscheck_materialization_plan_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/crosscheck_materialization_plan", mode: 'copy', overwrite: true
+
+    input:
+    tuple path(final_evidence_manifest),
+          path(final_evidence_root)
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/crosscheck_materialization_plan.json'
+
+    script:
+    """
+    set -euo pipefail
+    test -d "${final_evidence_root}"
+    export PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST="\$PWD/${final_evidence_manifest}"
+    export PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN="\$PWD/workspace/manifests/phase3_wgs_fast/crosscheck_materialization_plan.json"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-crosscheck-materialization-plan
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/crosscheck_materialization_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_crosscheck_materialization_plan",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
 process FAST_STAGE_ROSALIND_PACKET {
     tag "fast_stage_rosalind_packet_${params.phase3_fast_run_id}"
     label 'cpu_io'
@@ -1832,6 +1874,7 @@ workflow PHASE3_WGS_FAST {
                 sv_evidence_results -> tuple(bam_qc_results, cnv_evidence_results, sv_evidence_results)
             }
             FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out, small_variant_artifacts_for_publish, aux_artifacts_for_publish)
+            FAST_CROSSCHECK_MATERIALIZATION_PLAN(FAST_VERIFY_AND_PUBLISH.out)
             FAST_STAGE_DETERMINISTIC_REPORT(FAST_VERIFY_AND_PUBLISH.out)
             FAST_STAGE_ROSALIND_PACKET(FAST_STAGE_DETERMINISTIC_REPORT.out, FAST_VERIFY_AND_PUBLISH.out)
             FAST_STAGE_BLOCKED_CROSSCHECKS(FAST_STAGE_ROSALIND_PACKET.out)

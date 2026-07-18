@@ -27,6 +27,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_BAM_CNV_SV_EVIDENCE", text)
         self.assertIn("process FAST_EVIDENCE_JOIN", text)
         self.assertIn("process FAST_VERIFY_AND_PUBLISH", text)
+        self.assertIn("process FAST_CROSSCHECK_MATERIALIZATION_PLAN", text)
         self.assertIn("process FAST_STAGE_DETERMINISTIC_REPORT", text)
         self.assertIn("process FAST_STAGE_ROSALIND_PACKET", text)
         self.assertIn("process FAST_STAGE_BLOCKED_CROSSCHECKS", text)
@@ -66,6 +67,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_wgs_fast_sv_evidence_receipt", text)
         self.assertIn("phase3_wgs_fast_evidence_join_manifest", text)
         self.assertIn("phase3_wgs_fast_final_evidence_manifest", text)
+        self.assertIn("phase3_wgs_fast_crosscheck_materialization_plan", text)
         self.assertIn("phase3_fast_deterministic_evidence", text)
         self.assertIn("rosalind_hrd_reviewer_packet", text)
         self.assertIn("blocked_method", text)
@@ -530,6 +532,32 @@ class Phase3FastNextflowTests(unittest.TestCase):
             text,
         )
         self.assertIn("FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out", text)
+
+    def test_crosscheck_materialization_plan_consumes_fast_final_evidence(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_CROSSCHECK_MATERIALIZATION_PLAN") :]
+        process = process[: process.index("process FAST_STAGE_ROSALIND_PACKET")]
+        self.assertIn("label 'cpu_io'", process)
+        self.assertIn("tuple path(final_evidence_manifest)", process)
+        self.assertIn("path(final_evidence_root)", process)
+        self.assertIn(
+            "workspace/manifests/phase3_wgs_fast/crosscheck_materialization_plan.json",
+            process,
+        )
+        self.assertIn(
+            'test -d "${final_evidence_root}"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST="\\$PWD/${final_evidence_manifest}"',
+            process,
+        )
+        self.assertIn("build:phase3-fast-crosscheck-materialization-plan", process)
+        self.assertIn(
+            "FAST_CROSSCHECK_MATERIALIZATION_PLAN(FAST_VERIFY_AND_PUBLISH.out)",
+            text,
+        )
 
     def test_stage_deterministic_report_consumes_fast_final_evidence(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")
