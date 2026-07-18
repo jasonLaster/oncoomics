@@ -246,6 +246,27 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 ):
                     MODULE.run(self.args(index, root / "receipt.json"))
 
+    def test_rejects_index_below_symlinked_parent_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-indexes"
+            real_parent.mkdir()
+            index = self.write_index(real_parent)
+            linked_parent = root / "linked-indexes"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            linked_index = linked_parent / index.name
+            receipt = root / "receipt.json"
+
+            with (
+                self.assertRaisesRegex(
+                    ValueError, "public index parent may not be a symlink"
+                ),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            ):
+                MODULE.run(self.args(linked_index, receipt))
+
+            self.assertFalse(receipt.exists())
+
     def test_apply_rejects_destination_checksum_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -355,6 +376,36 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                         root / "redirected.json",
                         apply=True,
                         dry_run_receipt=dry_run_receipt,
+                    )
+                )
+
+    def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_aws(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = self.write_index(root)
+            dry_run_receipt = self.write_dry_run_receipt(root, index)
+            real_parent = root / "real-dry-run-receipts"
+            real_parent.mkdir()
+            moved_receipt = real_parent / "dry-run-receipt.json"
+            dry_run_receipt.rename(moved_receipt)
+            linked_parent = root / "linked-dry-run-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with (
+                self.assertRaisesRegex(
+                    ValueError,
+                    "public index dry-run receipt parent may not be a symlink",
+                ),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            ):
+                MODULE.run(
+                    self.args(
+                        index,
+                        root / "apply.json",
+                        apply=True,
+                        dry_run_receipt=linked_parent / "dry-run-receipt.json",
                     )
                 )
 

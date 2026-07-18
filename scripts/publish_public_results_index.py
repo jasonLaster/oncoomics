@@ -63,6 +63,21 @@ def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
 
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
+def require_real_input_file(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file")
+    return path.resolve()
+
+
 def require_safe_receipt_output_parent(path: Path) -> None:
     if path.is_symlink():
         raise ValueError("receipt output may not be a symlink")
@@ -135,8 +150,7 @@ def public_index_object(row: Any) -> dict[str, Any]:
 
 
 def validate_public_index(path: Path) -> dict[str, Any]:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError("public index must be a real file")
+    path = require_real_input_file(path, "public index")
     digest = sha256(path)
     if not SHA256_HEX.fullmatch(digest):
         raise ValueError("public index SHA-256 is malformed")
@@ -269,8 +283,7 @@ def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, 
 
 
 def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, Any]:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError("public index dry-run receipt must be a real file")
+    path = require_real_input_file(path, "public index dry-run receipt")
     receipt = load_json(path)
     index = receipt.get("index")
     destination = receipt.get("destination")

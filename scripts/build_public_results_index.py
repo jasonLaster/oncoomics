@@ -144,7 +144,8 @@ def fsync_directory(path: pathlib.Path) -> None:
 
 
 def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
-    if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
+    require_real_input_file(path, label)
+    if path.stat().st_size <= 0:
         raise RuntimeError(f"{label} must be a real non-empty file: {path}")
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -285,6 +286,16 @@ def require_safe_index_parent(path: pathlib.Path) -> None:
             )
         if parent.exists() and not parent.is_dir():
             raise RuntimeError(f"Public index parent is not a directory: {parent}")
+
+
+def require_real_input_file(path: pathlib.Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise RuntimeError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise RuntimeError(f"{label} parent is not a directory: {parent}")
+    if path.is_symlink() or not path.is_file():
+        raise RuntimeError(f"{label} must be a real file: {path}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -320,7 +320,8 @@ class PublicIndexTests(unittest.TestCase):
 
     def test_reviewed_public_receipts_must_be_passed_in_canonical_order(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            receipts = write_public_receipts(Path(temporary))
+            root = Path(temporary)
+            receipts = write_public_receipts(root)
             MODULE.validate_reviewed_public_receipts(receipts)
 
             with self.assertRaisesRegex(RuntimeError, "deterministic_full_wgs"):
@@ -331,6 +332,17 @@ class PublicIndexTests(unittest.TestCase):
             receipts[0].write_text(json.dumps(failed), encoding="utf-8")
 
             with self.assertRaisesRegex(RuntimeError, "not exact"):
+                MODULE.validate_reviewed_public_receipts(receipts)
+
+    def test_reviewed_public_receipts_reject_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipts = write_public_receipts(root)
+            real_parent = root / "real-receipts"
+            (root / "receipts").rename(real_parent)
+            (root / "receipts").symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(RuntimeError, "parent may not be a symlink"):
                 MODULE.validate_reviewed_public_receipts(receipts)
 
     def test_reviewed_public_destination_rows_must_be_exact(self) -> None:
