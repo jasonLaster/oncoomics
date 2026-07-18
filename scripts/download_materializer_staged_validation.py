@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-
 OUTPUT_NAME = "staged_input_validation.json"
 CHECKSUM_FIELDS = (
     "ChecksumSHA256",
@@ -150,18 +149,16 @@ def resolve_new_output(path: Path, label: str) -> Path:
     return path.resolve()
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def require_safe_new_output_parent(path: Path, label: str) -> None:
-    parent = path.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"{label} parent may not be a symlink: {parent}")
-        if parent == parent.parent:
-            raise ValueError(f"{label} has no existing parent: {path}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(f"{label} parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise NotADirectoryError(parent)
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
 
 
 def aws_json(arguments: list[str], region: str) -> dict[str, Any]:

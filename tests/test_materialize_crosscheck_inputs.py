@@ -3,14 +3,12 @@ from __future__ import annotations
 
 import csv
 import importlib.util
-import json
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
@@ -206,7 +204,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
     def test_script_bytes_match_registered_materializer_revision(self):
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "ca1a5e47fb2de1e8e1c502dbb9155bb6dafc0285cbb169c4ff0ebd1d7337faf1",
+            "21b44c05db409c77d1aed6b0fbf77c4065e79cf54b8b1f0b53f926d4ca8f7862",
         )
 
     def test_upload_binds_local_sha256_in_object_metadata(self):
@@ -271,6 +269,65 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         self.assertEqual(receipt["sha256"], digest)
         self.assertEqual(receipt["checksums"]["ChecksumCRC64NVME"], "unit-crc")
         self.assertTrue(all(receipt["checks"].values()))
+
+    def test_main_rejects_receipt_anchor_below_symlinked_parent_before_aws(self):
+        bucket = "diana-omics-private-results-000000000000-us-east-1"
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-parent"
+            (real_parent / "existing").mkdir(parents=True)
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            anchor = linked_parent / "existing" / "anchor.json"
+            argv = [
+                "materialize_crosscheck_inputs.py",
+                "--source-vcf-uri",
+                f"s3://{bucket}/runs/subject01/source.vcf.gz",
+                "--source-vcf-index-uri",
+                f"s3://{bucket}/runs/subject01/source.vcf.gz.tbi",
+                "--source-matrix-uri",
+                f"s3://{bucket}/runs/subject01/source.sbs96.csv",
+                "--reference-fasta-uri",
+                f"s3://{bucket}/runs/subject01/reference.fa",
+                "--reference-fai-uri",
+                f"s3://{bucket}/runs/subject01/reference.fa.fai",
+                "--source-vcf-version-id",
+                "source-vcf-version",
+                "--source-vcf-index-version-id",
+                "source-vcf-index-version",
+                "--source-matrix-version-id",
+                "source-matrix-version",
+                "--reference-fasta-version-id",
+                "reference-fasta-version",
+                "--reference-fai-version-id",
+                "reference-fai-version",
+                "--destination-prefix",
+                f"s3://{bucket}/runs/subject01/materialized/",
+                "--receipt-prefix",
+                f"s3://{bucket}/runs/subject01/materialized-receipts/",
+                "--receipt-anchor-output",
+                str(anchor),
+                "--kms-key-arn",
+                kms,
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    module,
+                    "require_bucket_versioning",
+                    side_effect=AssertionError("unexpected AWS call"),
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "receipt anchor output parent may not be a symlink",
+                ),
+            ):
+                module.main()
+
+            self.assertFalse((real_parent / "existing" / "anchor.json").exists())
 
 
 if __name__ == "__main__":

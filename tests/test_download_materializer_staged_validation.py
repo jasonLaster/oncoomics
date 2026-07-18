@@ -11,13 +11,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import download_materializer_staged_validation as MODULE  # noqa: E402
-
 
 KMS = "arn:aws:kms:us-east-1:172630973301:key/45aa290c-d70c-4d86-9c8d-c4a76f1ff97f"
 URI = (
@@ -577,6 +575,43 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
             self.assertFalse((real_verification_parent / "missing").exists())
+
+    def test_refuses_output_below_existing_dir_under_symlinked_parent(self) -> None:
+        payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            real_parent = root / "real-parent"
+            (real_parent / "existing").mkdir(parents=True)
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            output = linked_parent / "existing" / "staged_input_validation.json"
+            verification = root / "verification.json"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "materializer output.* parent may not be a symlink",
+            ):
+                MODULE.materialize(
+                    argparse.Namespace(
+                        materializer_receipt=receipt_path,
+                        output=output,
+                        verification_output=verification,
+                        expected_kms_key_arn=KMS,
+                        region="us-east-1",
+                    )
+                )
+
+            self.assertFalse(verification.exists())
+            self.assertFalse(
+                (real_parent / "existing" / "staged_input_validation.json").exists()
+            )
 
 if __name__ == "__main__":
     unittest.main()

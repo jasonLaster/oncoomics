@@ -11,10 +11,10 @@ canonical artifacts with a hash-bound custody receipt.
 from __future__ import annotations
 
 import argparse
-import base64
 import csv
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -24,7 +24,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlparse
-
 
 AWS = "/opt/diana-aws/bin/aws" if Path("/opt/diana-aws/bin/aws").exists() else shutil.which("aws") or "aws"
 BASES = "ACGT"
@@ -45,6 +44,46 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_safe_new_output_parent(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink")
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
+
+
+def write_json_create_only(path: Path, value: dict[str, Any], label: str) -> None:
+    require_safe_new_output_parent(path, label)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            descriptor = -1
+            json.dump(value, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+    fsync_directory(path.parent)
 
 
 def run(command: list[str]) -> None:
@@ -548,6 +587,9 @@ def main() -> int:
     destination_prefix_key = destination_key.removesuffix("/sentinel").rstrip("/") + "/"
     if receipt_prefix_key.startswith(destination_prefix_key) or destination_prefix_key.startswith(receipt_prefix_key):
         raise SystemExit("receipt provenance prefix must be disjoint from output prefix")
+    require_safe_new_output_parent(
+        args.receipt_anchor_output, "receipt anchor output"
+    )
     if args.receipt_anchor_output.exists():
         raise SystemExit("receipt anchor output already exists; choose a one-shot path")
     require_bucket_versioning(destination_bucket, args.region)
@@ -725,11 +767,11 @@ def main() -> int:
             raise ValueError(
                 f"materialization receipt anchor checks failed: {anchor['checks']}"
             )
-        args.receipt_anchor_output.parent.mkdir(parents=True, exist_ok=True)
-        with args.receipt_anchor_output.open("x", encoding="utf-8") as handle:
-            args.receipt_anchor_output.chmod(0o600)
-            json.dump(anchor, handle, indent=2, sort_keys=True)
-            handle.write("\n")
+        write_json_create_only(
+            args.receipt_anchor_output,
+            anchor,
+            "receipt anchor output",
+        )
         print(json.dumps({"status": "passed", "receipt": receipt_upload, "receipt_anchor": anchor, "outputs": output_custody}, indent=2, sort_keys=True))
         return 0
     finally:

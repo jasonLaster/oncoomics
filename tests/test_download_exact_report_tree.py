@@ -374,6 +374,26 @@ class ExactReportDownloadTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertFalse((real_verification_parent / "missing").exists())
 
+    def test_refuses_output_below_existing_dir_under_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, _, _ = self.fixture(root)
+            real_parent = root / "real-parent"
+            (real_parent / "existing").mkdir(parents=True)
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            output = linked_parent / "existing" / "report-tree"
+            verification = root / "verification.json"
+            with self.assertRaisesRegex(
+                SystemExit,
+                "report output.* parent may not be a symlink",
+            ):
+                MODULE.main(self.args(receipt, anchor, output, verification))
+
+            self.assertFalse(verification.exists())
+            self.assertFalse((real_parent / "existing" / "report-tree").exists())
+
     def test_changed_history_and_traversal_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
