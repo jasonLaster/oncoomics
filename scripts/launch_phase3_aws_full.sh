@@ -78,6 +78,7 @@ nextflow_args+=(
   --aws_max_retries "$AWS_MAX_RETRIES"
   --workflow "$PHASE3_WORKFLOW"
   --phase3_reads full
+  --allow_legacy_phase3_cpu_full true
   --phase3_source_mode aws_sra
   --phase3_fetch_cpus "$PHASE3_FETCH_CPUS"
   --phase3_fetch_memory "$PHASE3_FETCH_MEMORY"

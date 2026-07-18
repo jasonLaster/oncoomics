@@ -206,6 +206,8 @@ class CliParityTest(unittest.TestCase):
 
     def test_legacy_phase3_aws_full_tasks_require_explicit_override(self):
         guarded_tasks = {
+            "nf:phase3-wgs:full",
+            "nf:phase3-wgs:monolith:full",
             "nf:aws:phase3-wgs:full",
             "nf:aws:phase3-wgs:full:ondemand-large",
             "nf:aws:phase3-wgs:full:ondemand-failfast",
@@ -267,6 +269,7 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("nextflow", argv[0])
         self.assertEqual("phase3_wgs", argv[argv.index("--workflow") + 1])
         self.assertEqual("full", argv[argv.index("--phase3_reads") + 1])
+        self.assertEqual("true", argv[argv.index("--allow_legacy_phase3_cpu_full") + 1])
         self.assertEqual("YES", env["ALLOW_LEGACY_PHASE3_AWS_FULL"])
 
     @patch("diana_omics.workflow_tasks.subprocess.run")

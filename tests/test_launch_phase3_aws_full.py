@@ -107,6 +107,7 @@ class Phase3AwsFullLauncherTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0)
             self.assertEqual((run_dir / "nextflow.exit").read_text(), "0\n")
             self.assertIn("--workflow\nphase3_wgs\n", argv.read_text())
+            self.assertIn("--allow_legacy_phase3_cpu_full\ntrue\n", argv.read_text())
 
     def test_distributed_scatter_workflow_does_not_need_legacy_override(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

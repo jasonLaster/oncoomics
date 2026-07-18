@@ -45,6 +45,7 @@ SRA_BENCH_RANGE_MATRIX = ",".join(
     )
 )
 LEGACY_PHASE3_AWS_FULL_ENV = {"ALLOW_LEGACY_PHASE3_AWS_FULL": "YES"}
+LEGACY_PHASE3_CPU_FULL_NEXTFLOW_ARGS = ("--allow_legacy_phase3_cpu_full", "true")
 LEGACY_PHASE3_AWS_FULL_DESCRIPTION = (
     "Legacy full-source AWS Phase 3 WGS CPU runs are disabled for Diana reruns. "
     "Use the P5en/Parabricks phase3_wgs_fast path after quota and GPU smoke pass. "
@@ -140,9 +141,20 @@ def _task(
 
 def _legacy_phase3_aws_full_task(*steps: TaskStep) -> Task:
     return _task(
-        *steps,
+        *(_allow_legacy_phase3_cpu_full(step) for step in steps),
         description=LEGACY_PHASE3_AWS_FULL_DESCRIPTION,
         required_env=LEGACY_PHASE3_AWS_FULL_ENV,
+    )
+
+
+def _allow_legacy_phase3_cpu_full(step: TaskStep) -> TaskStep:
+    if not step.argv or step.argv[0] != "nextflow":
+        return step
+    return TaskStep(
+        (*step.argv, *LEGACY_PHASE3_CPU_FULL_NEXTFLOW_ARGS),
+        env=step.env,
+        cwd=step.cwd,
+        append_args=step.append_args,
     )
 
 
@@ -257,8 +269,12 @@ TASKS: dict[str, Task] = {
     "nf:known-answer-bounded-non-dry": _task(_nextflow("-profile", "local", "--workflow", "known_answer_bounded_non_dry")),
     "nf:known-answer-expanded-cohort": _task(_nextflow("-profile", "local", "--workflow", "known_answer_expanded_cohort")),
     "nf:phase3-wgs:dev": _task(_nextflow("-profile", "local", "--workflow", "phase3_wgs", "--phase3_reads", "500000")),
-    "nf:phase3-wgs:full": _task(_nextflow("-profile", "local", "--workflow", "phase3_wgs", "--phase3_reads", "full")),
-    "nf:phase3-wgs:monolith:full": _task(_nextflow("-profile", "local", "--workflow", "phase3_wgs_monolith", "--phase3_reads", "full")),
+    "nf:phase3-wgs:full": _legacy_phase3_aws_full_task(
+        _nextflow("-profile", "local", "--workflow", "phase3_wgs", "--phase3_reads", "full")
+    ),
+    "nf:phase3-wgs:monolith:full": _legacy_phase3_aws_full_task(
+        _nextflow("-profile", "local", "--workflow", "phase3_wgs_monolith", "--phase3_reads", "full")
+    ),
     "nf:all-public": _task(_nextflow("-profile", "local", "--workflow", "all_public", "--phase3_reads", "500000")),
     "infra:aws:init": _task(_terraform("init")),
     "infra:aws:fmt": _task(_terraform("fmt")),

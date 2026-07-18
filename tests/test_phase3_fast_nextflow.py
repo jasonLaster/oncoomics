@@ -11,6 +11,29 @@ FAST_STUB_SCRIPT = ROOT / "scripts/run_phase3_wgs_fast_stub.sh"
 
 
 class Phase3FastNextflowTests(unittest.TestCase):
+    def test_legacy_full_cpu_workflows_require_explicit_opt_in(self) -> None:
+        config = NEXTFLOW_CONFIG.read_text(encoding="utf-8")
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        self.assertIn("allow_legacy_phase3_cpu_full = false", config)
+        self.assertIn(
+            "allowLegacyPhase3CpuFull = params.allow_legacy_phase3_cpu_full.toString() == 'true'",
+            text,
+        )
+        self.assertIn(
+            "legacyCpuFullWorkflow = ['phase3_wgs', 'phase3_wgs_monolith'].contains(selectedWorkflow)",
+            text,
+        )
+        self.assertNotIn(
+            "legacyCpuFullWorkflow = ['phase3_wgs', 'phase3_wgs_align_scatter'",
+            text,
+        )
+        self.assertIn(
+            "legacyCpuFullWorkflow && effectivePhase3Reads == 'full' && !allowLegacyPhase3CpuFull",
+            text,
+        )
+        self.assertIn("Use phase3_wgs_fast after the P5en quota and GPU smoke gates", text)
+
     def test_phase3_fast_workflow_starts_with_input_manifest_process(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")
 

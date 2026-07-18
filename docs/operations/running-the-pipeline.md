@@ -54,7 +54,6 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:quick
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:known-answer-expanded-cohort
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:stub
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:dev
-PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:phase3-wgs:full
 ```
 
 Direct Nextflow equivalents:
@@ -63,10 +62,13 @@ Direct Nextflow equivalents:
 nextflow run main.nf -profile local --workflow quick
 nextflow run main.nf -profile local --workflow known_answer_expanded_cohort
 nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads 500000
-nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads full
 ```
 
-Bounded WGS runs are developer checks. A full-source WGS acceptance run must use `--phase3_reads full`.
+Bounded WGS runs are developer checks. The legacy full-source CPU WGS workflows
+are blocked unless an explicitly approved public-WGS regression run passes
+`--phase3_reads full --allow_legacy_phase3_cpu_full true`; Diana reruns should
+use the P5en/Parabricks `phase3_wgs_fast` path or the distributed CPU scatter
+architecture instead.
 
 ## Docker
 

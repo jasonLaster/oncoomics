@@ -1919,6 +1919,8 @@ workflow {
     selectedWorkflow = params.workflow.toString()
     effectivePhase3Reads = params.phase3_reads ? params.phase3_reads.toString() : '500000'
     allowFullWgs = params.allow_full_wgs.toString() == 'true'
+    allowLegacyPhase3CpuFull = params.allow_legacy_phase3_cpu_full.toString() == 'true'
+    legacyCpuFullWorkflow = ['phase3_wgs', 'phase3_wgs_monolith'].contains(selectedWorkflow)
     workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_sra_benchmark', 'known_answer_public_findings', 'known_answer_bounded_non_dry', 'known_answer_expanded_cohort', 'phase3_wgs', 'phase3_wgs_align_only', 'phase3_wgs_align_scatter', 'phase3_wgs_fast', 'phase3_wgs_fast_gpu_smoke', 'phase3_wgs_monolith', 'all_public']
 
     if (!workflows.contains(selectedWorkflow)) {
@@ -1931,6 +1933,10 @@ workflow {
 
     if (selectedWorkflow == 'all_public' && effectivePhase3Reads == 'full' && !allowFullWgs) {
         error "Full-source WGS in all_public requires --phase3_reads full --allow_full_wgs true."
+    }
+
+    if (legacyCpuFullWorkflow && effectivePhase3Reads == 'full' && !allowLegacyPhase3CpuFull) {
+        error 'Legacy full-source CPU WGS is disabled for Diana reruns. Use phase3_wgs_fast after the P5en quota and GPU smoke gates, or pass --allow_legacy_phase3_cpu_full true only for an explicitly approved public-WGS regression run.'
     }
 
     allowMetadataCnvTiming = params.phase3_allow_metadata_cnv_timing.toString() == 'true'
