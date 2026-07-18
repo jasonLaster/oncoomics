@@ -18,6 +18,7 @@ P5EN_VCPUS = 192
 EC2_SERVICE_CODE = "ec2"
 ON_DEMAND_P_QUOTA_CODE = "L-417A185B"
 KMS_KEY_ARN = re.compile(r"^arn:aws:kms:([a-z]{2}-[a-z]+-\d):(\d{12}):key/[A-Za-z0-9-]+$")
+ECR_REPOSITORY = re.compile(r"^\d{12}\.dkr\.ecr\.([a-z]{2}-[a-z]+-\d)\.amazonaws\.com/[a-z0-9][a-z0-9._/-]*$")
 PINNED_IMAGE = re.compile(r"^\S+@sha256:[0-9a-fA-F]{64}$")
 
 
@@ -54,6 +55,16 @@ def _require_use2_kms_key_arn(params: Mapping[str, Any], key: str, errors: list[
     if match is None or match.group(1) != REQUIRED_AWS_REGION:
         errors.append(f"{key} must be a KMS key ARN in {REQUIRED_AWS_REGION}")
     return value
+
+
+def _require_use2_ecr_repository(params: Mapping[str, Any], key: str, errors: list[str]) -> str:
+    value = _require_non_empty_string(params, key, errors)
+    if not value:
+        return ""
+    match = ECR_REPOSITORY.fullmatch(value.rstrip("/"))
+    if match is None or match.group(1) != REQUIRED_AWS_REGION:
+        errors.append(f"{key} must be an ECR repository URI in {REQUIRED_AWS_REGION}")
+    return value.rstrip("/")
 
 
 def _require_int_at_least(params: Mapping[str, Any], key: str, minimum: int, errors: list[str]) -> int:
@@ -97,9 +108,13 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
         if not cache_prefix.endswith("/phase3-fast-cache/wgs-v2"):
             errors.append("phase3_fast_cache_prefix must end with /phase3-fast-cache/wgs-v2")
 
+    mirror = _require_use2_ecr_repository(params, "parabricks_mirror_repository", errors)
+
     image = _require_non_empty_string(params, "parabricks_container", errors)
     if image and PINNED_IMAGE.fullmatch(image) is None:
         errors.append("parabricks_container must be pinned as <image>@sha256:<64 hex>")
+    if image and mirror and not image.startswith(f"{mirror}@sha256:"):
+        errors.append("parabricks_container must be pinned to parabricks_mirror_repository")
 
     instance_types = params.get("batch_gpu_p5en_instance_types")
     if instance_types != list(REQUIRED_INSTANCE_TYPES):
@@ -116,6 +131,7 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
         "aws_gpu_queue": queue,
         "aws_region": REQUIRED_AWS_REGION,
         "parabricks_container": image,
+        "parabricks_mirror_repository": mirror,
         "phase3_fast_cache_kms_key_arn": cache_kms_key_arn,
         "phase3_fast_cache_region": REQUIRED_AWS_REGION,
         "gpu_p5en_max_vcpus": max_vcpus,

@@ -11,6 +11,7 @@ from diana_omics.utils import write_json
 
 
 def p5en_params(**overrides):
+    mirror = "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks"
     params = {
         "aws_gpu_queue": "diana-omics-prod-use2-gpu-p5en",
         "aws_job_role": "arn:aws:iam::172630973301:role/diana-omics-prod-use2-batch-job",
@@ -20,7 +21,8 @@ def p5en_params(**overrides):
         "aws_workdir": "s3://diana-omics-work-172630973301-us-east-2/work",
         "batch_gpu_p5en_instance_types": ["p5en.48xlarge"],
         "gpu_p5en_max_vcpus": 384,
-        "parabricks_container": "172630973301.dkr.ecr.us-east-2.amazonaws.com/parabricks@sha256:" + "a" * 64,
+        "parabricks_container": mirror + "@sha256:" + "a" * 64,
+        "parabricks_mirror_repository": mirror,
         "phase3_fast_cache_kms_key_arn": (
             "arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc"
         ),
@@ -43,8 +45,12 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
         self.assertEqual(384, summary["gpu_p5en_max_vcpus"])
         self.assertEqual(["p5en.48xlarge"], summary["instance_types"])
         self.assertEqual(
-            "172630973301.dkr.ecr.us-east-2.amazonaws.com/parabricks@sha256:" + "a" * 64,
+            "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + "a" * 64,
             summary["parabricks_container"],
+        )
+        self.assertEqual(
+            "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks",
+            summary["parabricks_mirror_repository"],
         )
 
     def test_rejects_empty_or_tagged_parabricks_container(self) -> None:
@@ -54,6 +60,26 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(verify.GpuSmokeConfigError, "sha256"):
             verify.validate_gpu_smoke_params(
                 p5en_params(parabricks_container="172630973301.dkr.ecr.us-east-2.amazonaws.com/parabricks:latest")
+            )
+
+    def test_rejects_parabricks_container_outside_mirror(self) -> None:
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "parabricks_mirror_repository"):
+            verify.validate_gpu_smoke_params(p5en_params(parabricks_mirror_repository=""))
+
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "ECR repository URI in us-east-2"):
+            verify.validate_gpu_smoke_params(
+                p5en_params(
+                    parabricks_mirror_repository="172630973301.dkr.ecr.us-east-1.amazonaws.com/diana-omics/parabricks"
+                )
+            )
+
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "pinned to parabricks_mirror_repository"):
+            verify.validate_gpu_smoke_params(
+                p5en_params(
+                    parabricks_container=(
+                        "172630973301.dkr.ecr.us-east-2.amazonaws.com/other/parabricks@sha256:" + "a" * 64
+                    )
+                )
             )
 
     def test_rejects_non_p5en_queue_and_capacity(self) -> None:
