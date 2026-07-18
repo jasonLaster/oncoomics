@@ -254,12 +254,13 @@ content-addressed source-version to `us-east-2` cache-key rows and the exact
 destination KMS key. `FAST_REPLICATE_INPUTS` consumes that plan and defaults to
 `dry_run`, writing a replication receipt without S3 calls so review can happen
 before the first step that needs write authority in the regional private cache.
-The dry-run receipt also fixes the future copy strategy: objects at or below the
-S3 single-copy limit use one `CopyObject`, while larger BAMs are assigned
+The dry-run receipt also fixes the apply strategy: objects at or below the S3
+single-copy limit use one `CopyObject`, while larger BAMs are assigned
 deterministic `UploadPartCopy` part counts and byte ranges from
-`phase3_fast_replication_part_size_bytes`. The future upload-part-copy executor
-must use the receipt’s encoded CopySource strings so each part reads the exact
-source `VersionId` that SHA-256 validation reviewed.
+`phase3_fast_replication_part_size_bytes`. Apply mode reuses the same encoded
+CopySource strings so every copy and multipart part reads the exact source
+`VersionId` that SHA-256 validation reviewed, then verifies the destination
+size, VersionId, SHA-256 metadata, and KMS key with `HeadObject`.
 
 ### Gate 1: P5en and Parabricks smoke
 
