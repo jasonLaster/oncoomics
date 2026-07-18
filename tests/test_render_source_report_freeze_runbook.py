@@ -383,6 +383,35 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                     phase3_fast_forbidden_tokens_file=forbidden_tokens,
                 )
 
+    def test_validate_packet_dirs_rescans_executable_crosschecks_with_run_forbidden_tokens(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+            sequenza = paths["sequenza_scarhrd"]
+            (sequenza / "report.md").write_text(
+                "No-call executable cross-check report with Unit-Run-Private-Token.\n",
+                encoding="utf-8",
+            )
+            manifest_path = sequenza / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = hashlib.sha256((sequenza / "report.md").read_bytes()).hexdigest()
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            validation = root / "report_packet_validation.json"
+            forbidden_tokens = root / "forbidden_tokens.json"
+            write_phase3_fast_validation_receipt(paths, validation)
+            write_phase3_fast_forbidden_tokens(forbidden_tokens)
+
+            with self.assertRaisesRegex(ValueError, "forbidden identifier token"):
+                MODULE.validate_packet_dirs(
+                    paths,
+                    phase3_fast_report_packet_validation=validation,
+                    phase3_fast_forbidden_tokens_file=forbidden_tokens,
+                )
+
     def test_validate_packet_dirs_rejects_stale_phase3_fast_validation_receipt(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

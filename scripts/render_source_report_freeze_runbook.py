@@ -83,6 +83,14 @@ def validate_packet_dirs(
     if (phase3_fast_report_packet_validation is None) != (phase3_fast_forbidden_tokens_file is None):
         raise ValueError("Phase 3 fast report validation requires both the report receipt and forbidden-token file")
 
+    forbidden_tokens = tuple(FORBIDDEN_TOKENS)
+    expected_forbidden_tokens_sha256 = None
+    if phase3_fast_forbidden_tokens_file is not None:
+        if phase3_fast_forbidden_tokens_file.is_symlink() or not phase3_fast_forbidden_tokens_file.is_file():
+            raise ValueError("Phase 3 fast forbidden-token file must be a real file")
+        forbidden_tokens = canonical_forbidden_tokens(phase3_fast_forbidden_tokens_file.read_text(encoding="utf-8"))
+        expected_forbidden_tokens_sha256 = sha256_forbidden_tokens(forbidden_tokens)
+
     if tuple(paths) != REQUIRED_METHOD_IDS:
         raise ValueError("source packet directories must follow the pinned seven-method order")
     missing = [f"{method_id}={path}" for method_id, path in paths.items() if path.is_symlink() or not path.is_dir()]
@@ -106,21 +114,16 @@ def validate_packet_dirs(
         if invalid:
             raise ValueError(f"{method_id} packet directory contains invalid paths: " + ",".join(invalid))
         try:
-            validate_private_packet_dir(path, method_id, FORBIDDEN_TOKENS)
+            validate_private_packet_dir(path, method_id, forbidden_tokens)
         except ValueError as error:
             raise ValueError(f"{method_id} packet directory is invalid: {error}") from error
     if phase3_fast_report_packet_validation is not None:
-        assert phase3_fast_forbidden_tokens_file is not None
-        if phase3_fast_forbidden_tokens_file.is_symlink() or not phase3_fast_forbidden_tokens_file.is_file():
-            raise ValueError("Phase 3 fast forbidden-token file must be a real file")
-        phase3_fast_forbidden_tokens = canonical_forbidden_tokens(
-            phase3_fast_forbidden_tokens_file.read_text(encoding="utf-8"),
-        )
+        assert expected_forbidden_tokens_sha256 is not None
         validate_validation_receipt_matches_packets(
             phase3_fast_report_packet_validation,
             paths,
-            phase3_fast_forbidden_tokens,
-            sha256_forbidden_tokens(phase3_fast_forbidden_tokens),
+            forbidden_tokens,
+            expected_forbidden_tokens_sha256,
         )
 
 
