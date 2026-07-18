@@ -362,9 +362,9 @@ AWS profiles delete local `.sra` files after validated conversion and cache publ
 
 ## Full-Source WGS
 
-Do not use these legacy full-source CPU launchers for the current Diana
+Do not use this legacy full-source CPU launcher for the current Diana
 tumor/matched-normal evidence rerun. The July 2026 single-node CPU evidence
-retry was intentionally stopped before final publication; that rerun is now
+retry was intentionally stopped before final publication; the rerun is now
 gated on the `phase3_wgs_fast` P5en/Parabricks architecture in
 `docs/operations/next-generation-fast-rerun.md`.
 
