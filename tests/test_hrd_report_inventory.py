@@ -10,33 +10,25 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 INVENTORY_SCRIPT = SCRIPT_DIR / "hrd_report_inventory.py"
-INVENTORY_SPEC = importlib.util.spec_from_file_location(
-    "hrd_report_inventory", INVENTORY_SCRIPT
-)
+INVENTORY_SPEC = importlib.util.spec_from_file_location("hrd_report_inventory", INVENTORY_SCRIPT)
 assert INVENTORY_SPEC and INVENTORY_SPEC.loader
 INVENTORY = importlib.util.module_from_spec(INVENTORY_SPEC)
 INVENTORY_SPEC.loader.exec_module(INVENTORY)
 
 PUBLISH_SCRIPT = SCRIPT_DIR / "publish_reviewed_public_report.py"
-PUBLISH_SPEC = importlib.util.spec_from_file_location(
-    "publish_reviewed_public_report", PUBLISH_SCRIPT
-)
+PUBLISH_SPEC = importlib.util.spec_from_file_location("publish_reviewed_public_report", PUBLISH_SCRIPT)
 assert PUBLISH_SPEC and PUBLISH_SPEC.loader
 PUBLISH = importlib.util.module_from_spec(PUBLISH_SPEC)
 PUBLISH_SPEC.loader.exec_module(PUBLISH)
 
 BLOCKED_SCRIPT = SCRIPT_DIR / "generate_blocked_hrd_crosscheck_reports.py"
-BLOCKED_SPEC = importlib.util.spec_from_file_location(
-    "generate_blocked_hrd_crosscheck_reports", BLOCKED_SCRIPT
-)
+BLOCKED_SPEC = importlib.util.spec_from_file_location("generate_blocked_hrd_crosscheck_reports", BLOCKED_SCRIPT)
 assert BLOCKED_SPEC and BLOCKED_SPEC.loader
 BLOCKED = importlib.util.module_from_spec(BLOCKED_SPEC)
 BLOCKED_SPEC.loader.exec_module(BLOCKED)
 
 STAGE_SCRIPT = SCRIPT_DIR / "stage_hrd_crosscheck_report.py"
-STAGE_SPEC = importlib.util.spec_from_file_location(
-    "stage_hrd_crosscheck_report", STAGE_SCRIPT
-)
+STAGE_SPEC = importlib.util.spec_from_file_location("stage_hrd_crosscheck_report", STAGE_SCRIPT)
 assert STAGE_SPEC and STAGE_SPEC.loader
 STAGE = importlib.util.module_from_spec(STAGE_SPEC)
 STAGE_SPEC.loader.exec_module(STAGE)
@@ -60,10 +52,7 @@ class HrdReportInventoryTests(unittest.TestCase):
         )
         self.assertEqual(
             INVENTORY.BLOCKED_CROSSCHECK_REPORT_DIRS,
-            {
-                method["method_id"]: method["directory"]
-                for method in BLOCKED.METHODS
-            },
+            {method["method_id"]: method["directory"] for method in BLOCKED.METHODS},
         )
         self.assertEqual(
             tuple(sorted(STAGE.SUPPORTED_ROUTES)),
@@ -124,10 +113,7 @@ class HrdReportInventoryTests(unittest.TestCase):
             )
         self.assertEqual(
             manifest_paths,
-            {
-                method_id: packet_dir / "report_manifest.json"
-                for method_id, packet_dir in packet_dirs.items()
-            },
+            {method_id: packet_dir / "report_manifest.json" for method_id, packet_dir in packet_dirs.items()},
         )
 
     def test_source_report_paths_accept_executable_route_overrides(self) -> None:
@@ -147,6 +133,36 @@ class HrdReportInventoryTests(unittest.TestCase):
         self.assertEqual(
             packet_dirs["sigprofiler_sbs3"],
             Path("/tmp/sigprofiler"),
+        )
+
+    def test_source_report_paths_accept_fast_packet_overrides(self) -> None:
+        root = Path("/repo")
+
+        packet_dirs = INVENTORY.source_report_packet_dirs(
+            root,
+            "run-20260718",
+            deterministic_report_dir=Path("/fast/deterministic"),
+            rosalind_report_dir=Path("/fast/rosalind"),
+            blocked_crosscheck_root=Path("/fast/blocked"),
+        )
+        manifest_paths = INVENTORY.source_report_manifest_paths(
+            root,
+            "run-20260718",
+            deterministic_report_dir=Path("/fast/deterministic"),
+            rosalind_report_dir=Path("/fast/rosalind"),
+            blocked_crosscheck_root=Path("/fast/blocked"),
+        )
+
+        self.assertEqual(tuple(packet_dirs), INVENTORY.REQUIRED_METHOD_IDS)
+        self.assertEqual(packet_dirs["deterministic_full_wgs"], Path("/fast/deterministic"))
+        self.assertEqual(packet_dirs["rosalind_diana_wgs"], Path("/fast/rosalind"))
+        self.assertEqual(
+            packet_dirs["facets_scarhrd_blocked"],
+            Path("/fast/blocked/facets_scarhrd_blocked"),
+        )
+        self.assertEqual(
+            manifest_paths["hrdetect_blocked"],
+            Path("/fast/blocked/hrdetect_blocked/report_manifest.json"),
         )
 
 

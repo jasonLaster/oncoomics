@@ -421,7 +421,13 @@ by `scripts/render_source_report_freeze_runbook.py`. It must still withhold the
 private-freeze, independent AI-review, comparative-synthesis, and
 reviewed-public handoffs until `sequenza_scarhrd` and `sigprofiler_sbs3` have
 real executable-route report packets backed by a published, versioned,
-alias-only cross-check input contract.
+alias-only cross-check input contract. Once those two executable reports exist,
+render the seven-source freezer with the published fast packet directories:
+pass the Phase 3 fast deterministic report as `--deterministic-report-dir`, the
+published `diana_wgs` Rosalind packet as `--rosalind-report-dir`, the
+`phase3_wgs_fast/blocked_crosschecks` root as `--blocked-crosscheck-root`, and
+the two executable route packet directories as `--sequenza-report-dir` and
+`--sigprofiler-report-dir`.
 
 ### Gate 1: P5en and Parabricks smoke
 

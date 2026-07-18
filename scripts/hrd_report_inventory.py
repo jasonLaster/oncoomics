@@ -21,17 +21,13 @@ REQUIRED_METHOD_IDS = (
 )
 EXECUTABLE_CROSSCHECK_METHOD_IDS = REQUIRED_METHOD_IDS[2:4]
 BLOCKED_CROSSCHECK_METHOD_IDS = REQUIRED_METHOD_IDS[4:]
-BLOCKED_CROSSCHECK_REPORT_DIRS = {
-    method_id: method_id for method_id in BLOCKED_CROSSCHECK_METHOD_IDS
-}
+BLOCKED_CROSSCHECK_REPORT_DIRS = {method_id: method_id for method_id in BLOCKED_CROSSCHECK_METHOD_IDS}
 AI_REVIEW_METHOD_IDS = (
     "ai_review_reviewer_a",
     "ai_review_reviewer_b",
 )
 COMPARATIVE_METHOD_IDS = ("comparative_hrd_synthesis",)
-REPORT_METHOD_IDS = (
-    REQUIRED_METHOD_IDS + AI_REVIEW_METHOD_IDS + COMPARATIVE_METHOD_IDS
-)
+REPORT_METHOD_IDS = REQUIRED_METHOD_IDS + AI_REVIEW_METHOD_IDS + COMPARATIVE_METHOD_IDS
 
 
 def inventory_payload() -> dict[str, Any]:
@@ -43,9 +39,7 @@ def inventory_payload() -> dict[str, Any]:
 
 
 def inventory_sha256() -> str:
-    encoded = json.dumps(
-        inventory_payload(), sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    encoded = json.dumps(inventory_payload(), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -54,8 +48,7 @@ def require_pinned_methods(values: Sequence[str], label: str) -> list[str]:
     expected = list(REQUIRED_METHOD_IDS)
     if observed != expected:
         raise ValueError(
-            f"{label} must equal the pinned seven-method inventory in exact order; "
-            f"expected={expected!r} observed={observed!r}"
+            f"{label} must equal the pinned seven-method inventory in exact order; expected={expected!r} observed={observed!r}"
         )
     return observed
 
@@ -64,10 +57,7 @@ def require_report_methods(values: Sequence[str], label: str) -> list[str]:
     observed = [str(value) for value in values]
     expected = list(REPORT_METHOD_IDS)
     if observed != expected:
-        raise ValueError(
-            f"{label} must equal the pinned report inventory in exact order; "
-            f"expected={expected!r} observed={observed!r}"
-        )
+        raise ValueError(f"{label} must equal the pinned report inventory in exact order; expected={expected!r} observed={observed!r}")
     return observed
 
 
@@ -81,21 +71,21 @@ def source_report_packet_dirs(
     run_id: str,
     sigprofiler_report_dir: Path | None = None,
     sequenza_report_dir: Path | None = None,
+    *,
+    deterministic_report_dir: Path | None = None,
+    rosalind_report_dir: Path | None = None,
+    blocked_crosscheck_root: Path | None = None,
 ) -> dict[str, Path]:
     """Return the canonical source report packet directories in method order."""
 
     reports = root / ".codex-tmp/hrd-reports"
     crosschecks = reports / "crosschecks"
-    blocked = reports / "blocked-crosschecks"
+    blocked = blocked_crosscheck_root or reports / "blocked-crosschecks"
     paths = {
-        "deterministic_full_wgs": reports / "deterministic-full/report",
-        "rosalind_diana_wgs": root / "results/rosalind_hrd/diana_wgs" / run_id,
-        "sequenza_scarhrd": (
-            sequenza_report_dir or crosschecks / "sequenza_scarhrd"
-        ),
-        "sigprofiler_sbs3": (
-            sigprofiler_report_dir or crosschecks / "sigprofiler_sbs3"
-        ),
+        "deterministic_full_wgs": deterministic_report_dir or reports / "deterministic-full/report",
+        "rosalind_diana_wgs": rosalind_report_dir or root / "results/rosalind_hrd/diana_wgs" / run_id,
+        "sequenza_scarhrd": (sequenza_report_dir or crosschecks / "sequenza_scarhrd"),
+        "sigprofiler_sbs3": (sigprofiler_report_dir or crosschecks / "sigprofiler_sbs3"),
     }
     for method_id, directory in BLOCKED_CROSSCHECK_REPORT_DIRS.items():
         paths[method_id] = blocked / directory
@@ -108,6 +98,10 @@ def source_report_manifest_paths(
     run_id: str,
     sigprofiler_report_dir: Path | None = None,
     sequenza_report_dir: Path | None = None,
+    *,
+    deterministic_report_dir: Path | None = None,
+    rosalind_report_dir: Path | None = None,
+    blocked_crosscheck_root: Path | None = None,
 ) -> dict[str, Path]:
     """Return each canonical source report packet's manifest path."""
 
@@ -118,5 +112,8 @@ def source_report_manifest_paths(
             run_id,
             sigprofiler_report_dir,
             sequenza_report_dir,
+            deterministic_report_dir=deterministic_report_dir,
+            rosalind_report_dir=rosalind_report_dir,
+            blocked_crosscheck_root=blocked_crosscheck_root,
         ).items()
     }

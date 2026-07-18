@@ -9,7 +9,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -44,8 +43,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             index = text.find(f"--method-id {method_id}", previous + 1)
             self.assertGreater(index, previous)
             self.assertIn(
-                "/repo/.codex-tmp/hrd-reports/deterministic-full/"
-                f"terminal.{method_id}.private.json",
+                f"/repo/.codex-tmp/hrd-reports/deterministic-full/terminal.{method_id}.private.json",
                 text,
             )
             previous = index
@@ -55,8 +53,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
 
         self.assertIn("/repo/scripts/render_ai_synthesis_runbook.py", text)
         self.assertIn(
-            "AI_REVIEW_RUNBOOK=/repo/.codex-tmp/hrd-reports/ai-review/"
-            "rerun.post-reports-runbook.$(date -u +%Y%m%dT%H%M%SZ).md",
+            "AI_REVIEW_RUNBOOK=/repo/.codex-tmp/hrd-reports/ai-review/rerun.post-reports-runbook.$(date -u +%Y%m%dT%H%M%SZ).md",
             text,
         )
         self.assertIn('--output "$AI_REVIEW_RUNBOOK" --root /repo', text)
@@ -139,9 +136,32 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
         )
         self.assertEqual(
             paths["rosalind_diana_wgs"].as_posix(),
-            "/repo/results/rosalind_hrd/diana_wgs/"
-            "diana-wgs-hrd-20260716T033101Z",
+            "/repo/results/rosalind_hrd/diana_wgs/diana-wgs-hrd-20260716T033101Z",
         )
+
+    def test_renderer_accepts_phase3_fast_packet_overrides(self) -> None:
+        paths = MODULE.source_packet_dirs(
+            Path("/repo"),
+            sigprofiler_report_dir=Path("/fast/sigprofiler"),
+            sequenza_report_dir=Path("/fast/sequenza"),
+            deterministic_report_dir=Path("/fast/deterministic_report"),
+            rosalind_report_dir=Path("/fast/rosalind_hrd/diana_wgs"),
+            blocked_crosscheck_root=Path("/fast/blocked_crosschecks"),
+        )
+        text = MODULE.render(
+            Path("/repo"),
+            "terminal",
+            sigprofiler_report_dir=Path("/fast/sigprofiler"),
+            sequenza_report_dir=Path("/fast/sequenza"),
+            deterministic_report_dir=Path("/fast/deterministic_report"),
+            rosalind_report_dir=Path("/fast/rosalind_hrd/diana_wgs"),
+            blocked_crosscheck_root=Path("/fast/blocked_crosschecks"),
+        )
+
+        self.assertEqual(tuple(paths), MODULE.REQUIRED_METHOD_IDS)
+        for packet_dir in paths.values():
+            self.assertIn(f"--packet-dir {packet_dir}", text)
+        self.assertIn("/fast/blocked_crosschecks/facets_scarhrd_blocked", text)
 
     def test_validate_packet_dirs_rejects_missing_or_reordered_dirs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -181,22 +201,15 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             )
 
             paths = MODULE.source_packet_dirs(root)
-            blocked_method_ids = {
-                method["method_id"] for method in BLOCKED_GENERATOR.METHODS
-            }
-            source_paths = {
-                method_id: path
-                for method_id, path in paths.items()
-                if method_id not in blocked_method_ids
-            }
+            blocked_method_ids = {method["method_id"] for method in BLOCKED_GENERATOR.METHODS}
+            source_paths = {method_id: path for method_id, path in paths.items() if method_id not in blocked_method_ids}
             write_packet_dirs(source_paths)
 
             MODULE.validate_packet_dirs(paths)
             text = MODULE.render(root, "terminal")
             for method in BLOCKED_GENERATOR.METHODS:
                 self.assertIn(
-                    f"/blocked-crosschecks/{method['directory']} "
-                    f"--method-id {method['method_id']}",
+                    f"/blocked-crosschecks/{method['directory']} --method-id {method['method_id']}",
                     text,
                 )
             self.assertNotIn("/blocked-crosschecks/facets-scarhrd ", text)
@@ -204,9 +217,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             self.assertNotIn("/blocked-crosschecks/hrdetect ", text)
 
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
-        prerequisites = {
-            path.as_posix() for path in MODULE.required_existing(Path("/repo"))
-        }
+        prerequisites = {path.as_posix() for path in MODULE.required_existing(Path("/repo"))}
 
         self.assertEqual(
             {
@@ -232,21 +243,12 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
         )
 
     def test_required_absent_includes_source_private_receipts(self) -> None:
-        outputs = {
-            path.as_posix()
-            for path in MODULE.required_absent(Path("/repo"), "unit")
-        }
+        outputs = {path.as_posix() for path in MODULE.required_absent(Path("/repo"), "unit")}
 
         for path in (
-            *(
-                "/repo/.codex-tmp/hrd-reports/deterministic-full/"
-                f"unit.{method_id}.private.json"
-                for method_id in MODULE.REQUIRED_METHOD_IDS
-            ),
-            "/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/"
-            f"{MODULE.RUN_ID}/model-catalog-receipt.20260717T115311Z.json",
-            "/repo/.codex-tmp/hrd-reports/ai-review/"
-            f"{MODULE.RUN_ID}",
+            *(f"/repo/.codex-tmp/hrd-reports/deterministic-full/unit.{method_id}.private.json" for method_id in MODULE.REQUIRED_METHOD_IDS),
+            f"/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/{MODULE.RUN_ID}/model-catalog-receipt.20260717T115311Z.json",
+            f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}",
             "/repo/.codex-tmp/public-index/public-index.unit.dry.json",
         ):
             self.assertIn(path, outputs)
