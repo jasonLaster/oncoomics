@@ -126,12 +126,13 @@ def fsync_directory(path: Path) -> None:
 def write_json_create_only(path: Path, value: dict[str, Any]) -> None:
     require_safe_output(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(value, indent=2, sort_keys=True) + "\n"
+    expected_sha256 = hashlib.sha256(data.encode("utf-8")).hexdigest()
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             descriptor = -1
-            json.dump(value, handle, indent=2, sort_keys=True)
-            handle.write("\n")
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
     except Exception:
@@ -142,9 +143,18 @@ def write_json_create_only(path: Path, value: dict[str, Any]) -> None:
             os.close(descriptor)
     try:
         fsync_directory(path.parent)
+        require_installed_output(path, expected_sha256)
     except Exception:
         path.unlink(missing_ok=True)
         raise
+
+
+def require_installed_output(path: Path, expected_sha256: str) -> None:
+    require_no_symlinked_ancestors(path, "output")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"output changed during write: {path}")
+    if sha256_path(path) != expected_sha256:
+        raise ValueError(f"output changed during write: {path}")
 
 
 def passed_checks(value: Any, expected: frozenset[str]) -> bool:

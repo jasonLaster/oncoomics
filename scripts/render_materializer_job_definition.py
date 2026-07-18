@@ -9,6 +9,7 @@ uploads the script, registers the definition, or submits a Batch job.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -112,12 +113,13 @@ def fsync_directory(path: Path) -> None:
 def write_json_create_only(path: Path, value: dict[str, Any]) -> None:
     require_safe_output(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(value, indent=2, sort_keys=True) + "\n"
+    expected_sha256 = hashlib.sha256(data.encode("utf-8")).hexdigest()
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             descriptor = -1
-            json.dump(value, handle, indent=2, sort_keys=True)
-            handle.write("\n")
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
     except Exception:
@@ -128,9 +130,20 @@ def write_json_create_only(path: Path, value: dict[str, Any]) -> None:
             os.close(descriptor)
     try:
         fsync_directory(path.parent)
+        require_installed_output(path, expected_sha256)
     except Exception:
         path.unlink(missing_ok=True)
         raise
+
+
+def require_installed_output(path: Path, expected_sha256: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"output changed during write: {path}")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"output changed during write: {path}")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != expected_sha256:
+        raise ValueError(f"output changed during write: {path}")
 
 
 def render(args: argparse.Namespace) -> dict[str, Any]:

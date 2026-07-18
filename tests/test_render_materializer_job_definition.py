@@ -141,6 +141,27 @@ class RenderMaterializerJobDefinitionTests(unittest.TestCase):
                 (real_parent / "materializer-job-definition.json").exists()
             )
 
+    def test_output_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "materializer-job-definition.json"
+            real_fsync_directory = module.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    module,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "output changed during write"),
+            ):
+                module.write_json_create_only(output, {"status": "passed"})
+
+            self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

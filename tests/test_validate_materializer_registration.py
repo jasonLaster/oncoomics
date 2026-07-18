@@ -206,6 +206,25 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
 
         self.assertFalse((real_parent / "materializer-registration-receipt.json").exists())
 
+    def test_output_rehashes_after_parent_fsync(self) -> None:
+        real_fsync_directory = module.fsync_directory
+
+        def tamper_after_parent_fsync(path: Path) -> None:
+            real_fsync_directory(path)
+            self.output.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+        with (
+            mock.patch.object(
+                module,
+                "fsync_directory",
+                side_effect=tamper_after_parent_fsync,
+            ),
+            self.assertRaisesRegex(ValueError, "output changed during write"),
+        ):
+            module.write_json_create_only(self.output, {"status": "passed"})
+
+        self.assertFalse(self.output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
