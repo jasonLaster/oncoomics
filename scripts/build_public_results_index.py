@@ -103,12 +103,7 @@ def write_index(path: pathlib.Path, payload: dict[str, Any]) -> None:
 
     if path.is_symlink():
         raise RuntimeError(f"Refusing to write public index through symlink: {path}")
-    if path.parent.is_symlink():
-        raise RuntimeError(
-            f"Refusing to write public index through symlinked parent: {path.parent}"
-        )
-    if path.parent.exists() and not path.parent.is_dir():
-        raise RuntimeError(f"Public index parent is not a directory: {path.parent}")
+    require_safe_index_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, raw = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     temporary = pathlib.Path(raw)
@@ -123,6 +118,24 @@ def write_index(path: pathlib.Path, payload: dict[str, Any]) -> None:
         if descriptor >= 0:
             os.close(descriptor)
         temporary.unlink(missing_ok=True)
+
+
+def require_safe_index_parent(path: pathlib.Path) -> None:
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise RuntimeError(
+                f"Refusing to write public index through symlinked parent: {parent}"
+            )
+        if parent == parent.parent:
+            raise RuntimeError(f"Public index has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise RuntimeError(
+            f"Refusing to write public index through symlinked parent: {parent}"
+        )
+    if not parent.is_dir():
+        raise RuntimeError(f"Public index parent is not a directory: {parent}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

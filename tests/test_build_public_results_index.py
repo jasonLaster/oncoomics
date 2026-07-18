@@ -246,6 +246,22 @@ class PublicIndexTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "objects.json").exists())
 
+    def test_write_index_rejects_output_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-index"
+            real_parent.mkdir()
+            linked_parent = root / "linked-index"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(RuntimeError, "symlinked parent"):
+                MODULE.write_index(
+                    linked_parent / "missing" / "objects.json",
+                    {"objects": []},
+                )
+
+            self.assertFalse((real_parent / "missing").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
