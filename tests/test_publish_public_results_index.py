@@ -261,6 +261,22 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
 
             self.assertEqual(receipt.read_text(), "preserve\n")
 
+    def test_receipt_output_rejects_symlinked_parent_without_writing_target(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            index = self.write_index(root)
+            real_parent = root / "real-receipts"
+            real_parent.mkdir()
+            linked_parent = root / "linked-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.run(self.args(index, linked_parent / "receipt.json"))
+
+            self.assertFalse((real_parent / "receipt.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
