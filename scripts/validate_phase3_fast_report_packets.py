@@ -231,22 +231,32 @@ def validate_packets(
 def write_json_create_only(path: Path, payload: Mapping[str, Any]) -> None:
     require_safe_output_path(path, "packet validation output", ValueError)
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    expected_sha256 = hashlib.sha256(data.encode("utf-8")).hexdigest()
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         try:
             with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
                 descriptor = -1
-                json.dump(payload, handle, indent=2, sort_keys=True)
-                handle.write("\n")
+                handle.write(data)
                 handle.flush()
                 os.fsync(handle.fileno())
             fsync_directory(path.parent)
+            require_installed_output(path, expected_sha256)
         except Exception:
             path.unlink(missing_ok=True)
             raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def require_installed_output(path: Path, expected_sha256: str) -> None:
+    require_safe_output_path(path, "packet validation output", ValueError)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("report packet validation output changed during write")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != expected_sha256:
+        raise ValueError("report packet validation output changed during write")
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
