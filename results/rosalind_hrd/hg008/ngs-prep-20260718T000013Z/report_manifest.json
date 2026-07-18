@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "method_id": "rosalind_hg008",
+  "report_kind": "rosalind_hrd_reviewer_packet",
+  "evidence_status": "partial_evidence",
+  "authorized_hrd_state": "no_call",
+  "classification_authorized": false,
+  "classification_qc_status": "not_applicable",
+  "support_sha256": {
+    "hrd_adapter_status.csv": "5b26d1ab4187c05af2910ab2a29b5001fed3cc6ed102813817012ea10271ddae",
+    "input_evidence_index.json": "be3008c0d0978124b894986a328caf5cd4cae174746c6d047baeccf9601d4f13",
+    "next_actions.md": "085bc2cfa5efc304564a1a5babc7cee8767f74ee02ebf06cdb3359e628dac14d",
+    "research_context_sources.json": "3156fa868de4218757d673ac675beb474cf44dbe295188b285bb79ec47312049",
+    "reviewer_packet.md": "bfb8d7e0478f04470deb3904c324005d97a5b72798bcfceda71b64f68f5987c6",
+    "sample_validation_summary.csv": "5862848fbdff9f9b125cfb324963e63eed4e179d9e69f931c78bb40e8e7ba9fb"
+  },
+  "source_sha256": {
+    "source_artifact_001": "4f838974d39688e48f4d2e5db322154cd2a4b52a1a15309b7d535f6001358120",
+    "source_artifact_002": "b6b0366bcb9607e8ee2f2cf63fc59f62ddf0a0987a0ea229a223371c64fe4c46",
+    "source_artifact_003": "19bfce3c3927bc15b76b254e0e88018f198a35dd5c4f8e72aa6d5d72eb5dee20",
+    "source_artifact_004": "28db0e7af234656cb1267710d373c0f5efe0fdedadf44791fc7bd3e10e855a9b",
+    "source_artifact_005": "8216356006c09e48a2fcd34be2ddfc63ef1fdcd51cbe89ef3acc04361a5b2a54"
+  },
+  "report_sha256": "bfb8d7e0478f04470deb3904c324005d97a5b72798bcfceda71b64f68f5987c6",
+  "review_summary": {
+    "overall": {
+      "evidence_status": "partial_evidence",
+      "authorized_hrd_state": "no_call"
+    },
+    "packet_type": "hg008",
+    "allowed_conclusion": "HG008 is a truth-set validation sample. It should improve confidence in caller correctness and CNV/SV benchmarking, not produce a Diana-style HRD interpretation.",
+    "evidence": [
+      {
+        "evidence_id": "snv_truth_panel",
+        "status": "expanded_non_dry_passed",
+        "detail": "40/40 HG008 truth SNVs passed tumor ALT and normal REF pileup gates.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "cnv_depth_sweep",
+        "status": "expanded_non_dry_passed",
+        "detail": "4/4 HG008 CNV truth intervals passed normalized tumor-normal depth direction checks. Bounded reciprocal depth signal present: yes.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "sv_truth_asset",
+        "status": "expanded_non_dry_gap_identified",
+        "detail": "HG008 SV truth asset is present but no Diana SV callset exists for reciprocal-overlap confirmation.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "sv_cnv_reciprocal_overlap",
+        "status": "bounded_non_dry_partial",
+        "detail": "HG008 CNV truth loss shows reduced tumor-normal depth after neutral-region normalization; SV reciprocal-overlap remains unrun. Bounded CNV depth signal: yes; normalized loss tumor-normal ratio: 0.438786. No Diana-generated SV/CNV callset or reciprocal-overlap caller output was produced in this bounded run.",
+        "caveat": ""
+      }
+    ],
+    "adapters": [
+      {
+        "adapter": "SNV correctness validation",
+        "state": "partial_evidence",
+        "blocker": "Bounded truth-pileup confirmations are present, but full caller-level recall/precision is not complete.",
+        "next_action": "Run full small-variant caller concordance."
+      },
+      {
+        "adapter": "CNV/LOH correctness validation",
+        "state": "partial_evidence",
+        "blocker": "Bounded depth-direction checks passed, but no Diana-generated CNV segment callset or segment-level reciprocal-overlap result exists.",
+        "next_action": "Run CNV calling and segment-level reciprocal-overlap against HG008 truth."
+      },
+      {
+        "adapter": "SV correctness validation",
+        "state": "blocked",
+        "blocker": "No Diana-generated SV callset exists for HG008; SV reciprocal-overlap remains unrun.",
+        "next_action": "Run SV caller and reciprocal-overlap against HG008 v0.5 truth."
+      },
+      {
+        "adapter": "HRD interpretation",
+        "state": "no_call",
+        "blocker": "HG008 is a truth-set validator, not a Diana HRD interpretation sample.",
+        "next_action": "Use only for pipeline correctness."
+      }
+    ],
+    "blockers": [
+      "No Diana-generated CNV segment callset exists for HG008; current HG008 CNV evidence is bounded depth-direction validation, not segment-level reciprocal overlap.",
+      "No Diana-generated SV callset exists for HG008; SV reciprocal-overlap against v0.5 truth remains unrun."
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+adapter,state,blocker,next_action
+SNV correctness validation,partial_evidence,"Bounded truth-pileup confirmations are present, but full caller-level recall/precision is not complete.",Run full small-variant caller concordance.
+CNV/LOH correctness validation,partial_evidence,"Bounded depth-direction checks passed, but no Diana-generated CNV segment callset or segment-level reciprocal-overlap result exists.",Run CNV calling and segment-level reciprocal-overlap against HG008 truth.
+SV correctness validation,blocked,No Diana-generated SV callset exists for HG008; SV reciprocal-overlap remains unrun.,Run SV caller and reciprocal-overlap against HG008 v0.5 truth.
+HRD interpretation,no_call,"HG008 is a truth-set validator, not a Diana HRD interpretation sample.",Use only for pipeline correctness.

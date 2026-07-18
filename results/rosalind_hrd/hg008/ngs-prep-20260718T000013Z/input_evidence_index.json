@@ -1,0 +1,40 @@
+{
+  "sampleSet": "hg008",
+  "artifacts": [
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hg008_snv_panel.json",
+      "resolved_path": "artifacts/hg008_depth_validation/results/clinicalization/known_answer_runs/expanded_cohort/hg008_snv_panel.json",
+      "exists": "yes",
+      "bytes": 20033,
+      "sha256": "4f838974d39688e48f4d2e5db322154cd2a4b52a1a15309b7d535f6001358120"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json",
+      "resolved_path": "artifacts/hg008_depth_validation/results/clinicalization/known_answer_runs/expanded_cohort/hg008_cnv_sweep.json",
+      "exists": "yes",
+      "bytes": 6833,
+      "sha256": "b6b0366bcb9607e8ee2f2cf63fc59f62ddf0a0987a0ea229a223371c64fe4c46"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hg008_sv_truth_asset.json",
+      "resolved_path": "artifacts/hg008_depth_validation/results/clinicalization/known_answer_runs/expanded_cohort/hg008_sv_truth_asset.json",
+      "exists": "yes",
+      "bytes": 836,
+      "sha256": "19bfce3c3927bc15b76b254e0e88018f198a35dd5c4f8e72aa6d5d72eb5dee20"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
+      "resolved_path": "artifacts/hg008_depth_validation/results/clinicalization/known_answer_runs/hg008/sv_cnv_reciprocal_overlap_summary.json",
+      "exists": "yes",
+      "bytes": 3736,
+      "sha256": "28db0e7af234656cb1267710d373c0f5efe0fdedadf44791fc7bd3e10e855a9b"
+    },
+    {
+      "path": "results/clinicalization/known_answer_runs/expanded_cohort/hg008_rna_stats.json",
+      "resolved_path": "artifacts/hg008_depth_validation/results/clinicalization/known_answer_runs/expanded_cohort/hg008_rna_stats.json",
+      "exists": "yes",
+      "bytes": 1341,
+      "sha256": "8216356006c09e48a2fcd34be2ddfc63ef1fdcd51cbe89ef3acc04361a5b2a54"
+    }
+  ]
+}

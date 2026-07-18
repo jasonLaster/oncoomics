@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-07-18T00:00:13.879Z",
+  "runId": "ngs-prep-20260718T000013Z",
+  "sampleSets": [
+    "hg008"
+  ],
+  "packetRoot": "results/rosalind_hrd",
+  "artifactRoot": "artifacts/hg008_depth_validation",
+  "artifactRootMode": "materialized_artifact_root",
+  "packets": [
+    {
+      "sampleSet": "hg008",
+      "title": "GIAB HG008 Truth-Set Readiness Packet",
+      "outputDir": "results/rosalind_hrd/hg008/ngs-prep-20260718T000013Z",
+      "evidenceRows": 4,
+      "adapterRows": 4,
+      "blockers": [
+        "No Diana-generated CNV segment callset exists for HG008; current HG008 CNV evidence is bounded depth-direction validation, not segment-level reciprocal overlap.",
+        "No Diana-generated SV callset exists for HG008; SV reciprocal-overlap against v0.5 truth remains unrun."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "HG008 is a truth-set validation sample. It should improve confidence in caller correctness and CNV/SV benchmarking, not produce a Diana-style HRD interpretation.",
+      "evidenceStatus": "partial_evidence",
+      "reportManifest": "results/rosalind_hrd/hg008/ngs-prep-20260718T000013Z/report_manifest.json",
+      "reportManifestSha256": "597cde44a8fd331f7034c455742b1e28efc79c35aef39fcab5b97acd644142a4"
+    }
+  ],
+  "sourcePattern": {
+    "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
+    "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats."
+  }
+}
