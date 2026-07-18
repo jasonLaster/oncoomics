@@ -733,6 +733,36 @@ class CustodyHandoffTests(unittest.TestCase):
             self.assertEqual(value["receipt_version_id"], version)
             self.assertTrue(value["recovered_existing_version"])
 
+    def test_contract_publication_reservation_fsyncs_parent_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            anchor_path = Path(temporary) / "anchor.json"
+
+            with mock.patch.object(
+                publisher,
+                "fsync_directory",
+                wraps=publisher.fsync_directory,
+            ) as fsync_directory:
+                publisher.reserve_json(anchor_path, {"status": "dry_run"})
+
+            fsync_directory.assert_called_once_with(anchor_path.parent)
+
+    def test_contract_publication_removes_reservation_after_parent_fsync_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            anchor_path = root / "anchor.json"
+
+            with (
+                mock.patch.object(
+                    publisher,
+                    "fsync_directory",
+                    side_effect=OSError("synthetic parent fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic parent fsync failure"),
+            ):
+                publisher.reserve_json(anchor_path, {"status": "dry_run"})
+
+            self.assertFalse(anchor_path.exists())
+
     def test_contract_publication_rejects_symlinked_anchor_parent_without_writing_target(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
