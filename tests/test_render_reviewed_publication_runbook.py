@@ -181,6 +181,30 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             ],
         )
 
+    def test_public_index_receipts_are_shared_by_index_commands_and_absent_gate(
+        self,
+    ) -> None:
+        expected = MODULE.public_index_receipt_paths(Path("/repo"), "unit")
+        commands = MODULE.index_commands(Path("/repo"), "unit")
+        receipt_outputs = [
+            command[command.index("--receipt-output") + 1]
+            for command in commands
+            if "--receipt-output" in command
+        ]
+
+        self.assertEqual(
+            expected,
+            (
+                Path("/repo/.codex-tmp/public-index/public-index.unit.dry.json"),
+                Path("/repo/.codex-tmp/public-index/public-index.unit.json"),
+            ),
+        )
+        self.assertEqual(receipt_outputs, list(expected))
+        self.assertEqual(
+            MODULE.required_absent(Path("/repo"), "unit")[-2:],
+            expected,
+        )
+
     def test_private_receipt_gate_accepts_current_checked_in_receipts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             receipts = write_receipts(Path(temporary))

@@ -126,7 +126,7 @@ def publish_command(
 def index_commands(root: Path, receipt_stem: str = "terminal") -> list[list[str | Path]]:
     scripts = root / "scripts"
     index = root / ".codex-tmp/public-index/objects.json"
-    receipt_root = root / ".codex-tmp/public-index"
+    dry_receipt, apply_receipt = public_index_receipt_paths(root, receipt_stem)
     return [
         [
             "python3",
@@ -140,7 +140,7 @@ def index_commands(root: Path, receipt_stem: str = "terminal") -> list[list[str 
             "--index",
             index,
             "--receipt-output",
-            receipt_root / f"public-index.{receipt_stem}.dry.json",
+            dry_receipt,
         ],
         [
             "python3",
@@ -148,10 +148,18 @@ def index_commands(root: Path, receipt_stem: str = "terminal") -> list[list[str 
             "--index",
             index,
             "--receipt-output",
-            receipt_root / f"public-index.{receipt_stem}.json",
+            apply_receipt,
             "--apply",
         ],
     ]
+
+
+def public_index_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, Path]:
+    receipt_root = root / ".codex-tmp/public-index"
+    return (
+        receipt_root / f"public-index.{receipt_stem}.dry.json",
+        receipt_root / f"public-index.{receipt_stem}.json",
+    )
 
 
 def required_existing(root: Path) -> tuple[Path, ...]:
@@ -172,8 +180,7 @@ def required_absent(root: Path, receipt_stem: str) -> tuple[Path, ...]:
             for method_id in REPORT_METHOD_IDS
             for suffix in (".dry", "")
         ),
-        root / ".codex-tmp/public-index" / f"public-index.{receipt_stem}.dry.json",
-        root / ".codex-tmp/public-index" / f"public-index.{receipt_stem}.json",
+        *public_index_receipt_paths(root, receipt_stem),
     )
 
 
