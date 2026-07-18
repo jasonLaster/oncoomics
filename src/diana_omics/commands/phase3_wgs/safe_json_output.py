@@ -33,4 +33,5 @@ def require_safe_output_path(path: Path, label: str, error_type: type[Exception]
 def read_real_json(path: Path, label: str, error_type: type[Exception]) -> Any:
     if path.is_symlink() or not path.is_file():
         raise error_type(f"{label} must be a real JSON file: {path}")
+    require_no_symlinked_ancestors(path, label, error_type)
     return read_json(path)

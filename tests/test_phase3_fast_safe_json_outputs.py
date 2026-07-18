@@ -108,6 +108,19 @@ class Phase3FastSafeJsonOutputsTests(unittest.TestCase):
                 with self.assertRaisesRegex(ManifestError, "must be a real JSON file"):
                     safe_json_output.read_real_json(input_path, "source", ManifestError)
 
+    def test_read_real_json_rejects_inputs_below_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-inputs"
+            linked_parent = root / "linked-inputs"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            input_path = linked_parent / "input.json"
+            input_path.write_text('{"status": "redirected"}\n', encoding="utf-8")
+
+            with self.assertRaisesRegex(ManifestError, "parent may not be a symlink"):
+                safe_json_output.read_real_json(input_path, "source", ManifestError)
+
     def test_read_real_json_reads_real_json_file(self) -> None:
         with TemporaryDirectory() as tmp:
             input_path = Path(tmp) / "input.json"

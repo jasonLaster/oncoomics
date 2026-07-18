@@ -253,6 +253,48 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                     with self.assertRaisesRegex(stage_report.ManifestError, label):
                         stage_report.load_report_from_environment()
 
+    def test_environment_command_rejects_manifest_below_symlinked_parent(self) -> None:
+        cases = (
+            ("PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST", "final_evidence_manifest"),
+            ("PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN", "crosscheck_materialization_plan"),
+        )
+        for env_key, label in cases:
+            with self.subTest(env_key=env_key), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                manifest_path, final_root, final_manifest = _write_final_manifest(root)
+                plan_path = root / "crosscheck_materialization_plan.json"
+                write_json(
+                    plan_path,
+                    _crosscheck_materialization_plan(
+                        final_manifest,
+                        manifest_path,
+                    ),
+                )
+                linked_parent = root / "linked-inputs"
+                real_parent = root / "real-inputs"
+                real_parent.mkdir()
+                linked_parent.symlink_to(real_parent, target_is_directory=True)
+                bad_path = linked_parent / f"{label}.json"
+                bad_path.write_bytes(
+                    manifest_path.read_bytes()
+                    if env_key == "PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST"
+                    else plan_path.read_bytes()
+                )
+
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST": str(manifest_path),
+                        "PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN": str(plan_path),
+                        "PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT": str(final_root),
+                        "PHASE3_WGS_FAST_DETERMINISTIC_REPORT_OUTPUT": str(root / "deterministic"),
+                        env_key: str(bad_path),
+                    },
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(stage_report.ManifestError, f"{label} parent may not be a symlink"):
+                        stage_report.load_report_from_environment()
+
     def test_rejects_promoted_hrd_boundary(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
