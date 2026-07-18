@@ -183,6 +183,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("label 'gpu_parabricks'", process)
         self.assertIn("run:phase3-fast-parabricks-mutect", process)
         self.assertIn("run:phase3-fast-filter-mutect", process)
+        self.assertIn("export:phase3-fast-small-variants", process)
         self.assertLess(process.index("stage:phase3-fast-inputs"), process.index("build:phase3-fast-parabricks-mutect-plan"))
         self.assertLess(
             process.index("build:phase3-fast-parabricks-mutect-plan"),
@@ -193,6 +194,10 @@ class Phase3FastNextflowTests(unittest.TestCase):
             process.index("build:phase3-fast-filter-mutect-plan"),
         )
         self.assertLess(process.index("build:phase3-fast-filter-mutect-plan"), process.index("run:phase3-fast-filter-mutect"))
+        self.assertLess(
+            process.index("run:phase3-fast-filter-mutect"),
+            process.index("export:phase3-fast-small-variants"),
+        )
         self.assertIn(
             'export PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT_OUTPUT="\\$PWD/workspace/manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"',
             process,
@@ -209,6 +214,12 @@ class Phase3FastNextflowTests(unittest.TestCase):
             'export PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT_OUTPUT="\\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_receipt.json"',
             process,
         )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT_ROOT="\\$PWD/workspace/results/phase3_wgs_fast/small_variant_execution/artifacts"',
+            process,
+        )
+        self.assertIn("workspace/manifests/phase3_wgs_fast/small_variant_artifact_export.json", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/small_variant_execution", process)
 
         self.assertIn("smallVariantMode = params.phase3_fast_small_variant_mode.toString()", text)
         self.assertIn("smallVariantMode == 'execute'", text)

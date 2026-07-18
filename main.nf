@@ -1021,7 +1021,9 @@ process FAST_MUTECT_PARABRICKS_FILTER {
           path('workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json'),
           path('workspace/manifests/phase3_wgs_fast/parabricks_mutect_receipt.json'),
           path('workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json'),
-          path('workspace/manifests/phase3_wgs_fast/filter_mutect_receipt.json')
+          path('workspace/manifests/phase3_wgs_fast/filter_mutect_receipt.json'),
+          path('workspace/manifests/phase3_wgs_fast/small_variant_artifact_export.json'),
+          path('workspace/results/phase3_wgs_fast/small_variant_execution')
 
     script:
     """
@@ -1039,12 +1041,16 @@ process FAST_MUTECT_PARABRICKS_FILTER {
     export PHASE3_WGS_FAST_FILTER_MUTECT_PLAN="\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json"
     export PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT="\$PWD/workspace/manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"
     export PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_receipt.json"
+    export PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT="\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_receipt.json"
+    export PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT_ROOT="\$PWD/workspace/results/phase3_wgs_fast/small_variant_execution/artifacts"
+    export PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/small_variant_artifact_export.json"
 
     PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics stage:phase3-fast-inputs
     PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-parabricks-mutect-plan
     PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics run:phase3-fast-parabricks-mutect
     PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-filter-mutect-plan
     PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics run:phase3-fast-filter-mutect
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics export:phase3-fast-small-variants
     """
 
     stub:
@@ -1097,6 +1103,17 @@ process FAST_MUTECT_PARABRICKS_FILTER {
     {
       "schema_version": 1,
       "manifest_type": "phase3_wgs_fast_filter_mutect_receipt",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    mkdir -p workspace/results/phase3_wgs_fast/small_variant_execution/artifacts
+    cat > workspace/manifests/phase3_wgs_fast/small_variant_artifact_export.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_small_variant_artifact_export",
       "status": "stubbed",
       "interpretation": {
         "authorized_hrd_state": "no_call"

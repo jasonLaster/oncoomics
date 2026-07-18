@@ -58,6 +58,9 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "run:phase3-fast-parabricks-mutect": CommandSpec(
         "diana_omics.commands.phase3_wgs.run_phase3_fast_parabricks_mutect"
     ),
+    "export:phase3-fast-small-variants": CommandSpec(
+        "diana_omics.commands.phase3_wgs.export_phase3_fast_small_variant_artifacts"
+    ),
     "replicate:phase3-fast-inputs": CommandSpec("diana_omics.commands.phase3_wgs.replicate_phase3_fast_inputs"),
     "stage:phase3-fast-inputs": CommandSpec("diana_omics.commands.phase3_wgs.stage_phase3_fast_inputs"),
     "smoke:alignment": CommandSpec("diana_omics.commands.alignment_validation.run_alignment_smoke"),
@@ -171,6 +174,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "replicate:phase3-fast-inputs",
             "run:phase3-fast-filter-mutect",
             "run:phase3-fast-parabricks-mutect",
+            "export:phase3-fast-small-variants",
             "stage:phase3-fast-inputs",
             "validate:phase3-wgs",
             "verify:phase3-fast-gpu-smoke",

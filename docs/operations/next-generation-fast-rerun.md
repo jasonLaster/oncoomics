@@ -309,7 +309,12 @@ FilterMutect CPU tail fused in one `gpu_parabricks` process so the raw VCF,
 raw `.stats`, F1R2 tarball, and PoN-annotated VCF never cross a worker-local
 `/scratch` boundary before a receipt hashes them. `phase3_fast_small_variant_mode`
 defaults to `plan`; switching it to `execute` selects that fused worker-local
-seam.
+seam. After the fused tail completes, `export:phase3-fast-small-variants`
+rehashes the Parabricks and FilterMutect receipt paths in `/scratch`, copies the
+exact files into a `workspace/results/phase3_wgs_fast/small_variant_execution`
+handoff tree, rehashes the exported copies, and writes
+`small_variant_artifact_export.json` so Nextflow can publish durable artifacts
+instead of ephemeral worker paths.
 It preserves the same `no_call` boundary: a filtered VCF is deterministic
 sample evidence, not a scalar HRD interpretation.
 
