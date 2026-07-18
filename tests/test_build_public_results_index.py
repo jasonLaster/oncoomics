@@ -424,6 +424,38 @@ class PublicIndexTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, message):
                         MODULE.main(argv)
 
+    def test_write_index_fsyncs_file_and_parent_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "objects.json"
+
+            with mock.patch.object(
+                MODULE.os,
+                "fsync",
+                wraps=MODULE.os.fsync,
+            ) as fsync:
+                MODULE.write_index(output, {"objects": []})
+
+            self.assertEqual(fsync.call_count, 2)
+
+    def test_write_index_preserves_old_index_after_file_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "objects.json"
+            output.write_text("preserve\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    MODULE.os,
+                    "fsync",
+                    side_effect=OSError("synthetic index fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic index fsync failure"),
+            ):
+                MODULE.write_index(output, {"objects": []})
+
+            self.assertEqual(output.read_text(encoding="utf-8"), "preserve\n")
+            self.assertEqual(list(root.glob(".objects.json.*")), [])
+
     def test_write_index_rejects_symlinked_parent_without_writing_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()

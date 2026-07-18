@@ -73,6 +73,14 @@ def require_safe_receipt_output_parent(path: Path) -> None:
             raise ValueError(f"receipt output parent is not a directory: {parent}")
 
 
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def write_private_atomic(path: Path, value: dict[str, Any], *, create: bool) -> None:
     require_safe_receipt_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,6 +101,11 @@ def write_private_atomic(path: Path, value: dict[str, Any], *, create: bool) -> 
             os.fsync(handle.fileno())
         if temporary is not None:
             os.replace(temporary, path)
+        fsync_directory(path.parent)
+    except Exception:
+        if temporary is None:
+            path.unlink(missing_ok=True)
+        raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
