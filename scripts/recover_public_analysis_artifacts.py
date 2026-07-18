@@ -73,7 +73,32 @@ def aws_json(*arguments: str) -> dict[str, Any]:
     return value
 
 
+def require_safe_private_output_parent(path: pathlib.Path) -> None:
+    if path.is_symlink():
+        raise ValueError(f"receipt output may not be a symlink: {path}")
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise ValueError(f"receipt output parent may not be a symlink: {parent}")
+        if parent == parent.parent:
+            raise ValueError(f"receipt output has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise ValueError(f"receipt output parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ValueError(f"receipt output parent is not a directory: {parent}")
+
+
+def require_new_private_output(path: pathlib.Path) -> None:
+    require_safe_private_output_parent(path)
+    if path.exists():
+        raise ValueError(f"receipt output already exists: {path}")
+
+
 def write_private(path: pathlib.Path, value: Any, *, create: bool) -> None:
+    require_safe_private_output_parent(path)
+    if not create and (path.is_symlink() or not path.is_file()):
+        raise ValueError(f"reserved receipt output is missing: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     if create:
         descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -377,8 +402,10 @@ def main() -> int:
     parser.add_argument("--receipt-output", required=True, type=pathlib.Path)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
-    if args.receipt_output.exists() or args.receipt_output.is_symlink():
-        raise SystemExit(f"Fail-closed: refusing to overwrite {args.receipt_output}")
+    try:
+        require_new_private_output(args.receipt_output)
+    except ValueError as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
 
     receipt: dict[str, Any] = {
         "schema_version": 2,

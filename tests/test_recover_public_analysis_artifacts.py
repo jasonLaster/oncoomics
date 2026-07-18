@@ -103,6 +103,45 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                     Path(temporary),
                 )
 
+    def test_private_receipt_rejects_output_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            path = linked_parent / "missing" / "receipt.json"
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.write_private(path, {"status": "redirected"}, create=True)
+
+            self.assertFalse((real_parent / "missing" / "receipt.json").exists())
+
+    def test_main_rejects_receipt_symlink_parent_before_aws_observation(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            path = linked_parent / "missing" / "receipt.json"
+
+            with (
+                mock.patch(
+                    "sys.argv",
+                    [
+                        "recover_public_analysis_artifacts.py",
+                        "--receipt-output",
+                        str(path),
+                    ],
+                ),
+                mock.patch.object(MODULE, "aws_json") as mocked_aws,
+                self.assertRaisesRegex(SystemExit, "parent may not be a symlink"),
+            ):
+                MODULE.main()
+
+            mocked_aws.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
