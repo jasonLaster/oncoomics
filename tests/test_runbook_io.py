@@ -90,3 +90,27 @@ class RunbookIoTests(unittest.TestCase):
                 MODULE.load_json_object(broken_symlink, "private publication receipt")
             with self.assertRaisesRegex(ValueError, "missing or a symlink"):
                 MODULE.load_json_object(root / "missing.json", "missing receipt")
+
+    def test_write_once_is_mode_0600_and_refuses_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runbook.md"
+
+            MODULE.write_once(output, "one\n")
+
+            self.assertEqual(output.read_text(encoding="utf-8"), "one\n")
+            self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+            with self.assertRaises(FileExistsError):
+                MODULE.write_once(output, "two\n")
+
+    def test_write_once_rejects_symlinked_parent_without_writing_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-output"
+            real_parent.mkdir()
+            symlink_parent = root / "linked-output"
+            symlink_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "output parent is a symlink"):
+                MODULE.write_once(symlink_parent / "runbook.md", "redirected\n")
+
+            self.assertFalse((real_parent / "runbook.md").exists())
