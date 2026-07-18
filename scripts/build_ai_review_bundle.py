@@ -351,6 +351,27 @@ def require_real_input_file(path: Path, label: str) -> Path:
     return path.resolve()
 
 
+def require_safe_new_bundle_file(path: Path) -> Path:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(
+                f"AI review bundle output parent may not be a symlink: {parent}"
+            )
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(
+                f"AI review bundle output parent is not a directory: {parent}"
+            )
+    if path.is_symlink():
+        raise ValueError(
+            "AI review bundle output may not be a symlink: " + path.name
+        )
+    if path.exists():
+        raise ValueError(
+            "AI review bundle output already exists: " + path.name
+        )
+    return path.resolve()
+
+
 def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
     expected = set(expected_files)
     if output.is_symlink():
@@ -396,6 +417,9 @@ def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
 
 
 def copy_create_only(source: Path, destination: Path) -> None:
+    source = require_real_input_file(source, "staged AI review bundle file")
+    expected_sha256 = sha256(source)
+    destination = require_safe_new_bundle_file(destination)
     with source.open("rb") as source_handle:
         try:
             file_descriptor = os.open(
@@ -422,6 +446,14 @@ def copy_create_only(source: Path, destination: Path) -> None:
                 destination_handle.flush()
                 os.fsync(destination_handle.fileno())
             fsync_directory(destination.parent)
+            if (
+                sha256(source) != expected_sha256
+                or sha256(destination) != expected_sha256
+            ):
+                raise ValueError(
+                    "staged AI review bundle file changed during copy: "
+                    + source.name
+                )
         except Exception:
             destination.unlink(missing_ok=True)
             raise

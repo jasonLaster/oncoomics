@@ -266,6 +266,74 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
+    def test_bundle_file_install_rejects_symlinked_staged_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-review-bundle.json"
+            real_source.write_bytes(b"one\n")
+            symlink_source = root / "review_bundle.json"
+            symlink_source.symlink_to(real_source)
+            destination = root / "output" / "review_bundle.json"
+            destination.parent.mkdir()
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged AI review bundle file",
+            ):
+                BUILD.copy_create_only(symlink_source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_bundle_file_install_rejects_symlinked_destination_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "review_bundle.json"
+            source.write_bytes(b"one\n")
+            real_output = root / "real-output"
+            real_output.mkdir()
+            linked_output = root / "linked-output"
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "AI review bundle output parent may not be a symlink",
+            ):
+                BUILD.copy_create_only(
+                    source,
+                    linked_output / "review_bundle.json",
+                )
+
+            self.assertFalse((real_output / "review_bundle.json").exists())
+
+    def test_bundle_file_install_revalidates_copied_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "review_bundle.json"
+            source.write_bytes(b"one\n")
+            real_fsync_directory = BUILD.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                destination.write_bytes(b"tampered bundle\n")
+
+            with (
+                mock.patch.object(
+                    BUILD,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged AI review bundle file changed during copy",
+                ),
+            ):
+                BUILD.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
     def test_bundle_install_removes_installed_files_after_final_directory_fsync_failure(
         self,
     ) -> None:
