@@ -322,6 +322,26 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
 
             self.assertEqual([], runner.commands)
 
+    def test_rejects_output_below_symlinked_parent_before_running_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plan = parabricks_plan(root)
+            real_output = root / "real-parabricks"
+            real_output.mkdir()
+            linked_output = root / "parabricks"
+            linked_output.symlink_to(real_output, target_is_directory=True)
+            runner = RecordingRunner()
+
+            with self.assertRaisesRegex(run_mutect.ManifestError, "parent may not be a symlink"):
+                run_mutect.run_phase3_fast_parabricks_mutect(
+                    plan,
+                    runner=runner,
+                    parabricks_mutect_plan_sha256=SHA_1,
+                )
+
+            self.assertEqual([], runner.commands)
+            self.assertEqual([], list(real_output.rglob("*")))
+
 
 if __name__ == "__main__":
     unittest.main()

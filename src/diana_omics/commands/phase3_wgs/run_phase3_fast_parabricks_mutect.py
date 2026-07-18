@@ -165,6 +165,23 @@ def _sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _require_safe_output_path(path: Path, key: str) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"{key} materialized output path may not be a symlink: {path}")
+
+    parent = path.parent
+    while not parent.exists() and not parent.is_symlink():
+        next_parent = parent.parent
+        if next_parent == parent:
+            raise ManifestError(f"{key} materialized output parent does not exist: {path.parent}")
+        parent = next_parent
+
+    if parent.is_symlink():
+        raise ManifestError(f"{key} materialized output parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ManifestError(f"{key} materialized output parent is not a directory: {parent}")
+
+
 def _materialized_outputs(plan: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     outputs = _require_mapping(plan.get("outputs"), "outputs")
     materialized: dict[str, dict[str, Any]] = {}
@@ -194,13 +211,16 @@ def _prepare_materialized_outputs(plan: Mapping[str, Any]) -> None:
         raise ManifestError("materialized output paths must be unique")
 
     for key, path in paths.items():
+        _require_safe_output_path(path, key)
         if path.exists() and not path.is_file():
             raise ManifestError(f"{key} materialized output path already exists and is not a file: {path}")
         ensure_parent(path)
         path.unlink(missing_ok=True)
 
     for key in ("logs_dir", "tmp_dir"):
-        Path(_require_absolute_path(outputs.get(key), key)).mkdir(parents=True, exist_ok=True)
+        path = Path(_require_absolute_path(outputs.get(key), key))
+        _require_safe_output_path(path, key)
+        path.mkdir(parents=True, exist_ok=True)
 
 
 def _planned_commands(plan: Mapping[str, Any]) -> list[tuple[str, list[str]]]:
