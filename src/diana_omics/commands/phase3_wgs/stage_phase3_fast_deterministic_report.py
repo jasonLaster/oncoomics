@@ -246,6 +246,62 @@ def _source_identity(input_sources: Mapping[str, Any], label: str, *path: str) -
     }
 
 
+def _sequenza_alias_input_contract(
+    *,
+    run: Mapping[str, Any],
+    input_sources: Mapping[str, Any],
+    method_parameters: Mapping[str, Any],
+) -> dict[str, Any]:
+    run_alias = _require_string(run.get("subject_alias"), "run.subject_alias")
+    return {
+        "schema_version": 1,
+        "route": "sequenza_scarhrd",
+        "status": "blocked",
+        "run_alias": run_alias,
+        "reference": {
+            "build": "GRCh38",
+            "fasta": _source_identity(input_sources, "reference.fasta", "reference", "fasta"),
+            "fai": _source_identity(input_sources, "reference.fai", "reference", "fai"),
+            "sequence_dictionary": _source_identity(
+                input_sources,
+                "reference.sequence_dictionary",
+                "reference",
+                "sequence_dictionary",
+            ),
+        },
+        "artifacts": {
+            "tumor_bam": _source_identity(input_sources, "bam_pair.tumor.bam", "bam_pair", "tumor", "bam"),
+            "tumor_bai": _source_identity(input_sources, "bam_pair.tumor.bai", "bam_pair", "tumor", "bai"),
+            "normal_bam": _source_identity(input_sources, "bam_pair.normal.bam", "bam_pair", "normal", "bam"),
+            "normal_bai": _source_identity(input_sources, "bam_pair.normal.bai", "bam_pair", "normal", "bai"),
+        },
+        "method_parameters": {
+            "sequenza": {
+                "female": method_parameters["sequenza"]["female"],
+            },
+        },
+        "planned_aliases": {
+            "tumor_sample": f"{run_alias}_tumor",
+            "normal_sample": f"{run_alias}_normal",
+        },
+        "planned_alias_outputs": {
+            "tumor_bam": "tumor.bam",
+            "tumor_bai": "tumor.bam.bai",
+            "normal_bam": "normal.bam",
+            "normal_bai": "normal.bam.bai",
+            "staged_validation": "staged_input_validation.json",
+        },
+        "attestations": {
+            "input_sha256_verified": True,
+            "bam_quickcheck_passed": True,
+            "bam_reference_digest_matched": True,
+            "no_direct_identifiers_in_aliases": True,
+            "final_bam_contract_published": False,
+            "validated_sequenza_scarhrd_runtime": False,
+        },
+    }
+
+
 def _cnv_metric(cnv_summary: Mapping[str, Any], key: str) -> Any:
     if key in cnv_summary:
         return cnv_summary[key]
@@ -362,6 +418,7 @@ def _readiness_rows(
 def _build_crosscheck_input_plans(manifest: Mapping[str, Any], artifact_map: Mapping[str, Any]) -> dict[str, Any]:
     input_sources = _require_mapping(manifest.get("input_sources"), "input_sources")
     method_parameters = normalize_method_parameters(manifest.get("method_parameters"))
+    run = _require_mapping(manifest.get("run"), "run")
     sigprofiler_sources = {
         "source_vcf": _planned_artifact(
             artifact_map,
@@ -434,6 +491,11 @@ def _build_crosscheck_input_plans(manifest: Mapping[str, Any], artifact_map: Map
                     "normal_bam": _source_identity(input_sources, "bam_pair.normal.bam", "bam_pair", "normal", "bam"),
                     "normal_bai": _source_identity(input_sources, "bam_pair.normal.bai", "bam_pair", "normal", "bai"),
                 },
+                "alias_input_contract": _sequenza_alias_input_contract(
+                    run=run,
+                    input_sources=input_sources,
+                    method_parameters=method_parameters,
+                ),
                 "blockers": [
                     "A finalized alias-only BAM/BAM-index contract has not been published for the Sequenza route.",
                     "Sequenza execution, purity/ploidy, and scarHRD interpretation thresholds are not validated.",
@@ -710,7 +772,8 @@ def stage_phase3_fast_deterministic_report(
                 "status": "passed",
                 "detail": (
                     "SigProfiler/SBS3 input materialization is plan-ready; "
-                    "Sequenza/scarHRD is blocked on a finalized BAM contract and explicit sex model."
+                    "Sequenza/scarHRD has an explicit sex-model parameter but remains "
+                    "blocked on a finalized BAM contract and validated runtime."
                 ),
             },
         ],

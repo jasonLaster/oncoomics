@@ -92,6 +92,28 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
             sequenza_sources["tumor_bam"]["sample_id"],
         )
         self.assertEqual(
+            {
+                "tumor_sample": "subject01_tumor",
+                "normal_sample": "subject01_normal",
+            },
+            plan["sequenza_scarhrd"]["alias_input_contract"]["planned_aliases"],
+        )
+        self.assertEqual(
+            final_manifest["input_sources"]["reference"]["sequence_dictionary"]["version_id"],
+            plan["sequenza_scarhrd"]["alias_input_contract"]["reference"]["sequence_dictionary"]["version_id"],
+        )
+        self.assertEqual(
+            final_manifest["input_sources"]["bam_pair"]["tumor"]["bam"]["sha256"],
+            plan["sequenza_scarhrd"]["alias_input_contract"]["artifacts"]["tumor_bam"]["sha256"],
+        )
+        self.assertEqual(
+            "tumor.bam.bai",
+            plan["sequenza_scarhrd"]["alias_input_contract"]["planned_alias_outputs"]["tumor_bai"],
+        )
+        self.assertFalse(
+            plan["sequenza_scarhrd"]["alias_input_contract"]["attestations"]["final_bam_contract_published"],
+        )
+        self.assertEqual(
             "awaiting_final_bam_contract_and_validated_runtime",
             plan["blocked_routes"]["sequenza_scarhrd"],
         )

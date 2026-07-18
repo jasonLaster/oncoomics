@@ -386,9 +386,10 @@ The cross-check plan maps the final FilterMutect VCF, its TBI, the SBS96 matrix,
 and exact versioned reference/BAM source identities into the pending
 SigProfiler/SBS3 and Sequenza/scarHRD materialization contracts without mining
 worker-local scratch paths, and carries the checked
-`method_parameters.sequenza.female` value into the Sequenza plan. Sequenza still
-requires a finalized BAM alias contract before that route can materialize inputs
-and generate scarHRD-ready purity/ploidy segments. That report is deliberately
+`method_parameters.sequenza.female` value into a pending Sequenza BAM-alias
+contract. Sequenza still requires that pending contract to be frozen and
+finalized before the route can materialize inputs and generate scarHRD-ready
+purity/ploidy segments. That report is deliberately
 descriptive: Parabricks/FilterMutect, BAM QC, coverage-CNV, and BAM-derived SV
 evidence plus the SBS96 input matrix are bound by SHA-256, while SBS3,
 scarHRD, CHORD, HRDetect-style scoring, and the overall HRD state remain

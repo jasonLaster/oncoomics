@@ -65,6 +65,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             )
             output_names = {path.name for path in output.iterdir()}
             report = (output / "report.md").read_text(encoding="utf-8")
+            evidence_checks = read_json(output / "evidence_checks.json")
             input_rows = _read_csv(output / "input_sha256.csv")
             crosscheck_input_plans = read_json(output / "crosscheck_input_plans.json")
             artifact_paths = [
@@ -86,6 +87,16 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         self.assertIn("explicit sex-model parameter", report)
         self.assertIn("`4` depth bins", report)
         self.assertIn("no production SV VCF/BEDPE", report)
+        self.assertEqual(
+            "SigProfiler/SBS3 input materialization is plan-ready; "
+            "Sequenza/scarHRD has an explicit sex-model parameter but remains "
+            "blocked on a finalized BAM contract and validated runtime.",
+            next(
+                check["detail"]
+                for check in evidence_checks["checks"]
+                if check["check_id"] == "crosscheck_input_materialization_plan"
+            ),
+        )
         self.assertNotIn(str(root), json.dumps(report_manifest))
         self.assertNotIn(str(root), report)
         self.assertEqual(
@@ -114,6 +125,30 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         self.assertEqual(
             {"sequenza": {"female": True}},
             crosscheck_input_plans["routes"]["sequenza_scarhrd"]["method_parameters"],
+        )
+        self.assertEqual(
+            {
+                "tumor_sample": "subject01_tumor",
+                "normal_sample": "subject01_normal",
+            },
+            crosscheck_input_plans["routes"]["sequenza_scarhrd"]["alias_input_contract"]["planned_aliases"],
+        )
+        self.assertEqual(
+            "copy-version-7",
+            crosscheck_input_plans["routes"]["sequenza_scarhrd"]["alias_input_contract"]["reference"][
+                "sequence_dictionary"
+            ]["version_id"],
+        )
+        self.assertEqual(
+            "tumor.bam",
+            crosscheck_input_plans["routes"]["sequenza_scarhrd"]["alias_input_contract"]["planned_alias_outputs"][
+                "tumor_bam"
+            ],
+        )
+        self.assertFalse(
+            crosscheck_input_plans["routes"]["sequenza_scarhrd"]["alias_input_contract"]["attestations"][
+                "validated_sequenza_scarhrd_runtime"
+            ],
         )
         self.assertEqual(
             "plan_ready",
