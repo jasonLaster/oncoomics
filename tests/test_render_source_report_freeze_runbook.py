@@ -363,6 +363,31 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                     phase3_fast_report_packet_validation=validation,
                 )
 
+    def test_validate_packet_dirs_rejects_phase3_fast_tokens_below_symlinked_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+            validation = root / "report_packet_validation.json"
+            real_parent = root / "real-tokens"
+            linked_parent = root / "linked-tokens"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            forbidden_tokens = linked_parent / "forbidden_tokens.json"
+
+            write_phase3_fast_validation_receipt(paths, validation)
+            write_phase3_fast_forbidden_tokens(real_parent / forbidden_tokens.name)
+
+            self.assertTrue(forbidden_tokens.is_file())
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.validate_packet_dirs(
+                    paths,
+                    phase3_fast_report_packet_validation=validation,
+                    phase3_fast_forbidden_tokens_file=forbidden_tokens,
+                )
+
     def test_validate_packet_dirs_rejects_phase3_fast_receipt_with_stale_forbidden_tokens(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

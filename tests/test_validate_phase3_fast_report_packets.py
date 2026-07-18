@@ -192,6 +192,34 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "report_packet_validation.json").exists())
 
+    def test_rejects_validation_receipt_input_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            packet_dirs = self.write_phase3_fast_packets(root)
+            real_parent = root / "real-manifests"
+            linked_parent = root / "manifests"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            receipt = real_parent / "report_packet_validation.json"
+            receipt.write_text(
+                json.dumps(
+                    VALIDATOR.validate_packets(
+                        packet_dirs,
+                        json.dumps(["Run-Private-Token"]),
+                    ),
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            linked_receipt = linked_parent / receipt.name
+
+            self.assertTrue(linked_receipt.is_file())
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                VALIDATOR.load_validation_receipt_packet_sha256s(linked_receipt)
+
     def test_removes_partial_validation_receipt_after_fsync_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "report_packet_validation.json"

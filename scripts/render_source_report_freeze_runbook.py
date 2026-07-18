@@ -29,6 +29,7 @@ from runbook_io import (
     block,
     missing_required_files,
     preexisting_create_only_paths,
+    require_real_input_file,
     shell_join,
     source_private_receipt_path,
     timestamped_runbook_assignment,
@@ -86,8 +87,10 @@ def validate_packet_dirs(
     forbidden_tokens = tuple(FORBIDDEN_TOKENS)
     expected_forbidden_tokens_sha256 = None
     if phase3_fast_forbidden_tokens_file is not None:
-        if phase3_fast_forbidden_tokens_file.is_symlink() or not phase3_fast_forbidden_tokens_file.is_file():
-            raise ValueError("Phase 3 fast forbidden-token file must be a real file")
+        require_real_input_file(
+            phase3_fast_forbidden_tokens_file,
+            "Phase 3 fast forbidden-token file",
+        )
         forbidden_tokens = canonical_forbidden_tokens(phase3_fast_forbidden_tokens_file.read_text(encoding="utf-8"))
         expected_forbidden_tokens_sha256 = sha256_forbidden_tokens(forbidden_tokens)
 

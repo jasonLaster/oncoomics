@@ -14,6 +14,7 @@ from typing import Any, Mapping
 
 from publish_private_report import canonical_packet_digest, validate_packet_dir
 from render_ai_synthesis_runbook import FORBIDDEN_TOKENS
+from runbook_io import require_real_input_file
 
 from diana_omics.commands.phase3_wgs.safe_json_output import require_safe_output_path
 from diana_omics.commands.phase3_wgs.validate_phase3_fast_forbidden_tokens import (
@@ -170,8 +171,7 @@ def load_validation_receipt_packet_sha256s(
     path: Path,
     expected_forbidden_tokens_sha256: str | None = None,
 ) -> dict[str, str]:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError("report packet validation receipt must be a real file")
+    require_real_input_file(path, "report packet validation receipt")
     return require_validation_receipt_packet_sha256s(
         json.loads(path.read_text(encoding="utf-8")),
         expected_forbidden_tokens_sha256,
