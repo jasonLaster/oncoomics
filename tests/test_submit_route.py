@@ -357,6 +357,28 @@ class SubmitRouteTests(unittest.TestCase):
 
         self.assertFalse(self.request.exists())
 
+    def test_request_receipt_rehashes_after_parent_fsync(self) -> None:
+        real_fsync_directory = MODULE.fsync_directory
+
+        def tamper_after_parent_fsync(parent: Path) -> None:
+            real_fsync_directory(parent)
+            self.request.write_bytes(b"tampered")
+
+        with (
+            mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                side_effect=tamper_after_parent_fsync,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "private output changed during write",
+            ),
+        ):
+            MODULE.create_private(self.request, b'{"status":"passed"}\n')
+
+        self.assertFalse(self.request.exists())
+
     def test_response_reservation_fsyncs_parent_directory(self) -> None:
         descriptor = -1
         try:
@@ -387,6 +409,29 @@ class SubmitRouteTests(unittest.TestCase):
             MODULE.reserve_private(self.response)
 
         self.assertFalse(self.response.exists())
+
+    def test_completed_response_receipt_rehashes_after_fsync(self) -> None:
+        descriptor = MODULE.reserve_private(self.response)
+        real_fsync = MODULE.os.fsync
+
+        def tamper_after_fsync(file_descriptor: int) -> None:
+            real_fsync(file_descriptor)
+            self.response.write_bytes(b"tampered")
+
+        with (
+            mock.patch.object(MODULE.os, "fsync", side_effect=tamper_after_fsync),
+            self.assertRaisesRegex(
+                ValueError,
+                "private output changed during write",
+            ),
+        ):
+            MODULE.complete_reserved(
+                descriptor,
+                self.response,
+                {"status": "submitted"},
+            )
+
+        self.assertTrue(self.response.exists())
 
     def test_submit_captures_job_id_and_arn_in_distinct_mode_0600_receipt(self) -> None:
         receipt = self.preflight_receipt()
