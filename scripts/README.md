@@ -98,4 +98,7 @@ Current shell utilities:
 - `validate_ai_review.py`: validate one isolated model review against its
   bundle, source manifests, pinned model, exact claims table, and no-promotion
   HRD authorization boundary without invoking a model.
+- `validate_materializer_registration.py`: bind a future materializer
+  script-freeze anchor, rendered Batch payload, registration response, and live
+  job-definition description into a local schema-3 registration receipt.
 - `aws-silly-ec2`: legacy disposable EC2 smoke utility. It is not part of the omics validation path and is intentionally absent from the main docs.

@@ -87,9 +87,11 @@ materializer revision `:4`. To prepare a future materializer revision, first
 freeze the reviewed `scripts/materialize_crosscheck_inputs.py` bytes as an
 exact private S3 object, then use `scripts/render_materializer_job_definition.py`
 to render the immutable Batch payload for human review and explicit
-`register-job-definition`. Do not retarget the post-success runbook until the
-returned revision, script anchor, and local job-definition payload are all
-cross-bound in a registration receipt.
+`register-job-definition`, and bind the script anchor, rendered payload,
+registration response, and live `describe-job-definitions` row with
+`scripts/validate_materializer_registration.py`. Do not retarget the
+post-success runbook until the returned revision, script anchor, and local
+job-definition payload are all cross-bound in that registration receipt.
 
 The deterministic stager writes exactly the six `deterministic_full_wgs` packet
 files that Rosalind, cross-check materialization, and the private/public
