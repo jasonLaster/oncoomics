@@ -149,6 +149,8 @@ class FakeAws:
             key = self.value(arguments, "--key")
             payload = Path(self.value(arguments, "--body")).read_bytes()
             observed_checksum = checksum(b"different" if self.wrong_checksum else payload)
+            if self.value(arguments, "--checksum-sha256") != checksum(payload):
+                raise AssertionError("unexpected put-object checksum")
             self.public[key] = {
                 "VersionId": "null" if self.literal_null_version else f"private-v{len(self.public) + 1}",
                 "ContentLength": len(payload),
@@ -266,6 +268,8 @@ class PublishPrivateReportTests(unittest.TestCase):
                 self.assertEqual(FakeAws.value(call, "--server-side-encryption"), "aws:kms")
                 self.assertEqual(FakeAws.value(call, "--ssekms-key-id"), MODULE.PRIVATE_KMS_KEY_ARN)
                 self.assertEqual(FakeAws.value(call, "--checksum-algorithm"), "SHA256")
+                body = Path(FakeAws.value(call, "--body"))
+                self.assertEqual(FakeAws.value(call, "--checksum-sha256"), checksum(body.read_bytes()))
 
             receipt = json.loads(fixture.receipt_path.read_text())
             reviewed_public = importlib.util.spec_from_file_location(

@@ -311,12 +311,31 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def load_source_report_manifest(path: Path, method_id: str) -> None:
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
+
+
+def require_real_nonempty_file(path: Path, label: str) -> None:
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
-        raise ValueError(f"source report manifest must be a real non-empty file: {method_id}")
+        raise ValueError(f"{label} must be a real non-empty file")
+
+
+def load_source_report_manifest(path: Path, method_id: str) -> None:
+    require_real_nonempty_file(
+        path,
+        f"{method_id} source report manifest",
+    )
     report_path = path.parent / "report.md"
-    if report_path.is_symlink() or not report_path.is_file() or report_path.stat().st_size <= 0:
-        raise ValueError(f"source report must be a real non-empty sibling file: {method_id}")
+    require_real_nonempty_file(report_path, f"{method_id} source report")
     with path.open(encoding="utf-8") as handle:
         manifest = json.load(handle)
     if not isinstance(manifest, dict) or manifest.get("method_id") != method_id:
@@ -412,10 +431,6 @@ def require_safe_output_parent(output_root: Path) -> None:
             raise ValueError(f"blocked cross-check output parent may not be a symlink: {parent}")
         if parent.exists() and not parent.is_dir():
             raise NotADirectoryError(parent)
-
-
-def is_platform_root_alias(path: Path) -> bool:
-    return path.is_absolute() and path.parent == path.parent.parent
 
 
 def render_report(

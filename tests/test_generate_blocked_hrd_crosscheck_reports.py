@@ -359,6 +359,34 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_cli_rejects_source_report_manifest_below_symlinked_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source-real"
+            source.mkdir()
+            manifest = source / "report_manifest.json"
+            write_source_report_manifest(manifest)
+            linked_source = root / "source-link"
+            linked_source.symlink_to(source, target_is_directory=True)
+            output = root / "blocked"
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "rosalind_diana_wgs source report manifest parent may not be a symlink",
+            ):
+                GENERATOR.main(
+                    [
+                        "--output-dir",
+                        str(output),
+                        "--source-report-manifest",
+                        f"rosalind_diana_wgs={linked_source / 'report_manifest.json'}",
+                    ]
+                )
+
+            self.assertFalse(output.exists())
+
     def test_cli_rejects_classifying_source_report_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
