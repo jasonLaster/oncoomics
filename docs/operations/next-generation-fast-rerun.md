@@ -431,15 +431,16 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
 The alias runs `verify:phase3-fast-gpu-smoke` first to fail locally unless the
 generated `infra/aws/nextflow.aws.use2.json` is bound to `us-east-2`, the
 isolated P5en queue, exactly `p5en.48xlarge`, at least one P5en worth of
-capacity, and a Parabricks image pinned by SHA-256 digest.
+capacity, a Parabricks image pinned by SHA-256 digest, and a `us-east-2`
+destination KMS key for the regional cache.
 
 After Gate 0 receipts have been reviewed and the GPU smoke has passed, launch
 the full BAM-to-evidence route through the guarded execute alias. Pass the
 reviewed receipt paths and alias-only forbidden-token inventory as Nextflow
 arguments after `--`. The full execute alias intentionally repeats
 `verify:phase3-fast-gpu-smoke` before starting Nextflow, so a stale
-non-`us-east-2`, non-P5en, unpinned, or under-quota parameter file still fails
-locally even when `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES` is present:
+non-`us-east-2`, non-P5en, unpinned, under-quota, or wrong-KMS parameter file
+still fails locally even when `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES` is present:
 
 ```sh
 ALLOW_PHASE3_FAST_AWS_EXECUTE=YES \

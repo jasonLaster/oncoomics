@@ -20,9 +20,13 @@ def p5en_params(**overrides):
         "batch_gpu_p5en_instance_types": ["p5en.48xlarge"],
         "gpu_p5en_max_vcpus": 384,
         "parabricks_container": "172630973301.dkr.ecr.us-east-2.amazonaws.com/parabricks@sha256:" + "a" * 64,
+        "phase3_fast_cache_kms_key_arn": (
+            "arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc"
+        ),
         "phase3_fast_cache_prefix": (
             "s3://diana-omics-private-results-172630973301-us-east-2/phase3-fast-cache/wgs-v2"
         ),
+        "phase3_fast_cache_region": "us-east-2",
     }
     params.update(overrides)
     return params
@@ -34,6 +38,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
 
         self.assertEqual("ready", summary["status"])
         self.assertEqual("diana-omics-prod-use2-gpu-p5en", summary["aws_gpu_queue"])
+        self.assertEqual("us-east-2", summary["phase3_fast_cache_region"])
         self.assertEqual(384, summary["gpu_p5en_max_vcpus"])
         self.assertEqual(["p5en.48xlarge"], summary["instance_types"])
 
@@ -71,6 +76,19 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
             verify.validate_gpu_smoke_params(
                 p5en_params(
                     phase3_fast_cache_prefix="s3://diana-omics-private-results-172630973301-us-east-2/runs",
+                )
+            )
+
+    def test_rejects_stale_cache_region_or_kms_key(self) -> None:
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "phase3_fast_cache_region"):
+            verify.validate_gpu_smoke_params(p5en_params(phase3_fast_cache_region="us-east-1"))
+
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "phase3_fast_cache_kms_key_arn"):
+            verify.validate_gpu_smoke_params(
+                p5en_params(
+                    phase3_fast_cache_kms_key_arn=(
+                        "arn:aws:kms:us-east-1:172630973301:key/12345678-abcd-1234-abcd-123456789abc"
+                    ),
                 )
             )
 

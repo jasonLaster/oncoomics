@@ -90,6 +90,7 @@ data "aws_iam_policy_document" "bootstrap_local_cli" {
       "ecs:ListTasks",
       "kms:*",
       "logs:*",
+      "servicequotas:GetRequestedServiceQuotaChange",
       "servicequotas:GetServiceQuota",
       "servicequotas:ListRequestedServiceQuotaChangeHistory",
       "servicequotas:ListRequestedServiceQuotaChangeHistoryByQuota",

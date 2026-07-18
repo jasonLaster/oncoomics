@@ -13,6 +13,7 @@ REQUIRED_AWS_REGION = "us-east-2"
 REQUIRED_GPU_QUEUE_SUFFIX = "-gpu-p5en"
 REQUIRED_INSTANCE_TYPES = ("p5en.48xlarge",)
 P5EN_VCPUS = 192
+KMS_KEY_ARN = re.compile(r"^arn:aws:kms:([a-z]{2}-[a-z]+-\d):(\d{12}):key/[A-Za-z0-9-]+$")
 PINNED_IMAGE = re.compile(r"^\S+@sha256:[0-9a-fA-F]{64}$")
 
 
@@ -41,6 +42,16 @@ def _require_use2_s3_uri(params: Mapping[str, Any], key: str, errors: list[str])
     return value.rstrip("/")
 
 
+def _require_use2_kms_key_arn(params: Mapping[str, Any], key: str, errors: list[str]) -> str:
+    value = _require_non_empty_string(params, key, errors)
+    if not value:
+        return ""
+    match = KMS_KEY_ARN.fullmatch(value)
+    if match is None or match.group(1) != REQUIRED_AWS_REGION:
+        errors.append(f"{key} must be a KMS key ARN in {REQUIRED_AWS_REGION}")
+    return value
+
+
 def _require_int_at_least(params: Mapping[str, Any], key: str, minimum: int, errors: list[str]) -> int:
     value = params.get(key)
     if not isinstance(value, int):
@@ -58,6 +69,10 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     if region != REQUIRED_AWS_REGION:
         errors.append(f"aws_region must be {REQUIRED_AWS_REGION}")
 
+    cache_region = params.get("phase3_fast_cache_region")
+    if cache_region != REQUIRED_AWS_REGION:
+        errors.append(f"phase3_fast_cache_region must be {REQUIRED_AWS_REGION}")
+
     queue = _require_non_empty_string(params, "aws_gpu_queue", errors)
     if queue and not queue.endswith(REQUIRED_GPU_QUEUE_SUFFIX):
         errors.append(f"aws_gpu_queue must target the isolated {REQUIRED_GPU_QUEUE_SUFFIX} queue")
@@ -69,6 +84,7 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     _require_use2_s3_uri(params, "aws_workdir", errors)
     private_results_dir = _require_use2_s3_uri(params, "aws_private_results_dir", errors)
     cache_prefix = _require_use2_s3_uri(params, "phase3_fast_cache_prefix", errors)
+    cache_kms_key_arn = _require_use2_kms_key_arn(params, "phase3_fast_cache_kms_key_arn", errors)
     if private_results_dir and cache_prefix:
         private_results_bucket = private_results_dir[5:].split("/", 1)[0]
         cache_bucket = cache_prefix[5:].split("/", 1)[0]
@@ -95,6 +111,8 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "aws_gpu_queue": queue,
         "aws_region": REQUIRED_AWS_REGION,
+        "phase3_fast_cache_kms_key_arn": cache_kms_key_arn,
+        "phase3_fast_cache_region": REQUIRED_AWS_REGION,
         "gpu_p5en_max_vcpus": max_vcpus,
         "instance_types": list(REQUIRED_INSTANCE_TYPES),
         "status": "ready",

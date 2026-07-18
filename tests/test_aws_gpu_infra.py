@@ -78,6 +78,13 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn('variable "parabricks_container"', text)
         self.assertIn('default     = ""', text)
 
+    def test_bootstrap_cli_can_track_exact_service_quota_requests(self) -> None:
+        text = MAIN_TF.read_text(encoding="utf-8")
+
+        self.assertIn('"servicequotas:RequestServiceQuotaIncrease"', text)
+        self.assertIn('"servicequotas:GetRequestedServiceQuotaChange"', text)
+        self.assertIn('"servicequotas:GetServiceQuota"', text)
+
     def test_batch_job_role_can_replicate_versioned_phase3_fast_sources(self) -> None:
         text = MAIN_TF.read_text(encoding="utf-8")
         variables = VARIABLES_TF.read_text(encoding="utf-8")
