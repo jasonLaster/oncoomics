@@ -191,6 +191,7 @@ FAST_INPUT_MANIFEST
 FAST_REPLICATION_PLAN             immutable copy plan and us-east-2 cache keys
 FAST_REPLICATE_INPUTS              source to us-east-2
 FAST_CACHE_MANIFEST                verified region-local BAM/resource pointers
+FAST_STAGING_PLAN                  exact VersionId to local scratch path map
 FAST_FQ2BAM_TUMOR                  optional GPU
 FAST_FQ2BAM_NORMAL                 optional GPU
 FAST_VALIDATE_BAMS
@@ -268,6 +269,9 @@ destination `VersionId`s and expected destination checks. Its output is a small
 region-local pointer manifest for the existing BAM pair, hg38 reference, and
 caller resources; no downstream Parabricks or evidence process should read from
 the original `us-east-1` run prefix directly.
+`FAST_STAGING_PLAN` converts that manifest into a plan-only, version-pinned
+`aws s3api get-object --version-id` contract with deterministic `/scratch` paths
+for the eventual GPU or distributed CPU workers.
 
 ### Gate 1: P5en and Parabricks smoke
 

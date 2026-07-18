@@ -61,6 +61,7 @@ params.phase3_fast_cache_kms_key_arn = params.phase3_fast_cache_kms_key_arn ?: n
 params.phase3_fast_cache_region = params.phase3_fast_cache_region ?: 'us-east-2'
 params.phase3_fast_replication_mode = params.phase3_fast_replication_mode ?: 'dry_run'
 params.phase3_fast_replication_part_size_bytes = params.phase3_fast_replication_part_size_bytes ?: 536870912
+params.phase3_fast_staging_root = params.phase3_fast_staging_root ?: '/scratch/diana/phase3_wgs_fast'
 params.phase3_fast_gatk_version = params.phase3_fast_gatk_version ?: '4.6.2.0'
 params.phase3_fast_source_commit = params.phase3_fast_source_commit ?: ''
 params.phase3_fast_run_id = params.phase3_fast_run_id ?: 'diana-wgs-hrd-20260716T033101Z'
@@ -858,6 +859,47 @@ process FAST_CACHE_MANIFEST {
     """
 }
 
+process FAST_STAGING_PLAN {
+    tag "fast_staging_plan_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/staging_plan", mode: 'copy', overwrite: true
+
+    input:
+    path cache_manifest
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/staging_plan.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_CACHE_MANIFEST="\$PWD/${cache_manifest}"
+    export PHASE3_WGS_FAST_STAGING_PLAN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/staging_plan.json"
+    export PHASE3_WGS_FAST_STAGING_ROOT="${params.phase3_fast_staging_root}"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-staging-plan
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/staging_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_staging_plan",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -899,6 +941,7 @@ workflow PHASE3_WGS_FAST {
     FAST_REPLICATE_INPUTS(FAST_REPLICATION_PLAN.out)
     if (params.phase3_fast_replication_mode.toString().replace('-', '_') == 'apply') {
         FAST_CACHE_MANIFEST(FAST_REPLICATE_INPUTS.out)
+        FAST_STAGING_PLAN(FAST_CACHE_MANIFEST.out)
     }
 }
 
