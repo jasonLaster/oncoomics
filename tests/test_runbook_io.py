@@ -114,3 +114,21 @@ class RunbookIoTests(unittest.TestCase):
                 MODULE.write_once(symlink_parent / "runbook.md", "redirected\n")
 
             self.assertFalse((real_parent / "runbook.md").exists())
+
+    def test_write_once_rejects_nested_symlinked_parent_without_writing_target(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-output"
+            real_parent.mkdir()
+            symlink_parent = root / "linked-output"
+            symlink_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "output parent is a symlink"):
+                MODULE.write_once(
+                    symlink_parent / "missing" / "runbook.md",
+                    "redirected\n",
+                )
+
+            self.assertFalse((real_parent / "missing" / "runbook.md").exists())

@@ -214,6 +214,22 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
 
         self.assertFalse((real_parent / "capture.sh").exists())
 
+    def test_write_once_rejects_nested_symlinked_parent_without_writing_target(
+        self,
+    ) -> None:
+        real_parent = self.root / "real-output"
+        real_parent.mkdir()
+        symlink_parent = self.root / "linked-output"
+        symlink_parent.symlink_to(real_parent, target_is_directory=True)
+
+        with self.assertRaisesRegex(ValueError, "output parent is a symlink"):
+            MODULE.write_once(
+                symlink_parent / "missing" / "capture.sh",
+                "redirected\n",
+            )
+
+        self.assertFalse((real_parent / "missing" / "capture.sh").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

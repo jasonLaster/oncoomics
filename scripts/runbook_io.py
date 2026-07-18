@@ -88,10 +88,17 @@ def source_private_receipt_paths(
 def write_once(path: Path, text: str) -> None:
     if path.exists() or path.is_symlink():
         raise FileExistsError(path)
-    if path.parent.is_symlink():
-        raise ValueError(f"output parent is a symlink: {path.parent}")
-    if path.parent.exists() and not path.parent.is_dir():
-        raise NotADirectoryError(path.parent)
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise ValueError(f"output parent is a symlink: {parent}")
+        if parent == parent.parent:
+            raise ValueError(f"output has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise ValueError(f"output parent is a symlink: {parent}")
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
