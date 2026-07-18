@@ -172,6 +172,55 @@ def validate_bundle(bundle_dir: Path) -> dict[str, str]:
     return output
 
 
+def reviewer_inventory(
+    directory: Path,
+    role: str,
+    hashes: dict[str, str],
+) -> dict[str, Any]:
+    label = f"reviewer {role} input directory"
+    require_no_symlink_ancestors(directory, label)
+    if directory.is_symlink() or not directory.is_dir():
+        raise ValueError(f"{label} is not a real directory")
+
+    prompt = ROLE_PROMPTS[role]
+    require_file(
+        directory / "review_bundle.json",
+        hashes["review_bundle.json"],
+        f"reviewer {role} review_bundle.json",
+    )
+    require_file(
+        directory / prompt,
+        hashes[prompt],
+        f"reviewer {role} {prompt}",
+    )
+    observed = sorted(path.name for path in directory.iterdir())
+    expected = sorted(("review_bundle.json", prompt))
+    if observed != expected:
+        raise ValueError(f"reviewer {role} staged inventory is not exact")
+
+    return {
+        "directory": str(directory),
+        "files": {
+            "review_bundle.json": {
+                "sha256": hashes["review_bundle.json"],
+                "mode_0600": (
+                    (directory / "review_bundle.json").stat().st_mode & 0o777
+                )
+                == 0o600,
+            },
+            prompt: {
+                "sha256": hashes[prompt],
+                "mode_0600": (
+                    (directory / prompt).stat().st_mode & 0o777
+                )
+                == 0o600,
+            },
+        },
+        "exact_two_file_inventory": observed,
+        "mode_0700": (directory.stat().st_mode & 0o777) == 0o700,
+    }
+
+
 def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str, Any]:
     bundle_dir = resolve_real_bundle_dir(bundle_dir)
     output_root = require_real_or_new_directory(output_root, "output root")
@@ -214,24 +263,15 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
                 role_dir / ROLE_PROMPTS[role],
                 (bundle_dir / ROLE_PROMPTS[role]).read_bytes(),
             )
-            require_file(
-                role_dir / "review_bundle.json",
-                hashes["review_bundle.json"],
-                f"reviewer {role} review_bundle.json",
-            )
-            require_file(
-                role_dir / ROLE_PROMPTS[role],
-                hashes[ROLE_PROMPTS[role]],
-                f"reviewer {role} {ROLE_PROMPTS[role]}",
-            )
-            observed = sorted(path.name for path in role_dir.iterdir())
-            expected = sorted(("review_bundle.json", ROLE_PROMPTS[role]))
-            if observed != expected:
-                raise ValueError(f"reviewer {role} staged inventory is not exact")
+            reviewer_inventory(role_dir, role, hashes)
 
         try:
             for role in ROLES:
                 os.rename(temporary_root / ROLE_DIRS[role], destinations[role])
+            published = {
+                role: reviewer_inventory(destinations[role], role, hashes)
+                for role in ROLES
+            }
             fsync_directory(output_root)
         except Exception:
             for destination in destinations.values():
@@ -244,34 +284,7 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
         "generated_at": now(),
         "bundle_dir": str(bundle_dir),
         "output_root": str(output_root),
-        "reviewers": {
-            role: {
-                "directory": str(destinations[role]),
-                "files": {
-                    "review_bundle.json": {
-                        "sha256": hashes["review_bundle.json"],
-                        "mode_0600": (
-                            (destinations[role] / "review_bundle.json").stat().st_mode
-                            & 0o777
-                        )
-                        == 0o600,
-                    },
-                    ROLE_PROMPTS[role]: {
-                        "sha256": hashes[ROLE_PROMPTS[role]],
-                        "mode_0600": (
-                            (destinations[role] / ROLE_PROMPTS[role]).stat().st_mode
-                            & 0o777
-                        )
-                        == 0o600,
-                    },
-                },
-                "exact_two_file_inventory": sorted(
-                    path.name for path in destinations[role].iterdir()
-                ),
-                "mode_0700": (destinations[role].stat().st_mode & 0o777) == 0o700,
-            }
-            for role in ROLES
-        },
+        "reviewers": published,
         "checks": {
             "bundle_manifest_bound": True,
             "reviewer_a_two_file_inventory": True,

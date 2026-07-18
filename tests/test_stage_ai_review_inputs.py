@@ -220,6 +220,51 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse((self.output_root / "reviewer-b-input").exists())
         self.assertFalse(self.receipt.exists())
 
+    def test_stage_rechecks_published_inputs_after_rename(self) -> None:
+        attacker = self.root / "attacker"
+        attacker.mkdir()
+        quarantined = self.root / "quarantined-inputs"
+        real_rename = STAGE.os.rename
+
+        def malicious_tree(path: Path) -> None:
+            path.mkdir(parents=True, exist_ok=True)
+            (path / "review_bundle.json").write_text(
+                "malicious bundle\n",
+                encoding="utf-8",
+            )
+            (path / "reviewer-a.prompt.md").write_text(
+                "malicious A\n",
+                encoding="utf-8",
+            )
+            (path / "reviewer-b.prompt.md").write_text(
+                "malicious B\n",
+                encoding="utf-8",
+            )
+
+        def swap_and_rename(source: Path, destination: Path) -> None:
+            if not getattr(swap_and_rename, "swapped", False):
+                temporary_name = Path(source).parent.name
+                real_rename(self.output_root, quarantined)
+                self.output_root.symlink_to(attacker, target_is_directory=True)
+                malicious_tree(attacker / temporary_name / "reviewer-a-input")
+                malicious_tree(attacker / temporary_name / "reviewer-b-input")
+                swap_and_rename.swapped = True
+            real_rename(source, destination)
+
+        with (
+            mock.patch.object(
+                STAGE.os,
+                "rename",
+                side_effect=swap_and_rename,
+            ),
+            self.assertRaisesRegex(ValueError, "parent may not be a symlink"),
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse((attacker / "reviewer-a-input").exists())
+        self.assertFalse((attacker / "reviewer-b-input").exists())
+        self.assertFalse(self.receipt.exists())
+
     def test_rejects_staged_bytes_that_differ_from_bundle_manifest(self) -> None:
         real_write_once = STAGE.write_once
 
