@@ -351,6 +351,38 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertIn("no_call evidence", failed.stderr)
             self.assertFalse((review / "validation.json").exists())
 
+    def test_rejects_no_call_bundle_with_applicable_classification_qc(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+
+            source_path = fixture.manifests[0]
+            source = json.loads(source_path.read_text(encoding="utf-8"))
+            source["classification_qc_status"] = "passed"
+            write_json(source_path, source)
+
+            bundle_path = fixture.bundle_dir / "review_bundle.json"
+            bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+            bundle["evidence_sources"][0]["classification_qc_status"] = "passed"
+            write_json(bundle_path, bundle)
+
+            bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+            bundle_manifest = json.loads(
+                bundle_manifest_path.read_text(encoding="utf-8")
+            )
+            bundle_manifest["input_manifest_sha256"]["E001"] = sha256(source_path)
+            bundle_manifest["review_bundle_sha256"] = sha256(bundle_path)
+            write_json(bundle_manifest_path, bundle_manifest)
+
+            review = Path(temporary) / "review-a"
+            fixture.write_review(review)
+
+            failed = fixture.validate(review)
+
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertIn("mark classification QC as applicable", failed.stderr)
+            self.assertFalse((review / "validation.json").exists())
+
     def test_rejects_changed_spelled_or_derived_numbers(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))

@@ -275,8 +275,14 @@ def derived_authorized_state(rows: list[dict[str, Any]]) -> str:
             if row.get("evidence_status") != "ready":
                 raise ValueError("classified evidence is not ready")
             classified.add(str(state))
-        elif row.get("classification_authorized") is not False:
-            raise ValueError("no_call evidence cannot authorize classification")
+        elif (
+            row.get("classification_authorized") is not False
+            or row.get("classification_qc_status") != "not_applicable"
+        ):
+            raise ValueError(
+                "no_call evidence cannot authorize classification "
+                "or mark classification QC as applicable"
+            )
     if len(classified) > 1:
         raise ValueError("evidence sources contain conflicting authorized classifications")
     return next(iter(classified), "no_call")

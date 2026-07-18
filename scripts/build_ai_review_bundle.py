@@ -327,9 +327,13 @@ def authorized_state(rows: list[dict[str, Any]]) -> str:
                     "positive/negative manifest state requires ready evidence"
                 )
             classified.add(state)
-        elif row.get("classification_authorized") is not False:
+        elif (
+            row.get("classification_authorized") is not False
+            or row.get("classification_qc_status") != "not_applicable"
+        ):
             raise ValueError(
-                "no_call manifest state must not authorize classification"
+                "no_call manifest state must not authorize classification "
+                "or mark classification QC as applicable"
             )
     if len(classified) > 1:
         raise ValueError(

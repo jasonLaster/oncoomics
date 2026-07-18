@@ -102,7 +102,7 @@ class AiReviewBundleFixture:
             "interpretation_status": "no_call",
             "authorized_hrd_state": "no_call",
             "classification_authorized": False,
-            "classification_qc_status": "blocked" if index >= 4 else "not_applicable",
+            "classification_qc_status": "not_applicable",
             "review_summary": review_summary,
             "report_sha256": BUILD.sha256(report),
             "source_sha256": {"safe_summary": "a" * 64},
@@ -480,6 +480,17 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
             self.assertNotEqual(built.returncode, 0)
             self.assertIn("no_call manifest state", built.stderr)
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_rejects_no_call_manifest_with_applicable_classification_qc(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            fixture.update_manifest(0, {"classification_qc_status": "passed"})
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn("mark classification QC as applicable", built.stderr)
             self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
     def test_existing_bundle_files_fail_create_only_and_remain_unchanged(self) -> None:

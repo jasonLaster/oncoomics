@@ -153,9 +153,13 @@ def derive_authorized_state(rows: Sequence[Dict[str, Any]]) -> str:
             if row["classification_qc_status"] != "passed":
                 raise ValueError("classified deterministic evidence lacks passed classification QC")
             classified.add(state)
-        elif row["classification_authorized"] is not False:
+        elif (
+            row["classification_authorized"] is not False
+            or row["classification_qc_status"] != "not_applicable"
+        ):
             raise ValueError(
-                "no_call deterministic evidence cannot authorize classification"
+                "no_call deterministic evidence cannot authorize classification "
+                "or mark classification QC as applicable"
             )
     if len(classified) > 1:
         raise ValueError("deterministic sources contain conflicting authorized classifications")
