@@ -1150,24 +1150,30 @@ class RosalindHrdPacketTest(unittest.TestCase):
             )
 
     def test_diana_wgs_packet_rejects_output_below_symlinked_parent(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            output_root = Path(tmp)
-            real_parent = output_root / "real-rosalind"
-            real_parent.mkdir()
-            linked_parent = output_root / "results/rosalind_hrd"
-            linked_parent.parent.mkdir()
-            linked_parent.symlink_to(real_parent, target_is_directory=True)
+        self.assertFalse(packet.is_platform_root_alias(Path("linked-parent")))
 
-            with self.assertRaisesRegex(
-                ValueError,
-                "Diana WGS packet output parent may not be a symlink",
-            ):
-                packet.prepare_diana_wgs_output_dir(
-                    linked_parent / "diana_wgs" / "unit",
-                    packet.PACKET_REPORT_FILES,
-                )
+        for nested in ("missing", "existing"):
+            with self.subTest(nested=nested), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                real_parent = output_root / "real-rosalind"
+                if nested == "existing":
+                    (real_parent / nested).mkdir(parents=True)
+                else:
+                    real_parent.mkdir()
+                linked_parent = output_root / "results/rosalind_hrd"
+                linked_parent.parent.mkdir()
+                linked_parent.symlink_to(real_parent, target_is_directory=True)
 
-            self.assertFalse((real_parent / "diana_wgs").exists())
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "Diana WGS packet output parent may not be a symlink",
+                ):
+                    packet.prepare_diana_wgs_output_dir(
+                        linked_parent / nested / "diana_wgs" / "unit",
+                        packet.PACKET_REPORT_FILES,
+                    )
+
+                self.assertFalse((real_parent / nested / "diana_wgs").exists())
 
     def test_diana_wgs_packet_identifier_scan_removes_generated_outputs(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
@@ -1344,26 +1350,34 @@ class RosalindHrdPacketTest(unittest.TestCase):
         self.assertIn("Do not point it at the parent run directory", plan)
 
     def test_cloud_materialization_plan_rejects_symlinked_parent_without_writing_target(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp).resolve()
-            real_output = root / "real-rosalind"
-            real_output.mkdir()
-            linked_output = root / "results" / "rosalind_hrd"
-            linked_output.parent.mkdir()
-            linked_output.symlink_to(real_output, target_is_directory=True)
+        for nested in ("missing", "existing"):
+            with self.subTest(nested=nested), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp).resolve()
+                real_output = root / "real-rosalind"
+                if nested == "existing":
+                    (real_output / nested).mkdir(parents=True)
+                else:
+                    real_output.mkdir()
+                linked_output = root / "results" / "rosalind_hrd"
+                linked_output.parent.mkdir()
+                linked_output.symlink_to(real_output, target_is_directory=True)
 
-            with patch.object(packet, "path_from_root", lambda relative: root / relative):
-                with self.assertRaisesRegex(
-                    ValueError,
-                    "HRD packet output parent may not be a symlink",
+                with patch.object(
+                    packet,
+                    "path_from_root",
+                    lambda relative, root=root: root / relative,
                 ):
-                    packet.write_cloud_materialization_plan(
-                        "results/rosalind_hrd/unit",
-                        "unit",
-                        [{"sampleSet": "diana_wgs", "missingArtifacts": []}],
-                    )
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "HRD packet output parent may not be a symlink",
+                    ):
+                        packet.write_cloud_materialization_plan(
+                            f"results/rosalind_hrd/{nested}/unit",
+                            "unit",
+                            [{"sampleSet": "diana_wgs", "missingArtifacts": []}],
+                        )
 
-            self.assertFalse((real_output / "unit").exists())
+                self.assertFalse((real_output / nested / "unit").exists())
 
     def test_diana_raw_intake_packet_marks_waiting_input_path(self):
         with tempfile.TemporaryDirectory() as tmp:

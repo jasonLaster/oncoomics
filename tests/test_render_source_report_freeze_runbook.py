@@ -15,6 +15,7 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 import generate_blocked_hrd_crosscheck_reports as BLOCKED_GENERATOR  # noqa: E402
+import runbook_io as RUNBOOK_IO  # noqa: E402
 import validate_phase3_fast_report_packets as PHASE3_FAST_VALIDATOR  # noqa: E402
 
 SPEC = importlib.util.spec_from_file_location(
@@ -582,6 +583,21 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
             with self.assertRaises(FileExistsError):
                 MODULE.write_once(output, "two\n")
+
+    def test_write_once_rejects_existing_child_below_symlinked_parent(self) -> None:
+        self.assertFalse(RUNBOOK_IO.is_platform_root_alias(Path("runbook-link")))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "runbook-real"
+            (real_parent / "existing").mkdir(parents=True)
+            linked_parent = root / "runbook-link"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "output parent is a symlink"):
+                MODULE.write_once(linked_parent / "existing" / "runbook.md", "one\n")
+
+            self.assertFalse((real_parent / "existing" / "runbook.md").exists())
 
 
 if __name__ == "__main__":

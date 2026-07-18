@@ -395,22 +395,28 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
     def test_rejects_output_below_symlinked_parent_without_writing_packets(
         self,
     ) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            real_parent = root / "blocked-real"
-            real_parent.mkdir()
-            linked_parent = root / "blocked-link"
-            linked_parent.symlink_to(real_parent, target_is_directory=True)
+        self.assertFalse(GENERATOR.is_platform_root_alias(Path("blocked-link")))
 
-            output = linked_parent / "missing" / "blocked"
+        for nested in ("missing", "existing"):
+            with self.subTest(nested=nested), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                real_parent = root / "blocked-real"
+                if nested == "existing":
+                    (real_parent / nested).mkdir(parents=True)
+                else:
+                    real_parent.mkdir()
+                linked_parent = root / "blocked-link"
+                linked_parent.symlink_to(real_parent, target_is_directory=True)
 
-            with self.assertRaisesRegex(
-                ValueError,
-                "blocked cross-check output parent may not be a symlink",
-            ):
-                GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+                output = linked_parent / nested / "blocked"
 
-            self.assertFalse((real_parent / "missing").exists())
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "blocked cross-check output parent may not be a symlink",
+                ):
+                    GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+
+                self.assertFalse((real_parent / nested / "blocked").exists())
 
     def test_generated_packets_match_private_publication_contracts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

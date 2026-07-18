@@ -256,18 +256,18 @@ def resolve_real_source_dir(source_dir: Path) -> Path:
     return source_dir.resolve()
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def resolve_new_output_dir(output_dir: Path) -> Path:
     if output_dir.is_symlink():
         raise ValueError("output may not be a symlink")
-    parent = output_dir.parent
-    while not parent.exists() and not parent.is_symlink():
-        if parent == parent.parent:
-            break
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(f"output parent may not be a symlink: {parent}")
-    if parent.exists() and not parent.is_dir():
-        raise ValueError(f"output parent is not a directory: {parent}")
+    for parent in output_dir.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"output parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"output parent is not a directory: {parent}")
     output_dir = output_dir.resolve()
     if output_dir.exists():
         raise ValueError(f"output already exists: {output_dir}")

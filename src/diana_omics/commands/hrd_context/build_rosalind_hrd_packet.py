@@ -215,17 +215,15 @@ def write_text_create_only(path: Path, value: str) -> None:
 
 
 def require_safe_output_parent(path: Path) -> None:
-    parent = path.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"HRD packet output parent may not be a symlink: {parent}")
-        if parent == parent.parent:
-            raise ValueError(f"HRD packet output has no existing parent: {path}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(f"HRD packet output parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise NotADirectoryError(parent)
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
+
+
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
 
 
 def write_json_create_only(path: Path, value: Any) -> None:
@@ -2009,21 +2007,13 @@ def prepare_diana_wgs_output_dir(output: Path, expected_files: Iterable[str]) ->
 
 
 def require_safe_diana_wgs_output_parent(output: Path) -> None:
-    parent = output.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in output.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(
                 f"Diana WGS packet output parent may not be a symlink: {parent}"
             )
-        if parent == parent.parent:
-            raise ValueError(f"Diana WGS packet output has no existing parent: {output}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(
-            f"Diana WGS packet output parent may not be a symlink: {parent}"
-        )
-    if not parent.is_dir():
-        raise NotADirectoryError(parent)
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
 
 
 def copy_diana_wgs_packet_file(source: Path, destination: Path) -> None:

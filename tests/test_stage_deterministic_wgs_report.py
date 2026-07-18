@@ -1422,23 +1422,31 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertFalse((real_parent / "report-output" / "report.md").exists())
 
     def test_output_below_symlinked_parent_fails_before_report_publication(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
-            root = Path(temporary)
-            fixture = SyntheticFixture(root / "case")
-            real_parent = root / "report-parent-real"
-            real_parent.mkdir()
-            link_parent = root / "report-parent"
-            link_parent.symlink_to(real_parent, target_is_directory=True)
-            fixture.output = link_parent / "missing" / "report-output"
+        self.assertFalse(REPORT_MODULE.is_platform_root_alias(Path("report-parent")))
 
-            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+        for nested in ("missing", "existing"):
+            with self.subTest(nested=nested), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                root = Path(temporary)
+                fixture = SyntheticFixture(root / "case")
+                real_parent = root / "report-parent-real"
+                if nested == "existing":
+                    (real_parent / nested).mkdir(parents=True)
+                else:
+                    real_parent.mkdir()
+                link_parent = root / "report-parent"
+                link_parent.symlink_to(real_parent, target_is_directory=True)
+                fixture.output = link_parent / nested / "report-output"
 
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn(
-                "report output parent may not be a symlink",
-                result.stdout + result.stderr,
-            )
-            self.assertFalse((real_parent / "missing").exists())
+                result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "report output parent may not be a symlink",
+                    result.stdout + result.stderr,
+                )
+                self.assertFalse((real_parent / nested / "report-output").exists())
 
     def test_expected_output_name_directory_fails_before_report_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:

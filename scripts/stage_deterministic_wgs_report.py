@@ -1179,18 +1179,18 @@ def prepare_output_dir(output: Path, expected_names: Iterable[str]) -> None:
         )
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def resolve_report_output_dir(output: Path) -> Path:
     if output.is_symlink():
         raise ValueError("report output may not be a symlink")
-    parent = output.parent
-    while not parent.exists() and not parent.is_symlink():
-        if parent == parent.parent:
-            break
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(f"report output parent may not be a symlink: {parent}")
-    if parent.exists() and not parent.is_dir():
-        raise ValueError(f"report output parent is not a directory: {parent}")
+    for parent in output.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"report output parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"report output parent is not a directory: {parent}")
     return output.resolve()
 
 

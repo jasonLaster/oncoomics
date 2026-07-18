@@ -398,17 +398,15 @@ def prepare_output_root(output_root: Path) -> Path:
 
 
 def require_safe_output_parent(output_root: Path) -> None:
-    parent = output_root.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in output_root.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"blocked cross-check output parent may not be a symlink: {parent}")
-        if parent == parent.parent:
-            raise ValueError(f"blocked cross-check output has no existing parent: {output_root}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(f"blocked cross-check output parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise NotADirectoryError(parent)
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
+
+
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
 
 
 def render_report(
