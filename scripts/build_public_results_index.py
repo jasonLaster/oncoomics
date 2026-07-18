@@ -264,22 +264,18 @@ def validate_reviewed_public_s3_state(
         )
 
 
+def is_platform_root_alias(path: pathlib.Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def require_safe_index_parent(path: pathlib.Path) -> None:
-    parent = path.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise RuntimeError(
                 f"Refusing to write public index through symlinked parent: {parent}"
             )
-        if parent == parent.parent:
-            raise RuntimeError(f"Public index has no existing parent: {path}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise RuntimeError(
-            f"Refusing to write public index through symlinked parent: {parent}"
-        )
-    if not parent.is_dir():
-        raise RuntimeError(f"Public index parent is not a directory: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise RuntimeError(f"Public index parent is not a directory: {parent}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

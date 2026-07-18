@@ -59,20 +59,18 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def require_safe_receipt_output_parent(path: Path) -> None:
     if path.is_symlink():
         raise ValueError("receipt output may not be a symlink")
-    parent = path.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"receipt output parent may not be a symlink: {parent}")
-        if parent == parent.parent:
-            raise ValueError(f"receipt output has no existing parent: {path}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(f"receipt output parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise ValueError(f"receipt output parent is not a directory: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"receipt output parent is not a directory: {parent}")
 
 
 def write_private_atomic(path: Path, value: dict[str, Any], *, create: bool) -> None:
