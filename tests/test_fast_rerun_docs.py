@@ -34,6 +34,8 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("exact full-depth bedcov coverage-bin plan", text)
         self.assertIn("one\nstandard-contig BED shard", text)
         self.assertIn("scarHRD `no_call`", text)
+        self.assertIn("reference.standard_contigs", text)
+        self.assertIn("run:phase3-fast-cnv-evidence", text)
 
     def test_next_generation_doc_tracks_sv_evidence_plan_seam(self) -> None:
         text = NEXT_GEN.read_text(encoding="utf-8")

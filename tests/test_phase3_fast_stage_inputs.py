@@ -29,7 +29,11 @@ def downloadable_staging_plan(root: Path) -> tuple[dict, dict[str, bytes]]:
     total_bytes = 0
     for row in plan["staged_objects"]:
         artifact = row["artifact"]
-        data = f"downloaded {artifact}\n".encode()
+        data = (
+            b"chr1\t25\t0\t50\t51\nchr2\t10\t0\t50\t51\nchrM\t5\t0\t50\t51\n"
+            if artifact == "reference.fa.fai"
+            else f"downloaded {artifact}\n".encode()
+        )
         payloads[artifact] = data
         row["bytes"] = len(data)
         row["sha256"] = _sha256(data)

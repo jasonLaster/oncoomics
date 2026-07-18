@@ -297,6 +297,13 @@ standard-contig BED shard and exact `samtools bedcov` tumor/normal command per
 contig, and declares the eventual combined bedcov, coverage-bin CSV, and CNV
 summary outputs. It preserves a scarHRD `no_call`: these full-depth normalized
 coverage bins are WGS feature evidence, not allele-specific CNV/LOH segments.
+The staged-input verifier snapshots the standard-contig catalog from the
+verified `.fai` into `reference.standard_contigs`, so
+`FAST_CNV_EVIDENCE_PLAN` can be rendered from a JSON manifest after the
+worker-local FASTA index is gone. `run:phase3-fast-cnv-evidence` then rewrites
+those exact BED shards, executes only the planned `samtools bedcov` commands,
+and materializes `coverage_cnv_bedcov.tsv`, `coverage_cnv_bins.csv`,
+`coverage_cnv_summary.csv`, `coverage_cnv_summary.json`, and a SHA-256 receipt.
 `FAST_SV_EVIDENCE_PLAN` also fans out from the staged-input handoff and records
 the exact `samtools idxstats` and `samtools view` flag commands that will derive
 mechanical supplementary/split-read and discordant-pair evidence from the tumor

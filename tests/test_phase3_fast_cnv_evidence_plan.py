@@ -17,15 +17,10 @@ def _sha256_json(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def write_reference_fai(manifest: dict, text: str = "chr1\t25\t0\t50\t51\nchr2\t10\t0\t50\t51\nchrM\t5\t0\t50\t51\n") -> None:
-    Path(manifest["reference"]["fai"]["local_path"]).write_text(text, encoding="utf-8")
-
-
 class Phase3FastCnvEvidencePlanTests(unittest.TestCase):
     def test_plan_renders_standard_contig_bedcov_commands(self) -> None:
         with TemporaryDirectory() as tmp:
             manifest = staged_inputs_manifest(Path(tmp))
-            write_reference_fai(manifest)
             plan = cnv_evidence.build_phase3_fast_cnv_evidence_plan(
                 manifest,
                 staged_inputs_manifest_sha256=SHA_1,
@@ -91,7 +86,6 @@ class Phase3FastCnvEvidencePlanTests(unittest.TestCase):
     def test_rejects_matching_tumor_normal_sample_names(self) -> None:
         with TemporaryDirectory() as tmp:
             manifest = staged_inputs_manifest(Path(tmp))
-            write_reference_fai(manifest)
         manifest["bam_pair"]["normal"]["bam"]["sample_id"] = "subject01_tumor"
         manifest["bam_pair"]["normal"]["bai"]["sample_id"] = "subject01_tumor"
 
@@ -104,7 +98,6 @@ class Phase3FastCnvEvidencePlanTests(unittest.TestCase):
     def test_rejects_missing_bam_sample_id(self) -> None:
         with TemporaryDirectory() as tmp:
             manifest = staged_inputs_manifest(Path(tmp))
-            write_reference_fai(manifest)
         manifest["bam_pair"]["tumor"]["bam"].pop("sample_id")
 
         with self.assertRaisesRegex(cnv_evidence.ManifestError, "sample_id"):
@@ -116,7 +109,6 @@ class Phase3FastCnvEvidencePlanTests(unittest.TestCase):
     def test_rejects_unpaired_reference_layout(self) -> None:
         with TemporaryDirectory() as tmp:
             manifest = staged_inputs_manifest(Path(tmp))
-            write_reference_fai(manifest)
         manifest["reference"]["fai"]["local_path"] = "/scratch/diana/elsewhere/reference.fa.fai"
 
         with self.assertRaisesRegex(cnv_evidence.ManifestError, "reference.fa.fai"):
@@ -125,10 +117,10 @@ class Phase3FastCnvEvidencePlanTests(unittest.TestCase):
                 staged_inputs_manifest_sha256=SHA_1,
             )
 
-    def test_rejects_fai_without_standard_contigs(self) -> None:
+    def test_rejects_manifest_without_standard_contigs(self) -> None:
         with TemporaryDirectory() as tmp:
             manifest = staged_inputs_manifest(Path(tmp))
-            write_reference_fai(manifest, "chrM\t5\t0\t50\t51\nGL000220.1\t5\t0\t50\t51\n")
+            manifest["reference"]["standard_contigs"] = [{"contig": "chrM", "length": 5}]
 
             with self.assertRaisesRegex(cnv_evidence.ManifestError, "standard"):
                 cnv_evidence.build_phase3_fast_cnv_evidence_plan(
@@ -139,7 +131,6 @@ class Phase3FastCnvEvidencePlanTests(unittest.TestCase):
     def test_rejects_relative_output_root(self) -> None:
         with TemporaryDirectory() as tmp:
             manifest = staged_inputs_manifest(Path(tmp))
-            write_reference_fai(manifest)
 
         with self.assertRaisesRegex(cnv_evidence.ManifestError, "output_root"):
             cnv_evidence.build_phase3_fast_cnv_evidence_plan(
@@ -154,7 +145,6 @@ class Phase3FastCnvEvidencePlanTests(unittest.TestCase):
             input_path = root / "staged-inputs.json"
             output_path = root / "cnv-evidence-plan.json"
             manifest = staged_inputs_manifest(root)
-            write_reference_fai(manifest)
             write_json(input_path, manifest)
 
             with patch.dict(

@@ -50,13 +50,6 @@ def _require_absolute_path(value: Any, label: str) -> str:
     return str(path)
 
 
-def _require_existing_absolute_file(value: Any, label: str) -> Path:
-    path = Path(_require_absolute_path(value, label))
-    if not path.is_file():
-        raise ManifestError(f"{label} must exist as a file: {path}")
-    return path
-
-
 def _require_output_root(value: str | os.PathLike[str]) -> Path:
     root = Path(value)
     if not root.is_absolute():
@@ -98,16 +91,11 @@ def _require_source(entry: Mapping[str, Any], artifact: str) -> dict[str, str]:
     }
 
 
-def _artifact_input(entry: Mapping[str, Any], artifact: str, *, require_file: bool = False) -> dict[str, Any]:
+def _artifact_input(entry: Mapping[str, Any], artifact: str) -> dict[str, Any]:
     if entry.get("artifact") != artifact:
         raise ManifestError(f"{artifact} entry artifact must match")
-    local_path = (
-        str(_require_existing_absolute_file(entry.get("local_path"), f"{artifact} local_path"))
-        if require_file
-        else _require_absolute_path(entry.get("local_path"), f"{artifact} local_path")
-    )
     result: dict[str, Any] = {
-        "local_path": local_path,
+        "local_path": _require_absolute_path(entry.get("local_path"), f"{artifact} local_path"),
         "source": _require_source(entry, artifact),
     }
     sample_id = entry.get("sample_id")
@@ -139,9 +127,32 @@ def _bam_inputs(pair: Mapping[str, Any]) -> dict[str, dict[str, dict[str, Any]]]
     return role_inputs
 
 
+def _standard_contigs(reference: Mapping[str, Any]) -> list[tuple[str, int]]:
+    rows = reference.get("standard_contigs")
+    if not isinstance(rows, list):
+        raise ManifestError("reference.standard_contigs must be a list")
+
+    contigs: list[tuple[str, int]] = []
+    seen: set[str] = set()
+    for index, value in enumerate(rows, start=1):
+        row = _require_mapping(value, f"reference.standard_contigs[{index}]")
+        contig = _require_string(row.get("contig"), f"reference.standard_contigs[{index}].contig")
+        if not standard_contig(contig):
+            continue
+        if contig in seen:
+            raise ManifestError(f"reference.standard_contigs contains duplicate contig {contig}")
+        seen.add(contig)
+        length = _require_positive_int(row.get("length"), f"reference.standard_contigs[{index}].length")
+        contigs.append((contig, length))
+
+    if not contigs:
+        raise ManifestError("reference.standard_contigs must include at least one standard chr1-chr22/chrX/chrY contig")
+    return contigs
+
+
 def _reference_inputs(reference: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     fasta = _artifact_input(_entry(reference, "fasta", "reference"), "reference.fa")
-    fai = _artifact_input(_entry(reference, "fai", "reference"), "reference.fa.fai", require_file=True)
+    fai = _artifact_input(_entry(reference, "fai", "reference"), "reference.fa.fai")
     sequence_dictionary = _artifact_input(_entry(reference, "sequence_dictionary", "reference"), "reference.dict")
     if Path(fasta["local_path"]).parent != Path(fai["local_path"]).parent:
         raise ManifestError("reference.fa and reference.fa.fai must be staged together")
@@ -154,36 +165,9 @@ def _reference_inputs(reference: Mapping[str, Any]) -> dict[str, dict[str, Any]]
     }
 
 
-def _read_standard_contigs(fai_path: str) -> list[tuple[str, int]]:
-    contigs: list[tuple[str, int]] = []
-    seen: set[str] = set()
-    for line_number, line in enumerate(Path(fai_path).read_text(encoding="utf-8").splitlines(), start=1):
-        if not line.strip():
-            continue
-        fields = line.split("\t")
-        if len(fields) < 2:
-            raise ManifestError(f"reference.fa.fai line {line_number} must include contig and length")
-        contig = fields[0]
-        if not standard_contig(contig):
-            continue
-        if contig in seen:
-            raise ManifestError(f"reference.fa.fai contains duplicate contig {contig}")
-        seen.add(contig)
-        try:
-            length = int(fields[1])
-        except ValueError as error:
-            raise ManifestError(f"reference.fa.fai {contig} length must be an integer") from error
-        if length <= 0:
-            raise ManifestError(f"reference.fa.fai {contig} length must be positive")
-        contigs.append((contig, length))
-    if not contigs:
-        raise ManifestError("reference.fa.fai must include at least one standard chr1-chr22/chrX/chrY contig")
-    return contigs
-
-
-def _interval_shards(fai_path: str, output_root: Path, bin_size: int) -> list[dict[str, Any]]:
+def _interval_shards(contigs: list[tuple[str, int]], output_root: Path, bin_size: int) -> list[dict[str, Any]]:
     shards: list[dict[str, Any]] = []
-    for contig, length in _read_standard_contigs(fai_path):
+    for contig, length in contigs:
         bin_count = (length + bin_size - 1) // bin_size
         safe_contig = _safe_contig(contig)
         shards.append(
@@ -218,8 +202,9 @@ def build_phase3_fast_cnv_evidence_plan(
     checked_bin_size = _require_positive_int(bin_size, "bin_size")
     checked_bedcov_workers = _require_positive_int(bedcov_workers, "bedcov_workers")
     bam_inputs = _bam_inputs(_require_mapping(staged_inputs_manifest.get("bam_pair"), "bam_pair"))
-    reference_inputs = _reference_inputs(_require_mapping(staged_inputs_manifest.get("reference"), "reference"))
-    shards = _interval_shards(reference_inputs["fai"]["local_path"], root, checked_bin_size)
+    reference = _require_mapping(staged_inputs_manifest.get("reference"), "reference")
+    reference_inputs = _reference_inputs(reference)
+    shards = _interval_shards(_standard_contigs(reference), root, checked_bin_size)
 
     outputs = {
         "combined_bedcov": str(root / "coverage_cnv_bedcov.tsv"),

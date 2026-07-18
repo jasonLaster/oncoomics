@@ -27,7 +27,11 @@ def materialized_staging_plan(root: Path) -> dict:
     total_bytes = 0
     for row in plan["staged_objects"]:
         path = Path(row["local_path"])
-        data = f"materialized {row['artifact']}\n".encode()
+        data = (
+            b"chr1\t25\t0\t50\t51\nchr2\t10\t0\t50\t51\nchrM\t5\t0\t50\t51\n"
+            if row["artifact"] == "reference.fa.fai"
+            else f"materialized {row['artifact']}\n".encode()
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
         row["bytes"] = len(data)
@@ -52,6 +56,10 @@ class Phase3FastStagedInputsTests(unittest.TestCase):
         self.assertEqual("phase3_wgs_fast", manifest["workflow"]["name"])
         self.assertEqual("no_call", manifest["interpretation"]["authorized_hrd_state"])
         self.assertEqual(15, manifest["object_count"])
+        self.assertEqual(
+            [{"contig": "chr1", "length": 25}, {"contig": "chr2", "length": 10}],
+            manifest["reference"]["standard_contigs"],
+        )
 
         tumor = manifest["bam_pair"]["tumor"]["bam"]
         self.assertEqual("tumor.bam", tumor["artifact"])

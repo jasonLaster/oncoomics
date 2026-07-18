@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent, read_json, standard_contig
 from .render_phase3_fast_cache_manifest import BAM_CACHE_ARTIFACTS, REFERENCE_CACHE_ARTIFACTS
 from .render_phase3_fast_input_manifest import CALLER_RESOURCES, HEX64, ManifestError, _require_s3_uri
 from .render_phase3_fast_staging_plan import EXPECTED_STAGED_OBJECTS
@@ -137,6 +137,33 @@ def _index_by_artifact(rows: Sequence[Mapping[str, Any]]) -> dict[str, Mapping[s
     return by_artifact
 
 
+def _read_standard_contigs(fai_path: str) -> list[dict[str, int | str]]:
+    contigs: list[dict[str, int | str]] = []
+    seen: set[str] = set()
+    for line_number, line in enumerate(Path(fai_path).read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        fields = line.split("\t")
+        if len(fields) < 2:
+            raise ManifestError(f"reference.fa.fai line {line_number} must include contig and length")
+        contig = fields[0]
+        if not standard_contig(contig):
+            continue
+        if contig in seen:
+            raise ManifestError(f"reference.fa.fai contains duplicate contig {contig}")
+        seen.add(contig)
+        try:
+            length = int(fields[1])
+        except ValueError as error:
+            raise ManifestError(f"reference.fa.fai {contig} length must be an integer") from error
+        if length <= 0:
+            raise ManifestError(f"reference.fa.fai {contig} length must be positive")
+        contigs.append({"contig": contig, "length": length})
+    if not contigs:
+        raise ManifestError("reference.fa.fai must include at least one standard chr1-chr22/chrX/chrY contig")
+    return contigs
+
+
 def build_phase3_fast_staged_inputs_manifest(
     staging_plan: Mapping[str, Any],
     *,
@@ -198,6 +225,7 @@ def build_phase3_fast_staged_inputs_manifest(
         "reference": {
             "fasta": by_artifact["reference.fa"],
             "fai": by_artifact["reference.fa.fai"],
+            "standard_contigs": _read_standard_contigs(str(by_artifact["reference.fa.fai"]["local_path"])),
             "sequence_dictionary": by_artifact["reference.dict"],
         },
         "caller_resources": {
