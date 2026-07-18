@@ -612,6 +612,22 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 MODULE.create_private(path, b"replacement")
             self.assertEqual(path.read_bytes(), b"first")
 
+    def test_private_create_removes_partial_output_after_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "private.json"
+
+            with (
+                mock.patch.object(
+                    MODULE.os,
+                    "fsync",
+                    side_effect=OSError("synthetic fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+            ):
+                MODULE.create_private(path, b"partial")
+
+            self.assertFalse(path.exists())
+
     def test_private_group_rolls_back_only_its_partial_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
