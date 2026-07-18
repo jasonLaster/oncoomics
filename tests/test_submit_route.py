@@ -438,6 +438,65 @@ class SubmitRouteTests(unittest.TestCase):
         with self.assertRaisesRegex(FileExistsError, "refusing to overwrite"):
             MODULE.require_new_outputs([same])
 
+    def test_request_and_response_paths_may_not_traverse_symlinks(self) -> None:
+        real_parent = self.root / "real-parent"
+        real_parent.mkdir()
+        direct_target = real_parent / "direct-target.json"
+        linked_output = self.root / "linked-output.json"
+        linked_output.symlink_to(direct_target)
+        linked_parent = self.root / "linked-parent"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+        with self.assertRaisesRegex(FileExistsError, "may not be a symlink"):
+            MODULE.require_new_outputs([linked_output])
+        with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+            MODULE.require_new_outputs([linked_parent / "request.json"])
+
+    def test_symlinked_request_path_fails_before_preflight(self) -> None:
+        real_parent = self.root / "real-parent"
+        real_parent.mkdir()
+        linked_parent = self.root / "linked-parent"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+        self.request = linked_parent / "request.json"
+
+        with (
+            mock.patch.object(sys, "argv", self.argv()),
+            mock.patch.object(MODULE, "preflight") as preflight,
+            self.assertRaisesRegex(SystemExit, "parent may not be a symlink"),
+        ):
+            MODULE.main()
+
+        preflight.assert_not_called()
+        self.assertFalse((real_parent / "request.json").exists())
+
+    def test_symlinked_response_path_fails_before_submit(self) -> None:
+        real_parent = self.root / "real-parent"
+        real_parent.mkdir()
+        linked_parent = self.root / "linked-parent"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+        self.response = linked_parent / "response.json"
+
+        with (
+            mock.patch.object(sys, "argv", self.argv(submit=True)),
+            mock.patch.dict(
+                os.environ,
+                {
+                    "HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES",
+                    "HRD_CROSSCHECK_LICENSE_REVIEWED": "YES",
+                },
+                clear=True,
+            ),
+            mock.patch.object(MODULE, "preflight") as preflight,
+            mock.patch.object(MODULE, "submit") as submit,
+            self.assertRaisesRegex(SystemExit, "parent may not be a symlink"),
+        ):
+            MODULE.main()
+
+        preflight.assert_not_called()
+        submit.assert_not_called()
+        self.assertFalse(self.request.exists())
+        self.assertFalse((real_parent / "response.json").exists())
+
     def test_submission_environment_has_exact_seven_names(self) -> None:
         environment = MODULE.build_submission_environment(
             contract_uri="s3://private/contract",
