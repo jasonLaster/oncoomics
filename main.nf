@@ -67,6 +67,7 @@ params.phase3_fast_parabricks_memory = params.phase3_fast_parabricks_memory ?: '
 params.phase3_fast_parabricks_num_gpus = params.phase3_fast_parabricks_num_gpus ?: 8
 params.phase3_fast_parabricks_output_root = params.phase3_fast_parabricks_output_root ?: '/scratch/diana/phase3_wgs_fast/parabricks_mutect'
 params.phase3_fast_filter_mutect_output_root = params.phase3_fast_filter_mutect_output_root ?: '/scratch/diana/phase3_wgs_fast/filter_mutect'
+params.phase3_fast_small_variant_mode = params.phase3_fast_small_variant_mode ?: 'plan'
 params.phase3_fast_gatk_version = params.phase3_fast_gatk_version ?: '4.6.2.0'
 params.phase3_fast_source_commit = params.phase3_fast_source_commit ?: ''
 params.phase3_fast_run_id = params.phase3_fast_run_id ?: 'diana-wgs-hrd-20260716T033101Z'
@@ -1004,6 +1005,107 @@ process FAST_FILTER_MUTECT_PLAN {
     """
 }
 
+process FAST_MUTECT_PARABRICKS_FILTER {
+    tag "fast_mutect_parabricks_filter_${params.phase3_fast_run_id}"
+    label 'gpu_parabricks'
+    cpus { params.phase3_fast_parabricks_cpus as int }
+    memory { params.phase3_fast_parabricks_memory }
+    time '4h'
+    publishDir "${params.outdir}/phase3_wgs_fast/small_variant_execution", mode: 'copy', overwrite: true
+
+    input:
+    path staging_plan
+
+    output:
+    tuple path('workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json'),
+          path('workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json'),
+          path('workspace/manifests/phase3_wgs_fast/parabricks_mutect_receipt.json'),
+          path('workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json'),
+          path('workspace/manifests/phase3_wgs_fast/filter_mutect_receipt.json')
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_STAGING_PLAN="\$PWD/${staging_plan}"
+    export PHASE3_WGS_FAST_STAGED_INPUTS_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"
+    export PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST="\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"
+    export PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
+    export PHASE3_WGS_FAST_PARABRICKS_OUTPUT_ROOT="${params.phase3_fast_parabricks_output_root}"
+    export PHASE3_WGS_FAST_PARABRICKS_NUM_GPUS="${params.phase3_fast_parabricks_num_gpus}"
+    export PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN="\$PWD/workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
+    export PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"
+    export PHASE3_WGS_FAST_FILTER_MUTECT_PLAN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json"
+    export PHASE3_WGS_FAST_FILTER_MUTECT_OUTPUT_ROOT="${params.phase3_fast_filter_mutect_output_root}"
+    export PHASE3_WGS_FAST_FILTER_MUTECT_PLAN="\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json"
+    export PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT="\$PWD/workspace/manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"
+    export PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_receipt.json"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics stage:phase3-fast-inputs
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-parabricks-mutect-plan
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics run:phase3-fast-parabricks-mutect
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-filter-mutect-plan
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics run:phase3-fast-filter-mutect
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_staged_inputs_manifest",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_parabricks_mutect_plan",
+      "status": "stubbed",
+      "commands": {},
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/parabricks_mutect_receipt.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_parabricks_mutect_receipt",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_filter_mutect_plan",
+      "status": "stubbed",
+      "commands": {},
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/filter_mutect_receipt.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_filter_mutect_receipt",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -1030,6 +1132,11 @@ workflow PHASE3_WGS_FAST {
     if (missing) {
         error "phase3_wgs_fast requires: ${missing.join(', ')}"
     }
+    allowedSmallVariantModes = ['plan', 'execute']
+    smallVariantMode = params.phase3_fast_small_variant_mode.toString()
+    if (!allowedSmallVariantModes.contains(smallVariantMode)) {
+        error "Unknown phase3_fast_small_variant_mode '${smallVariantMode}'. Choose one of: ${allowedSmallVariantModes.join(', ')}."
+    }
 
     inputReceipts = Channel.of(tuple(
         file(params.phase3_fast_private_freeze_receipt.toString(), checkIfExists: true),
@@ -1046,8 +1153,12 @@ workflow PHASE3_WGS_FAST {
     if (params.phase3_fast_replication_mode.toString().replace('-', '_') == 'apply') {
         FAST_CACHE_MANIFEST(FAST_REPLICATE_INPUTS.out)
         FAST_STAGING_PLAN(FAST_CACHE_MANIFEST.out)
-        FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
-        FAST_FILTER_MUTECT_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
+        if (smallVariantMode == 'execute') {
+            FAST_MUTECT_PARABRICKS_FILTER(FAST_STAGING_PLAN.out)
+        } else {
+            FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
+            FAST_FILTER_MUTECT_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
+        }
     }
 }
 

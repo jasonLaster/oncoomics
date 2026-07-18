@@ -298,6 +298,12 @@ contamination, read-orientation priors, `FilterMutectCalls`, and VCF indexing.
 the raw VCF, raw `.stats`, F1R2 tarball, and PoN-annotated VCF against that
 receipt, run only the planned GATK/bcftools commands, and write a completed
 receipt with bytes and SHA-256 for every tail artifact it materializes.
+The first execution-mode Nextflow seam keeps Parabricks and the short
+FilterMutect CPU tail fused in one `gpu_parabricks` process so the raw VCF,
+raw `.stats`, F1R2 tarball, and PoN-annotated VCF never cross a worker-local
+`/scratch` boundary before a receipt hashes them. `phase3_fast_small_variant_mode`
+defaults to `plan`; switching it to `execute` selects that fused worker-local
+seam.
 It preserves the same `no_call` boundary: a filtered VCF is deterministic
 sample evidence, not a scalar HRD interpretation.
 

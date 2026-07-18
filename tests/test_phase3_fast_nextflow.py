@@ -77,6 +77,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             "phase3_fast_parabricks_num_gpus",
             "phase3_fast_parabricks_output_root",
             "phase3_fast_filter_mutect_output_root",
+            "phase3_fast_small_variant_mode",
             "phase3_fast_gatk_version",
             "phase3_fast_source_commit",
             "phase3_fast_run_id",
@@ -173,6 +174,47 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_fast_parabricks_num_gpus = 8", config)
         self.assertIn("phase3_fast_parabricks_output_root = '/scratch/diana/phase3_wgs_fast/parabricks_mutect'", config)
         self.assertIn("phase3_fast_filter_mutect_output_root = '/scratch/diana/phase3_wgs_fast/filter_mutect'", config)
+
+    def test_small_variant_execution_keeps_scratch_paths_worker_local(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_MUTECT_PARABRICKS_FILTER") :]
+        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        self.assertIn("label 'gpu_parabricks'", process)
+        self.assertIn("run:phase3-fast-parabricks-mutect", process)
+        self.assertIn("run:phase3-fast-filter-mutect", process)
+        self.assertLess(process.index("stage:phase3-fast-inputs"), process.index("build:phase3-fast-parabricks-mutect-plan"))
+        self.assertLess(
+            process.index("build:phase3-fast-parabricks-mutect-plan"),
+            process.index("run:phase3-fast-parabricks-mutect"),
+        )
+        self.assertLess(
+            process.index("run:phase3-fast-parabricks-mutect"),
+            process.index("build:phase3-fast-filter-mutect-plan"),
+        )
+        self.assertLess(process.index("build:phase3-fast-filter-mutect-plan"), process.index("run:phase3-fast-filter-mutect"))
+        self.assertIn(
+            'export PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT_OUTPUT="\\$PWD/workspace/manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_FILTER_MUTECT_PLAN="\\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT="\\$PWD/workspace/manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT_OUTPUT="\\$PWD/workspace/manifests/phase3_wgs_fast/filter_mutect_receipt.json"',
+            process,
+        )
+
+        self.assertIn("smallVariantMode = params.phase3_fast_small_variant_mode.toString()", text)
+        self.assertIn("smallVariantMode == 'execute'", text)
+        self.assertIn("FAST_MUTECT_PARABRICKS_FILTER(FAST_STAGING_PLAN.out)", text)
+        self.assertIn("allowedSmallVariantModes = ['plan', 'execute']", text)
+        self.assertIn("Unknown phase3_fast_small_variant_mode", text)
 
 
 if __name__ == "__main__":
