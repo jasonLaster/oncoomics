@@ -72,6 +72,26 @@ class RunbookIoTests(unittest.TestCase):
                 (regular, symlinked_regular, directory, broken_symlink),
             )
 
+    def test_required_and_create_only_filters_reject_symlinked_parents(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-inputs"
+            real_input = real_parent / "checked-in.py"
+            linked_parent = root / "linked-inputs"
+            real_parent.mkdir()
+            real_input.write_text("print('ok')\n", encoding="utf-8")
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            required = linked_parent / "checked-in.py"
+            missing_output = linked_parent / "missing" / "receipt.json"
+
+            self.assertTrue(required.is_file())
+            self.assertEqual(MODULE.missing_required_files([required]), (required,))
+            self.assertEqual(
+                MODULE.preexisting_create_only_paths([missing_output]),
+                (missing_output,),
+            )
+
     def test_load_json_object_rejects_non_objects_and_symlinks(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

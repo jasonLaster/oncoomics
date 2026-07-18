@@ -42,7 +42,20 @@ def unique_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
 def missing_required_files(paths: Iterable[Path]) -> tuple[Path, ...]:
     """Return prerequisite paths that are absent, symlinked, or not regular files."""
 
-    return tuple(path for path in paths if path.is_symlink() or not path.is_file())
+    return tuple(
+        path
+        for path in paths
+        if path.is_symlink() or has_symlinked_parent(path) or not path.is_file()
+    )
+
+
+def has_symlinked_parent(path: Path) -> bool:
+    """Return whether a path would traverse a non-root symlinked parent."""
+
+    return any(
+        parent.is_symlink() and not is_platform_root_alias(parent)
+        for parent in path.parents
+    )
 
 
 def preexisting_create_only_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
@@ -51,12 +64,7 @@ def preexisting_create_only_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
     return tuple(
         path
         for path in paths
-        if path.exists()
-        or path.is_symlink()
-        or any(
-            parent.is_symlink() and not is_platform_root_alias(parent)
-            for parent in path.parents
-        )
+        if path.exists() or path.is_symlink() or has_symlinked_parent(path)
     )
 
 
