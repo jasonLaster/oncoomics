@@ -29,6 +29,11 @@ RUN set -eux; \
     bcftools --version; \
     command -v java; \
     java -version; \
+    java_major="$(java -version 2>&1 | sed -n 's/.*version "\([0-9][0-9]*\).*/\1/p' | head -n 1)"; \
+    if [ -z "${java_major}" ] || [ "${java_major}" -lt 17 ]; then \
+        echo "Java 17+ is required in the Diana Parabricks runtime" >&2; \
+        exit 1; \
+    fi; \
     command -v pbrun; \
     pbrun version; \
     command -v python3; \

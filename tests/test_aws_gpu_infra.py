@@ -257,6 +257,9 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("COPY . /opt/diana-omics", dockerfile)
         self.assertIn("bcftools --version", dockerfile)
         self.assertIn("java -version", dockerfile)
+        self.assertIn("java_major=", dockerfile)
+        self.assertIn('if [ -z "${java_major}" ] || [ "${java_major}" -lt 17 ]', dockerfile)
+        self.assertIn("Java 17+ is required in the Diana Parabricks runtime", dockerfile)
         self.assertIn("command -v pbrun", dockerfile)
         self.assertIn("python3 -m diana_omics --help", dockerfile)
 
