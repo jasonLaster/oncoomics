@@ -2,6 +2,7 @@ import hljs from 'highlight.js/lib/core';
 import bash from 'highlight.js/lib/languages/bash';
 import markdown from 'highlight.js/lib/languages/markdown';
 import 'highlight.js/styles/github-dark.css';
+import { shouldOpenDirectory } from './tree.js';
 import './styles.css';
 
 hljs.registerLanguage('bash', bash);
@@ -32,6 +33,7 @@ const PUBLIC_SOURCES = [
     statusLabel: 'Live',
     loadingLabel: 'Loading live inventory…',
     downloadDirectory: 'diana-input',
+    expandByDefault: true,
   },
 ].map((source) => ({
   ...source,
@@ -366,7 +368,12 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
       </div>`;
   }).join('');
 
-  const startsOpen = Boolean(searchQuery) || isRoot || depth <= 1;
+  const startsOpen = shouldOpenDirectory({
+    hasSearchQuery: Boolean(searchQuery),
+    isRoot,
+    depth,
+    source: directory.source,
+  });
   const sourceTitle = directory.source ? ` title="${escapeHtml(directory.source.description)}"` : '';
 
   return `
