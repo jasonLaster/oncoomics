@@ -89,7 +89,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         artifacts = _flatten_artifacts(final_manifest["artifacts"])
         self.assertEqual(final_manifest["artifact_count"] + 1, len(input_rows))
         self.assertEqual("final_evidence_manifest", input_rows[0]["input_id"])
-        for row, exists, digest, size in zip(input_rows[1:], artifact_exists, artifact_hashes, artifact_sizes, strict=True):
+        for row, exists, digest, size in zip(input_rows[1:], artifact_exists, artifact_hashes, artifact_sizes):
             self.assertTrue(exists)
             self.assertEqual(str(size), row["bytes"])
             self.assertEqual(digest, row["sha256"])

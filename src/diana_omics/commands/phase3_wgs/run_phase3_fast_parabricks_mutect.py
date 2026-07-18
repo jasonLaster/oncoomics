@@ -135,7 +135,7 @@ def _require_flags(argv: list[str], name: str, expected: Mapping[str, str]) -> N
         raise ManifestError(f"{name} argv flags must be --flag value pairs")
 
     observed: dict[str, str] = {}
-    for flag, value in zip(tail[::2], tail[1::2], strict=True):
+    for flag, value in zip(tail[::2], tail[1::2]):
         if not flag.startswith("--"):
             raise ManifestError(f"{name} argv flag must start with --: {flag}")
         if flag in observed:

@@ -28,6 +28,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_VERIFY_AND_PUBLISH", text)
         self.assertIn("process FAST_STAGE_DETERMINISTIC_REPORT", text)
         self.assertIn("process FAST_STAGE_ROSALIND_PACKET", text)
+        self.assertIn("process FAST_STAGE_BLOCKED_CROSSCHECKS", text)
         self.assertNotIn("process FAST_STAGE_INPUTS", text)
         self.assertIn("workflow PHASE3_WGS_FAST", text)
         self.assertIn("'phase3_wgs_fast'", text)
@@ -66,6 +67,10 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_wgs_fast_final_evidence_manifest", text)
         self.assertIn("phase3_fast_deterministic_evidence", text)
         self.assertIn("rosalind_hrd_reviewer_packet", text)
+        self.assertIn("blocked_method", text)
+        self.assertIn("facets_scarhrd_blocked", text)
+        self.assertIn("oncoanalyser_chord_blocked", text)
+        self.assertIn("hrdetect_blocked", text)
         self.assertIn("phase3_wgs_fast_filter_mutect_plan", text)
 
     def test_fast_input_manifest_receipts_are_nextflow_path_inputs(self) -> None:
@@ -141,6 +146,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("FAST_CNV_EVIDENCE_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
         self.assertIn("FAST_SV_EVIDENCE_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
         self.assertIn("FAST_FILTER_MUTECT_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
+        self.assertIn("FAST_STAGE_BLOCKED_CROSSCHECKS(FAST_STAGE_ROSALIND_PACKET.out)", text)
         self.assertIn("phase3_fast_replication_mode.toString().replace('-', '_') == 'apply'", text)
         self.assertIn('export PHASE3_WGS_FAST_INPUT_MANIFEST="\\$PWD/${input_manifest}"', text)
         self.assertIn('export PHASE3_WGS_FAST_CACHE_PREFIX="${params.phase3_fast_cache_prefix}"', text)
@@ -270,6 +276,33 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_fast_sv_evidence_output_root = '/scratch/diana/phase3_wgs_fast/sv_evidence'", config)
         self.assertIn("phase3_fast_sv_evidence_threads = 8", config)
         self.assertIn("phase3_fast_filter_mutect_output_root = '/scratch/diana/phase3_wgs_fast/filter_mutect'", config)
+
+    def test_blocked_crosschecks_are_staged_after_rosalind(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_STAGE_BLOCKED_CROSSCHECKS") :]
+        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        self.assertIn("label 'cpu_io'", process)
+        self.assertIn("path(rosalind_report_manifest)", process)
+        self.assertIn("generate_blocked_hrd_crosscheck_reports.py", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/blocked_crosschecks", process)
+        for method_id in (
+            "facets_scarhrd_blocked",
+            "oncoanalyser_chord_blocked",
+            "hrdetect_blocked",
+        ):
+            self.assertIn(
+                f"workspace/results/phase3_wgs_fast/blocked_crosschecks/{method_id}/method_spec.json",
+                process,
+            )
+            self.assertIn(
+                f"workspace/results/phase3_wgs_fast/blocked_crosschecks/{method_id}/report.md",
+                process,
+            )
+            self.assertIn(
+                f"workspace/results/phase3_wgs_fast/blocked_crosschecks/{method_id}/report_manifest.json",
+                process,
+            )
 
     def test_small_variant_execution_keeps_scratch_paths_worker_local(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")

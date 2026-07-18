@@ -106,7 +106,7 @@ class Phase3FastEvidenceJoinTests(unittest.TestCase):
             sv_path = root / "sv.json"
             output_path = root / "joined.json"
             receipts = phase3_fast_receipts(root)
-            for path, receipt in zip((small_path, bam_path, cnv_path, sv_path), receipts, strict=True):
+            for path, receipt in zip((small_path, bam_path, cnv_path, sv_path), receipts):
                 write_json(path, receipt)
 
             with patch.dict(

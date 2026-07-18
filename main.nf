@@ -1650,6 +1650,71 @@ process FAST_STAGE_ROSALIND_PACKET {
     """
 }
 
+process FAST_STAGE_BLOCKED_CROSSCHECKS {
+    tag "fast_stage_blocked_crosschecks_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '1 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/blocked_crosschecks", mode: 'copy', overwrite: true
+
+    input:
+    tuple path(rosalind_run_manifest),
+          path(rosalind_packet_index),
+          path(rosalind_cloud_materialization_plan),
+          path(rosalind_input_evidence_index),
+          path(rosalind_sample_validation_summary),
+          path(rosalind_hrd_adapter_status),
+          path(rosalind_research_context_sources),
+          path(rosalind_next_actions),
+          path(rosalind_reviewer_packet),
+          path(rosalind_report),
+          path(rosalind_report_manifest)
+
+    output:
+    tuple path('workspace/results/phase3_wgs_fast/blocked_crosschecks/facets_scarhrd_blocked/method_spec.json'),
+          path('workspace/results/phase3_wgs_fast/blocked_crosschecks/facets_scarhrd_blocked/report.md'),
+          path('workspace/results/phase3_wgs_fast/blocked_crosschecks/facets_scarhrd_blocked/report_manifest.json'),
+          path('workspace/results/phase3_wgs_fast/blocked_crosschecks/oncoanalyser_chord_blocked/method_spec.json'),
+          path('workspace/results/phase3_wgs_fast/blocked_crosschecks/oncoanalyser_chord_blocked/report.md'),
+          path('workspace/results/phase3_wgs_fast/blocked_crosschecks/oncoanalyser_chord_blocked/report_manifest.json'),
+          path('workspace/results/phase3_wgs_fast/blocked_crosschecks/hrdetect_blocked/method_spec.json'),
+          path('workspace/results/phase3_wgs_fast/blocked_crosschecks/hrdetect_blocked/report.md'),
+          path('workspace/results/phase3_wgs_fast/blocked_crosschecks/hrdetect_blocked/report_manifest.json')
+
+    script:
+    """
+    set -euo pipefail
+    test -s "${rosalind_run_manifest}"
+    test -s "${rosalind_packet_index}"
+    test -s "${rosalind_report_manifest}"
+
+    "${params.python_bin}" "${params.repo_dir}/scripts/generate_blocked_hrd_crosscheck_reports.py" \
+        --output-dir "\$PWD/workspace/results/phase3_wgs_fast/blocked_crosschecks"
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    output="workspace/results/phase3_wgs_fast/blocked_crosschecks"
+    mkdir -p "\$output"
+    for method_id in facets_scarhrd_blocked oncoanalyser_chord_blocked hrdetect_blocked; do
+      mkdir -p "\$output/\$method_id"
+      cat > "\$output/\$method_id/method_spec.json" <<JSON
+    {"schema_version":1,"method_id":"\$method_id","execution_status":"not_run","evidence_status":"blocked","interpretation_status":"no_call","patient_result":"none"}
+    JSON
+      cat > "\$output/\$method_id/report.md" <<'MD'
+    # Blocked HRD cross-check report
+
+    Stubbed blocked `no_call` report.
+    MD
+      cat > "\$output/\$method_id/report_manifest.json" <<JSON
+    {"schema_version":1,"method_id":"\$method_id","report_kind":"blocked_method","evidence_status":"blocked","authorized_hrd_state":"no_call","classification_authorized":false}
+    JSON
+    done
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -1746,6 +1811,7 @@ workflow PHASE3_WGS_FAST {
             FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out, small_variant_artifacts_for_publish, aux_artifacts_for_publish)
             FAST_STAGE_DETERMINISTIC_REPORT(FAST_VERIFY_AND_PUBLISH.out)
             FAST_STAGE_ROSALIND_PACKET(FAST_STAGE_DETERMINISTIC_REPORT.out, FAST_VERIFY_AND_PUBLISH.out)
+            FAST_STAGE_BLOCKED_CROSSCHECKS(FAST_STAGE_ROSALIND_PACKET.out)
         } else {
             FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
             FAST_BAM_QC_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)

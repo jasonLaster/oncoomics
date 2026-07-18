@@ -23,8 +23,10 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("FAST_VERIFY_AND_PUBLISH", text)
         self.assertIn("FAST_STAGE_DETERMINISTIC_REPORT", text)
         self.assertIn("FAST_STAGE_ROSALIND_PACKET", text)
+        self.assertIn("FAST_STAGE_BLOCKED_CROSSCHECKS", text)
         self.assertIn("evidence_join_manifest.json", text)
         self.assertIn("final_evidence_manifest.json", text)
+        self.assertIn("generate_blocked_hrd_crosscheck_reports.py", text)
 
     def test_next_generation_doc_tracks_bam_qc_plan_seam(self) -> None:
         text = NEXT_GEN.read_text(encoding="utf-8")

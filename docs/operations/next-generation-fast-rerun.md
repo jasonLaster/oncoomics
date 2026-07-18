@@ -208,6 +208,9 @@ FAST_CNV_EVIDENCE
 FAST_SV_EVIDENCE
 FAST_EVIDENCE_JOIN
 FAST_VERIFY_AND_PUBLISH
+FAST_STAGE_DETERMINISTIC_REPORT     five-file deterministic method report
+FAST_STAGE_ROSALIND_PACKET          Diana WGS Rosalind reviewer packet
+FAST_STAGE_BLOCKED_CROSSCHECKS      FACETS/CHORD/HRDetect blocked no-call packets
 ```
 
 Implementation rules:
@@ -381,6 +384,13 @@ portable final artifact tree to `build:rosalind-hrd-packet` as the Diana WGS
 sample set. That reporting-only bridge emits a Rosalind reviewer packet from
 the same Phase 3 fast hashes without inventing SBS96, allele-specific CNV/LOH,
 or production SV sidecars that the fast evidence tree does not contain.
+`FAST_STAGE_BLOCKED_CROSSCHECKS` consumes the Rosalind packet as an ordering
+barrier and runs `scripts/generate_blocked_hrd_crosscheck_reports.py` to emit
+the final three canonical no-call method packets: FACETS→scarHRD,
+Oncoanalyser→CHORD, and HRDetect. These tiny reports contain no patient-derived
+result; they only document the exact route prerequisites, current blockers,
+source revisions, and next validation gates required before those methods can
+be executed or compared against the deterministic and Rosalind reports.
 
 ### Gate 1: P5en and Parabricks smoke
 
