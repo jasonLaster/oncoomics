@@ -43,6 +43,7 @@ class CliParityTest(unittest.TestCase):
             "run:known-answer-bounded-non-dry",
             "run:known-answer-expanded-cohort",
             "run:known-answer-public-findings",
+            "run:phase3-fast-filter-mutect",
             "run:phase3-fast-parabricks-mutect",
             "smoke:alignment",
             "smoke:full-reference",

@@ -294,6 +294,10 @@ materialized.
 `FAST_FILTER_MUTECT_PLAN` consumes the same staged-input manifest plus the
 Parabricks Mutect plan and emits the exact CPU tail for matched-normal pileups,
 contamination, read-orientation priors, `FilterMutectCalls`, and VCF indexing.
+`FAST_FILTER_MUTECT` must require the completed Parabricks receipt, re-check
+the raw VCF, raw `.stats`, F1R2 tarball, and PoN-annotated VCF against that
+receipt, run only the planned GATK/bcftools commands, and write a completed
+receipt with bytes and SHA-256 for every tail artifact it materializes.
 It preserves the same `no_call` boundary: a filtered VCF is deterministic
 sample evidence, not a scalar HRD interpretation.
 

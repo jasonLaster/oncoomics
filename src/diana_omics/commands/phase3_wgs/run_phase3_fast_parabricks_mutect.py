@@ -118,6 +118,7 @@ def run_phase3_fast_parabricks_mutect(
     runner: CommandRunner,
     parabricks_mutect_plan_sha256: str,
 ) -> dict[str, Any]:
+    mutect_plan_sha = _require_hex(parabricks_mutect_plan_sha256, "parabricks_mutect_plan_sha256")
     commands = _validate_plan(plan)
     for _, argv in commands:
         runner.run(argv)
@@ -132,10 +133,7 @@ def run_phase3_fast_parabricks_mutect(
         "runtime": dict(_require_mapping(plan.get("runtime"), "runtime")),
         "source": {
             **dict(_require_mapping(plan.get("source"), "source")),
-            "parabricks_mutect_plan_sha256": _require_hex(
-                parabricks_mutect_plan_sha256,
-                "parabricks_mutect_plan_sha256",
-            ),
+            "parabricks_mutect_plan_sha256": mutect_plan_sha,
         },
         "inputs": dict(_require_mapping(plan.get("inputs"), "inputs")),
         "outputs": dict(_require_mapping(plan.get("outputs"), "outputs")),

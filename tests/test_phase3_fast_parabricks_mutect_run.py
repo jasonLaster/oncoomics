@@ -186,6 +186,21 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
                 parabricks_mutect_plan_sha256=SHA_1,
             )
 
+    def test_rejects_invalid_plan_sha_before_running_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = parabricks_plan(Path(tmp))
+            write_materialized_outputs(plan)
+
+            runner = RecordingRunner()
+            with self.assertRaisesRegex(run_mutect.ManifestError, "parabricks_mutect_plan_sha256"):
+                run_mutect.run_phase3_fast_parabricks_mutect(
+                    plan,
+                    runner=runner,
+                    parabricks_mutect_plan_sha256="not-a-sha",
+                )
+
+        self.assertEqual([], runner.commands)
+
     def test_rejects_command_that_would_skip_pbrun(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = parabricks_plan(Path(tmp))
