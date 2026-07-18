@@ -1268,7 +1268,10 @@ def compact_sequenza_alias_contract(route_plan: Mapping[str, Any]) -> dict[str, 
         "route": "sequenza_scarhrd",
         "status": "blocked",
         "run_alias": run_alias,
-        "planned_aliases": dict(planned_aliases),
+        "planned_aliases": {
+            "tumor": planned_aliases["tumor_sample"],
+            "normal": planned_aliases["normal_sample"],
+        },
         "planned_alias_outputs": dict(planned_alias_outputs),
         "method_parameters": {
             "sequenza": {
@@ -1288,6 +1291,49 @@ def compact_sequenza_alias_contract(route_plan: Mapping[str, Any]) -> dict[str, 
         },
         "attestations": dict(attestations),
     }
+
+
+def diana_wgs_report_provenance(deterministic_binding: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the deterministic provenance safe to embed in AI-facing reports."""
+    provenance = {
+        str(key): value
+        for key, value in deterministic_binding.items()
+        if key != "artifact_index"
+    }
+    phase3_fast = provenance.get("phase3_fast")
+    if deterministic_binding.get("binding_kind") == "phase3_fast_final" and isinstance(
+        phase3_fast, Mapping
+    ):
+        phase3_summary = dict(phase3_fast)
+        run = phase3_summary.get("run")
+        phase3_summary["run"] = (
+            {"run_id": str(run.get("run_id", ""))}
+            if isinstance(run, Mapping)
+            else {}
+        )
+        workflow = phase3_summary.get("workflow")
+        phase3_summary["workflow"] = (
+            {
+                "workflow_id": str(workflow.get("name", "")),
+                "parameter_sha256": str(workflow.get("parameter_sha256", "")),
+                "source_commit": str(workflow.get("source_commit", "")),
+            }
+            if isinstance(workflow, Mapping)
+            else {}
+        )
+        sequenza_contract = phase3_summary.get(
+            "sequenza_scarhrd_alias_input_contract"
+        )
+        if isinstance(sequenza_contract, Mapping):
+            sequenza_summary = dict(sequenza_contract)
+            planned_outputs = sequenza_summary.pop("planned_alias_outputs", {})
+            if isinstance(planned_outputs, Mapping):
+                sequenza_summary["planned_alias_output_roles"] = sorted(
+                    str(key) for key in planned_outputs
+                )
+            phase3_summary["sequenza_scarhrd_alias_input_contract"] = sequenza_summary
+        provenance["phase3_fast"] = phase3_summary
+    return provenance
 
 
 def require_diana_wgs_artifact_index_binding(
@@ -1522,7 +1568,7 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
                 f"{sequenza_route.get('status', 'missing')}; "
                 f"execution is {sequenza_route.get('execution_status', 'missing')}; "
                 "planned aliases are "
-                f"{sequenza_aliases['tumor_sample']}/{sequenza_aliases['normal_sample']}; "
+                f"{sequenza_aliases['tumor']}/{sequenza_aliases['normal']}; "
                 "sequenza.female is "
                 f"{json.dumps(sequenza_alias_contract['method_parameters']['sequenza']['female'])}; "
                 "final BAM contract published is "
@@ -2192,7 +2238,11 @@ def write_packet_to_dir(
                 for row in adapter_rows
             ],
             "blockers": list(blockers),
-            **({"provenance": deterministic_binding} if deterministic_binding else {}),
+            **(
+                {"provenance": diana_wgs_report_provenance(deterministic_binding)}
+                if deterministic_binding
+                else {}
+            ),
         },
     }
     write_json_create_only(report_manifest_path, report_manifest)

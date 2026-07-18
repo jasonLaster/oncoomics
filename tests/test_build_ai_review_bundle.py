@@ -17,6 +17,8 @@ if str(SCRIPT_DIR) not in sys.path:
 import build_ai_review_bundle as BUILD  # noqa: E402
 import hrd_report_inventory as INVENTORY  # noqa: E402
 import stage_ai_review_inputs as STAGE  # noqa: E402
+from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as PACKET  # noqa: E402
+from test_rosalind_hrd_packet import write_phase3_fast_deterministic_report  # noqa: E402
 
 
 def write_json(path: Path, value: dict) -> None:
@@ -208,6 +210,44 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 Path(temporary) / "stage-receipt.json",
             )
             self.assertEqual(receipt["status"], "passed")
+
+    def test_accepts_real_phase3_fast_rosalind_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                root / "phase3_fast"
+            )
+            with (
+                mock.patch.object(PACKET, "path_from_root", lambda relative: root / relative),
+                mock.patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                PACKET.write_packet(PACKET.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+            fixture = AiReviewBundleFixture(root / "bundle-fixture")
+            fixture.manifests[1] = (
+                root
+                / "results/rosalind_hrd/diana_wgs/phase3-fast/report_manifest.json"
+            )
+
+            built = fixture.run()
+
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            bundle = (fixture.bundle_dir / "review_bundle.json").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("sequenza_scarhrd_alias_input_contract", bundle)
+            self.assertIn("subject01_tumor", bundle)
+            self.assertIn("subject01_normal", bundle)
+            self.assertNotIn("final/artifacts", bundle)
+            self.assertNotIn(".vcf.gz", bundle)
+            self.assertNotIn("tumor_sample", bundle)
+            self.assertNotIn("normal_sample", bundle)
 
     def test_records_exact_numeric_tokens_as_quantitative_facts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

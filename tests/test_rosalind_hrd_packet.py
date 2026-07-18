@@ -1,4 +1,5 @@
 import hashlib
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -670,14 +671,24 @@ class RosalindHrdPacketTest(unittest.TestCase):
             )
             self.assertEqual(
                 {
-                    "tumor_bam": "tumor.bam",
-                    "tumor_bai": "tumor.bam.bai",
-                    "normal_bam": "normal.bam",
-                    "normal_bai": "normal.bam.bai",
-                    "staged_validation": "staged_input_validation.json",
+                    "tumor": "subject01_tumor",
+                    "normal": "subject01_normal",
                 },
-                sequenza_contract["planned_alias_outputs"],
+                sequenza_contract["planned_aliases"],
             )
+            self.assertNotIn("tumor_sample", json.dumps(sequenza_contract))
+            self.assertNotIn("normal_sample", json.dumps(sequenza_contract))
+            self.assertEqual(
+                [
+                    "normal_bai",
+                    "normal_bam",
+                    "staged_validation",
+                    "tumor_bai",
+                    "tumor_bam",
+                ],
+                sequenza_contract["planned_alias_output_roles"],
+            )
+            self.assertNotIn(".bam", json.dumps(sequenza_contract))
             self.assertFalse(
                 sequenza_contract["attestations"]["final_bam_contract_published"]
             )
