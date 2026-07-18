@@ -448,7 +448,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
 
                 self.assertEqual([], [path for path in real_output.rglob("*") if path.is_file()])
 
-    def test_removes_partially_installed_report_after_copy_failure(self) -> None:
+    def test_preserves_unexpected_child_after_copy_failure(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             manifest_path, final_root, final_manifest = _write_final_manifest(root)
@@ -473,7 +473,13 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                         output_dir=output,
                     )
 
-            self.assertFalse(output.exists())
+            self.assertTrue(output.is_dir())
+            self.assertEqual(
+                (output / "unexpected.tmp").read_text(encoding="utf-8"),
+                "stray partial file\n",
+            )
+            for name in stage_report.OUTPUT_NAMES:
+                self.assertFalse((output / name).exists())
 
 
 if __name__ == "__main__":

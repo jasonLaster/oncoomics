@@ -820,20 +820,26 @@ def _install_packet(
         for name in sorted(OUTPUT_NAMES):
             source = staging / name
             destination = output / name
-            with source.open("rb") as source_handle:
+            destination_preexisted = destination.exists() or destination.is_symlink()
+            descriptor = -1
+            try:
                 descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
-                try:
-                    installed.append(destination)
+                with source.open("rb") as source_handle:
                     with os.fdopen(descriptor, "wb") as destination_handle:
                         descriptor = -1
                         shutil.copyfileobj(source_handle, destination_handle)
                         destination_handle.flush()
                         os.fsync(destination_handle.fileno())
-                finally:
-                    if descriptor >= 0:
-                        os.close(descriptor)
+            except Exception:
+                if descriptor >= 0:
+                    os.close(descriptor)
+                if not destination_preexisted:
+                    installed.append(destination)
+                raise
+            installed.append(destination)
     except Exception:
-        shutil.rmtree(output, ignore_errors=True)
+        for path in reversed(installed):
+            path.unlink(missing_ok=True)
         raise
 
 
