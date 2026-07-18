@@ -353,7 +353,7 @@ class GenerateSynthesisTests(unittest.TestCase):
                 GENERATE.copy_create_only(source, destination)
 
             self.assertEqual(destination.read_bytes(), b"one\n")
-            self.assertEqual(fsync.call_count, 1)
+            self.assertEqual(fsync.call_count, 2)
 
             source.write_bytes(b"two\n")
             with self.assertRaisesRegex(
@@ -399,6 +399,87 @@ class GenerateSynthesisTests(unittest.TestCase):
                     side_effect=fail_with_unexpected_child,
                 ),
                 self.assertRaisesRegex(ValueError, "synthetic install failure"),
+            ):
+                GENERATE.install_packet_create_only(staged_paths, output)
+
+            self.assertFalse(output.exists())
+
+    def test_synthesis_packet_install_removes_partial_after_file_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+
+            with (
+                mock.patch.object(
+                    GENERATE.os,
+                    "fsync",
+                    side_effect=OSError("synthetic file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                GENERATE.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_synthesis_packet_install_removes_partial_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+
+            with (
+                mock.patch.object(
+                    GENERATE.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                GENERATE.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_synthesis_install_removes_output_after_final_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "synthesis"
+            staging.mkdir()
+            output.mkdir()
+            staged_paths = []
+            for name in (
+                "report.md",
+                "agreement_disagreement.csv",
+                "report_manifest.json",
+            ):
+                path = staging / name
+                path.write_text(f"{name}\n", encoding="utf-8")
+                staged_paths.append(path)
+
+            with (
+                mock.patch.object(
+                    GENERATE,
+                    "fsync_directory",
+                    side_effect=(
+                        None,
+                        None,
+                        None,
+                        OSError("synthetic synthesis directory fsync failure"),
+                    ),
+                ),
+                self.assertRaisesRegex(
+                    OSError,
+                    "synthetic synthesis directory fsync failure",
+                ),
             ):
                 GENERATE.install_packet_create_only(staged_paths, output)
 
