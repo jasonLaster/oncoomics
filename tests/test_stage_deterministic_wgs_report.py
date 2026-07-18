@@ -302,9 +302,9 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ValueError,
-                "staged report manifest is stale for report.md",
+                "report manifest is stale for report.md",
             ):
-                REPORT_MODULE.require_staged_report_manifest(staging)
+                REPORT_MODULE.require_report_manifest(staging)
 
     def test_staged_report_manifest_rejects_stale_support_binding(self) -> None:
         with tempfile.TemporaryDirectory(
@@ -317,9 +317,9 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ValueError,
-                "staged report manifest is stale for readiness.csv",
+                "report manifest is stale for readiness.csv",
             ):
-                REPORT_MODULE.require_staged_report_manifest(staging)
+                REPORT_MODULE.require_report_manifest(staging)
 
     def test_failed_packet_install_removes_only_installed_packet_files(self) -> None:
         with tempfile.TemporaryDirectory(
@@ -396,6 +396,79 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                 ),
             ):
                 REPORT_MODULE.install_packet_create_only(staged_paths, output)
+
+            self.assertTrue(output.is_dir())
+            self.assertEqual([], list(output.iterdir()))
+
+    def test_packet_install_removes_installed_files_after_stale_installed_manifest(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "report"
+            staging.mkdir()
+            output.mkdir()
+            write_minimal_report_packet(staging)
+            manifest_path = staging / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["support_sha256"]["readiness.csv"] = "0" * 64
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report manifest is stale for readiness.csv",
+            ):
+                REPORT_MODULE.install_packet_create_only(
+                    [staging / name for name in REPORT_MODULE.OUTPUT_NAMES],
+                    output,
+                )
+
+            self.assertTrue(output.is_dir())
+            self.assertEqual([], list(output.iterdir()))
+
+    def test_packet_install_rechecks_installed_files_after_final_directory_fsync(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "report"
+            staging.mkdir()
+            output.mkdir()
+            write_minimal_report_packet(staging)
+            real_fsync_directory = REPORT_MODULE.fsync_directory
+
+            def tamper_after_output_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                if path == output:
+                    (output / "input_sha256.csv").write_text(
+                        "tampered after final output fsync\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                patch.object(
+                    REPORT_MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_output_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report output packet changed during install: input_sha256.csv",
+                ),
+            ):
+                REPORT_MODULE.install_packet_create_only(
+                    [staging / name for name in REPORT_MODULE.OUTPUT_NAMES],
+                    output,
+                )
 
             self.assertTrue(output.is_dir())
             self.assertEqual([], list(output.iterdir()))

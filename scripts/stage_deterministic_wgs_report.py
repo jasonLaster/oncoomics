@@ -1289,15 +1289,15 @@ def write_staged_csv(
     write_staged_text(path, buffer.getvalue())
 
 
-def require_staged_report_manifest(staging: Path) -> None:
-    manifest_path = staging / "report_manifest.json"
-    require_staged_file(manifest_path)
+def require_report_manifest(packet_dir: Path) -> None:
+    manifest_path = packet_dir / "report_manifest.json"
+    require_real_input_path(manifest_path, "report packet")
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        raise ValueError("staged report manifest must be a JSON object")
+        raise ValueError("report manifest must be a JSON object")
     support_hashes = payload.get("support_sha256")
     if not isinstance(support_hashes, dict):
-        raise ValueError("staged report manifest lacks support hashes")
+        raise ValueError("report manifest lacks support hashes")
     expected = [("report.md", str(payload.get("report_sha256", "")))]
     expected.extend(
         (name, str(support_hashes.get(name, "")))
@@ -1310,10 +1310,10 @@ def require_staged_report_manifest(staging: Path) -> None:
     )
     for name, expected_sha256 in expected:
         if not HEX64.fullmatch(expected_sha256):
-            raise ValueError("staged report manifest has malformed SHA-256 for " + name)
-        require_staged_file(staging / name)
-        if sha256(staging / name) != expected_sha256:
-            raise ValueError("staged report manifest is stale for " + name)
+            raise ValueError("report manifest has malformed SHA-256 for " + name)
+        path = require_real_input_path(packet_dir / name, "report packet")
+        if sha256(path) != expected_sha256:
+            raise ValueError("report manifest is stale for " + name)
 
 
 def copy_create_only(source: Path, destination: Path) -> None:
@@ -1368,9 +1368,13 @@ def fsync_directory(path: Path) -> None:
 
 def install_packet_create_only(staged_paths: Iterable[Path], output: Path) -> None:
     installed: list[Path] = []
+    expected_hashes: dict[Path, str] = {}
     try:
         for path in staged_paths:
             destination = output / path.name
+            expected_hashes[destination] = sha256(
+                require_real_input_path(path, "staged report packet")
+            )
             destination_preexisted = destination.exists() or destination.is_symlink()
             try:
                 copy_create_only(path, destination)
@@ -1380,6 +1384,14 @@ def install_packet_create_only(staged_paths: Iterable[Path], output: Path) -> No
                 raise
             installed.append(destination)
         fsync_directory(output)
+        for destination, expected_sha256 in expected_hashes.items():
+            path = require_real_input_path(destination, "report output packet")
+            if sha256(path) != expected_sha256:
+                raise ValueError(
+                    "report output packet changed during install: "
+                    + destination.name
+                )
+        require_report_manifest(output)
     except Exception:
         for path in reversed(installed):
             path.unlink(missing_ok=True)
@@ -2528,7 +2540,7 @@ def main() -> None:
         }
         manifest_path = staging / "report_manifest.json"
         write_staged_json(manifest_path, report_manifest)
-        require_staged_report_manifest(staging)
+        require_report_manifest(staging)
         staged_paths.append(manifest_path)
         findings = scan_outputs(staged_paths, tokens)
         if findings:
