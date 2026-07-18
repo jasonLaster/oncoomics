@@ -50,8 +50,39 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
         summary = verify.validate_mirror_receipt(receipt())
 
         self.assertEqual(DESTINATION_DIGEST, summary["destination_digest"])
+        self.assertEqual("sha256:" + "d" * 64, summary["diana_omics_dockerfile_sha256"])
+        self.assertEqual(DIANA_GIT_COMMIT, summary["diana_omics_git_commit"])
         self.assertEqual(f"{REPOSITORY}@{DESTINATION_DIGEST}", summary["parabricks_container"])
         self.assertEqual(EXPECTED_TAG, summary["tag"])
+
+    def test_validates_current_diana_source_binding(self) -> None:
+        summary = verify.validate_mirror_receipt(receipt())
+
+        verify.validate_current_diana_source_binding(
+            summary,
+            current={
+                "dockerfile_sha256": "sha256:" + "d" * 64,
+                "git_commit": DIANA_GIT_COMMIT,
+            },
+        )
+
+        with self.assertRaisesRegex(verify.MirrorReceiptError, "Git HEAD"):
+            verify.validate_current_diana_source_binding(
+                summary,
+                current={
+                    "dockerfile_sha256": "sha256:" + "d" * 64,
+                    "git_commit": "e" * 40,
+                },
+            )
+
+        with self.assertRaisesRegex(verify.MirrorReceiptError, "Dockerfile"):
+            verify.validate_current_diana_source_binding(
+                summary,
+                current={
+                    "dockerfile_sha256": "sha256:" + "e" * 64,
+                    "git_commit": DIANA_GIT_COMMIT,
+                },
+            )
 
     def test_rejects_unpinned_source_image(self) -> None:
         malformed = receipt()
@@ -79,6 +110,13 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
         malformed["diana_omics"]["git_commit"] = "c" * 12
 
         with self.assertRaisesRegex(verify.MirrorReceiptError, "40-character Git SHA"):
+            verify.validate_mirror_receipt(malformed)
+
+    def test_rejects_malformed_dockerfile_sha256(self) -> None:
+        malformed = receipt()
+        malformed["diana_omics"]["dockerfile_sha256"] = "d" * 64
+
+        with self.assertRaisesRegex(verify.MirrorReceiptError, "dockerfile_sha256"):
             verify.validate_mirror_receipt(malformed)
 
     def test_rejects_destination_container_mismatch(self) -> None:

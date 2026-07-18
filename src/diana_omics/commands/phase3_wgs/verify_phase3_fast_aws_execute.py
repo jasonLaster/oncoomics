@@ -209,6 +209,7 @@ def load_mirror_receipt_from_environment(*, expected_params: Mapping[str, Any]) 
     try:
         receipt, path = mirror_receipt.load_receipt_from_environment()
         summary = mirror_receipt.validate_mirror_receipt(receipt)
+        mirror_receipt.validate_current_diana_source_binding(summary)
     except mirror_receipt.MirrorReceiptError as error:
         raise Phase3FastExecuteError(f"Parabricks mirror receipt is not safe: {error}") from error
 

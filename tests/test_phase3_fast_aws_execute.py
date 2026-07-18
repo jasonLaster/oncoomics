@@ -44,6 +44,13 @@ def parabricks_mirror_receipt() -> dict:
     }
 
 
+def current_diana_source() -> dict:
+    return {
+        "dockerfile_sha256": "sha256:" + "d" * 64,
+        "git_commit": "c" * 40,
+    }
+
+
 def passed_smoke_result() -> dict:
     return {
         "schema": "phase3_wgs_fast_gpu_smoke.v1",
@@ -300,7 +307,36 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
                 with self.assertRaisesRegex(verify.Phase3FastExecuteError, "Parabricks mirror receipt"):
                     verify.load_mirror_receipt_from_environment(expected_params=expected_gpu_params())
 
-    def test_environment_loader_reads_matching_parabricks_mirror_receipt(self) -> None:
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.mirror_receipt.current_diana_source")
+    def test_rejects_parabricks_mirror_receipt_from_stale_diana_source(self, current_source) -> None:
+        current_source.return_value = current_diana_source()
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parabricks_mirror_receipt.json"
+            stale = parabricks_mirror_receipt()
+            stale["diana_omics"]["git_commit"] = "e" * 40
+            stale["destination"]["tag"] = "sha256-" + "b" * 64 + "-diana-" + "e" * 12
+            write_json(path, stale)
+
+            with patch.dict("os.environ", {"PARABRICKS_MIRROR_RECEIPT": str(path)}, clear=False):
+                with self.assertRaisesRegex(verify.Phase3FastExecuteError, "current Diana Git HEAD"):
+                    verify.load_mirror_receipt_from_environment(expected_params=expected_gpu_params())
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.mirror_receipt.current_diana_source")
+    def test_rejects_parabricks_mirror_receipt_from_stale_dockerfile(self, current_source) -> None:
+        current_source.return_value = current_diana_source()
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parabricks_mirror_receipt.json"
+            stale = parabricks_mirror_receipt()
+            stale["diana_omics"]["dockerfile_sha256"] = "sha256:" + "e" * 64
+            write_json(path, stale)
+
+            with patch.dict("os.environ", {"PARABRICKS_MIRROR_RECEIPT": str(path)}, clear=False):
+                with self.assertRaisesRegex(verify.Phase3FastExecuteError, "current Diana Parabricks Dockerfile"):
+                    verify.load_mirror_receipt_from_environment(expected_params=expected_gpu_params())
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.mirror_receipt.current_diana_source")
+    def test_environment_loader_reads_matching_parabricks_mirror_receipt(self, current_source) -> None:
+        current_source.return_value = current_diana_source()
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "parabricks_mirror_receipt.json"
             write_json(path, parabricks_mirror_receipt())

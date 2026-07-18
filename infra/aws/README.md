@@ -190,7 +190,9 @@ receipt, and prints the exact
 `TF_VAR_parabricks_container=<repository>@sha256:<digest>` value to review and
 apply. Re-running the helper for the same source digest and Diana Git revision
 reuses the immutable ECR tag. Leave `parabricks_container` empty until that
-mirror receipt has passed `verify:parabricks-mirror-receipt`.
+mirror receipt has passed `verify:parabricks-mirror-receipt`; the verifier also
+checks that the receipt's Diana Git commit and `Dockerfile.parabricks` SHA-256
+match the checkout that is about to pin or execute the image.
 
 The `us-east-2` Batch job role also receives versioned read permission on the
 `us-east-1` raw-inputs and private-results source buckets and KMS decrypt

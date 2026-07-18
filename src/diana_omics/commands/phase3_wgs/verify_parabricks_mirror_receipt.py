@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -11,6 +12,7 @@ from ...paths import path_from_root
 from ...utils import read_json
 
 DEFAULT_RECEIPT = "results/phase3_wgs_fast/parabricks_mirror_receipt.json"
+DIANA_PARABRICKS_DOCKERFILE = "infra/aws/Dockerfile.parabricks"
 REQUIRED_AWS_REGION = "us-east-2"
 REQUIRED_PLATFORM = "linux/amd64"
 
@@ -88,7 +90,10 @@ def validate_mirror_receipt(receipt: Mapping[str, Any]) -> dict[str, str]:
     if GIT_COMMIT.fullmatch(git_commit) is None:
         raise MirrorReceiptError("diana_omics.git_commit must be a 40-character Git SHA")
 
-    _require_digest(diana_omics.get("dockerfile_sha256"), "diana_omics.dockerfile_sha256")
+    dockerfile_sha256 = _require_digest(
+        diana_omics.get("dockerfile_sha256"),
+        "diana_omics.dockerfile_sha256",
+    )
 
     expected_tag = f"sha256-{source_digest.removeprefix('sha256:')}-diana-{git_commit[:12]}"
     if destination.get("tag") != expected_tag:
@@ -96,6 +101,7 @@ def validate_mirror_receipt(receipt: Mapping[str, Any]) -> dict[str, str]:
 
     return {
         "diana_omics_git_commit": git_commit,
+        "diana_omics_dockerfile_sha256": dockerfile_sha256,
         "destination_digest": destination_digest,
         "parabricks_container": expected_container,
         "region": region,
@@ -104,6 +110,52 @@ def validate_mirror_receipt(receipt: Mapping[str, Any]) -> dict[str, str]:
         "source_image": source_image,
         "tag": expected_tag,
     }
+
+
+def sha256_path(path: Path) -> str:
+    if path.is_symlink() or not path.is_file():
+        raise MirrorReceiptError(f"{path} must be a real file")
+    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def current_git_commit(root: Path | None = None) -> str:
+    root = root or path_from_root(".")
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", "HEAD"],
+            check=True,
+            cwd=root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise MirrorReceiptError("Unable to read the current Diana Git HEAD") from error
+
+    commit = result.stdout.strip().lower()
+    if GIT_COMMIT.fullmatch(commit) is None:
+        raise MirrorReceiptError("Current Diana Git HEAD must be a 40-character Git SHA")
+    return commit
+
+
+def current_diana_source(root: Path | None = None) -> dict[str, str]:
+    root = root or path_from_root(".")
+    return {
+        "dockerfile_sha256": sha256_path(root / DIANA_PARABRICKS_DOCKERFILE),
+        "git_commit": current_git_commit(root),
+    }
+
+
+def validate_current_diana_source_binding(
+    summary: Mapping[str, str],
+    *,
+    current: Mapping[str, str] | None = None,
+) -> None:
+    current = current or current_diana_source()
+    if summary.get("diana_omics_git_commit") != current.get("git_commit"):
+        raise MirrorReceiptError("diana_omics.git_commit must match the current Diana Git HEAD")
+    if summary.get("diana_omics_dockerfile_sha256") != current.get("dockerfile_sha256"):
+        raise MirrorReceiptError("diana_omics.dockerfile_sha256 must match the current Diana Parabricks Dockerfile")
 
 
 def validate_ecr_image_details(
@@ -197,6 +249,7 @@ def main() -> None:
     try:
         receipt, path = load_receipt_from_environment()
         summary = validate_mirror_receipt(receipt)
+        validate_current_diana_source_binding(summary)
         observed_digest = load_mirror_digest(
             parabricks_container=summary["parabricks_container"],
             region=summary["region"],

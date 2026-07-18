@@ -500,10 +500,12 @@ Parabricks mirror receipt as `PARABRICKS_MIRROR_RECEIPT`, then pass the reviewed
 Gate 0 receipt paths and alias-only forbidden-token inventory as Nextflow
 arguments after `--`. The full execute alias intentionally repeats the GPU
 params, live Batch queue, live P5en compute-environment, mirror-receipt,
-mirrored-image, cache, and live-quota checks before starting Nextflow, then
-rejects missing, stubbed, malformed, or non-H200 smoke output. A stale
-non-`us-east-2`, non-P5en, misrouted, unpinned, unmirrored, under-quota,
-wrong-KMS, or smoke-skipping launch therefore still fails locally even when
+mirrored-image, cache, and live-quota checks before starting Nextflow. It also
+requires the reviewed mirror receipt to match the current Diana Git commit and
+`infra/aws/Dockerfile.parabricks` SHA-256, then rejects missing, stubbed,
+malformed, or non-H200 smoke output. A stale non-`us-east-2`, non-P5en,
+misrouted, source-mismatched, unpinned, unmirrored, under-quota, wrong-KMS, or
+smoke-skipping launch therefore still fails locally even when
 `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES` is present:
 
 ```sh
