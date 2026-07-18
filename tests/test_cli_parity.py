@@ -22,6 +22,7 @@ class CliParityTest(unittest.TestCase):
             "build:packet",
             "build:phase3-fast-input-manifest",
             "build:phase3-fast-cache-manifest",
+            "build:phase3-fast-parabricks-mutect-plan",
             "build:phase3-fast-replication-plan",
             "build:phase3-fast-staging-plan",
             "build:panel",

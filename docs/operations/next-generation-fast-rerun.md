@@ -275,6 +275,10 @@ for the eventual GPU or distributed CPU workers.
 After those commands materialize local files, `verify:phase3-fast-staged-inputs`
 hashes every staged object and writes the grouped local-file manifest that GPU
 and distributed CPU callers should consume.
+The plan-only `build:phase3-fast-parabricks-mutect-plan` command consumes that
+manifest and emits the exact `pbrun prepon`, `pbrun mutectcaller`, and
+`pbrun postpon` argument vectors for the first GPU short-variant pass without
+launching Parabricks.
 
 ### Gate 1: P5en and Parabricks smoke
 

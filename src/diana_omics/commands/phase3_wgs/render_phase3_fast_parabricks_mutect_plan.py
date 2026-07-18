@@ -1,0 +1,303 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from pathlib import Path
+from typing import Any, Mapping
+
+from ...paths import path_from_root
+from ...utils import ensure_parent, read_json
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri
+
+DEFAULT_INPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
+DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
+DEFAULT_OUTPUT_ROOT = "/scratch/diana/phase3_wgs_fast/parabricks_mutect"
+DEFAULT_NUM_GPUS = 8
+
+
+def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
+    if not isinstance(value, dict):
+        raise ManifestError(f"{label} must be a JSON object")
+    return value
+
+
+def _require_string(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ManifestError(f"{label} is required")
+    return value
+
+
+def _require_hex(value: Any, label: str) -> str:
+    if not isinstance(value, str) or HEX64.fullmatch(value) is None:
+        raise ManifestError(f"{label} must be 64 hex characters")
+    return value.lower()
+
+
+def _require_positive_int(value: Any, label: str) -> int:
+    if not isinstance(value, int) or value <= 0:
+        raise ManifestError(f"{label} must be a positive integer")
+    return value
+
+
+def _require_absolute_path(value: Any, label: str) -> str:
+    path = Path(_require_string(value, label))
+    if not path.is_absolute():
+        raise ManifestError(f"{label} must be an absolute path")
+    return str(path)
+
+
+def _require_output_root(value: str | os.PathLike[str]) -> Path:
+    root = Path(value)
+    if not root.is_absolute():
+        raise ManifestError("output_root must be an absolute path")
+    return root
+
+
+def _require_num_gpus(value: str | int | None) -> int:
+    if value is None or value == "":
+        return DEFAULT_NUM_GPUS
+    try:
+        parsed = int(value)
+    except ValueError as error:
+        raise ManifestError("PHASE3_WGS_FAST_PARABRICKS_NUM_GPUS must be an integer") from error
+    return _require_positive_int(parsed, "num_gpus")
+
+
+def _entry(container: Mapping[str, Any], key: str) -> Mapping[str, Any]:
+    return _require_mapping(container.get(key), key)
+
+
+def _artifact_path(entry: Mapping[str, Any], artifact: str) -> str:
+    if entry.get("artifact") != artifact:
+        raise ManifestError(f"{artifact} entry artifact must match")
+    return _require_absolute_path(entry.get("local_path"), f"{artifact} local_path")
+
+
+def _require_sample_id(entry: Mapping[str, Any], artifact: str) -> str:
+    return _require_string(entry.get("sample_id"), f"{artifact} sample_id")
+
+
+def _require_source(entry: Mapping[str, Any], artifact: str) -> dict[str, str]:
+    source = _require_mapping(entry.get("source"), f"{artifact} source")
+    return {
+        "uri": _require_s3_uri(source.get("uri"), f"{artifact} source uri"),
+        "version_id": _require_string(source.get("version_id"), f"{artifact} source version_id"),
+    }
+
+
+def _with_runtime(command: list[str], tmp_dir: str, log_file: str, num_gpus: int) -> list[str]:
+    return [
+        *command,
+        "--tmp-dir",
+        tmp_dir,
+        "--logfile",
+        log_file,
+        "--num-gpus",
+        str(num_gpus),
+    ]
+
+
+def _sha256_path(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def build_phase3_fast_parabricks_mutect_plan(
+    staged_inputs_manifest: Mapping[str, Any],
+    *,
+    staged_inputs_manifest_sha256: str,
+    output_root: str | os.PathLike[str] = DEFAULT_OUTPUT_ROOT,
+    num_gpus: int = DEFAULT_NUM_GPUS,
+) -> dict[str, Any]:
+    if staged_inputs_manifest.get("manifest_type") != "phase3_wgs_fast_staged_inputs_manifest":
+        raise ManifestError("staged inputs manifest_type must be phase3_wgs_fast_staged_inputs_manifest")
+    if staged_inputs_manifest.get("status") != "ready":
+        raise ManifestError("staged inputs status must be ready")
+    if _require_mapping(staged_inputs_manifest.get("interpretation"), "interpretation").get("authorized_hrd_state") != "no_call":
+        raise ManifestError("Parabricks Mutect plan authorized_hrd_state must remain no_call")
+
+    runtime = _require_mapping(staged_inputs_manifest.get("runtime"), "runtime")
+    if runtime.get("caller") != "parabricks_mutectcaller":
+        raise ManifestError("runtime caller must be parabricks_mutectcaller")
+
+    root = _require_output_root(output_root)
+    gpu_count = _require_positive_int(num_gpus, "num_gpus")
+    logs = root / "logs"
+    tmp = root / "tmp"
+    variants = root / "variants"
+
+    bam_pair = _require_mapping(staged_inputs_manifest.get("bam_pair"), "bam_pair")
+    tumor = _require_mapping(bam_pair.get("tumor"), "bam_pair.tumor")
+    normal = _require_mapping(bam_pair.get("normal"), "bam_pair.normal")
+    tumor_bam = _entry(tumor, "bam")
+    normal_bam = _entry(normal, "bam")
+    reference = _require_mapping(staged_inputs_manifest.get("reference"), "reference")
+    caller_resources = _require_mapping(staged_inputs_manifest.get("caller_resources"), "caller_resources")
+
+    reference_fasta = _artifact_path(_entry(reference, "fasta"), "reference.fa")
+    tumor_bam_path = _artifact_path(tumor_bam, "tumor.bam")
+    normal_bam_path = _artifact_path(normal_bam, "normal.bam")
+    germline_resource_vcf = _artifact_path(_entry(caller_resources, "germline_resource_vcf"), "germline_resource_vcf")
+    panel_of_normals_vcf = _artifact_path(_entry(caller_resources, "panel_of_normals_vcf"), "panel_of_normals_vcf")
+    mutect2_interval_set = _artifact_path(_entry(caller_resources, "mutect2_interval_set"), "mutect2_interval_set")
+
+    if Path(panel_of_normals_vcf).parent != Path(_artifact_path(_entry(caller_resources, "panel_of_normals_index"), "panel_of_normals_index")).parent:
+        raise ManifestError("panel_of_normals_vcf and panel_of_normals_index must be staged together")
+    if Path(germline_resource_vcf).parent != Path(_artifact_path(_entry(caller_resources, "germline_resource_index"), "germline_resource_index")).parent:
+        raise ManifestError("germline_resource_vcf and germline_resource_index must be staged together")
+
+    tumor_name = _require_sample_id(tumor_bam, "tumor.bam")
+    normal_name = _require_sample_id(normal_bam, "normal.bam")
+    if tumor_name == normal_name:
+        raise ManifestError("tumor and normal sample names must differ")
+
+    raw_vcf = str(variants / "diana.wgs.mutect2.parabricks.raw.vcf.gz")
+    pon_annotated_vcf = str(variants / "diana.wgs.mutect2.parabricks.pon.vcf.gz")
+    f1r2 = str(variants / "diana.wgs.mutect2.parabricks.f1r2.tar.gz")
+
+    commands = {
+        "prepon": {
+            "argv": _with_runtime(
+                [
+                    "pbrun",
+                    "prepon",
+                    "--in-pon-file",
+                    panel_of_normals_vcf,
+                ],
+                str(tmp / "prepon"),
+                str(logs / "prepon.log"),
+                gpu_count,
+            ),
+        },
+        "mutectcaller": {
+            "argv": _with_runtime(
+                [
+                    "pbrun",
+                    "mutectcaller",
+                    "--ref",
+                    reference_fasta,
+                    "--tumor-name",
+                    tumor_name,
+                    "--in-tumor-bam",
+                    tumor_bam_path,
+                    "--in-normal-bam",
+                    normal_bam_path,
+                    "--normal-name",
+                    normal_name,
+                    "--pon",
+                    panel_of_normals_vcf,
+                    "--mutect-germline-resource",
+                    germline_resource_vcf,
+                    "--interval-file",
+                    mutect2_interval_set,
+                    "--mutect-f1r2-tar-gz",
+                    f1r2,
+                    "--out-vcf",
+                    raw_vcf,
+                ],
+                str(tmp / "mutectcaller"),
+                str(logs / "mutectcaller.log"),
+                gpu_count,
+            ),
+        },
+        "postpon": {
+            "argv": _with_runtime(
+                [
+                    "pbrun",
+                    "postpon",
+                    "--in-vcf",
+                    raw_vcf,
+                    "--in-pon-file",
+                    panel_of_normals_vcf,
+                    "--out-vcf",
+                    pon_annotated_vcf,
+                ],
+                str(tmp / "postpon"),
+                str(logs / "postpon.log"),
+                gpu_count,
+            ),
+        },
+    }
+
+    source = _require_mapping(staged_inputs_manifest.get("source"), "source")
+    return {
+        "schema_version": 1,
+        "manifest_type": "phase3_wgs_fast_parabricks_mutect_plan",
+        "status": "planned",
+        "workflow": dict(_require_mapping(staged_inputs_manifest.get("workflow"), "workflow")),
+        "run": dict(_require_mapping(staged_inputs_manifest.get("run"), "run")),
+        "runtime": {
+            **dict(runtime),
+            "num_gpus": gpu_count,
+        },
+        "source": {
+            "input_manifest_sha256": _require_hex(source.get("input_manifest_sha256"), "input_manifest_sha256"),
+            "replication_plan_sha256": _require_hex(source.get("replication_plan_sha256"), "replication_plan_sha256"),
+            "replication_receipt_sha256": _require_hex(source.get("replication_receipt_sha256"), "replication_receipt_sha256"),
+            "cache_manifest_sha256": _require_hex(source.get("cache_manifest_sha256"), "cache_manifest_sha256"),
+            "staging_plan_sha256": _require_hex(source.get("staging_plan_sha256"), "staging_plan_sha256"),
+            "staged_inputs_manifest_sha256": _require_hex(
+                staged_inputs_manifest_sha256,
+                "staged_inputs_manifest_sha256",
+            ),
+        },
+        "inputs": {
+            "reference_fasta": {"local_path": reference_fasta},
+            "tumor_bam": {
+                "local_path": tumor_bam_path,
+                "sample_id": tumor_name,
+                "source": _require_source(tumor_bam, "tumor.bam"),
+            },
+            "normal_bam": {
+                "local_path": normal_bam_path,
+                "sample_id": normal_name,
+                "source": _require_source(normal_bam, "normal.bam"),
+            },
+            "germline_resource_vcf": {"local_path": germline_resource_vcf},
+            "panel_of_normals_vcf": {"local_path": panel_of_normals_vcf},
+            "mutect2_interval_set": {"local_path": mutect2_interval_set},
+        },
+        "outputs": {
+            "raw_vcf": raw_vcf,
+            "pon_annotated_vcf": pon_annotated_vcf,
+            "f1r2_tar_gz": f1r2,
+            "logs_dir": str(logs),
+            "tmp_dir": str(tmp),
+        },
+        "commands": commands,
+        "output_root": str(root),
+        "interpretation": {
+            "authorized_hrd_state": "no_call",
+        },
+    }
+
+
+def write_plan(path: Path, plan: Mapping[str, Any]) -> None:
+    ensure_parent(path)
+    path.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def load_plan_from_environment() -> tuple[dict[str, Any], Path]:
+    input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST", DEFAULT_INPUT))
+    output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN_OUTPUT", DEFAULT_OUTPUT))
+    plan = build_phase3_fast_parabricks_mutect_plan(
+        read_json(input_path),
+        staged_inputs_manifest_sha256=_sha256_path(input_path),
+        output_root=os.environ.get("PHASE3_WGS_FAST_PARABRICKS_OUTPUT_ROOT", DEFAULT_OUTPUT_ROOT),
+        num_gpus=_require_num_gpus(os.environ.get("PHASE3_WGS_FAST_PARABRICKS_NUM_GPUS")),
+    )
+    return plan, output_path
+
+
+def main() -> None:
+    plan, output = load_plan_from_environment()
+    write_plan(output, plan)
+    print(f"Phase 3 WGS fast Parabricks Mutect plan written: {output}")
+
+
+if __name__ == "__main__":
+    main()
