@@ -244,9 +244,10 @@ The `phase3_wgs_fast` Nextflow DAG starts with the same renderer as
 `FAST_INPUT_MANIFEST`, with each receipt staged as a real process input so
 `-resume` is keyed by receipt content rather than by a mutable local directory.
 It then renders a dry `FAST_REPLICATION_PLAN` with deterministic,
-content-addressed source-version to `us-east-2` cache-key rows. The following
-copy process is the first step that needs S3 write authority in the regional
-private cache.
+content-addressed source-version to `us-east-2` cache-key rows and the exact
+destination KMS key. `FAST_REPLICATE_INPUTS` consumes that plan and defaults to
+`dry_run`, writing a replication receipt without S3 calls so review can happen
+before the first step that needs write authority in the regional private cache.
 
 ### Gate 1: P5en and Parabricks smoke
 

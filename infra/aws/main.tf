@@ -1012,6 +1012,9 @@ resource "local_file" "nextflow_params" {
     aws_workdir                   = "s3://${aws_s3_bucket.this["work"].bucket}/work"
     aws_results_dir               = "s3://${aws_s3_bucket.this["results"].bucket}/runs"
     aws_private_results_dir       = "s3://${aws_s3_bucket.this["private_results"].bucket}/runs"
+    phase3_fast_cache_kms_key_arn = aws_kms_key.main.arn
+    phase3_fast_cache_prefix      = "s3://${aws_s3_bucket.this["private_results"].bucket}/phase3-fast-cache/wgs-v2"
+    phase3_fast_cache_region      = var.region
     aws_gpu_queue                 = aws_batch_job_queue.gpu_p5en.name
     batch_gpu_p5en_instance_types = var.batch_gpu_p5en_instance_types
     gpu_p5en_max_vcpus            = var.gpu_p5en_max_vcpus

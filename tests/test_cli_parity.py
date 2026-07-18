@@ -35,6 +35,7 @@ class CliParityTest(unittest.TestCase):
             "fetch:raw-candidates",
             "plan:diana-raw-handoff",
             "plan:known-answer-benchmarks",
+            "replicate:phase3-fast-inputs",
             "run:known-answer-bounded-non-dry",
             "run:known-answer-expanded-cohort",
             "run:known-answer-public-findings",

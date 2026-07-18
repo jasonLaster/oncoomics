@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import posixpath
+import re
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -13,6 +14,8 @@ from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/input_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/replication_plan.json"
+KMS_KEY_ARN = re.compile(r"^arn:aws:kms:([a-z]{2}-[a-z]+-\d):(\d{12}):key/[A-Za-z0-9-]+$")
+REGION = re.compile(r"^[a-z]{2}-[a-z]+-\d$")
 
 
 def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
@@ -45,6 +48,21 @@ def _require_version(value: Any, label: str) -> str:
     return value
 
 
+def _require_region(value: Any, label: str) -> str:
+    if not isinstance(value, str) or REGION.fullmatch(value) is None:
+        raise ManifestError(f"{label} must be an AWS region")
+    return value
+
+
+def _require_kms_key_arn(value: Any, *, region: str, label: str) -> str:
+    if not isinstance(value, str):
+        raise ManifestError(f"{label} must be a KMS key ARN in {region}")
+    match = KMS_KEY_ARN.fullmatch(value)
+    if match is None or match.group(1) != region:
+        raise ManifestError(f"{label} must be a KMS key ARN in {region}")
+    return value
+
+
 def _normalize_cache_prefix(prefix: str) -> str:
     normalized = prefix.strip().rstrip("/")
     _require_s3_uri(normalized, "PHASE3_WGS_FAST_CACHE_PREFIX")
@@ -65,11 +83,12 @@ def _cache_uri(prefix: str, group: str, artifact: str, source: Mapping[str, Any]
     return f"{prefix}/{posixpath.join(group, artifact, sha256, basename)}"
 
 
-def _copy_row(prefix: str, group: str, artifact: str, source: Mapping[str, Any]) -> dict[str, Any]:
+def _copy_row(prefix: str, kms_key_arn: str, group: str, artifact: str, source: Mapping[str, Any]) -> dict[str, Any]:
     source_uri = _require_s3_uri(source.get("uri"), f"{artifact} source uri")
     return {
         "artifact": artifact,
         "bytes": _require_positive_int(source.get("bytes"), artifact),
+        "destination_kms_key_arn": kms_key_arn,
         "destination_uri": _cache_uri(prefix, group, artifact, source),
         "server_side_encryption": "aws:kms",
         "sha256": _require_hex(source.get("sha256"), f"{artifact} sha256"),
@@ -78,25 +97,25 @@ def _copy_row(prefix: str, group: str, artifact: str, source: Mapping[str, Any])
     }
 
 
-def _append_bam_pair_rows(rows: list[dict[str, Any]], prefix: str, manifest: Mapping[str, Any]) -> None:
+def _append_bam_pair_rows(rows: list[dict[str, Any]], prefix: str, kms_key_arn: str, manifest: Mapping[str, Any]) -> None:
     bam_pair = _require_mapping(manifest.get("bam_pair"), "bam_pair")
     for role in ("tumor", "normal"):
         sample = _require_mapping(bam_pair.get(role), f"bam_pair {role}")
         for kind in ("bam", "bai"):
             artifact = f"{role}.{kind}"
-            rows.append(_copy_row(prefix, "inputs", artifact, _require_mapping(sample.get(kind), artifact)))
+            rows.append(_copy_row(prefix, kms_key_arn, "inputs", artifact, _require_mapping(sample.get(kind), artifact)))
 
 
-def _append_reference_rows(rows: list[dict[str, Any]], prefix: str, manifest: Mapping[str, Any]) -> None:
+def _append_reference_rows(rows: list[dict[str, Any]], prefix: str, kms_key_arn: str, manifest: Mapping[str, Any]) -> None:
     reference = _require_mapping(manifest.get("reference"), "reference")
     for artifact, key in (("reference.fa", "fasta"), ("reference.fa.fai", "fai"), ("reference.dict", "sequence_dictionary")):
-        rows.append(_copy_row(prefix, "references", artifact, _require_mapping(reference.get(key), key)))
+        rows.append(_copy_row(prefix, kms_key_arn, "references", artifact, _require_mapping(reference.get(key), key)))
 
 
-def _append_caller_resource_rows(rows: list[dict[str, Any]], prefix: str, manifest: Mapping[str, Any]) -> None:
+def _append_caller_resource_rows(rows: list[dict[str, Any]], prefix: str, kms_key_arn: str, manifest: Mapping[str, Any]) -> None:
     caller_resources = _require_mapping(manifest.get("caller_resources"), "caller_resources")
     for artifact in sorted(caller_resources):
-        rows.append(_copy_row(prefix, "resources", artifact, _require_mapping(caller_resources.get(artifact), artifact)))
+        rows.append(_copy_row(prefix, kms_key_arn, "resources", artifact, _require_mapping(caller_resources.get(artifact), artifact)))
 
 
 def _manifest_sha256(path: Path) -> str:
@@ -111,6 +130,8 @@ def build_phase3_fast_replication_plan(
     input_manifest: Mapping[str, Any],
     *,
     cache_prefix: str,
+    cache_kms_key_arn: str,
+    cache_region: str,
     input_manifest_sha256: str,
 ) -> dict[str, Any]:
     if input_manifest.get("manifest_type") != "phase3_wgs_fast_input_manifest":
@@ -122,10 +143,12 @@ def build_phase3_fast_replication_plan(
         raise ManifestError("input manifest authorized_hrd_state must remain no_call")
 
     prefix = _normalize_cache_prefix(cache_prefix)
+    region = _require_region(cache_region, "cache_region")
+    kms_key_arn = _require_kms_key_arn(cache_kms_key_arn, region=region, label="cache_kms_key_arn")
     rows: list[dict[str, Any]] = []
-    _append_bam_pair_rows(rows, prefix, input_manifest)
-    _append_reference_rows(rows, prefix, input_manifest)
-    _append_caller_resource_rows(rows, prefix, input_manifest)
+    _append_bam_pair_rows(rows, prefix, kms_key_arn, input_manifest)
+    _append_reference_rows(rows, prefix, kms_key_arn, input_manifest)
+    _append_caller_resource_rows(rows, prefix, kms_key_arn, input_manifest)
 
     by_destination = {row["destination_uri"] for row in rows}
     if len(by_destination) != len(rows):
@@ -137,7 +160,9 @@ def build_phase3_fast_replication_plan(
         "status": "planned",
         "workflow": dict(_require_mapping(input_manifest.get("workflow"), "workflow")),
         "cache": {
+            "kms_key_arn": kms_key_arn,
             "prefix": prefix,
+            "region": region,
         },
         "source": {
             "input_manifest_sha256": _require_hex(input_manifest_sha256, "input_manifest_sha256"),
@@ -162,6 +187,8 @@ def load_plan_from_environment() -> tuple[dict[str, Any], Path]:
     plan = build_phase3_fast_replication_plan(
         read_json(input_path),
         cache_prefix=_require_string(os.environ.get("PHASE3_WGS_FAST_CACHE_PREFIX"), "PHASE3_WGS_FAST_CACHE_PREFIX"),
+        cache_kms_key_arn=_require_string(os.environ.get("PHASE3_WGS_FAST_CACHE_KMS_KEY_ARN"), "PHASE3_WGS_FAST_CACHE_KMS_KEY_ARN"),
+        cache_region=_require_string(os.environ.get("PHASE3_WGS_FAST_CACHE_REGION", "us-east-2"), "PHASE3_WGS_FAST_CACHE_REGION"),
         input_manifest_sha256=_manifest_sha256(input_path),
     )
     return plan, output_path

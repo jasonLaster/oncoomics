@@ -145,9 +145,11 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use2
 PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:apply:use2
 ```
 
-Terraform writes `aws_gpu_queue` and `parabricks_container` to
-`infra/aws/nextflow.aws.use2.json`. Keep `parabricks_container` empty until the
-Parabricks image has been selected and pinned by immutable digest.
+Terraform writes `aws_gpu_queue`, `phase3_fast_cache_prefix`, and
+`parabricks_container` to `infra/aws/nextflow.aws.use2.json`. The cache prefix
+uses the regional private-results bucket under `phase3-fast-cache/wgs-v2`; keep
+`parabricks_container` empty until the Parabricks image has been selected and
+pinned by immutable digest.
 
 After P5en quota is approved and the pinned image is supplied, run only the
 bounded placement/visibility smoke first. The alias starts with a local

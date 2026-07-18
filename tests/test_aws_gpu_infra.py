@@ -62,6 +62,12 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertRegex(text, r"batch_gpu_p5en_instance_types\s+=\s+var\.batch_gpu_p5en_instance_types")
         self.assertRegex(text, r"gpu_p5en_max_vcpus\s+=\s+var\.gpu_p5en_max_vcpus")
         self.assertRegex(text, r"parabricks_container\s+=\s+var\.parabricks_container")
+        self.assertRegex(text, r"phase3_fast_cache_kms_key_arn\s+=\s+aws_kms_key\.main\.arn")
+        self.assertRegex(text, r"phase3_fast_cache_region\s+=\s+var\.region")
+        self.assertIn(
+            'phase3_fast_cache_prefix      = "s3://${aws_s3_bucket.this["private_results"].bucket}/phase3-fast-cache/wgs-v2"',
+            text,
+        )
 
     def test_gpu_defaults_match_requested_quota_and_leave_image_unpinned(self) -> None:
         text = VARIABLES_TF.read_text(encoding="utf-8")

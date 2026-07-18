@@ -20,6 +20,9 @@ def p5en_params(**overrides):
         "batch_gpu_p5en_instance_types": ["p5en.48xlarge"],
         "gpu_p5en_max_vcpus": 384,
         "parabricks_container": "172630973301.dkr.ecr.us-east-2.amazonaws.com/parabricks@sha256:" + "a" * 64,
+        "phase3_fast_cache_prefix": (
+            "s3://diana-omics-private-results-172630973301-us-east-2/phase3-fast-cache/wgs-v2"
+        ),
     }
     params.update(overrides)
     return params
@@ -50,6 +53,24 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     aws_gpu_queue="diana-omics-prod-use1-spot",
                     batch_gpu_p5en_instance_types=["p5.48xlarge"],
                     gpu_p5en_max_vcpus=8,
+                )
+            )
+
+    def test_rejects_missing_or_public_phase3_fast_cache(self) -> None:
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "phase3_fast_cache_prefix"):
+            verify.validate_gpu_smoke_params(p5en_params(phase3_fast_cache_prefix=""))
+
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "private results bucket"):
+            verify.validate_gpu_smoke_params(
+                p5en_params(
+                    phase3_fast_cache_prefix="s3://diana-omics-results-172630973301-us-east-2/phase3-fast-cache/wgs-v2",
+                )
+            )
+
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "phase3-fast-cache/wgs-v2"):
+            verify.validate_gpu_smoke_params(
+                p5en_params(
+                    phase3_fast_cache_prefix="s3://diana-omics-private-results-172630973301-us-east-2/runs",
                 )
             )
 

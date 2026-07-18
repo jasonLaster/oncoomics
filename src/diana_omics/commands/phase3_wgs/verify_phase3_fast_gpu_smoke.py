@@ -28,16 +28,17 @@ def _require_non_empty_string(params: Mapping[str, Any], key: str, errors: list[
     return value.strip()
 
 
-def _require_use2_s3_uri(params: Mapping[str, Any], key: str, errors: list[str]) -> None:
+def _require_use2_s3_uri(params: Mapping[str, Any], key: str, errors: list[str]) -> str | None:
     value = _require_non_empty_string(params, key, errors)
     if not value:
-        return
+        return None
     if not value.startswith("s3://") or "/" not in value[5:]:
         errors.append(f"{key} must be an S3 URI")
-        return
+        return None
     bucket = value[5:].split("/", 1)[0]
     if REQUIRED_AWS_REGION not in bucket:
         errors.append(f"{key} bucket must be region-local to {REQUIRED_AWS_REGION}")
+    return value.rstrip("/")
 
 
 def _require_int_at_least(params: Mapping[str, Any], key: str, minimum: int, errors: list[str]) -> int:
@@ -66,7 +67,15 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     _require_non_empty_string(params, "aws_job_role", errors)
     _require_non_empty_string(params, "aws_logs_group", errors)
     _require_use2_s3_uri(params, "aws_workdir", errors)
-    _require_use2_s3_uri(params, "aws_private_results_dir", errors)
+    private_results_dir = _require_use2_s3_uri(params, "aws_private_results_dir", errors)
+    cache_prefix = _require_use2_s3_uri(params, "phase3_fast_cache_prefix", errors)
+    if private_results_dir and cache_prefix:
+        private_results_bucket = private_results_dir[5:].split("/", 1)[0]
+        cache_bucket = cache_prefix[5:].split("/", 1)[0]
+        if cache_bucket != private_results_bucket:
+            errors.append("phase3_fast_cache_prefix must use the private results bucket")
+        if not cache_prefix.endswith("/phase3-fast-cache/wgs-v2"):
+            errors.append("phase3_fast_cache_prefix must end with /phase3-fast-cache/wgs-v2")
 
     image = _require_non_empty_string(params, "parabricks_container", errors)
     if image and PINNED_IMAGE.fullmatch(image) is None:

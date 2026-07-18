@@ -5,10 +5,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+from test_phase3_fast_input_manifest import SHA_3, metadata, receipts
+
 from diana_omics.commands.phase3_wgs import render_phase3_fast_input_manifest as render_input
 from diana_omics.commands.phase3_wgs import render_phase3_fast_replication_plan as render_plan
 from diana_omics.utils import write_json
-from tests.test_phase3_fast_input_manifest import SHA_3, metadata, receipts
 
 
 def input_manifest() -> dict:
@@ -30,6 +31,8 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
         return render_plan.build_phase3_fast_replication_plan(
             input_manifest(),
             cache_prefix="s3://diana-omics-private-cache-us-east-2/wgs-v2",
+            cache_kms_key_arn="arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc",
+            cache_region="us-east-2",
             input_manifest_sha256=SHA_3,
         )
 
@@ -40,6 +43,11 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
         self.assertEqual(plan["manifest_type"], "phase3_wgs_fast_replication_plan")
         self.assertEqual(plan["workflow"]["name"], "phase3_wgs_fast")
         self.assertEqual(plan["object_count"], 15)
+        self.assertEqual(plan["cache"]["region"], "us-east-2")
+        self.assertEqual(
+            plan["cache"]["kms_key_arn"],
+            "arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc",
+        )
         self.assertEqual(plan["interpretation"]["authorized_hrd_state"], "no_call")
 
         rows = {row["artifact"]: row for row in plan["copy_plan"]}
@@ -48,6 +56,10 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
         self.assertIn("/resources/panel_of_normals_vcf/", rows["panel_of_normals_vcf"]["destination_uri"])
         self.assertEqual("s3://private-cache/tumor.markdup.bam", rows["tumor.bam"]["source_uri"])
         self.assertEqual("tumor-bam-version", rows["tumor.bam"]["source_version_id"])
+        self.assertEqual(
+            "arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc",
+            rows["tumor.bam"]["destination_kms_key_arn"],
+        )
 
     def test_input_manifest_must_be_ready(self) -> None:
         manifest = input_manifest()
@@ -57,6 +69,8 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
             render_plan.build_phase3_fast_replication_plan(
                 manifest,
                 cache_prefix="s3://diana-omics-private-cache-us-east-2/wgs-v2",
+                cache_kms_key_arn="arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc",
+                cache_region="us-east-2",
                 input_manifest_sha256=SHA_3,
             )
 
@@ -68,6 +82,18 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
             render_plan.build_phase3_fast_replication_plan(
                 manifest,
                 cache_prefix="s3://diana-omics-private-cache-us-east-2/wgs-v2",
+                cache_kms_key_arn="arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc",
+                cache_region="us-east-2",
+                input_manifest_sha256=SHA_3,
+            )
+
+    def test_cache_kms_key_must_match_cache_region(self) -> None:
+        with self.assertRaisesRegex(render_plan.ManifestError, "KMS"):
+            render_plan.build_phase3_fast_replication_plan(
+                input_manifest(),
+                cache_prefix="s3://diana-omics-private-cache-us-east-2/wgs-v2",
+                cache_kms_key_arn="arn:aws:kms:us-east-1:172630973301:key/12345678-abcd-1234-abcd-123456789abc",
+                cache_region="us-east-2",
                 input_manifest_sha256=SHA_3,
             )
 
@@ -86,6 +112,10 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
                     "PHASE3_WGS_FAST_INPUT_MANIFEST": str(input_path),
                     "PHASE3_WGS_FAST_REPLICATION_OUTPUT": str(output_path),
                     "PHASE3_WGS_FAST_CACHE_PREFIX": "s3://diana-omics-private-cache-us-east-2/wgs-v2",
+                    "PHASE3_WGS_FAST_CACHE_KMS_KEY_ARN": (
+                        "arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc"
+                    ),
+                    "PHASE3_WGS_FAST_CACHE_REGION": "us-east-2",
                 },
                 clear=False,
             ):

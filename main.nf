@@ -57,6 +57,9 @@ params.phase3_fast_parameter_sha256 = params.phase3_fast_parameter_sha256 ?: nul
 params.phase3_fast_parabricks_container_digest = params.phase3_fast_parabricks_container_digest ?: null
 params.phase3_fast_parabricks_version = params.phase3_fast_parabricks_version ?: null
 params.phase3_fast_cache_prefix = params.phase3_fast_cache_prefix ?: null
+params.phase3_fast_cache_kms_key_arn = params.phase3_fast_cache_kms_key_arn ?: null
+params.phase3_fast_cache_region = params.phase3_fast_cache_region ?: 'us-east-2'
+params.phase3_fast_replication_mode = params.phase3_fast_replication_mode ?: 'dry_run'
 params.phase3_fast_gatk_version = params.phase3_fast_gatk_version ?: '4.6.2.0'
 params.phase3_fast_source_commit = params.phase3_fast_source_commit ?: ''
 params.phase3_fast_run_id = params.phase3_fast_run_id ?: 'diana-wgs-hrd-20260716T033101Z'
@@ -746,6 +749,8 @@ process FAST_REPLICATION_PLAN {
     export PHASE3_WGS_FAST_INPUT_MANIFEST="\$PWD/${input_manifest}"
     export PHASE3_WGS_FAST_REPLICATION_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/replication_plan.json"
     export PHASE3_WGS_FAST_CACHE_PREFIX="${params.phase3_fast_cache_prefix}"
+    export PHASE3_WGS_FAST_CACHE_KMS_KEY_ARN="${params.phase3_fast_cache_kms_key_arn}"
+    export PHASE3_WGS_FAST_CACHE_REGION="${params.phase3_fast_cache_region}"
 
     PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-replication-plan
     """
@@ -760,6 +765,49 @@ process FAST_REPLICATION_PLAN {
       "manifest_type": "phase3_wgs_fast_replication_plan",
       "status": "stubbed",
       "copy_plan": [],
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
+process FAST_REPLICATE_INPUTS {
+    tag "fast_replicate_inputs_${params.phase3_fast_replication_mode}_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/replication_receipt", mode: 'copy', overwrite: true
+
+    input:
+    path replication_plan
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/replication_receipt.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_REPLICATION_PLAN="\$PWD/${replication_plan}"
+    export PHASE3_WGS_FAST_REPLICATION_RECEIPT_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/replication_receipt.json"
+    export PHASE3_WGS_FAST_REPLICATION_MODE="${params.phase3_fast_replication_mode}"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics replicate:phase3-fast-inputs
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/replication_receipt.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_replication_receipt",
+      "status": "stubbed",
+      "mode": "${params.phase3_fast_replication_mode}",
+      "copy_results": [],
       "interpretation": {
         "authorized_hrd_state": "no_call"
       }
@@ -785,6 +833,7 @@ workflow PHASE3_WGS_FAST {
         'phase3_fast_parabricks_container_digest',
         'phase3_fast_parabricks_version',
         'phase3_fast_cache_prefix',
+        'phase3_fast_cache_kms_key_arn',
     ]
     missing = requiredFastManifestParams.findAll { name ->
         def value = params[name]
@@ -805,6 +854,7 @@ workflow PHASE3_WGS_FAST {
     ))
     FAST_INPUT_MANIFEST(inputReceipts)
     FAST_REPLICATION_PLAN(FAST_INPUT_MANIFEST.out)
+    FAST_REPLICATE_INPUTS(FAST_REPLICATION_PLAN.out)
 }
 
 workflow {
