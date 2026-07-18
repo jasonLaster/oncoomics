@@ -671,6 +671,41 @@ class PrepareAiReviewRunTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_install_rechecks_entries_after_output_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            staging.mkdir()
+            for name in ("bundle", "reviewer-inputs"):
+                directory = staging / name
+                directory.mkdir()
+                (directory / "payload.json").write_text("{}\n", encoding="utf-8")
+            real_fsync_directory = PREPARE.fsync_directory
+
+            def tamper_after_output_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                if path == output:
+                    (output / "bundle" / "payload.json").write_text(
+                        '{"tampered": true}\n',
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "fsync_directory",
+                    side_effect=tamper_after_output_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged AI review entry changed during install: bundle",
+                ),
+            ):
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

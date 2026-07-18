@@ -278,11 +278,11 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
         try:
             for role in ROLES:
                 os.rename(temporary_root / ROLE_DIRS[role], destinations[role])
+            fsync_directory(output_root)
             published = {
                 role: reviewer_inventory(destinations[role], role, hashes)
                 for role in ROLES
             }
-            fsync_directory(output_root)
         except Exception:
             for destination in destinations.values():
                 remove_destination_tree(destination)

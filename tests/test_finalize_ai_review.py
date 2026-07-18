@@ -26,6 +26,14 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def write_bound_review_bundle(fixture: ValidateReviewFixture, value: dict) -> None:
+    bundle = fixture.bundle_dir / "review_bundle.json"
+    write_json(bundle, value)
+    bundle_manifest = load_json(fixture.bundle_dir / "bundle_manifest.json")
+    bundle_manifest["review_bundle_sha256"] = FINALIZE.sha256(bundle)
+    write_json(fixture.bundle_dir / "bundle_manifest.json", bundle_manifest)
+
+
 class FinalizeAiReviewTests(unittest.TestCase):
     def execute(
         self,
@@ -419,8 +427,8 @@ class FinalizeAiReviewTests(unittest.TestCase):
             ),
             (
                 lambda fixture, review: (
-                    write_json(
-                        fixture.bundle_dir / "review_bundle.json",
+                    write_bound_review_bundle(
+                        fixture,
                         {
                             **load_json(fixture.bundle_dir / "review_bundle.json"),
                             "required_method_ids": ["deterministic_full_wgs"],
@@ -428,6 +436,23 @@ class FinalizeAiReviewTests(unittest.TestCase):
                     )
                 ),
                 "review input inventory",
+            ),
+            (
+                lambda fixture, review: (
+                    write_json(
+                        fixture.bundle_dir / "bundle_manifest.json",
+                        {
+                            **load_json(fixture.bundle_dir / "bundle_manifest.json"),
+                            "prompt_sha256": {
+                                **load_json(
+                                    fixture.bundle_dir / "bundle_manifest.json"
+                                )["prompt_sha256"],
+                                "B": "0" * 64,
+                            },
+                        },
+                    )
+                ),
+                "AI review bundle manifest is stale for reviewer-b.prompt.md",
             ),
         ):
             with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:

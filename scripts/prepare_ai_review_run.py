@@ -436,12 +436,14 @@ def install_staged_run(staging: Path, output: Path) -> None:
         raise ValueError(f"output already exists: {output}") from error
 
     installed: list[Path] = []
+    expected_fingerprints: dict[Path, str] = {}
     try:
         fsync_directory(output.parent)
         for child in sorted(staging.iterdir(), key=lambda path: path.name):
             destination = output / child.name
             require_new_output_entry(destination)
             expected_fingerprint = fingerprint_staged_entry(child)
+            expected_fingerprints[destination] = expected_fingerprint
             destination_preexisted = destination.exists() or destination.is_symlink()
             try:
                 move_staged_entry(child, destination)
@@ -460,6 +462,12 @@ def install_staged_run(staging: Path, output: Path) -> None:
                     installed.append(destination)
                 raise
         fsync_directory(output)
+        for destination, expected_fingerprint in expected_fingerprints.items():
+            if fingerprint_staged_entry(destination) != expected_fingerprint:
+                raise ValueError(
+                    "staged AI review entry changed during install: "
+                    + destination.name
+                )
     except Exception:
         for path in reversed(installed):
             if path.is_dir() and not path.is_symlink():

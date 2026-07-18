@@ -288,6 +288,32 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse((attacker / "reviewer-b-input").exists())
         self.assertFalse(self.receipt.exists())
 
+    def test_stage_rechecks_published_inputs_after_output_root_fsync(self) -> None:
+        real_fsync_directory = STAGE.fsync_directory
+
+        def tamper_after_output_root_fsync(path: Path) -> None:
+            real_fsync_directory(path)
+            if path == self.output_root.resolve():
+                (
+                    self.output_root
+                    / "reviewer-a-input"
+                    / "reviewer-a.prompt.md"
+                ).write_text("tampered after publish fsync\n", encoding="utf-8")
+
+        with (
+            mock.patch.object(
+                STAGE,
+                "fsync_directory",
+                side_effect=tamper_after_output_root_fsync,
+            ),
+            self.assertRaisesRegex(ValueError, "reviewer A .* SHA-256 mismatch"),
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse((self.output_root / "reviewer-a-input").exists())
+        self.assertFalse((self.output_root / "reviewer-b-input").exists())
+        self.assertFalse(self.receipt.exists())
+
     def test_rejects_staged_bytes_that_differ_from_bundle_manifest(self) -> None:
         real_write_once = STAGE.write_once
 

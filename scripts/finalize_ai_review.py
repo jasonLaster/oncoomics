@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 from typing import Any, Sequence
 
+from build_ai_review_bundle import require_bundle_manifest
 from hrd_report_inventory import (
     inventory_payload,
     inventory_sha256,
@@ -141,6 +142,7 @@ def build_manifest(
     }
     for name, path in paths.items():
         require_file(path, name)
+    require_bundle_manifest(bundle_dir)
 
     review_manifest = load_object(review_manifest_path, "review manifest")
     validation = load_object(validation_path, "validation")
