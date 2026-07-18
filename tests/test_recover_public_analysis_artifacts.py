@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -124,6 +125,71 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "missing" / "receipt.json").exists())
             self.assertFalse((real_parent / "existing" / "receipt.json").exists())
+
+    def test_private_receipt_fsyncs_file_and_parent_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+
+            with mock.patch.object(
+                MODULE.os,
+                "fsync",
+                wraps=MODULE.os.fsync,
+            ) as fsync:
+                MODULE.write_private(receipt, {"status": "observing"}, create=True)
+
+            self.assertEqual(fsync.call_count, 2)
+
+    def test_private_receipt_removes_partial_after_file_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+
+            with (
+                mock.patch.object(
+                    MODULE.os,
+                    "fsync",
+                    side_effect=OSError("synthetic file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                MODULE.write_private(receipt, {"status": "observing"}, create=True)
+
+            self.assertFalse(receipt.exists())
+
+    def test_private_receipt_removes_partial_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+
+            with (
+                mock.patch.object(
+                    MODULE.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                MODULE.write_private(receipt, {"status": "observing"}, create=True)
+
+            self.assertFalse(receipt.exists())
+
+    def test_private_receipt_replacement_fsyncs_parent_after_replace(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+            MODULE.write_private(receipt, {"status": "observing"}, create=True)
+
+            with mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                wraps=MODULE.fsync_directory,
+            ) as fsync_directory:
+                MODULE.write_private(receipt, {"status": "ready"}, create=False)
+
+            fsync_directory.assert_called_once_with(receipt.parent)
+            self.assertEqual(
+                json.loads(receipt.read_text(encoding="utf-8")),
+                {"status": "ready"},
+            )
 
     def test_main_rejects_receipt_symlink_parent_before_aws_observation(self) -> None:
         with tempfile.TemporaryDirectory() as value:

@@ -93,6 +93,14 @@ def require_new_private_output(path: pathlib.Path) -> None:
         raise ValueError(f"receipt output already exists: {path}")
 
 
+def fsync_directory(path: pathlib.Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def write_private(path: pathlib.Path, value: Any, *, create: bool) -> None:
     require_safe_private_output_parent(path)
     if not create and (path.is_symlink() or not path.is_file()):
@@ -113,6 +121,11 @@ def write_private(path: pathlib.Path, value: Any, *, create: bool) -> None:
             os.fsync(handle.fileno())
         if temporary is not None:
             os.replace(temporary, path)
+        fsync_directory(path.parent)
+    except Exception:
+        if temporary is None:
+            path.unlink(missing_ok=True)
+        raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
