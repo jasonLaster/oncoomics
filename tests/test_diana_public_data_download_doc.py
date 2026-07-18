@@ -83,6 +83,13 @@ class DianaPublicDataDownloadDocTests(unittest.TestCase):
             text,
         )
 
+    def test_deterministic_report_inventory_includes_crosscheck_input_plans(self) -> None:
+        text = DOC.read_text(encoding="utf-8")
+
+        self.assertIn("six `deterministic_full_wgs` packet\nfiles", text)
+        self.assertIn("crosscheck_input_plans.json", text)
+        self.assertNotIn("five `deterministic_full_wgs` packet\nfiles", text)
+
     def test_source_freeze_and_ai_flow_are_renderer_owned(self) -> None:
         text = DOC.read_text(encoding="utf-8")
         freeze_section = text.split("## Freeze reviewed reports", 1)[1]

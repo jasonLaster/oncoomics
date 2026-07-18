@@ -80,14 +80,16 @@ submitted Batch jobs.
 | Compact executable cross-check outputs and render no-call packets for blocked routes | `scripts/download_exact_report_tree.py`, `scripts/stage_hrd_crosscheck_report.py`, `scripts/generate_blocked_hrd_crosscheck_reports.py` |
 | Render the seven-source private-freeze and AI-review handoff | `scripts/render_source_report_freeze_runbook.py` |
 
-The deterministic stager writes exactly the five `deterministic_full_wgs` packet
-files that the private/public publishers accept:
+The deterministic stager writes exactly the six `deterministic_full_wgs` packet
+files that Rosalind, cross-check materialization, and the private/public
+publishers accept:
 
 ```text
 report.md
 readiness.csv
 evidence_checks.json
 input_sha256.csv
+crosscheck_input_plans.json
 report_manifest.json
 ```
 
