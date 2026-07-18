@@ -123,6 +123,8 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
         self.assertEqual(text.count("/repo/scripts/publish_reviewed_public_report.py"), 20)
         self.assertEqual(text.count("--private-publication-receipt "), 20)
         self.assertEqual(text.count("--destination-prefix "), 20)
+        report_publication_section = text.split("## 2. Rebuild", 1)[0]
+        self.assertEqual(report_publication_section.count("--dry-run-receipt "), 10)
         previous = -1
         for method_id in MODULE.REPORT_METHOD_IDS:
             index = text.find(f"--method-id {method_id}", previous + 1)
@@ -132,7 +134,8 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
 
     def test_publish_command_has_exact_dry_and_apply_argv(self) -> None:
         receipt = Path("/receipts/deterministic_full_wgs.json")
-        output = Path("/receipts/deterministic_full_wgs.public.json")
+        dry_output = Path("/receipts/deterministic_full_wgs.public.dry.json")
+        apply_output = Path("/receipts/deterministic_full_wgs.public.json")
         scripts = Path("/repo/scripts")
 
         dry_command = MODULE.publish_command(
@@ -140,7 +143,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             receipt,
             "a" * 64,
             "deterministic_full_wgs",
-            output,
+            dry_output,
             apply=False,
         )
         apply_command = MODULE.publish_command(
@@ -148,8 +151,9 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             receipt,
             "a" * 64,
             "deterministic_full_wgs",
-            output,
+            apply_output,
             apply=True,
+            dry_run_receipt=dry_output,
         )
 
         self.assertEqual(
@@ -164,14 +168,53 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                 "--destination-prefix",
                 MODULE.destination_prefix("deterministic_full_wgs"),
                 "--receipt-output",
-                output,
+                dry_output,
                 "--region",
                 PUBLISH.REGION,
                 "--private-publication-receipt-sha256",
                 "a" * 64,
             ],
         )
-        self.assertEqual(apply_command, [*dry_command, "--apply"])
+        self.assertEqual(
+            apply_command,
+            [
+                "python3",
+                Path("/repo/scripts/publish_reviewed_public_report.py"),
+                "--private-publication-receipt",
+                receipt,
+                "--method-id",
+                "deterministic_full_wgs",
+                "--destination-prefix",
+                MODULE.destination_prefix("deterministic_full_wgs"),
+                "--receipt-output",
+                apply_output,
+                "--region",
+                PUBLISH.REGION,
+                "--private-publication-receipt-sha256",
+                "a" * 64,
+                "--dry-run-receipt",
+                dry_output,
+                "--apply",
+            ],
+        )
+
+    def test_renderer_binds_every_apply_to_its_public_dry_run_receipt(self) -> None:
+        text = render()
+
+        for method_id in MODULE.REPORT_METHOD_IDS:
+            dry_receipt = (
+                f"/repo/.codex-tmp/hrd-reports/publication/"
+                f"terminal.{method_id}.public.dry.json"
+            )
+            apply_receipt = (
+                f"/repo/.codex-tmp/hrd-reports/publication/"
+                f"terminal.{method_id}.public.json"
+            )
+            dry_index = text.index(f"--receipt-output {dry_receipt}")
+            apply_index = text.index(f"--receipt-output {apply_receipt}")
+            dry_ref_index = text.index(f"--dry-run-receipt {dry_receipt}")
+            self.assertLess(dry_index, apply_index)
+            self.assertLess(apply_index, dry_ref_index)
 
     def test_renderer_rebuilds_and_publishes_public_index(self) -> None:
         receipts = [

@@ -22,7 +22,11 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from forbidden_text import has_unauthorized_hrd_classification, normalized_scan_text
+from forbidden_text import (
+    forbidden_token_fingerprints,
+    has_unauthorized_hrd_classification,
+    normalized_scan_text,
+)
 from hrd_report_inventory import require_report_methods
 
 REGION = "us-east-1"
@@ -126,6 +130,24 @@ DEFAULT_FORBIDDEN_TOKENS = (
     "E019_S01",
     "echo-personalis",
     "personalis",
+)
+SOURCE_PREFLIGHT_CHECKS = {
+    "exact_version_head": True,
+    "exact_version_get": True,
+    "bytes": True,
+    "sha256": True,
+    "exact_kms": True,
+    "forbidden_token_scan": True,
+}
+REVIEWED_PUBLIC_PREFLIGHT_CHECKS = (
+    "private_receipt_exact_and_passed",
+    "source_exact_versions",
+    "source_sha256_and_bytes",
+    "source_exact_kms",
+    "second_forbidden_token_scan",
+    "manifest_no_call_boundary",
+    "destination_initially_empty",
+    "packet_size_bounded",
 )
 
 
@@ -680,6 +702,76 @@ def exact_final_history(
     return True
 
 
+def source_preflight_object(row: dict[str, Any]) -> dict[str, Any]:
+    return {**row, "status": "passed", "checks": dict(SOURCE_PREFLIGHT_CHECKS)}
+
+
+def validate_dry_run_receipt(
+    path: Path, receipt: dict[str, Any], source_rows: list[dict[str, Any]]
+) -> dict[str, str]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("reviewed-public report dry-run receipt must be a real file")
+    dry_run = load_json(path, "reviewed-public report dry-run receipt")
+    source_objects = dry_run.get("source_objects")
+    checks = dry_run.get("checks")
+    private_publication_receipt = dry_run.get("private_publication_receipt")
+    if (
+        dry_run.get("schema_version") != 1
+        or dry_run.get("status") != "dry_run"
+        or dry_run.get("apply") is not False
+        or dry_run.get("destination_objects") != []
+        or dry_run.get("destination_initial_history_count") != 0
+        or not isinstance(source_objects, list)
+        or not source_objects
+        or not isinstance(checks, dict)
+        or not isinstance(private_publication_receipt, dict)
+    ):
+        raise ValueError("reviewed-public report dry-run receipt contract is malformed")
+
+    expected_fields = (
+        "method_id",
+        "subject_alias",
+        "run_id",
+        "classification",
+        "script_sha256",
+        "destination_prefix",
+        "expected_files",
+        "forbidden_token_count",
+        "forbidden_token_sha256",
+    )
+    if any(dry_run.get(field) != receipt.get(field) for field in expected_fields):
+        raise ValueError("reviewed-public report dry-run receipt does not match this apply")
+
+    current_private = receipt["private_publication_receipt"]
+    expected_private_fields = ("sha256", "destination_prefix")
+    if any(
+        private_publication_receipt.get(field) != current_private.get(field)
+        for field in expected_private_fields
+    ):
+        raise ValueError(
+            "reviewed-public report dry-run private receipt does not match this apply"
+        )
+
+    if any(
+        checks.get(check) is not True for check in REVIEWED_PUBLIC_PREFLIGHT_CHECKS
+    ):
+        raise ValueError(
+            "reviewed-public report dry-run receipt did not pass preflight checks"
+        )
+
+    if source_objects != [source_preflight_object(row) for row in source_rows]:
+        raise ValueError(
+            "reviewed-public report dry-run source objects do not match this apply"
+        )
+
+    return {
+        "path": str(path.resolve()),
+        "sha256": sha256(path),
+        "method_id": str(receipt["method_id"]),
+        "status": "dry_run",
+    }
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     method_id = args.method_id
     contract = METHOD_CONTRACTS[method_id]
@@ -728,9 +820,21 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "destination_prefix": f"s3://{bucket}/{destination_prefix}",
         "expected_files": list(expected),
         "forbidden_token_count": len(tokens),
+        "forbidden_token_sha256": forbidden_token_fingerprints(tokens),
         "source_objects": [],
         "destination_objects": [],
     }
+    dry_run_receipt = None
+    if args.apply:
+        if args.dry_run_receipt is None:
+            raise ValueError("reviewed-public report apply requires --dry-run-receipt")
+        dry_run_receipt = validate_dry_run_receipt(
+            args.dry_run_receipt, receipt, source_rows
+        )
+        receipt["dry_run_receipt"] = dry_run_receipt
+        receipt["checks"] = {"dry_run_receipt": True}
+    elif args.dry_run_receipt is not None:
+        raise ValueError("--dry-run-receipt is only valid with --apply")
     write_private_atomic(args.receipt_output, receipt, create=True)
     try:
         for required_bucket in (PRIVATE_BUCKET, PUBLIC_BUCKET):
@@ -778,20 +882,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     )
                 scan_text(local, tokens)
                 local_paths[relative] = local
-                receipt["source_objects"].append(
-                    {
-                        **row,
-                        "status": "passed",
-                        "checks": {
-                            "exact_version_head": True,
-                            "exact_version_get": True,
-                            "bytes": True,
-                            "sha256": True,
-                            "exact_kms": True,
-                            "forbidden_token_scan": True,
-                        },
-                    }
-                )
+                receipt["source_objects"].append(source_preflight_object(row))
                 write_private_atomic(args.receipt_output, receipt, create=False)
             validate_report_packet(local_paths, method_id, expected)
             receipt["checks"] = {
@@ -804,6 +895,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "destination_initially_empty": True,
                 "packet_size_bounded": True,
             }
+            if dry_run_receipt is not None:
+                receipt["checks"]["dry_run_receipt"] = True
             if not args.apply:
                 receipt["status"] = "dry_run"
                 receipt["completed_at_utc"] = now()
@@ -860,6 +953,7 @@ def main() -> int:
     parser.add_argument("--destination-prefix", required=True)
     parser.add_argument("--receipt-output", required=True, type=Path)
     parser.add_argument("--forbidden-token", action="append", default=[])
+    parser.add_argument("--dry-run-receipt", type=Path)
     parser.add_argument("--region", default=REGION, choices=(REGION,))
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()

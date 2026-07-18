@@ -149,6 +149,7 @@ class Fixture:
         apply: bool = False,
         destination: str | None = None,
         private_receipt_sha256: str | None = None,
+        dry_run_receipt: Path | None = None,
     ) -> argparse.Namespace:
         prefix = MODULE.PUBLIC_ROOT + MODULE.METHOD_CONTRACTS[self.method_id]["destination"]
         return argparse.Namespace(
@@ -161,7 +162,55 @@ class Fixture:
             forbidden_token=[],
             region=MODULE.REGION,
             apply=apply,
+            dry_run_receipt=dry_run_receipt,
         )
+
+    def write_dry_run_receipt(self, path: Path | None = None) -> Path:
+        output = path or self.root / "public-publication.dry.json"
+        private_receipt = json.loads(self.receipt_path.read_text(encoding="utf-8"))
+        _, expected, source_rows = MODULE.validate_private_receipt(
+            self.receipt_path, self.method_id
+        )
+        tokens = tuple(
+            sorted(
+                {
+                    token.strip()
+                    for token in MODULE.DEFAULT_FORBIDDEN_TOKENS
+                    if token.strip()
+                },
+                key=str.casefold,
+            )
+        )
+        prefix = MODULE.PUBLIC_ROOT + MODULE.METHOD_CONTRACTS[self.method_id]["destination"]
+        receipt = {
+            "schema_version": 1,
+            "status": "dry_run",
+            "generated_at_utc": MODULE.now(),
+            "apply": False,
+            "method_id": self.method_id,
+            "subject_alias": MODULE.SUBJECT_ALIAS,
+            "run_id": MODULE.RUN_ID,
+            "classification": MODULE.CLASSIFICATION,
+            "script_sha256": MODULE.sha256(Path(MODULE.__file__)),
+            "private_publication_receipt": {
+                "path": str(self.receipt_path.resolve()),
+                "sha256": MODULE.sha256(self.receipt_path),
+                "destination_prefix": private_receipt["destination_prefix"],
+            },
+            "destination_prefix": f"s3://{MODULE.PUBLIC_BUCKET}/{prefix}",
+            "expected_files": list(expected),
+            "forbidden_token_count": len(tokens),
+            "forbidden_token_sha256": MODULE.forbidden_token_fingerprints(tokens),
+            "source_objects": [
+                MODULE.source_preflight_object(row) for row in source_rows
+            ],
+            "destination_objects": [],
+            "destination_initial_history_count": 0,
+            "checks": dict.fromkeys(MODULE.REVIEWED_PUBLIC_PREFLIGHT_CHECKS, True),
+            "completed_at_utc": MODULE.now(),
+        }
+        output.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
+        return output
 
 
 class FakeAws:
@@ -280,11 +329,24 @@ class FakeAws:
 
 
 class PublishReviewedPublicReportTests(unittest.TestCase):
-    def execute(self, fixture: Fixture, fake: FakeAws, *, apply: bool = False) -> dict[str, object]:
+    def execute(
+        self,
+        fixture: Fixture,
+        fake: FakeAws,
+        *,
+        apply: bool = False,
+        dry_run_receipt: Path | None = None,
+    ) -> dict[str, object]:
         with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json), mock.patch.object(
             MODULE, "download_exact", side_effect=fake.download_exact
         ):
-            return MODULE.run(fixture.args(apply=apply))
+            return MODULE.run(
+                fixture.args(
+                    apply=apply,
+                    dry_run_receipt=dry_run_receipt
+                    or (fixture.write_dry_run_receipt() if apply else None),
+                )
+            )
 
     def test_dry_run_validates_all_exact_private_versions_without_uploading(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -317,12 +379,110 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             self.assertEqual(fake.get_calls, [])
             self.assertEqual(fake.put_calls, [])
 
+    def test_apply_requires_dry_run_receipt_before_s3(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            args = fixture.args(apply=True)
+
+            with (
+                mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ),
+                self.assertRaisesRegex(ValueError, "requires --dry-run-receipt"),
+            ):
+                MODULE.run(args)
+
+            self.assertFalse(fixture.output_path.exists())
+
+    def test_dry_run_receipt_is_only_valid_with_apply(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            args = fixture.args(dry_run_receipt=fixture.write_dry_run_receipt())
+
+            with self.assertRaisesRegex(ValueError, "only valid with --apply"):
+                MODULE.run(args)
+
+            self.assertFalse(fixture.output_path.exists())
+
+    def test_apply_rejects_mismatched_dry_run_receipt_before_s3(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            dry_receipt = fixture.write_dry_run_receipt()
+            payload = json.loads(dry_receipt.read_text(encoding="utf-8"))
+            payload["private_publication_receipt"]["sha256"] = "0" * 64
+            dry_receipt.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+            with (
+                mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ),
+                self.assertRaisesRegex(ValueError, "private receipt does not match"),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_receipt))
+
+            self.assertFalse(fixture.output_path.exists())
+
+    def test_apply_rejects_changed_dry_run_source_object_before_s3(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            dry_receipt = fixture.write_dry_run_receipt()
+            payload = json.loads(dry_receipt.read_text(encoding="utf-8"))
+            payload["source_objects"][0]["sha256"] = "0" * 64
+            dry_receipt.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+            with (
+                mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ),
+                self.assertRaisesRegex(ValueError, "source objects do not match"),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_receipt))
+
+            self.assertFalse(fixture.output_path.exists())
+
+    def test_apply_rejects_failed_or_redirected_dry_run_receipt_before_s3(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            dry_receipt = fixture.write_dry_run_receipt()
+            payload = json.loads(dry_receipt.read_text(encoding="utf-8"))
+            payload["status"] = "failed"
+            dry_receipt.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+            with (
+                mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ),
+                self.assertRaisesRegex(ValueError, "contract is malformed"),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_receipt))
+
+            linked = fixture.root / "linked-dry-run.json"
+            linked.symlink_to(dry_receipt)
+            with self.assertRaisesRegex(ValueError, "must be a real file"):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=linked))
+
+            self.assertFalse(fixture.output_path.exists())
+
     def test_apply_uses_create_only_sse_s3_sha256_and_exact_final_history(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
             fake = FakeAws(fixture)
-            result = self.execute(fixture, fake, apply=True)
+            dry_run_receipt = fixture.write_dry_run_receipt()
+            result = self.execute(
+                fixture, fake, apply=True, dry_run_receipt=dry_run_receipt
+            )
             self.assertEqual(result["status"], "passed")
+            self.assertEqual(
+                result["dry_run_receipt"]["path"], str(dry_run_receipt.resolve())
+            )
+            self.assertEqual(
+                result["dry_run_receipt"]["sha256"],
+                digest(dry_run_receipt.read_bytes()),
+            )
+            self.assertEqual(result["dry_run_receipt"]["method_id"], fixture.method_id)
+            self.assertTrue(result["checks"]["dry_run_receipt"])
             self.assertEqual(len(result["destination_objects"]), 8)
             self.assertTrue(result["checks"]["destination_exact_one_version_no_delete_history"])
             for call in fake.put_calls:

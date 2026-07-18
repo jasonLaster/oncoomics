@@ -99,6 +99,7 @@ def publish_command(
     output: Path,
     *,
     apply: bool,
+    dry_run_receipt: Path | None = None,
 ) -> list[str | Path]:
     command: list[str | Path] = [
         "python3",
@@ -116,7 +117,12 @@ def publish_command(
     ]
     command.extend(["--private-publication-receipt-sha256", receipt_sha256])
     if apply:
+        if dry_run_receipt is None:
+            raise ValueError("reviewed-public apply command requires a dry-run receipt")
+        command.extend(["--dry-run-receipt", dry_run_receipt])
         command.append("--apply")
+    elif dry_run_receipt is not None:
+        raise ValueError("--dry-run-receipt is only valid with --apply")
     return command
 
 
@@ -257,6 +263,8 @@ def render(
     lines.extend(["## 1. Dry-run and apply reviewed-public reports", ""])
     for index, method_id in enumerate(REPORT_METHOD_IDS):
         receipt = paths[index]
+        dry_receipt = receipt_output(root, receipt_stem, method_id, ".dry")
+        apply_receipt = receipt_output(root, receipt_stem, method_id, "")
         lines.extend(
             [
                 f"### {method_id}",
@@ -267,7 +275,7 @@ def render(
                         receipt,
                         receipt_sha256_by_method[method_id],
                         method_id,
-                        receipt_output(root, receipt_stem, method_id, ".dry"),
+                        dry_receipt,
                         apply=False,
                     )
                 ),
@@ -277,8 +285,9 @@ def render(
                         receipt,
                         receipt_sha256_by_method[method_id],
                         method_id,
-                        receipt_output(root, receipt_stem, method_id, ""),
+                        apply_receipt,
                         apply=True,
+                        dry_run_receipt=dry_receipt,
                     )
                 ),
             ]
