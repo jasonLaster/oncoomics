@@ -90,7 +90,7 @@ def _cache_entry(entry: Mapping[str, Any], artifact: str, root: Path, region: st
     version_id = _require_version_id(entry.get("version_id"), f"{artifact} version_id")
     local_path = str(_local_path(root, artifact, uri))
 
-    return {
+    result = {
         "artifact": artifact,
         "bytes": _require_positive_int(entry.get("bytes"), artifact),
         "sha256": _require_hex(entry.get("sha256"), f"{artifact} sha256"),
@@ -120,6 +120,10 @@ def _cache_entry(entry: Mapping[str, Any], artifact: str, root: Path, region: st
             local_path,
         ],
     }
+    for key in ("role", "sample_id"):
+        if key in entry:
+            result[key] = _require_string(entry.get(key), f"{artifact} {key}")
+    return result
 
 
 def _flatten_cache_entries(cache_manifest: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:

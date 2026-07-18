@@ -93,7 +93,7 @@ def _require_ready_copy(row: Mapping[str, Any]) -> dict[str, Any]:
     if _require_s3_uri(row.get("destination_uri"), f"{artifact} destination_uri") != uri:
         raise ManifestError(f"{artifact} destination_uri must match copy_strategy destination")
 
-    return {
+    result = {
         "artifact": artifact,
         "bytes": _require_positive_int(row.get("bytes"), artifact),
         "copy_method": _require_string(
@@ -107,6 +107,10 @@ def _require_ready_copy(row: Mapping[str, Any]) -> dict[str, Any]:
         "uri": uri,
         "version_id": _require_version_id(row.get("destination_version_id"), f"{artifact} destination_version_id"),
     }
+    for key in ("role", "sample_id"):
+        if key in row:
+            result[key] = _require_string(row.get(key), f"{artifact} {key}")
+    return result
 
 
 def _index_by_artifact(rows: Sequence[Mapping[str, Any]]) -> dict[str, Mapping[str, Any]]:

@@ -55,6 +55,7 @@ class Phase3FastStagedInputsTests(unittest.TestCase):
 
         tumor = manifest["bam_pair"]["tumor"]["bam"]
         self.assertEqual("tumor.bam", tumor["artifact"])
+        self.assertEqual("subject01_tumor", tumor["sample_id"])
         self.assertTrue(tumor["local_path"].endswith("/scratch/inputs/tumor/tumor.markdup.bam"))
         self.assertTrue(tumor["checks"]["local_sha256_matches"])
         self.assertEqual("copy-version-1", tumor["source"]["version_id"])

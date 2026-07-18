@@ -39,6 +39,7 @@ class Phase3FastStagingPlanTests(unittest.TestCase):
         tumor = plan["bam_pair"]["tumor"]["bam"]
         self.assertEqual("/scratch/diana/phase3_wgs_fast/inputs/tumor/tumor.markdup.bam", tumor["local_path"])
         self.assertEqual("copy-version-1", tumor["source"]["version_id"])
+        self.assertEqual("subject01_tumor", tumor["sample_id"])
         self.assertEqual(
             [
                 "aws",

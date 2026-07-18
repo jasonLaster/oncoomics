@@ -83,9 +83,17 @@ def _cache_uri(prefix: str, group: str, artifact: str, source: Mapping[str, Any]
     return f"{prefix}/{posixpath.join(group, artifact, sha256, basename)}"
 
 
-def _copy_row(prefix: str, kms_key_arn: str, group: str, artifact: str, source: Mapping[str, Any]) -> dict[str, Any]:
+def _copy_row(
+    prefix: str,
+    kms_key_arn: str,
+    group: str,
+    artifact: str,
+    source: Mapping[str, Any],
+    *,
+    metadata: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
     source_uri = _require_s3_uri(source.get("uri"), f"{artifact} source uri")
-    return {
+    row = {
         "artifact": artifact,
         "bytes": _require_positive_int(source.get("bytes"), artifact),
         "destination_kms_key_arn": kms_key_arn,
@@ -95,15 +103,31 @@ def _copy_row(prefix: str, kms_key_arn: str, group: str, artifact: str, source: 
         "source_uri": source_uri,
         "source_version_id": _require_version(source.get("version_id"), artifact),
     }
+    if metadata is not None:
+        row.update(metadata)
+    return row
 
 
 def _append_bam_pair_rows(rows: list[dict[str, Any]], prefix: str, kms_key_arn: str, manifest: Mapping[str, Any]) -> None:
     bam_pair = _require_mapping(manifest.get("bam_pair"), "bam_pair")
     for role in ("tumor", "normal"):
         sample = _require_mapping(bam_pair.get(role), f"bam_pair {role}")
+        metadata = {
+            "role": role,
+            "sample_id": _require_string(sample.get("sample_id"), f"bam_pair {role} sample_id"),
+        }
         for kind in ("bam", "bai"):
             artifact = f"{role}.{kind}"
-            rows.append(_copy_row(prefix, kms_key_arn, "inputs", artifact, _require_mapping(sample.get(kind), artifact)))
+            rows.append(
+                _copy_row(
+                    prefix,
+                    kms_key_arn,
+                    "inputs",
+                    artifact,
+                    _require_mapping(sample.get(kind), artifact),
+                    metadata=metadata,
+                )
+            )
 
 
 def _append_reference_rows(rows: list[dict[str, Any]], prefix: str, kms_key_arn: str, manifest: Mapping[str, Any]) -> None:

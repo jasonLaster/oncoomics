@@ -52,6 +52,8 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
 
         rows = {row["artifact"]: row for row in plan["copy_plan"]}
         self.assertIn("/inputs/tumor.bam/", rows["tumor.bam"]["destination_uri"])
+        self.assertEqual("subject01_tumor", rows["tumor.bam"]["sample_id"])
+        self.assertEqual("tumor", rows["tumor.bam"]["role"])
         self.assertIn("/references/reference.fa/", rows["reference.fa"]["destination_uri"])
         self.assertIn("/resources/panel_of_normals_vcf/", rows["panel_of_normals_vcf"]["destination_uri"])
         self.assertEqual("s3://private-cache/tumor.markdup.bam", rows["tumor.bam"]["source_uri"])

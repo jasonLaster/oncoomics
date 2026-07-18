@@ -227,7 +227,7 @@ def _copy_result(row: Mapping[str, Any], prefix: str, kms_key_arn: str, part_siz
     if row.get("destination_kms_key_arn") != kms_key_arn:
         raise ManifestError(f"{artifact} destination_kms_key_arn must match the cache KMS key")
 
-    return {
+    result = {
         "artifact": artifact,
         "bytes": bytes_,
         "checks": {
@@ -253,6 +253,10 @@ def _copy_result(row: Mapping[str, Any], prefix: str, kms_key_arn: str, part_siz
         "source_version_id": source_version_id,
         "status": "dry_run" if mode == "dry_run" else "planned",
     }
+    for key in ("role", "sample_id"):
+        if key in row:
+            result[key] = _require_string(row.get(key), f"{artifact} {key}")
+    return result
 
 
 def _copy_results(value: Any) -> list[Mapping[str, Any]]:

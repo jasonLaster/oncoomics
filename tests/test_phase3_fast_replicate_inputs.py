@@ -122,6 +122,7 @@ class Phase3FastReplicateInputsTests(unittest.TestCase):
         self.assertEqual("dry_run", rows["tumor.bam"]["status"])
         self.assertEqual("copy_object", rows["tumor.bam"]["copy_strategy"]["method"])
         self.assertEqual(1, rows["tumor.bam"]["copy_strategy"]["part_count"])
+        self.assertEqual("subject01_tumor", rows["tumor.bam"]["sample_id"])
         self.assertEqual("tumor-bam-version", rows["tumor.bam"]["source_version_id"])
         self.assertEqual("s3://private-cache/tumor.markdup.bam", rows["tumor.bam"]["source_uri"])
         self.assertTrue(rows["tumor.bam"]["checks"]["dry_run_no_s3_write"])

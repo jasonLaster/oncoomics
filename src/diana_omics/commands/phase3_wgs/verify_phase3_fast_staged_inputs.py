@@ -99,7 +99,7 @@ def _verify_staged_object(row: Mapping[str, Any]) -> dict[str, Any]:
     if observed_sha256 != expected_sha256:
         raise ManifestError(f"{artifact} local sha256 does not match expected {expected_sha256}")
 
-    return {
+    result = {
         "artifact": artifact,
         "bytes": expected_bytes,
         "local_path": str(local_path),
@@ -113,6 +113,10 @@ def _verify_staged_object(row: Mapping[str, Any]) -> dict[str, Any]:
             "local_sha256_matches": True,
         },
     }
+    for key in ("role", "sample_id"):
+        if key in row:
+            result[key] = _require_string(row.get(key), f"{artifact} {key}")
+    return result
 
 
 def _index_by_artifact(rows: Sequence[Mapping[str, Any]]) -> dict[str, Mapping[str, Any]]:

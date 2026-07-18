@@ -42,6 +42,7 @@ class Phase3FastCacheManifestTests(unittest.TestCase):
 
         self.assertEqual("s3://diana-omics-private-cache-us-east-2/wgs-v2/inputs/tumor.bam/" + ("c" * 64) + "/tumor.markdup.bam", manifest["bam_pair"]["tumor"]["bam"]["uri"])
         self.assertEqual("copy-version-1", manifest["bam_pair"]["tumor"]["bam"]["version_id"])
+        self.assertEqual("subject01_tumor", manifest["bam_pair"]["tumor"]["bam"]["sample_id"])
         self.assertEqual("s3://diana-omics-private-cache-us-east-2/wgs-v2/references/reference.fa/" + ("f" * 64) + "/reference.fa", manifest["reference"]["fasta"]["uri"])
         self.assertEqual("s3://diana-omics-private-cache-us-east-2/wgs-v2/resources/panel_of_normals_vcf/" + ("8" * 64) + "/panel_of_normals_vcf", manifest["caller_resources"]["panel_of_normals_vcf"]["uri"])
 
