@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shlex
@@ -161,9 +162,17 @@ def write_once(path: Path, text: str) -> None:
                 handle.flush()
                 os.fsync(handle.fileno())
             fsync_directory(path.parent)
+            require_installed_output(path, hashlib.sha256(text.encode("utf-8")).hexdigest())
         except Exception:
             path.unlink(missing_ok=True)
             raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def require_installed_output(path: Path, expected_sha256: str) -> None:
+    if has_symlinked_parent(path) or path.is_symlink() or not path.is_file():
+        raise ValueError(f"output changed during write: {path}")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != expected_sha256:
+        raise ValueError(f"output changed during write: {path}")

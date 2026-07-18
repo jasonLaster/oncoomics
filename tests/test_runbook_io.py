@@ -164,6 +164,27 @@ class RunbookIoTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_write_once_rehashes_after_directory_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runbook.md"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_directory_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_text("tampered\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_directory_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "output changed during write"),
+            ):
+                MODULE.write_once(output, "complete\n")
+
+            self.assertFalse(output.exists())
+
     def test_write_once_rejects_symlinked_parent_without_writing_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
