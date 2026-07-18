@@ -416,6 +416,36 @@ def write_file_create_only(path: Path, data: bytes) -> None:
             os.close(descriptor)
 
 
+def require_bound_packet_file(packet_dir: Path, name: str, digest: Any) -> None:
+    digest_text = str(digest)
+    if SHA256_HEX.fullmatch(digest_text) is None:
+        raise ValueError(f"blocked cross-check report manifest has malformed SHA-256 for {name}")
+    path = packet_dir / name
+    require_real_nonempty_file(path, "blocked cross-check packet")
+    if sha256_file(path) != digest_text:
+        raise ValueError(f"blocked cross-check report manifest is stale for {name}")
+
+
+def require_blocked_report_manifest(packet_dir: Path) -> None:
+    manifest_path = packet_dir / "report_manifest.json"
+    require_real_nonempty_file(manifest_path, "blocked cross-check packet")
+    with manifest_path.open(encoding="utf-8") as handle:
+        manifest = json.load(handle)
+    if not isinstance(manifest, dict):
+        raise ValueError("blocked cross-check report manifest must be a JSON object")
+    support_hashes = manifest.get("support_sha256")
+    if not isinstance(support_hashes, dict) or set(support_hashes) != {"method_spec.json"}:
+        raise ValueError(
+            "blocked cross-check report manifest must bind method_spec.json"
+        )
+    require_bound_packet_file(packet_dir, "report.md", manifest.get("report_sha256"))
+    require_bound_packet_file(
+        packet_dir,
+        "method_spec.json",
+        support_hashes.get("method_spec.json"),
+    )
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -614,6 +644,7 @@ def generate(
             }
             manifest_path = target / "report_manifest.json"
             write_tracked(manifest_path, json_bytes(manifest))
+            require_blocked_report_manifest(target)
         fsync_directory(output_root)
     except Exception:
         for path in reversed(written):

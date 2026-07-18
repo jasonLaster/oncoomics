@@ -169,6 +169,74 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_packet_manifest_rejects_stale_report_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+            target = output / GENERATOR.METHODS[0]["directory"]
+            real_fsync_directory = GENERATOR.fsync_directory
+            tampered = False
+
+            def tamper_report_after_manifest_fsync(path: Path) -> None:
+                nonlocal tampered
+                real_fsync_directory(path)
+                manifest = target / "report_manifest.json"
+                if manifest.exists() and not tampered:
+                    tampered = True
+                    (target / "report.md").write_text(
+                        "tampered blocked packet\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    GENERATOR,
+                    "fsync_directory",
+                    side_effect=tamper_report_after_manifest_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "blocked cross-check report manifest is stale for report.md",
+                ),
+            ):
+                GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+
+            self.assertTrue(tampered)
+            self.assertFalse(output.exists())
+
+    def test_packet_manifest_rejects_stale_method_spec_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+            target = output / GENERATOR.METHODS[0]["directory"]
+            real_fsync_directory = GENERATOR.fsync_directory
+            tampered = False
+
+            def tamper_spec_after_manifest_fsync(path: Path) -> None:
+                nonlocal tampered
+                real_fsync_directory(path)
+                manifest = target / "report_manifest.json"
+                if manifest.exists() and not tampered:
+                    tampered = True
+                    (target / "method_spec.json").write_text(
+                        '{"tampered": true}\n',
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    GENERATOR,
+                    "fsync_directory",
+                    side_effect=tamper_spec_after_manifest_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "blocked cross-check report manifest is stale for method_spec.json",
+                ),
+            ):
+                GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+
+            self.assertTrue(tampered)
+            self.assertFalse(output.exists())
+
     def test_generation_fsyncs_output_root_after_method_directories(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "blocked"
