@@ -1196,10 +1196,11 @@ def require_no_symlinked_ancestors(path: Path, label: str) -> None:
             raise ValueError(f"{label} parent is not a directory: {parent}")
 
 
-def require_real_input_path(path: Path, label: str) -> None:
+def require_real_input_path(path: Path, label: str) -> Path:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
         raise ValueError(f"{label} must be a non-empty real file: {path}")
+    return path.resolve()
 
 
 def resolve_report_output_dir(output: Path) -> Path:
@@ -1213,7 +1214,19 @@ def resolve_report_output_dir(output: Path) -> Path:
     return output.resolve()
 
 
+def require_safe_new_packet(path: Path) -> Path:
+    require_no_symlinked_ancestors(path, "report output packet")
+    if path.is_symlink():
+        raise ValueError("report output packet may not be a symlink: " + path.name)
+    if path.exists():
+        raise ValueError("report output packet already exists: " + path.name)
+    return path.resolve()
+
+
 def copy_create_only(source: Path, destination: Path) -> None:
+    source = require_real_input_path(source, "staged report packet")
+    expected_sha256 = sha256(source)
+    destination = require_safe_new_packet(destination)
     with source.open("rb") as source_handle:
         try:
             file_descriptor = os.open(
@@ -1240,6 +1253,13 @@ def copy_create_only(source: Path, destination: Path) -> None:
                 destination_handle.flush()
                 os.fsync(destination_handle.fileno())
             fsync_directory(destination.parent)
+            if (
+                sha256(source) != expected_sha256
+                or sha256(destination) != expected_sha256
+            ):
+                raise ValueError(
+                    "staged report packet changed during copy: " + source.name
+                )
         except Exception:
             destination.unlink(missing_ok=True)
             raise

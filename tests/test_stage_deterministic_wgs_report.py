@@ -172,6 +172,72 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
+    def test_packet_file_install_rejects_symlinked_staged_source(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            real_source = root / "real-report.md"
+            real_source.write_bytes(b"one\n")
+            symlink_source = root / "report.md"
+            symlink_source.symlink_to(real_source)
+            destination = root / "output" / "report.md"
+            destination.parent.mkdir()
+
+            with self.assertRaisesRegex(ValueError, "staged report packet"):
+                REPORT_MODULE.copy_create_only(symlink_source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_packet_file_install_rejects_symlinked_destination_parent(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            source = root / "report.md"
+            source.write_bytes(b"one\n")
+            real_output = root / "real-output"
+            real_output.mkdir()
+            linked_output = root / "linked-output"
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report output packet parent may not be a symlink",
+            ):
+                REPORT_MODULE.copy_create_only(source, linked_output / "report.md")
+
+            self.assertFalse((real_output / "report.md").exists())
+
+    def test_packet_file_install_revalidates_copied_bytes(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+            real_fsync_directory = REPORT_MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                destination.write_bytes(b"tampered deterministic report\n")
+
+            with (
+                patch.object(
+                    REPORT_MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged report packet changed during copy",
+                ),
+            ):
+                REPORT_MODULE.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
     def test_failed_packet_install_removes_only_installed_packet_files(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-install-"
