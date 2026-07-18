@@ -1502,6 +1502,60 @@ process FAST_VERIFY_AND_PUBLISH {
     """
 }
 
+process FAST_STAGE_DETERMINISTIC_REPORT {
+    tag "fast_stage_deterministic_report_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/deterministic_report", mode: 'copy', overwrite: true
+
+    input:
+    tuple path(final_evidence_manifest),
+          path(final_evidence_root)
+
+    output:
+    tuple path('workspace/results/phase3_wgs_fast/deterministic_report/report.md'),
+          path('workspace/results/phase3_wgs_fast/deterministic_report/report_manifest.json'),
+          path('workspace/results/phase3_wgs_fast/deterministic_report/readiness.csv'),
+          path('workspace/results/phase3_wgs_fast/deterministic_report/evidence_checks.json'),
+          path('workspace/results/phase3_wgs_fast/deterministic_report/input_sha256.csv')
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST="\$PWD/${final_evidence_manifest}"
+    export PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT="\$PWD/${final_evidence_root}"
+    export PHASE3_WGS_FAST_DETERMINISTIC_REPORT_OUTPUT="\$PWD/workspace/results/phase3_wgs_fast/deterministic_report"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics stage:phase3-fast-deterministic-report
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/results/phase3_wgs_fast/deterministic_report
+    cat > workspace/results/phase3_wgs_fast/deterministic_report/report.md <<'MD'
+    # Phase 3 fast deterministic WGS evidence report
+
+    Stubbed `no_call` report.
+    MD
+    cat > workspace/results/phase3_wgs_fast/deterministic_report/readiness.csv <<'CSV'
+    evidence_surface,state,reason
+    overall_hrd,no_call,stubbed
+    CSV
+    cat > workspace/results/phase3_wgs_fast/deterministic_report/input_sha256.csv <<'CSV'
+    input_id,path,bytes,sha256
+    CSV
+    cat > workspace/results/phase3_wgs_fast/deterministic_report/evidence_checks.json <<JSON
+    {"schema_version":1,"status":"stubbed","report_status":"partial_evidence","overall_hrd_status":"no_call","checks":[],"input_sha256":[]}
+    JSON
+    cat > workspace/results/phase3_wgs_fast/deterministic_report/report_manifest.json <<JSON
+    {"schema_version":1,"method_id":"deterministic_full_wgs","report_kind":"phase3_fast_deterministic_evidence","evidence_status":"partial_evidence","authorized_hrd_state":"no_call","classification_authorized":false}
+    JSON
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -1596,6 +1650,7 @@ workflow PHASE3_WGS_FAST {
                 sv_evidence_results -> tuple(bam_qc_results, cnv_evidence_results, sv_evidence_results)
             }
             FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out, small_variant_artifacts_for_publish, aux_artifacts_for_publish)
+            FAST_STAGE_DETERMINISTIC_REPORT(FAST_VERIFY_AND_PUBLISH.out)
         } else {
             FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
             FAST_BAM_QC_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)

@@ -368,6 +368,14 @@ SHA-256 of each receipt as the contract for later verification and reporting.
 and SV files staged from those branches, copies them into a single portable
 final artifact tree, and writes a path-redacted `final_evidence_manifest.json`
 whose artifact entries use relative paths only.
+`FAST_STAGE_DETERMINISTIC_REPORT` consumes that final manifest and portable
+artifact tree without rerunning BAM or VCF work, rehashes the manifest-bound
+files, and writes the five-file deterministic report packet
+(`report.md`, `report_manifest.json`, `readiness.csv`,
+`evidence_checks.json`, and `input_sha256.csv`). That report is deliberately
+descriptive: Parabricks/FilterMutect, BAM QC, coverage-CNV, and BAM-derived SV
+evidence are bound by SHA-256, while SBS3, scarHRD, CHORD, HRDetect-style
+scoring, and the overall HRD state remain blocked or `no_call`.
 
 ### Gate 1: P5en and Parabricks smoke
 

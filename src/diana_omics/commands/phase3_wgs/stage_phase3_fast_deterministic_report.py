@@ -1,0 +1,594 @@
+from __future__ import annotations
+
+import csv
+import hashlib
+import os
+import shutil
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any, Mapping, Sequence
+
+from ...paths import path_from_root
+from ...utils import read_json, write_csv, write_json
+from .render_phase3_fast_input_manifest import HEX64, ManifestError
+
+DEFAULT_FINAL_EVIDENCE_MANIFEST = "manifests/phase3_wgs_fast/final_evidence_manifest.json"
+DEFAULT_FINAL_EVIDENCE_ROOT = "workspace/results/phase3_wgs_fast/final"
+DEFAULT_OUTPUT_ROOT = "workspace/results/phase3_wgs_fast/deterministic_report"
+OUTPUT_NAMES = frozenset(
+    {
+        "report.md",
+        "report_manifest.json",
+        "readiness.csv",
+        "evidence_checks.json",
+        "input_sha256.csv",
+    }
+)
+SUPPORT_NAMES = frozenset({"readiness.csv", "evidence_checks.json", "input_sha256.csv"})
+EXPECTED_ARTIFACT_GROUPS = frozenset({"small_variants", "bam_qc", "cnv_evidence", "sv_evidence"})
+EMPTY_SHA256 = hashlib.sha256(b"").hexdigest()
+
+
+@dataclass(frozen=True)
+class FinalArtifact:
+    input_id: str
+    relative_path: str
+    bytes: int
+    sha256: str
+    path: Path
+
+
+def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
+    if not isinstance(value, dict):
+        raise ManifestError(f"{label} must be a JSON object")
+    return value
+
+
+def _require_hex(value: Any, label: str) -> str:
+    if not isinstance(value, str) or HEX64.fullmatch(value) is None:
+        raise ManifestError(f"{label} must be 64 hex characters")
+    return value.lower()
+
+
+def _require_non_negative_int(value: Any, label: str) -> int:
+    if not isinstance(value, int) or value < 0:
+        raise ManifestError(f"{label} must be a non-negative integer")
+    return value
+
+
+def _require_relative_path(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ManifestError(f"{label} is required")
+    if "\\" in value:
+        raise ManifestError(f"{label} must be a POSIX relative path")
+    path = PurePosixPath(value)
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+        raise ManifestError(f"{label} must be a safe relative path")
+    return path.as_posix()
+
+
+def _sha256_path(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _flatten_artifacts(
+    value: Mapping[str, Any],
+    *,
+    final_root: Path,
+    prefix: Sequence[str] = (),
+) -> list[FinalArtifact]:
+    if {"relative_path", "bytes", "sha256"}.issubset(value):
+        if not prefix:
+            raise ManifestError("artifact leaves must have a non-empty input ID")
+        relative = _require_relative_path(value.get("relative_path"), ".".join((*prefix, "relative_path")))
+        return [
+            FinalArtifact(
+                input_id=".".join(prefix),
+                relative_path=relative,
+                bytes=_require_non_negative_int(value.get("bytes"), ".".join((*prefix, "bytes"))),
+                sha256=_require_hex(value.get("sha256"), ".".join((*prefix, "sha256"))),
+                path=final_root / relative,
+            )
+        ]
+
+    artifacts: list[FinalArtifact] = []
+    for key, child in sorted(value.items()):
+        if not isinstance(key, str) or not key or "/" in key or key in {".", ".."}:
+            raise ManifestError("artifact keys must be safe path segments")
+        artifacts.extend(
+            _flatten_artifacts(
+                _require_mapping(child, ".".join((*prefix, key))),
+                final_root=final_root,
+                prefix=(*prefix, key),
+            )
+        )
+    return artifacts
+
+
+def _validate_final_manifest(manifest: Mapping[str, Any]) -> Mapping[str, Any]:
+    if manifest.get("schema_version") != 1:
+        raise ManifestError("final evidence schema_version must be 1")
+    if manifest.get("manifest_type") != "phase3_wgs_fast_final_evidence_manifest":
+        raise ManifestError("final evidence manifest_type must be phase3_wgs_fast_final_evidence_manifest")
+    if manifest.get("status") != "completed":
+        raise ManifestError("final evidence status must be completed")
+
+    workflow = _require_mapping(manifest.get("workflow"), "workflow")
+    if workflow.get("name") != "phase3_wgs_fast":
+        raise ManifestError("final evidence workflow.name must be phase3_wgs_fast")
+
+    interpretation = _require_mapping(manifest.get("interpretation"), "interpretation")
+    expected_interpretation = {
+        "authorized_hrd_state": "no_call",
+        "small_variants_use": "deterministic_sample_evidence_not_scalar_hrd",
+        "bam_qc_use": "qc_only_not_hrd_evidence",
+        "scarhrd_use": "no_call_requires_allele_specific_cnv_loh_segments",
+        "chord_use": "no_call_requires_validated_production_sv_caller_vcf",
+        "hrdetect_use": "no_call_requires_validated_structural_variant_features",
+    }
+    for key, expected in expected_interpretation.items():
+        if interpretation.get(key) != expected:
+            raise ManifestError(f"final evidence {key} must remain {expected}")
+
+    artifacts = _require_mapping(manifest.get("artifacts"), "artifacts")
+    if set(artifacts) != EXPECTED_ARTIFACT_GROUPS:
+        raise ManifestError("final evidence artifacts must contain small_variants, bam_qc, cnv_evidence, and sv_evidence")
+    return artifacts
+
+
+def _validate_artifacts(final_root: Path, artifacts: Sequence[FinalArtifact]) -> None:
+    if final_root.is_symlink() or not final_root.is_dir():
+        raise ManifestError("final evidence root must be a real directory")
+
+    expected_paths = {artifact.path for artifact in artifacts}
+    if len(expected_paths) != len(artifacts):
+        raise ManifestError("final evidence manifest artifact paths must be unique")
+
+    input_ids = {artifact.input_id for artifact in artifacts}
+    if len(input_ids) != len(artifacts):
+        raise ManifestError("final evidence manifest artifact input IDs must be unique")
+
+    expected_empty_paths = {artifact.path for artifact in artifacts if artifact.sha256 == EMPTY_SHA256}
+    for artifact in artifacts:
+        if not artifact.path.is_file():
+            raise ManifestError(f"{artifact.input_id} final artifact is missing: {artifact.relative_path}")
+        if artifact.path.stat().st_size != artifact.bytes:
+            raise ManifestError(f"{artifact.input_id} final artifact byte count changed: {artifact.relative_path}")
+        if _sha256_path(artifact.path) != artifact.sha256:
+            raise ManifestError(f"{artifact.input_id} final artifact SHA-256 changed: {artifact.relative_path}")
+        if artifact.bytes == 0 and artifact.path not in expected_empty_paths:
+            raise ManifestError(f"{artifact.input_id} zero-byte artifact is not explicitly hash-bound")
+
+    unexpected = sorted(
+        path.relative_to(final_root).as_posix()
+        for path in final_root.rglob("*")
+        if path.is_file() and path not in expected_paths
+    )
+    if unexpected:
+        raise ManifestError(f"final evidence root contains an unmanifested file: {unexpected[0]}")
+
+
+def _artifact_counts(artifacts: Sequence[FinalArtifact]) -> dict[str, int]:
+    counts = {group: 0 for group in sorted(EXPECTED_ARTIFACT_GROUPS)}
+    for artifact in artifacts:
+        counts[artifact.input_id.split(".", 1)[0]] += 1
+    return counts
+
+
+def _read_json_artifact(final_root: Path, artifact_map: Mapping[str, Any], *path: str) -> Mapping[str, Any]:
+    current: Any = artifact_map
+    label = ".".join(path)
+    for part in path:
+        current = _require_mapping(current, label).get(part)
+    row = _require_mapping(current, label)
+    relative = _require_relative_path(row.get("relative_path"), f"{label}.relative_path")
+    return _require_mapping(read_json(final_root / relative), label)
+
+
+def _read_text_artifact(final_root: Path, artifact_map: Mapping[str, Any], *path: str) -> str:
+    current: Any = artifact_map
+    label = ".".join(path)
+    for part in path:
+        current = _require_mapping(current, label).get(part)
+    row = _require_mapping(current, label)
+    relative = _require_relative_path(row.get("relative_path"), f"{label}.relative_path")
+    return (final_root / relative).read_text(encoding="utf-8", errors="replace")
+
+
+def _build_input_rows(
+    *,
+    final_manifest_sha256: str,
+    final_manifest_bytes: int,
+    artifacts: Sequence[FinalArtifact],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "input_id": "final_evidence_manifest",
+            "path": "manifest/final_evidence_manifest.json",
+            "bytes": final_manifest_bytes,
+            "sha256": final_manifest_sha256,
+        },
+        *[
+            {
+                "input_id": artifact.input_id,
+                "path": f"final/{artifact.relative_path}",
+                "bytes": artifact.bytes,
+                "sha256": artifact.sha256,
+            }
+            for artifact in sorted(artifacts, key=lambda artifact: artifact.input_id)
+        ],
+    ]
+
+
+def _readiness_rows(
+    *,
+    artifact_counts: Mapping[str, int],
+    cnv_summary: Mapping[str, Any],
+    sv_supplementary_total: int,
+) -> list[dict[str, str]]:
+    return [
+        {
+            "evidence_surface": "source_sha256",
+            "state": "ready",
+            "reason": "The final evidence manifest and every materialized final artifact matched its SHA-256 and byte count.",
+        },
+        {
+            "evidence_surface": "small_variants",
+            "state": "ready",
+            "reason": f"{artifact_counts['small_variants']} Parabricks/FilterMutect small-variant artifacts were materialized.",
+        },
+        {
+            "evidence_surface": "bam_qc",
+            "state": "ready",
+            "reason": f"{artifact_counts['bam_qc']} tumor/normal quickcheck, flagstat, and idxstats outputs were materialized.",
+        },
+        {
+            "evidence_surface": "coverage_cnv",
+            "state": "partial_evidence",
+            "reason": (
+                f"{cnv_summary.get('bin_count', 'unknown')} coverage bins were materialized; "
+                "they are depth-only and not allele-specific CNV/LOH segments."
+            ),
+        },
+        {
+            "evidence_surface": "sv",
+            "state": "partial_evidence",
+            "reason": (
+                f"BAM-derived evidence counted {sv_supplementary_total} supplementary alignments across tumor and normal; "
+                "no production SV VCF/BEDPE exists."
+            ),
+        },
+        {
+            "evidence_surface": "sbs96",
+            "state": "blocked",
+            "reason": "No SBS96 matrix or SBS3 assignment is present in the Phase 3 fast final evidence tree.",
+        },
+        {
+            "evidence_surface": "scarHRD",
+            "state": "no_call",
+            "reason": "Validated allele-specific total/minor copy-number segments and a purity/ploidy solution are absent.",
+        },
+        {
+            "evidence_surface": "CHORD",
+            "state": "no_call",
+            "reason": "A validated production structural-variant callset is absent.",
+        },
+        {
+            "evidence_surface": "HRDetect",
+            "state": "no_call",
+            "reason": "The SBS3, indel, CNV/LOH, SV, and calibrated integration policy inputs are not all present.",
+        },
+        {
+            "evidence_surface": "overall_hrd",
+            "state": "no_call",
+            "reason": "The deterministic evidence is partial and cannot support a scalar HRD classification.",
+        },
+    ]
+
+
+def _markdown_table(rows: Sequence[Mapping[str, Any]]) -> str:
+    if not rows:
+        return "_None._"
+    headers = list(rows[0])
+    output = [
+        "| " + " | ".join(headers) + " |",
+        "| " + " | ".join("---" for _ in headers) + " |",
+    ]
+    for row in rows:
+        output.append("| " + " | ".join(str(row.get(header, "")).replace("\n", " ") for header in headers) + " |")
+    return "\n".join(output)
+
+
+def _report_markdown(
+    manifest: Mapping[str, Any],
+    *,
+    artifact_counts: Mapping[str, int],
+    readiness_rows: Sequence[Mapping[str, str]],
+    cnv_summary: Mapping[str, Any],
+    sv_supplementary_total: int,
+) -> str:
+    run = _require_mapping(manifest.get("run"), "run")
+    workflow = _require_mapping(manifest.get("workflow"), "workflow")
+    total = sum(artifact_counts.values())
+    return "\n".join(
+        [
+            "# Phase 3 fast deterministic WGS evidence report",
+            "",
+            f"Run ID: `{run.get('run_id', 'unknown')}`",
+            f"Workflow: `{workflow.get('name', 'unknown')}`",
+            f"Source commit: `{workflow.get('source_commit', 'unknown')}`",
+            "",
+            "## Result",
+            "",
+            (
+                "This no-compute staging step verified the Phase 3 fast final evidence manifest and "
+                f"{total} manifest-bound artifacts. It authorizes deterministic sample-evidence review only; "
+                "overall HRD remains `no_call`."
+            ),
+            "",
+            "## Evidence surfaces",
+            "",
+            _markdown_table(readiness_rows),
+            "",
+            "## Materialized artifact groups",
+            "",
+            _markdown_table(
+                [
+                    {"group": group, "artifact_count": count}
+                    for group, count in sorted(artifact_counts.items())
+                ]
+            ),
+            "",
+            "## Coverage CNV",
+            "",
+            (
+                f"The final tree includes `{cnv_summary.get('bin_count', 'unknown')}` depth bins "
+                f"with `{cnv_summary.get('relative_gain_bins', 'unknown')}` relative-gain bins and "
+                f"`{cnv_summary.get('relative_loss_bins', 'unknown')}` relative-loss bins. "
+                "This is coverage evidence, not allele-specific total/minor CNV, LOH, or scarHRD input."
+            ),
+            "",
+            "## Structural-variant evidence",
+            "",
+            (
+                f"The final tree includes BAM-derived split/discordant-read counters with `{sv_supplementary_total}` "
+                "supplementary alignments across tumor and normal. These counters are not a production SV VCF/BEDPE "
+                "and do not unlock CHORD or HRDetect-style scoring."
+            ),
+            "",
+            "## Blocked model routes",
+            "",
+            "- `scarHRD`: no allele-specific CNV/LOH segments and no purity/ploidy solution.",
+            "- `CHORD`: no validated production SV callset.",
+            "- `HRDetect`: no locked SBS3, indel, CNV/LOH, SV, and calibration policy.",
+            "- `SBS3`: no SBS96 matrix or validated signature assignment in this final evidence tree.",
+            "",
+            "## Next steps",
+            "",
+            "1. Keep this packet as the terminal manifest for the current fast-evidence seam.",
+            "2. Generate SBS96 and signature-assignment evidence from the filtered VCF.",
+            "3. Add allele-specific CNV/LOH and production SV callers to unlock scarHRD, CHORD, and HRDetect-style routes.",
+            "4. Preserve `no_call` until every route-specific input and validation gate is present.",
+            "",
+        ]
+    )
+
+
+def _prepare_output_dir(output: Path) -> None:
+    if output.is_symlink():
+        raise ManifestError("deterministic report output may not be a symlink")
+    if output.exists() and not output.is_dir():
+        raise ManifestError(f"deterministic report output is not a directory: {output}")
+
+    output.mkdir(parents=True, exist_ok=True)
+    existing = sorted(path.name for path in output.iterdir())
+    if existing:
+        raise ManifestError("deterministic report output already contains files: " + ", ".join(existing))
+
+
+def _write_support_files(
+    staging: Path,
+    *,
+    report: str,
+    readiness_rows: Sequence[Mapping[str, str]],
+    checks: Mapping[str, Any],
+    input_rows: Sequence[Mapping[str, Any]],
+) -> None:
+    write_csv(staging / "readiness.csv", readiness_rows, ["evidence_surface", "state", "reason"])
+    write_json(staging / "evidence_checks.json", checks)
+    write_csv(staging / "input_sha256.csv", input_rows, ["input_id", "path", "bytes", "sha256"])
+    (staging / "report.md").write_text(report, encoding="utf-8")
+
+
+def _support_sha256(staging: Path) -> Mapping[str, str]:
+    return {
+        name: _sha256_path(staging / name)
+        for name in sorted(SUPPORT_NAMES)
+    }
+
+
+def _install_packet(
+    output: Path,
+    *,
+    staging: Path,
+) -> None:
+    installed: list[Path] = []
+    try:
+        for name in sorted(OUTPUT_NAMES):
+            source = staging / name
+            destination = output / name
+            with source.open("rb") as source_handle:
+                descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+                try:
+                    with os.fdopen(descriptor, "wb") as destination_handle:
+                        descriptor = -1
+                        shutil.copyfileobj(source_handle, destination_handle)
+                        destination_handle.flush()
+                        os.fsync(destination_handle.fileno())
+                finally:
+                    if descriptor >= 0:
+                        os.close(descriptor)
+            installed.append(destination)
+    except Exception:
+        for path in installed:
+            path.unlink(missing_ok=True)
+        raise
+
+
+def _parse_csv(path: Path) -> list[dict[str, str]]:
+    with path.open(encoding="utf-8", newline="") as handle:
+        return [dict(row) for row in csv.DictReader(handle)]
+
+
+def stage_phase3_fast_deterministic_report(
+    final_manifest: Mapping[str, Any],
+    *,
+    final_manifest_sha256: str,
+    final_manifest_bytes: int,
+    final_root: str | os.PathLike[str],
+    output_dir: str | os.PathLike[str],
+) -> dict[str, Any]:
+    output = Path(output_dir)
+    final = Path(final_root)
+    _prepare_output_dir(output)
+
+    artifact_map = _validate_final_manifest(final_manifest)
+    artifacts = _flatten_artifacts(artifact_map, final_root=final)
+    expected_artifact_count = _require_non_negative_int(final_manifest.get("artifact_count"), "artifact_count")
+    if len(artifacts) != expected_artifact_count:
+        raise ManifestError("final evidence artifact_count must match the recursive artifact inventory")
+    _validate_artifacts(final, artifacts)
+
+    cnv_summary = _read_json_artifact(final, artifact_map, "cnv_evidence", "summary_json")
+    sv_supplementary_total = sum(
+        int(_read_text_artifact(final, artifact_map, "sv_evidence", role, "supplementary_alignments").strip())
+        for role in ("tumor", "normal")
+    )
+    artifact_counts = _artifact_counts(artifacts)
+    input_rows = _build_input_rows(
+        final_manifest_sha256=_require_hex(final_manifest_sha256, "final_manifest_sha256"),
+        final_manifest_bytes=final_manifest_bytes,
+        artifacts=artifacts,
+    )
+    readiness_rows = _readiness_rows(
+        artifact_counts=artifact_counts,
+        cnv_summary=cnv_summary,
+        sv_supplementary_total=sv_supplementary_total,
+    )
+    checks = {
+        "schema_version": 1,
+        "status": "passed",
+        "report_status": "partial_evidence",
+        "overall_hrd_status": "no_call",
+        "checks": [
+            {
+                "check_id": "final_manifest_contract",
+                "status": "passed",
+                "detail": "The final evidence manifest is completed, no-call, and emitted by phase3_wgs_fast.",
+            },
+            {
+                "check_id": "final_artifact_sha256",
+                "status": "passed",
+                "detail": f"{len(artifacts)} materialized final artifacts matched their manifest byte counts and SHA-256 values.",
+            },
+            {
+                "check_id": "model_boundaries",
+                "status": "passed",
+                "detail": "scarHRD, CHORD, HRDetect-style, SBS3, and scalar HRD states remain no_call or blocked.",
+            },
+        ],
+        "input_sha256": input_rows,
+    }
+    report = _report_markdown(
+        final_manifest,
+        artifact_counts=artifact_counts,
+        readiness_rows=readiness_rows,
+        cnv_summary=cnv_summary,
+        sv_supplementary_total=sv_supplementary_total,
+    )
+
+    with tempfile.TemporaryDirectory(prefix=f".{output.name}.", dir=str(output.parent)) as temporary:
+        staging = Path(temporary)
+        _write_support_files(
+            staging,
+            report=report,
+            readiness_rows=readiness_rows,
+            checks=checks,
+            input_rows=input_rows,
+        )
+        report_sha256 = hashlib.sha256(report.encode("utf-8")).hexdigest()
+        source_sha256 = {
+            str(row["input_id"]): str(row["sha256"])
+            for row in input_rows
+        }
+        report_manifest = {
+            "schema_version": 1,
+            "method_id": "deterministic_full_wgs",
+            "report_kind": "phase3_fast_deterministic_evidence",
+            "evidence_status": "partial_evidence",
+            "authorized_hrd_state": "no_call",
+            "classification_authorized": False,
+            "classification_qc_status": "not_applicable",
+            "support_sha256": dict(sorted(_support_sha256(staging).items())),
+            "source_sha256": source_sha256,
+            "report_sha256": report_sha256,
+            "review_summary": {
+                "overall": {
+                    "evidence_status": "partial_evidence",
+                    "authorized_hrd_state": "no_call",
+                },
+                "workflow": dict(_require_mapping(final_manifest.get("workflow"), "workflow")),
+                "run": dict(_require_mapping(final_manifest.get("run"), "run")),
+                "artifact_count": len(artifacts),
+                "artifact_groups": dict(sorted(artifact_counts.items())),
+                "blocked_routes": {
+                    "sbs96": "blocked_missing_sbs96_matrix",
+                    "scarHRD": "no_call_requires_allele_specific_cnv_loh_segments",
+                    "CHORD": "no_call_requires_validated_production_sv_caller_vcf",
+                    "HRDetect": "no_call_requires_validated_structural_variant_features",
+                },
+            },
+        }
+        write_json(staging / "report_manifest.json", report_manifest)
+        _install_packet(output, staging=staging)
+
+    manifest_path = output / "report_manifest.json"
+    written_manifest = _require_mapping(read_json(manifest_path), "report_manifest")
+    if written_manifest != report_manifest:
+        raise ManifestError("written report manifest differs from the generated manifest")
+    if _parse_csv(output / "input_sha256.csv") != [
+        {key: str(row[key]) for key in ("input_id", "path", "bytes", "sha256")}
+        for row in input_rows
+    ]:
+        raise ManifestError("written input_sha256.csv differs from the generated input rows")
+
+    return dict(report_manifest)
+
+
+def load_report_from_environment() -> tuple[dict[str, Any], Path]:
+    manifest_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST", DEFAULT_FINAL_EVIDENCE_MANIFEST))
+    final_root = path_from_root(os.environ.get("PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT", DEFAULT_FINAL_EVIDENCE_ROOT))
+    output = path_from_root(os.environ.get("PHASE3_WGS_FAST_DETERMINISTIC_REPORT_OUTPUT", DEFAULT_OUTPUT_ROOT))
+
+    manifest = stage_phase3_fast_deterministic_report(
+        _require_mapping(read_json(manifest_path), "final_evidence_manifest"),
+        final_manifest_sha256=_sha256_path(manifest_path),
+        final_manifest_bytes=manifest_path.stat().st_size,
+        final_root=final_root,
+        output_dir=output,
+    )
+    return manifest, output
+
+
+def main() -> None:
+    _, output = load_report_from_environment()
+    print(f"Phase 3 WGS fast deterministic report written: {output}")
+
+
+if __name__ == "__main__":
+    main()

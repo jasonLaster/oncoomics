@@ -26,6 +26,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_BAM_CNV_SV_EVIDENCE", text)
         self.assertIn("process FAST_EVIDENCE_JOIN", text)
         self.assertIn("process FAST_VERIFY_AND_PUBLISH", text)
+        self.assertIn("process FAST_STAGE_DETERMINISTIC_REPORT", text)
         self.assertNotIn("process FAST_STAGE_INPUTS", text)
         self.assertIn("workflow PHASE3_WGS_FAST", text)
         self.assertIn("'phase3_wgs_fast'", text)
@@ -62,6 +63,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_wgs_fast_sv_evidence_receipt", text)
         self.assertIn("phase3_wgs_fast_evidence_join_manifest", text)
         self.assertIn("phase3_wgs_fast_final_evidence_manifest", text)
+        self.assertIn("phase3_fast_deterministic_evidence", text)
         self.assertIn("phase3_wgs_fast_filter_mutect_plan", text)
 
     def test_fast_input_manifest_receipts_are_nextflow_path_inputs(self) -> None:
@@ -411,7 +413,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         text = MAIN_NF.read_text(encoding="utf-8")
 
         process = text[text.index("process FAST_VERIFY_AND_PUBLISH") :]
-        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        process = process[: process.index("process FAST_STAGE_DETERMINISTIC_REPORT")]
         self.assertIn("label 'cpu_io'", process)
         self.assertIn("path evidence_join_manifest", process)
         self.assertIn("path small_variant_artifacts", process)
@@ -438,6 +440,30 @@ class Phase3FastNextflowTests(unittest.TestCase):
             text,
         )
         self.assertIn("FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out", text)
+
+    def test_stage_deterministic_report_consumes_fast_final_evidence(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_STAGE_DETERMINISTIC_REPORT") :]
+        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        self.assertIn("label 'cpu_io'", process)
+        self.assertIn("tuple path(final_evidence_manifest)", process)
+        self.assertIn("path(final_evidence_root)", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/report.md", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/report_manifest.json", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/evidence_checks.json", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/input_sha256.csv", process)
+        self.assertIn(
+            'export PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST="\\$PWD/${final_evidence_manifest}"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT="\\$PWD/${final_evidence_root}"',
+            process,
+        )
+        self.assertIn("stage:phase3-fast-deterministic-report", process)
+        self.assertIn("FAST_STAGE_DETERMINISTIC_REPORT(FAST_VERIFY_AND_PUBLISH.out)", text)
 
 
 if __name__ == "__main__":
