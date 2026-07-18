@@ -229,6 +229,29 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             self.assertIn("source manifest SHA-256 is not receipt-bound", result.stderr)
             self.assertFalse(output.exists())
 
+    def test_refuses_symlinked_source_manifest_without_final_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            manifest = fixture.manifests[0]
+            link = root / "source-manifest-link.json"
+            link.symlink_to(manifest)
+            fixture.manifests[0] = link
+            output = root / "ai-review"
+
+            result = subprocess.run(
+                command(fixture, output),
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "deterministic_full_wgs manifest must be a real non-empty file",
+                result.stderr,
+            )
+            self.assertFalse(output.exists())
+
     def test_propagates_builder_fail_closed_behavior(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))

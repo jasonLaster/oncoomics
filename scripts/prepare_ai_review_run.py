@@ -333,10 +333,7 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError(f"output parent may not be a symlink: {output.parent}")
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    manifest_paths = {
-        method: path.resolve()
-        for method, path in method_manifest_paths(args).items()
-    }
+    manifest_paths = method_manifest_paths(args)
     expected_source_sha256 = parse_expected_source_manifest_sha256(
         args.expected_source_manifest_sha256
     )
