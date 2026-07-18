@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from ...paths import ROOT, path_from_root
-from ...utils import ensure_parent, read_json
-from .safe_json_output import require_safe_output_path
+from ...utils import ensure_parent
+from .safe_json_output import read_real_json, require_safe_output_path
 
 HEX64 = re.compile(r"^[0-9a-fA-F]{64}$")
 IMAGE_DIGEST = re.compile(r"^(?:.+@)?sha256:[0-9a-fA-F]{64}$")
@@ -518,13 +518,13 @@ def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
     }
 
     manifest = build_phase3_wgs_fast_input_manifest(
-        private_freeze_receipt=read_json(private_freeze),
-        private_sha256_receipt=read_json(private_sha256),
-        reference_freeze_receipt=read_json(reference_freeze),
-        reference_sha256_receipt=read_json(reference_sha256),
-        bam_validation_receipt=read_json(bam_validation),
-        contig_compatibility_receipt=read_json(contig_compatibility),
-        caller_resource_receipt=read_json(caller_resources),
+        private_freeze_receipt=read_real_json(private_freeze, "private_freeze receipt", ManifestError),
+        private_sha256_receipt=read_real_json(private_sha256, "private_sha256 receipt", ManifestError),
+        reference_freeze_receipt=read_real_json(reference_freeze, "reference_freeze receipt", ManifestError),
+        reference_sha256_receipt=read_real_json(reference_sha256, "reference_sha256 receipt", ManifestError),
+        bam_validation_receipt=read_real_json(bam_validation, "bam_validation receipt", ManifestError),
+        contig_compatibility_receipt=read_real_json(contig_compatibility, "contig_compatibility receipt", ManifestError),
+        caller_resource_receipt=read_real_json(caller_resources, "caller_resources receipt", ManifestError),
         metadata=metadata,
         source_receipts={
             "bam_validation": _source_receipt_entry(bam_validation),

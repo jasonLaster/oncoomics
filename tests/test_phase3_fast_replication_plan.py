@@ -5,11 +5,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_input_manifest import SHA_3, metadata, receipts
-
 from diana_omics.commands.phase3_wgs import render_phase3_fast_input_manifest as render_input
 from diana_omics.commands.phase3_wgs import render_phase3_fast_replication_plan as render_plan
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_input_manifest import SHA_3, metadata, receipts
 
 
 def input_manifest() -> dict:
@@ -127,6 +126,34 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
             self.assertEqual(output_path, plan_path)
             self.assertEqual("planned", plan["status"])
             self.assertIn('"manifest_type": "phase3_wgs_fast_replication_plan"', output_path.read_text(encoding="utf-8"))
+
+    def test_environment_command_rejects_redirected_input_manifest(self) -> None:
+        for bad_kind in ("missing", "directory", "symlink"):
+            with self.subTest(bad_kind=bad_kind), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_manifest = root / "real-input-manifest.json"
+                bad_manifest = root / f"input-manifest-{bad_kind}.json"
+                write_json(real_manifest, input_manifest())
+                if bad_kind == "directory":
+                    bad_manifest.mkdir()
+                elif bad_kind == "symlink":
+                    bad_manifest.symlink_to(real_manifest)
+
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_INPUT_MANIFEST": str(bad_manifest),
+                        "PHASE3_WGS_FAST_REPLICATION_OUTPUT": str(root / "replication-plan.json"),
+                        "PHASE3_WGS_FAST_CACHE_PREFIX": "s3://diana-omics-private-cache-us-east-2/wgs-v2",
+                        "PHASE3_WGS_FAST_CACHE_KMS_KEY_ARN": (
+                            "arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc"
+                        ),
+                        "PHASE3_WGS_FAST_CACHE_REGION": "us-east-2",
+                    },
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(render_plan.ManifestError, "input_manifest"):
+                        render_plan.load_plan_from_environment()
 
 
 if __name__ == "__main__":

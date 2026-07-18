@@ -10,10 +10,10 @@ from typing import Any, Mapping, Protocol, Sequence
 from urllib.parse import quote
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 from .render_phase3_fast_replication_plan import KMS_KEY_ARN, REGION
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/replication_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/replication_receipt.json"
@@ -632,7 +632,7 @@ def load_receipt_from_environment() -> tuple[dict[str, Any], Path]:
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_REPLICATION_PLAN", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_REPLICATION_RECEIPT_OUTPUT", DEFAULT_OUTPUT))
     receipt = build_phase3_fast_replication_receipt(
-        read_json(input_path),
+        read_real_json(input_path, "replication_plan", ManifestError),
         mode=os.environ.get("PHASE3_WGS_FAST_REPLICATION_MODE", "dry_run"),
         part_size_bytes=_require_part_size(os.environ.get("PHASE3_WGS_FAST_REPLICATION_PART_SIZE_BYTES")),
         replication_plan_sha256=_sha256_path(input_path),

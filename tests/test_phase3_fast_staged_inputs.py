@@ -6,12 +6,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_input_manifest import SHA_1
-from tests.test_phase3_fast_staging_plan import ready_cache_manifest
-
 from diana_omics.commands.phase3_wgs import render_phase3_fast_staging_plan as staging
 from diana_omics.commands.phase3_wgs import verify_phase3_fast_staged_inputs as staged
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_input_manifest import SHA_1
+from tests.test_phase3_fast_staging_plan import ready_cache_manifest
 
 
 def _sha256(data: bytes) -> str:
@@ -155,6 +154,29 @@ class Phase3FastStagedInputsTests(unittest.TestCase):
             self.assertEqual(output_path, manifest_path)
             self.assertEqual("ready", manifest["status"])
             self.assertIn('"manifest_type": "phase3_wgs_fast_staged_inputs_manifest"', output_path.read_text(encoding="utf-8"))
+
+    def test_environment_command_rejects_redirected_staging_plan(self) -> None:
+        for bad_kind in ("missing", "directory", "symlink"):
+            with self.subTest(bad_kind=bad_kind), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_plan = root / "real-staging-plan.json"
+                bad_plan = root / f"staging-plan-{bad_kind}.json"
+                write_json(real_plan, materialized_staging_plan(root))
+                if bad_kind == "directory":
+                    bad_plan.mkdir()
+                elif bad_kind == "symlink":
+                    bad_plan.symlink_to(real_plan)
+
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_STAGING_PLAN": str(bad_plan),
+                        "PHASE3_WGS_FAST_STAGED_INPUTS_OUTPUT": str(root / "staged-inputs.json"),
+                    },
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(staged.ManifestError, "staging_plan"):
+                        staged.load_manifest_from_environment()
 
     def test_manifest_output_rejects_symlinked_parent(self) -> None:
         with TemporaryDirectory() as tmp:

@@ -216,6 +216,40 @@ def metadata() -> dict[str, str]:
     }
 
 
+def write_environment_receipts(root: Path) -> dict[str, Path]:
+    private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
+    receipt_paths = {
+        "PHASE3_WGS_FAST_PRIVATE_FREEZE_RECEIPT": root / "private-freeze.json",
+        "PHASE3_WGS_FAST_PRIVATE_SHA256_RECEIPT": root / "private-sha256.json",
+        "PHASE3_WGS_FAST_REFERENCE_FREEZE_RECEIPT": root / "reference-freeze.json",
+        "PHASE3_WGS_FAST_REFERENCE_SHA256_RECEIPT": root / "reference-sha256.json",
+        "PHASE3_WGS_FAST_BAM_VALIDATION_RECEIPT": root / "bam-validation.json",
+        "PHASE3_WGS_FAST_CONTIG_COMPATIBILITY_RECEIPT": root / "contig-compatibility.json",
+        "PHASE3_WGS_FAST_CALLER_RESOURCE_RECEIPT": root / "caller-resources.json",
+    }
+    for path, payload in zip(
+        receipt_paths.values(),
+        (private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources),
+    ):
+        write_json(path, payload)
+    return receipt_paths
+
+
+def input_manifest_environment(receipt_paths: dict[str, Path], output: Path) -> dict[str, str]:
+    return {
+        **{key: str(path) for key, path in receipt_paths.items()},
+        "PHASE3_WGS_FAST_OUTPUT": str(output),
+        "PHASE3_WGS_FAST_PARAMETER_SHA256": SHA_2,
+        "PHASE3_WGS_FAST_PARABRICKS_CONTAINER": (
+            "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + SHA_3
+        ),
+        "PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST": "sha256:" + SHA_3,
+        "PHASE3_WGS_FAST_PARABRICKS_VERSION": "4.5.1-1",
+        "PHASE3_WGS_FAST_SEQUENZA_FEMALE": "true",
+        "PHASE3_WGS_FAST_SOURCE_COMMIT": "abcd1234",
+    }
+
+
 class Phase3FastInputManifestTests(unittest.TestCase):
     def build_manifest(self) -> dict:
         private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
@@ -449,40 +483,14 @@ class Phase3FastInputManifestTests(unittest.TestCase):
             )
 
     def test_environment_command_writes_source_bound_manifest(self) -> None:
-        private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
-
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            receipt_paths = {
-                "PHASE3_WGS_FAST_PRIVATE_FREEZE_RECEIPT": root / "private-freeze.json",
-                "PHASE3_WGS_FAST_PRIVATE_SHA256_RECEIPT": root / "private-sha256.json",
-                "PHASE3_WGS_FAST_REFERENCE_FREEZE_RECEIPT": root / "reference-freeze.json",
-                "PHASE3_WGS_FAST_REFERENCE_SHA256_RECEIPT": root / "reference-sha256.json",
-                "PHASE3_WGS_FAST_BAM_VALIDATION_RECEIPT": root / "bam-validation.json",
-                "PHASE3_WGS_FAST_CONTIG_COMPATIBILITY_RECEIPT": root / "contig-compatibility.json",
-                "PHASE3_WGS_FAST_CALLER_RESOURCE_RECEIPT": root / "caller-resources.json",
-            }
-            for path, payload in zip(
-                receipt_paths.values(),
-                (private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources),
-            ):
-                write_json(path, payload)
+            receipt_paths = write_environment_receipts(root)
             output = root / "input-manifest.json"
 
             with patch.dict(
                 "os.environ",
-                {
-                    **{key: str(path) for key, path in receipt_paths.items()},
-                    "PHASE3_WGS_FAST_OUTPUT": str(output),
-                    "PHASE3_WGS_FAST_PARAMETER_SHA256": SHA_2,
-                    "PHASE3_WGS_FAST_PARABRICKS_CONTAINER": (
-                        "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + SHA_3
-                    ),
-                    "PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST": "sha256:" + SHA_3,
-                    "PHASE3_WGS_FAST_PARABRICKS_VERSION": "4.5.1-1",
-                    "PHASE3_WGS_FAST_SEQUENZA_FEMALE": "true",
-                    "PHASE3_WGS_FAST_SOURCE_COMMIT": "abcd1234",
-                },
+                input_manifest_environment(receipt_paths, output),
                 clear=False,
             ):
                 manifest, manifest_path = render.load_manifest_from_environment()
@@ -493,6 +501,27 @@ class Phase3FastInputManifestTests(unittest.TestCase):
             self.assertIn('"manifest_type": "phase3_wgs_fast_input_manifest"', written)
             self.assertIn('"bam_validation"', written)
             self.assertIn('"contig_compatibility"', written)
+
+    def test_environment_command_rejects_redirected_source_receipt(self) -> None:
+        for bad_kind in ("missing", "directory", "symlink"):
+            with self.subTest(bad_kind=bad_kind), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                receipt_paths = write_environment_receipts(root)
+                real_receipt = receipt_paths["PHASE3_WGS_FAST_PRIVATE_FREEZE_RECEIPT"]
+                bad_receipt = root / f"bad-private-freeze-{bad_kind}.json"
+                if bad_kind == "directory":
+                    bad_receipt.mkdir()
+                elif bad_kind == "symlink":
+                    bad_receipt.symlink_to(real_receipt)
+                receipt_paths["PHASE3_WGS_FAST_PRIVATE_FREEZE_RECEIPT"] = bad_receipt
+
+                with patch.dict(
+                    "os.environ",
+                    input_manifest_environment(receipt_paths, root / "input-manifest.json"),
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(render.ManifestError, "private_freeze receipt"):
+                        render.load_manifest_from_environment()
 
 
 if __name__ == "__main__":

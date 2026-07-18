@@ -24,6 +24,7 @@ from diana_omics.commands.phase3_wgs import run_phase3_fast_cnv_evidence as cnv_
 from diana_omics.commands.phase3_wgs import run_phase3_fast_filter_mutect as filter_mutect
 from diana_omics.commands.phase3_wgs import run_phase3_fast_parabricks_mutect as parabricks_mutect
 from diana_omics.commands.phase3_wgs import run_phase3_fast_sv_evidence as sv_evidence
+from diana_omics.commands.phase3_wgs import safe_json_output
 from diana_omics.commands.phase3_wgs import stage_phase3_fast_inputs as stage_inputs
 from diana_omics.commands.phase3_wgs import verify_phase3_fast_staged_inputs as staged_inputs
 from diana_omics.commands.phase3_wgs.render_phase3_fast_input_manifest import ManifestError
@@ -91,6 +92,30 @@ class Phase3FastSafeJsonOutputsTests(unittest.TestCase):
                     writer(linked_output, {"status": "redirected"})
 
                 self.assertFalse(real_output.exists())
+
+    def test_read_real_json_rejects_redirected_inputs(self) -> None:
+        for bad_kind in ("missing", "directory", "symlink"):
+            with self.subTest(bad_kind=bad_kind), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_input = root / "real-input.json"
+                real_input.write_text('{"status": "redirected"}\n', encoding="utf-8")
+                input_path = root / f"{bad_kind}.json"
+                if bad_kind == "directory":
+                    input_path.mkdir()
+                elif bad_kind == "symlink":
+                    input_path.symlink_to(real_input)
+
+                with self.assertRaisesRegex(ManifestError, "must be a real JSON file"):
+                    safe_json_output.read_real_json(input_path, "source", ManifestError)
+
+    def test_read_real_json_reads_real_json_file(self) -> None:
+        with TemporaryDirectory() as tmp:
+            input_path = Path(tmp) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+
+            payload = safe_json_output.read_real_json(input_path, "source", ManifestError)
+
+        self.assertEqual({"status": "ready"}, payload)
 
 
 if __name__ == "__main__":

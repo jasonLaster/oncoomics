@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import (
     CALLER_RESOURCES,
     HEX64,
@@ -16,7 +16,7 @@ from .render_phase3_fast_input_manifest import (
     normalize_method_parameters,
 )
 from .replicate_phase3_fast_inputs import EXPECTED_REPLICATION_OBJECTS
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/replication_receipt.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/cache_manifest.json"
@@ -227,7 +227,7 @@ def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
     receipt_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_REPLICATION_RECEIPT", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_CACHE_MANIFEST_OUTPUT", DEFAULT_OUTPUT))
     manifest = build_phase3_fast_cache_manifest(
-        read_json(receipt_path),
+        read_real_json(receipt_path, "replication_receipt", ManifestError),
         replication_receipt_sha256=_sha256_path(receipt_path),
     )
     return manifest, output_path

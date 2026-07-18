@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/input_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/replication_plan.json"
@@ -214,7 +214,7 @@ def load_plan_from_environment() -> tuple[dict[str, Any], Path]:
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_INPUT_MANIFEST", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_REPLICATION_OUTPUT", DEFAULT_OUTPUT))
     plan = build_phase3_fast_replication_plan(
-        read_json(input_path),
+        read_real_json(input_path, "input_manifest", ManifestError),
         cache_prefix=_require_string(os.environ.get("PHASE3_WGS_FAST_CACHE_PREFIX"), "PHASE3_WGS_FAST_CACHE_PREFIX"),
         cache_kms_key_arn=_require_string(os.environ.get("PHASE3_WGS_FAST_CACHE_KMS_KEY_ARN"), "PHASE3_WGS_FAST_CACHE_KMS_KEY_ARN"),
         cache_region=_require_string(os.environ.get("PHASE3_WGS_FAST_CACHE_REGION", "us-east-2"), "PHASE3_WGS_FAST_CACHE_REGION"),

@@ -5,12 +5,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_cache_manifest import applied_receipt
-from tests.test_phase3_fast_input_manifest import SHA_1, SHA_3
-
 from diana_omics.commands.phase3_wgs import render_phase3_fast_cache_manifest as cache
 from diana_omics.commands.phase3_wgs import render_phase3_fast_staging_plan as staging
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_cache_manifest import applied_receipt
+from tests.test_phase3_fast_input_manifest import SHA_1, SHA_3
 
 
 def ready_cache_manifest() -> dict:
@@ -131,6 +130,30 @@ class Phase3FastStagingPlanTests(unittest.TestCase):
             self.assertEqual(output_path, plan_path)
             self.assertEqual("planned", plan["status"])
             self.assertIn('"manifest_type": "phase3_wgs_fast_staging_plan"', output_path.read_text(encoding="utf-8"))
+
+    def test_environment_command_rejects_redirected_cache_manifest(self) -> None:
+        for bad_kind in ("missing", "directory", "symlink"):
+            with self.subTest(bad_kind=bad_kind), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_manifest = root / "real-cache-manifest.json"
+                bad_manifest = root / f"cache-manifest-{bad_kind}.json"
+                write_json(real_manifest, ready_cache_manifest())
+                if bad_kind == "directory":
+                    bad_manifest.mkdir()
+                elif bad_kind == "symlink":
+                    bad_manifest.symlink_to(real_manifest)
+
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_CACHE_MANIFEST": str(bad_manifest),
+                        "PHASE3_WGS_FAST_STAGING_PLAN_OUTPUT": str(root / "staging-plan.json"),
+                        "PHASE3_WGS_FAST_STAGING_ROOT": "/scratch/diana/test",
+                    },
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(staging.ManifestError, "cache_manifest"):
+                        staging.load_plan_from_environment()
 
 
 if __name__ == "__main__":

@@ -6,11 +6,10 @@ from tempfile import TemporaryDirectory
 from typing import Any, Mapping
 from unittest.mock import patch
 
-from tests.test_phase3_fast_input_manifest import SHA_3
-from tests.test_phase3_fast_replication_plan import Phase3FastReplicationPlanTests
-
 from diana_omics.commands.phase3_wgs import replicate_phase3_fast_inputs as replicate
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_input_manifest import SHA_3
+from tests.test_phase3_fast_replication_plan import Phase3FastReplicationPlanTests
 
 
 def destination_id(row: Mapping[str, Any]) -> tuple[str, str]:
@@ -425,6 +424,31 @@ class Phase3FastReplicateInputsTests(unittest.TestCase):
             self.assertEqual("dry_run", receipt["status"])
             self.assertEqual(1024 * 1024 * 1024, receipt["copy_strategy"]["multipart_part_size_bytes"])
             self.assertIn('"manifest_type": "phase3_wgs_fast_replication_receipt"', output_path.read_text(encoding="utf-8"))
+
+    def test_environment_command_rejects_redirected_replication_plan(self) -> None:
+        for bad_kind in ("missing", "directory", "symlink"):
+            with self.subTest(bad_kind=bad_kind), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_plan = root / "real-replication-plan.json"
+                bad_plan = root / f"replication-plan-{bad_kind}.json"
+                write_json(real_plan, replication_plan())
+                if bad_kind == "directory":
+                    bad_plan.mkdir()
+                elif bad_kind == "symlink":
+                    bad_plan.symlink_to(real_plan)
+
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_REPLICATION_PLAN": str(bad_plan),
+                        "PHASE3_WGS_FAST_REPLICATION_RECEIPT_OUTPUT": str(root / "replication-receipt.json"),
+                        "PHASE3_WGS_FAST_REPLICATION_MODE": "dry_run",
+                        "PHASE3_WGS_FAST_REPLICATION_PART_SIZE_BYTES": str(1024 * 1024 * 1024),
+                    },
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(replicate.ManifestError, "replication_plan"):
+                        replicate.load_receipt_from_environment()
 
 
 if __name__ == "__main__":

@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path
 
 DEFAULT_STAGED_INPUTS = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
 DEFAULT_MUTECT_PLAN = "manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
@@ -384,8 +384,8 @@ def load_plan_from_environment() -> tuple[dict[str, Any], Path]:
     mutect_plan_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN", DEFAULT_MUTECT_PLAN))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_FILTER_MUTECT_PLAN_OUTPUT", DEFAULT_OUTPUT))
     plan = build_phase3_fast_filter_mutect_plan(
-        read_json(staged_path),
-        read_json(mutect_plan_path),
+        read_real_json(staged_path, "staged_inputs", ManifestError),
+        read_real_json(mutect_plan_path, "parabricks_mutect_plan", ManifestError),
         staged_inputs_manifest_sha256=_sha256_path(staged_path),
         mutect_plan_sha256=_sha256_path(mutect_plan_path),
         output_root=os.environ.get("PHASE3_WGS_FAST_FILTER_MUTECT_OUTPUT_ROOT", DEFAULT_OUTPUT_ROOT),

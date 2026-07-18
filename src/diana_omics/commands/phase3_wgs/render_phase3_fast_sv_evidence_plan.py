@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/sv_evidence_plan.json"
@@ -203,7 +203,7 @@ def load_plan_from_environment() -> tuple[dict[str, Any], Path]:
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_SV_EVIDENCE_PLAN_OUTPUT", DEFAULT_OUTPUT))
     plan = build_phase3_fast_sv_evidence_plan(
-        read_json(input_path),
+        read_real_json(input_path, "staged_inputs", ManifestError),
         staged_inputs_manifest_sha256=_sha256_path(input_path),
         output_root=os.environ.get("PHASE3_WGS_FAST_SV_EVIDENCE_OUTPUT_ROOT", DEFAULT_OUTPUT_ROOT),
         threads=_require_threads(os.environ.get("PHASE3_WGS_FAST_SV_EVIDENCE_THREADS")),

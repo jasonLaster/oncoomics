@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import Any, Mapping, Protocol
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent
 from .render_phase3_fast_cache_manifest import BAM_CACHE_ARTIFACTS, REFERENCE_CACHE_ARTIFACTS
 from .render_phase3_fast_input_manifest import CALLER_RESOURCES, ManifestError, _require_s3_uri
 from .render_phase3_fast_staging_plan import EXPECTED_STAGED_OBJECTS
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path
 from .verify_phase3_fast_staged_inputs import build_phase3_fast_staged_inputs_manifest
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staging_plan.json"
@@ -212,7 +212,7 @@ def load_manifest_from_environment(
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_STAGING_PLAN", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_STAGED_INPUTS_OUTPUT", DEFAULT_OUTPUT))
     manifest = stage_phase3_fast_inputs(
-        read_json(input_path),
+        read_real_json(input_path, "staging_plan", ManifestError),
         client=client if client is not None else AwsCliS3GetObjectClient(),
         staging_plan_sha256=_sha256_path(input_path),
     )
