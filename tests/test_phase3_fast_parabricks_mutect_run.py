@@ -73,6 +73,17 @@ def write_materialized_outputs(plan: dict) -> dict[str, bytes]:
     return payloads
 
 
+def _without_flag(argv: list[str], flag: str) -> list[str]:
+    index = argv.index(flag)
+    return [*argv[:index], *argv[index + 2 :]]
+
+
+def _replace_flag_value(argv: list[str], flag: str, value: str) -> list[str]:
+    updated = list(argv)
+    updated[updated.index(flag) + 1] = value
+    return updated
+
+
 class Phase3FastParabricksMutectRunTests(unittest.TestCase):
     def test_runs_prepon_mutectcaller_and_postpon_then_writes_completed_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -245,6 +256,71 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
                 runner=RecordingRunner(),
                 parabricks_mutect_plan_sha256=SHA_1,
             )
+
+    def test_rejects_parabricks_command_missing_required_flag(self) -> None:
+        cases = (
+            ("prepon", "--in-pon-file"),
+            ("mutectcaller", "--out-vcf"),
+            ("mutectcaller", "--mutect-f1r2-tar-gz"),
+            ("postpon", "--out-vcf"),
+            ("postpon", "--num-gpus"),
+        )
+        for command_name, flag in cases:
+            with self.subTest(command_name=command_name, flag=flag), TemporaryDirectory() as tmp:
+                plan = parabricks_plan(Path(tmp))
+                plan["commands"][command_name]["argv"] = _without_flag(
+                    plan["commands"][command_name]["argv"],
+                    flag,
+                )
+                runner = RecordingRunner()
+
+                with self.assertRaisesRegex(run_mutect.ManifestError, flag):
+                    run_mutect.run_phase3_fast_parabricks_mutect(
+                        plan,
+                        runner=runner,
+                        parabricks_mutect_plan_sha256=SHA_1,
+                    )
+
+            self.assertEqual([], runner.commands)
+
+    def test_rejects_parabricks_command_with_unplanned_flag(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = parabricks_plan(Path(tmp))
+        plan["commands"]["mutectcaller"]["argv"].extend(["--dry-run", "true"])
+
+        with self.assertRaisesRegex(run_mutect.ManifestError, "unexpected --dry-run"):
+            run_mutect.run_phase3_fast_parabricks_mutect(
+                plan,
+                runner=RecordingRunner(),
+                parabricks_mutect_plan_sha256=SHA_1,
+            )
+
+    def test_rejects_parabricks_command_that_drifts_from_plan_contract(self) -> None:
+        cases = (
+            ("mutectcaller", "--out-vcf", "mutectcaller.wrong.vcf.gz"),
+            ("mutectcaller", "--tumor-name", "normal-disguised-as-tumor"),
+            ("postpon", "--in-vcf", "postpon.wrong.vcf.gz"),
+        )
+        for command_name, flag, file_name in cases:
+            with self.subTest(command_name=command_name, flag=flag), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                value = str(root / "wrong" / file_name) if flag.endswith("vcf") else file_name
+                plan = parabricks_plan(root)
+                plan["commands"][command_name]["argv"] = _replace_flag_value(
+                    plan["commands"][command_name]["argv"],
+                    flag,
+                    value,
+                )
+                runner = RecordingRunner()
+
+                with self.assertRaisesRegex(run_mutect.ManifestError, flag):
+                    run_mutect.run_phase3_fast_parabricks_mutect(
+                        plan,
+                        runner=runner,
+                        parabricks_mutect_plan_sha256=SHA_1,
+                    )
+
+            self.assertEqual([], runner.commands)
 
 
 if __name__ == "__main__":

@@ -44,12 +44,13 @@ def _require_hex(value: Any, label: str) -> str:
     return value.lower()
 
 
-def _require_argv(value: Any, name: str) -> list[str]:
+def _require_argv(value: Any, name: str, plan: Mapping[str, Any]) -> list[str]:
     if not isinstance(value, list) or any(not isinstance(item, str) or not item for item in value):
         raise ManifestError(f"{name} argv must be a non-empty string list")
     argv = list(value)
     if len(argv) < 2 or argv[0] != "pbrun" or argv[1] != name:
         raise ManifestError(f"{name} argv must start with pbrun {name}")
+    _require_flags(argv, name, _expected_flag_values(plan, name))
     return argv
 
 
@@ -58,6 +59,102 @@ def _require_absolute_path(value: Any, label: str) -> Path:
     if not path.is_absolute():
         raise ManifestError(f"{label} must be an absolute path")
     return path
+
+
+def _require_positive_int(value: Any, label: str) -> int:
+    if not isinstance(value, int) or value <= 0:
+        raise ManifestError(f"{label} must be a positive integer")
+    return value
+
+
+def _require_input_path(inputs: Mapping[str, Any], key: str) -> str:
+    return str(
+        _require_absolute_path(
+            _require_mapping(inputs.get(key), f"inputs.{key}").get("local_path"),
+            f"inputs.{key}",
+        )
+    )
+
+
+def _require_input_sample_id(inputs: Mapping[str, Any], key: str) -> str:
+    return _require_string(
+        _require_mapping(inputs.get(key), f"inputs.{key}").get("sample_id"),
+        f"inputs.{key}.sample_id",
+    )
+
+
+def _require_output_path(outputs: Mapping[str, Any], key: str) -> str:
+    return str(_require_absolute_path(outputs.get(key), f"outputs.{key}"))
+
+
+def _runtime_flags(plan: Mapping[str, Any], name: str) -> dict[str, str]:
+    outputs = _require_mapping(plan.get("outputs"), "outputs")
+    runtime = _require_mapping(plan.get("runtime"), "runtime")
+    return {
+        "--tmp-dir": str(_require_absolute_path(outputs.get("tmp_dir"), "outputs.tmp_dir") / name),
+        "--logfile": str(_require_absolute_path(outputs.get("logs_dir"), "outputs.logs_dir") / f"{name}.log"),
+        "--num-gpus": str(_require_positive_int(runtime.get("num_gpus"), "runtime.num_gpus")),
+    }
+
+
+def _expected_flag_values(plan: Mapping[str, Any], name: str) -> dict[str, str]:
+    inputs = _require_mapping(plan.get("inputs"), "inputs")
+    outputs = _require_mapping(plan.get("outputs"), "outputs")
+    if name == "prepon":
+        return {
+            "--in-pon-file": _require_input_path(inputs, "panel_of_normals_vcf"),
+            **_runtime_flags(plan, name),
+        }
+    if name == "mutectcaller":
+        return {
+            "--ref": _require_input_path(inputs, "reference_fasta"),
+            "--tumor-name": _require_input_sample_id(inputs, "tumor_bam"),
+            "--in-tumor-bam": _require_input_path(inputs, "tumor_bam"),
+            "--in-normal-bam": _require_input_path(inputs, "normal_bam"),
+            "--normal-name": _require_input_sample_id(inputs, "normal_bam"),
+            "--pon": _require_input_path(inputs, "panel_of_normals_vcf"),
+            "--mutect-germline-resource": _require_input_path(inputs, "germline_resource_vcf"),
+            "--interval-file": _require_input_path(inputs, "mutect2_interval_set"),
+            "--mutect-f1r2-tar-gz": _require_output_path(outputs, "f1r2_tar_gz"),
+            "--out-vcf": _require_output_path(outputs, "raw_vcf"),
+            **_runtime_flags(plan, name),
+        }
+    if name == "postpon":
+        return {
+            "--in-vcf": _require_output_path(outputs, "raw_vcf"),
+            "--in-pon-file": _require_input_path(inputs, "panel_of_normals_vcf"),
+            "--out-vcf": _require_output_path(outputs, "pon_annotated_vcf"),
+            **_runtime_flags(plan, name),
+        }
+    raise ManifestError(f"Unexpected Parabricks command: {name}")
+
+
+def _require_flags(argv: list[str], name: str, expected: Mapping[str, str]) -> None:
+    tail = argv[2:]
+    if len(tail) % 2:
+        raise ManifestError(f"{name} argv flags must be --flag value pairs")
+
+    observed: dict[str, str] = {}
+    for flag, value in zip(tail[::2], tail[1::2], strict=True):
+        if not flag.startswith("--"):
+            raise ManifestError(f"{name} argv flag must start with --: {flag}")
+        if flag in observed:
+            raise ManifestError(f"{name} argv must not repeat {flag}")
+        observed[flag] = value
+
+    missing = [flag for flag in expected if flag not in observed]
+    unexpected = [flag for flag in observed if flag not in expected]
+    if missing or unexpected:
+        details = []
+        if missing:
+            details.append(f"missing {', '.join(missing)}")
+        if unexpected:
+            details.append(f"unexpected {', '.join(unexpected)}")
+        raise ManifestError(f"{name} argv flags must match the plan: {'; '.join(details)}")
+
+    for flag, expected_value in expected.items():
+        if observed[flag] != expected_value:
+            raise ManifestError(f"{name} argv {flag} must match the plan")
 
 
 def _sha256_path(path: Path) -> str:
@@ -115,7 +212,7 @@ def _planned_commands(plan: Mapping[str, Any]) -> list[tuple[str, list[str]]]:
     return [
         (
             name,
-            _require_argv(_require_mapping(commands.get(name), f"{name} command").get("argv"), name),
+            _require_argv(_require_mapping(commands.get(name), f"{name} command").get("argv"), name, plan),
         )
         for name in EXPECTED_COMMANDS
     ]
