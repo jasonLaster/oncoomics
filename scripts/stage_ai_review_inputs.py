@@ -7,11 +7,11 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
-
 
 ROLES = ("A", "B")
 ROLE_DIRS = {"A": "reviewer-a-input", "B": "reviewer-b-input"}
@@ -47,12 +47,26 @@ def write_once(path: Path, data: bytes) -> None:
                 handle.write(data)
                 handle.flush()
                 os.fsync(handle.fileno())
+            fsync_directory(path.parent)
         except Exception:
             path.unlink(missing_ok=True)
             raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def remove_destination_tree(path: Path) -> None:
+    if path.exists() and path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -165,10 +179,8 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
         or output_root.is_relative_to(bundle_dir)
     ):
         raise ValueError("output root must be separate from the review bundle")
-    if (
-        receipt_output == bundle_dir
-        or receipt_output.is_relative_to(bundle_dir)
-        or receipt_output == output_root
+    if receipt_output in (bundle_dir, output_root) or (
+        receipt_output.is_relative_to(bundle_dir)
         or receipt_output.is_relative_to(output_root)
     ):
         raise ValueError(
@@ -214,8 +226,14 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
             if observed != expected:
                 raise ValueError(f"reviewer {role} staged inventory is not exact")
 
-        for role in ROLES:
-            os.rename(temporary_root / ROLE_DIRS[role], destinations[role])
+        try:
+            for role in ROLES:
+                os.rename(temporary_root / ROLE_DIRS[role], destinations[role])
+            fsync_directory(output_root)
+        except Exception:
+            for destination in destinations.values():
+                remove_destination_tree(destination)
+            raise
 
     receipt = {
         "schema_version": 1,

@@ -11,7 +11,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 STAGE_SCRIPT = SCRIPT_DIR / "stage_ai_review_inputs.py"
 STAGE_SPEC = importlib.util.spec_from_file_location(
@@ -143,20 +142,83 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse(self.output_root.exists())
         self.assertFalse(self.receipt.exists())
 
-    def test_write_once_removes_partial_output_after_fsync_failure(self) -> None:
+    def test_write_once_fsyncs_file_and_parent_directory(self) -> None:
+        output = self.root / "complete.json"
+
+        with mock.patch.object(
+            STAGE.os,
+            "fsync",
+            wraps=STAGE.os.fsync,
+        ) as fsync:
+            STAGE.write_once(output, b"complete\n")
+
+        self.assertEqual(output.read_text(encoding="utf-8"), "complete\n")
+        self.assertEqual(fsync.call_count, 2)
+
+    def test_write_once_removes_partial_output_after_file_fsync_failure(self) -> None:
         output = self.root / "partial.json"
 
         with (
             mock.patch.object(
                 STAGE.os,
                 "fsync",
-                side_effect=OSError("synthetic fsync failure"),
+                side_effect=OSError("synthetic file fsync failure"),
             ),
-            self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+            self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
         ):
             STAGE.write_once(output, b"partial\n")
 
         self.assertFalse(output.exists())
+
+    def test_write_once_removes_partial_output_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        output = self.root / "partial.json"
+
+        with (
+            mock.patch.object(
+                STAGE.os,
+                "fsync",
+                side_effect=(None, OSError("synthetic directory fsync failure")),
+            ),
+            self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+        ):
+            STAGE.write_once(output, b"partial\n")
+
+        self.assertFalse(output.exists())
+
+    def test_stage_fsyncs_published_input_directories(self) -> None:
+        with mock.patch.object(
+            STAGE,
+            "fsync_directory",
+            wraps=STAGE.fsync_directory,
+        ) as fsync_directory:
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertIn(mock.call(self.output_root.resolve()), fsync_directory.mock_calls)
+
+    def test_stage_removes_published_inputs_after_output_root_fsync_failure(
+        self,
+    ) -> None:
+        with (
+            mock.patch.object(
+                STAGE,
+                "fsync_directory",
+                side_effect=(
+                    None,
+                    None,
+                    None,
+                    None,
+                    OSError("synthetic publish fsync failure"),
+                ),
+            ),
+            self.assertRaisesRegex(OSError, "synthetic publish fsync failure"),
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse((self.output_root / "reviewer-a-input").exists())
+        self.assertFalse((self.output_root / "reviewer-b-input").exists())
+        self.assertFalse(self.receipt.exists())
 
     def test_rejects_staged_bytes_that_differ_from_bundle_manifest(self) -> None:
         real_write_once = STAGE.write_once
