@@ -105,6 +105,70 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_packet_file_rejects_symlinked_output_leaf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            stale = root / "stale.md"
+            output = root / "report.md"
+            stale.write_text("stale blocked packet\n", encoding="utf-8")
+            output.symlink_to(stale)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "blocked cross-check packet may not be a symlink",
+            ):
+                GENERATOR.write_file_create_only(output, b"first\n")
+
+            self.assertEqual(
+                stale.read_text(encoding="utf-8"),
+                "stale blocked packet\n",
+            )
+
+    def test_packet_file_rejects_symlinked_parent_without_writing_target(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-parent"
+            linked_parent = root / "linked-parent"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "blocked cross-check packet parent may not be a symlink",
+            ):
+                GENERATOR.write_file_create_only(
+                    linked_parent / "report.md",
+                    b"first\n",
+                )
+
+            self.assertFalse((real_parent / "report.md").exists())
+
+    def test_packet_file_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report.md"
+            real_fsync_directory = GENERATOR.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_text("tampered blocked packet\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    GENERATOR,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "blocked cross-check packet changed during write",
+                ),
+            ):
+                GENERATOR.write_file_create_only(output, b"first\n")
+
+            self.assertFalse(output.exists())
+
     def test_generation_fsyncs_output_root_after_method_directories(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "blocked"

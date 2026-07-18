@@ -383,7 +383,19 @@ def validate_source_report_manifests(value: Mapping[str, str] | None) -> dict[st
     return {method_id: manifests[method_id] for method_id in REQUIRED_METHOD_IDS if method_id in manifests}
 
 
+def require_safe_new_packet(path: Path) -> Path:
+    require_no_symlinked_ancestors(path, "blocked cross-check packet")
+    if path.is_symlink():
+        raise ValueError("blocked cross-check packet may not be a symlink: " + path.name)
+    if path.exists():
+        raise FileExistsError("blocked cross-check packet already exists: " + path.name)
+    return path.resolve()
+
+
 def write_file_create_only(path: Path, data: bytes) -> None:
+    expected_sha256 = hashlib.sha256(data).hexdigest()
+    path = require_safe_new_packet(path)
+    descriptor = -1
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
     try:
         with os.fdopen(descriptor, "wb") as handle:
@@ -392,6 +404,10 @@ def write_file_create_only(path: Path, data: bytes) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         fsync_directory(path.parent)
+        if sha256_file(path) != expected_sha256:
+            raise ValueError(
+                "blocked cross-check packet changed during write: " + path.name
+            )
     except Exception:
         path.unlink(missing_ok=True)
         raise
