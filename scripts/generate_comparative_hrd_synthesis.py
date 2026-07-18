@@ -790,11 +790,12 @@ def main() -> None:
     parser.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
 
-    output = args.output_dir.resolve()
     try:
+        output = args.output_dir
         prepare_output_dir(output, OUTPUT_FILES)
     except ValueError as error:
         raise SystemExit("Fail-closed: " + str(error)) from error
+    output = output.resolve()
     required_methods = [str(value).strip() for value in args.require_method]
     if (
         not required_methods

@@ -32,37 +32,43 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
         self.bundle = self.root / "bundle"
-        self.bundle.mkdir()
-        (self.bundle / "review_bundle.json").write_text(
-            '{"subject_alias":"subject01"}\n',
-            encoding="utf-8",
-        )
-        (self.bundle / "reviewer-a.prompt.md").write_text(
-            "reviewer A\n",
-            encoding="utf-8",
-        )
-        (self.bundle / "reviewer-b.prompt.md").write_text(
-            "reviewer B\n",
-            encoding="utf-8",
-        )
-        self.write_manifest()
+        self.write_bundle(self.bundle)
         self.output_root = self.root / "inputs"
         self.receipt = self.root / "stage-receipt.json"
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
+    def write_bundle(self, bundle: Path) -> None:
+        bundle.mkdir()
+        (bundle / "review_bundle.json").write_text(
+            '{"subject_alias":"subject01"}\n',
+            encoding="utf-8",
+        )
+        (bundle / "reviewer-a.prompt.md").write_text(
+            "reviewer A\n",
+            encoding="utf-8",
+        )
+        (bundle / "reviewer-b.prompt.md").write_text(
+            "reviewer B\n",
+            encoding="utf-8",
+        )
+        self.write_bundle_manifest(bundle)
+
     def write_manifest(self) -> None:
-        (self.bundle / "bundle_manifest.json").write_text(
+        self.write_bundle_manifest(self.bundle)
+
+    def write_bundle_manifest(self, bundle: Path) -> None:
+        (bundle / "bundle_manifest.json").write_text(
             json.dumps(
                 {
                     "schema_version": 2,
                     "review_bundle_sha256": sha256(
-                        self.bundle / "review_bundle.json"
+                        bundle / "review_bundle.json"
                     ),
                     "prompt_sha256": {
-                        "A": sha256(self.bundle / "reviewer-a.prompt.md"),
-                        "B": sha256(self.bundle / "reviewer-b.prompt.md"),
+                        "A": sha256(bundle / "reviewer-a.prompt.md"),
+                        "B": sha256(bundle / "reviewer-b.prompt.md"),
                     },
                 },
                 indent=2,
@@ -167,6 +173,44 @@ class StageAiReviewInputsTests(unittest.TestCase):
 
         with self.assertRaisesRegex(FileExistsError, "receipt already exists"):
             STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+    def test_rejects_symlinked_custody_paths(self) -> None:
+        cases = ("bundle", "output-root", "receipt", "bundle-manifest")
+
+        for target in cases:
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                bundle = root / "bundle"
+                output_root = root / "inputs"
+                receipt = root / "stage-receipt.json"
+                self.write_bundle(bundle)
+
+                if target == "bundle":
+                    real_bundle = root / "bundle-real"
+                    bundle.rename(real_bundle)
+                    bundle.symlink_to(real_bundle, target_is_directory=True)
+                    message = "bundle directory"
+                elif target == "output-root":
+                    output_root.symlink_to(
+                        root / "inputs-real",
+                        target_is_directory=True,
+                    )
+                    message = "output root"
+                elif target == "receipt":
+                    receipt.symlink_to(root / "receipt-real.json")
+                    message = "receipt output"
+                else:
+                    real_manifest = bundle / "bundle_manifest.real.json"
+                    (bundle / "bundle_manifest.json").rename(real_manifest)
+                    (bundle / "bundle_manifest.json").symlink_to(real_manifest)
+                    message = "bundle_manifest.json"
+
+                with self.assertRaisesRegex(ValueError, message):
+                    STAGE.stage(bundle, output_root, receipt)
+
+                self.assertFalse((output_root / "reviewer-a-input").exists())
+                self.assertFalse((output_root / "reviewer-b-input").exists())
+                self.assertFalse(receipt.exists())
 
     def test_rejects_overlapping_bundle_output_and_receipt_paths(self) -> None:
         cases = (

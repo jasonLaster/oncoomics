@@ -59,6 +59,18 @@ def require_file(path: Path, label: str) -> None:
         raise ValueError(f"{label} must be a non-empty real file")
 
 
+def resolve_real_dir(path: Path, label: str) -> Path:
+    if path.is_symlink() or not path.is_dir():
+        raise ValueError(f"{label} is missing or a symlink")
+    return path.resolve()
+
+
+def resolve_real_file(path: Path, label: str) -> Path:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
+        raise ValueError(f"{label} must be a non-empty real file")
+    return path.resolve()
+
+
 def require_exact_review_dir(review_dir: Path, expected: set[str]) -> None:
     if review_dir.is_symlink() or not review_dir.is_dir():
         raise ValueError("review directory is missing or a symlink")
@@ -306,23 +318,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
 
-    review_dir = args.review_dir.resolve()
-    requested_output = args.output.parent.resolve() / args.output.name
-    output = review_dir / "report_manifest.json"
-    if requested_output != output:
-        raise SystemExit(
-            "Fail-closed: output must be report_manifest.json in the review directory"
-        )
     try:
+        bundle_dir = resolve_real_dir(args.bundle_dir, "bundle directory")
+        review_dir = resolve_real_dir(args.review_dir, "review directory")
+        model_catalog_receipt = resolve_real_file(
+            args.model_catalog_receipt,
+            "model catalog receipt",
+        )
+        if args.output.is_symlink() or args.output.parent.is_symlink():
+            raise ValueError("output path may not be a symlink")
+        requested_output = args.output.parent.resolve() / args.output.name
+        output = review_dir / "report_manifest.json"
+        if requested_output != output:
+            raise ValueError(
+                "output must be report_manifest.json in the review directory"
+            )
         if output.exists() or output.is_symlink():
             raise ValueError("report_manifest.json already exists")
 
         require_exact_review_dir(review_dir, REVIEW_PACKET_INPUT_FILES)
         manifest = build_manifest(
-            args.bundle_dir.resolve(),
+            bundle_dir,
             review_dir,
             args.reviewer,
-            args.model_catalog_receipt.resolve(),
+            model_catalog_receipt,
         )
         write_create_only(output, manifest)
         try:

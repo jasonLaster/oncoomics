@@ -67,6 +67,23 @@ def require_file(path: Path, expected_sha256: str, label: str) -> None:
         raise ValueError(f"{label} SHA-256 mismatch")
 
 
+def require_real_file(path: Path, label: str) -> None:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
+        raise ValueError(f"{label} is not a non-empty real file")
+
+
+def resolve_real_bundle_dir(path: Path) -> Path:
+    if path.is_symlink() or not path.is_dir():
+        raise ValueError("bundle directory is missing or a symlink")
+    return path.resolve()
+
+
+def resolve_non_symlink(path: Path, label: str) -> Path:
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink")
+    return path.resolve()
+
+
 def require_sha(value: Any, label: str) -> str:
     digest = str(value).lower()
     if len(digest) != 64 or set(digest) - HEX64:
@@ -75,6 +92,10 @@ def require_sha(value: Any, label: str) -> str:
 
 
 def validate_bundle(bundle_dir: Path) -> dict[str, str]:
+    require_real_file(
+        bundle_dir / "bundle_manifest.json",
+        "bundle_manifest.json",
+    )
     bundle_manifest = load_object(
         bundle_dir / "bundle_manifest.json",
         "bundle_manifest.json",
@@ -106,9 +127,9 @@ def validate_bundle(bundle_dir: Path) -> dict[str, str]:
 
 
 def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str, Any]:
-    bundle_dir = bundle_dir.resolve()
-    output_root = output_root.resolve()
-    receipt_output = receipt_output.resolve()
+    bundle_dir = resolve_real_bundle_dir(bundle_dir)
+    output_root = resolve_non_symlink(output_root, "output root")
+    receipt_output = resolve_non_symlink(receipt_output, "receipt output")
     if (
         bundle_dir == output_root
         or bundle_dir.is_relative_to(output_root)

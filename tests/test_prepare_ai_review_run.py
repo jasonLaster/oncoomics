@@ -252,6 +252,25 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             )
             self.assertFalse(output.exists())
 
+    def test_refuses_symlinked_output_without_final_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            real_output = root / "ai-review-real"
+            real_output.mkdir()
+            output = root / "ai-review"
+            output.symlink_to(real_output, target_is_directory=True)
+
+            result = subprocess.run(
+                command(fixture, output),
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("output may not be a symlink", result.stderr)
+            self.assertFalse((real_output / "bundle").exists())
+
     def test_propagates_builder_fail_closed_behavior(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))

@@ -206,6 +206,8 @@ def validate_catalog_receipt(
     catalog_verified_at: str,
     model_contracts: dict[str, dict[str, Any]],
 ) -> str:
+    if path.is_symlink():
+        raise ValueError("model catalog receipt is missing, unsafe, or empty")
     resolved = path.resolve()
     if not resolved.is_file() or resolved.stat().st_size == 0:
         raise ValueError("model catalog receipt is missing or empty")
@@ -431,11 +433,12 @@ def main() -> None:
     parser.add_argument("--attest-models-latest", action="store_true")
     args = parser.parse_args()
 
-    output = args.output_dir.resolve()
     try:
+        output = args.output_dir
         prepare_output_dir(output, BUNDLE_FILENAMES)
     except ValueError as error:
         raise SystemExit(f"Fail-closed: {error}") from error
+    output = output.resolve()
 
     forbidden = [token.strip() for token in args.forbidden_token if token.strip()]
     if not forbidden:

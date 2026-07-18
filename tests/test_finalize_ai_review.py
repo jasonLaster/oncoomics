@@ -223,6 +223,39 @@ class FinalizeAiReviewTests(unittest.TestCase):
             self.assertNotEqual(finalized.returncode, 0)
             self.assertIn("report_manifest.json already exists", finalized.stderr)
 
+    def test_rejects_symlinked_custody_inputs(self) -> None:
+        cases = (
+            ("bundle directory", "bundle directory", "bundle"),
+            ("review directory", "review directory", "review"),
+            ("model catalog receipt", "model catalog receipt", "catalog"),
+        )
+
+        for label, message, target in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture, review = self.validated_review(temporary)
+                if target == "bundle":
+                    real_bundle = root / "bundle-real"
+                    fixture.bundle_dir.rename(real_bundle)
+                    fixture.bundle_dir.symlink_to(
+                        real_bundle,
+                        target_is_directory=True,
+                    )
+                elif target == "review":
+                    real_review = root / "review-a-real"
+                    review.rename(real_review)
+                    review.symlink_to(real_review, target_is_directory=True)
+                else:
+                    real_receipt = root / "model-catalog-receipt-real.json"
+                    fixture.catalog_receipt.rename(real_receipt)
+                    fixture.catalog_receipt.symlink_to(real_receipt)
+
+                finalized = self.execute(fixture, review)
+
+                self.assertNotEqual(finalized.returncode, 0)
+                self.assertIn(message, finalized.stderr)
+                self.assertFalse((review / "report_manifest.json").exists())
+
     def test_refuses_to_replace_existing_report_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)

@@ -474,6 +474,23 @@ class GenerateSynthesisTests(unittest.TestCase):
                 ],
             )
 
+    def test_symlinked_output_dir_fails_before_writing_packet(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-output-") as temporary:
+            root = Path(temporary)
+            fixture = SynthesisFixture(root)
+            real_output = root / "synthesis-real"
+            real_output.mkdir()
+            fixture.output_dir.symlink_to(real_output, target_is_directory=True)
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "synthesis output may not be a symlink",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((real_output / "report_manifest.json").exists())
+
     def test_omitted_reordered_added_and_tampered_inventory_fail_closed(self) -> None:
         method_sets = (
             list(REQUIRED_METHOD_IDS[:-1]),

@@ -326,11 +326,13 @@ def install_staged_run(staging: Path, output: Path) -> None:
 
 
 def prepare(args: argparse.Namespace) -> dict[str, Any]:
+    if args.output_dir.is_symlink():
+        raise ValueError(f"output may not be a symlink: {args.output_dir}")
+    if args.output_dir.parent.is_symlink():
+        raise ValueError(f"output parent may not be a symlink: {args.output_dir.parent}")
     output = args.output_dir.resolve()
-    if output.exists() or output.is_symlink():
+    if output.exists():
         raise FileExistsError(f"output already exists: {output}")
-    if output.parent.is_symlink():
-        raise ValueError(f"output parent may not be a symlink: {output.parent}")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     manifest_paths = method_manifest_paths(args)

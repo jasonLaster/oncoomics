@@ -349,6 +349,34 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 (report_fixture.bundle_dir / "review_bundle.json").exists()
             )
 
+    def test_rejects_symlinked_model_catalog_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            real_receipt = root / "model-catalog-receipt-real.json"
+            fixture.catalog_receipt.rename(real_receipt)
+            fixture.catalog_receipt.symlink_to(real_receipt)
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn("model catalog receipt", built.stderr)
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_rejects_symlinked_output_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            real_bundle = root / "bundle-real"
+            real_bundle.mkdir()
+            fixture.bundle_dir.symlink_to(real_bundle, target_is_directory=True)
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn("AI review bundle output may not be a symlink", built.stderr)
+            self.assertFalse((real_bundle / "review_bundle.json").exists())
+
     def test_rejects_duplicate_pinned_models(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))
