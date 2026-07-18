@@ -153,13 +153,16 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use2
 PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:apply:use2
 ```
 
-Terraform writes `aws_gpu_queue`, `phase3_fast_cache_prefix`, and
-`parabricks_container` to `infra/aws/nextflow.aws.use2.json`. The cache prefix
-uses the regional private-results bucket under `phase3-fast-cache/wgs-v2`; keep
-`parabricks_container` empty until the Parabricks image has been selected and
-pinned by immutable digest. The `awsbatch_gpu` profile maps `gpu_parabricks`
-processes to that queue and image and sets the Nextflow `accelerator` request
-to `phase3_fast_parabricks_num_gpus`, so Batch receives an explicit eight-GPU
+Terraform writes `aws_gpu_queue`, `phase3_fast_cache_prefix`,
+`parabricks_mirror_repository`, and `parabricks_container` to
+`infra/aws/nextflow.aws.use2.json`. The cache prefix uses the regional
+private-results bucket under `phase3-fast-cache/wgs-v2`, and the mirror
+repository gives the reviewed NVIDIA Parabricks image an immutable
+`us-east-2` ECR destination. Keep `parabricks_container` empty until the
+Parabricks image has been selected, mirrored, and pinned by digest. The
+`awsbatch_gpu` profile maps `gpu_parabricks` processes to that queue and image
+and sets the Nextflow `accelerator` request to
+`phase3_fast_parabricks_num_gpus`, so Batch receives an explicit eight-GPU
 request for the P5en jobs.
 
 The `us-east-2` Batch job role also receives versioned read permission on the

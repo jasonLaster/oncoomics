@@ -611,6 +611,52 @@ resource "aws_ecr_lifecycle_policy" "diana_omics" {
   })
 }
 
+resource "aws_ecr_repository" "parabricks" {
+  count = var.enable_parabricks_mirror ? 1 : 0
+
+  name                 = "${var.project}/parabricks"
+  image_tag_mutability = "IMMUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  encryption_configuration {
+    encryption_type = "KMS"
+    kms_key         = aws_kms_key.main.arn
+  }
+
+  tags = {
+    Architecture = "linux-amd64"
+    Workload     = "parabricks-p5en"
+  }
+
+  depends_on = [aws_iam_user_policy_attachment.bootstrap_local_cli]
+}
+
+resource "aws_ecr_lifecycle_policy" "parabricks" {
+  count = var.enable_parabricks_mirror ? 1 : 0
+
+  repository = aws_ecr_repository.parabricks[0].name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep the most recent 10 mirrored Parabricks images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 10
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_cloudwatch_log_group" "batch" {
   name              = "/aws/batch/${local.name_prefix}"
   retention_in_days = 30
@@ -1098,6 +1144,7 @@ resource "local_file" "nextflow_params" {
     aws_logs_group                = aws_cloudwatch_log_group.batch.name
     container                     = "${aws_ecr_repository.diana_omics.repository_url}:${var.image_tag}"
     parabricks_container          = var.parabricks_container
+    parabricks_mirror_repository  = try(aws_ecr_repository.parabricks[0].repository_url, "")
     phase3_asset_cache_uri        = "s3://${aws_s3_bucket.this["raw"].bucket}/cache/phase3_wgs"
     diana_raw_inbox_uri           = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_inbox_prefix}"
   })

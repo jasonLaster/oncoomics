@@ -88,6 +88,12 @@ variable "parabricks_container" {
   default     = ""
 }
 
+variable "enable_parabricks_mirror" {
+  description = "Create a regional immutable ECR repository for mirroring the pinned Parabricks image."
+  type        = bool
+  default     = false
+}
+
 variable "phase3_fast_source_region" {
   description = "AWS region that holds immutable source objects for phase3_wgs_fast regional cache replication."
   type        = string

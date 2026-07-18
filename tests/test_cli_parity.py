@@ -320,6 +320,7 @@ class CliParityTest(unittest.TestCase):
         assert plan_env is not None
         self.assertEqual("us-east-2", plan_env["TF_VAR_region"])
         self.assertEqual("prod-use2", plan_env["TF_VAR_environment"])
+        self.assertEqual("true", plan_env["TF_VAR_enable_parabricks_mirror"])
         self.assertEqual("false", plan_env["TF_VAR_manage_service_linked_roles"])
         self.assertEqual("nextflow.aws.use2.json", plan_env["TF_VAR_nextflow_params_filename"])
 

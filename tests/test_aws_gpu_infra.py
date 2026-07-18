@@ -56,6 +56,7 @@ class AwsGpuInfraTests(unittest.TestCase):
     def test_nextflow_params_export_gpu_queue_and_unselected_parabricks_image(self) -> None:
         text = MAIN_TF.read_text(encoding="utf-8")
         variables = VARIABLES_TF.read_text(encoding="utf-8")
+        outputs = OUTPUTS_TF.read_text(encoding="utf-8")
 
         self.assertIn('filename        = "${path.module}/${var.nextflow_params_filename}"', text)
         self.assertIn('variable "nextflow_params_filename"', variables)
@@ -63,6 +64,8 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertRegex(text, r"batch_gpu_p5en_instance_types\s+=\s+var\.batch_gpu_p5en_instance_types")
         self.assertRegex(text, r"gpu_p5en_max_vcpus\s+=\s+var\.gpu_p5en_max_vcpus")
         self.assertRegex(text, r"parabricks_container\s+=\s+var\.parabricks_container")
+        self.assertIn("parabricks_mirror_repository  = try(aws_ecr_repository.parabricks[0].repository_url, \"\")", text)
+        self.assertIn('output "parabricks_mirror_repository_url"', outputs)
         self.assertRegex(text, r"phase3_fast_cache_kms_key_arn\s+=\s+aws_kms_key\.main\.arn")
         self.assertRegex(text, r"phase3_fast_cache_region\s+=\s+var\.region")
         self.assertIn(
@@ -77,7 +80,19 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("default     = 384", text)
         self.assertIn('default     = ["p5en.48xlarge"]', text)
         self.assertIn('variable "parabricks_container"', text)
+        self.assertIn('variable "enable_parabricks_mirror"', text)
         self.assertIn('default     = ""', text)
+        self.assertIn("default     = false", text)
+
+    def test_parabricks_mirror_repository_is_optional_and_immutable(self) -> None:
+        text = MAIN_TF.read_text(encoding="utf-8")
+        block = resource_block(text, "aws_ecr_repository", "parabricks")
+
+        self.assertIn("count = var.enable_parabricks_mirror ? 1 : 0", block)
+        self.assertIn('name                 = "${var.project}/parabricks"', block)
+        self.assertIn('image_tag_mutability = "IMMUTABLE"', block)
+        self.assertIn("kms_key         = aws_kms_key.main.arn", block)
+        self.assertIn('Workload     = "parabricks-p5en"', block)
 
     def test_bootstrap_cli_can_track_exact_service_quota_requests(self) -> None:
         text = MAIN_TF.read_text(encoding="utf-8")

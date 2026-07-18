@@ -13,6 +13,11 @@ output "ecr_repository_url" {
   value       = aws_ecr_repository.diana_omics.repository_url
 }
 
+output "parabricks_mirror_repository_url" {
+  description = "Optional ECR mirror repository URL for the pinned Parabricks image."
+  value       = try(aws_ecr_repository.parabricks[0].repository_url, "")
+}
+
 output "nextflow_params_file" {
   description = "Generated Nextflow params file for AWS profiles."
   value       = local_file.nextflow_params.filename
