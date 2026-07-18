@@ -924,7 +924,13 @@ def require_new_outputs(paths: Iterable[Path]) -> None:
     if len(set(resolved)) != len(resolved):
         raise ValueError("private request/response output paths must be distinct")
     for path in values:
-        if path.exists() or path.is_symlink():
+        if path.is_symlink():
+            raise FileExistsError(f"private output may not be a symlink: {path}")
+        if path.parent.is_symlink():
+            raise FileExistsError(
+                f"private output parent may not be a symlink: {path.parent}"
+            )
+        if path.exists():
             raise FileExistsError(f"refusing to overwrite private output: {path}")
 
 

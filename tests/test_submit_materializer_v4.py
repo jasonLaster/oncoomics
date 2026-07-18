@@ -440,6 +440,40 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             submit=submit,
         )
 
+    def argv(self, *, submit: bool = False) -> list[str]:
+        values = [
+            "submit_materializer_v4.py",
+            "--run-id",
+            self.run_id,
+            "--final-freeze-receipt",
+            str(self.final_freeze),
+            "--final-freeze-anchor",
+            str(self.final_anchor),
+            "--exact-materialization-receipt",
+            str(self.exact_materialization),
+            "--reference-freeze-receipt",
+            str(self.reference_freeze),
+            "--reference-sha256-receipt",
+            str(self.reference_sha),
+            "--materializer-script-anchor",
+            str(self.script_anchor),
+            "--registration-receipt",
+            str(self.registration),
+            "--job-definition-payload",
+            str(self.job_definition),
+            "--request-output",
+            str(self.request_output),
+        ]
+        if submit:
+            values.extend(
+                [
+                    "--response-output",
+                    str(self.response_output),
+                    "--submit",
+                ]
+            )
+        return values
+
     def live_definition(self) -> dict:
         local = json.loads(self.job_definition.read_text(encoding="utf-8"))
         local.update(
@@ -895,6 +929,62 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         submitter.assert_called_once()
         self.assertTrue(self.response_output.exists())
         self.assertEqual(self.response_output.stat().st_mode & 0o777, 0o600)
+
+    def test_request_and_response_paths_may_not_traverse_symlinks(self) -> None:
+        real_parent = self.root / "real-parent"
+        real_parent.mkdir()
+        direct_target = real_parent / "direct-target.json"
+        linked_output = self.root / "linked-output.json"
+        linked_output.symlink_to(direct_target)
+        linked_parent = self.root / "linked-parent"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+        with self.assertRaisesRegex(FileExistsError, "may not be a symlink"):
+            MODULE.require_new_outputs([linked_output])
+        with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+            MODULE.require_new_outputs([linked_parent / "request.json"])
+
+    def test_symlinked_request_path_fails_before_preflight(self) -> None:
+        real_parent = self.root / "real-parent"
+        real_parent.mkdir()
+        linked_parent = self.root / "linked-parent"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+        self.request_output = linked_parent / "request.json"
+
+        with (
+            mock.patch.object(sys, "argv", self.argv()),
+            mock.patch.object(MODULE, "preflight") as preflight,
+            self.assertRaisesRegex(SystemExit, "parent may not be a symlink"),
+        ):
+            MODULE.main()
+
+        preflight.assert_not_called()
+        self.assertFalse((real_parent / "request.json").exists())
+
+    def test_symlinked_response_path_fails_before_preflight_or_submit(self) -> None:
+        real_parent = self.root / "real-parent"
+        real_parent.mkdir()
+        linked_parent = self.root / "linked-parent"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+        self.response_output = linked_parent / "response.json"
+
+        with (
+            mock.patch.object(sys, "argv", self.argv(submit=True)),
+            mock.patch.dict(
+                os.environ,
+                {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"},
+                clear=True,
+            ),
+            mock.patch.object(MODULE, "preflight") as preflight,
+            mock.patch.object(MODULE, "submit") as submitter,
+            self.assertRaisesRegex(SystemExit, "parent may not be a symlink"),
+        ):
+            MODULE.main()
+
+        preflight.assert_not_called()
+        submitter.assert_not_called()
+        self.assertFalse(self.request_output.exists())
+        self.assertFalse((real_parent / "response.json").exists())
 
 
 if __name__ == "__main__":
