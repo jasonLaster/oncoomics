@@ -12,15 +12,18 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import html
 import json
 import os
 import re
 import subprocess
 import tempfile
+import unicodedata
 from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
+from urllib.parse import unquote
 
 from hrd_report_inventory import require_report_methods
 
@@ -428,6 +431,18 @@ def exact_source_checks(
     }
 
 
+def normalized_scan_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", html.unescape(value))
+    for _ in range(2):
+        decoded = unquote(normalized)
+        if decoded == normalized:
+            break
+        normalized = decoded
+    return "".join(
+        character for character in normalized if unicodedata.category(character) != "Cf"
+    )
+
+
 def scan_text(path: Path, tokens: tuple[str, ...]) -> None:
     try:
         text = path.read_text(encoding="utf-8")
@@ -442,10 +457,20 @@ def scan_text(path: Path, tokens: tuple[str, ...]) -> None:
         haystacks.append(
             json.dumps(decoded, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         )
+    normalized_tokens = tuple(
+        normalized
+        for normalized in (
+            normalized_scan_text(token).casefold() for token in tokens
+        )
+        if normalized
+    )
+    normalized_haystacks = tuple(
+        normalized_scan_text(haystack).casefold() for haystack in haystacks
+    )
     if any(
-        token.casefold() in haystack.casefold()
-        for token in tokens
-        for haystack in haystacks
+        token in haystack
+        for token in normalized_tokens
+        for haystack in normalized_haystacks
     ):
         raise ValueError(f"forbidden identifier token remains in {path.name}")
 

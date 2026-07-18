@@ -452,15 +452,23 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             self.assertEqual(fake.put_calls, [])
 
     def test_second_scan_rejects_forbidden_identifier_before_upload(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            fixture = Fixture(Path(temporary))
-            report = fixture.packet / "report.md"
-            report.write_text("# Reviewed\n\npersonalis direct label\n")
-            fixture.mutate_manifest(report_sha256=digest(report.read_bytes()))
-            fake = FakeAws(fixture)
-            with self.assertRaisesRegex(ValueError, "forbidden identifier"):
-                self.execute(fixture, fake, apply=True)
-            self.assertEqual(fake.put_calls, [])
+        for body in (
+            "# Reviewed\n\npersonalis direct label\n",
+            "# Reviewed\n\np&#101;rsonalis html entity label\n",
+            "# Reviewed\n\np%65rsonalis URL-encoded label\n",
+            "# Reviewed\n\np\u200dersonalis format-control label\n",
+        ):
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                report = fixture.packet / "report.md"
+                report.write_text(body)
+                fixture.mutate_manifest(report_sha256=digest(report.read_bytes()))
+                fake = FakeAws(fixture)
+
+                with self.assertRaisesRegex(ValueError, "forbidden identifier"):
+                    self.execute(fixture, fake, apply=True)
+
+                self.assertEqual(fake.put_calls, [])
 
     def test_second_scan_rejects_escaped_json_forbidden_identifier_before_upload(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

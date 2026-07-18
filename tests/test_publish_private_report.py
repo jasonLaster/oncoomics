@@ -254,6 +254,23 @@ class PublishPrivateReportTests(unittest.TestCase):
                 ):
                     MODULE.run(fixture.args())
 
+    def test_rejects_encoded_forbidden_token_before_aws(self) -> None:
+        for encoded in (
+            "p&#101;rsonalis\n",
+            "p%65rsonalis\n",
+            "p\u200dersonalis\n",
+        ):
+            with self.subTest(encoded=encoded), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                (fixture.packet / "report.md").write_text(encoded)
+
+                with self.assertRaisesRegex(
+                    ValueError, "forbidden identifier"
+                ), mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ):
+                    MODULE.run(fixture.args())
+
     def test_manifest_cannot_promote_no_call_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))

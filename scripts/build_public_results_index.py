@@ -6,8 +6,10 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import pathlib
 import subprocess
+import tempfile
 from typing import Any, Sequence
 
 REGION = "us-east-1"
@@ -90,6 +92,27 @@ def list_prefix(prefix: str) -> list[dict[str, Any]]:
         continuation_token = next_token
 
 
+def write_index(path: pathlib.Path, payload: dict[str, Any]) -> None:
+    """Atomically write the local public index without following symlinks."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise RuntimeError(f"Refusing to write public index through symlink: {path}")
+    descriptor, raw = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary = pathlib.Path(raw)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            descriptor = -1
+            handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        temporary.unlink(missing_ok=True)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=pathlib.Path, required=True)
@@ -114,8 +137,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "total_size": sum(item["size"] for item in objects),
         "objects": objects,
     }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    write_index(args.output, payload)
     print(
         json.dumps(
             {

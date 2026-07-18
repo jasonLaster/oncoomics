@@ -144,6 +144,45 @@ class PublicIndexTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "duplicate keys"):
                 MODULE.main(["--output", str(Path(temporary) / "objects.json")])
 
+    def test_main_writes_index_atomically_without_following_symlinks(self) -> None:
+        objects = [
+            {
+                "key": MODULE.PUBLIC_PREFIXES[0] + "report.md",
+                "size": 100,
+                "last_modified": "2026-07-17T00:00:00Z",
+            }
+        ]
+
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+            MODULE,
+            "list_prefix",
+            side_effect=[objects] + [[] for _ in MODULE.PUBLIC_PREFIXES[1:]],
+        ) as list_prefix:
+            root = Path(temporary)
+            output = root / "objects.json"
+            stale = root / "stale.json"
+            symlink = root / "symlink.json"
+
+            output.write_text("stale\n", encoding="utf-8")
+            MODULE.main(["--output", str(output)])
+
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(payload["objects"], objects)
+            self.assertEqual(payload["object_count"], 1)
+            self.assertEqual(list_prefix.call_count, len(MODULE.PUBLIC_PREFIXES))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            stale = root / "stale.json"
+            symlink = root / "symlink.json"
+            stale.write_text("do not overwrite\n", encoding="utf-8")
+            symlink.symlink_to(stale)
+
+            with self.assertRaisesRegex(RuntimeError, "through symlink"):
+                MODULE.write_index(symlink, {"objects": []})
+
+            self.assertEqual(stale.read_text(encoding="utf-8"), "do not overwrite\n")
+
 
 if __name__ == "__main__":
     unittest.main()
