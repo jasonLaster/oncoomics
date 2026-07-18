@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -292,6 +294,62 @@ def move_staged_entry(source: Path, destination: Path) -> None:
     source.rename(destination)
 
 
+def fingerprint_staged_entry(path: Path) -> str:
+    rows: list[dict[str, Any]] = []
+
+    def add_path(child: Path, relative_path: str) -> None:
+        require_no_symlinked_ancestors(child, "staged AI review entry")
+        try:
+            metadata = os.lstat(child)
+        except FileNotFoundError as error:
+            raise ValueError(f"staged AI review entry is missing: {child}") from error
+        mode = metadata.st_mode
+        if stat.S_ISLNK(mode):
+            raise ValueError(f"staged AI review entry may not be a symlink: {child}")
+        if stat.S_ISDIR(mode):
+            rows.append(
+                {
+                    "kind": "directory",
+                    "mode": stat.S_IMODE(mode),
+                    "path": relative_path,
+                }
+            )
+            return
+        if stat.S_ISREG(mode):
+            rows.append(
+                {
+                    "bytes": metadata.st_size,
+                    "kind": "file",
+                    "mode": stat.S_IMODE(mode),
+                    "path": relative_path,
+                    "sha256": sha256(child),
+                }
+            )
+            return
+        raise ValueError(
+            "staged AI review entry is not a regular file or directory: "
+            + str(child)
+        )
+
+    add_path(path, ".")
+    if path.is_dir():
+        for child in sorted(path.rglob("*")):
+            add_path(child, child.relative_to(path).as_posix())
+
+    return hashlib.sha256(
+        json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def require_new_output_entry(path: Path) -> Path:
+    require_no_symlinked_ancestors(path, "output")
+    if path.is_symlink():
+        raise ValueError(f"output may not be a symlink: {path}")
+    if path.exists():
+        raise FileExistsError(f"output already exists: {path}")
+    return path.resolve()
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -328,14 +386,25 @@ def install_staged_run(staging: Path, output: Path) -> None:
         fsync_directory(output.parent)
         for child in sorted(staging.iterdir(), key=lambda path: path.name):
             destination = output / child.name
+            require_new_output_entry(destination)
+            expected_fingerprint = fingerprint_staged_entry(child)
             destination_preexisted = destination.exists() or destination.is_symlink()
             try:
                 move_staged_entry(child, destination)
+                installed.append(destination)
+                if fingerprint_staged_entry(destination) != expected_fingerprint:
+                    raise ValueError(
+                        "staged AI review entry changed during install: "
+                        + child.name
+                    )
             except Exception:
-                if not destination_preexisted and destination.exists():
+                if (
+                    not destination_preexisted
+                    and destination.exists()
+                    and destination not in installed
+                ):
                     installed.append(destination)
                 raise
-            installed.append(destination)
         fsync_directory(output)
     except Exception:
         for path in reversed(installed):

@@ -457,6 +457,84 @@ class PrepareAiReviewRunTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "ai-review").exists())
 
+    def test_install_rejects_symlinked_staged_entry_without_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            staging.mkdir()
+            real_bundle = root / "real-bundle"
+            real_bundle.mkdir()
+            (real_bundle / "payload.json").write_text("{}\n", encoding="utf-8")
+            (staging / "bundle").symlink_to(
+                real_bundle,
+                target_is_directory=True,
+            )
+            output = root / "ai-review"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged AI review entry may not be a symlink",
+            ):
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertFalse(output.exists())
+
+    def test_install_rejects_symlinked_staged_descendant_without_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            bundle = staging / "bundle"
+            outside = root / "outside.json"
+            bundle.mkdir(parents=True)
+            (bundle / "payload.json").write_text("{}\n", encoding="utf-8")
+            outside.write_text("{}\n", encoding="utf-8")
+            (bundle / "payload-link.json").symlink_to(outside)
+            output = root / "ai-review"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged AI review entry may not be a symlink",
+            ):
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertFalse(output.exists())
+
+    def test_install_rejects_post_move_staged_entry_tampering(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            staging.mkdir()
+            for name in ("bundle", "reviewer-inputs"):
+                directory = staging / name
+                directory.mkdir()
+                (directory / "payload.json").write_text("{}\n", encoding="utf-8")
+
+            real_move = PREPARE.move_staged_entry
+
+            def tamper_after_move(source: Path, destination: Path) -> None:
+                real_move(source, destination)
+                if destination.name == "bundle":
+                    (destination / "payload.json").write_text(
+                        '{"tampered": true}\n',
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "move_staged_entry",
+                    side_effect=tamper_after_move,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged AI review entry changed during install",
+                ),
+            ):
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertFalse(output.exists())
+
     def test_install_fsyncs_parent_and_output_directories(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
