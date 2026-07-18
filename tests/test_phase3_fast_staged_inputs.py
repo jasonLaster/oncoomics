@@ -61,7 +61,7 @@ class Phase3FastStagedInputsTests(unittest.TestCase):
         self.assertEqual("copy-version-1", tumor["source"]["version_id"])
 
         panel = manifest["caller_resources"]["panel_of_normals_vcf"]
-        self.assertTrue(panel["local_path"].endswith("/scratch/caller_resources/panel_of_normals_vcf/panel_of_normals_vcf"))
+        self.assertTrue(panel["local_path"].endswith("/scratch/caller_resources/panel_of_normals/panel_of_normals_vcf"))
 
     def test_rejects_missing_local_file(self) -> None:
         with TemporaryDirectory() as tmp:

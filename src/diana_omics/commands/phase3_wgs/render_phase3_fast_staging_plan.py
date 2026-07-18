@@ -15,6 +15,16 @@ DEFAULT_INPUT = "manifests/phase3_wgs_fast/cache_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/staging_plan.json"
 DEFAULT_STAGING_ROOT = "/scratch/diana/phase3_wgs_fast"
 EXPECTED_STAGED_OBJECTS = 15
+CALLER_RESOURCE_DIRECTORIES = {
+    "common_sites_index": "common_sites",
+    "common_sites_vcf": "common_sites",
+    "gatk_jar": "gatk",
+    "germline_resource_index": "germline_resource",
+    "germline_resource_vcf": "germline_resource",
+    "mutect2_interval_set": "intervals",
+    "panel_of_normals_index": "panel_of_normals",
+    "panel_of_normals_vcf": "panel_of_normals",
+}
 
 
 def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
@@ -78,7 +88,7 @@ def _local_path(root: Path, artifact: str, uri: str) -> Path:
         return root / "inputs" / "tumor" / filename
     if artifact in REFERENCE_CACHE_ARTIFACTS:
         return root / "reference" / filename
-    return root / "caller_resources" / artifact / filename
+    return root / "caller_resources" / CALLER_RESOURCE_DIRECTORIES[artifact] / filename
 
 
 def _cache_entry(entry: Mapping[str, Any], artifact: str, root: Path, region: str) -> dict[str, Any]:
