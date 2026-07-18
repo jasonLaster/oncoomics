@@ -67,6 +67,7 @@ def load_json(path: Path) -> dict[str, Any]:
 def write_json_atomic(
     path: Path, value: dict[str, Any], *, create: bool = False
 ) -> None:
+    require_safe_output_parent(path, "JSON receipt output")
     path.parent.mkdir(parents=True, exist_ok=True)
     staging = path.with_name(f".{path.name}.tmp-{os.getpid()}")
     descriptor = -1
@@ -89,7 +90,31 @@ def write_json_atomic(
         staging.unlink(missing_ok=True)
 
 
+def require_safe_output_parent(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ValueError(f"{label} must not be a symlink: {path}")
+    nearest_parent = path.parent
+    while not nearest_parent.exists():
+        if nearest_parent.is_symlink():
+            raise ValueError(
+                f"{label} missing parent must not be a symlink: {nearest_parent}"
+            )
+        next_parent = nearest_parent.parent
+        if next_parent == nearest_parent:
+            raise ValueError(f"{label} has no existing parent: {path}")
+        nearest_parent = next_parent
+    if nearest_parent.is_symlink():
+        raise ValueError(
+            f"{label} nearest existing parent must not be a symlink: {nearest_parent}"
+        )
+    if not nearest_parent.is_dir():
+        raise ValueError(
+            f"{label} nearest existing parent must be a directory: {nearest_parent}"
+        )
+
+
 def require_new_output(path: Path, label: str) -> None:
+    require_safe_output_parent(path, label)
     if path.exists():
         try:
             status = load_json(path).get("status", "unknown")

@@ -62,8 +62,38 @@ def valid_version_id(value: Any) -> bool:
     return str(value or "").strip().lower() not in {"", "null", "none"}
 
 
+def require_safe_output_parent(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ValueError(f"{label} must not be a symlink: {path}")
+    nearest_parent = path.parent
+    while not nearest_parent.exists():
+        if nearest_parent.is_symlink():
+            raise ValueError(
+                f"{label} missing parent must not be a symlink: {nearest_parent}"
+            )
+        next_parent = nearest_parent.parent
+        if next_parent == nearest_parent:
+            raise ValueError(f"{label} has no existing parent: {path}")
+        nearest_parent = next_parent
+    if nearest_parent.is_symlink():
+        raise ValueError(
+            f"{label} nearest existing parent must not be a symlink: {nearest_parent}"
+        )
+    if not nearest_parent.is_dir():
+        raise ValueError(
+            f"{label} nearest existing parent must be a directory: {nearest_parent}"
+        )
+
+
+def require_safe_new_output(path: Path, label: str) -> None:
+    require_safe_output_parent(path, label)
+    if path.exists():
+        raise ValueError(f"{label} already exists: {path}")
+
+
 def write_bytes_once(path: Path, payload: bytes) -> None:
     """Atomically create a local receipt without replacing prior evidence."""
+    require_safe_output_parent(path, "local evidence output")
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary_value = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
@@ -516,10 +546,11 @@ def main() -> int:
     parser.add_argument("--region", default="us-east-1")
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
-    if args.output.exists() or args.anchor_output.exists():
-        raise SystemExit(
-            "Fail-closed: local receipt output already exists; preserve it and use new paths"
-        )
+    try:
+        require_safe_new_output(args.output, "freeze receipt output")
+        require_safe_new_output(args.anchor_output, "freeze receipt anchor output")
+    except ValueError as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
 
     job_payload = aws_json(["batch", "describe-jobs", "--jobs", args.job_id], args.region)
     jobs = job_payload.get("jobs", [])

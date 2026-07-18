@@ -407,6 +407,54 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 MODULE.write_json_once(path, {"status": "failed"})
             self.assertEqual(path.read_bytes(), first)
 
+    def test_atomic_writer_rejects_output_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            output = linked_parent / "missing" / "receipt.json"
+
+            with self.assertRaisesRegex(ValueError, "nearest existing parent"):
+                MODULE.write_json_once(output, {"status": "redirected"})
+
+            self.assertFalse((real_parent / "missing" / "receipt.json").exists())
+
+    def test_main_rejects_symlink_output_before_aws_observation(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            output = root / "receipt.json"
+            output.symlink_to(root / "target.json")
+            anchor = root / "anchor.json"
+            execution = root / "execution.json"
+            argv = [
+                "freeze_stage_provenance.py",
+                "--job-id",
+                JOB_ID,
+                "--run-id",
+                RUN_ID,
+                "--execution-receipt",
+                str(execution),
+                "--kms-key-arn",
+                KMS,
+                "--output",
+                str(output),
+                "--anchor-output",
+                str(anchor),
+                "--region",
+                REGION,
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(MODULE, "aws_json") as mocked_aws,
+                self.assertRaisesRegex(SystemExit, "must not be a symlink"),
+            ):
+                MODULE.main()
+
+            mocked_aws.assert_not_called()
+
     def test_copy_success_then_validation_failure_records_version_and_history(self) -> None:
         preflight = (json.dumps(preflight_payload(), sort_keys=True) + "\n").encode()
         source_head = object_head(preflight)

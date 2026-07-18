@@ -380,6 +380,34 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "never overwritten"):
                 MODULE.require_new_output(path, "receipt")
 
+    def test_new_output_rejects_output_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            path = linked_parent / "missing" / "receipt.json"
+
+            with self.assertRaisesRegex(ValueError, "nearest existing parent"):
+                MODULE.require_new_output(path, "receipt")
+
+            self.assertFalse((real_parent / "missing" / "receipt.json").exists())
+
+    def test_atomic_writer_rejects_output_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            path = linked_parent / "missing" / "receipt.json"
+
+            with self.assertRaisesRegex(ValueError, "nearest existing parent"):
+                MODULE.write_json_atomic(path, {"status": "redirected"}, create=True)
+
+            self.assertFalse((real_parent / "missing" / "receipt.json").exists())
+
     def test_create_only_receipt_write_preserves_late_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             path = Path(value) / "receipt.json"
