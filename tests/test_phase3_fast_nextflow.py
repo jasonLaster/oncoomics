@@ -557,7 +557,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         text = MAIN_NF.read_text(encoding="utf-8")
 
         process = text[text.index("process FAST_STAGE_ROSALIND_PACKET") :]
-        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        process = process[: process.index("process FAST_STAGE_BLOCKED_CROSSCHECKS")]
         self.assertIn("label 'cpu_io'", process)
         self.assertIn("tuple path(report_md)", process)
         self.assertIn("path(crosscheck_input_plans)", process)
