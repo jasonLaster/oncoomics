@@ -379,7 +379,9 @@ files, and writes the six-file deterministic report packet
 The cross-check plan maps the final FilterMutect VCF, its TBI, the SBS96 matrix,
 and exact versioned reference/BAM source identities into the pending
 SigProfiler/SBS3 and Sequenza/scarHRD materialization contracts without mining
-worker-local scratch paths. That report is deliberately
+worker-local scratch paths. Sequenza still requires a finalized BAM alias
+contract with an explicit sex-model parameter before that route can materialize
+inputs and generate scarHRD-ready purity/ploidy segments. That report is deliberately
 descriptive: Parabricks/FilterMutect, BAM QC, coverage-CNV, and BAM-derived SV
 evidence plus the SBS96 input matrix are bound by SHA-256, while SBS3,
 scarHRD, CHORD, HRDetect-style scoring, and the overall HRD state remain

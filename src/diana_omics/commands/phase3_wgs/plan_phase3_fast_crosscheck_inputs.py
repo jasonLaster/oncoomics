@@ -159,7 +159,7 @@ def build_phase3_fast_crosscheck_materialization_plan(
             },
         },
         "blocked_routes": {
-            "sequenza_scarhrd": "awaiting_allele_specific_cnv_loh_segments",
+            "sequenza_scarhrd": "awaiting_sequenza_sex_model_and_final_bam_contract",
             "facets_scarhrd": "awaiting_allele_specific_cnv_loh_segments",
             "oncoanalyser_chord": "awaiting_validated_production_sv_caller_vcf",
             "hrdetect": "awaiting_validated_structural_variant_features",

@@ -69,7 +69,10 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
             reference_sources["reference_fai"]["sha256"],
         )
         self.assertEqual("somatic.pass.vcf.gz", plan["sigprofiler_sbs3"]["outputs"]["somatic_vcf"])
-        self.assertEqual("awaiting_allele_specific_cnv_loh_segments", plan["blocked_routes"]["sequenza_scarhrd"])
+        self.assertEqual(
+            "awaiting_sequenza_sex_model_and_final_bam_contract",
+            plan["blocked_routes"]["sequenza_scarhrd"],
+        )
         self.assertNotIn(str(root), json.dumps(plan))
         self.assertNotIn("commands", plan)
         self.assertNotIn("inputs", plan)

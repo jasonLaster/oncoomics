@@ -429,8 +429,9 @@ def _build_crosscheck_input_plans(manifest: Mapping[str, Any], artifact_map: Map
                     "normal_bai": _source_identity(input_sources, "bam_pair.normal.bai", "bam_pair", "normal", "bai"),
                 },
                 "blockers": [
-                    "Allele-specific copy-number and LOH route inputs are not in the Phase 3 fast final tree.",
-                    "Purity/ploidy and scarHRD interpretation thresholds are not validated.",
+                    "A finalized alias-only BAM/BAM-index contract has not been published for the Sequenza route.",
+                    "method_parameters.sequenza.female must explicitly declare the Sequenza sex model.",
+                    "Sequenza execution, purity/ploidy, and scarHRD interpretation thresholds are not validated.",
                 ],
             },
         },
@@ -543,7 +544,9 @@ def _report_markdown(
                 "The SigProfiler/SBS3 route has a plan-ready alias materialization recipe for the filtered "
                 "PASS VCF, VCF index, SBS96 matrix, and exact reference FASTA/FAI identities, but the "
                 "materializer has not run and no SBS3 assignment or threshold policy is authorized. "
-                "Sequenza/scarHRD stays blocked until allele-specific CNV/LOH and purity/ploidy inputs exist."
+                "Sequenza/scarHRD has the BAM/BAM-index identities needed to start its materialization "
+                "contract, but it stays blocked until a finalized alias-only BAM contract explicitly "
+                "declares the Sequenza sex model."
             ),
             "",
             "## Blocked model routes",
@@ -700,7 +703,10 @@ def stage_phase3_fast_deterministic_report(
             {
                 "check_id": "crosscheck_input_materialization_plan",
                 "status": "passed",
-                "detail": "SigProfiler/SBS3 input materialization is plan-ready; Sequenza/scarHRD remains blocked.",
+                "detail": (
+                    "SigProfiler/SBS3 input materialization is plan-ready; "
+                    "Sequenza/scarHRD is blocked on a finalized BAM contract and explicit sex model."
+                ),
             },
         ],
         "input_sha256": input_rows,

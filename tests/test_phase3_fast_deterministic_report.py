@@ -83,6 +83,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         self.assertIs(report_manifest["classification_authorized"], False)
         self.assertIn("overall HRD remains `no_call`", report)
         self.assertIn("SigProfiler/SBS3 route has a plan-ready alias materialization recipe", report)
+        self.assertIn("declares the Sequenza sex model", report)
         self.assertIn("`4` depth bins", report)
         self.assertIn("no production SV VCF/BEDPE", report)
         self.assertNotIn(str(root), json.dumps(report_manifest))
@@ -102,6 +103,14 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         self.assertEqual(
             "blocked",
             crosscheck_input_plans["routes"]["sequenza_scarhrd"]["status"],
+        )
+        self.assertEqual(
+            [
+                "A finalized alias-only BAM/BAM-index contract has not been published for the Sequenza route.",
+                "method_parameters.sequenza.female must explicitly declare the Sequenza sex model.",
+                "Sequenza execution, purity/ploidy, and scarHRD interpretation thresholds are not validated.",
+            ],
+            crosscheck_input_plans["routes"]["sequenza_scarhrd"]["blockers"],
         )
         self.assertEqual(
             "plan_ready",
