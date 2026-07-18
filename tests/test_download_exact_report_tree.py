@@ -267,6 +267,72 @@ class ExactReportDownloadTests(unittest.TestCase):
             self.assertEqual(result["status"], "passed")
             self.assertTrue(result["recovered_prepared_cutover"])
 
+    def test_refuses_symlinked_output_before_verification_reservation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, _, _ = self.fixture(root)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            direct_target = real_parent / "direct-target"
+            direct_target.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            linked_output = root / "linked-output"
+            linked_output.symlink_to(direct_target, target_is_directory=True)
+
+            for output in (linked_output, linked_parent / "report-tree"):
+                with self.subTest(output=output):
+                    verification = root / f"{output.name}.verification.json"
+                    with self.assertRaisesRegex(
+                        SystemExit,
+                        "report output.* may not be a symlink",
+                    ):
+                        MODULE.main(
+                            self.args(receipt, anchor, output, verification)
+                        )
+
+                    self.assertFalse(verification.exists())
+                    self.assertFalse((real_parent / "report-tree").exists())
+
+    def test_refuses_symlinked_verification_before_writes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, _, _ = self.fixture(root)
+            real_verification = root / "real-verification.json"
+            real_verification.write_text('{"status":"passed"}\n', encoding="utf-8")
+            linked_verification = root / "linked-verification.json"
+            linked_verification.symlink_to(real_verification)
+            real_verification_parent = root / "real-verifications"
+            real_verification_parent.mkdir()
+            linked_verification_parent = root / "linked-verifications"
+            linked_verification_parent.symlink_to(
+                real_verification_parent,
+                target_is_directory=True,
+            )
+
+            for verification in (
+                linked_verification,
+                linked_verification_parent / "verification.json",
+            ):
+                with self.subTest(verification=verification):
+                    output = root / f"{verification.name}.report-tree"
+                    with self.assertRaisesRegex(
+                        SystemExit,
+                        "verification output.* may not be a symlink",
+                    ):
+                        MODULE.main(
+                            self.args(receipt, anchor, output, verification)
+                        )
+
+                    self.assertEqual(
+                        real_verification.read_text(encoding="utf-8"),
+                        '{"status":"passed"}\n',
+                    )
+                    self.assertFalse(output.exists())
+                    self.assertFalse(
+                        (real_verification_parent / "verification.json").exists()
+                    )
+
     def test_changed_history_and_traversal_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

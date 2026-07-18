@@ -92,6 +92,15 @@ def safe_relative(value: Any) -> str:
     return text
 
 
+def resolve_new_output(path: Path, label: str) -> Path:
+    """Fail before resolving a create-only output through path-level symlinks."""
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink")
+    if path.parent.is_symlink():
+        raise ValueError(f"{label} parent may not be a symlink: {path.parent}")
+    return path.resolve()
+
+
 def validate_local_tree(root: Path, rows: list[dict[str, Any]]) -> None:
     if root.is_symlink() or not root.is_dir():
         raise ValueError("downloaded report tree is missing or is a symlink")
@@ -323,14 +332,12 @@ def validate_publication(
 
 
 def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
-    output = args.output_dir.resolve()
-    verification = args.verification_output.resolve()
-    if (
-        args.output_dir.is_symlink()
-        or verification == output
-        or verification.is_relative_to(output)
-    ):
-        raise ValueError("output paths overlap or use a symlink")
+    output = resolve_new_output(args.output_dir, "report output")
+    verification = resolve_new_output(
+        args.verification_output, "verification output"
+    )
+    if verification == output or verification.is_relative_to(output):
+        raise ValueError("output paths overlap")
 
     receipt, rows, bucket, prefix = validate_publication(
         args.publication_receipt,
