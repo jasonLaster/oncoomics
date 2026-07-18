@@ -89,6 +89,14 @@ def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
 
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def write_once(path: Path, text: str) -> None:
     if path.exists() or path.is_symlink():
         raise FileExistsError(path)
@@ -106,6 +114,7 @@ def write_once(path: Path, text: str) -> None:
                 handle.write(text)
                 handle.flush()
                 os.fsync(handle.fileno())
+            fsync_directory(path.parent)
         except Exception:
             path.unlink(missing_ok=True)
             raise

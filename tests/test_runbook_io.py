@@ -6,7 +6,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -98,14 +97,20 @@ class RunbookIoTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runbook.md"
 
-            MODULE.write_once(output, "one\n")
+            with mock.patch.object(
+                MODULE.os,
+                "fsync",
+                wraps=MODULE.os.fsync,
+            ) as fsync:
+                MODULE.write_once(output, "one\n")
 
             self.assertEqual(output.read_text(encoding="utf-8"), "one\n")
             self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(fsync.call_count, 2)
             with self.assertRaises(FileExistsError):
                 MODULE.write_once(output, "two\n")
 
-    def test_write_once_removes_partial_output_after_fsync_failure(self) -> None:
+    def test_write_once_removes_partial_output_after_file_fsync_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runbook.md"
 
@@ -113,9 +118,27 @@ class RunbookIoTests(unittest.TestCase):
                 mock.patch.object(
                     MODULE.os,
                     "fsync",
-                    side_effect=OSError("synthetic fsync failure"),
+                    side_effect=OSError("synthetic file fsync failure"),
                 ),
-                self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                MODULE.write_once(output, "partial\n")
+
+            self.assertFalse(output.exists())
+
+    def test_write_once_removes_partial_output_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runbook.md"
+
+            with (
+                mock.patch.object(
+                    MODULE.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
             ):
                 MODULE.write_once(output, "partial\n")
 
