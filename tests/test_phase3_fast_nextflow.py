@@ -135,6 +135,9 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("`FAST_INPUT_MANIFEST`", text)
         self.assertIn("`FAST_REPLICATION_PLAN`", text)
         self.assertIn("`FAST_REPLICATE_INPUTS`", text)
+        self.assertIn("FAST_STAGE_DETERMINISTIC_REPORT     six-file deterministic method report", text)
+        self.assertIn("`crosscheck_input_plans.json`", text)
+        self.assertNotIn("five-file deterministic method report", text)
 
     def test_local_fast_stub_exercises_full_execute_branch_without_large_resources(self) -> None:
         script = FAST_STUB_SCRIPT.read_text(encoding="utf-8")

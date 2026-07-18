@@ -208,7 +208,7 @@ FAST_CNV_EVIDENCE
 FAST_SV_EVIDENCE
 FAST_EVIDENCE_JOIN
 FAST_VERIFY_AND_PUBLISH
-FAST_STAGE_DETERMINISTIC_REPORT     five-file deterministic method report
+FAST_STAGE_DETERMINISTIC_REPORT     six-file deterministic method report
 FAST_STAGE_ROSALIND_PACKET          Diana WGS Rosalind reviewer packet
 FAST_STAGE_BLOCKED_CROSSCHECKS      FACETS/CHORD/HRDetect blocked no-call packets
 ```
