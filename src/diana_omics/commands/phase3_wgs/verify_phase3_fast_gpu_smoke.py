@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 import re
+import subprocess
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -13,6 +15,8 @@ REQUIRED_AWS_REGION = "us-east-2"
 REQUIRED_GPU_QUEUE_SUFFIX = "-gpu-p5en"
 REQUIRED_INSTANCE_TYPES = ("p5en.48xlarge",)
 P5EN_VCPUS = 192
+EC2_SERVICE_CODE = "ec2"
+ON_DEMAND_P_QUOTA_CODE = "L-417A185B"
 KMS_KEY_ARN = re.compile(r"^arn:aws:kms:([a-z]{2}-[a-z]+-\d):(\d{12}):key/[A-Za-z0-9-]+$")
 PINNED_IMAGE = re.compile(r"^\S+@sha256:[0-9a-fA-F]{64}$")
 
@@ -132,13 +136,72 @@ def load_params_from_environment() -> tuple[dict[str, Any], Path]:
     return payload, path
 
 
+def load_running_on_demand_p_vcpus(region: str, *, aws_cli: str = "aws") -> float:
+    try:
+        result = subprocess.run(
+            [
+                aws_cli,
+                "service-quotas",
+                "get-service-quota",
+                "--region",
+                region,
+                "--service-code",
+                EC2_SERVICE_CODE,
+                "--quota-code",
+                ON_DEMAND_P_QUOTA_CODE,
+                "--output",
+                "json",
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except FileNotFoundError as error:
+        raise GpuSmokeConfigError(f"{aws_cli} is required to verify the live On-Demand P quota") from error
+    except subprocess.CalledProcessError as error:
+        output = (error.stdout or "").strip()
+        detail = f": {output}" if output else ""
+        raise GpuSmokeConfigError(f"Unable to read the live {region} Running On-Demand P instances quota{detail}") from error
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise GpuSmokeConfigError("Service Quotas did not return JSON") from error
+
+    if not isinstance(payload, dict):
+        raise GpuSmokeConfigError("Service Quotas response must be a JSON object")
+    quota = payload.get("Quota")
+    if not isinstance(quota, dict):
+        raise GpuSmokeConfigError("Service Quotas response must include a Quota object")
+    value = quota.get("Value")
+    if not isinstance(value, (float, int)) or isinstance(value, bool):
+        raise GpuSmokeConfigError("Running On-Demand P instances quota Value must be numeric")
+    return float(value)
+
+
+def validate_running_on_demand_p_quota(value: float, *, minimum: int = P5EN_VCPUS) -> None:
+    if value < minimum:
+        raise GpuSmokeConfigError(
+            f"Running On-Demand P instances quota is {value:g} vCPUs; "
+            f"phase3_wgs_fast needs at least {minimum} vCPUs for one p5en.48xlarge"
+        )
+
+
 def main() -> None:
     try:
         params, path = load_params_from_environment()
         summary = validate_gpu_smoke_params(params)
+        running_on_demand_p_vcpus = load_running_on_demand_p_vcpus(summary["aws_region"])
+        validate_running_on_demand_p_quota(running_on_demand_p_vcpus)
     except GpuSmokeConfigError as error:
         raise SystemExit(str(error)) from error
-    print(f"Phase 3 WGS fast GPU smoke config passed: {path} queue={summary['aws_gpu_queue']} max_vcpus={summary['gpu_p5en_max_vcpus']}")
+    print(
+        f"Phase 3 WGS fast GPU smoke config passed: {path} "
+        f"queue={summary['aws_gpu_queue']} "
+        f"max_vcpus={summary['gpu_p5en_max_vcpus']} "
+        f"running_on_demand_p_vcpus={running_on_demand_p_vcpus:g}"
+    )
 
 
 if __name__ == "__main__":

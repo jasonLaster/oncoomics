@@ -432,7 +432,9 @@ The alias runs `verify:phase3-fast-gpu-smoke` first to fail locally unless the
 generated `infra/aws/nextflow.aws.use2.json` is bound to `us-east-2`, the
 isolated P5en queue, exactly `p5en.48xlarge`, at least one P5en worth of
 capacity, a Parabricks image pinned by SHA-256 digest, and a `us-east-2`
-destination KMS key for the regional cache.
+destination KMS key for the regional cache. It also queries the live EC2
+`Running On-Demand P instances` quota and requires at least 192 applied P vCPUs
+before Nextflow can submit the H200 placement job.
 
 After Gate 0 receipts have been reviewed and the GPU smoke has passed, launch
 the full BAM-to-evidence route through the guarded execute alias. Pass the

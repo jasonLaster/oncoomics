@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -109,6 +110,51 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
 
         self.assertEqual(path, loaded_path)
         self.assertEqual("us-east-2", params["aws_region"])
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
+    def test_loads_live_running_on_demand_p_quota(self, run) -> None:
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout='{"Quota":{"Value":384.0}}',
+        )
+
+        quota = verify.load_running_on_demand_p_vcpus("us-east-2")
+
+        self.assertEqual(384.0, quota)
+        self.assertEqual(
+            [
+                "aws",
+                "service-quotas",
+                "get-service-quota",
+                "--region",
+                "us-east-2",
+                "--service-code",
+                "ec2",
+                "--quota-code",
+                "L-417A185B",
+                "--output",
+                "json",
+            ],
+            run.call_args.args[0],
+        )
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
+    def test_live_quota_cli_errors_are_reported(self, run) -> None:
+        run.side_effect = subprocess.CalledProcessError(
+            returncode=254,
+            cmd=["aws"],
+            output="AccessDenied",
+        )
+
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "AccessDenied"):
+            verify.load_running_on_demand_p_vcpus("us-east-2")
+
+    def test_rejects_live_p_quota_below_one_p5en(self) -> None:
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "at least 192"):
+            verify.validate_running_on_demand_p_quota(8.0)
+
+        verify.validate_running_on_demand_p_quota(192.0)
 
 
 if __name__ == "__main__":
