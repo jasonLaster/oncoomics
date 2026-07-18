@@ -24,6 +24,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_SV_EVIDENCE_PLAN", text)
         self.assertIn("process FAST_FILTER_MUTECT_PLAN", text)
         self.assertIn("process FAST_BAM_CNV_SV_EVIDENCE", text)
+        self.assertIn("process FAST_EVIDENCE_JOIN", text)
         self.assertNotIn("process FAST_STAGE_INPUTS", text)
         self.assertIn("workflow PHASE3_WGS_FAST", text)
         self.assertIn("'phase3_wgs_fast'", text)
@@ -58,6 +59,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_wgs_fast_bam_qc_receipt", text)
         self.assertIn("phase3_wgs_fast_cnv_evidence_receipt", text)
         self.assertIn("phase3_wgs_fast_sv_evidence_receipt", text)
+        self.assertIn("phase3_wgs_fast_evidence_join_manifest", text)
         self.assertIn("phase3_wgs_fast_filter_mutect_plan", text)
 
     def test_fast_input_manifest_receipts_are_nextflow_path_inputs(self) -> None:
@@ -364,6 +366,44 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("workspace/results/phase3_wgs_fast/cnv_evidence", process)
         self.assertIn("workspace/results/phase3_wgs_fast/sv_evidence", process)
         self.assertIn("FAST_BAM_CNV_SV_EVIDENCE(FAST_STAGING_PLAN.out)", text)
+
+    def test_evidence_join_consumes_terminal_execute_branch_outputs(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_EVIDENCE_JOIN") :]
+        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        self.assertIn("label 'cpu_io'", process)
+        self.assertIn("path small_variant_artifact_export", process)
+        self.assertNotIn("path(small_staged_inputs_manifest)", process)
+        self.assertNotIn("path(aux_staged_inputs_manifest)", process)
+        self.assertIn("path(bam_qc_receipt)", process)
+        self.assertIn("path(cnv_evidence_receipt)", process)
+        self.assertIn("path(sv_evidence_receipt)", process)
+        self.assertIn("workspace/manifests/phase3_wgs_fast/evidence_join_manifest.json", process)
+        self.assertIn(
+            'export PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT="\\$PWD/${small_variant_artifact_export}"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_BAM_QC_RECEIPT="\\$PWD/${bam_qc_receipt}"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_CNV_EVIDENCE_RECEIPT="\\$PWD/${cnv_evidence_receipt}"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_SV_EVIDENCE_RECEIPT="\\$PWD/${sv_evidence_receipt}"',
+            process,
+        )
+        self.assertIn("join:phase3-fast-evidence", process)
+        self.assertIn("small_variant_export_for_join = FAST_MUTECT_PARABRICKS_FILTER.out.map", text)
+        self.assertIn(
+            "aux_receipts_for_join = FAST_BAM_CNV_SV_EVIDENCE.out.map",
+            text,
+        )
+        self.assertIn("tuple(bam_qc_receipt, cnv_evidence_receipt, sv_evidence_receipt)", text)
+        self.assertIn("FAST_EVIDENCE_JOIN(small_variant_export_for_join, aux_receipts_for_join)", text)
 
 
 if __name__ == "__main__":

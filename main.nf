@@ -1399,6 +1399,55 @@ process FAST_BAM_CNV_SV_EVIDENCE {
     """
 }
 
+process FAST_EVIDENCE_JOIN {
+    tag "fast_evidence_join_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/evidence_join", mode: 'copy', overwrite: true
+
+    input:
+    path small_variant_artifact_export
+    tuple path(bam_qc_receipt),
+          path(cnv_evidence_receipt),
+          path(sv_evidence_receipt)
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/evidence_join_manifest.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT="\$PWD/${small_variant_artifact_export}"
+    export PHASE3_WGS_FAST_BAM_QC_RECEIPT="\$PWD/${bam_qc_receipt}"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_RECEIPT="\$PWD/${cnv_evidence_receipt}"
+    export PHASE3_WGS_FAST_SV_EVIDENCE_RECEIPT="\$PWD/${sv_evidence_receipt}"
+    export PHASE3_WGS_FAST_EVIDENCE_JOIN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/evidence_join_manifest.json"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics join:phase3-fast-evidence
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/evidence_join_manifest.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_evidence_join_manifest",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call",
+        "scarhrd_use": "no_call_requires_allele_specific_cnv_loh_segments",
+        "chord_use": "no_call_requires_validated_production_sv_caller_vcf",
+        "hrdetect_use": "no_call_requires_validated_structural_variant_features"
+      }
+    }
+    JSON
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -1449,6 +1498,28 @@ workflow PHASE3_WGS_FAST {
         if (smallVariantMode == 'execute') {
             FAST_MUTECT_PARABRICKS_FILTER(FAST_STAGING_PLAN.out)
             FAST_BAM_CNV_SV_EVIDENCE(FAST_STAGING_PLAN.out)
+            small_variant_export_for_join = FAST_MUTECT_PARABRICKS_FILTER.out.map {
+                small_staged_inputs_manifest,
+                parabricks_mutect_plan,
+                parabricks_mutect_receipt,
+                filter_mutect_plan,
+                filter_mutect_receipt,
+                small_variant_artifact_export,
+                small_variant_artifacts -> small_variant_artifact_export
+            }
+            aux_receipts_for_join = FAST_BAM_CNV_SV_EVIDENCE.out.map {
+                aux_staged_inputs_manifest,
+                bam_qc_plan,
+                bam_qc_receipt,
+                cnv_evidence_plan,
+                cnv_evidence_receipt,
+                sv_evidence_plan,
+                sv_evidence_receipt,
+                bam_qc_results,
+                cnv_evidence_results,
+                sv_evidence_results -> tuple(bam_qc_receipt, cnv_evidence_receipt, sv_evidence_receipt)
+            }
+            FAST_EVIDENCE_JOIN(small_variant_export_for_join, aux_receipts_for_join)
         } else {
             FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
             FAST_BAM_QC_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)

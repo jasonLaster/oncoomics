@@ -360,6 +360,10 @@ renders and runs BAM QC, coverage-CNV, and mechanical-SV receipts. That process
 publishes only the small `workspace/results/phase3_wgs_fast` evidence trees and
 the plan/receipt JSONs; staged BAM, BAI, FASTA, and caller-resource paths stay
 worker-local implementation details.
+`FAST_EVIDENCE_JOIN` then consumes the small-variant export plus the BAM QC,
+CNV, and SV receipts, validates the shared workflow/run identity and no-call
+boundaries, and writes one pointer-only `evidence_join_manifest.json` with the
+SHA-256 of each receipt as the contract for later verification and reporting.
 
 ### Gate 1: P5en and Parabricks smoke
 

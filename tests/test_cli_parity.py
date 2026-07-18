@@ -40,6 +40,7 @@ class CliParityTest(unittest.TestCase):
             "fetch:phase3-wgs",
             "fetch:production-somatic",
             "fetch:raw-candidates",
+            "join:phase3-fast-evidence",
             "plan:diana-raw-handoff",
             "plan:known-answer-benchmarks",
             "replicate:phase3-fast-inputs",
