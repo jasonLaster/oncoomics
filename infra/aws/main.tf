@@ -33,6 +33,7 @@ locals {
   phase3_fast_source_kms_aliases = [
     "alias/${var.project}-${var.phase3_fast_source_environment}"
   ]
+  batch_service_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch"
 
   # Public access is opt-in per reviewed validation or alias-only analysis run.
   # Never grant bucket listing, version listing, historical-version reads, or a
@@ -106,12 +107,19 @@ data "aws_iam_policy_document" "bootstrap_local_cli" {
   }
 }
 
-resource "aws_iam_user_policy" "bootstrap_local_cli" {
+resource "aws_iam_policy" "bootstrap_local_cli" {
   count = var.bootstrap_iam_user_name == "" ? 0 : 1
 
-  name   = "${local.name_prefix}-bootstrap-batch-ecr"
-  user   = var.bootstrap_iam_user_name
-  policy = data.aws_iam_policy_document.bootstrap_local_cli[0].json
+  name        = "${local.name_prefix}-bootstrap-batch-ecr"
+  description = "Temporary bootstrap permissions for Diana Omics ${var.environment} Batch and ECR provisioning"
+  policy      = data.aws_iam_policy_document.bootstrap_local_cli[0].json
+}
+
+resource "aws_iam_user_policy_attachment" "bootstrap_local_cli" {
+  count = var.bootstrap_iam_user_name == "" ? 0 : 1
+
+  user       = var.bootstrap_iam_user_name
+  policy_arn = aws_iam_policy.bootstrap_local_cli[0].arn
 }
 
 resource "aws_kms_key" "main" {
@@ -579,7 +587,7 @@ resource "aws_ecr_repository" "diana_omics" {
     kms_key         = aws_kms_key.main.arn
   }
 
-  depends_on = [aws_iam_user_policy.bootstrap_local_cli]
+  depends_on = [aws_iam_user_policy_attachment.bootstrap_local_cli]
 }
 
 resource "aws_ecr_lifecycle_policy" "diana_omics" {
@@ -780,18 +788,32 @@ resource "aws_iam_role_policy" "batch_job" {
   policy = data.aws_iam_policy_document.batch_job.json
 }
 
+moved {
+  from = aws_iam_service_linked_role.batch
+  to   = aws_iam_service_linked_role.batch[0]
+}
+
+moved {
+  from = aws_iam_service_linked_role.ec2_spot
+  to   = aws_iam_service_linked_role.ec2_spot[0]
+}
+
 resource "aws_iam_service_linked_role" "batch" {
+  count = var.manage_service_linked_roles ? 1 : 0
+
   aws_service_name = "batch.amazonaws.com"
   description      = "Service-linked role for Diana Omics AWS Batch"
 
-  depends_on = [aws_iam_user_policy.bootstrap_local_cli]
+  depends_on = [aws_iam_user_policy_attachment.bootstrap_local_cli]
 }
 
 resource "aws_iam_service_linked_role" "ec2_spot" {
+  count = var.manage_service_linked_roles ? 1 : 0
+
   aws_service_name = "spot.amazonaws.com"
   description      = "Service-linked role for Diana Omics AWS Batch Spot capacity"
 
-  depends_on = [aws_iam_user_policy.bootstrap_local_cli]
+  depends_on = [aws_iam_user_policy_attachment.bootstrap_local_cli]
 }
 
 resource "aws_launch_template" "batch" {
@@ -842,7 +864,7 @@ resource "aws_launch_template" "batch" {
 
 resource "aws_batch_compute_environment" "spot" {
   name         = "${local.name_prefix}-spot"
-  service_role = aws_iam_service_linked_role.batch.arn
+  service_role = local.batch_service_role_arn
   type         = "MANAGED"
   state        = "ENABLED"
 
@@ -878,7 +900,7 @@ resource "aws_batch_compute_environment" "spot" {
 
 resource "aws_batch_compute_environment" "ondemand" {
   name         = "${local.name_prefix}-ondemand"
-  service_role = aws_iam_service_linked_role.batch.arn
+  service_role = local.batch_service_role_arn
   type         = "MANAGED"
   state        = "ENABLED"
 
@@ -912,7 +934,7 @@ resource "aws_batch_compute_environment" "ondemand" {
 
 resource "aws_batch_compute_environment" "hrd_x86_ondemand" {
   name         = "${local.name_prefix}-hrd-x86-ondemand"
-  service_role = aws_iam_service_linked_role.batch.arn
+  service_role = local.batch_service_role_arn
   type         = "MANAGED"
   state        = "ENABLED"
 
@@ -955,7 +977,7 @@ resource "aws_batch_compute_environment" "hrd_x86_ondemand" {
 
 resource "aws_batch_compute_environment" "gpu_p5en_ondemand" {
   name         = "${local.name_prefix}-gpu-p5en-ondemand"
-  service_role = aws_iam_service_linked_role.batch.arn
+  service_role = local.batch_service_role_arn
   type         = "MANAGED"
   state        = "ENABLED"
 

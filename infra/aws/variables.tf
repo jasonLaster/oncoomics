@@ -128,3 +128,9 @@ variable "bootstrap_iam_user_name" {
   type        = string
   default     = "local-cli"
 }
+
+variable "manage_service_linked_roles" {
+  description = "Whether this workspace should create account-global AWS Batch and EC2 Spot service-linked roles."
+  type        = bool
+  default     = true
+}

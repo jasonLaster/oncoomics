@@ -81,9 +81,23 @@ class AwsGpuInfraTests(unittest.TestCase):
     def test_bootstrap_cli_can_track_exact_service_quota_requests(self) -> None:
         text = MAIN_TF.read_text(encoding="utf-8")
 
+        self.assertIn('resource "aws_iam_policy" "bootstrap_local_cli"', text)
+        self.assertIn('resource "aws_iam_user_policy_attachment" "bootstrap_local_cli"', text)
+        self.assertNotIn('resource "aws_iam_user_policy" "bootstrap_local_cli"', text)
         self.assertIn('"servicequotas:RequestServiceQuotaIncrease"', text)
         self.assertIn('"servicequotas:GetRequestedServiceQuotaChange"', text)
         self.assertIn('"servicequotas:GetServiceQuota"', text)
+
+    def test_use2_can_reuse_account_global_service_linked_roles(self) -> None:
+        text = MAIN_TF.read_text(encoding="utf-8")
+        variables = VARIABLES_TF.read_text(encoding="utf-8")
+
+        self.assertIn('variable "manage_service_linked_roles"', variables)
+        self.assertIn("count = var.manage_service_linked_roles ? 1 : 0", text)
+        self.assertIn("from = aws_iam_service_linked_role.batch", text)
+        self.assertIn("to   = aws_iam_service_linked_role.batch[0]", text)
+        self.assertIn('batch_service_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}', text)
+        self.assertIn("service_role = local.batch_service_role_arn", text)
 
     def test_batch_job_role_can_replicate_versioned_phase3_fast_sources(self) -> None:
         text = MAIN_TF.read_text(encoding="utf-8")

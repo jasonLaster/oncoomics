@@ -21,6 +21,7 @@ AWS_USE1_TERRAFORM_ENV = {
 AWS_USE2_TERRAFORM_ENV = {
     "TF_VAR_region": "us-east-2",
     "TF_VAR_environment": "prod-use2",
+    "TF_VAR_manage_service_linked_roles": "false",
     "TF_VAR_nextflow_params_filename": "nextflow.aws.use2.json",
 }
 SRA_BENCH_RANGE_MATRIX = ",".join(
