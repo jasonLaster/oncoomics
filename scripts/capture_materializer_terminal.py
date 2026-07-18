@@ -505,11 +505,20 @@ def create_private(path: Path, content: bytes) -> None:
 
 def require_new_distinct_outputs(paths: Iterable[Path]) -> list[Path]:
     values = list(paths)
+    if not values:
+        raise ValueError("private output paths must be distinct")
+    for path in values:
+        if path.is_symlink():
+            raise FileExistsError(f"private output may not be a symlink: {path}")
+        if path.parent.is_symlink():
+            raise FileExistsError(
+                f"private output parent may not be a symlink: {path.parent}"
+            )
     resolved = [path.resolve(strict=False) for path in values]
     if len(set(resolved)) != len(resolved):
         raise ValueError("private output paths must be distinct")
     for path in values:
-        if path.exists() or path.is_symlink():
+        if path.exists():
             raise FileExistsError(f"refusing to overwrite private output: {path}")
     return values
 

@@ -392,6 +392,32 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                     mocked.assert_not_called()
                     self.assertEqual(path.read_text(), "do not replace")
 
+            real_parent = Path(temporary) / "real-parent"
+            real_parent.mkdir()
+            symlinked_output = self.args(Path(temporary) / "symlinked-output")
+            symlinked_output.anchor_output.parent.mkdir()
+            symlinked_output.anchor_output.symlink_to(
+                real_parent / "anchor.json"
+            )
+            with mock.patch.object(MODULE, "aws_json") as mocked:
+                with self.assertRaisesRegex(FileExistsError, "may not be a symlink"):
+                    MODULE.capture(symlinked_output)
+            mocked.assert_not_called()
+            self.assertFalse((real_parent / "anchor.json").exists())
+
+            symlinked_parent = self.args(Path(temporary) / "symlinked-parent")
+            symlinked_parent.capture_output.parent.symlink_to(
+                real_parent,
+                target_is_directory=True,
+            )
+            with mock.patch.object(MODULE, "aws_json") as mocked:
+                with self.assertRaisesRegex(
+                    FileExistsError, "parent may not be a symlink"
+                ):
+                    MODULE.capture(symlinked_parent)
+            mocked.assert_not_called()
+            self.assertFalse((real_parent / "terminal-capture.json").exists())
+
     def test_requires_three_distinct_outputs_before_any_aws_call(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             args = self.args(Path(temporary))
@@ -400,6 +426,21 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "must be distinct"):
                     MODULE.capture(args)
             mocked.assert_not_called()
+
+    def test_create_private_group_rejects_symlinked_output_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+                MODULE.create_private_group(
+                    ((linked_parent / "capture.json", b"capture"),)
+                )
+
+            self.assertFalse((real_parent / "capture.json").exists())
 
     def test_requires_all_eight_exact_well_formed_parameters(self) -> None:
         values = [f"{name}={self.parameters[name]}" for name in MODULE.PARAMETER_NAMES]
