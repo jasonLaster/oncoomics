@@ -215,6 +215,74 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                 (real_parent / "existing" / "staged_input_validation.json").exists()
             )
 
+    def test_install_file_create_only_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            source = root / ".staging"
+            destination = root / "staged_input_validation.json"
+            source.write_text('{"schema_version":1}\n', encoding="utf-8")
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                real_fsync_directory(parent)
+                destination.write_text("tampered\n", encoding="utf-8")
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materializer output changed during write",
+                ),
+            ):
+                MODULE.install_file_create_only(source, destination)
+
+            self.assertTrue(source.exists())
+            self.assertFalse(destination.exists())
+
+    def test_reserve_json_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            output = Path(value) / "verification.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                real_fsync_directory(parent)
+                output.write_text("tampered\n", encoding="utf-8")
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "JSON output changed during write"),
+            ):
+                MODULE.reserve_json(output, {"status": "in_progress"})
+
+            self.assertFalse(output.exists())
+
+    def test_write_json_atomic_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            output = Path(value) / "verification.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                real_fsync_directory(parent)
+                output.write_text("tampered\n", encoding="utf-8")
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "JSON output changed during write"),
+            ):
+                MODULE.write_json_atomic(output, {"status": "passed"})
+
     def test_materialize_downloads_exact_version_and_writes_mode_0600_receipt(self) -> None:
         payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
 

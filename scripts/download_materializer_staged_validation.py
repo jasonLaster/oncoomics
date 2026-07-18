@@ -47,6 +47,10 @@ def load_json(path: Path, label: str) -> dict[str, Any]:
     return payload
 
 
+def canonical_json_bytes(value: dict[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -58,20 +62,22 @@ def fsync_directory(path: Path) -> None:
 def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
     require_safe_new_output_parent(path, "JSON output")
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = canonical_json_bytes(value)
+    expected_sha256 = sha256_bytes(data)
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
     temporary = Path(temporary_name)
     try:
         os.fchmod(descriptor, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        with os.fdopen(descriptor, "wb") as handle:
             descriptor = -1
-            json.dump(value, handle, indent=2, sort_keys=True)
-            handle.write("\n")
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, path)
         fsync_directory(path.parent)
+        require_installed_file(path, "JSON output", expected_sha256)
     finally:
         if descriptor >= 0:
             os.close(descriptor)
@@ -81,24 +87,31 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
 def reserve_json(path: Path, value: dict[str, Any]) -> None:
     require_safe_new_output_parent(path, "JSON output")
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = canonical_json_bytes(value)
+    expected_sha256 = sha256_bytes(data)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            descriptor = -1
-            json.dump(value, handle, indent=2, sort_keys=True)
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                descriptor = -1
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            fsync_directory(path.parent)
+            require_installed_file(path, "JSON output", expected_sha256)
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
-    fsync_directory(path.parent)
 
 
 def install_file_create_only(source: Path, destination: Path) -> None:
     source = resolve_real_file(source, "staged materializer output")
     destination = resolve_new_output(destination, "materializer output")
     destination.parent.mkdir(parents=True, exist_ok=True)
+    source_sha256 = sha256_path(source)
 
     try:
         file_descriptor = os.open(
@@ -120,12 +133,37 @@ def install_file_create_only(source: Path, destination: Path) -> None:
                 destination_handle.write(chunk)
             destination_handle.flush()
             os.fsync(destination_handle.fileno())
+        fsync_directory(destination.parent)
+        require_installed_file(
+            source,
+            "staged materializer output",
+            source_sha256,
+            require_mode_0600=False,
+        )
+        require_installed_file(destination, "materializer output", source_sha256)
+        source.unlink()
+        fsync_directory(source.parent)
     except Exception:
         if file_descriptor >= 0:
             os.close(file_descriptor)
         destination.unlink(missing_ok=True)
         raise
-    source.unlink()
+
+
+def require_installed_file(
+    path: Path,
+    label: str,
+    expected_sha256: str,
+    *,
+    require_mode_0600: bool = True,
+) -> None:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} changed during write")
+    if require_mode_0600 and (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"{label} mode is not 0600")
+    if sha256_path(path) != expected_sha256:
+        raise ValueError(f"{label} changed during write")
 
 
 def parse_s3(uri: str) -> tuple[str, str]:
@@ -387,7 +425,6 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError(f"download validation failed: {checks}")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         install_file_create_only(staging, output_path)
-        fsync_directory(output_path.parent)
         write_json_atomic(verify_path, result)
         return result
     except Exception as error:
