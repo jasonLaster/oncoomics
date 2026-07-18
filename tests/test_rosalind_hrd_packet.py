@@ -1138,6 +1138,65 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 original_bytes,
             )
 
+    def test_diana_wgs_packet_file_copy_rejects_symlinked_staged_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "source.txt"
+            symlink_source = root / "source-link.txt"
+            destination = root / "report.md"
+            real_source.write_text("packet\n", encoding="utf-8")
+            symlink_source.symlink_to(real_source)
+
+            with self.assertRaisesRegex(ValueError, "staged Diana WGS packet"):
+                packet.copy_diana_wgs_packet_file(symlink_source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_diana_wgs_packet_file_copy_rejects_symlinked_destination_parent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            real_output = root / "real-output"
+            linked_output = root / "linked-output"
+            source.write_text("packet\n", encoding="utf-8")
+            real_output.mkdir()
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "Diana WGS packet output parent may not be a symlink",
+            ):
+                packet.copy_diana_wgs_packet_file(source, linked_output / "report.md")
+
+            self.assertFalse((real_output / "report.md").exists())
+
+    def test_diana_wgs_packet_file_copy_rehashes_after_parent_fsync(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_text("packet\n", encoding="utf-8")
+            real_fsync_directory = packet.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                destination.write_text("tampered\n", encoding="utf-8")
+
+            with (
+                patch.object(
+                    packet,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged Diana WGS packet changed during copy",
+                ),
+            ):
+                packet.copy_diana_wgs_packet_file(source, destination)
+
+            self.assertFalse(destination.exists())
+
     def test_diana_wgs_packet_cleans_current_attempt_after_install_failure(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)
@@ -1224,6 +1283,39 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 (output_dir / "unexpected.tmp").read_text(encoding="utf-8"),
                 "stray partial packet file\n",
             )
+
+    def test_diana_wgs_packet_cleans_current_attempt_after_final_directory_fsync_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "output"
+            staging.mkdir()
+            output.mkdir()
+
+            for name in ("report.md", "report_manifest.json"):
+                (staging / name).write_text(f"{name}\n", encoding="utf-8")
+
+            with (
+                patch.object(
+                    packet,
+                    "fsync_directory",
+                    side_effect=(
+                        None,
+                        None,
+                        OSError("synthetic final directory fsync failure"),
+                    ),
+                ),
+                self.assertRaisesRegex(
+                    OSError,
+                    "synthetic final directory fsync failure",
+                ),
+            ):
+                packet.install_diana_wgs_packet(
+                    [staging / "report.md", staging / "report_manifest.json"],
+                    output,
+                )
+
+            self.assertEqual(list(output.iterdir()), [])
 
     def test_diana_wgs_packet_rejects_stale_extra_output(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:

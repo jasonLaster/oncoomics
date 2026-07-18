@@ -2041,7 +2041,20 @@ def require_safe_diana_wgs_output_parent(output: Path) -> None:
             raise NotADirectoryError(parent)
 
 
+def require_safe_diana_wgs_packet_file(path: Path) -> Path:
+    require_safe_diana_wgs_output_parent(path)
+    if path.is_symlink():
+        raise ValueError("Diana WGS packet output may not be a symlink: " + path.name)
+    if path.exists():
+        raise ValueError("Diana WGS packet output already exists: " + path.name)
+    return path.resolve()
+
+
 def copy_diana_wgs_packet_file(source: Path, destination: Path) -> None:
+    source = require_real_nonempty_file(source, "staged Diana WGS packet")
+    expected_sha256 = sha256_file(source)
+    destination = require_safe_diana_wgs_packet_file(destination)
+    descriptor = -1
     try:
         descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
     except FileExistsError as error:
@@ -2058,6 +2071,14 @@ def copy_diana_wgs_packet_file(source: Path, destination: Path) -> None:
                 destination_handle.write(chunk)
             destination_handle.flush()
             os.fsync(destination_handle.fileno())
+        fsync_directory(destination.parent)
+        if (
+            sha256_file(source) != expected_sha256
+            or sha256_file(destination) != expected_sha256
+        ):
+            raise ValueError(
+                "staged Diana WGS packet changed during copy: " + source.name
+            )
     except Exception:
         if descriptor >= 0:
             os.close(descriptor)
@@ -2078,6 +2099,7 @@ def install_diana_wgs_packet(staged_paths: Sequence[Path], output: Path) -> None
                     installed.append(destination)
                 raise
             installed.append(destination)
+        fsync_directory(output)
     except Exception:
         for path in reversed(installed):
             path.unlink(missing_ok=True)
