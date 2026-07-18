@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -32,21 +33,34 @@ def fsync_directory(path: Path) -> None:
 
 def write_once(path: Path, text: str) -> None:
     prepare_create_only_output(path)
+    data = text.encode("utf-8")
+    expected_sha256 = hashlib.sha256(data).hexdigest()
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         try:
-            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            with os.fdopen(descriptor, "wb") as handle:
                 descriptor = -1
-                handle.write(text)
+                handle.write(data)
                 handle.flush()
                 os.fsync(handle.fileno())
             fsync_directory(path.parent)
+            require_installed_output(path, expected_sha256)
         except Exception:
             path.unlink(missing_ok=True)
             raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def require_installed_output(path: Path, expected_sha256: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink():
+            raise ValueError(f"output parent became a symlink: {parent}")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"output changed during write: {path}")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != expected_sha256:
+        raise ValueError(f"output changed during write: {path}")
 
 
 def main() -> int:

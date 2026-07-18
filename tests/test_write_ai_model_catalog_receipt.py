@@ -156,6 +156,27 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_write_once_rehashes_after_directory_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary).resolve() / "model-catalog-receipt.json"
+            real_fsync_directory = WRITER.fsync_directory
+
+            def tamper_after_directory_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    WRITER,
+                    "fsync_directory",
+                    side_effect=tamper_after_directory_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "output changed during write"),
+            ):
+                WRITER.write_once(output, "{}\n")
+
+            self.assertFalse(output.exists())
+
     def test_requires_latest_model_attestation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary).resolve() / "model-catalog-receipt.json"
