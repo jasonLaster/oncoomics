@@ -37,7 +37,24 @@ class FilterMutectRunner:
             self._write(Path(f"{argv[-1]}.tbi"))
 
     def _write_option_output(self, argv: list[str], option: str) -> None:
-        self._write(Path(argv[argv.index(option) + 1]))
+        path = Path(argv[argv.index(option) + 1])
+        if "FilterMutectCalls" in argv:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                "\n".join(
+                    [
+                        "##fileformat=VCFv4.2",
+                        "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO",
+                        "chr1\t2\t.\tC\tA\t.\tPASS\t.",
+                        "chr1\t6\t.\tC\tA,G\t.\tPASS\t.",
+                        "chr1\t4\t.\tT\tG\t.\tbase_qual\t.",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            return
+        self._write(path)
 
     def _write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -69,6 +86,11 @@ def _replace_flag_value(argv: list[str], flag: str, value: str) -> list[str]:
     updated = list(argv)
     updated[updated.index(flag) + 1] = value
     return updated
+
+
+def _matrix_rows(receipt: dict) -> int:
+    matrix = Path(receipt["materialized_outputs"]["sbs96_matrix"]["local_path"])
+    return len(matrix.read_text(encoding="utf-8").splitlines()) - 1
 
 
 def filter_plan_and_parabricks_receipt(root: Path) -> tuple[dict, dict]:
@@ -107,6 +129,7 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
                 filter_mutect_plan_sha256=SHA_1,
                 parabricks_mutect_receipt_sha256=SHA_3,
             )
+            matrix_rows = _matrix_rows(receipt)
 
         self.assertEqual([plan["commands"][name]["argv"] for name in run_filter.EXPECTED_COMMANDS], runner.commands)
         self.assertEqual("phase3_wgs_fast_filter_mutect_receipt", receipt["manifest_type"])
@@ -118,6 +141,7 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
         self.assertEqual(plan["outputs"], receipt["outputs"])
         self.assertEqual(set(run_filter.MATERIALIZED_OUTPUTS), set(receipt["materialized_outputs"]))
         self.assertGreater(receipt["materialized_outputs"]["filtered_vcf"]["bytes"], 0)
+        self.assertEqual(96, matrix_rows)
 
     def test_environment_command_writes_receipt_after_running_planned_commands(self) -> None:
         with TemporaryDirectory() as tmp:

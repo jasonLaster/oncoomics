@@ -583,17 +583,20 @@ class RosalindHrdPacketTest(unittest.TestCase):
             )
             self.assertEqual(
                 next(row for row in evidence_rows if row["evidence_id"] == "sbs96_input")["status"],
-                "blocked",
+                "partial_evidence",
             )
 
             adapter_rows = utils.parse_csv(utils.read_text(output_dir / "hrd_adapter_status.csv"))
             self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "scarHRD")["state"], "no_call")
             self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "CHORD")["state"], "no_call")
-            self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "SBS96 input matrix")["state"], "blocked")
+            self.assertEqual(
+                next(row for row in adapter_rows if row["adapter"] == "SBS96 input matrix")["state"],
+                "partial_evidence",
+            )
 
             reviewer = utils.read_text(output_dir / "reviewer_packet.md")
             self.assertIn("Phase 3 fast final evidence", reviewer)
-            self.assertIn("No SBS96 matrix", reviewer)
+            self.assertIn("SBS96", reviewer)
             manifest = utils.read_json(output_dir / "report_manifest.json")
             self.assertEqual(manifest["method_id"], "rosalind_diana_wgs")
             self.assertEqual(manifest["evidence_status"], "partial_evidence")

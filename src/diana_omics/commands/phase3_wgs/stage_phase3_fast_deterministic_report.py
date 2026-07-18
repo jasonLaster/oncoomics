@@ -127,6 +127,7 @@ def _validate_final_manifest(manifest: Mapping[str, Any]) -> Mapping[str, Any]:
         "authorized_hrd_state": "no_call",
         "small_variants_use": "deterministic_sample_evidence_not_scalar_hrd",
         "bam_qc_use": "qc_only_not_hrd_evidence",
+        "sbs96_use": "input_matrix_not_validated_sbs3_assignment",
         "scarhrd_use": "no_call_requires_allele_specific_cnv_loh_segments",
         "chord_use": "no_call_requires_validated_production_sv_caller_vcf",
         "hrdetect_use": "no_call_requires_validated_structural_variant_features",
@@ -209,6 +210,15 @@ def _cnv_metric(cnv_summary: Mapping[str, Any], key: str) -> Any:
     return "unknown"
 
 
+def _summary_metric(summary: Mapping[str, Any], key: str) -> Any:
+    if key in summary:
+        return summary[key]
+    rows = summary.get("rows")
+    if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+        return rows[0].get(key, "unknown")
+    return "unknown"
+
+
 def _build_input_rows(
     *,
     final_manifest_sha256: str,
@@ -238,6 +248,7 @@ def _readiness_rows(
     *,
     artifact_counts: Mapping[str, int],
     cnv_summary: Mapping[str, Any],
+    sbs96_summary: Mapping[str, Any],
     sv_supplementary_total: int,
 ) -> list[dict[str, str]]:
     return [
@@ -274,8 +285,11 @@ def _readiness_rows(
         },
         {
             "evidence_surface": "sbs96",
-            "state": "blocked",
-            "reason": "No SBS96 matrix or SBS3 assignment is present in the Phase 3 fast final evidence tree.",
+            "state": "partial_evidence",
+            "reason": (
+                f"{_summary_metric(sbs96_summary, 'usable_snv_records')} usable PASS SNV alleles were "
+                "materialized into an SBS96 matrix; SBS3 assignment is not validated."
+            ),
         },
         {
             "evidence_surface": "scarHRD",
@@ -319,6 +333,7 @@ def _report_markdown(
     artifact_counts: Mapping[str, int],
     readiness_rows: Sequence[Mapping[str, str]],
     cnv_summary: Mapping[str, Any],
+    sbs96_summary: Mapping[str, Any],
     sv_supplementary_total: int,
 ) -> str:
     run = _require_mapping(manifest.get("run"), "run")
@@ -370,17 +385,25 @@ def _report_markdown(
                 "and do not unlock CHORD or HRDetect-style scoring."
             ),
             "",
+            "## SBS96 input",
+            "",
+            (
+                "The final tree includes a 96-channel SBS matrix with "
+                f"`{_summary_metric(sbs96_summary, 'usable_snv_records')}` usable PASS SNV alleles. "
+                "This is signature input evidence, not a validated SBS3 assignment."
+            ),
+            "",
             "## Blocked model routes",
             "",
             "- `scarHRD`: no allele-specific CNV/LOH segments and no purity/ploidy solution.",
             "- `CHORD`: no validated production SV callset.",
             "- `HRDetect`: no locked SBS3, indel, CNV/LOH, SV, and calibration policy.",
-            "- `SBS3`: no SBS96 matrix or validated signature assignment in this final evidence tree.",
+            "- `SBS3`: no validated signature assignment or threshold policy.",
             "",
             "## Next steps",
             "",
             "1. Keep this packet as the terminal manifest for the current fast-evidence seam.",
-            "2. Generate SBS96 and signature-assignment evidence from the filtered VCF.",
+            "2. Run a validated signature-assignment adapter from the SBS96 matrix.",
             "3. Add allele-specific CNV/LOH and production SV callers to unlock scarHRD, CHORD, and HRDetect-style routes.",
             "4. Preserve `no_call` until every route-specific input and validation gate is present.",
             "",
@@ -474,6 +497,13 @@ def stage_phase3_fast_deterministic_report(
     _validate_artifacts(final, artifacts)
 
     cnv_summary = _read_json_artifact(final, artifact_map, "cnv_evidence", "summary_json")
+    sbs96_summary = _read_json_artifact(
+        final,
+        artifact_map,
+        "small_variants",
+        "filter_mutect",
+        "signature_summary_json",
+    )
     sv_supplementary_total = sum(
         int(_read_text_artifact(final, artifact_map, "sv_evidence", role, "supplementary_alignments").strip())
         for role in ("tumor", "normal")
@@ -487,6 +517,7 @@ def stage_phase3_fast_deterministic_report(
     readiness_rows = _readiness_rows(
         artifact_counts=artifact_counts,
         cnv_summary=cnv_summary,
+        sbs96_summary=sbs96_summary,
         sv_supplementary_total=sv_supplementary_total,
     )
     checks = {
@@ -518,6 +549,7 @@ def stage_phase3_fast_deterministic_report(
         artifact_counts=artifact_counts,
         readiness_rows=readiness_rows,
         cnv_summary=cnv_summary,
+        sbs96_summary=sbs96_summary,
         sv_supplementary_total=sv_supplementary_total,
     )
 
@@ -556,7 +588,7 @@ def stage_phase3_fast_deterministic_report(
                 "artifact_count": len(artifacts),
                 "artifact_groups": dict(sorted(artifact_counts.items())),
                 "blocked_routes": {
-                    "sbs96": "blocked_missing_sbs96_matrix",
+                    "SBS3": "no_call_requires_validated_signature_assignment_policy",
                     "scarHRD": "no_call_requires_allele_specific_cnv_loh_segments",
                     "CHORD": "no_call_requires_validated_production_sv_caller_vcf",
                     "HRDetect": "no_call_requires_validated_structural_variant_features",

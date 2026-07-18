@@ -77,6 +77,8 @@ def _require_completed_join(manifest: Mapping[str, Any]) -> None:
     interpretation = _require_mapping(manifest.get("interpretation"), "interpretation")
     if interpretation.get("authorized_hrd_state") != "no_call":
         raise ManifestError("evidence_join authorized_hrd_state must remain no_call")
+    if interpretation.get("sbs96_use") != "input_matrix_not_validated_sbs3_assignment":
+        raise ManifestError("evidence_join sbs96_use must remain no_call")
     if interpretation.get("scarhrd_use") != "no_call_requires_allele_specific_cnv_loh_segments":
         raise ManifestError("evidence_join scarhrd_use must remain no_call")
     if interpretation.get("chord_use") != "no_call_requires_validated_production_sv_caller_vcf":

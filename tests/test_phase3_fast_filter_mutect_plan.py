@@ -77,6 +77,14 @@ class Phase3FastFilterMutectPlanTests(unittest.TestCase):
             "/scratch/diana/phase3_wgs_fast/filter_mutect/variants/diana.wgs.mutect2.parabricks.filtered.vcf.gz",
             plan["outputs"]["filtered_vcf"],
         )
+        self.assertEqual(
+            "/scratch/diana/phase3_wgs_fast/filter_mutect/signatures/wgs_sbs96_matrix.csv",
+            plan["outputs"]["sbs96_matrix"],
+        )
+        self.assertEqual(
+            "/scratch/diana/phase3_wgs_fast/filter_mutect/signatures/signature_assignment_summary.json",
+            plan["outputs"]["signature_summary_json"],
+        )
 
         tumor = plan["commands"]["get_tumor_pileups"]["argv"]
         self.assertEqual(["java", "-Xmx12g", "-jar"], tumor[:3])

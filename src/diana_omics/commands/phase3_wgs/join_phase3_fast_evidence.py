@@ -171,6 +171,7 @@ def build_phase3_fast_evidence_join_manifest(
             "authorized_hrd_state": "no_call",
             "small_variants_use": "deterministic_sample_evidence_not_scalar_hrd",
             "bam_qc_use": "qc_only_not_hrd_evidence",
+            "sbs96_use": "input_matrix_not_validated_sbs3_assignment",
             "scarhrd_use": "no_call_requires_allele_specific_cnv_loh_segments",
             "chord_use": "no_call_requires_validated_production_sv_caller_vcf",
             "hrdetect_use": "no_call_requires_validated_structural_variant_features",

@@ -24,14 +24,17 @@ def materialized_staging_plan(root: Path) -> dict:
         cache_manifest_sha256=SHA_1,
         staging_root=root / "scratch",
     )
+    reference_fasta = b">chr1\nACGTACGTACGTACGTACGTACGTA\n>chr2\nTTTTCCCCAA\n>chrM\nAAAAA\n"
+    reference_fai = b"chr1\t25\t6\t25\t26\nchr2\t10\t38\t10\t11\nchrM\t5\t55\t5\t6\n"
     total_bytes = 0
     for row in plan["staged_objects"]:
         path = Path(row["local_path"])
-        data = (
-            b"chr1\t25\t0\t50\t51\nchr2\t10\t0\t50\t51\nchrM\t5\t0\t50\t51\n"
-            if row["artifact"] == "reference.fa.fai"
-            else f"materialized {row['artifact']}\n".encode()
-        )
+        if row["artifact"] == "reference.fa":
+            data = reference_fasta
+        elif row["artifact"] == "reference.fa.fai":
+            data = reference_fai
+        else:
+            data = f"materialized {row['artifact']}\n".encode()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
         row["bytes"] = len(data)

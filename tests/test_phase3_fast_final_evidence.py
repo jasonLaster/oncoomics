@@ -47,19 +47,24 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
                 "relative_path"
             ]
             cnv_bins = output_root / manifest["artifacts"]["cnv_evidence"]["coverage_bins"]["relative_path"]
+            sbs96 = output_root / manifest["artifacts"]["small_variants"]["filter_mutect"]["sbs96_matrix"][
+                "relative_path"
+            ]
             sv_discordant = output_root / manifest["artifacts"]["sv_evidence"]["normal"]["discordant_mapped_pairs"][
                 "relative_path"
             ]
             filtered_vcf_group = filtered_vcf.parent.parent.parent.as_posix().rsplit("/final/", 1)[1]
             cnv_bins_sha256 = _sha256_path(cnv_bins)
+            sbs96_rows = sbs96.read_text(encoding="utf-8").splitlines()
             sv_discordant_bytes = sv_discordant.stat().st_size
 
         self.assertEqual("phase3_wgs_fast_final_evidence_manifest", manifest["manifest_type"])
         self.assertEqual("completed", manifest["status"])
         self.assertEqual("no_call", manifest["interpretation"]["authorized_hrd_state"])
-        self.assertEqual(32, manifest["artifact_count"])
+        self.assertEqual(35, manifest["artifact_count"])
         self.assertEqual("artifacts/small_variants", filtered_vcf_group)
         self.assertEqual(manifest["artifacts"]["cnv_evidence"]["coverage_bins"]["sha256"], cnv_bins_sha256)
+        self.assertEqual(97, len(sbs96_rows))
         self.assertEqual(0, sv_discordant_bytes)
         self.assertNotIn(str(root), json.dumps(manifest))
         self.assertNotIn("commands", manifest)

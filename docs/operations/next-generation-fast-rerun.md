@@ -372,18 +372,20 @@ and SV files staged from those branches, copies them into a single portable
 final artifact tree, and writes a path-redacted `final_evidence_manifest.json`
 whose artifact entries use relative paths only.
 `FAST_STAGE_DETERMINISTIC_REPORT` consumes that final manifest and portable
-artifact tree without rerunning BAM or VCF work, rehashes the manifest-bound
+artifact tree without rerunning BAM, VCF, or SBS96 work, rehashes the manifest-bound
 files, and writes the five-file deterministic report packet
 (`report.md`, `report_manifest.json`, `readiness.csv`,
 `evidence_checks.json`, and `input_sha256.csv`). That report is deliberately
 descriptive: Parabricks/FilterMutect, BAM QC, coverage-CNV, and BAM-derived SV
-evidence are bound by SHA-256, while SBS3, scarHRD, CHORD, HRDetect-style
-scoring, and the overall HRD state remain blocked or `no_call`.
+evidence plus the SBS96 input matrix are bound by SHA-256, while SBS3,
+scarHRD, CHORD, HRDetect-style scoring, and the overall HRD state remain
+blocked or `no_call`.
 `FAST_STAGE_ROSALIND_PACKET` then gives the deterministic report plus the
 portable final artifact tree to `build:rosalind-hrd-packet` as the Diana WGS
 sample set. That reporting-only bridge emits a Rosalind reviewer packet from
-the same Phase 3 fast hashes without inventing SBS96, allele-specific CNV/LOH,
-or production SV sidecars that the fast evidence tree does not contain.
+the same Phase 3 fast hashes without inventing a validated SBS3 assignment,
+allele-specific CNV/LOH, or production SV sidecars that the fast evidence tree
+does not contain.
 `FAST_STAGE_BLOCKED_CROSSCHECKS` consumes the Rosalind packet as an ordering
 barrier and runs `scripts/generate_blocked_hrd_crosscheck_reports.py` to emit
 the final three canonical no-call method packets: FACETS→scarHRD,

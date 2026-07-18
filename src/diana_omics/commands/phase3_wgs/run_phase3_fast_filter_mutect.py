@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import os
 import subprocess
+from collections import Counter
 from pathlib import Path
-from typing import Any, Mapping, Protocol, Sequence
+from typing import Any, Iterable, Mapping, Protocol, Sequence
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
@@ -42,6 +44,19 @@ MATERIALIZED_OUTPUTS = (
     "pon_annotated_vcf_index",
     "filtered_vcf",
     "filtered_vcf_index",
+    "sbs96_matrix",
+    "signature_summary_csv",
+    "signature_summary_json",
+)
+BASES = "ACGT"
+COMPLEMENT = str.maketrans("ACGT", "TGCA")
+MUTATION_TYPES = ("C>A", "C>G", "C>T", "T>A", "T>C", "T>G")
+STANDARD_CONTIGS = {f"chr{index}" for index in range(1, 23)} | {"chrX", "chrY"}
+SBS96_CONTEXTS = tuple(
+    f"{left}[{mutation}]{right}"
+    for mutation in MUTATION_TYPES
+    for left in BASES
+    for right in BASES
 )
 
 
@@ -77,6 +92,184 @@ def _require_absolute_path(value: Any, label: str) -> Path:
     if not path.is_absolute():
         raise ManifestError(f"{label} must be an absolute path")
     return path
+
+
+def _write_csv(path: Path, rows: Iterable[Mapping[str, Any]], fieldnames: Sequence[str]) -> None:
+    ensure_parent(path)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+
+class IndexedFasta:
+    def __init__(self, fasta: Path, fai: Path) -> None:
+        self._fasta = fasta.open("rb")
+        self._index = self._load_index(fai)
+
+    def close(self) -> None:
+        self._fasta.close()
+
+    @staticmethod
+    def _load_index(fai: Path) -> dict[str, tuple[int, int, int, int]]:
+        index: dict[str, tuple[int, int, int, int]] = {}
+        for line in fai.read_text(encoding="utf-8").splitlines():
+            fields = line.split("\t")
+            if len(fields) < 5:
+                raise ManifestError(f"malformed FASTA index row: {line}")
+            contig, length, offset, line_bases, line_width = fields[:5]
+            index[contig] = (int(length), int(offset), int(line_bases), int(line_width))
+        if not index:
+            raise ManifestError("FASTA index must contain at least one contig")
+        return index
+
+    def base(self, contig: str, position: int) -> str:
+        if contig not in self._index:
+            return "N"
+        length, offset, line_bases, line_width = self._index[contig]
+        if position < 1 or position > length:
+            return "N"
+        zero_based = position - 1
+        byte_offset = offset + (zero_based // line_bases) * line_width + (zero_based % line_bases)
+        self._fasta.seek(byte_offset)
+        return self._fasta.read(1).decode("ascii").upper()
+
+    def context(self, contig: str, position: int) -> str:
+        return "".join(self.base(contig, offset) for offset in (position - 1, position, position + 1))
+
+
+def _vcf_lines(path: Path) -> Iterable[str]:
+    import gzip
+
+    with path.open("rb") as handle:
+        is_gzip = handle.read(2) == b"\x1f\x8b"
+    opener = gzip.open if is_gzip else open
+    with opener(path, "rt", encoding="utf-8") as handle:
+        for line in handle:
+            if line and not line.startswith("#"):
+                yield line.rstrip("\n")
+
+
+def _normalized_sbs96_context(context: str, ref: str, alt: str) -> str | None:
+    context = context.upper()
+    ref = ref.upper()
+    alt = alt.upper()
+    if len(context) != 3 or any(base not in BASES for base in context):
+        return None
+    if context[1] != ref:
+        raise ManifestError("filtered VCF REF must match the staged FASTA sequence")
+    if ref in "CT":
+        return f"{context[0]}[{ref}>{alt}]{context[2]}"
+
+    reverse = context.translate(COMPLEMENT)[::-1]
+    return f"{reverse[0]}[{ref.translate(COMPLEMENT)}>{alt.translate(COMPLEMENT)}]{reverse[2]}"
+
+
+def _write_sbs96_outputs(plan: Mapping[str, Any]) -> None:
+    inputs = _require_mapping(plan.get("inputs"), "inputs")
+    outputs = _require_mapping(plan.get("outputs"), "outputs")
+    run = _require_mapping(plan.get("run"), "run")
+    filtered_vcf = _require_absolute_path(outputs.get("filtered_vcf"), "filtered_vcf")
+    reference_fasta = _require_absolute_path(
+        _require_mapping(inputs.get("reference_fasta"), "reference_fasta").get("local_path"),
+        "reference_fasta.local_path",
+    )
+    reference_fai = _require_absolute_path(
+        _require_mapping(inputs.get("reference_fai"), "reference_fai").get("local_path"),
+        "reference_fai.local_path",
+    )
+
+    counts = Counter({context: 0 for context in SBS96_CONTEXTS})
+    usable = 0
+    skipped = 0
+    reference = IndexedFasta(reference_fasta, reference_fai)
+    try:
+        for line in _vcf_lines(filtered_vcf):
+            fields = line.split("\t")
+            if len(fields) < 7 or fields[6] != "PASS":
+                continue
+            contig, position_text, ref, alt_text = fields[0], fields[1], fields[3].upper(), fields[4].upper()
+            if contig not in STANDARD_CONTIGS or len(ref) != 1 or ref not in BASES:
+                skipped += 1
+                continue
+            position = int(position_text)
+            for alt in alt_text.split(","):
+                if len(alt) != 1 or alt not in BASES or alt == ref:
+                    skipped += 1
+                    continue
+                context = _normalized_sbs96_context(reference.context(contig, position), ref, alt)
+                if context is None or context not in counts:
+                    skipped += 1
+                    continue
+                counts[context] += 1
+                usable += 1
+    finally:
+        reference.close()
+
+    sample = _require_string(run.get("subject_alias"), "run.subject_alias")
+    matrix_path = _require_absolute_path(outputs.get("sbs96_matrix"), "sbs96_matrix")
+    summary_csv_path = _require_absolute_path(outputs.get("signature_summary_csv"), "signature_summary_csv")
+    summary_json_path = _require_absolute_path(outputs.get("signature_summary_json"), "signature_summary_json")
+    matrix_rows = [
+        {
+            "sample": sample,
+            "mutation_type": context[2:5],
+            "trinucleotide": context,
+            "count": counts[context],
+            "source_records": counts[context],
+            "source_vcf_policy": "pass_only",
+        }
+        for context in SBS96_CONTEXTS
+    ]
+    summary = {
+        "status": "partial_evidence",
+        "tool": "phase3_fast_sbs96_matrix_builder",
+        "source_vcf": filtered_vcf.name,
+        "source_record_policy": "pass_only",
+        "sbs96_rows": len(matrix_rows),
+        "usable_snv_records": usable,
+        "skipped_snv_records": skipped,
+        "total_matrix_count": sum(counts.values()),
+        "sigprofiler_assignment_status": (
+            "input_ready_threshold_met" if usable >= 50 else "not_assessable_low_mutation_count"
+        ),
+        "sbs3_status": "no_call_requires_validated_signature_assignment_policy",
+        "output_matrix": matrix_path.name,
+        "caveat": (
+            "SBS96 is built from PASS SNV alleles in the Phase 3 fast filtered VCF; "
+            "signature assignment and SBS3 interpretation remain no_call until validated."
+        ),
+    }
+    _write_csv(
+        matrix_path,
+        matrix_rows,
+        ("sample", "mutation_type", "trinucleotide", "count", "source_records", "source_vcf_policy"),
+    )
+    _write_csv(
+        summary_csv_path,
+        [summary],
+        (
+            "status",
+            "tool",
+            "source_vcf",
+            "source_record_policy",
+            "sbs96_rows",
+            "usable_snv_records",
+            "skipped_snv_records",
+            "total_matrix_count",
+            "sigprofiler_assignment_status",
+            "sbs3_status",
+            "output_matrix",
+            "caveat",
+        ),
+    )
+    ensure_parent(summary_json_path)
+    summary_json_path.write_text(
+        json.dumps({"schema_version": 1, "status": "partial_evidence", "rows": [summary]}, indent=2, sort_keys=True)
+        + "\n",
+        encoding="utf-8",
+    )
 
 
 def _require_input_path(inputs: Mapping[str, Any], key: str) -> str:
@@ -238,11 +431,14 @@ def _hash_materialized(path: Path, key: str, *, producer: str) -> dict[str, Any]
     }
 
 
-def _materialized_outputs(plan: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+def _materialized_outputs(
+    plan: Mapping[str, Any],
+    keys: Sequence[str] = MATERIALIZED_OUTPUTS,
+) -> dict[str, dict[str, Any]]:
     outputs = _require_mapping(plan.get("outputs"), "outputs")
     return {
         key: _hash_materialized(_require_absolute_path(outputs.get(key), key), key, producer="FilterMutect")
-        for key in MATERIALIZED_OUTPUTS
+        for key in keys
     }
 
 
@@ -341,6 +537,8 @@ def run_phase3_fast_filter_mutect(
     _prepare_materialized_outputs(plan)
     for _, argv in commands:
         runner.run(argv)
+    _materialized_outputs(plan, MATERIALIZED_OUTPUTS[:8])
+    _write_sbs96_outputs(plan)
     materialized_outputs = _materialized_outputs(plan)
 
     return {

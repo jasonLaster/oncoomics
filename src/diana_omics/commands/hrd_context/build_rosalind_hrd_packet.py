@@ -727,8 +727,8 @@ DIANA_WGS_PHASE3_FAST_READINESS_SURFACES = (
     "HRDetect",
     "overall_hrd",
 )
-DIANA_WGS_PHASE3_FAST_PARTIAL_ONLY_SURFACES = {"coverage_cnv", "sv"}
-DIANA_WGS_PHASE3_FAST_BLOCKED_SURFACES = {"sbs96"}
+DIANA_WGS_PHASE3_FAST_PARTIAL_ONLY_SURFACES = {"coverage_cnv", "sbs96", "sv"}
+DIANA_WGS_PHASE3_FAST_BLOCKED_SURFACES: set[str] = set()
 DIANA_WGS_PHASE3_FAST_NO_CALL_SURFACES = {"scarHRD", "CHORD", "HRDetect", "overall_hrd"}
 DIANA_WGS_DETERMINISTIC_INPUTS = {
     "diana_hrd_summary.json": "summary",
@@ -1251,7 +1251,7 @@ def bounded_phase3_fast_state(surface: str, state: str, blockers: list[str]) -> 
         return "partial_evidence"
     if surface in DIANA_WGS_PHASE3_FAST_BLOCKED_SURFACES and state not in {"blocked", "no_call"}:
         blockers.append(
-            f"Phase 3 fast readiness surface {surface} attempted promotion to {state}; SBS96 is absent from the fast final tree."
+            f"Phase 3 fast readiness surface {surface} attempted promotion to {state}; the current packet contract keeps it blocked."
         )
         return "blocked"
     return state
@@ -1333,10 +1333,10 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
         ),
         evidence_row(
             "sbs96_input",
-            "blocked",
+            "partial_evidence",
             reason("sbs96"),
             "readiness.csv",
-            "No SBS96 matrix or validated SBS3 assignment exists in the Phase 3 fast final tree.",
+            "SBS96 is an input matrix, not a validated SBS3 assignment.",
         ),
         evidence_row(
             "bam_derived_sv_evidence",
@@ -1365,7 +1365,7 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
         "bam_qc": "Retain tumor/normal BAM QC as an input-integrity support surface.",
         "coverage_cnv": "Generate allele-specific total/minor copy-number segments with purity/ploidy.",
         "sv": "Generate a validated production SV VCF or BEDPE callset.",
-        "sbs96": "Generate SBS96 and run a validated SBS3 assignment policy.",
+        "sbs96": "Run a validated SBS3 assignment policy.",
         "scarHRD": "Supply validated allele-specific segments and purity/ploidy before scoring.",
         "CHORD": "Supply validated SV/CNV/small-variant feature adapters before scoring.",
         "HRDetect": "Lock all component adapters and validate a calibrated model before scoring.",
@@ -1394,7 +1394,7 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
             adapter_row(
                 "SBS3",
                 "no_call",
-                "No SBS96 matrix or validated signature assignment is present.",
+                "No validated signature assignment or SBS3 threshold policy is present.",
                 "Run validated signature assignment and known-answer calibration before interpreting SBS3.",
             ),
         ]

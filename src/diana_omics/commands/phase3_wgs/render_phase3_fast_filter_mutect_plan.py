@@ -152,6 +152,7 @@ def build_phase3_fast_filter_mutect_plan(
     tumor_segments = str(pileups / "tumor-segmentation.table")
     priors = str(variants / "read-orientation-model.tar.gz")
     filtered = str(variants / "diana.wgs.mutect2.parabricks.filtered.vcf.gz")
+    signatures = root / "signatures"
 
     commands = {
         "get_tumor_pileups": {
@@ -301,6 +302,9 @@ def build_phase3_fast_filter_mutect_plan(
             "pon_annotated_vcf_index": pon_annotated_vcf_index,
             "filtered_vcf": filtered,
             "filtered_vcf_index": f"{filtered}.tbi",
+            "sbs96_matrix": str(signatures / "wgs_sbs96_matrix.csv"),
+            "signature_summary_csv": str(signatures / "signature_assignment_summary.csv"),
+            "signature_summary_json": str(signatures / "signature_assignment_summary.json"),
         },
         "commands": commands,
         "output_root": str(root),
