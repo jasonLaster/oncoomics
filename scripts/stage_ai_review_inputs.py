@@ -51,7 +51,36 @@ def write_once(path: Path, data: bytes) -> None:
             os.close(descriptor)
 
 
+def require_no_symlink_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink():
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists():
+            if not parent.is_dir():
+                raise ValueError(f"{label} parent is not a directory: {parent}")
+            return
+
+
+def require_real_or_new_directory(path: Path, label: str) -> Path:
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink")
+    require_no_symlink_ancestors(path, label)
+    if path.exists() and not path.is_dir():
+        raise ValueError(f"{label} is not a directory: {path}")
+    return path.resolve()
+
+
+def require_new_file(path: Path, label: str) -> Path:
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink: {path}")
+    if path.exists():
+        raise FileExistsError(f"{label} already exists: {path}")
+    require_no_symlink_ancestors(path, label)
+    return path.resolve()
+
+
 def write_json_once(path: Path, value: dict[str, Any]) -> None:
+    path = require_new_file(path, "receipt")
     path.parent.mkdir(parents=True, exist_ok=True)
     write_once(
         path,
@@ -75,12 +104,6 @@ def require_real_file(path: Path, label: str) -> None:
 def resolve_real_bundle_dir(path: Path) -> Path:
     if path.is_symlink() or not path.is_dir():
         raise ValueError("bundle directory is missing or a symlink")
-    return path.resolve()
-
-
-def resolve_non_symlink(path: Path, label: str) -> Path:
-    if path.is_symlink():
-        raise ValueError(f"{label} may not be a symlink")
     return path.resolve()
 
 
@@ -128,8 +151,8 @@ def validate_bundle(bundle_dir: Path) -> dict[str, str]:
 
 def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str, Any]:
     bundle_dir = resolve_real_bundle_dir(bundle_dir)
-    output_root = resolve_non_symlink(output_root, "output root")
-    receipt_output = resolve_non_symlink(receipt_output, "receipt output")
+    output_root = require_real_or_new_directory(output_root, "output root")
+    receipt_output = require_new_file(receipt_output, "receipt output")
     if (
         bundle_dir == output_root
         or bundle_dir.is_relative_to(output_root)
@@ -147,9 +170,6 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
         )
 
     hashes = validate_bundle(bundle_dir)
-
-    if receipt_output.exists() or receipt_output.is_symlink():
-        raise FileExistsError(f"receipt already exists: {receipt_output}")
 
     destinations = {role: output_root / ROLE_DIRS[role] for role in ROLES}
     for destination in destinations.values():

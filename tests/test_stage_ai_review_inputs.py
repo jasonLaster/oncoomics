@@ -171,11 +171,18 @@ class StageAiReviewInputsTests(unittest.TestCase):
     def test_refuses_existing_receipt(self) -> None:
         self.receipt.write_text("do not replace\n", encoding="utf-8")
 
-        with self.assertRaisesRegex(FileExistsError, "receipt already exists"):
+        with self.assertRaisesRegex(FileExistsError, "receipt output already exists"):
             STAGE.stage(self.bundle, self.output_root, self.receipt)
 
     def test_rejects_symlinked_custody_paths(self) -> None:
-        cases = ("bundle", "output-root", "receipt", "bundle-manifest")
+        cases = (
+            "bundle",
+            "output-root",
+            "output-root-parent",
+            "receipt",
+            "receipt-parent",
+            "bundle-manifest",
+        )
 
         for target in cases:
             with self.subTest(target=target), tempfile.TemporaryDirectory() as temporary:
@@ -196,9 +203,29 @@ class StageAiReviewInputsTests(unittest.TestCase):
                         target_is_directory=True,
                     )
                     message = "output root"
+                elif target == "output-root-parent":
+                    real_parent = root / "real-output-parent"
+                    real_parent.mkdir()
+                    linked_parent = root / "linked-output-parent"
+                    linked_parent.symlink_to(
+                        real_parent,
+                        target_is_directory=True,
+                    )
+                    output_root = linked_parent / "missing" / "inputs"
+                    message = "output root parent"
                 elif target == "receipt":
                     receipt.symlink_to(root / "receipt-real.json")
                     message = "receipt output"
+                elif target == "receipt-parent":
+                    real_parent = root / "real-receipt-parent"
+                    real_parent.mkdir()
+                    linked_parent = root / "linked-receipt-parent"
+                    linked_parent.symlink_to(
+                        real_parent,
+                        target_is_directory=True,
+                    )
+                    receipt = linked_parent / "missing" / "stage-receipt.json"
+                    message = "receipt output parent"
                 else:
                     real_manifest = bundle / "bundle_manifest.real.json"
                     (bundle / "bundle_manifest.json").rename(real_manifest)
@@ -211,6 +238,8 @@ class StageAiReviewInputsTests(unittest.TestCase):
                 self.assertFalse((output_root / "reviewer-a-input").exists())
                 self.assertFalse((output_root / "reviewer-b-input").exists())
                 self.assertFalse(receipt.exists())
+                self.assertFalse((root / "real-output-parent" / "missing").exists())
+                self.assertFalse((root / "real-receipt-parent" / "missing").exists())
 
     def test_rejects_overlapping_bundle_output_and_receipt_paths(self) -> None:
         cases = (

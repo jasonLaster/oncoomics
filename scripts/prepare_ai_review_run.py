@@ -311,6 +311,21 @@ def move_staged_entry(source: Path, destination: Path) -> None:
     source.rename(destination)
 
 
+def resolve_new_output(path: Path) -> Path:
+    if path.is_symlink():
+        raise ValueError(f"output may not be a symlink: {path}")
+    if path.exists():
+        raise FileExistsError(f"output already exists: {path}")
+    for parent in path.parents:
+        if parent.is_symlink():
+            raise ValueError(f"output parent may not be a symlink: {parent}")
+        if parent.exists():
+            if not parent.is_dir():
+                raise ValueError(f"output parent is not a directory: {parent}")
+            return path.resolve()
+    return path.resolve()
+
+
 def install_staged_run(staging: Path, output: Path) -> None:
     try:
         output.mkdir(mode=0o700)
@@ -326,13 +341,7 @@ def install_staged_run(staging: Path, output: Path) -> None:
 
 
 def prepare(args: argparse.Namespace) -> dict[str, Any]:
-    if args.output_dir.is_symlink():
-        raise ValueError(f"output may not be a symlink: {args.output_dir}")
-    if args.output_dir.parent.is_symlink():
-        raise ValueError(f"output parent may not be a symlink: {args.output_dir.parent}")
-    output = args.output_dir.resolve()
-    if output.exists():
-        raise FileExistsError(f"output already exists: {output}")
+    output = resolve_new_output(args.output_dir)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     manifest_paths = method_manifest_paths(args)

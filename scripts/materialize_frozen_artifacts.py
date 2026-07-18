@@ -93,10 +93,29 @@ def safe_relative(value: Any) -> str:
 def resolve_new_output(path: Path, label: str) -> Path:
     """Fail before resolving a create-only output through path-level symlinks."""
     if path.is_symlink():
-        raise ValueError(f"{label} may not be a symlink")
-    if path.parent.is_symlink():
-        raise ValueError(f"{label} parent may not be a symlink: {path.parent}")
+        raise ValueError(f"{label} may not be a symlink: {path}")
+    for parent in path.parents:
+        if parent.is_symlink():
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists():
+            if not parent.is_dir():
+                raise ValueError(f"{label} parent is not a directory: {parent}")
+            return path.resolve()
     return path.resolve()
+
+
+def require_safe_new_child_path(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink")
+    if path.exists():
+        raise ValueError(f"{label} already exists")
+    for parent in path.parents:
+        if parent.is_symlink():
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists():
+            if not parent.is_dir():
+                raise ValueError(f"{label} parent is not a directory: {parent}")
+            return
 
 
 def validate_local_tree(root: Path, rows: list[dict[str, Any]]) -> None:
@@ -177,6 +196,7 @@ def get_exact_object(
     destination: Path,
     region: str,
 ) -> dict[str, Any]:
+    require_safe_new_child_path(destination, "materialized object")
     destination.parent.mkdir(parents=True, exist_ok=True)
     command = [
         "aws",

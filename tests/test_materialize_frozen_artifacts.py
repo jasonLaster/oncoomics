@@ -255,8 +255,13 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             linked_parent.symlink_to(real_parent, target_is_directory=True)
             linked_output = root / "linked-output"
             linked_output.symlink_to(direct_target, target_is_directory=True)
+            linked_nested_output = linked_parent / "missing" / "materialized"
 
-            for output in (linked_output, linked_parent / "materialized"):
+            for output in (
+                linked_output,
+                linked_parent / "materialized",
+                linked_nested_output,
+            ):
                 with self.subTest(output=output):
                     receipt = root / f"{output.name}.materialization.json"
                     with self.assertRaisesRegex(
