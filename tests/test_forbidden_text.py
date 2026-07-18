@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -64,6 +65,27 @@ class ForbiddenTextTests(unittest.TestCase):
                 "Authorized HRD state: `no_call`."
             )
         )
+
+    def test_refuses_forbidden_token_file_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-parent"
+            real_existing = real_parent / "existing"
+            real_existing.mkdir(parents=True)
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            tokens = linked_parent / "existing" / "forbidden_tokens.json"
+            (real_existing / "forbidden_tokens.json").write_text(
+                '["DirectIdentifier"]\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "forbidden-token file parent may not be a symlink",
+            ):
+                MODULE.merge_forbidden_tokens([], files=[tokens])
 
 
 if __name__ == "__main__":

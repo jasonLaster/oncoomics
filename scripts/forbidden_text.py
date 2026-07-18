@@ -58,6 +58,7 @@ def forbidden_token_fingerprints(tokens: Iterable[str]) -> list[str]:
 def forbidden_tokens_from_file(path: Path) -> list[str]:
     """Load a non-empty JSON string array from a real forbidden-token file."""
 
+    require_no_symlinked_ancestors(path)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"forbidden-token file must be a real file: {path}")
 
@@ -71,6 +72,16 @@ def forbidden_tokens_from_file(path: Path) -> list[str]:
             raise ValueError(f"forbidden-token file {path} entry {index} must be a non-empty string")
         tokens.append(value.strip())
     return tokens
+
+
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_no_symlinked_ancestors(path: Path) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"forbidden-token file parent may not be a symlink: {parent}")
 
 
 def merge_forbidden_tokens(
