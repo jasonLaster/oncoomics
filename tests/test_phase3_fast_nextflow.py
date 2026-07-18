@@ -59,6 +59,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             "phase3_fast_cache_region",
             "phase3_fast_replication_mode",
             "phase3_fast_replication_part_size_bytes",
+            "phase3_fast_staging_root",
             "phase3_fast_gatk_version",
             "phase3_fast_source_commit",
             "phase3_fast_run_id",
