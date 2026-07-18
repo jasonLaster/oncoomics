@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 import os
+import shlex
 from pathlib import Path
 from typing import Iterable
+
+
+def timestamped_runbook_assignment(variable: str, directory: Path, stem: str) -> str:
+    prefix = shlex.quote(str(directory / f"{stem}."))
+    return f"{variable}={prefix}$(date -u +%Y%m%dT%H%M%SZ).md"
 
 
 def unique_paths(paths: Iterable[Path]) -> tuple[Path, ...]:

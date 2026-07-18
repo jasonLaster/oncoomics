@@ -27,7 +27,7 @@ from render_source_report_freeze_runbook import (
     required_absent as source_required_absent,
     required_existing as source_required_existing,
 )
-from runbook_io import unique_paths, write_once
+from runbook_io import timestamped_runbook_assignment, unique_paths, write_once
 
 
 JOB_ID = "6f827d44-d19b-4a6c-9126-d65189aa66cf"
@@ -83,11 +83,6 @@ def block(command: Iterable[str | os.PathLike[str]]) -> str:
 
 def bash_block(lines: Iterable[str]) -> str:
     return "```bash\n" + "\n".join(lines) + "\n```\n"
-
-
-def timestamped_runbook_assignment(variable: str, directory: Path, stem: str) -> str:
-    prefix = shlex.quote(str(directory / f"{stem}."))
-    return f"{variable}={prefix}$(date -u +%Y%m%dT%H%M%SZ).md"
 
 
 def forbidden_flags() -> list[str]:

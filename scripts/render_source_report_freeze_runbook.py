@@ -20,7 +20,12 @@ from render_ai_synthesis_runbook import (
     required_absent as ai_required_absent,
     required_existing as ai_required_existing,
 )
-from runbook_io import source_private_receipt_path, unique_paths, write_once
+from runbook_io import (
+    source_private_receipt_path,
+    timestamped_runbook_assignment,
+    unique_paths,
+    write_once,
+)
 
 
 class Raw(str):
@@ -50,11 +55,6 @@ def block(command: Iterable[str | os.PathLike[str]]) -> str:
 
 def bash_block(lines: Iterable[str]) -> str:
     return "```bash\n" + "\n".join(lines) + "\n```\n"
-
-
-def timestamped_runbook_assignment(variable: str, directory: Path, stem: str) -> str:
-    prefix = shlex.quote(str(directory / f"{stem}."))
-    return f"{variable}={prefix}$(date -u +%Y%m%dT%H%M%SZ).md"
 
 
 def forbidden_flags() -> list[str]:

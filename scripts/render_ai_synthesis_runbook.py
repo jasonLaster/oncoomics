@@ -35,7 +35,12 @@ from render_reviewed_publication_runbook import (
     required_absent as reviewed_public_required_absent,
     required_existing as reviewed_public_required_existing,
 )
-from runbook_io import source_private_receipt_paths, unique_paths, write_once
+from runbook_io import (
+    source_private_receipt_paths,
+    timestamped_runbook_assignment,
+    unique_paths,
+    write_once,
+)
 
 FORBIDDEN_TOKENS = ("E019_S01", "DRF-PSN49561", "echo-personalis", "personalis")
 AI_PRIVATE_RECEIPT_STEMS = (
@@ -62,11 +67,6 @@ def block(command: Iterable[str | os.PathLike[str]]) -> str:
 
 def bash_block(lines: Iterable[str]) -> str:
     return "```bash\n" + "\n".join(lines) + "\n```\n"
-
-
-def timestamped_runbook_assignment(variable: str, directory: Path, stem: str) -> str:
-    prefix = shlex.quote(str(directory / f"{stem}."))
-    return f"{variable}={prefix}$(date -u +%Y%m%dT%H%M%SZ).md"
 
 
 def sha256_path(path: Path) -> str:
