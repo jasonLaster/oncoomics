@@ -94,6 +94,40 @@ def write_indexed_vcf(path: Path, records: list[str]) -> None:
 
 
 class StageDeterministicWgsReportInstallTests(unittest.TestCase):
+    def test_load_json_rejects_input_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-input-"
+        ) as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            (real_parent / "input.json").write_text(
+                '{"status":"passed"}\n',
+                encoding="utf-8",
+            )
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                REPORT_MODULE.load_json(linked_parent / "input.json")
+
+    def test_load_csv_rejects_input_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-input-"
+        ) as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            (real_parent / "input.csv").write_text(
+                "status\npassed\n",
+                encoding="utf-8",
+            )
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                REPORT_MODULE.load_csv(linked_parent / "input.csv")
+
     def test_packet_file_install_removes_partial_after_file_fsync_failure(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-install-"
@@ -1525,6 +1559,30 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                     result.stdout + result.stderr,
                 )
                 self.assertFalse((real_parent / nested / "report-output").exists())
+
+    def test_input_below_symlinked_parent_fails_before_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            root = Path(temporary)
+            fixture = SyntheticFixture(root / "case")
+            real_parent = root / "real-aux"
+            real_parent.mkdir()
+            redirected = real_parent / "preflight.json"
+            redirected.write_bytes((fixture.aux / "preflight.json").read_bytes())
+            linked_parent = root / "linked-aux"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            command = fixture.command()
+            command[command.index("--preflight-json") + 1] = str(
+                linked_parent / "preflight.json"
+            )
+
+            result = subprocess.run(command, text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "external input preflight parent may not be a symlink",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((fixture.output / "report.md").exists())
 
     def test_expected_output_name_directory_fails_before_report_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:

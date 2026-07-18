@@ -15,7 +15,7 @@ import subprocess
 import tempfile
 from collections import Counter
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 
 EXPECTED_READINESS = {
@@ -77,6 +77,7 @@ S3_CHECKSUM_FIELDS = {
 
 
 def load_json(path: Path) -> dict[str, Any]:
+    require_real_input_path(path, "JSON input")
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError(f"Expected a JSON object: {path}")
@@ -84,6 +85,7 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def load_csv(path: Path, delimiter: str = ",") -> list[dict[str, str]]:
+    require_real_input_path(path, "CSV input")
     with path.open(newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle, delimiter=delimiter))
 
@@ -194,6 +196,8 @@ def create_stable_input_snapshot(
     external_sources: dict[str, Path],
     snapshot_root: Path,
 ) -> dict[str, Any]:
+    require_no_symlinked_ancestors(artifact_root, "artifact input tree")
+    require_no_symlinked_ancestors(early_root, "early-look input tree")
     if artifact_root.is_symlink() or early_root.is_symlink():
         raise ValueError("input tree roots may not be symlinks")
     artifact_root = artifact_root.resolve()
@@ -214,6 +218,7 @@ def create_stable_input_snapshot(
     for input_id, source in sorted(external_sources.items()):
         if not re.fullmatch(r"[a-z0-9_]+", input_id):
             raise ValueError(f"unsafe external input identifier: {input_id}")
+        require_no_symlinked_ancestors(source, f"external input {input_id}")
         if source.is_symlink():
             raise ValueError(f"external input may not be a symlink: {input_id}")
         resolved = source.resolve()
@@ -1181,6 +1186,20 @@ def prepare_output_dir(output: Path, expected_names: Iterable[str]) -> None:
 
 def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
+def require_real_input_path(path: Path, label: str) -> None:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
+        raise ValueError(f"{label} must be a non-empty real file: {path}")
 
 
 def resolve_report_output_dir(output: Path) -> Path:
