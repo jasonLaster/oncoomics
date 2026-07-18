@@ -196,6 +196,40 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
                     parabricks_mutect_receipt_sha256=SHA_3,
                 )
 
+    def test_rejects_command_that_would_skip_gatk(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
+            plan["commands"]["filter_mutect_calls"]["argv"] = ["true"]
+            runner = FilterMutectRunner()
+
+            with self.assertRaisesRegex(run_filter.ManifestError, "GATK FilterMutectCalls"):
+                run_filter.run_phase3_fast_filter_mutect(
+                    plan,
+                    parabricks_receipt,
+                    runner=runner,
+                    filter_mutect_plan_sha256=SHA_1,
+                    parabricks_mutect_receipt_sha256=SHA_3,
+                )
+
+        self.assertEqual([], runner.commands)
+
+    def test_rejects_command_that_would_skip_bcftools_index(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
+            plan["commands"]["index_filtered_vcf"]["argv"] = ["true"]
+            runner = FilterMutectRunner()
+
+            with self.assertRaisesRegex(run_filter.ManifestError, "bcftools index"):
+                run_filter.run_phase3_fast_filter_mutect(
+                    plan,
+                    parabricks_receipt,
+                    runner=runner,
+                    filter_mutect_plan_sha256=SHA_1,
+                    parabricks_mutect_receipt_sha256=SHA_3,
+                )
+
+        self.assertEqual([], runner.commands)
+
     def test_rejects_non_no_call_plan(self) -> None:
         with TemporaryDirectory() as tmp:
             plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))

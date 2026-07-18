@@ -50,6 +50,14 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
             Path(plan["inputs"]["reference_fasta"]["local_path"]).parent,
             Path(plan["inputs"]["reference_sequence_dictionary"]["local_path"]).parent,
         )
+        self.assertEqual(
+            Path(plan["inputs"]["panel_of_normals_vcf"]["local_path"]).parent,
+            Path(plan["inputs"]["panel_of_normals_index"]["local_path"]).parent,
+        )
+        self.assertEqual(
+            Path(plan["inputs"]["germline_resource_vcf"]["local_path"]).parent,
+            Path(plan["inputs"]["germline_resource_index"]["local_path"]).parent,
+        )
 
         self.assertEqual(
             [

@@ -50,6 +50,22 @@ class Phase3FastFilterMutectPlanTests(unittest.TestCase):
         self.assertTrue(plan["inputs"]["gatk_jar"]["local_path"].endswith("/caller_resources/gatk/gatk_jar"))
         self.assertTrue(plan["inputs"]["common_sites_vcf"]["local_path"].endswith("/caller_resources/common_sites/common_sites_vcf"))
         self.assertEqual(
+            Path(plan["inputs"]["reference_fasta"]["local_path"]).parent,
+            Path(plan["inputs"]["reference_fai"]["local_path"]).parent,
+        )
+        self.assertEqual(
+            Path(plan["inputs"]["reference_fasta"]["local_path"]).parent,
+            Path(plan["inputs"]["reference_sequence_dictionary"]["local_path"]).parent,
+        )
+        self.assertEqual(
+            Path(plan["inputs"]["tumor_bam"]["local_path"]).parent,
+            Path(plan["inputs"]["tumor_bai"]["local_path"]).parent,
+        )
+        self.assertEqual(
+            Path(plan["inputs"]["normal_bam"]["local_path"]).parent,
+            Path(plan["inputs"]["normal_bai"]["local_path"]).parent,
+        )
+        self.assertEqual(
             "/scratch/diana/phase3_wgs_fast/parabricks/variants/diana.wgs.mutect2.parabricks.pon.vcf.gz",
             plan["inputs"]["pon_annotated_vcf"]["local_path"],
         )
@@ -164,6 +180,32 @@ class Phase3FastFilterMutectPlanTests(unittest.TestCase):
             staged["caller_resources"]["common_sites_index"]["local_path"] = "/scratch/diana/elsewhere/common_sites.idx"
 
         with self.assertRaisesRegex(filter_mutect.ManifestError, "common_sites"):
+            filter_mutect.build_phase3_fast_filter_mutect_plan(
+                staged,
+                mutect,
+                staged_inputs_manifest_sha256=SHA_1,
+                mutect_plan_sha256=SHA_2,
+            )
+
+    def test_rejects_unpaired_reference_index(self) -> None:
+        with TemporaryDirectory() as tmp:
+            staged, mutect = parabricks_plan(Path(tmp))
+            staged["reference"]["fai"]["local_path"] = "/scratch/diana/elsewhere/reference.fa.fai"
+
+        with self.assertRaisesRegex(filter_mutect.ManifestError, "reference.fa"):
+            filter_mutect.build_phase3_fast_filter_mutect_plan(
+                staged,
+                mutect,
+                staged_inputs_manifest_sha256=SHA_1,
+                mutect_plan_sha256=SHA_2,
+            )
+
+    def test_rejects_unpaired_bam_index(self) -> None:
+        with TemporaryDirectory() as tmp:
+            staged, mutect = parabricks_plan(Path(tmp))
+            staged["bam_pair"]["tumor"]["bai"]["local_path"] = "/scratch/diana/elsewhere/tumor.bai"
+
+        with self.assertRaisesRegex(filter_mutect.ManifestError, "tumor.bam"):
             filter_mutect.build_phase3_fast_filter_mutect_plan(
                 staged,
                 mutect,

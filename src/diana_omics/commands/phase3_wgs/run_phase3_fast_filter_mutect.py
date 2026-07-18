@@ -24,6 +24,14 @@ EXPECTED_COMMANDS = (
     "filter_mutect_calls",
     "index_filtered_vcf",
 )
+EXPECTED_GATK_TOOLS = {
+    "get_tumor_pileups": "GetPileupSummaries",
+    "get_normal_pileups": "GetPileupSummaries",
+    "learn_read_orientation_model": "LearnReadOrientationModel",
+    "calculate_contamination": "CalculateContamination",
+    "filter_mutect_calls": "FilterMutectCalls",
+}
+EXPECTED_BCFTOOLS_INDEX_COMMANDS = {"index_pon_annotated_vcf", "index_filtered_vcf"}
 PARABRICKS_INPUTS = ("raw_vcf", "raw_vcf_stats", "pon_annotated_vcf", "f1r2_tar_gz")
 MATERIALIZED_OUTPUTS = (
     "tumor_pileups",
@@ -74,7 +82,13 @@ def _require_absolute_path(value: Any, label: str) -> Path:
 def _require_argv(value: Any, name: str) -> list[str]:
     if not isinstance(value, list) or any(not isinstance(item, str) or not item for item in value):
         raise ManifestError(f"{name} argv must be a non-empty string list")
-    return list(value)
+    argv = list(value)
+    gatk_tool = EXPECTED_GATK_TOOLS.get(name)
+    if gatk_tool is not None and (len(argv) < 5 or argv[0] != "java" or argv[2] != "-jar" or argv[4] != gatk_tool):
+        raise ManifestError(f"{name} argv must run GATK {gatk_tool}")
+    if name in EXPECTED_BCFTOOLS_INDEX_COMMANDS and argv[:4] != ["bcftools", "index", "-t", "-f"]:
+        raise ManifestError(f"{name} argv must run bcftools index -t -f")
+    return argv
 
 
 def _sha256_path(path: Path) -> str:

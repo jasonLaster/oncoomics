@@ -282,9 +282,9 @@ commands through per-file temp paths, atomically renames each successful
 download into place, hashes every staged object, writes the grouped
 `staged_inputs_manifest.json`, then consumes that worker-local manifest to emit the exact
 `pbrun prepon`, `pbrun mutectcaller`, and `pbrun postpon` argument vectors for
-the first GPU short-variant pass without launching Parabricks, with declared
-`raw_vcf`, `raw_vcf_stats`, `f1r2_tar_gz`, and `pon_annotated_vcf` handoff
-outputs.
+the first GPU short-variant pass without launching Parabricks, with declared BAM
+indexes, FASTA indexes, germline/PoN indexes, and `raw_vcf`, `raw_vcf_stats`,
+`f1r2_tar_gz`, and `pon_annotated_vcf` handoff outputs.
 `FAST_MUTECT_PARABRICKS` must consume that plan, run only those three pinned
 argument vectors in order on the same staged GPU worker, and write a completed
 receipt that copies the plan inputs and outputs plus the plan SHA-256 and
@@ -296,6 +296,8 @@ fails to recreate it.
 `FAST_FILTER_MUTECT_PLAN` consumes the same staged-input manifest plus the
 Parabricks Mutect plan and emits the exact CPU tail for matched-normal pileups,
 contamination, read-orientation priors, `FilterMutectCalls`, and VCF indexing.
+Its input contract also carries the implicit BAM, FASTA, and common-sites
+sidecars that GATK resolves beside those primary inputs.
 `FAST_FILTER_MUTECT` must require the completed Parabricks receipt, re-check
 the raw VCF, raw `.stats`, F1R2 tarball, and PoN-annotated VCF against that
 receipt, run only the planned GATK/bcftools commands, and write a completed

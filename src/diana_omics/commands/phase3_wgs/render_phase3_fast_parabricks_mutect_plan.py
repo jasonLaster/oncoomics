@@ -148,7 +148,9 @@ def build_phase3_fast_parabricks_mutect_plan(
     normal_bam_path = _artifact_path(normal_bam, "normal.bam")
     normal_bai_path = _artifact_path(normal_bai, "normal.bai")
     germline_resource_vcf = _artifact_path(_entry(caller_resources, "germline_resource_vcf"), "germline_resource_vcf")
+    germline_resource_index = _artifact_path(_entry(caller_resources, "germline_resource_index"), "germline_resource_index")
     panel_of_normals_vcf = _artifact_path(_entry(caller_resources, "panel_of_normals_vcf"), "panel_of_normals_vcf")
+    panel_of_normals_index = _artifact_path(_entry(caller_resources, "panel_of_normals_index"), "panel_of_normals_index")
     mutect2_interval_set = _artifact_path(_entry(caller_resources, "mutect2_interval_set"), "mutect2_interval_set")
 
     if Path(tumor_bam_path).parent != Path(tumor_bai_path).parent:
@@ -159,9 +161,9 @@ def build_phase3_fast_parabricks_mutect_plan(
         raise ManifestError("reference.fa and reference.fa.fai must be staged together")
     if Path(reference_fasta).parent != Path(reference_sequence_dictionary).parent:
         raise ManifestError("reference.fa and reference.dict must be staged together")
-    if Path(panel_of_normals_vcf).parent != Path(_artifact_path(_entry(caller_resources, "panel_of_normals_index"), "panel_of_normals_index")).parent:
+    if Path(panel_of_normals_vcf).parent != Path(panel_of_normals_index).parent:
         raise ManifestError("panel_of_normals_vcf and panel_of_normals_index must be staged together")
-    if Path(germline_resource_vcf).parent != Path(_artifact_path(_entry(caller_resources, "germline_resource_index"), "germline_resource_index")).parent:
+    if Path(germline_resource_vcf).parent != Path(germline_resource_index).parent:
         raise ManifestError("germline_resource_vcf and germline_resource_index must be staged together")
 
     tumor_name = _require_sample_id(tumor_bam, "tumor.bam")
@@ -289,7 +291,9 @@ def build_phase3_fast_parabricks_mutect_plan(
                 "source": _require_source(normal_bai, "normal.bai"),
             },
             "germline_resource_vcf": {"local_path": germline_resource_vcf},
+            "germline_resource_index": {"local_path": germline_resource_index},
             "panel_of_normals_vcf": {"local_path": panel_of_normals_vcf},
+            "panel_of_normals_index": {"local_path": panel_of_normals_index},
             "mutect2_interval_set": {"local_path": mutect2_interval_set},
         },
         "outputs": {

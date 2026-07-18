@@ -120,8 +120,20 @@ def build_phase3_fast_filter_mutect_plan(
     common_sites = _artifact_path(_entry(caller_resources, "common_sites_vcf"), "common_sites_vcf")
     common_sites_index = _artifact_path(_entry(caller_resources, "common_sites_index"), "common_sites_index")
     reference_fasta = _artifact_path(_entry(reference, "fasta"), "reference.fa")
+    reference_fai = _artifact_path(_entry(reference, "fai"), "reference.fa.fai")
+    reference_sequence_dictionary = _artifact_path(_entry(reference, "sequence_dictionary"), "reference.dict")
     tumor_bam = _artifact_path(_entry(tumor, "bam"), "tumor.bam")
+    tumor_bai = _artifact_path(_entry(tumor, "bai"), "tumor.bai")
     normal_bam = _artifact_path(_entry(normal, "bam"), "normal.bam")
+    normal_bai = _artifact_path(_entry(normal, "bai"), "normal.bai")
+    if Path(reference_fasta).parent != Path(reference_fai).parent:
+        raise ManifestError("reference.fa and reference.fa.fai must be staged together")
+    if Path(reference_fasta).parent != Path(reference_sequence_dictionary).parent:
+        raise ManifestError("reference.fa and reference.dict must be staged together")
+    if Path(tumor_bam).parent != Path(tumor_bai).parent:
+        raise ManifestError("tumor.bam and tumor.bai must be staged together")
+    if Path(normal_bam).parent != Path(normal_bai).parent:
+        raise ManifestError("normal.bam and normal.bai must be staged together")
     if Path(common_sites).parent != Path(common_sites_index).parent:
         raise ManifestError("common_sites_vcf and common_sites_index must be staged together")
 
@@ -267,8 +279,12 @@ def build_phase3_fast_filter_mutect_plan(
         "inputs": {
             "gatk_jar": {"local_path": gatk_jar},
             "reference_fasta": {"local_path": reference_fasta},
+            "reference_fai": {"local_path": reference_fai},
+            "reference_sequence_dictionary": {"local_path": reference_sequence_dictionary},
             "tumor_bam": {"local_path": tumor_bam},
+            "tumor_bai": {"local_path": tumor_bai},
             "normal_bam": {"local_path": normal_bam},
+            "normal_bai": {"local_path": normal_bai},
             "common_sites_vcf": {"local_path": common_sites},
             "common_sites_index": {"local_path": common_sites_index},
             "raw_vcf": {"local_path": raw_vcf},
