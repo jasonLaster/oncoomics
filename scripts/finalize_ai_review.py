@@ -301,6 +301,8 @@ def build_manifest(
 def write_create_only(path: Path, value: dict[str, Any]) -> None:
     require_safe_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(value, indent=2, sort_keys=True).encode("utf-8") + b"\n"
+    expected_sha256 = hashlib.sha256(data).hexdigest()
     descriptor = -1
     try:
         descriptor = os.open(
@@ -312,19 +314,27 @@ def write_create_only(path: Path, value: dict[str, Any]) -> None:
         raise ValueError("report_manifest.json already exists") from error
 
     try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        with os.fdopen(descriptor, "wb") as handle:
             descriptor = -1
-            json.dump(value, handle, indent=2, sort_keys=True)
-            handle.write("\n")
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
         fsync_directory(path.parent)
+        require_installed_manifest(path, expected_sha256)
     except Exception:
         path.unlink(missing_ok=True)
         raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def require_installed_manifest(path: Path, expected_sha256: str) -> None:
+    require_no_symlinked_ancestors(path, "report_manifest.json")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("report_manifest.json changed during write")
+    if sha256(path) != expected_sha256:
+        raise ValueError("report_manifest.json changed during write")
 
 
 def fsync_directory(path: Path) -> None:
