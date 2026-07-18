@@ -200,6 +200,15 @@ def _read_text_artifact(final_root: Path, artifact_map: Mapping[str, Any], *path
     return (final_root / relative).read_text(encoding="utf-8", errors="replace")
 
 
+def _cnv_metric(cnv_summary: Mapping[str, Any], key: str) -> Any:
+    if key in cnv_summary:
+        return cnv_summary[key]
+    rows = cnv_summary.get("rows")
+    if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+        return rows[0].get(key, "unknown")
+    return "unknown"
+
+
 def _build_input_rows(
     *,
     final_manifest_sha256: str,
@@ -251,7 +260,7 @@ def _readiness_rows(
             "evidence_surface": "coverage_cnv",
             "state": "partial_evidence",
             "reason": (
-                f"{cnv_summary.get('bin_count', 'unknown')} coverage bins were materialized; "
+                f"{_cnv_metric(cnv_summary, 'bin_count')} coverage bins were materialized; "
                 "they are depth-only and not allele-specific CNV/LOH segments."
             ),
         },
@@ -347,9 +356,9 @@ def _report_markdown(
             "## Coverage CNV",
             "",
             (
-                f"The final tree includes `{cnv_summary.get('bin_count', 'unknown')}` depth bins "
-                f"with `{cnv_summary.get('relative_gain_bins', 'unknown')}` relative-gain bins and "
-                f"`{cnv_summary.get('relative_loss_bins', 'unknown')}` relative-loss bins. "
+                f"The final tree includes `{_cnv_metric(cnv_summary, 'bin_count')}` depth bins "
+                f"with `{_cnv_metric(cnv_summary, 'relative_gain_bins')}` relative-gain bins and "
+                f"`{_cnv_metric(cnv_summary, 'relative_loss_bins')}` relative-loss bins. "
                 "This is coverage evidence, not allele-specific total/minor CNV, LOH, or scarHRD input."
             ),
             "",

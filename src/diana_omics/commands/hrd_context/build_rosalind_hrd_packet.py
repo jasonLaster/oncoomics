@@ -714,6 +714,22 @@ DIANA_WGS_READINESS_SURFACES = (
 )
 DIANA_WGS_PARTIAL_ONLY_SURFACES = {"coverage_cnv", "sbs96", "sv"}
 DIANA_WGS_NO_CALL_SURFACES = {"scarHRD", "CHORD", "HRDetect", "overall_hrd"}
+PHASE3_FAST_REPORT_KIND = "phase3_fast_deterministic_evidence"
+DIANA_WGS_PHASE3_FAST_READINESS_SURFACES = (
+    "source_sha256",
+    "small_variants",
+    "bam_qc",
+    "coverage_cnv",
+    "sv",
+    "sbs96",
+    "scarHRD",
+    "CHORD",
+    "HRDetect",
+    "overall_hrd",
+)
+DIANA_WGS_PHASE3_FAST_PARTIAL_ONLY_SURFACES = {"coverage_cnv", "sv"}
+DIANA_WGS_PHASE3_FAST_BLOCKED_SURFACES = {"sbs96"}
+DIANA_WGS_PHASE3_FAST_NO_CALL_SURFACES = {"scarHRD", "CHORD", "HRDetect", "overall_hrd"}
 DIANA_WGS_DETERMINISTIC_INPUTS = {
     "diana_hrd_summary.json": "summary",
     "hrd_readiness.csv": "readiness",
@@ -750,6 +766,29 @@ EXPECTED_SBS96 = {
     for left in "ACGT"
     for right in "ACGT"
 }
+
+
+def diana_wgs_deterministic_report_dir() -> Path:
+    raw = os.environ.get("ROSALIND_HRD_DETERMINISTIC_REPORT_DIR", "").strip()
+    if not raw:
+        raise ValueError(
+            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR is required for the Diana WGS packet"
+        )
+    report_root = Path(raw).expanduser()
+    if report_root.is_symlink() or not report_root.is_dir():
+        raise ValueError("deterministic report directory must be a real directory")
+    return report_root
+
+
+def diana_wgs_deterministic_report_kind() -> str:
+    raw = os.environ.get("ROSALIND_HRD_DETERMINISTIC_REPORT_DIR", "").strip()
+    if not raw:
+        return ""
+    manifest_path = Path(raw).expanduser() / "report_manifest.json"
+    if not manifest_path.is_file() or manifest_path.is_symlink():
+        return ""
+    manifest = read_json(manifest_path)
+    return str(manifest.get("report_kind", "")) if isinstance(manifest, dict) else ""
 
 
 def require_real_nonempty_file(path: Path, label: str) -> Path:
@@ -867,15 +906,7 @@ def validate_diana_wgs_worker_schema() -> None:
 
 
 def diana_wgs_deterministic_binding() -> dict[str, Any]:
-    raw = os.environ.get("ROSALIND_HRD_DETERMINISTIC_REPORT_DIR", "").strip()
-    if not raw:
-        raise ValueError(
-            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR is required for the Diana WGS packet"
-        )
-    report_root = Path(raw).expanduser()
-    if report_root.is_symlink() or not report_root.is_dir():
-        raise ValueError("deterministic report directory must be a real directory")
-    validate_diana_wgs_worker_schema()
+    report_root = diana_wgs_deterministic_report_dir()
     paths = {
         name: require_real_nonempty_file(report_root / name, f"deterministic {name}")
         for name in {
@@ -913,6 +944,16 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     input_by_id = {row["input_id"]: row for row in input_rows}
     if len(input_by_id) != len(input_rows):
         raise ValueError("deterministic input SHA-256 CSV has duplicate input IDs")
+    if manifest.get("report_kind") == PHASE3_FAST_REPORT_KIND:
+        return diana_wgs_phase3_fast_deterministic_binding(
+            paths=paths,
+            manifest=manifest,
+            support=support,
+            source=source,
+            input_rows=input_rows,
+        )
+
+    validate_diana_wgs_worker_schema()
     artifact_hashes: dict[str, str] = {}
     for relative, input_id in DIANA_WGS_DETERMINISTIC_INPUTS.items():
         artifact = require_real_nonempty_file(
@@ -977,6 +1018,7 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     ):
         raise ValueError("Diana WGS tool version inventory is missing or malformed")
     return {
+        "binding_kind": "terminal_worker",
         "deterministic_report_sha256": sha256_file(paths["report.md"]),
         "deterministic_manifest_sha256": sha256_file(paths["report_manifest.json"]),
         "deterministic_support_sha256": dict(sorted(support.items())),
@@ -989,6 +1031,120 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
             **custody_hashes,
         },
         "tool_versions": {str(key): str(value) for key, value in sorted(tools.items())},
+    }
+
+
+def diana_wgs_phase3_fast_deterministic_binding(
+    *,
+    paths: Mapping[str, Path],
+    manifest: Mapping[str, Any],
+    support: Mapping[str, Any],
+    source: Mapping[str, Any],
+    input_rows: Sequence[Mapping[str, str]],
+) -> dict[str, Any]:
+    review_summary = manifest.get("review_summary")
+    if not isinstance(review_summary, dict):
+        raise ValueError("Phase 3 fast deterministic report lacks a review summary")
+    overall = review_summary.get("overall")
+    if (
+        not isinstance(overall, dict)
+        or overall.get("evidence_status") != "partial_evidence"
+        or overall.get("authorized_hrd_state") != "no_call"
+    ):
+        raise ValueError("Phase 3 fast deterministic report does not preserve a no-call partial-evidence boundary")
+
+    artifact_groups = review_summary.get("artifact_groups")
+    if (
+        not isinstance(artifact_groups, dict)
+        or set(artifact_groups) != {"small_variants", "bam_qc", "cnv_evidence", "sv_evidence"}
+    ):
+        raise ValueError("Phase 3 fast deterministic report artifact groups are not exact")
+
+    artifact_count = require_nonnegative_int(
+        review_summary.get("artifact_count"),
+        "Phase 3 fast artifact_count",
+    )
+    final_artifact_rows = [row for row in input_rows if row.get("input_id") != "final_evidence_manifest"]
+    if artifact_count != len(final_artifact_rows):
+        raise ValueError("Phase 3 fast deterministic artifact_count differs from input_sha256.csv")
+    if set(source) != {str(row["input_id"]) for row in input_rows}:
+        raise ValueError("Phase 3 fast deterministic source SHA-256 inventory differs from input_sha256.csv")
+
+    checks = read_json(paths["evidence_checks.json"])
+    check_rows = checks.get("checks", []) if isinstance(checks, dict) else []
+    checks_input = checks.get("input_sha256", []) if isinstance(checks, dict) else []
+    normalized_checks_input = [
+        {key: str(row.get(key, "")) for key in ("input_id", "path", "bytes", "sha256")}
+        for row in checks_input
+        if isinstance(row, dict)
+    ]
+    normalized_csv_input = [
+        {key: str(row.get(key, "")) for key in ("input_id", "path", "bytes", "sha256")}
+        for row in input_rows
+    ]
+    if (
+        checks.get("status") != "passed"
+        or checks.get("report_status") != "partial_evidence"
+        or checks.get("overall_hrd_status") != "no_call"
+        or not isinstance(check_rows, list)
+        or not check_rows
+        or any(not isinstance(row, dict) or row.get("status") != "passed" for row in check_rows)
+        or normalized_checks_input != normalized_csv_input
+    ):
+        raise ValueError("Phase 3 fast deterministic evidence checks are incomplete or not all passed")
+
+    artifact_hashes: dict[str, str] = {}
+    artifact_index_rows: list[dict[str, Any]] = []
+    for row in input_rows:
+        input_id = str(row["input_id"])
+        relative = str(row["path"])
+        digest = require_sha256(row.get("sha256"), f"Phase 3 fast deterministic input {input_id}")
+        if require_sha256(source.get(input_id), f"Phase 3 fast deterministic source {input_id}") != digest:
+            raise ValueError(f"Phase 3 fast source hash differs from deterministic input {input_id}")
+        bytes_ = require_nonnegative_int(row.get("bytes"), f"Phase 3 fast deterministic input {input_id} bytes")
+
+        exists = "yes"
+        if input_id != "final_evidence_manifest":
+            if not relative.startswith("final/"):
+                raise ValueError(f"Phase 3 fast final artifact {input_id} does not use the final/ input namespace")
+            artifact = artifact_path_from_root(relative.removeprefix("final/"))
+            if artifact.is_symlink() or not artifact.is_file():
+                raise ValueError(f"Phase 3 fast final artifact is missing: {input_id}")
+            if artifact.stat().st_size != bytes_ or sha256_file(artifact) != digest:
+                raise ValueError(f"Phase 3 fast final artifact hash differs from deterministic input {input_id}")
+
+        artifact_hashes[input_id] = digest
+        artifact_index_rows.append(
+            {
+                "path": relative,
+                "resolved_path": f"deterministic-input/{relative}",
+                "exists": exists,
+                "bytes": bytes_,
+                "sha256": digest,
+            }
+        )
+
+    return {
+        "binding_kind": "phase3_fast_final",
+        "deterministic_report_sha256": sha256_file(paths["report.md"]),
+        "deterministic_manifest_sha256": sha256_file(paths["report_manifest.json"]),
+        "deterministic_support_sha256": dict(sorted(support.items())),
+        "artifact_sha256": artifact_hashes,
+        "artifact_count": artifact_count,
+        "artifact_index": artifact_index_rows,
+        "phase3_fast": {
+            "artifact_groups": {
+                str(group): require_nonnegative_int(count, f"Phase 3 fast artifact group {group}")
+                for group, count in sorted(artifact_groups.items())
+            },
+            "run": dict(review_summary.get("run", {})) if isinstance(review_summary.get("run"), dict) else {},
+            "workflow": (
+                dict(review_summary.get("workflow", {}))
+                if isinstance(review_summary.get("workflow"), dict)
+                else {}
+            ),
+        },
+        "tool_versions": {},
     }
 
 
@@ -1079,7 +1235,177 @@ def bounded_diana_wgs_state(surface: str, state: str, blockers: list[str]) -> st
     return state
 
 
+def bounded_phase3_fast_state(surface: str, state: str, blockers: list[str]) -> str:
+    if state not in {"ready", "partial_evidence", "no_call", "blocked"}:
+        blockers.append(f"Phase 3 fast readiness surface {surface} has unsupported state {state or 'missing'}.")
+        return "no_call"
+    if surface in DIANA_WGS_PHASE3_FAST_NO_CALL_SURFACES and state != "no_call":
+        blockers.append(
+            f"Phase 3 fast readiness surface {surface} attempted promotion to {state}; the current packet contract preserves no_call."
+        )
+        return "no_call"
+    if surface in DIANA_WGS_PHASE3_FAST_PARTIAL_ONLY_SURFACES and state == "ready":
+        blockers.append(
+            f"Phase 3 fast readiness surface {surface} attempted promotion to ready; the current evidence supports partial_evidence only."
+        )
+        return "partial_evidence"
+    if surface in DIANA_WGS_PHASE3_FAST_BLOCKED_SURFACES and state not in {"blocked", "no_call"}:
+        blockers.append(
+            f"Phase 3 fast readiness surface {surface} attempted promotion to {state}; SBS96 is absent from the fast final tree."
+        )
+        return "blocked"
+    return state
+
+
+def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
+    report_root = diana_wgs_deterministic_report_dir()
+    manifest = read_json(report_root / "report_manifest.json")
+    if not isinstance(manifest, dict) or manifest.get("report_kind") != PHASE3_FAST_REPORT_KIND:
+        raise ValueError("Diana WGS Phase 3 fast packet requires a phase3_fast_deterministic_evidence report")
+    review_summary = manifest.get("review_summary")
+    if not isinstance(review_summary, dict):
+        raise ValueError("Diana WGS Phase 3 fast packet requires a deterministic review summary")
+    groups = review_summary.get("artifact_groups")
+    if not isinstance(groups, dict):
+        groups = {}
+    readiness_rows = parse_csv(read_text(report_root / "readiness.csv"))
+    surfaces = [str(row.get("evidence_surface", "")) for row in readiness_rows if row.get("evidence_surface")]
+    blockers: list[str] = []
+
+    duplicate_surfaces = sorted({surface for surface in surfaces if surfaces.count(surface) > 1})
+    if duplicate_surfaces:
+        blockers.append(f"Phase 3 fast readiness contract has duplicate surfaces: {', '.join(duplicate_surfaces)}.")
+    readiness_by_surface = {
+        str(row.get("evidence_surface", "")): row
+        for row in readiness_rows
+        if row.get("evidence_surface")
+    }
+    missing_surfaces = [
+        surface for surface in DIANA_WGS_PHASE3_FAST_READINESS_SURFACES
+        if surface not in readiness_by_surface
+    ]
+    if missing_surfaces:
+        blockers.append(f"Phase 3 fast readiness contract is missing surfaces: {', '.join(missing_surfaces)}.")
+
+    def group_count(group: str) -> int:
+        return require_nonnegative_int(groups.get(group, 0), f"Phase 3 fast {group} artifact count")
+
+    def reason(surface: str) -> str:
+        return str(readiness_by_surface.get(surface, {}).get("reason") or "Missing or incomplete readiness evidence.")
+
+    evidence = [
+        evidence_row(
+            "phase3_fast_run_boundary",
+            "no_call",
+            (
+                f"Phase 3 fast final evidence is partial_evidence across "
+                f"{review_summary.get('artifact_count', 'unknown')} bound artifacts."
+            ),
+            "report_manifest.json",
+            "The deterministic report authorizes sample-evidence review only; scalar HRD remains no_call.",
+        ),
+        evidence_row(
+            "source_sha256",
+            "ready",
+            reason("source_sha256"),
+            "input_sha256.csv",
+            "SHA-256 custody proves byte identity, not HRD interpretability.",
+        ),
+        evidence_row(
+            "matched_normal_somatic_variants",
+            "ready",
+            f"{group_count('small_variants')} Parabricks/FilterMutect artifacts were bound.",
+            "report_manifest.json",
+            "Filtered variants still require annotation, review, and second-hit context before HRD interpretation.",
+        ),
+        evidence_row(
+            "wgs_bam_qc",
+            "ready",
+            f"{group_count('bam_qc')} tumor/normal samtools quickcheck, flagstat, and idxstats artifacts were bound.",
+            "report_manifest.json",
+        ),
+        evidence_row(
+            "coverage_cnv",
+            "partial_evidence",
+            reason("coverage_cnv"),
+            "readiness.csv",
+            "Coverage bins are not allele-specific CNV/LOH segments and are not scarHRD input.",
+        ),
+        evidence_row(
+            "sbs96_input",
+            "blocked",
+            reason("sbs96"),
+            "readiness.csv",
+            "No SBS96 matrix or validated SBS3 assignment exists in the Phase 3 fast final tree.",
+        ),
+        evidence_row(
+            "bam_derived_sv_evidence",
+            "partial_evidence",
+            reason("sv"),
+            "readiness.csv",
+            "BAM-derived counters are not a validated production SV VCF/BEDPE and cannot support CHORD scoring.",
+        ),
+    ]
+
+    labels = {
+        "source_sha256": "Source SHA-256 integrity",
+        "small_variants": "Matched-normal somatic variants",
+        "bam_qc": "BAM QC",
+        "coverage_cnv": "Coverage CNV proxy",
+        "sv": "BAM-derived SV evidence",
+        "sbs96": "SBS96 input matrix",
+        "scarHRD": "scarHRD",
+        "CHORD": "CHORD",
+        "HRDetect": "HRDetect-style model",
+        "overall_hrd": "Overall HRD classification",
+    }
+    next_actions = {
+        "source_sha256": "Retain the checksum audit with this run.",
+        "small_variants": "Annotate and review observed variants without promoting them to an HRD score.",
+        "bam_qc": "Retain tumor/normal BAM QC as an input-integrity support surface.",
+        "coverage_cnv": "Generate allele-specific total/minor copy-number segments with purity/ploidy.",
+        "sv": "Generate a validated production SV VCF or BEDPE callset.",
+        "sbs96": "Generate SBS96 and run a validated SBS3 assignment policy.",
+        "scarHRD": "Supply validated allele-specific segments and purity/ploidy before scoring.",
+        "CHORD": "Supply validated SV/CNV/small-variant feature adapters before scoring.",
+        "HRDetect": "Lock all component adapters and validate a calibrated model before scoring.",
+        "overall_hrd": "Keep no_call until every required component and integration policy passes validation.",
+    }
+    adapters: list[dict[str, str]] = []
+    for surface in DIANA_WGS_PHASE3_FAST_READINESS_SURFACES:
+        row = readiness_by_surface.get(surface, {})
+        state = bounded_phase3_fast_state(surface, str(row.get("state", "")), blockers)
+        adapters.append(
+            adapter_row(
+                labels[surface],
+                state,
+                "" if state == "ready" else str(row.get("reason") or "Missing or incomplete readiness evidence."),
+                next_actions[surface],
+            )
+        )
+    adapters.extend(
+        [
+            adapter_row(
+                "Biallelic HRR/LOH evidence",
+                "no_call",
+                "No allele-specific CNV/LOH and curated second-hit assessment is present.",
+                "Integrate annotated HRR events with allele-specific segments and purity-aware review.",
+            ),
+            adapter_row(
+                "SBS3",
+                "no_call",
+                "No SBS96 matrix or validated signature assignment is present.",
+                "Run validated signature assignment and known-answer calibration before interpreting SBS3.",
+            ),
+        ]
+    )
+    return evidence, adapters, blockers
+
+
 def diana_wgs_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
+    if diana_wgs_deterministic_report_kind() == PHASE3_FAST_REPORT_KIND:
+        return diana_wgs_phase3_fast_evidence()
+
     summary = read_json_or_empty("diana_hrd_summary.json")
     alignment = read_json_or_empty("alignment/bam_validation_summary.json")
     variants = read_json_or_empty("variants/mutect2_summary.json")
@@ -1449,6 +1775,44 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
     return write_packet_to_dir(spec, packet_run_id, output_dir, output_path, None)
 
 
+def diana_wgs_deterministic_process_lines(deterministic_binding: Mapping[str, Any]) -> list[str]:
+    if deterministic_binding.get("binding_kind") == "phase3_fast_final":
+        phase3_fast = deterministic_binding.get("phase3_fast", {})
+        if not isinstance(phase3_fast, Mapping):
+            phase3_fast = {}
+        workflow = phase3_fast.get("workflow", {})
+        if not isinstance(workflow, Mapping):
+            workflow = {}
+        return [
+            "## Deterministic custody and process",
+            "",
+            f"Deterministic report SHA-256: `{deterministic_binding['deterministic_report_sha256']}`.",
+            f"Deterministic manifest SHA-256: `{deterministic_binding['deterministic_manifest_sha256']}`.",
+            f"Phase 3 fast workflow: `{workflow.get('name', 'phase3_wgs_fast')}`.",
+            f"Final artifact binding: {deterministic_binding['artifact_count']} Phase 3 fast final artifacts matched the deterministic input inventory.",
+            "",
+        ]
+
+    return [
+        "## Deterministic custody and process",
+        "",
+        f"Deterministic report SHA-256: `{deterministic_binding['deterministic_report_sha256']}`.",
+        f"Deterministic manifest SHA-256: `{deterministic_binding['deterministic_manifest_sha256']}`.",
+        f"Artifact binding: {deterministic_binding['artifact_count']}/{len(DIANA_WGS_DETERMINISTIC_INPUTS)} required worker artifacts matched the deterministic input inventory.",
+        "Private freeze custody: passed; exact destination KMS match: yes; exact receipt VersionIds retained.",
+        "",
+        "### Tool versions",
+        "",
+        markdown_table(
+            [
+                {"tool": tool, "version": version}
+                for tool, version in deterministic_binding["tool_versions"].items()
+            ]
+        ),
+        "",
+    ]
+
+
 def write_packet_to_dir(
     spec: PacketSpec,
     packet_run_id: str,
@@ -1460,10 +1824,21 @@ def write_packet_to_dir(
     deterministic_binding = (
         diana_wgs_deterministic_binding() if spec.sample_set == "diana_wgs" else None
     )
-    artifacts = artifact_index(
-        spec.artifacts, logical_paths_only=spec.sample_set == "diana_wgs"
-    )
-    if spec.sample_set == "diana_wgs" and deterministic_binding is not None:
+    if (
+        spec.sample_set == "diana_wgs"
+        and deterministic_binding is not None
+        and deterministic_binding.get("binding_kind") == "phase3_fast_final"
+    ):
+        artifacts = list(deterministic_binding["artifact_index"])
+    else:
+        artifacts = artifact_index(
+            spec.artifacts, logical_paths_only=spec.sample_set == "diana_wgs"
+        )
+    if (
+        spec.sample_set == "diana_wgs"
+        and deterministic_binding is not None
+        and deterministic_binding.get("binding_kind") != "phase3_fast_final"
+    ):
         require_diana_wgs_artifact_index_binding(artifacts, deterministic_binding)
     missing_artifacts = [row["path"] for row in artifacts if row["exists"] != "yes"]
     if missing_artifacts:
@@ -1501,28 +1876,7 @@ def write_packet_to_dir(
             ]
         ),
     )
-    process_lines = (
-        [
-            "## Deterministic custody and process",
-            "",
-            f"Deterministic report SHA-256: `{deterministic_binding['deterministic_report_sha256']}`.",
-            f"Deterministic manifest SHA-256: `{deterministic_binding['deterministic_manifest_sha256']}`.",
-            f"Artifact binding: {deterministic_binding['artifact_count']}/{len(DIANA_WGS_DETERMINISTIC_INPUTS)} required worker artifacts matched the deterministic input inventory.",
-            "Private freeze custody: passed; exact destination KMS match: yes; exact receipt VersionIds retained.",
-            "",
-            "### Tool versions",
-            "",
-            markdown_table(
-                [
-                    {"tool": tool, "version": version}
-                    for tool, version in deterministic_binding["tool_versions"].items()
-                ]
-            ),
-            "",
-        ]
-        if deterministic_binding
-        else []
-    )
+    process_lines = diana_wgs_deterministic_process_lines(deterministic_binding) if deterministic_binding else []
     reviewer_report = "\n".join(
         [
             f"# {spec.title}",

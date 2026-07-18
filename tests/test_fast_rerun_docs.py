@@ -22,6 +22,7 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("FAST_EVIDENCE_JOIN", text)
         self.assertIn("FAST_VERIFY_AND_PUBLISH", text)
         self.assertIn("FAST_STAGE_DETERMINISTIC_REPORT", text)
+        self.assertIn("FAST_STAGE_ROSALIND_PACKET", text)
         self.assertIn("evidence_join_manifest.json", text)
         self.assertIn("final_evidence_manifest.json", text)
 

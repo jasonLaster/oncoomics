@@ -5,8 +5,11 @@ from pathlib import Path
 from typing import Dict, Optional
 from unittest.mock import patch
 
+from test_phase3_fast_deterministic_report import _write_final_manifest
+
 from diana_omics import utils
 from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as packet
+from diana_omics.commands.phase3_wgs import stage_phase3_fast_deterministic_report as stage_phase3_fast_report
 
 
 def write_diana_wgs_worker_artifacts(root: Path, readiness_overrides: Optional[Dict[str, str]] = None) -> None:
@@ -188,6 +191,19 @@ def write_deterministic_report(root: Path, artifact_root: Path) -> Path:
         },
     )
     return root
+
+
+def write_phase3_fast_deterministic_report(root: Path) -> tuple[Path, Path]:
+    final_manifest_path, final_root, final_manifest = _write_final_manifest(root)
+    deterministic_root = root / "deterministic"
+    stage_phase3_fast_report.stage_phase3_fast_deterministic_report(
+        final_manifest,
+        final_manifest_sha256=hashlib.sha256(final_manifest_path.read_bytes()).hexdigest(),
+        final_manifest_bytes=final_manifest_path.stat().st_size,
+        final_root=final_root,
+        output_dir=deterministic_root,
+    )
+    return deterministic_root, final_root
 
 
 class RosalindHrdPacketTest(unittest.TestCase):
@@ -530,6 +546,91 @@ class RosalindHrdPacketTest(unittest.TestCase):
             )
             self.assertNotIn("SENSITIVE-PAIR-ID", serialized_manifest)
             self.assertNotIn("SENSITIVE-DATASET-LABEL", serialized_manifest)
+
+    def test_diana_wgs_packet_consumes_phase3_fast_deterministic_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(output_root / "phase3_fast")
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                summary = packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+            self.assertEqual(summary["missingArtifacts"], [])
+            self.assertEqual(summary["blockers"], [])
+
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/phase3-fast"
+            evidence_rows = utils.parse_csv(utils.read_text(output_dir / "sample_validation_summary.csv"))
+            self.assertEqual(
+                {row["evidence_id"] for row in evidence_rows},
+                {
+                    "phase3_fast_run_boundary",
+                    "source_sha256",
+                    "matched_normal_somatic_variants",
+                    "wgs_bam_qc",
+                    "coverage_cnv",
+                    "sbs96_input",
+                    "bam_derived_sv_evidence",
+                },
+            )
+            self.assertEqual(
+                next(row for row in evidence_rows if row["evidence_id"] == "sbs96_input")["status"],
+                "blocked",
+            )
+
+            adapter_rows = utils.parse_csv(utils.read_text(output_dir / "hrd_adapter_status.csv"))
+            self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "scarHRD")["state"], "no_call")
+            self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "CHORD")["state"], "no_call")
+            self.assertEqual(next(row for row in adapter_rows if row["adapter"] == "SBS96 input matrix")["state"], "blocked")
+
+            reviewer = utils.read_text(output_dir / "reviewer_packet.md")
+            self.assertIn("Phase 3 fast final evidence", reviewer)
+            self.assertIn("No SBS96 matrix", reviewer)
+            manifest = utils.read_json(output_dir / "report_manifest.json")
+            self.assertEqual(manifest["method_id"], "rosalind_diana_wgs")
+            self.assertEqual(manifest["evidence_status"], "partial_evidence")
+            self.assertEqual(manifest["authorized_hrd_state"], "no_call")
+            self.assertFalse(manifest["classification_authorized"])
+            self.assertEqual(
+                manifest["review_summary"]["provenance"]["binding_kind"],
+                "phase3_fast_final",
+            )
+            self.assertIn("small_variants.filter_mutect.filtered_vcf", manifest["source_sha256"])
+            evidence_index = utils.read_json(output_dir / "input_evidence_index.json")
+            self.assertEqual(
+                len(evidence_index["artifacts"]),
+                manifest["review_summary"]["provenance"]["artifact_count"] + 1,
+            )
+
+    def test_diana_wgs_phase3_fast_packet_rejects_final_artifact_tampering(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(output_root / "phase3_fast")
+            (final_root / "artifacts/cnv_evidence/coverage_bins/coverage_cnv_bins.csv").write_text(
+                "changed\n",
+                encoding="utf-8",
+            )
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                with self.assertRaisesRegex(ValueError, "final artifact hash differs"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
 
     def test_diana_wgs_packet_clamps_unsupported_adapter_promotions(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:

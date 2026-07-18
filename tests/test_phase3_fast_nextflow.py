@@ -27,6 +27,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_EVIDENCE_JOIN", text)
         self.assertIn("process FAST_VERIFY_AND_PUBLISH", text)
         self.assertIn("process FAST_STAGE_DETERMINISTIC_REPORT", text)
+        self.assertIn("process FAST_STAGE_ROSALIND_PACKET", text)
         self.assertNotIn("process FAST_STAGE_INPUTS", text)
         self.assertIn("workflow PHASE3_WGS_FAST", text)
         self.assertIn("'phase3_wgs_fast'", text)
@@ -64,6 +65,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_wgs_fast_evidence_join_manifest", text)
         self.assertIn("phase3_wgs_fast_final_evidence_manifest", text)
         self.assertIn("phase3_fast_deterministic_evidence", text)
+        self.assertIn("rosalind_hrd_reviewer_packet", text)
         self.assertIn("phase3_wgs_fast_filter_mutect_plan", text)
 
     def test_fast_input_manifest_receipts_are_nextflow_path_inputs(self) -> None:
@@ -445,7 +447,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         text = MAIN_NF.read_text(encoding="utf-8")
 
         process = text[text.index("process FAST_STAGE_DETERMINISTIC_REPORT") :]
-        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        process = process[: process.index("process FAST_STAGE_ROSALIND_PACKET")]
         self.assertIn("label 'cpu_io'", process)
         self.assertIn("tuple path(final_evidence_manifest)", process)
         self.assertIn("path(final_evidence_root)", process)
@@ -464,6 +466,39 @@ class Phase3FastNextflowTests(unittest.TestCase):
         )
         self.assertIn("stage:phase3-fast-deterministic-report", process)
         self.assertIn("FAST_STAGE_DETERMINISTIC_REPORT(FAST_VERIFY_AND_PUBLISH.out)", text)
+
+    def test_stage_rosalind_packet_consumes_phase3_fast_deterministic_report(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_STAGE_ROSALIND_PACKET") :]
+        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        self.assertIn("label 'cpu_io'", process)
+        self.assertIn("tuple path(report_md)", process)
+        self.assertIn("path(final_evidence_root)", process)
+        self.assertIn("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/run_manifest.json", process)
+        self.assertIn("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/packet_index.md", process)
+        self.assertIn("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/cloud_materialization_plan.md", process)
+        self.assertIn("workspace/results/rosalind_hrd/diana_wgs", process)
+        self.assertIn("input_evidence_index.json", process)
+        self.assertIn("sample_validation_summary.csv", process)
+        self.assertIn("hrd_adapter_status.csv", process)
+        self.assertIn("report_manifest.json", process)
+        self.assertIn('export DIANA_OMICS_ROOT="\\$PWD/workspace"', process)
+        self.assertIn('export ROSALIND_HRD_SAMPLE_SET="diana_wgs"', process)
+        self.assertIn('export ROSALIND_HRD_RUN_ID="${params.phase3_fast_run_id}"', process)
+        self.assertIn(
+            'export ROSALIND_HRD_ARTIFACT_ROOT="\\$PWD/${final_evidence_root}"',
+            process,
+        )
+        self.assertIn(
+            'export ROSALIND_HRD_DETERMINISTIC_REPORT_DIR="\\$PWD/deterministic_report"',
+            process,
+        )
+        self.assertIn("build:rosalind-hrd-packet", process)
+        self.assertIn(
+            "FAST_STAGE_ROSALIND_PACKET(FAST_STAGE_DETERMINISTIC_REPORT.out, FAST_VERIFY_AND_PUBLISH.out)",
+            text,
+        )
 
 
 if __name__ == "__main__":

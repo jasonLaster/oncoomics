@@ -376,6 +376,11 @@ files, and writes the five-file deterministic report packet
 descriptive: Parabricks/FilterMutect, BAM QC, coverage-CNV, and BAM-derived SV
 evidence are bound by SHA-256, while SBS3, scarHRD, CHORD, HRDetect-style
 scoring, and the overall HRD state remain blocked or `no_call`.
+`FAST_STAGE_ROSALIND_PACKET` then gives the deterministic report plus the
+portable final artifact tree to `build:rosalind-hrd-packet` as the Diana WGS
+sample set. That reporting-only bridge emits a Rosalind reviewer packet from
+the same Phase 3 fast hashes without inventing SBS96, allele-specific CNV/LOH,
+or production SV sidecars that the fast evidence tree does not contain.
 
 ### Gate 1: P5en and Parabricks smoke
 

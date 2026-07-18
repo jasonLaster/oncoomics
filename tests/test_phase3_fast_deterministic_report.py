@@ -81,6 +81,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         self.assertEqual("no_call", report_manifest["authorized_hrd_state"])
         self.assertIs(report_manifest["classification_authorized"], False)
         self.assertIn("overall HRD remains `no_call`", report)
+        self.assertIn("`4` depth bins", report)
         self.assertIn("no production SV VCF/BEDPE", report)
         self.assertNotIn(str(root), json.dumps(report_manifest))
         self.assertNotIn(str(root), report)

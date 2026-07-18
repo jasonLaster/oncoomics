@@ -1556,6 +1556,100 @@ process FAST_STAGE_DETERMINISTIC_REPORT {
     """
 }
 
+process FAST_STAGE_ROSALIND_PACKET {
+    tag "fast_stage_rosalind_packet_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/rosalind_hrd", mode: 'copy', overwrite: true
+
+    input:
+    tuple path(report_md),
+          path(report_manifest),
+          path(readiness),
+          path(evidence_checks),
+          path(input_sha256)
+    tuple path(final_evidence_manifest),
+          path(final_evidence_root)
+
+    output:
+    tuple path("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/run_manifest.json"),
+          path("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/packet_index.md"),
+          path("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/cloud_materialization_plan.md"),
+          path("workspace/results/rosalind_hrd/diana_wgs/${params.phase3_fast_run_id}/input_evidence_index.json"),
+          path("workspace/results/rosalind_hrd/diana_wgs/${params.phase3_fast_run_id}/sample_validation_summary.csv"),
+          path("workspace/results/rosalind_hrd/diana_wgs/${params.phase3_fast_run_id}/hrd_adapter_status.csv"),
+          path("workspace/results/rosalind_hrd/diana_wgs/${params.phase3_fast_run_id}/research_context_sources.json"),
+          path("workspace/results/rosalind_hrd/diana_wgs/${params.phase3_fast_run_id}/next_actions.md"),
+          path("workspace/results/rosalind_hrd/diana_wgs/${params.phase3_fast_run_id}/reviewer_packet.md"),
+          path("workspace/results/rosalind_hrd/diana_wgs/${params.phase3_fast_run_id}/report.md"),
+          path("workspace/results/rosalind_hrd/diana_wgs/${params.phase3_fast_run_id}/report_manifest.json")
+
+    script:
+    """
+    set -euo pipefail
+    mkdir -p deterministic_report
+    cp "${report_md}" deterministic_report/report.md
+    cp "${report_manifest}" deterministic_report/report_manifest.json
+    cp "${readiness}" deterministic_report/readiness.csv
+    cp "${evidence_checks}" deterministic_report/evidence_checks.json
+    cp "${input_sha256}" deterministic_report/input_sha256.csv
+
+    export DIANA_OMICS_ROOT="\$PWD/workspace"
+    export ROSALIND_HRD_SAMPLE_SET="diana_wgs"
+    export ROSALIND_HRD_RUN_ID="${params.phase3_fast_run_id}"
+    export ROSALIND_HRD_ARTIFACT_ROOT="\$PWD/${final_evidence_root}"
+    export ROSALIND_HRD_DETERMINISTIC_REPORT_DIR="\$PWD/deterministic_report"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:rosalind-hrd-packet
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    root="workspace/results/rosalind_hrd/${params.phase3_fast_run_id}"
+    output="workspace/results/rosalind_hrd/diana_wgs/${params.phase3_fast_run_id}"
+    mkdir -p "\$root"
+    mkdir -p "\$output"
+    cat > "\$root/run_manifest.json" <<JSON
+    {"runId":"${params.phase3_fast_run_id}","sampleSets":["diana_wgs"],"packets":[]}
+    JSON
+    cat > "\$root/packet_index.md" <<'MD'
+    # Rosalind HRD Packet Index
+    MD
+    cat > "\$root/cloud_materialization_plan.md" <<'MD'
+    # Cloud Materialization Plan
+    MD
+    cat > "\$output/input_evidence_index.json" <<JSON
+    {"sampleSet":"diana_wgs","artifacts":[]}
+    JSON
+    cat > "\$output/sample_validation_summary.csv" <<CSV
+    evidence_id,status,detail,artifact,caveat
+    phase3_fast_run_boundary,no_call,stubbed,report_manifest.json,stubbed
+    CSV
+    cat > "\$output/hrd_adapter_status.csv" <<CSV
+    adapter,state,blocker,next_action
+    scarHRD,no_call,stubbed,stubbed
+    CSV
+    cat > "\$output/research_context_sources.json" <<JSON
+    {"status":"stubbed","sample_set":"diana_wgs"}
+    JSON
+    cat > "\$output/next_actions.md" <<'MD'
+    # Next Actions: Diana WGS HRD Evidence Review Packet
+    MD
+    cat > "\$output/reviewer_packet.md" <<'MD'
+    # Diana WGS HRD Evidence Review Packet
+
+    Stubbed Phase 3 fast no_call packet.
+    MD
+    cp "\$output/reviewer_packet.md" "\$output/report.md"
+    cat > "\$output/report_manifest.json" <<JSON
+    {"schema_version":1,"method_id":"rosalind_diana_wgs","report_kind":"rosalind_hrd_reviewer_packet","evidence_status":"partial_evidence","authorized_hrd_state":"no_call","classification_authorized":false}
+    JSON
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -1651,6 +1745,7 @@ workflow PHASE3_WGS_FAST {
             }
             FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out, small_variant_artifacts_for_publish, aux_artifacts_for_publish)
             FAST_STAGE_DETERMINISTIC_REPORT(FAST_VERIFY_AND_PUBLISH.out)
+            FAST_STAGE_ROSALIND_PACKET(FAST_STAGE_DETERMINISTIC_REPORT.out, FAST_VERIFY_AND_PUBLISH.out)
         } else {
             FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
             FAST_BAM_QC_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
