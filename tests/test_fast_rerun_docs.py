@@ -3,7 +3,6 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 NEXT_GEN = ROOT / "docs/operations/next-generation-fast-rerun.md"
 SUMMARY = ROOT / "docs/operations/fast-rerun-performance-cost-summary.md"
@@ -27,6 +26,14 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("exact quickcheck, flagstat, and idxstats plan", text)
         self.assertIn("samtools quickcheck", text)
         self.assertIn("QC-only `no_call` artifact", text)
+
+    def test_next_generation_doc_tracks_sv_evidence_plan_seam(self) -> None:
+        text = NEXT_GEN.read_text(encoding="utf-8")
+
+        self.assertIn("FAST_SV_EVIDENCE_PLAN", text)
+        self.assertIn("exact split/discordant read evidence plan", text)
+        self.assertIn("mechanical supplementary/split-read and discordant-pair evidence", text)
+        self.assertIn("CHORD or HRDetect use remains `no_call`", text)
 
     def test_fast_rerun_summary_does_not_revive_the_cpu_retry(self) -> None:
         text = SUMMARY.read_text(encoding="utf-8")

@@ -27,6 +27,7 @@ class CliParityTest(unittest.TestCase):
             "build:phase3-fast-parabricks-mutect-plan",
             "build:phase3-fast-replication-plan",
             "build:phase3-fast-staging-plan",
+            "build:phase3-fast-sv-evidence-plan",
             "build:panel",
             "build:raw-samplesheets",
             "build:rosalind-hrd-packet",
