@@ -5,10 +5,9 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest import mock
 from datetime import datetime, timezone
 from pathlib import Path
-
+from unittest import mock
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
@@ -17,6 +16,7 @@ if str(SCRIPT_DIR) not in sys.path:
 import build_ai_review_bundle as BUILD  # noqa: E402
 import hrd_report_inventory as INVENTORY  # noqa: E402
 import stage_ai_review_inputs as STAGE  # noqa: E402
+
 from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as PACKET  # noqa: E402
 from tests.test_rosalind_hrd_packet import (  # noqa: E402
     PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
@@ -171,7 +171,7 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 BUILD.copy_create_only(source, destination)
 
             self.assertEqual(destination.read_bytes(), b"one\n")
-            self.assertEqual(fsync.call_count, 1)
+            self.assertEqual(fsync.call_count, 2)
 
             source.write_bytes(b"two\n")
             with self.assertRaisesRegex(
@@ -213,6 +213,84 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                     side_effect=fail_with_unexpected_child,
                 ),
                 self.assertRaisesRegex(ValueError, "synthetic bundle install failure"),
+            ):
+                BUILD.install_bundle_create_only(staged_paths, output)
+
+            self.assertFalse(output.exists())
+
+    def test_bundle_file_install_removes_partial_output_after_file_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "review_bundle.json"
+            source.write_bytes(b"one\n")
+
+            with (
+                mock.patch.object(
+                    BUILD.os,
+                    "fsync",
+                    side_effect=OSError("synthetic file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                BUILD.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_bundle_file_install_removes_partial_output_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "review_bundle.json"
+            source.write_bytes(b"one\n")
+
+            with (
+                mock.patch.object(
+                    BUILD.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                BUILD.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_bundle_install_removes_output_after_final_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            staging.mkdir()
+            output.mkdir()
+            staged_paths = []
+            for name in BUILD.BUNDLE_FILENAMES:
+                path = staging / name
+                path.write_text(f"{name}\n", encoding="utf-8")
+                staged_paths.append(path)
+
+            with (
+                mock.patch.object(
+                    BUILD,
+                    "fsync_directory",
+                    side_effect=(
+                        None,
+                        None,
+                        None,
+                        None,
+                        OSError("synthetic bundle directory fsync failure"),
+                    ),
+                ),
+                self.assertRaisesRegex(
+                    OSError,
+                    "synthetic bundle directory fsync failure",
+                ),
             ):
                 BUILD.install_bundle_create_only(staged_paths, output)
 

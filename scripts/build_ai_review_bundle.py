@@ -22,7 +22,6 @@ from hrd_report_inventory import (
     require_pinned_methods,
 )
 
-
 ALLOWED_EVIDENCE_STATES = {"ready", "partial_evidence", "no_call", "blocked"}
 ALLOWED_HRD_STATES = {"no_call", "positive", "negative"}
 ALLOWED_CLASSIFICATION_QC = {"passed", "failed", "not_applicable", "blocked", "not_run"}
@@ -416,9 +415,18 @@ def copy_create_only(source: Path, destination: Path) -> None:
                     destination_handle.write(chunk)
                 destination_handle.flush()
                 os.fsync(destination_handle.fileno())
+            fsync_directory(destination.parent)
         except Exception:
             destination.unlink(missing_ok=True)
             raise
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def install_bundle_create_only(staged_paths: Sequence[Path], output: Path) -> None:
@@ -428,6 +436,7 @@ def install_bundle_create_only(staged_paths: Sequence[Path], output: Path) -> No
             destination = output / path.name
             copy_create_only(path, destination)
             installed.append(destination)
+        fsync_directory(output)
     except Exception:
         shutil.rmtree(output, ignore_errors=True)
         raise
