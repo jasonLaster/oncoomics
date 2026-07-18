@@ -54,6 +54,7 @@ OUTPUT_NAMES = (
     "report.md",
     "readiness.csv",
     "evidence_checks.json",
+    "crosscheck_input_plans.json",
     "input_sha256.csv",
     "report_manifest.json",
 )
@@ -948,6 +949,7 @@ def write_outputs(
     report: str,
     readiness_rows: list[dict[str, str]],
     checks_payload: dict[str, Any],
+    crosscheck_input_plans: dict[str, Any],
     input_rows: list[dict[str, Any]],
 ) -> list[Path]:
     report_path = staging / "report.md"
@@ -959,12 +961,126 @@ def write_outputs(
         writer.writerows(readiness_rows)
     checks_path = staging / "evidence_checks.json"
     checks_path.write_text(json.dumps(checks_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    crosscheck_input_plans_path = staging / "crosscheck_input_plans.json"
+    crosscheck_input_plans_path.write_text(
+        json.dumps(crosscheck_input_plans, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     hashes_path = staging / "input_sha256.csv"
     with hashes_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=["input_id", "path", "bytes", "sha256"])
         writer.writeheader()
         writer.writerows(input_rows)
-    return [report_path, readiness_path, checks_path, hashes_path]
+    return [
+        report_path,
+        readiness_path,
+        checks_path,
+        crosscheck_input_plans_path,
+        hashes_path,
+    ]
+
+
+def crosscheck_output_plan(
+    outputs: dict[str, Any],
+    name: str,
+) -> dict[str, Any]:
+    row = outputs[name] if isinstance(outputs.get(name), dict) else {}
+    return {
+        "path": name,
+        "bytes": int(row["bytes"]),
+        "sha256": str(row["sha256"]).lower(),
+    }
+
+
+def build_crosscheck_input_plans(
+    crosscheck_materialization: dict[str, Any],
+) -> dict[str, Any]:
+    outputs = (
+        crosscheck_materialization.get("outputs", {})
+        if isinstance(crosscheck_materialization.get("outputs"), dict)
+        else {}
+    )
+    inputs = (
+        crosscheck_materialization.get("input_sha256", {})
+        if isinstance(crosscheck_materialization.get("input_sha256"), dict)
+        else {}
+    )
+    validation = (
+        crosscheck_materialization.get("validation", {})
+        if isinstance(crosscheck_materialization.get("validation"), dict)
+        else {}
+    )
+    return {
+        "schema_version": 1,
+        "plan_type": "terminal_crosscheck_input_materialization_plan",
+        "status": "materialized",
+        "authorized_hrd_state": "no_call",
+        "classification_authorized": False,
+        "routes": {
+            "sigprofiler_sbs3": {
+                "status": "inputs_materialized",
+                "execution_status": "not_run",
+                "interpretation_status": "no_call",
+                "materializer": "scripts/materialize_crosscheck_inputs.py",
+                "source_artifacts": {
+                    "somatic_vcf": crosscheck_output_plan(
+                        outputs, "somatic.pass.vcf.gz"
+                    ),
+                    "somatic_vcf_index": crosscheck_output_plan(
+                        outputs, "somatic.pass.vcf.gz.tbi"
+                    ),
+                    "sbs96_matrix": crosscheck_output_plan(outputs, "sbs96.csv"),
+                    "staged_validation": crosscheck_output_plan(
+                        outputs, "staged_input_validation.json"
+                    ),
+                },
+                "source_sha256": {
+                    "filtered_vcf": str(inputs.get("filtered_vcf", "")).lower(),
+                    "filtered_vcf_index": str(
+                        inputs.get("filtered_vcf_index", "")
+                    ).lower(),
+                    "reference_fai": str(inputs.get("reference_fai", "")).lower(),
+                    "reference_fasta": str(
+                        inputs.get("reference_fasta", "")
+                    ).lower(),
+                    "source_sbs96_matrix": str(
+                        inputs.get("source_sbs96_matrix", "")
+                    ).lower(),
+                },
+                "validation": {
+                    "pass_snv_records": int(
+                        validation.get("pass_snv_records", 0)
+                    ),
+                    "pass_snv_alleles": int(
+                        validation.get("pass_snv_alleles", 0)
+                    ),
+                    "sbs96_contexts": int(validation.get("sbs96_contexts", 0)),
+                    "sbs96_burden": int(validation.get("sbs96_burden", 0)),
+                    "matrix_matches_independent_pass_vcf_derivation": bool(
+                        validation.get(
+                            "matrix_matches_independent_pass_vcf_derivation"
+                        )
+                    ),
+                    "source_sample_names_retained": bool(
+                        validation.get("source_sample_names_retained")
+                    ),
+                },
+                "blockers": [
+                    "SigProfilerAssignment execution and SBS3 thresholds are not validated.",
+                    "The executable cross-check route has not run on the materialized inputs.",
+                ],
+            },
+            "sequenza_scarhrd": {
+                "status": "blocked",
+                "execution_status": "not_run",
+                "interpretation_status": "no_call",
+                "blockers": [
+                    "Alias-only allele-specific copy-number and LOH segments are absent.",
+                    "Purity/ploidy and scarHRD interpretation thresholds are not validated.",
+                ],
+            },
+        },
+    }
 
 
 def build_input_rows(
@@ -2177,7 +2293,17 @@ def main() -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="deterministic-full-", dir=str(output.parent)) as temporary:
         staging = Path(temporary)
-        staged_paths = write_outputs(staging, report, output_readiness, checks_payload, input_rows)
+        crosscheck_input_plans = build_crosscheck_input_plans(
+            crosscheck_materialization
+        )
+        staged_paths = write_outputs(
+            staging,
+            report,
+            output_readiness,
+            checks_payload,
+            crosscheck_input_plans,
+            input_rows,
+        )
         report_manifest = {
             "schema_version": 1,
             "method_id": "deterministic_full_wgs",

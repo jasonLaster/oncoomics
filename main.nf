@@ -78,6 +78,7 @@ params.phase3_fast_small_variant_mode = params.phase3_fast_small_variant_mode ?:
 params.phase3_fast_gatk_version = params.phase3_fast_gatk_version ?: '4.6.2.0'
 params.phase3_fast_source_commit = params.phase3_fast_source_commit ?: ''
 params.phase3_fast_run_id = params.phase3_fast_run_id ?: 'diana-wgs-hrd-20260716T033101Z'
+params.phase3_fast_generated_at = params.phase3_fast_generated_at ?: '2026-07-16T03:31:01+00:00'
 params.phase3_fast_subject_alias = params.phase3_fast_subject_alias ?: 'subject01'
 params.phase3_fast_pair_id = params.phase3_fast_pair_id ?: 'subject01_tumor_normal'
 params.phase3_fast_tumor_sample_id = params.phase3_fast_tumor_sample_id ?: 'subject01_tumor'
@@ -1708,7 +1709,8 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
     test -s "${rosalind_report}"
 
     "${params.python_bin}" "${params.repo_dir}/scripts/generate_blocked_hrd_crosscheck_reports.py" \
-        --output-dir "\$PWD/workspace/results/phase3_wgs_fast/blocked_crosschecks"
+        --output-dir "\$PWD/workspace/results/phase3_wgs_fast/blocked_crosschecks" \
+        --generated-at "${params.phase3_fast_generated_at}"
     """
 
     stub:

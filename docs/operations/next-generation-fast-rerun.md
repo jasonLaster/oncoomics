@@ -438,6 +438,7 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:execute --
   --phase3_fast_parabricks_version <version> \
   --phase3_fast_cache_prefix s3://<regional-private-cache>/wgs-v2/ \
   --phase3_fast_cache_kms_key_arn <us-east-2-kms-key-arn> \
+  --phase3_fast_generated_at <run-start-iso8601> \
   --phase3_fast_forbidden_tokens_json '["<private-token>"]'
 ```
 

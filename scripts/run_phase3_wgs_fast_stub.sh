@@ -40,5 +40,6 @@ nextflow -log logs/nextflow.log run main.nf -profile local \
   --phase3_fast_small_variant_mode execute \
   --phase3_fast_parabricks_cpus 1 \
   --phase3_fast_parabricks_memory '1 GB' \
+  --phase3_fast_generated_at 2026-07-16T03:31:01+00:00 \
   --phase3_fast_forbidden_tokens_json '["stubbed-private-token"]' \
   -stub-run

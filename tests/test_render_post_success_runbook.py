@@ -215,6 +215,7 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             text.index("generate_blocked_hrd_crosscheck_reports.py"),
             text.rindex("render_source_report_freeze_runbook.py"),
         )
+        self.assertIn("--generated-at 2026-07-16T03:31:01+00:00", text)
         self.assertIn(
             "SOURCE_FREEZE_RUNBOOK=/repo/.codex-tmp/hrd-reports/"
             "deterministic-full/source-freeze-runbook."

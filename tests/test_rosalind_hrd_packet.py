@@ -159,6 +159,28 @@ def write_deterministic_report(root: Path, artifact_root: Path) -> Path:
             "input_sha256": input_rows,
         },
     )
+    utils.write_json(
+        root / "crosscheck_input_plans.json",
+        {
+            "schema_version": 1,
+            "plan_type": "terminal_crosscheck_input_materialization_plan",
+            "status": "materialized",
+            "authorized_hrd_state": "no_call",
+            "classification_authorized": False,
+            "routes": {
+                "sequenza_scarhrd": {
+                    "status": "inputs_materialized",
+                    "execution_status": "not_run",
+                    "interpretation_status": "no_call",
+                },
+                "sigprofiler_sbs3": {
+                    "status": "inputs_materialized",
+                    "execution_status": "not_run",
+                    "interpretation_status": "no_call",
+                },
+            },
+        },
+    )
     (root / "report.md").write_text("# Deterministic full-WGS unit report\n", encoding="utf-8")
     support_sha256 = {
         name: hashlib.sha256((root / name).read_bytes()).hexdigest()

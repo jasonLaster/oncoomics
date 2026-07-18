@@ -745,6 +745,7 @@ DIANA_WGS_DETERMINISTIC_INPUTS = {
     "tool_versions.json": "tool_versions",
 }
 DETERMINISTIC_SUPPORT_FILES = {
+    "crosscheck_input_plans.json",
     "readiness.csv",
     "evidence_checks.json",
     "input_sha256.csv",

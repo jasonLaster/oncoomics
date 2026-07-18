@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import shlex
+from datetime import datetime, timezone
 from pathlib import Path
 
 from hrd_report_inventory import (
@@ -72,6 +73,17 @@ STALE_TOKENS = (
     "--expected-file",
     "execution.running.json",
 )
+
+
+def generated_at_from_run_id(run_id: str) -> str:
+    prefix = "diana-wgs-hrd-"
+    if not run_id.startswith(prefix) or not run_id.endswith("Z"):
+        raise ValueError(f"Unsupported Diana WGS HRD run ID: {run_id}")
+    timestamp = datetime.strptime(run_id.removeprefix(prefix)[:-1], "%Y%m%dT%H%M%S")
+    return timestamp.replace(tzinfo=timezone.utc).isoformat()
+
+
+RUN_GENERATED_AT = generated_at_from_run_id(RUN_ID)
 
 
 def forbidden_flags() -> list[str]:
@@ -883,6 +895,8 @@ def render(root: Path, terminal_job_id: str) -> str:
                     scripts / "generate_blocked_hrd_crosscheck_reports.py",
                     "--output-dir",
                     reports / "blocked-crosschecks",
+                    "--generated-at",
+                    RUN_GENERATED_AT,
                 ]
             ),
             "## 7. Render the seven-source private-freeze and AI-review handoff",

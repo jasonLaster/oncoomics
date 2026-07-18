@@ -44,6 +44,7 @@ MAX_FILE_BYTES = 25 * 1024 * 1024
 MAX_PACKET_BYTES = 100 * 1024 * 1024
 
 DETERMINISTIC_FILES = (
+    "crosscheck_input_plans.json",
     "evidence_checks.json",
     "input_sha256.csv",
     "readiness.csv",

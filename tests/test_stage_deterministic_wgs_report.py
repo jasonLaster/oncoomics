@@ -1119,6 +1119,7 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertEqual(
                 {path.name for path in fixture.output.iterdir()},
                 {
+                    "crosscheck_input_plans.json",
                     "report.md",
                     "readiness.csv",
                     "evidence_checks.json",
@@ -1145,6 +1146,30 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertEqual(checks["crosscheck_terminal"]["status"], "passed")
             self.assertEqual(checks["stage_provenance"]["status"], "passed")
             self.assertEqual(checks["input_snapshot"]["strategy"], "open_no_follow_fstat_copy_global_restat")
+            crosscheck_input_plans = json.loads(
+                (fixture.output / "crosscheck_input_plans.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(crosscheck_input_plans["status"], "materialized")
+            self.assertFalse(crosscheck_input_plans["classification_authorized"])
+            self.assertEqual(
+                set(crosscheck_input_plans["routes"]),
+                {"sequenza_scarhrd", "sigprofiler_sbs3"},
+            )
+            self.assertEqual(
+                crosscheck_input_plans["routes"]["sigprofiler_sbs3"][
+                    "source_artifacts"
+                ]["somatic_vcf"]["path"],
+                "somatic.pass.vcf.gz",
+            )
+            self.assertEqual(
+                crosscheck_input_plans["routes"]["sequenza_scarhrd"]["status"],
+                "blocked",
+            )
+            self.assertNotIn(
+                "s3://", json.dumps(crosscheck_input_plans, sort_keys=True)
+            )
             with (fixture.output / "input_sha256.csv").open(
                 newline="", encoding="utf-8"
             ) as handle:
@@ -1161,7 +1186,12 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertEqual(manifest["review_summary"]["sbs96"]["matrix_equivalence"], "passed")
             self.assertEqual(
                 set(manifest["support_sha256"]),
-                {"readiness.csv", "evidence_checks.json", "input_sha256.csv"},
+                {
+                    "crosscheck_input_plans.json",
+                    "readiness.csv",
+                    "evidence_checks.json",
+                    "input_sha256.csv",
+                },
             )
             for relative, expected_hash in manifest["support_sha256"].items():
                 self.assertEqual(expected_hash, sha256(fixture.output / relative))

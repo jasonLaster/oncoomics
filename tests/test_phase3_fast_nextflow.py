@@ -118,6 +118,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             "phase3_fast_gatk_version",
             "phase3_fast_source_commit",
             "phase3_fast_run_id",
+            "phase3_fast_generated_at",
             "phase3_fast_subject_alias",
             "phase3_fast_pair_id",
             "phase3_fast_tumor_sample_id",
@@ -167,6 +168,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("--phase3_fast_small_variant_mode execute", script)
         self.assertIn("--phase3_fast_parabricks_cpus 1", script)
         self.assertIn("--phase3_fast_parabricks_memory '1 GB'", script)
+        self.assertIn("--phase3_fast_generated_at 2026-07-16T03:31:01+00:00", script)
         self.assertIn("--phase3_fast_forbidden_tokens_json", script)
         self.assertIn("-stub-run", script)
         self.assertLess(script.index("mkdir -p logs"), script.index("nextflow -log logs/nextflow.log"))
@@ -337,6 +339,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             self.assertIn(f"path({rosalind_input})", process)
             self.assertIn(f'test -s "${{{rosalind_input}}}"', process)
         self.assertIn("generate_blocked_hrd_crosscheck_reports.py", process)
+        self.assertIn('--generated-at "${params.phase3_fast_generated_at}"', process)
         self.assertIn("workspace/results/phase3_wgs_fast/blocked_crosschecks", process)
         for method_id in (
             "facets_scarhrd_blocked",

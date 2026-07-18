@@ -588,6 +588,8 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 result = self.execute(fixture, fake)
                 self.assertEqual(result["status"], "dry_run")
                 self.assertEqual(len(result["source_objects"]), len(fixture.files))
+                if method == "deterministic_full_wgs":
+                    self.assertIn("crosscheck_input_plans.json", fixture.files)
 
     def test_existing_receipt_output_is_never_replaced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
