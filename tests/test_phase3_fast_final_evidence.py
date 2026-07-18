@@ -266,6 +266,31 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
 
             self.assertEqual([], list(real_output.rglob("*")))
 
+    def test_rejects_output_root_below_symlinked_parent_without_copying_outputs(self) -> None:
+        for nested in ("missing", "existing"):
+            with self.subTest(nested=nested), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_output = root / "real-final"
+                if nested == "existing":
+                    (real_output / nested).mkdir(parents=True)
+                else:
+                    real_output.mkdir()
+                linked_output = root / "linked-final"
+                linked_output.symlink_to(real_output, target_is_directory=True)
+
+                with self.assertRaisesRegex(final_evidence.ManifestError, "parent may not be a symlink"):
+                    final_evidence.build_phase3_fast_final_evidence_manifest(
+                        _join_manifest(root),
+                        evidence_join_sha256=SHA_4,
+                        small_variant_artifact_root=root / "small_variant_export",
+                        bam_qc_artifact_root=root / "bam_qc",
+                        cnv_evidence_artifact_root=root / "cnv_evidence",
+                        sv_evidence_artifact_root=root / "sv_evidence",
+                        output_root=linked_output / nested / "final",
+                    )
+
+                self.assertEqual([], [path for path in real_output.rglob("*") if path.is_file()])
+
 
 if __name__ == "__main__":
     unittest.main()

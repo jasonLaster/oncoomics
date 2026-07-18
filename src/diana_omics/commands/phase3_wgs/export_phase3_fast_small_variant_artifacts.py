@@ -12,7 +12,7 @@ from ...utils import ensure_parent, read_json
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 from .run_phase3_fast_filter_mutect import MATERIALIZED_OUTPUTS as FILTER_MUTECT_OUTPUTS
 from .run_phase3_fast_parabricks_mutect import MATERIALIZED_OUTPUTS as PARABRICKS_MUTECT_OUTPUTS
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import require_no_symlinked_ancestors, require_safe_output_path
 
 DEFAULT_PARABRICKS_RECEIPT = "manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"
 DEFAULT_FILTER_RECEIPT = "manifests/phase3_wgs_fast/filter_mutect_receipt.json"
@@ -128,18 +128,7 @@ def _destination_path(source: Mapping[str, Any], output_root: Path, producer: st
 def _require_safe_destination_path(path: Path, label: str) -> None:
     if path.is_symlink():
         raise ManifestError(f"{label} may not be a symlink: {path}")
-
-    parent = path.parent
-    while not parent.exists() and not parent.is_symlink():
-        next_parent = parent.parent
-        if next_parent == parent:
-            raise ManifestError(f"{label} parent does not exist: {path.parent}")
-        parent = next_parent
-
-    if parent.is_symlink():
-        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise ManifestError(f"{label} parent is not a directory: {parent}")
+    require_no_symlinked_ancestors(path, label, ManifestError)
 
 
 def _prepare_output_root(output_root: Path, destinations: set[Path]) -> None:

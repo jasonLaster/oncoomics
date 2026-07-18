@@ -14,7 +14,7 @@ from ...paths import path_from_root
 from ...utils import ensure_parent, read_json, round_value, write_csv
 from .cnv_contigs import require_no_standard_autosome_gaps
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import require_no_symlinked_ancestors, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/cnv_evidence_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/cnv_evidence_receipt.json"
@@ -224,18 +224,7 @@ def _validate_plan(plan: Mapping[str, Any]) -> list[dict[str, Any]]:
 def _require_safe_output_path(path: Path) -> None:
     if path.is_symlink():
         raise ManifestError(f"CNV evidence output path may not be a symlink: {path}")
-
-    parent = path.parent
-    while not parent.exists() and not parent.is_symlink():
-        next_parent = parent.parent
-        if next_parent == parent:
-            raise ManifestError(f"CNV evidence output parent does not exist: {path.parent}")
-        parent = next_parent
-
-    if parent.is_symlink():
-        raise ManifestError(f"CNV evidence output parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise ManifestError(f"CNV evidence output parent is not a directory: {parent}")
+    require_no_symlinked_ancestors(path, "CNV evidence output", ManifestError)
 
 
 def _prepare_outputs(output_paths: Mapping[str, Path], shards: Sequence[Mapping[str, Any]]) -> None:

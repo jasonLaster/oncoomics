@@ -6,13 +6,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_filter_mutect_run import FilterMutectRunner, filter_plan_and_parabricks_receipt
-from tests.test_phase3_fast_input_manifest import SHA_1
-
 from diana_omics.commands.phase3_wgs import export_phase3_fast_small_variant_artifacts as export_small_variants
 from diana_omics.commands.phase3_wgs import run_phase3_fast_filter_mutect as run_filter
 from diana_omics.commands.phase3_wgs import run_phase3_fast_parabricks_mutect as run_parabricks
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_filter_mutect_run import FilterMutectRunner, filter_plan_and_parabricks_receipt
+from tests.test_phase3_fast_input_manifest import SHA_1
 
 SHA_2 = "b" * 64
 SHA_3 = "c" * 64
@@ -254,6 +253,30 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
                 )
 
             self.assertEqual([], list(real_output.rglob("*")))
+
+    def test_rejects_output_root_below_symlinked_parent_without_copying_outputs(self) -> None:
+        for nested in ("missing", "existing"):
+            with self.subTest(nested=nested), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_output = root / "real-exported"
+                if nested == "existing":
+                    (real_output / nested).mkdir(parents=True)
+                else:
+                    real_output.mkdir()
+                linked_output = root / "linked-exported"
+                linked_output.symlink_to(real_output, target_is_directory=True)
+                parabricks_receipt, filter_receipt = _receipts(root)
+
+                with self.assertRaisesRegex(export_small_variants.ManifestError, "parent may not be a symlink"):
+                    export_small_variants.export_phase3_fast_small_variant_artifacts(
+                        parabricks_receipt,
+                        filter_receipt,
+                        parabricks_mutect_receipt_sha256=SHA_2,
+                        filter_mutect_receipt_sha256=SHA_3,
+                        output_root=linked_output / nested / "exported",
+                    )
+
+                self.assertEqual([], [path for path in real_output.rglob("*") if path.is_file()])
 
 
 if __name__ == "__main__":

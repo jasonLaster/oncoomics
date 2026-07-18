@@ -10,7 +10,7 @@ from typing import Any, Mapping, Protocol, Sequence
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import require_no_symlinked_ancestors, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/sv_evidence_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/sv_evidence_receipt.json"
@@ -173,18 +173,7 @@ def _validate_plan(plan: Mapping[str, Any]) -> dict[str, list[tuple[str, list[st
 def _require_safe_output_path(path: Path) -> None:
     if path.is_symlink():
         raise ManifestError(f"SV evidence output path may not be a symlink: {path}")
-
-    parent = path.parent
-    while not parent.exists() and not parent.is_symlink():
-        next_parent = parent.parent
-        if next_parent == parent:
-            raise ManifestError(f"SV evidence output parent does not exist: {path.parent}")
-        parent = next_parent
-
-    if parent.is_symlink():
-        raise ManifestError(f"SV evidence output parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise ManifestError(f"SV evidence output parent is not a directory: {parent}")
+    require_no_symlinked_ancestors(path, "SV evidence output", ManifestError)
 
 
 def _prepare_outputs(commands: Mapping[str, Sequence[tuple[str, Sequence[str], Path]]]) -> None:

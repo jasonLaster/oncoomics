@@ -58,17 +58,26 @@ WRITERS: tuple[tuple[str, Writer], ...] = (
 class Phase3FastSafeJsonOutputsTests(unittest.TestCase):
     def test_rejects_symlinked_output_parent(self) -> None:
         for name, writer in WRITERS:
-            with self.subTest(name=name), TemporaryDirectory() as tmp:
-                root = Path(tmp)
-                real_output = root / "real-output"
-                real_output.mkdir()
-                linked_output = root / "linked-output"
-                linked_output.symlink_to(real_output, target_is_directory=True)
+            for nested in ("missing", "existing"):
+                with self.subTest(name=name, nested=nested), TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    real_output = root / "real-output"
+                    if nested == "existing":
+                        (real_output / nested).mkdir(parents=True)
+                    else:
+                        real_output.mkdir()
+                    linked_output = root / "linked-output"
+                    linked_output.symlink_to(real_output, target_is_directory=True)
 
-                with self.assertRaisesRegex(ManifestError, "parent may not be a symlink"):
-                    writer(linked_output / f"{name}.json", {"status": "redirected"})
+                    with self.assertRaisesRegex(
+                        ManifestError, "parent may not be a symlink"
+                    ):
+                        writer(
+                            linked_output / nested / f"{name}.json",
+                            {"status": "redirected"},
+                        )
 
-                self.assertEqual([], list(real_output.rglob("*")))
+                    self.assertFalse((real_output / nested / f"{name}.json").exists())
 
     def test_rejects_symlinked_output_file(self) -> None:
         for name, writer in WRITERS:

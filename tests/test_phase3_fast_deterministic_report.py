@@ -366,10 +366,10 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             manifest_path, final_root, final_manifest = _write_final_manifest(root)
-            linked_coverage_bins = final_root / "artifacts/cnv_evidence/coverage_bins"
-            real_coverage_bins = root / "real-coverage-bins"
-            linked_coverage_bins.replace(real_coverage_bins)
-            linked_coverage_bins.symlink_to(real_coverage_bins, target_is_directory=True)
+            linked_cnv_evidence = final_root / "artifacts/cnv_evidence"
+            real_cnv_evidence = root / "real-cnv-evidence"
+            linked_cnv_evidence.replace(real_cnv_evidence)
+            linked_cnv_evidence.symlink_to(real_cnv_evidence, target_is_directory=True)
 
             with self.assertRaisesRegex(stage_report.ManifestError, "final artifact parent may not be a symlink"):
                 stage_report.stage_phase3_fast_deterministic_report(
@@ -382,25 +382,29 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                 )
 
     def test_rejects_output_below_symlinked_parent_before_writing_report(self) -> None:
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            manifest_path, final_root, final_manifest = _write_final_manifest(root)
-            real_output = root / "real-output"
-            real_output.mkdir()
-            linked_output = root / "linked-output"
-            linked_output.symlink_to(real_output, target_is_directory=True)
+        for nested in ("missing", "existing"):
+            with self.subTest(nested=nested), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                manifest_path, final_root, final_manifest = _write_final_manifest(root)
+                real_output = root / "real-output"
+                if nested == "existing":
+                    (real_output / nested).mkdir(parents=True)
+                else:
+                    real_output.mkdir()
+                linked_output = root / "linked-output"
+                linked_output.symlink_to(real_output, target_is_directory=True)
 
-            with self.assertRaisesRegex(stage_report.ManifestError, "parent may not be a symlink"):
-                stage_report.stage_phase3_fast_deterministic_report(
-                    final_manifest,
-                    _crosscheck_materialization_plan(final_manifest, manifest_path),
-                    final_manifest_sha256=_sha256_path(manifest_path),
-                    final_manifest_bytes=manifest_path.stat().st_size,
-                    final_root=final_root,
-                    output_dir=linked_output / "deterministic",
-                )
+                with self.assertRaisesRegex(stage_report.ManifestError, "parent may not be a symlink"):
+                    stage_report.stage_phase3_fast_deterministic_report(
+                        final_manifest,
+                        _crosscheck_materialization_plan(final_manifest, manifest_path),
+                        final_manifest_sha256=_sha256_path(manifest_path),
+                        final_manifest_bytes=manifest_path.stat().st_size,
+                        final_root=final_root,
+                        output_dir=linked_output / nested / "deterministic",
+                    )
 
-            self.assertEqual([], list(real_output.rglob("*")))
+                self.assertEqual([], [path for path in real_output.rglob("*") if path.is_file()])
 
     def test_removes_partially_installed_report_after_copy_failure(self) -> None:
         with TemporaryDirectory() as tmp:

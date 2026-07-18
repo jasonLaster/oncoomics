@@ -10,7 +10,7 @@ from typing import Any, Mapping, Protocol, Sequence
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import require_no_symlinked_ancestors, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"
@@ -169,18 +169,11 @@ def _sha256_path(path: Path) -> str:
 def _require_safe_output_path(path: Path, key: str) -> None:
     if path.is_symlink():
         raise ManifestError(f"{key} materialized output path may not be a symlink: {path}")
-
-    parent = path.parent
-    while not parent.exists() and not parent.is_symlink():
-        next_parent = parent.parent
-        if next_parent == parent:
-            raise ManifestError(f"{key} materialized output parent does not exist: {path.parent}")
-        parent = next_parent
-
-    if parent.is_symlink():
-        raise ManifestError(f"{key} materialized output parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise ManifestError(f"{key} materialized output parent is not a directory: {parent}")
+    require_no_symlinked_ancestors(
+        path,
+        f"{key} materialized output",
+        ManifestError,
+    )
 
 
 def _materialized_outputs(plan: Mapping[str, Any]) -> dict[str, dict[str, Any]]:

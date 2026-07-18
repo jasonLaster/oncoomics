@@ -6,12 +6,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_input_manifest import SHA_1
-from tests.test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
-
 from diana_omics.commands.phase3_wgs import render_phase3_fast_sv_evidence_plan as sv_evidence
 from diana_omics.commands.phase3_wgs import run_phase3_fast_sv_evidence as run_sv
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_input_manifest import SHA_1
+from tests.test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
 
 
 class MaterializingSamtoolsRunner:
@@ -184,24 +183,35 @@ class Phase3FastSvEvidenceRunTests(unittest.TestCase):
                 )
 
     def test_rejects_output_below_symlinked_parent_before_running_commands(self) -> None:
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            real_output = root / "real-sv-evidence"
-            real_output.mkdir()
-            output_root = root / "sv_evidence"
-            output_root.symlink_to(real_output, target_is_directory=True)
-            plan = phase3_fast_sv_evidence_plan(root)
-            runner = MaterializingSamtoolsRunner()
+        for nested in ("missing", "existing"):
+            with self.subTest(nested=nested), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_output = root / "real-sv-evidence"
+                if nested == "existing":
+                    (real_output / nested / "tumor").mkdir(parents=True)
+                    (real_output / nested / "normal").mkdir(parents=True)
+                else:
+                    real_output.mkdir()
+                output_root = root / "sv_evidence"
+                output_root.symlink_to(real_output, target_is_directory=True)
+                plan = phase3_fast_sv_evidence_plan(root)
+                if nested == "existing":
+                    for outputs in plan["outputs"].values():
+                        for path in outputs.values():
+                            Path(path).parent.mkdir(parents=True, exist_ok=True)
+                runner = MaterializingSamtoolsRunner()
 
-            with self.assertRaisesRegex(run_sv.ManifestError, "parent may not be a symlink"):
-                run_sv.run_phase3_fast_sv_evidence(
-                    plan,
-                    runner=runner,
-                    sv_evidence_plan_sha256=SHA_1,
-                )
+                with self.assertRaisesRegex(
+                    run_sv.ManifestError, "parent may not be a symlink"
+                ):
+                    run_sv.run_phase3_fast_sv_evidence(
+                        plan,
+                        runner=runner,
+                        sv_evidence_plan_sha256=SHA_1,
+                    )
 
-            self.assertEqual([], runner.commands)
-            self.assertEqual([], list(real_output.rglob("*")))
+                self.assertEqual([], runner.commands)
+                self.assertEqual([], [path for path in real_output.rglob("*") if path.is_file()])
 
 
 if __name__ == "__main__":

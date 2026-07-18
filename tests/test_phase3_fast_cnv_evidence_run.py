@@ -6,12 +6,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_input_manifest import SHA_1
-from tests.test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
-
 from diana_omics.commands.phase3_wgs import render_phase3_fast_cnv_evidence_plan as cnv_plan
 from diana_omics.commands.phase3_wgs import run_phase3_fast_cnv_evidence as run_cnv
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_input_manifest import SHA_1
+from tests.test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
 
 
 class MaterializingBedcovRunner:
@@ -179,24 +178,41 @@ class Phase3FastCnvEvidenceRunTests(unittest.TestCase):
                 )
 
     def test_rejects_output_below_symlinked_parent_before_running_commands(self) -> None:
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            real_output = root / "real-cnv-evidence"
-            real_output.mkdir()
-            output_root = root / "cnv_evidence"
-            output_root.symlink_to(real_output, target_is_directory=True)
-            plan = phase3_fast_cnv_evidence_plan(root)
-            runner = MaterializingBedcovRunner()
+        for nested in ("missing", "existing"):
+            with self.subTest(nested=nested), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_output = root / "real-cnv-evidence"
+                if nested == "existing":
+                    (real_output / nested / "shards").mkdir(parents=True)
+                else:
+                    real_output.mkdir()
+                output_root = root / "cnv_evidence"
+                output_root.symlink_to(real_output, target_is_directory=True)
+                plan = phase3_fast_cnv_evidence_plan(root)
+                if nested == "existing":
+                    for path in (
+                        [Path(path) for path in plan["outputs"].values()]
+                        + [Path(shard["intervals_bed"]) for shard in plan["interval_shards"]]
+                        + [Path(shard["bedcov_tsv"]) for shard in plan["interval_shards"]]
+                        + [
+                            Path(command["stdout_path"])
+                            for command in plan["commands"]["bedcov_by_contig"].values()
+                        ]
+                    ):
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                runner = MaterializingBedcovRunner()
 
-            with self.assertRaisesRegex(run_cnv.ManifestError, "parent may not be a symlink"):
-                run_cnv.run_phase3_fast_cnv_evidence(
-                    plan,
-                    runner=runner,
-                    cnv_evidence_plan_sha256=SHA_1,
-                )
+                with self.assertRaisesRegex(
+                    run_cnv.ManifestError, "parent may not be a symlink"
+                ):
+                    run_cnv.run_phase3_fast_cnv_evidence(
+                        plan,
+                        runner=runner,
+                        cnv_evidence_plan_sha256=SHA_1,
+                    )
 
-            self.assertEqual([], runner.commands)
-            self.assertEqual([], list(real_output.rglob("*")))
+                self.assertEqual([], runner.commands)
+                self.assertEqual([], [path for path in real_output.rglob("*") if path.is_file()])
 
 
 if __name__ == "__main__":

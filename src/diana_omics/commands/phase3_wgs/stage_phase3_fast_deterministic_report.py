@@ -13,6 +13,7 @@ from ...paths import path_from_root
 from ...utils import read_json, write_csv, write_json
 from .crosscheck_contracts import EXPECTED_CROSSCHECK_BLOCKED_ROUTES, sequenza_alias_input_contract
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
+from .safe_json_output import require_no_symlinked_ancestors
 
 DEFAULT_FINAL_EVIDENCE_MANIFEST = "manifests/phase3_wgs_fast/final_evidence_manifest.json"
 DEFAULT_FINAL_EVIDENCE_ROOT = "workspace/results/phase3_wgs_fast/final"
@@ -106,18 +107,7 @@ def _read_manifest_file(path: Path, label: str) -> Mapping[str, Any]:
 def _require_unsymlinked_path(path: Path, label: str) -> None:
     if path.is_symlink():
         raise ManifestError(f"{label} may not be a symlink: {path}")
-
-    parent = path.parent
-    while not parent.exists() and not parent.is_symlink():
-        next_parent = parent.parent
-        if next_parent == parent:
-            raise ManifestError(f"{label} parent does not exist: {path.parent}")
-        parent = next_parent
-
-    if parent.is_symlink():
-        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise ManifestError(f"{label} parent is not a directory: {parent}")
+    require_no_symlinked_ancestors(path, label, ManifestError)
 
 
 def _flatten_artifacts(

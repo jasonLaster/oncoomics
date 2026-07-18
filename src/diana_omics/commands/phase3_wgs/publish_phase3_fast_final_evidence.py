@@ -11,7 +11,7 @@ from typing import Any, Mapping
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import require_no_symlinked_ancestors, require_safe_output_path
 
 DEFAULT_EVIDENCE_JOIN = "manifests/phase3_wgs_fast/evidence_join_manifest.json"
 DEFAULT_SMALL_VARIANT_ARTIFACT_ROOT = "workspace/results/phase3_wgs_fast/small_variant_execution/artifacts"
@@ -78,18 +78,7 @@ def _read_evidence_join(path: Path) -> Mapping[str, Any]:
 def _require_safe_destination_path(path: Path, label: str) -> None:
     if path.is_symlink():
         raise ManifestError(f"{label} may not be a symlink: {path}")
-
-    parent = path.parent
-    while not parent.exists() and not parent.is_symlink():
-        next_parent = parent.parent
-        if next_parent == parent:
-            raise ManifestError(f"{label} parent does not exist: {path.parent}")
-        parent = next_parent
-
-    if parent.is_symlink():
-        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise ManifestError(f"{label} parent is not a directory: {parent}")
+    require_no_symlinked_ancestors(path, label, ManifestError)
 
 
 def _require_completed_join(manifest: Mapping[str, Any]) -> None:

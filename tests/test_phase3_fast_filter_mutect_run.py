@@ -6,15 +6,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_input_manifest import SHA_1
-from tests.test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
-from tests.test_phase3_fast_parabricks_mutect_run import MaterializingParabricksRunner, RecordingRunner
-
 from diana_omics.commands.phase3_wgs import render_phase3_fast_filter_mutect_plan as filter_mutect
 from diana_omics.commands.phase3_wgs import render_phase3_fast_parabricks_mutect_plan as parabricks
 from diana_omics.commands.phase3_wgs import run_phase3_fast_filter_mutect as run_filter
 from diana_omics.commands.phase3_wgs import run_phase3_fast_parabricks_mutect as run_parabricks
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_input_manifest import SHA_1
+from tests.test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
+from tests.test_phase3_fast_parabricks_mutect_run import MaterializingParabricksRunner, RecordingRunner
 
 SHA_2 = "b" * 64
 SHA_3 = "c" * 64
@@ -432,26 +431,38 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
                 )
 
     def test_rejects_output_below_symlinked_parent_before_running_commands(self) -> None:
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            plan, parabricks_receipt = filter_plan_and_parabricks_receipt(root)
-            real_output = root / "real-filter-mutect"
-            real_output.mkdir()
-            linked_output = root / "filter_mutect"
-            linked_output.symlink_to(real_output, target_is_directory=True)
-            runner = FilterMutectRunner()
+        for nested in ("missing", "existing"):
+            with self.subTest(nested=nested), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plan, parabricks_receipt = filter_plan_and_parabricks_receipt(root)
+                real_output = root / "real-filter-mutect"
+                if nested == "existing":
+                    (real_output / nested / "variants").mkdir(parents=True)
+                    (real_output / nested / "metrics").mkdir(parents=True)
+                else:
+                    real_output.mkdir()
+                linked_output = root / "filter_mutect"
+                linked_output.symlink_to(real_output, target_is_directory=True)
+                if nested == "existing":
+                    for path in plan["outputs"].values():
+                        output_path = Path(path)
+                        if output_path.is_relative_to(linked_output):
+                            output_path.parent.mkdir(parents=True, exist_ok=True)
+                runner = FilterMutectRunner()
 
-            with self.assertRaisesRegex(run_filter.ManifestError, "parent may not be a symlink"):
-                run_filter.run_phase3_fast_filter_mutect(
-                    plan,
-                    parabricks_receipt,
-                    runner=runner,
-                    filter_mutect_plan_sha256=SHA_1,
-                    parabricks_mutect_receipt_sha256=SHA_3,
-                )
+                with self.assertRaisesRegex(
+                    run_filter.ManifestError, "parent may not be a symlink"
+                ):
+                    run_filter.run_phase3_fast_filter_mutect(
+                        plan,
+                        parabricks_receipt,
+                        runner=runner,
+                        filter_mutect_plan_sha256=SHA_1,
+                        parabricks_mutect_receipt_sha256=SHA_3,
+                    )
 
-            self.assertEqual([], runner.commands)
-            self.assertEqual([], list(real_output.rglob("*")))
+                self.assertEqual([], runner.commands)
+                self.assertEqual([], [path for path in real_output.rglob("*") if path.is_file()])
 
 
 if __name__ == "__main__":
