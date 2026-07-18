@@ -10,6 +10,7 @@ from . import verify_phase3_fast_gpu_smoke as gpu_smoke
 from . import verify_parabricks_mirror_receipt as mirror_receipt
 
 GPU_SMOKE_RESULT_ENV = "PHASE3_FAST_GPU_SMOKE_RESULT"
+MIRROR_RECEIPT_ENV = "PARABRICKS_MIRROR_RECEIPT"
 REQUIRED_GPU_COUNT = 8
 REQUIRED_GPU_NAME = "H200"
 REQUIRED_PARABRICKS_VERSION_COMMAND = "pbrun version"
@@ -151,6 +152,9 @@ def load_gpu_smoke_result_from_environment(*, expected_params: Mapping[str, Any]
 
 
 def load_mirror_receipt_from_environment(*, expected_params: Mapping[str, Any]) -> tuple[dict[str, str], Path]:
+    if not os.environ.get(MIRROR_RECEIPT_ENV):
+        raise Phase3FastExecuteError(f"{MIRROR_RECEIPT_ENV} must point at the reviewed parabricks_mirror_receipt.json")
+
     try:
         receipt, path = mirror_receipt.load_receipt_from_environment()
         summary = mirror_receipt.validate_mirror_receipt(receipt)

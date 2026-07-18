@@ -228,6 +228,14 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         self.assertEqual(path, loaded_path)
         self.assertEqual(PARABRICKS_CONTAINER, summary["parabricks_container"])
 
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.mirror_receipt.load_receipt_from_environment")
+    def test_environment_loader_requires_explicit_reviewed_parabricks_mirror_receipt(self, load_receipt) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "PARABRICKS_MIRROR_RECEIPT"):
+                verify.load_mirror_receipt_from_environment(expected_params=expected_gpu_params())
+
+        load_receipt.assert_not_called()
+
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_mirror_receipt_from_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_gpu_smoke_result_from_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_parabricks_mirror_image_digest")
