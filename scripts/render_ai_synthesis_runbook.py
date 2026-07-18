@@ -319,6 +319,16 @@ def ai_private_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
     )
 
 
+def ai_private_receipt_outputs(
+    root: Path, receipt_stem: str
+) -> tuple[tuple[str, Path], ...]:
+    receipt_paths = ai_private_receipt_paths(root, receipt_stem)
+    return tuple(
+        (method_id, receipt_paths[index])
+        for index, (method_id, _) in enumerate(AI_PRIVATE_RECEIPT_STEMS)
+    )
+
+
 def required_existing(root: Path) -> tuple[Path, ...]:
     scripts = root / "scripts"
     return unique_paths(
@@ -366,7 +376,6 @@ def render(
     reviewer_a = run_root / "reviewer-a"
     reviewer_b = run_root / "reviewer-b"
     synthesis = reports / "synthesis" / RUN_ID
-    receipt_root = run_root / "publication-receipts"
     ai_private_packet_dirs = {
         AI_REVIEW_METHOD_IDS[0]: reviewer_a,
         AI_REVIEW_METHOD_IDS[1]: reviewer_b,
@@ -547,10 +556,12 @@ def render(
                         scripts,
                         ai_private_packet_dirs[method_id],
                         method_id,
-                        receipt_root / f"{receipt_stem}.{receipt_suffix}",
+                        receipt_output,
                     )
                 )
-                for method_id, receipt_suffix in AI_PRIVATE_RECEIPT_STEMS
+                for method_id, receipt_output in ai_private_receipt_outputs(
+                    root, receipt_stem
+                )
             ],
             "## 8. Render the reviewed-public publication handoff",
             "",
