@@ -938,6 +938,7 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         linked_output.symlink_to(direct_target)
         linked_parent = self.root / "linked-parent"
         linked_parent.symlink_to(real_parent, target_is_directory=True)
+        (real_parent / "existing").mkdir()
 
         with self.assertRaisesRegex(FileExistsError, "may not be a symlink"):
             MODULE.require_new_outputs([linked_output])
@@ -945,8 +946,11 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             MODULE.require_new_outputs([linked_parent / "request.json"])
         with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
             MODULE.require_new_outputs([linked_parent / "missing" / "request.json"])
+        with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+            MODULE.require_new_outputs([linked_parent / "existing" / "request.json"])
 
         self.assertFalse((real_parent / "missing").exists())
+        self.assertFalse((real_parent / "existing" / "request.json").exists())
 
     def test_symlinked_request_path_fails_before_preflight(self) -> None:
         real_parent = self.root / "real-parent"
@@ -1016,6 +1020,33 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         submitter.assert_not_called()
         self.assertFalse(self.request_output.exists())
         self.assertFalse((real_parent / "missing").exists())
+
+    def test_existing_symlinked_response_path_fails_before_preflight_or_submit(
+        self,
+    ) -> None:
+        real_parent = self.root / "real-parent"
+        (real_parent / "existing").mkdir(parents=True)
+        linked_parent = self.root / "linked-parent"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+        self.response_output = linked_parent / "existing" / "response.json"
+
+        with (
+            mock.patch.object(sys, "argv", self.argv(submit=True)),
+            mock.patch.dict(
+                os.environ,
+                {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"},
+                clear=True,
+            ),
+            mock.patch.object(MODULE, "preflight") as preflight,
+            mock.patch.object(MODULE, "submit") as submitter,
+            self.assertRaisesRegex(SystemExit, "parent may not be a symlink"),
+        ):
+            MODULE.main()
+
+        preflight.assert_not_called()
+        submitter.assert_not_called()
+        self.assertFalse(self.request_output.exists())
+        self.assertFalse((real_parent / "existing" / "response.json").exists())
 
 
 if __name__ == "__main__":

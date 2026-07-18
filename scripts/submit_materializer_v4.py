@@ -886,6 +886,7 @@ def validate_identity(region: str) -> dict[str, Any]:
 
 
 def create_private(path: Path, content: bytes) -> None:
+    require_safe_new_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -902,6 +903,7 @@ def create_private(path: Path, content: bytes) -> None:
 
 
 def reserve_private(path: Path) -> int:
+    require_safe_new_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     if (path.stat().st_mode & 0o777) != 0o600:
@@ -932,21 +934,17 @@ def require_new_outputs(paths: Iterable[Path]) -> None:
 
 
 def require_safe_new_output_parent(path: Path) -> None:
-    parent = path.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise FileExistsError(
                 f"private output parent may not be a symlink: {parent}"
             )
-        if parent == parent.parent:
-            raise FileExistsError(f"private output has no existing parent: {path}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise FileExistsError(
-            f"private output parent may not be a symlink: {parent}"
-        )
-    if not parent.is_dir():
-        raise NotADirectoryError(parent)
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
+
+
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
 
 
 def build_parameters(sources: dict[str, str], references: dict[str, str]) -> dict[str, str]:
