@@ -881,6 +881,71 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertFalse(receipt.exists())
 
+    def test_create_receipt_fsyncs_file_and_parent_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+
+            with mock.patch.object(
+                MODULE.os,
+                "fsync",
+                wraps=MODULE.os.fsync,
+            ) as fsync:
+                MODULE.write_private_atomic(
+                    receipt,
+                    {"status": "preflighting"},
+                    create=True,
+                )
+
+            self.assertEqual(fsync.call_count, 2)
+
+    def test_create_receipt_removes_partial_output_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+
+            with (
+                mock.patch.object(
+                    MODULE.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                MODULE.write_private_atomic(
+                    receipt,
+                    {"status": "preflighting"},
+                    create=True,
+                )
+
+            self.assertFalse(receipt.exists())
+
+    def test_replace_receipt_fsyncs_parent_after_atomic_replace(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+            MODULE.write_private_atomic(
+                receipt,
+                {"status": "preflighting"},
+                create=True,
+            )
+
+            with mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                wraps=MODULE.fsync_directory,
+            ) as fsync_directory:
+                MODULE.write_private_atomic(
+                    receipt,
+                    {"status": "dry_run"},
+                    create=False,
+                )
+
+            fsync_directory.assert_called_once_with(receipt.parent)
+            self.assertEqual(
+                json.loads(receipt.read_text(encoding="utf-8")),
+                {"status": "dry_run"},
+            )
+
     def test_private_receipt_symlink_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
