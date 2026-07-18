@@ -840,6 +840,7 @@ def validate_exact_receipt(
 def create_private_outputs(outputs: Iterable[tuple[Path, bytes]]) -> None:
     rows = list(outputs)
     require_new_private_output_paths(path for path, _ in rows)
+    expected_sha256 = {path: sha256_bytes(content) for path, content in rows}
     descriptors: dict[Path, int] = {}
     created: list[Path] = []
     try:
@@ -861,6 +862,7 @@ def create_private_outputs(outputs: Iterable[tuple[Path, bytes]]) -> None:
                 raise ValueError(f"private output mode is not 0600: {path}")
         for parent in dict.fromkeys(path.parent for path, _ in rows):
             fsync_directory(parent)
+        require_installed_private_outputs(expected_sha256)
     except Exception:
         for descriptor in descriptors.values():
             with contextlib.suppress(OSError):
@@ -869,6 +871,15 @@ def create_private_outputs(outputs: Iterable[tuple[Path, bytes]]) -> None:
             with contextlib.suppress(OSError):
                 path.unlink()
         raise
+
+
+def require_installed_private_outputs(expected_sha256: dict[Path, str]) -> None:
+    for path, expected in expected_sha256.items():
+        require_no_symlinked_ancestors(path, "private output")
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"private output changed during write: {path}")
+        if sha256_bytes(path.read_bytes()) != expected:
+            raise ValueError(f"private output changed during write: {path}")
 
 
 def create_private(path: Path, content: bytes) -> None:
