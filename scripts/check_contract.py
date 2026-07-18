@@ -212,6 +212,7 @@ def validate(contract: dict) -> dict:
 
 
 def load_contract(path: Path) -> dict:
+    require_no_symlinked_ancestors(path, "contract")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"contract must be a real JSON file: {path}")
     value = json.loads(path.read_text(encoding="utf-8"))
@@ -258,6 +259,14 @@ def require_safe_output_parent(path: Path) -> None:
             )
         if parent.exists() and not parent.is_dir():
             raise NotADirectoryError(parent)
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
 
 
 def main() -> int:

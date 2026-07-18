@@ -617,6 +617,32 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertFalse(readiness.exists())
 
+    def test_contract_check_rejects_contract_below_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-contracts"
+            real_parent.mkdir()
+            contract = real_parent / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            linked_parent = root / "linked-contracts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            readiness = root / "input-contract.readiness.json"
+            argv = [
+                "check_contract.py",
+                "--contract",
+                str(linked_parent / "contract.json"),
+                "--json-out",
+                str(readiness),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                self.assertRaisesRegex(SystemExit, "parent may not be a symlink"),
+            ):
+                checker.main()
+
+            self.assertFalse(readiness.exists())
+
     def test_contract_publication_is_create_only_content_addressed_and_exact(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

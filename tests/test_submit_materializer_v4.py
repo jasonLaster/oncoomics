@@ -625,6 +625,22 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                 MODULE.preflight(self.args())
         aws.assert_not_called()
 
+    def test_rejects_final_freeze_below_symlinked_parent_before_aws(self) -> None:
+        real_parent = self.root / "real-inputs"
+        real_parent.mkdir()
+        relocated = real_parent / self.final_freeze.name
+        relocated.write_bytes(self.final_freeze.read_bytes())
+        linked_parent = self.root / "linked-inputs"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+        args = self.args()
+        args.final_freeze_receipt = linked_parent / self.final_freeze.name
+
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.preflight(args)
+
+        aws.assert_not_called()
+
     def test_reference_sha_receipt_must_cross_bind_freeze_hash(self) -> None:
         tampered = self.root / "reference-sha.json"
         value = json.loads(self.reference_sha.read_text(encoding="utf-8"))

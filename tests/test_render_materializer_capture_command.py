@@ -177,6 +177,19 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not bound to the request"):
             MODULE.render_from_files(self.args())
 
+    def test_rejects_request_below_symlinked_parent(self) -> None:
+        args = self.args()
+        real_parent = self.root / "real-inputs"
+        real_parent.mkdir()
+        relocated = real_parent / self.request_path.name
+        relocated.write_bytes(self.request_path.read_bytes())
+        linked_parent = self.root / "linked-inputs"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+        args.request_receipt = linked_parent / self.request_path.name
+
+        with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+            MODULE.render_from_files(args)
+
     def test_requires_all_materializer_parameters(self) -> None:
         mutations = {
             "missing": lambda params: params.pop("source_vcf_version_id"),

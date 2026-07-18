@@ -127,11 +127,22 @@ def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
 
-def read_json_object(path: Path) -> dict[str, Any]:
+def read_json_object(path: Path, label: str) -> dict[str, Any]:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real JSON file: {path}")
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
-        raise ValueError(f"{path} must contain a JSON object")
+        raise ValueError(f"{label} must contain a JSON object: {path}")
     return value
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
 
 
 def require_object(value: Any, label: str) -> dict[str, Any]:
@@ -248,9 +259,9 @@ def render_command(
 
 
 def render_from_files(args: argparse.Namespace) -> str:
+    request = read_json_object(args.request_receipt, "request receipt")
+    response = read_json_object(args.response_receipt, "response receipt")
     request_path = args.request_receipt.resolve()
-    request = read_json_object(request_path)
-    response = read_json_object(args.response_receipt)
     job_id, parameters = validate_receipts(request_path, request, response)
     return render_command(
         capture_script=Path(__file__).resolve().parent

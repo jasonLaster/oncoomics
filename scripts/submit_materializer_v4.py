@@ -151,6 +151,7 @@ def sha256_path(path: Path) -> str:
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    require_no_symlinked_ancestors(path, label)
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
@@ -959,6 +960,14 @@ def require_safe_new_output_parent(path: Path) -> None:
             )
         if parent.exists() and not parent.is_dir():
             raise NotADirectoryError(parent)
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
 
 
 def is_platform_root_alias(path: Path) -> bool:
