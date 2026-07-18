@@ -491,6 +491,25 @@ class GenerateSynthesisTests(unittest.TestCase):
             )
             self.assertFalse((real_output / "report_manifest.json").exists())
 
+    def test_output_below_symlinked_parent_fails_before_writing_packet(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-output-") as temporary:
+            root = Path(temporary)
+            fixture = SynthesisFixture(root)
+            real_parent = root / "synthesis-real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "synthesis-linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            fixture.output_dir = linked_parent / "nested-synthesis"
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "synthesis output parent may not be a symlink",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((real_parent / "nested-synthesis").exists())
+
     def test_omitted_reordered_added_and_tampered_inventory_fail_closed(self) -> None:
         method_sets = (
             list(REQUIRED_METHOD_IDS[:-1]),

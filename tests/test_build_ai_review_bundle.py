@@ -377,6 +377,25 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertIn("AI review bundle output may not be a symlink", built.stderr)
             self.assertFalse((real_bundle / "review_bundle.json").exists())
 
+    def test_rejects_output_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            fixture.bundle_dir = linked_parent / "nested-bundle"
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn(
+                "AI review bundle output parent may not be a symlink",
+                built.stderr,
+            )
+            self.assertFalse((real_parent / "nested-bundle").exists())
+
     def test_rejects_duplicate_pinned_models(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))

@@ -337,6 +337,19 @@ def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
     expected = set(expected_files)
     if output.is_symlink():
         raise ValueError("AI review bundle output may not be a symlink")
+    parent = output.parent
+    while not parent.exists() and not parent.is_symlink():
+        if parent == parent.parent:
+            break
+        parent = parent.parent
+    if parent.is_symlink():
+        raise ValueError(
+            f"AI review bundle output parent may not be a symlink: {parent}"
+        )
+    if parent.exists() and not parent.is_dir():
+        raise ValueError(
+            f"AI review bundle output parent is not a directory: {parent}"
+        )
     if output.exists() and not output.is_dir():
         raise ValueError(f"AI review bundle output is not a directory: {output}")
 
