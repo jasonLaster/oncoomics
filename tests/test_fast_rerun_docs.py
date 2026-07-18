@@ -20,6 +20,14 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("GetPileupSummaries", text)
         self.assertIn("Track the 384 On-Demand P vCPU request", text)
 
+    def test_next_generation_doc_tracks_bam_qc_plan_seam(self) -> None:
+        text = NEXT_GEN.read_text(encoding="utf-8")
+
+        self.assertIn("FAST_BAM_QC_PLAN", text)
+        self.assertIn("exact quickcheck, flagstat, and idxstats plan", text)
+        self.assertIn("samtools quickcheck", text)
+        self.assertIn("QC-only `no_call` artifact", text)
+
     def test_fast_rerun_summary_does_not_revive_the_cpu_retry(self) -> None:
         text = SUMMARY.read_text(encoding="utf-8")
 

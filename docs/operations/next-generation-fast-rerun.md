@@ -193,6 +193,7 @@ FAST_REPLICATE_INPUTS              source to us-east-2
 FAST_CACHE_MANIFEST                verified region-local BAM/resource pointers
 FAST_STAGING_PLAN                  exact VersionId to local scratch path map
 FAST_PARABRICKS_MUTECT_PLAN        worker-local S3 materialization, SHA-256 verify, exact Parabricks command plan
+FAST_BAM_QC_PLAN                   exact quickcheck, flagstat, and idxstats plan
 FAST_FILTER_MUTECT_PLAN            exact contamination/orientation/filter plan
 FAST_FQ2BAM_TUMOR                  optional GPU
 FAST_FQ2BAM_NORMAL                 optional GPU
@@ -285,6 +286,10 @@ download into place, hashes every staged object, writes the grouped
 the first GPU short-variant pass without launching Parabricks, with declared BAM
 indexes, FASTA indexes, germline/PoN indexes, and `raw_vcf`, `raw_vcf_stats`,
 `f1r2_tar_gz`, and `pon_annotated_vcf` handoff outputs.
+`FAST_BAM_QC_PLAN` fans out from that same staged-input handoff and records the
+exact `samtools quickcheck`, `flagstat`, and `idxstats` commands for tumor and
+normal BAMs. Its plan is a QC-only `no_call` artifact; it can feed BAM health
+reporting, but it is not HRD interpretation evidence on its own.
 `FAST_MUTECT_PARABRICKS` must consume that plan, run only those three pinned
 argument vectors in order on the same staged GPU worker, and write a completed
 receipt that copies the plan inputs and outputs plus the plan SHA-256 and
