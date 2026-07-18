@@ -183,6 +183,26 @@ class Phase3FastSvEvidenceRunTests(unittest.TestCase):
                     sv_evidence_plan_sha256=SHA_1,
                 )
 
+    def test_rejects_output_below_symlinked_parent_before_running_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_output = root / "real-sv-evidence"
+            real_output.mkdir()
+            output_root = root / "sv_evidence"
+            output_root.symlink_to(real_output, target_is_directory=True)
+            plan = phase3_fast_sv_evidence_plan(root)
+            runner = MaterializingSamtoolsRunner()
+
+            with self.assertRaisesRegex(run_sv.ManifestError, "parent may not be a symlink"):
+                run_sv.run_phase3_fast_sv_evidence(
+                    plan,
+                    runner=runner,
+                    sv_evidence_plan_sha256=SHA_1,
+                )
+
+            self.assertEqual([], runner.commands)
+            self.assertEqual([], list(real_output.rglob("*")))
+
 
 if __name__ == "__main__":
     unittest.main()

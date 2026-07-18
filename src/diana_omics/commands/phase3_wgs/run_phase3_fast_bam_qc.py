@@ -213,6 +213,23 @@ def _command_output_path(command: tuple[str, Sequence[str], Path | None, Path | 
     return path
 
 
+def _require_safe_output_path(path: Path) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"BAM QC output path may not be a symlink: {path}")
+
+    parent = path.parent
+    while not parent.exists() and not parent.is_symlink():
+        next_parent = parent.parent
+        if next_parent == parent:
+            raise ManifestError(f"BAM QC output parent does not exist: {path.parent}")
+        parent = next_parent
+
+    if parent.is_symlink():
+        raise ManifestError(f"BAM QC output parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ManifestError(f"BAM QC output parent is not a directory: {parent}")
+
+
 def _prepare_outputs(commands: Mapping[str, Sequence[tuple[str, Sequence[str], Path | None, Path | None]]]) -> None:
     paths = {
         _command_output_path(command)
@@ -223,6 +240,7 @@ def _prepare_outputs(commands: Mapping[str, Sequence[tuple[str, Sequence[str], P
         raise ManifestError("BAM QC output paths must be unique")
 
     for path in paths:
+        _require_safe_output_path(path)
         if path.exists() and not path.is_file():
             raise ManifestError(f"BAM QC output path already exists and is not a file: {path}")
         ensure_parent(path)

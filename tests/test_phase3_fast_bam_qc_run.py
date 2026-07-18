@@ -185,6 +185,26 @@ class Phase3FastBamQcRunTests(unittest.TestCase):
                     bam_qc_plan_sha256=SHA_1,
                 )
 
+    def test_rejects_output_below_symlinked_parent_before_running_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_output = root / "real-bam-qc"
+            real_output.mkdir()
+            output_root = root / "bam_qc"
+            output_root.symlink_to(real_output, target_is_directory=True)
+            plan = phase3_fast_bam_qc_plan(root)
+            runner = MaterializingSamtoolsRunner()
+
+            with self.assertRaisesRegex(run_qc.ManifestError, "parent may not be a symlink"):
+                run_qc.run_phase3_fast_bam_qc(
+                    plan,
+                    runner=runner,
+                    bam_qc_plan_sha256=SHA_1,
+                )
+
+            self.assertEqual([], runner.commands)
+            self.assertEqual([], list(real_output.rglob("*")))
+
 
 if __name__ == "__main__":
     unittest.main()

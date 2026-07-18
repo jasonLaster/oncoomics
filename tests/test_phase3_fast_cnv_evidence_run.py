@@ -162,6 +162,26 @@ class Phase3FastCnvEvidenceRunTests(unittest.TestCase):
                     cnv_evidence_plan_sha256=SHA_1,
                 )
 
+    def test_rejects_output_below_symlinked_parent_before_running_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_output = root / "real-cnv-evidence"
+            real_output.mkdir()
+            output_root = root / "cnv_evidence"
+            output_root.symlink_to(real_output, target_is_directory=True)
+            plan = phase3_fast_cnv_evidence_plan(root)
+            runner = MaterializingBedcovRunner()
+
+            with self.assertRaisesRegex(run_cnv.ManifestError, "parent may not be a symlink"):
+                run_cnv.run_phase3_fast_cnv_evidence(
+                    plan,
+                    runner=runner,
+                    cnv_evidence_plan_sha256=SHA_1,
+                )
+
+            self.assertEqual([], runner.commands)
+            self.assertEqual([], list(real_output.rglob("*")))
+
 
 if __name__ == "__main__":
     unittest.main()

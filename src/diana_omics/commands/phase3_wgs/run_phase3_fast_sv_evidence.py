@@ -169,12 +169,30 @@ def _validate_plan(plan: Mapping[str, Any]) -> dict[str, list[tuple[str, list[st
     return _planned_commands(plan)
 
 
+def _require_safe_output_path(path: Path) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"SV evidence output path may not be a symlink: {path}")
+
+    parent = path.parent
+    while not parent.exists() and not parent.is_symlink():
+        next_parent = parent.parent
+        if next_parent == parent:
+            raise ManifestError(f"SV evidence output parent does not exist: {path.parent}")
+        parent = next_parent
+
+    if parent.is_symlink():
+        raise ManifestError(f"SV evidence output parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ManifestError(f"SV evidence output parent is not a directory: {parent}")
+
+
 def _prepare_outputs(commands: Mapping[str, Sequence[tuple[str, Sequence[str], Path]]]) -> None:
     paths = {stdout_path for role_commands in commands.values() for _, _, stdout_path in role_commands}
     if len(paths) != len(ROLES) * len(EXPECTED_COMMANDS):
         raise ManifestError("SV evidence output paths must be unique")
 
     for path in paths:
+        _require_safe_output_path(path)
         if path.exists() and not path.is_file():
             raise ManifestError(f"SV evidence output path already exists and is not a file: {path}")
         ensure_parent(path)

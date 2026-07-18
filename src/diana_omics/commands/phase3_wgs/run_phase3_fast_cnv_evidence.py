@@ -218,6 +218,23 @@ def _validate_plan(plan: Mapping[str, Any]) -> list[dict[str, Any]]:
     return _planned_shards(plan)
 
 
+def _require_safe_output_path(path: Path) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"CNV evidence output path may not be a symlink: {path}")
+
+    parent = path.parent
+    while not parent.exists() and not parent.is_symlink():
+        next_parent = parent.parent
+        if next_parent == parent:
+            raise ManifestError(f"CNV evidence output parent does not exist: {path.parent}")
+        parent = next_parent
+
+    if parent.is_symlink():
+        raise ManifestError(f"CNV evidence output parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ManifestError(f"CNV evidence output parent is not a directory: {parent}")
+
+
 def _prepare_outputs(output_paths: Mapping[str, Path], shards: Sequence[Mapping[str, Any]]) -> None:
     paths = {
         *output_paths.values(),
@@ -228,6 +245,7 @@ def _prepare_outputs(output_paths: Mapping[str, Path], shards: Sequence[Mapping[
         raise ManifestError("CNV evidence output paths must be unique")
 
     for path in paths:
+        _require_safe_output_path(path)
         if path.exists() and not path.is_file():
             raise ManifestError(f"CNV evidence output path already exists and is not a file: {path}")
         ensure_parent(path)
