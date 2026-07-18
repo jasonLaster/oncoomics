@@ -194,6 +194,7 @@ FAST_CACHE_MANIFEST                verified region-local BAM/resource pointers
 FAST_STAGING_PLAN                  exact VersionId to local scratch path map
 FAST_STAGE_INPUTS                  materialize and SHA-256 verify scratch inputs
 FAST_PARABRICKS_MUTECT_PLAN        exact Parabricks command plan
+FAST_FILTER_MUTECT_PLAN            exact contamination/orientation/filter plan
 FAST_FQ2BAM_TUMOR                  optional GPU
 FAST_FQ2BAM_NORMAL                 optional GPU
 FAST_VALIDATE_BAMS
@@ -217,6 +218,9 @@ Implementation rules:
 - Publish large inputs and intermediates once to the immutable cache. Publish pointer manifests and evidence outputs to the run result prefix.
 - Redact sample identifiers from job names and general CloudWatch command logs; retain them only in access-controlled provenance where required.
 - Make every process idempotent so a placement failure can be retried without repeating completed work.
+- Keep S3 materialization, `staged_inputs_manifest.json` verification, and
+  first-caller execution in a single worker-local task so `/scratch` paths never
+  cross a Nextflow process boundary without their files.
 
 ## Validation and promotion gates
 
@@ -287,6 +291,11 @@ hundreds of GiB as task outputs, defeating the point of node-local staging.
 `FAST_PARABRICKS_MUTECT_PLAN` consumes that manifest and emits the exact
 `pbrun prepon`, `pbrun mutectcaller`, and `pbrun postpon` argument vectors for
 the first GPU short-variant pass without launching Parabricks.
+`FAST_FILTER_MUTECT_PLAN` consumes the same staged-input manifest plus the
+Parabricks Mutect plan and emits the exact CPU tail for matched-normal pileups,
+contamination, read-orientation priors, `FilterMutectCalls`, and VCF indexing.
+It preserves the same `no_call` boundary: a filtered VCF is deterministic
+sample evidence, not a scalar HRD interpretation.
 
 ### Gate 1: P5en and Parabricks smoke
 
