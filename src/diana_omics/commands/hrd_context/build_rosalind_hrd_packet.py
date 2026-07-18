@@ -197,6 +197,14 @@ def read_json_or_empty(relative_path: str) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {"payload": payload}
 
 
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def write_text_create_only(path: Path, value: str) -> None:
     require_safe_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -207,6 +215,7 @@ def write_text_create_only(path: Path, value: str) -> None:
             handle.write(value if value.endswith("\n") else f"{value}\n")
             handle.flush()
             os.fsync(handle.fileno())
+        fsync_directory(path.parent)
     except Exception:
         if descriptor >= 0:
             os.close(descriptor)

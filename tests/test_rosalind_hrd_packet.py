@@ -6,14 +6,13 @@ from pathlib import Path
 from typing import Dict, Optional
 from unittest.mock import patch
 
+from diana_omics import utils
+from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as packet
+from diana_omics.commands.phase3_wgs import stage_phase3_fast_deterministic_report as stage_phase3_fast_report
 from tests.test_phase3_fast_deterministic_report import (
     _crosscheck_materialization_plan,
     _write_final_manifest,
 )
-
-from diana_omics import utils
-from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as packet
-from diana_omics.commands.phase3_wgs import stage_phase3_fast_deterministic_report as stage_phase3_fast_report
 
 PHASE3_FAST_FORBIDDEN_TOKENS_JSON = json.dumps(["UNIT-FORBIDDEN-PHASE3-FAST"])
 
@@ -249,7 +248,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 packet.write_text_create_only(destination, "one")
 
             self.assertEqual(destination.read_text(encoding="utf-8"), "one\n")
-            self.assertEqual(fsync.call_count, 1)
+            self.assertEqual(fsync.call_count, 2)
 
             with self.assertRaises(FileExistsError):
                 packet.write_text_create_only(destination, "two")
