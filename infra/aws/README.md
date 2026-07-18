@@ -157,16 +157,18 @@ Terraform writes `aws_gpu_queue`, `phase3_fast_cache_prefix`,
 `parabricks_mirror_repository`, and `parabricks_container` to
 `infra/aws/nextflow.aws.use2.json`. The cache prefix uses the regional
 private-results bucket under `phase3-fast-cache/wgs-v2`, and the mirror
-repository gives the reviewed NVIDIA Parabricks image an immutable
-`us-east-2` ECR destination. Keep `parabricks_container` empty until the
-Parabricks image has been selected, mirrored, and pinned by digest. The
-`awsbatch_gpu` profile maps `gpu_parabricks` processes to that queue and image
-and sets the Nextflow `accelerator` request to
+repository gives the Diana Parabricks runtime an immutable `us-east-2` ECR
+destination. Keep `parabricks_container` empty until a reviewed NVIDIA
+Parabricks base image has been selected, wrapped with the Diana runtime, and
+pinned by digest. The `awsbatch_gpu` profile maps `gpu_parabricks` processes to
+that queue and image, binds the host instance-store `/scratch` volume into the
+container, and sets the Nextflow `accelerator` request to
 `phase3_fast_parabricks_num_gpus`, so Batch receives an explicit eight-GPU
 request for the P5en jobs.
 
 After the selected NVIDIA Parabricks `linux/amd64` image digest has been
-reviewed, mirror that exact digest into the regional immutable ECR repository:
+reviewed, build the Diana Parabricks runtime from that exact base digest and
+mirror it into the regional immutable ECR repository:
 
 ```sh
 PARABRICKS_SOURCE_IMAGE='nvcr.io/.../parabricks@sha256:<reviewed-digest>' \
@@ -174,7 +176,9 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:ecr:mirror-parabricks:use2
 ```
 
 The helper pulls only digest-pinned source images, logs into the `us-east-2`
-ECR registry from the `phase3-fast-use2` Terraform workspace, pushes a
+ECR registry from the `phase3-fast-use2` Terraform workspace, builds
+`infra/aws/Dockerfile.parabricks` with `pbrun`, the AWS CLI, and the checked-out
+`diana_omics` CLI under `/opt/diana-omics`, pushes a
 `sha256-<full-source-digest>` tag into `parabricks_mirror_repository`, writes
 and verifies `results/phase3_wgs_fast/parabricks_mirror_receipt.json`, and
 prints the exact `TF_VAR_parabricks_container=<repository>@sha256:<digest>`
@@ -212,10 +216,11 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
 ```
 
 The smoke workflow verifies that the Batch job lands on the isolated GPU queue
-with the pinned Parabricks image and that `nvidia-smi` reports the expected
-eight H200 GPUs. It also captures `pbrun version` from inside the selected
-container. It is a placement/startup gate only; it does not run Parabricks MutectCaller
-or Diana WGS evidence.
+with the pinned Diana Parabricks image and that `nvidia-smi` reports the
+expected eight H200 GPUs. It also captures `pbrun version`, `aws --version`,
+and `python3 -m diana_omics --help` from inside the selected container. It is a
+placement/startup gate only; it does not run Parabricks MutectCaller or Diana
+WGS evidence.
 
 Use `nf:aws:phase3-wgs-fast:execute` only after Gate 0 inputs, the pinned image,
 and the smoke output have been reviewed. That alias runs the full

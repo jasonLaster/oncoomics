@@ -210,6 +210,9 @@ class AwsGpuInfraTests(unittest.TestCase):
         readme = AWS_README.read_text(encoding="utf-8")
         next_gen = NEXT_GEN_DOC.read_text(encoding="utf-8")
 
+        self.assertIn("Diana Parabricks runtime", readme)
+        self.assertIn("aws --version", readme)
+        self.assertIn("python3 -m diana_omics --help", readme)
         self.assertIn("nf:aws:phase3-wgs-fast:gpu-smoke", readme)
         self.assertIn("does not run Parabricks MutectCaller", readme)
         self.assertIn("nf:aws:phase3-wgs-fast:gpu-smoke", next_gen)
