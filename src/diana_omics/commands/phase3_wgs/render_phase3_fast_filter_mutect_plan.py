@@ -8,7 +8,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 
 DEFAULT_STAGED_INPUTS = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
 DEFAULT_MUTECT_PLAN = "manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
@@ -300,6 +300,7 @@ def build_phase3_fast_filter_mutect_plan(
         "workflow": dict(_require_mapping(staged_inputs_manifest.get("workflow"), "workflow")),
         "run": dict(_require_mapping(staged_inputs_manifest.get("run"), "run")),
         "runtime": dict(runtime),
+        "method_parameters": normalize_method_parameters(staged_inputs_manifest.get("method_parameters")),
         "source": {
             "staged_inputs_manifest_sha256": staged_sha,
             "parabricks_mutect_plan_sha256": _require_hex(mutect_plan_sha256, "parabricks_mutect_plan_sha256"),

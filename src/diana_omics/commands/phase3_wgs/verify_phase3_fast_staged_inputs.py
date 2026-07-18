@@ -9,7 +9,13 @@ from typing import Any, Mapping, Sequence
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json, standard_contig
 from .render_phase3_fast_cache_manifest import BAM_CACHE_ARTIFACTS, REFERENCE_CACHE_ARTIFACTS
-from .render_phase3_fast_input_manifest import CALLER_RESOURCES, HEX64, ManifestError, _require_s3_uri
+from .render_phase3_fast_input_manifest import (
+    CALLER_RESOURCES,
+    HEX64,
+    ManifestError,
+    _require_s3_uri,
+    normalize_method_parameters,
+)
 from .render_phase3_fast_staging_plan import EXPECTED_STAGED_OBJECTS
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staging_plan.json"
@@ -204,6 +210,7 @@ def build_phase3_fast_staged_inputs_manifest(
         "run": dict(_require_mapping(staging_plan.get("run"), "run")),
         "runtime": dict(_require_mapping(staging_plan.get("runtime"), "runtime")),
         "cache": dict(_require_mapping(staging_plan.get("cache"), "cache")),
+        "method_parameters": normalize_method_parameters(staging_plan.get("method_parameters")),
         "source": {
             "input_manifest_sha256": _require_hex(source.get("input_manifest_sha256"), "input_manifest_sha256"),
             "replication_plan_sha256": _require_hex(source.get("replication_plan_sha256"), "replication_plan_sha256"),

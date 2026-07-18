@@ -12,7 +12,7 @@ from typing import Any, Mapping, Protocol, Sequence
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json, round_value, write_csv
-from .render_phase3_fast_input_manifest import HEX64, ManifestError
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/cnv_evidence_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/cnv_evidence_receipt.json"
@@ -446,6 +446,7 @@ def run_phase3_fast_cnv_evidence(
         "workflow": dict(_require_mapping(plan.get("workflow"), "workflow")),
         "run": dict(_require_mapping(plan.get("run"), "run")),
         "runtime": dict(_require_mapping(plan.get("runtime"), "runtime")),
+        "method_parameters": normalize_method_parameters(plan.get("method_parameters")),
         "source": {
             **dict(_require_mapping(plan.get("source"), "source")),
             "cnv_evidence_plan_sha256": plan_sha,

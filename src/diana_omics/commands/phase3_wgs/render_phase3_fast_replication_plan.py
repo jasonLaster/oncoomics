@@ -10,7 +10,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/input_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/replication_plan.json"
@@ -185,6 +185,7 @@ def build_phase3_fast_replication_plan(
         "workflow": dict(_require_mapping(input_manifest.get("workflow"), "workflow")),
         "run": dict(_require_mapping(input_manifest.get("run"), "run")),
         "runtime": dict(_require_mapping(input_manifest.get("runtime"), "runtime")),
+        "method_parameters": normalize_method_parameters(input_manifest.get("method_parameters")),
         "cache": {
             "kms_key_arn": kms_key_arn,
             "prefix": prefix,

@@ -9,7 +9,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json, standard_contig
-from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/cnv_evidence_plan.json"
@@ -240,6 +240,7 @@ def build_phase3_fast_cnv_evidence_plan(
             "bin_size": checked_bin_size,
             "bedcov_workers": checked_bedcov_workers,
         },
+        "method_parameters": normalize_method_parameters(staged_inputs_manifest.get("method_parameters")),
         "source": {
             "input_manifest_sha256": _require_hex(source.get("input_manifest_sha256"), "input_manifest_sha256"),
             "replication_plan_sha256": _require_hex(source.get("replication_plan_sha256"), "replication_plan_sha256"),

@@ -8,7 +8,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 
 DEFAULT_FINAL_EVIDENCE = "manifests/phase3_wgs_fast/final_evidence_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/crosscheck_materialization_plan.json"
@@ -130,6 +130,7 @@ def build_phase3_fast_crosscheck_materialization_plan(
     bam_pair = _require_mapping(input_sources.get("bam_pair"), "input_sources.bam_pair")
     tumor = _require_mapping(bam_pair.get("tumor"), "input_sources.bam_pair.tumor")
     normal = _require_mapping(bam_pair.get("normal"), "input_sources.bam_pair.normal")
+    method_parameters = normalize_method_parameters(final_evidence.get("method_parameters"))
 
     final_sources = {
         materializer_role: {
@@ -176,23 +177,25 @@ def build_phase3_fast_crosscheck_materialization_plan(
             "status": "blocked",
             "execution_status": "not_run",
             "interpretation_status": "no_call",
+            "method_parameters": {
+                "sequenza": {
+                    "female": method_parameters["sequenza"]["female"],
+                },
+            },
             "source_artifacts": {
                 "tumor_bam": _sample_source_blob(tumor.get("bam"), "input_sources.bam_pair.tumor.bam"),
                 "tumor_bai": _sample_source_blob(tumor.get("bai"), "input_sources.bam_pair.tumor.bai"),
                 "normal_bam": _sample_source_blob(normal.get("bam"), "input_sources.bam_pair.normal.bam"),
                 "normal_bai": _sample_source_blob(normal.get("bai"), "input_sources.bam_pair.normal.bai"),
             },
-            "required_method_parameters": [
-                "method_parameters.sequenza.female",
-            ],
+            "required_method_parameters": [],
             "blockers": [
                 "awaiting_final_bam_contract",
-                "awaiting_explicit_sequenza_sex_model",
                 "awaiting_validated_sequenza_scarhrd_runtime",
             ],
         },
         "blocked_routes": {
-            "sequenza_scarhrd": "awaiting_sequenza_sex_model_and_final_bam_contract",
+            "sequenza_scarhrd": "awaiting_final_bam_contract_and_validated_runtime",
             "facets_scarhrd": "awaiting_allele_specific_cnv_loh_segments",
             "oncoanalyser_chord": "awaiting_validated_production_sv_caller_vcf",
             "hrdetect": "awaiting_validated_structural_variant_features",

@@ -98,6 +98,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             "phase3_fast_parameter_sha256",
             "phase3_fast_parabricks_container_digest",
             "phase3_fast_parabricks_version",
+            "phase3_fast_sequenza_female",
             "phase3_fast_cache_prefix",
             "phase3_fast_cache_kms_key_arn",
             "phase3_fast_cache_region",

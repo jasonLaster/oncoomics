@@ -209,6 +209,7 @@ def metadata() -> dict[str, str]:
         "parameter_sha256": SHA_2,
         "parabricks_container_digest": "sha256:" + SHA_3,
         "parabricks_version": "4.5.1-1",
+        "sequenza_female": "true",
     }
 
 
@@ -238,6 +239,7 @@ class Phase3FastInputManifestTests(unittest.TestCase):
         self.assertEqual(manifest["reference"]["sequence_dictionary_sha256"], SHA_E)
         self.assertEqual(manifest["caller_resources"]["panel_of_normals_vcf"]["sha256"], SHA_8)
         self.assertEqual(manifest["runtime"]["parabricks_container_digest"], "sha256:" + SHA_3)
+        self.assertEqual({"sequenza": {"female": True}}, manifest["method_parameters"])
         self.assertEqual(manifest["validation"]["bam"]["samples"]["tumor"]["bam"]["sha256"], SHA_C)
         self.assertTrue(manifest["validation"]["contig_compatibility"]["checks"]["panel_of_normals_contigs_compatible"])
         self.assertEqual(manifest["interpretation"]["authorized_hrd_state"], "no_call")
@@ -340,6 +342,39 @@ class Phase3FastInputManifestTests(unittest.TestCase):
                 metadata=mismatched_metadata,
             )
 
+    def test_sequenza_sex_model_must_be_explicit(self) -> None:
+        private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
+        incomplete_metadata = metadata()
+        incomplete_metadata.pop("sequenza_female")
+
+        with self.assertRaisesRegex(render.ManifestError, "sequenza_female"):
+            render.build_phase3_wgs_fast_input_manifest(
+                private_freeze_receipt=private_freeze,
+                private_sha256_receipt=private_sha,
+                reference_freeze_receipt=reference_freeze,
+                reference_sha256_receipt=reference_sha,
+                bam_validation_receipt=validation,
+                contig_compatibility_receipt=contigs,
+                caller_resource_receipt=resources,
+                metadata=incomplete_metadata,
+            )
+
+    def test_sequenza_sex_model_must_be_boolean(self) -> None:
+        private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
+        malformed_metadata = {**metadata(), "sequenza_female": "unknown"}
+
+        with self.assertRaisesRegex(render.ManifestError, "explicitly true or false"):
+            render.build_phase3_wgs_fast_input_manifest(
+                private_freeze_receipt=private_freeze,
+                private_sha256_receipt=private_sha,
+                reference_freeze_receipt=reference_freeze,
+                reference_sha256_receipt=reference_sha,
+                bam_validation_receipt=validation,
+                contig_compatibility_receipt=contigs,
+                caller_resource_receipt=resources,
+                metadata=malformed_metadata,
+            )
+
     def test_bam_validation_must_match_frozen_object_identity(self) -> None:
         private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
         validation["samples"]["tumor"]["bam"]["sha256"] = SHA_4
@@ -417,6 +452,7 @@ class Phase3FastInputManifestTests(unittest.TestCase):
                     "PHASE3_WGS_FAST_PARAMETER_SHA256": SHA_2,
                     "PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST": "sha256:" + SHA_3,
                     "PHASE3_WGS_FAST_PARABRICKS_VERSION": "4.5.1-1",
+                    "PHASE3_WGS_FAST_SEQUENZA_FEMALE": "true",
                     "PHASE3_WGS_FAST_SOURCE_COMMIT": "abcd1234",
                 },
                 clear=False,

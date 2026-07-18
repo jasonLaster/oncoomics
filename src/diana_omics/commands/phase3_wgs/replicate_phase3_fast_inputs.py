@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 from .render_phase3_fast_replication_plan import KMS_KEY_ARN, REGION
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/replication_plan.json"
@@ -592,6 +592,7 @@ def build_phase3_fast_replication_receipt(
         "workflow": dict(_require_mapping(replication_plan.get("workflow"), "workflow")),
         "run": dict(_require_mapping(replication_plan.get("run"), "run")),
         "runtime": dict(_require_mapping(replication_plan.get("runtime"), "runtime")),
+        "method_parameters": normalize_method_parameters(replication_plan.get("method_parameters")),
         "cache": {
             "kms_key_arn": kms_key_arn,
             "prefix": prefix,

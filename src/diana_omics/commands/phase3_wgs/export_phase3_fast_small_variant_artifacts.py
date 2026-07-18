@@ -9,7 +9,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 from .run_phase3_fast_filter_mutect import MATERIALIZED_OUTPUTS as FILTER_MUTECT_OUTPUTS
 from .run_phase3_fast_parabricks_mutect import MATERIALIZED_OUTPUTS as PARABRICKS_MUTECT_OUTPUTS
 
@@ -277,6 +277,9 @@ def export_phase3_fast_small_variant_artifacts(
         raise ManifestError("FilterMutect receipt must reference the exported Parabricks receipt SHA-256")
     if filter_source.get("parabricks_mutect_plan_sha256") != parabricks_source.get("parabricks_mutect_plan_sha256"):
         raise ManifestError("FilterMutect receipt must share the Parabricks plan SHA-256")
+    method_parameters = normalize_method_parameters(filter_receipt.get("method_parameters"))
+    if normalize_method_parameters(parabricks_receipt.get("method_parameters")) != method_parameters:
+        raise ManifestError("FilterMutect method_parameters must match the Parabricks receipt")
     input_sources = _source_inputs(parabricks_receipt, filter_receipt)
 
     root = Path(output_root)
@@ -323,6 +326,7 @@ def export_phase3_fast_small_variant_artifacts(
         "workflow": dict(_require_mapping(filter_receipt.get("workflow"), "FilterMutect workflow")),
         "run": dict(_require_mapping(filter_receipt.get("run"), "FilterMutect run")),
         "runtime": dict(_require_mapping(filter_receipt.get("runtime"), "FilterMutect runtime")),
+        "method_parameters": method_parameters,
         "source": {
             "parabricks_mutect_plan_sha256": _require_hex(
                 parabricks_source.get("parabricks_mutect_plan_sha256"),

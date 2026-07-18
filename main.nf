@@ -56,6 +56,7 @@ params.phase3_fast_caller_resource_receipt = params.phase3_fast_caller_resource_
 params.phase3_fast_parameter_sha256 = params.phase3_fast_parameter_sha256 ?: null
 params.phase3_fast_parabricks_container_digest = params.phase3_fast_parabricks_container_digest ?: null
 params.phase3_fast_parabricks_version = params.phase3_fast_parabricks_version ?: null
+params.phase3_fast_sequenza_female = params.phase3_fast_sequenza_female ?: null
 params.phase3_fast_cache_prefix = params.phase3_fast_cache_prefix ?: null
 params.phase3_fast_cache_kms_key_arn = params.phase3_fast_cache_kms_key_arn ?: null
 params.phase3_fast_cache_region = params.phase3_fast_cache_region ?: 'us-east-2'
@@ -555,6 +556,7 @@ process FAST_INPUT_MANIFEST {
     export PHASE3_WGS_FAST_PARAMETER_SHA256="${params.phase3_fast_parameter_sha256}"
     export PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST="${params.phase3_fast_parabricks_container_digest}"
     export PHASE3_WGS_FAST_PARABRICKS_VERSION="${params.phase3_fast_parabricks_version}"
+    export PHASE3_WGS_FAST_SEQUENZA_FEMALE="${params.phase3_fast_sequenza_female}"
     export PHASE3_WGS_FAST_GATK_VERSION="${params.phase3_fast_gatk_version}"
     export PHASE3_WGS_FAST_SOURCE_COMMIT="${params.phase3_fast_source_commit}"
     export PHASE3_WGS_FAST_RUN_ID="${params.phase3_fast_run_id}"
@@ -1793,6 +1795,7 @@ workflow PHASE3_WGS_FAST {
         'phase3_fast_parameter_sha256',
         'phase3_fast_parabricks_container_digest',
         'phase3_fast_parabricks_version',
+        'phase3_fast_sequenza_female',
         'phase3_fast_cache_prefix',
         'phase3_fast_cache_kms_key_arn',
     ]

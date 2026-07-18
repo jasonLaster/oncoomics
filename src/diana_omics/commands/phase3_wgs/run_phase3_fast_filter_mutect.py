@@ -11,7 +11,7 @@ from typing import Any, Iterable, Mapping, Protocol, Sequence
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/filter_mutect_plan.json"
 DEFAULT_PARABRICKS_RECEIPT = "manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"
@@ -548,6 +548,7 @@ def run_phase3_fast_filter_mutect(
         "workflow": dict(_require_mapping(plan.get("workflow"), "workflow")),
         "run": dict(_require_mapping(plan.get("run"), "run")),
         "runtime": dict(_require_mapping(plan.get("runtime"), "runtime")),
+        "method_parameters": normalize_method_parameters(plan.get("method_parameters")),
         "source": {
             **dict(_require_mapping(plan.get("source"), "source")),
             "filter_mutect_plan_sha256": filter_sha,

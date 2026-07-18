@@ -34,6 +34,7 @@ nextflow -log logs/nextflow.log run main.nf -profile local \
   --phase3_fast_parameter_sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --phase3_fast_parabricks_container_digest sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb \
   --phase3_fast_parabricks_version stub-parabricks \
+  --phase3_fast_sequenza_female true \
   --phase3_fast_cache_prefix s3://stubbed-phase3-fast-cache/wgs-v2/ \
   --phase3_fast_cache_kms_key_arn arn:aws:kms:us-east-2:172630973301:key/00000000-0000-0000-0000-000000000000 \
   --phase3_fast_replication_mode apply \

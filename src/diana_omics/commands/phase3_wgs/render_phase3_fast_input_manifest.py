@@ -350,11 +350,38 @@ def _metadata_value(metadata: Mapping[str, str], key: str, default: str = "") ->
     return value
 
 
+def _metadata_bool(metadata: Mapping[str, str], key: str) -> bool:
+    value = _metadata_value(metadata, key).lower()
+    if value == "true":
+        return True
+    if value == "false":
+        return False
+    raise ManifestError(f"{key} must be explicitly true or false")
+
+
 def _matching_metadata_value(metadata: Mapping[str, str], key: str, receipt_value: str) -> str:
     value = metadata.get(key, receipt_value)
     if value != receipt_value:
         raise ManifestError(f"{key} must match the BAM validation receipt")
     return value
+
+
+def normalize_method_parameters(value: Any) -> dict[str, Any]:
+    method_parameters = _require_mapping(value, "method_parameters")
+    if set(method_parameters) != {"sequenza"}:
+        raise ManifestError("method_parameters must contain exactly sequenza")
+
+    sequenza = _require_mapping(method_parameters.get("sequenza"), "method_parameters.sequenza")
+    if set(sequenza) != {"female"}:
+        raise ManifestError("method_parameters.sequenza must contain exactly female")
+    if not isinstance(sequenza.get("female"), bool):
+        raise ManifestError("method_parameters.sequenza.female must be a boolean")
+
+    return {
+        "sequenza": {
+            "female": bool(sequenza["female"]),
+        },
+    }
 
 
 def build_phase3_wgs_fast_input_manifest(
@@ -424,6 +451,13 @@ def build_phase3_wgs_fast_input_manifest(
             "parabricks_version": _metadata_value(metadata, "parabricks_version"),
             "gatk_version": _metadata_value(metadata, "gatk_version", "4.6.2.0"),
         },
+        "method_parameters": normalize_method_parameters(
+            {
+                "sequenza": {
+                    "female": _metadata_bool(metadata, "sequenza_female"),
+                },
+            }
+        ),
         "validation": {
             "bam": bam_validation,
             "contig_compatibility": contig_compatibility,
@@ -464,6 +498,7 @@ def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
         "parameter_sha256": os.environ.get("PHASE3_WGS_FAST_PARAMETER_SHA256", ""),
         "reference_id": os.environ.get("PHASE3_WGS_FAST_REFERENCE_ID", "ucsc_hg38_analysis_set_full"),
         "run_id": os.environ.get("PHASE3_WGS_FAST_RUN_ID", "diana-wgs-hrd-20260716T033101Z"),
+        "sequenza_female": os.environ.get("PHASE3_WGS_FAST_SEQUENZA_FEMALE", ""),
         "source_commit": os.environ.get("PHASE3_WGS_FAST_SOURCE_COMMIT") or git_head(),
         "subject_alias": os.environ.get("PHASE3_WGS_FAST_SUBJECT_ALIAS", "subject01"),
         "tumor_sample_id": os.environ.get("PHASE3_WGS_FAST_TUMOR_SAMPLE_ID", "subject01_tumor"),

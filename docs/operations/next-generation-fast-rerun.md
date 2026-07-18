@@ -252,12 +252,17 @@ PHASE3_WGS_FAST_CALLER_RESOURCE_RECEIPT=/path/to/caller-resources.json \
 PHASE3_WGS_FAST_PARAMETER_SHA256=... \
 PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST=... \
 PHASE3_WGS_FAST_PARABRICKS_VERSION=... \
+PHASE3_WGS_FAST_SEQUENZA_FEMALE=true \
 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:phase3-fast-input-manifest
 ```
 
 The `phase3_wgs_fast` Nextflow DAG starts with the same renderer as
 `FAST_INPUT_MANIFEST`, with each receipt staged as a real process input so
 `-resume` is keyed by receipt content rather than by a mutable local directory.
+The Gate 0 manifest also requires `method_parameters.sequenza.female` up front,
+so the eventual Sequenza/scarHRD route receives an explicit sex-model parameter
+from the same immutable input contract as the BAM, BAI, reference, and caller
+resources.
 It then renders a dry `FAST_REPLICATION_PLAN` with deterministic,
 content-addressed source-version to `us-east-2` cache-key rows and the exact
 destination KMS key. `FAST_REPLICATE_INPUTS` consumes that plan and defaults to
@@ -380,9 +385,10 @@ files, and writes the six-file deterministic report packet
 The cross-check plan maps the final FilterMutect VCF, its TBI, the SBS96 matrix,
 and exact versioned reference/BAM source identities into the pending
 SigProfiler/SBS3 and Sequenza/scarHRD materialization contracts without mining
-worker-local scratch paths. Sequenza still requires a finalized BAM alias
-contract with an explicit sex-model parameter before that route can materialize
-inputs and generate scarHRD-ready purity/ploidy segments. That report is deliberately
+worker-local scratch paths, and carries the checked
+`method_parameters.sequenza.female` value into the Sequenza plan. Sequenza still
+requires a finalized BAM alias contract before that route can materialize inputs
+and generate scarHRD-ready purity/ploidy segments. That report is deliberately
 descriptive: Parabricks/FilterMutect, BAM QC, coverage-CNV, and BAM-derived SV
 evidence plus the SBS96 input matrix are bound by SHA-256, while SBS3,
 scarHRD, CHORD, HRDetect-style scoring, and the overall HRD state remain
@@ -444,6 +450,7 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:execute --
   --phase3_fast_parameter_sha256 <sha256> \
   --phase3_fast_parabricks_container_digest <sha256:digest> \
   --phase3_fast_parabricks_version <version> \
+  --phase3_fast_sequenza_female true \
   --phase3_fast_cache_prefix s3://<regional-private-cache>/wgs-v2/ \
   --phase3_fast_cache_kms_key_arn <us-east-2-kms-key-arn> \
   --phase3_fast_generated_at <run-start-iso8601> \

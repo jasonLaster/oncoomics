@@ -72,7 +72,11 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
         self.assertEqual("somatic.pass.vcf.gz", plan["sigprofiler_sbs3"]["outputs"]["somatic_vcf"])
         self.assertEqual("blocked", plan["sequenza_scarhrd"]["status"])
         self.assertEqual(
-            ["method_parameters.sequenza.female"],
+            {"sequenza": {"female": True}},
+            plan["sequenza_scarhrd"]["method_parameters"],
+        )
+        self.assertEqual(
+            [],
             plan["sequenza_scarhrd"]["required_method_parameters"],
         )
         self.assertEqual(
@@ -88,7 +92,7 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
             sequenza_sources["tumor_bam"]["sample_id"],
         )
         self.assertEqual(
-            "awaiting_sequenza_sex_model_and_final_bam_contract",
+            "awaiting_final_bam_contract_and_validated_runtime",
             plan["blocked_routes"]["sequenza_scarhrd"],
         )
         self.assertNotIn(str(root), json.dumps(plan))

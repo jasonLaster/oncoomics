@@ -10,7 +10,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 
 DEFAULT_EVIDENCE_JOIN = "manifests/phase3_wgs_fast/evidence_join_manifest.json"
 DEFAULT_SMALL_VARIANT_ARTIFACT_ROOT = "workspace/results/phase3_wgs_fast/small_variant_execution/artifacts"
@@ -301,6 +301,7 @@ def build_phase3_fast_final_evidence_manifest(
         "status": "completed",
         "workflow": dict(_require_mapping(evidence_join.get("workflow"), "workflow")),
         "run": dict(_require_mapping(evidence_join.get("run"), "run")),
+        "method_parameters": normalize_method_parameters(evidence_join.get("method_parameters")),
         "source": {
             "evidence_join_manifest_sha256": _require_hex(evidence_join_sha256, "evidence_join_sha256"),
             "receipt_sha256": dict(_require_mapping(source.get("receipt_sha256"), "source.receipt_sha256")),

@@ -8,7 +8,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 
 DEFAULT_SMALL_VARIANT_EXPORT = "manifests/phase3_wgs_fast/small_variant_artifact_export.json"
 DEFAULT_BAM_QC_RECEIPT = "manifests/phase3_wgs_fast/bam_qc_receipt.json"
@@ -107,6 +107,14 @@ def _require_input_sources(receipt: Mapping[str, Any]) -> dict[str, Any]:
     return dict(sources)
 
 
+def _require_method_parameters_match(receipts: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
+    method_parameters = normalize_method_parameters(receipts["small_variant_artifact_export"].get("method_parameters"))
+    for key, receipt in receipts.items():
+        if normalize_method_parameters(receipt.get("method_parameters")) != method_parameters:
+            raise ManifestError(f"{key} method_parameters must match small_variant_artifact_export")
+    return method_parameters
+
+
 def build_phase3_fast_evidence_join_manifest(
     small_variant_artifact_export: Mapping[str, Any],
     bam_qc_receipt: Mapping[str, Any],
@@ -136,6 +144,7 @@ def build_phase3_fast_evidence_join_manifest(
     for key, manifest_type in RECEIPT_MANIFEST_TYPES.items():
         _require_receipt(receipts[key], key, manifest_type=manifest_type)
     workflow, run = _require_workflow_and_run_match(receipts)
+    method_parameters = _require_method_parameters_match(receipts)
     _require_evidence_boundaries(receipts)
 
     small_variant_source = _require_mapping(
@@ -148,6 +157,7 @@ def build_phase3_fast_evidence_join_manifest(
         "status": "completed",
         "workflow": workflow,
         "run": run,
+        "method_parameters": method_parameters,
         "source": {
             "parabricks_mutect_plan_sha256": _require_hex(
                 small_variant_source.get("parabricks_mutect_plan_sha256"),

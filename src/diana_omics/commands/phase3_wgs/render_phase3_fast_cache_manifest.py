@@ -8,7 +8,13 @@ from typing import Any, Mapping, Sequence
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import CALLER_RESOURCES, HEX64, ManifestError, _require_s3_uri
+from .render_phase3_fast_input_manifest import (
+    CALLER_RESOURCES,
+    HEX64,
+    ManifestError,
+    _require_s3_uri,
+    normalize_method_parameters,
+)
 from .replicate_phase3_fast_inputs import EXPECTED_REPLICATION_OBJECTS
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/replication_receipt.json"
@@ -170,6 +176,7 @@ def build_phase3_fast_cache_manifest(
         "workflow": dict(_require_mapping(replication_receipt.get("workflow"), "workflow")),
         "run": dict(_require_mapping(replication_receipt.get("run"), "run")),
         "runtime": dict(_require_mapping(replication_receipt.get("runtime"), "runtime")),
+        "method_parameters": normalize_method_parameters(replication_receipt.get("method_parameters")),
         "cache": dict(_require_mapping(replication_receipt.get("cache"), "cache")),
         "source": {
             "input_manifest_sha256": _require_hex(

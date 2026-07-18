@@ -11,7 +11,7 @@ from typing import Any, Mapping, Sequence
 
 from ...paths import path_from_root
 from ...utils import read_json, write_csv, write_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 
 DEFAULT_FINAL_EVIDENCE_MANIFEST = "manifests/phase3_wgs_fast/final_evidence_manifest.json"
 DEFAULT_FINAL_EVIDENCE_ROOT = "workspace/results/phase3_wgs_fast/final"
@@ -361,6 +361,7 @@ def _readiness_rows(
 
 def _build_crosscheck_input_plans(manifest: Mapping[str, Any], artifact_map: Mapping[str, Any]) -> dict[str, Any]:
     input_sources = _require_mapping(manifest.get("input_sources"), "input_sources")
+    method_parameters = normalize_method_parameters(manifest.get("method_parameters"))
     sigprofiler_sources = {
         "source_vcf": _planned_artifact(
             artifact_map,
@@ -422,6 +423,11 @@ def _build_crosscheck_input_plans(manifest: Mapping[str, Any], artifact_map: Map
                 "status": "blocked",
                 "execution_status": "not_run",
                 "interpretation_status": "no_call",
+                "method_parameters": {
+                    "sequenza": {
+                        "female": method_parameters["sequenza"]["female"],
+                    },
+                },
                 "source_artifacts": {
                     "tumor_bam": _source_identity(input_sources, "bam_pair.tumor.bam", "bam_pair", "tumor", "bam"),
                     "tumor_bai": _source_identity(input_sources, "bam_pair.tumor.bai", "bam_pair", "tumor", "bai"),
@@ -430,7 +436,6 @@ def _build_crosscheck_input_plans(manifest: Mapping[str, Any], artifact_map: Map
                 },
                 "blockers": [
                     "A finalized alias-only BAM/BAM-index contract has not been published for the Sequenza route.",
-                    "method_parameters.sequenza.female must explicitly declare the Sequenza sex model.",
                     "Sequenza execution, purity/ploidy, and scarHRD interpretation thresholds are not validated.",
                 ],
             },
@@ -545,8 +550,8 @@ def _report_markdown(
                 "PASS VCF, VCF index, SBS96 matrix, and exact reference FASTA/FAI identities, but the "
                 "materializer has not run and no SBS3 assignment or threshold policy is authorized. "
                 "Sequenza/scarHRD has the BAM/BAM-index identities needed to start its materialization "
-                "contract, but it stays blocked until a finalized alias-only BAM contract explicitly "
-                "declares the Sequenza sex model."
+                "contract plus an explicit sex-model parameter, but it stays blocked until a finalized "
+                "alias-only BAM contract and validated runtime exist."
             ),
             "",
             "## Blocked model routes",
