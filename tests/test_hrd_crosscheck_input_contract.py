@@ -576,6 +576,23 @@ class CustodyHandoffTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "receipt must be a real JSON file"):
                 finalizer.validate_anchor(linked_receipt, receipt, "unit")
 
+    def test_anchor_validation_rejects_input_json_below_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-receipts"
+            real_parent.mkdir()
+            receipt = real_parent / "receipt.json"
+            write_json(receipt, {"status": "passed"})
+            linked_parent = root / "linked-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                finalizer.validate_anchor(
+                    linked_parent / "receipt.json",
+                    receipt,
+                    "unit",
+                )
+
     def test_contract_check_rejects_symlinked_contract_without_writing_readiness(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

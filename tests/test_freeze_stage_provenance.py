@@ -477,6 +477,18 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "must be a real file"):
                 MODULE.load_json(linked)
 
+    def test_load_json_rejects_input_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            (real_parent / "input.json").write_text('{"status":"passed"}\n')
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent must not be a symlink"):
+                MODULE.load_json(linked_parent / "input.json")
+
     def test_main_rejects_symlink_output_before_aws_observation(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             root = Path(value)

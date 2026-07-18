@@ -175,6 +175,11 @@ def recover_local_cutover(
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
     value = json.loads(path.read_text(encoding="utf-8"))
