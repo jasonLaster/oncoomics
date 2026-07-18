@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
+import json
 import os
 import shutil
 import tempfile
@@ -10,7 +12,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Mapping, Sequence
 
 from ...paths import path_from_root
-from ...utils import read_json, write_csv, write_json
+from ...utils import read_json
 from .crosscheck_contracts import EXPECTED_CROSSCHECK_BLOCKED_ROUTES, sequenza_alias_input_contract
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 from .safe_json_output import read_real_json, require_no_symlinked_ancestors
@@ -96,6 +98,14 @@ def _sha256_path(path: Path) -> str:
         while chunk := handle.read(1024 * 1024):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def _json_bytes(value: Mapping[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
 def _read_manifest_file(path: Path, label: str) -> Mapping[str, Any]:
@@ -796,11 +806,19 @@ def _write_support_files(
     checks: Mapping[str, Any],
     input_rows: Sequence[Mapping[str, Any]],
 ) -> None:
-    write_json(staging / "crosscheck_input_plans.json", crosscheck_input_plans)
-    write_csv(staging / "readiness.csv", readiness_rows, ["evidence_surface", "state", "reason"])
-    write_json(staging / "evidence_checks.json", checks)
-    write_csv(staging / "input_sha256.csv", input_rows, ["input_id", "path", "bytes", "sha256"])
-    (staging / "report.md").write_text(report, encoding="utf-8")
+    _write_staged_json(staging / "crosscheck_input_plans.json", crosscheck_input_plans)
+    _write_staged_csv(
+        staging / "readiness.csv",
+        readiness_rows,
+        ["evidence_surface", "state", "reason"],
+    )
+    _write_staged_json(staging / "evidence_checks.json", checks)
+    _write_staged_csv(
+        staging / "input_sha256.csv",
+        input_rows,
+        ["input_id", "path", "bytes", "sha256"],
+    )
+    _write_staged_text(staging / "report.md", report)
 
 
 def _support_sha256(staging: Path) -> Mapping[str, str]:
@@ -808,6 +826,102 @@ def _support_sha256(staging: Path) -> Mapping[str, str]:
         name: _sha256_path(staging / name)
         for name in sorted(SUPPORT_NAMES)
     }
+
+
+def _require_real_file(path: Path, label: str) -> None:
+    _require_unsymlinked_path(path, label)
+    if not path.is_file():
+        raise ManifestError(f"{label} must be a real file: {path}")
+
+
+def _require_safe_new_staged_file(path: Path) -> Path:
+    _require_unsymlinked_path(path, "staged deterministic report packet")
+    if path.exists():
+        raise ManifestError(f"staged deterministic report packet already exists: {path.name}")
+    return path.resolve()
+
+
+def _require_staged_packet(path: Path, expected_sha256: str | None = None) -> None:
+    _require_real_file(path, "staged deterministic report packet")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ManifestError(f"staged deterministic report packet mode is not 0600: {path}")
+    if expected_sha256 is not None and _sha256_path(path) != expected_sha256:
+        raise ManifestError(f"staged deterministic report packet changed during write: {path.name}")
+
+
+def _require_installed_packet(path: Path, expected_sha256: str) -> None:
+    _require_real_file(path, "deterministic report packet")
+    if _sha256_path(path) != expected_sha256:
+        raise ManifestError(f"deterministic report packet changed during copy: {path.name}")
+
+
+def _write_staged_bytes(path: Path, value: bytes) -> None:
+    expected_sha256 = _sha256_bytes(value)
+    path = _require_safe_new_staged_file(path)
+    descriptor = -1
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(value)
+            handle.flush()
+            os.fsync(handle.fileno())
+        _fsync_directory(path.parent)
+        _require_staged_packet(path, expected_sha256)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def _write_staged_text(path: Path, value: str) -> None:
+    _write_staged_bytes(path, value.encode("utf-8"))
+
+
+def _write_staged_json(path: Path, value: Mapping[str, Any]) -> None:
+    _write_staged_bytes(path, _json_bytes(value))
+
+
+def _write_staged_csv(
+    path: Path,
+    rows: Sequence[Mapping[str, Any]],
+    fieldnames: Sequence[str],
+) -> None:
+    handle = io.StringIO(newline="")
+    writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({key: row.get(key, "") for key in fieldnames})
+    _write_staged_text(path, handle.getvalue())
+
+
+def _require_staged_report_manifest(staging: Path) -> None:
+    manifest = _require_mapping(
+        read_real_json(staging / "report_manifest.json", "staged report_manifest", ManifestError),
+        "report_manifest",
+    )
+    support_sha256 = _require_mapping(
+        manifest.get("support_sha256"),
+        "report_manifest.support_sha256",
+    )
+    expected = [("report.md", _require_hex(manifest.get("report_sha256"), "report_sha256"))]
+    for name in sorted(SUPPORT_NAMES):
+        expected.append(
+            (
+                name,
+                _require_hex(
+                    support_sha256.get(name),
+                    f"report_manifest.support_sha256.{name}",
+                ),
+            )
+        )
+
+    for name, digest in expected:
+        _require_staged_packet(staging / name)
+        if _sha256_path(staging / name) != digest:
+            raise ManifestError(f"deterministic report manifest is stale for {name}")
 
 
 def _install_packet(
@@ -819,6 +933,8 @@ def _install_packet(
     try:
         for name in sorted(OUTPUT_NAMES):
             source = staging / name
+            _require_staged_packet(source)
+            expected_sha256 = _sha256_path(source)
             destination = output / name
             destination_preexisted = destination.exists() or destination.is_symlink()
             descriptor = -1
@@ -830,6 +946,10 @@ def _install_packet(
                         shutil.copyfileobj(source_handle, destination_handle)
                         destination_handle.flush()
                         os.fsync(destination_handle.fileno())
+                _fsync_directory(output)
+                _require_installed_packet(destination, expected_sha256)
+                if _sha256_path(source) != expected_sha256:
+                    raise ManifestError(f"staged deterministic report packet changed during copy: {name}")
             except Exception:
                 if descriptor >= 0:
                     os.close(descriptor)
@@ -998,7 +1118,8 @@ def stage_phase3_fast_deterministic_report(
                 },
             },
         }
-        write_json(staging / "report_manifest.json", report_manifest)
+        _write_staged_json(staging / "report_manifest.json", report_manifest)
+        _require_staged_report_manifest(staging)
         _install_packet(output, staging=staging)
 
     manifest_path = output / "report_manifest.json"

@@ -56,6 +56,22 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
         return [dict(row) for row in csv.DictReader(handle)]
 
 
+def _write_minimal_staged_report(staging: Path) -> None:
+    stage_report._write_staged_text(staging / "report.md", "# Deterministic report\n")
+    for name in stage_report.SUPPORT_NAMES:
+        stage_report._write_staged_text(staging / name, f"{name}\n")
+    stage_report._write_staged_json(
+        staging / "report_manifest.json",
+        {
+            "report_sha256": _sha256_path(staging / "report.md"),
+            "support_sha256": {
+                name: _sha256_path(staging / name)
+                for name in sorted(stage_report.SUPPORT_NAMES)
+            },
+        },
+    )
+
+
 class Phase3FastDeterministicReportTests(unittest.TestCase):
     def test_stages_no_compute_deterministic_report_from_final_evidence(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -481,6 +497,80 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             for name in stage_report.OUTPUT_NAMES:
                 self.assertFalse((output / name).exists())
 
+    def test_staged_packet_write_rehashes_after_parent_fsync(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output = root / "report.md"
+            real_fsync_directory = stage_report._fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_bytes(b"tampered\n")
+
+            with patch.object(
+                stage_report,
+                "_fsync_directory",
+                side_effect=tamper_after_parent_fsync,
+            ):
+                with self.assertRaisesRegex(stage_report.ManifestError, "changed during write"):
+                    stage_report._write_staged_text(output, "# Report\n")
+
+            self.assertFalse(output.exists())
+
+    def test_install_packet_rehashes_after_output_fsync(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            staging = root / "staging"
+            output = root / "deterministic"
+            staging.mkdir()
+            output.mkdir()
+            _write_minimal_staged_report(staging)
+            real_fsync_directory = stage_report._fsync_directory
+
+            def tamper_after_output_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                for name in sorted(stage_report.OUTPUT_NAMES):
+                    destination = path / name
+                    if destination.exists():
+                        destination.write_bytes(b"tampered\n")
+                        return
+
+            with patch.object(
+                stage_report,
+                "_fsync_directory",
+                side_effect=tamper_after_output_fsync,
+            ):
+                with self.assertRaisesRegex(stage_report.ManifestError, "changed during copy"):
+                    stage_report._install_packet(output, staging=staging)
+
+            self.assertEqual([], list(output.iterdir()))
+
+    def test_rejects_stale_staged_report_manifest_binding(self) -> None:
+        with TemporaryDirectory() as tmp:
+            staging = Path(tmp)
+            _write_minimal_staged_report(staging)
+
+            (staging / "report.md").write_text("tampered\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                stage_report.ManifestError,
+                "deterministic report manifest is stale for report.md",
+            ):
+                stage_report._require_staged_report_manifest(staging)
+
+    def test_rejects_stale_staged_support_manifest_binding(self) -> None:
+        with TemporaryDirectory() as tmp:
+            staging = Path(tmp)
+            _write_minimal_staged_report(staging)
+
+            (staging / "readiness.csv").write_text("tampered\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                stage_report.ManifestError,
+                "deterministic report manifest is stale for readiness.csv",
+            ):
+                stage_report._require_staged_report_manifest(staging)
+
     def test_cleans_packet_files_after_directory_fsync_failure(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -490,7 +580,10 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             with patch.object(
                 stage_report,
                 "_fsync_directory",
-                side_effect=OSError("simulated deterministic directory fsync failure"),
+                side_effect=[
+                    *([None] * len(stage_report.OUTPUT_NAMES)),
+                    OSError("simulated deterministic directory fsync failure"),
+                ],
             ):
                 with self.assertRaisesRegex(OSError, "simulated deterministic directory fsync failure"):
                     stage_report.stage_phase3_fast_deterministic_report(
