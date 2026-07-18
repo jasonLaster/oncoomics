@@ -226,6 +226,52 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertFalse((root / ".materialized.staging").exists())
 
+    def test_reserve_json_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "materialization.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materialization receipt changed during write",
+                ),
+            ):
+                MODULE.reserve_json(receipt, {"status": "in_progress"})
+
+            self.assertFalse(receipt.exists())
+
+    def test_write_json_atomic_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "materialization.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materialization receipt changed during write",
+                ),
+            ):
+                MODULE.write_json_atomic(receipt, {"status": "passed"})
+
     def test_prepared_receipt_recovers_cutover_without_redownload(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

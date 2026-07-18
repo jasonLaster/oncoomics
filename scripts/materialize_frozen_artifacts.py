@@ -40,6 +40,14 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def canonical_json_bytes(value: dict[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -50,40 +58,56 @@ def fsync_directory(path: Path) -> None:
 
 def reserve_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = canonical_json_bytes(value)
+    expected_sha256 = sha256_bytes(data)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
-        os.fchmod(descriptor, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            descriptor = -1
-            json.dump(value, handle, indent=2, sort_keys=True)
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
+        try:
+            os.fchmod(descriptor, 0o600)
+            with os.fdopen(descriptor, "wb") as handle:
+                descriptor = -1
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            fsync_directory(path.parent)
+            require_installed_json(path, expected_sha256)
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
-    fsync_directory(path.parent)
 
 
 def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    data = canonical_json_bytes(value)
+    expected_sha256 = sha256_bytes(data)
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
     temporary = Path(temporary_name)
     try:
         os.fchmod(descriptor, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        with os.fdopen(descriptor, "wb") as handle:
             descriptor = -1
-            json.dump(value, handle, indent=2, sort_keys=True)
-            handle.write("\n")
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, path)
         fsync_directory(path.parent)
+        require_installed_json(path, expected_sha256)
     finally:
         if descriptor >= 0:
             os.close(descriptor)
         temporary.unlink(missing_ok=True)
+
+
+def require_installed_json(path: Path, expected_sha256: str) -> None:
+    require_real_downloaded_file(path, "materialization receipt")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"materialization receipt mode is not 0600: {path}")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"materialization receipt changed during write: {path}")
 
 
 def safe_relative(value: Any) -> str:
