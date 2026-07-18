@@ -502,14 +502,23 @@ def create_private(path: Path, content: bytes) -> None:
                 handle.write(content)
                 handle.flush()
                 os.fsync(handle.fileno())
+            if (path.stat().st_mode & 0o777) != 0o600:
+                raise ValueError(f"private output mode is not 0600: {path}")
+            fsync_directory(path.parent)
         except Exception:
             path.unlink(missing_ok=True)
             raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
-    if (path.stat().st_mode & 0o777) != 0o600:
-        raise ValueError(f"private output mode is not 0600: {path}")
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def require_safe_private_output_parent(path: Path) -> None:

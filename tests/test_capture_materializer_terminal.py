@@ -629,6 +629,19 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 MODULE.create_private(path, b"replacement")
             self.assertEqual(path.read_bytes(), b"first")
 
+    def test_private_create_fsyncs_parent_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "private.json"
+
+            with mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                wraps=MODULE.fsync_directory,
+            ) as fsync_directory:
+                MODULE.create_private(path, b"first")
+
+            fsync_directory.assert_called_once_with(path.parent)
+
     def test_private_create_removes_partial_output_after_fsync_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "private.json"
@@ -640,6 +653,22 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                     side_effect=OSError("synthetic fsync failure"),
                 ),
                 self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+            ):
+                MODULE.create_private(path, b"partial")
+
+            self.assertFalse(path.exists())
+
+    def test_private_create_removes_output_after_parent_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "private.json"
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=OSError("synthetic parent fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic parent fsync failure"),
             ):
                 MODULE.create_private(path, b"partial")
 
