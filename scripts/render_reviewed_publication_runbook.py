@@ -210,6 +210,16 @@ def require_receipt_summaries(
             f"receipts in canonical order; observed={method_ids!r}"
         )
     for summary in summaries:
+        method_id = str(summary["method_id"])
+        if str(summary.get("destination_prefix", "")) != destination_prefix(method_id):
+            raise ValueError(
+                f"{summary['method_id']} private receipt destination is malformed"
+            )
+        object_count = summary.get("object_count")
+        if type(object_count) is not int or object_count <= 0:
+            raise ValueError(
+                f"{summary['method_id']} private receipt object count is malformed"
+            )
         digest = str(summary.get("receipt_sha256", ""))
         if len(digest) != 64 or any(
             character not in "0123456789abcdef" for character in digest
@@ -220,6 +230,23 @@ def require_receipt_summaries(
     return summaries
 
 
+def require_receipt_paths(
+    receipt_paths: Iterable[Path],
+    receipt_summaries: tuple[dict[str, str | int], ...],
+) -> tuple[Path, ...]:
+    paths = tuple(receipt_paths)
+    if len(paths) != len(REPORT_METHOD_IDS):
+        raise ValueError("reviewed-public rendering requires ten private receipts")
+
+    for summary, path in zip(receipt_summaries, paths, strict=True):
+        if str(summary.get("receipt", "")) != str(path):
+            raise ValueError(
+                f"{summary['method_id']} private receipt path is not bound to "
+                "the validated receipt summary"
+            )
+    return paths
+
+
 def render(
     root: Path,
     receipt_paths: Iterable[Path],
@@ -227,7 +254,7 @@ def render(
     receipt_summaries: tuple[dict[str, str | int], ...] = (),
 ) -> str:
     receipt_summaries = require_receipt_summaries(receipt_summaries)
-    paths = list(receipt_paths)
+    paths = require_receipt_paths(receipt_paths, receipt_summaries)
     scripts = root / "scripts"
     receipt_sha256_by_method = {
         str(summary["method_id"]): str(summary["receipt_sha256"])

@@ -86,11 +86,17 @@ def write_receipts(root: Path) -> list[Path]:
     return receipts
 
 
-def receipt_summaries() -> tuple[dict[str, str | int], ...]:
+def receipt_summaries(
+    receipts: list[Path] | None = None,
+) -> tuple[dict[str, str | int], ...]:
+    receipt_paths = receipts or [
+        Path(f"/receipts/{method_id}.json")
+        for method_id in MODULE.REPORT_METHOD_IDS
+    ]
     return tuple(
         {
             "method_id": method_id,
-            "receipt": f"{method_id}.private.json",
+            "receipt": str(receipt_paths[index - 1]),
             "receipt_sha256": f"{index:064x}",
             "destination_prefix": MODULE.destination_prefix(method_id),
             "object_count": 3,
@@ -103,12 +109,15 @@ def render(
     receipts: list[Path] | None = None,
     receipt_stem: str = "terminal",
 ) -> str:
+    receipt_paths = receipts or [
+        Path(f"/receipts/{method_id}.json")
+        for method_id in MODULE.REPORT_METHOD_IDS
+    ]
     return MODULE.render(
         Path("/repo"),
-        receipts
-        or [Path(f"/receipts/{method_id}.json") for method_id in MODULE.REPORT_METHOD_IDS],
+        receipt_paths,
         receipt_stem,
-        receipt_summaries=receipt_summaries(),
+        receipt_summaries=receipt_summaries(receipt_paths),
     )
 
 
@@ -375,6 +384,44 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                 ],
                 "terminal",
             )
+
+    def test_render_refuses_unbound_receipt_paths(self) -> None:
+        receipts = [
+            Path(f"/receipts/{method_id}.json")
+            for method_id in MODULE.REPORT_METHOD_IDS
+        ]
+        summaries = receipt_summaries(receipts)
+
+        with self.assertRaisesRegex(ValueError, "path is not bound"):
+            MODULE.render(
+                Path("/repo"),
+                [receipts[1], receipts[0], *receipts[2:]],
+                "terminal",
+                receipt_summaries=summaries,
+            )
+
+    def test_render_refuses_malformed_receipt_summaries(self) -> None:
+        receipts = [
+            Path(f"/receipts/{method_id}.json")
+            for method_id in MODULE.REPORT_METHOD_IDS
+        ]
+
+        for field, value, message in (
+            ("destination_prefix", "s3://wrong/", "destination is malformed"),
+            ("object_count", 0, "object count is malformed"),
+            ("object_count", True, "object count is malformed"),
+        ):
+            with self.subTest(field=field, value=value):
+                summaries = [dict(summary) for summary in receipt_summaries(receipts)]
+                summaries[0][field] = value
+
+                with self.assertRaisesRegex(ValueError, message):
+                    MODULE.render(
+                        Path("/repo"),
+                        receipts,
+                        "terminal",
+                        receipt_summaries=tuple(summaries),
+                    )
 
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
         prerequisites = {
