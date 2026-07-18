@@ -273,6 +273,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "nf:aws:phase3-wgs:full",
             "nf:aws:phase3-wgs:full:ondemand-large",
             "nf:aws:phase3-wgs:full:ondemand-failfast",
+            "nf:aws:phase3-wgs-fast:gpu-smoke",
             "nf:aws:phase3-wgs:monolith:full",
         ),
     ),

@@ -58,6 +58,12 @@ variable "hrd_x86_max_vcpus" {
   default     = 128
 }
 
+variable "gpu_p5en_max_vcpus" {
+  description = "Maximum vCPUs for the zero-idle On-Demand P5en Parabricks compute environment."
+  type        = number
+  default     = 384
+}
+
 variable "batch_arm_instance_families" {
   description = "ARM64 EC2 instance families for Batch. The local OrbStack image build is arm64."
   type        = list(string)
@@ -68,6 +74,18 @@ variable "batch_x86_instance_families" {
   description = "Linux/amd64 EC2 instance families for private HRD cross-check Batch jobs."
   type        = list(string)
   default     = ["c7i", "m7i", "r7i"]
+}
+
+variable "batch_gpu_p5en_instance_types" {
+  description = "GPU EC2 instance types for the isolated Parabricks AWS Batch environment."
+  type        = list(string)
+  default     = ["p5en.48xlarge"]
+}
+
+variable "parabricks_container" {
+  description = "Pinned linux/amd64 NVIDIA Parabricks image URI for GPU Batch jobs. Leave empty until the smoke image is selected."
+  type        = string
+  default     = ""
 }
 
 variable "work_bucket_lifecycle_days" {

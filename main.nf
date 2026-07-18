@@ -42,6 +42,10 @@ params.phase3_shard_count = params.containsKey('phase3_shard_count') ? params.ph
 params.phase3_bam_validation_mode = params.containsKey('phase3_bam_validation_mode') ? params.phase3_bam_validation_mode : 'full'
 params.phase3_coverage_cnv_mode = params.containsKey('phase3_coverage_cnv_mode') ? params.phase3_coverage_cnv_mode : 'full'
 params.phase3_allow_metadata_cnv_timing = params.containsKey('phase3_allow_metadata_cnv_timing') ? params.phase3_allow_metadata_cnv_timing : false
+params.phase3_fast_gpu_smoke_cpus = params.containsKey('phase3_fast_gpu_smoke_cpus') ? params.phase3_fast_gpu_smoke_cpus : 192
+params.phase3_fast_gpu_smoke_memory = params.containsKey('phase3_fast_gpu_smoke_memory') ? params.phase3_fast_gpu_smoke_memory : '1900 GB'
+params.phase3_fast_gpu_smoke_expected_gpus = params.containsKey('phase3_fast_gpu_smoke_expected_gpus') ? params.phase3_fast_gpu_smoke_expected_gpus : 8
+params.phase3_fast_gpu_smoke_gpu_name = params.containsKey('phase3_fast_gpu_smoke_gpu_name') ? params.phase3_fast_gpu_smoke_gpu_name : 'H200'
 params.phase3_asset_cache_uri = params.phase3_asset_cache_uri ?: null
 params.phase3_asset_cache_mode = params.phase3_asset_cache_mode ?: 'readwrite'
 params.phase3_delete_sra_after_conversion = params.phase3_delete_sra_after_conversion ?: false
@@ -484,6 +488,79 @@ process PHASE3_WGS {
     """
 }
 
+process FAST_GPU_SMOKE {
+    tag "fast_gpu_smoke_${params.phase3_fast_gpu_smoke_expected_gpus}x_${params.phase3_fast_gpu_smoke_gpu_name}"
+    cpus { params.phase3_fast_gpu_smoke_cpus as int }
+    memory { params.phase3_fast_gpu_smoke_memory }
+    time '30m'
+    publishDir "${params.outdir}/phase3_wgs_fast/gpu_smoke", mode: 'copy', overwrite: true
+
+    output:
+    path 'workspace/results/phase3_wgs_fast_gpu_smoke'
+
+    script:
+    """
+    set -euo pipefail
+    mkdir -p workspace/results/phase3_wgs_fast_gpu_smoke
+
+    nvidia-smi --query-gpu=index,name,uuid --format=csv,noheader \\
+      | tee workspace/results/phase3_wgs_fast_gpu_smoke/nvidia-smi-gpus.csv
+
+    gpu_count="\$(wc -l < workspace/results/phase3_wgs_fast_gpu_smoke/nvidia-smi-gpus.csv | tr -d '[:space:]')"
+    expected_gpus="${params.phase3_fast_gpu_smoke_expected_gpus}"
+    required_name="${params.phase3_fast_gpu_smoke_gpu_name}"
+
+    if [[ "\${gpu_count}" != "\${expected_gpus}" ]]; then
+      echo "Expected \${expected_gpus} GPUs, saw \${gpu_count}" >&2
+      exit 42
+    fi
+
+    if [[ -n "\${required_name}" ]]; then
+      awk -F, -v needle="\${required_name}" '
+        index(\$2, needle) == 0 { bad = 1 }
+        END { exit bad }
+      ' workspace/results/phase3_wgs_fast_gpu_smoke/nvidia-smi-gpus.csv
+    fi
+
+    cat > workspace/results/phase3_wgs_fast_gpu_smoke/gpu_smoke.json <<JSON
+    {
+      "schema": "phase3_wgs_fast_gpu_smoke.v1",
+      "status": "passed",
+      "expectedGpuCount": \${expected_gpus},
+      "observedGpuCount": \${gpu_count},
+      "requiredGpuName": "\${required_name}",
+      "nvidiaSmiCsv": "nvidia-smi-gpus.csv"
+    }
+    JSON
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/results/phase3_wgs_fast_gpu_smoke
+    cat > workspace/results/phase3_wgs_fast_gpu_smoke/nvidia-smi-gpus.csv <<CSV
+    0, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000000
+    1, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000001
+    2, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000002
+    3, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000003
+    4, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000004
+    5, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000005
+    6, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000006
+    7, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000007
+    CSV
+    cat > workspace/results/phase3_wgs_fast_gpu_smoke/gpu_smoke.json <<JSON
+    {
+      "schema": "phase3_wgs_fast_gpu_smoke.v1",
+      "status": "stubbed",
+      "expectedGpuCount": 8,
+      "observedGpuCount": 8,
+      "requiredGpuName": "H200",
+      "nvidiaSmiCsv": "nvidia-smi-gpus.csv"
+    }
+    JSON
+    """
+}
+
 process ALL_PUBLIC {
     tag "all_public_phase3_${params.phase3_reads ?: '500000'}"
     cpus 16
@@ -569,11 +646,15 @@ workflow PHASE3_WGS_ALIGN_SCATTER {
     }
 }
 
+workflow PHASE3_WGS_FAST_GPU_SMOKE {
+    FAST_GPU_SMOKE()
+}
+
 workflow {
     selectedWorkflow = params.workflow.toString()
     effectivePhase3Reads = params.phase3_reads ? params.phase3_reads.toString() : '500000'
     allowFullWgs = params.allow_full_wgs.toString() == 'true'
-    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_sra_benchmark', 'known_answer_public_findings', 'known_answer_bounded_non_dry', 'known_answer_expanded_cohort', 'phase3_wgs', 'phase3_wgs_align_only', 'phase3_wgs_align_scatter', 'phase3_wgs_monolith', 'all_public']
+    workflows = ['quick', 'full_wes', 'phase3_fetch', 'phase3_sra_benchmark', 'known_answer_public_findings', 'known_answer_bounded_non_dry', 'known_answer_expanded_cohort', 'phase3_wgs', 'phase3_wgs_align_only', 'phase3_wgs_align_scatter', 'phase3_wgs_fast_gpu_smoke', 'phase3_wgs_monolith', 'all_public']
 
     if (!workflows.contains(selectedWorkflow)) {
         error "Unknown workflow '${selectedWorkflow}'. Choose one of: ${workflows.join(', ')}."
@@ -612,6 +693,8 @@ workflow {
         PHASE3_WGS_ALIGN_ONLY()
     } else if (selectedWorkflow == 'phase3_wgs_align_scatter') {
         PHASE3_WGS_ALIGN_SCATTER()
+    } else if (selectedWorkflow == 'phase3_wgs_fast_gpu_smoke') {
+        PHASE3_WGS_FAST_GPU_SMOKE()
     } else if (selectedWorkflow == 'phase3_wgs_monolith') {
         PHASE3_WGS()
     } else {

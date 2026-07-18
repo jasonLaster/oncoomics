@@ -221,7 +221,15 @@ Required before any caller benchmark:
 
 ### Gate 1: P5en and Parabricks smoke
 
-Run `nvidia-smi`, verify all eight H200 GPUs are visible, and execute a fixed bounded interval. Accept the environment only if:
+Run the checked-in placement smoke after quota approval and a pinned Parabricks
+image:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
+```
+
+Verify all eight H200 GPUs are visible with `nvidia-smi`, then execute a fixed
+bounded interval. Accept the environment only if:
 
 - the pinned container and driver/CUDA combination passes Parabricks startup checks;
 - all eight GPUs are allocated to the Batch job and visible inside the container;

@@ -124,6 +124,33 @@ The profile writes published results to the private results bucket. Planning
 or provisioning this lane does not submit a job; analysis job definitions and
 submissions require a separate reviewed change.
 
+## Parabricks P5en GPU Smoke Lane
+
+The selected fast WGS rerun uses a separate On-Demand GPU Batch lane instead of
+mixing Parabricks jobs into the ARM CPU queues:
+
+- Compute environment: `<project>-<environment>-gpu-p5en-ondemand`
+- Queue: `<project>-<environment>-gpu-p5en`
+- Instance type: `p5en.48xlarge` only
+- AMI family: AWS Batch NVIDIA Amazon Linux 2023 for ECS
+- Capacity: `min_vcpus = 0`, `desired_vcpus = 0`, and
+  `gpu_p5en_max_vcpus = 384` by default
+
+Terraform writes `aws_gpu_queue` and `parabricks_container` to
+`infra/aws/nextflow.aws.json`. Keep `parabricks_container` empty until the
+Parabricks image has been selected and pinned by immutable digest.
+
+After P5en quota is approved and the pinned image is supplied, run only the
+bounded placement/visibility smoke first:
+
+```sh
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
+```
+
+The smoke workflow verifies that the Batch job lands on the isolated GPU queue
+and that `nvidia-smi` reports the expected eight H200 GPUs. It is a placement
+gate only; it does not run Parabricks MutectCaller or Diana WGS evidence.
+
 ## Smoke Test
 
 Run a cloud-side stub only. This submits a real AWS Batch job but does not fetch data or run analysis:

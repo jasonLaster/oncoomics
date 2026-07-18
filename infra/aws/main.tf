@@ -902,6 +902,49 @@ resource "aws_batch_compute_environment" "hrd_x86_ondemand" {
   }
 }
 
+resource "aws_batch_compute_environment" "gpu_p5en_ondemand" {
+  name         = "${local.name_prefix}-gpu-p5en-ondemand"
+  service_role = aws_iam_service_linked_role.batch.arn
+  type         = "MANAGED"
+  state        = "ENABLED"
+
+  compute_resources {
+    type                = "EC2"
+    allocation_strategy = "BEST_FIT_PROGRESSIVE"
+    min_vcpus           = 0
+    desired_vcpus       = 0
+    max_vcpus           = var.gpu_p5en_max_vcpus
+    instance_role       = aws_iam_instance_profile.batch.arn
+    instance_type       = var.batch_gpu_p5en_instance_types
+    security_group_ids  = [aws_security_group.batch.id]
+    subnets             = values(aws_subnet.private)[*].id
+
+    ec2_configuration {
+      image_type = "ECS_AL2023_NVIDIA"
+    }
+
+    launch_template {
+      launch_template_id = aws_launch_template.batch.id
+      version            = aws_launch_template.batch.latest_version
+    }
+  }
+
+  depends_on = [
+    aws_iam_role_policy.batch_instance_extra,
+    aws_iam_role_policy_attachment.batch_instance_ecs,
+    aws_iam_service_linked_role.batch
+  ]
+
+  lifecycle {
+    ignore_changes = [compute_resources[0].desired_vcpus]
+  }
+
+  tags = {
+    Architecture = "linux-amd64"
+    Workload     = "parabricks-p5en"
+  }
+}
+
 resource "aws_batch_job_queue" "spot" {
   name     = "${local.name_prefix}-spot"
   state    = "ENABLED"
@@ -945,6 +988,22 @@ resource "aws_batch_job_queue" "hrd_x86" {
   }
 }
 
+resource "aws_batch_job_queue" "gpu_p5en" {
+  name     = "${local.name_prefix}-gpu-p5en"
+  state    = "ENABLED"
+  priority = 30
+
+  compute_environment_order {
+    order               = 1
+    compute_environment = aws_batch_compute_environment.gpu_p5en_ondemand.arn
+  }
+
+  tags = {
+    Architecture = "linux-amd64"
+    Workload     = "parabricks-p5en"
+  }
+}
+
 resource "local_file" "nextflow_params" {
   filename        = "${path.module}/nextflow.aws.json"
   file_permission = "0600"
@@ -953,12 +1012,14 @@ resource "local_file" "nextflow_params" {
     aws_workdir             = "s3://${aws_s3_bucket.this["work"].bucket}/work"
     aws_results_dir         = "s3://${aws_s3_bucket.this["results"].bucket}/runs"
     aws_private_results_dir = "s3://${aws_s3_bucket.this["private_results"].bucket}/runs"
+    aws_gpu_queue           = aws_batch_job_queue.gpu_p5en.name
     aws_hrd_x86_queue       = aws_batch_job_queue.hrd_x86.name
     aws_spot_queue          = aws_batch_job_queue.spot.name
     aws_ondemand_queue      = aws_batch_job_queue.ondemand.name
     aws_job_role            = aws_iam_role.batch_job.arn
     aws_logs_group          = aws_cloudwatch_log_group.batch.name
     container               = "${aws_ecr_repository.diana_omics.repository_url}:${var.image_tag}"
+    parabricks_container    = var.parabricks_container
     phase3_asset_cache_uri  = "s3://${aws_s3_bucket.this["raw"].bucket}/cache/phase3_wgs"
     diana_raw_inbox_uri     = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_inbox_prefix}"
   })

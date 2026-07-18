@@ -63,6 +63,16 @@ output "hrd_x86_queue" {
   value       = aws_batch_job_queue.hrd_x86.name
 }
 
+output "gpu_p5en_compute_environment" {
+  description = "Zero-idle linux/amd64 AWS Batch compute environment for Parabricks P5en jobs."
+  value       = aws_batch_compute_environment.gpu_p5en_ondemand.name
+}
+
+output "gpu_p5en_queue" {
+  description = "AWS Batch queue name for isolated Parabricks P5en jobs."
+  value       = aws_batch_job_queue.gpu_p5en.name
+}
+
 output "batch_job_role_arn" {
   description = "IAM role ARN used by Batch jobs."
   value       = aws_iam_role.batch_job.arn

@@ -606,6 +606,22 @@ TASKS: dict[str, Task] = {
             "0",
         )
     ),
+    "nf:aws:phase3-wgs-fast:gpu-smoke": _task(
+        _nextflow(
+            "-profile",
+            "awsbatch_gpu",
+            "-params-file",
+            "infra/aws/nextflow.aws.json",
+            "--workflow",
+            "phase3_wgs_fast_gpu_smoke",
+            "--phase3_fast_gpu_smoke_expected_gpus",
+            "8",
+            "--phase3_fast_gpu_smoke_gpu_name",
+            "H200",
+            "--aws_max_retries",
+            "0",
+        )
+    ),
     "nf:aws:phase3-wgs:monolith:full": _task(
         _nextflow(
             "-profile",

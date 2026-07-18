@@ -131,6 +131,7 @@ class CliParityTest(unittest.TestCase):
         self.assertIn("benchmark:known-answer", TASKS)
         self.assertIn("aws:hrd-packet:cloud-submit", TASKS)
         self.assertIn("nf:aws:sra-bench:tiny", TASKS)
+        self.assertIn("nf:aws:phase3-wgs-fast:gpu-smoke", TASKS)
         self.assertIn("nf:aws:known-answer-bounded-non-dry", TASKS)
         self.assertIn("nf:aws:known-answer-expanded-cohort", TASKS)
         self.assertIn("phase3:stage:align:tumor", TASKS)
@@ -166,6 +167,16 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("12", argv[argv.index("--phase3_bwa_threads") + 1])
         self.assertEqual("4", argv[argv.index("--phase3_sort_threads") + 1])
         self.assertNotIn("64", argv[argv.index("--phase3_align_cpus") + 1])
+
+    def test_p5en_gpu_smoke_task_uses_isolated_gpu_profile(self):
+        argv = TASKS["nf:aws:phase3-wgs-fast:gpu-smoke"].steps[0].argv
+        self.assertIn("awsbatch_gpu", argv)
+        self.assertIn("infra/aws/nextflow.aws.json", argv)
+        self.assertEqual("phase3_wgs_fast_gpu_smoke", argv[argv.index("--workflow") + 1])
+        self.assertEqual("8", argv[argv.index("--phase3_fast_gpu_smoke_expected_gpus") + 1])
+        self.assertEqual("H200", argv[argv.index("--phase3_fast_gpu_smoke_gpu_name") + 1])
+        self.assertIn("--aws_max_retries", argv)
+        self.assertEqual("0", argv[argv.index("--aws_max_retries") + 1])
 
 
 if __name__ == "__main__":
