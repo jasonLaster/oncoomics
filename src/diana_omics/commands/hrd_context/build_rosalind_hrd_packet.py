@@ -805,6 +805,7 @@ def diana_wgs_deterministic_report_dir() -> Path:
     report_root = Path(raw).expanduser()
     if report_root.is_symlink() or not report_root.is_dir():
         raise ValueError("deterministic report directory must be a real directory")
+    require_no_symlinked_ancestors(report_root, "deterministic report directory")
     return report_root
 
 
@@ -815,11 +816,22 @@ def diana_wgs_deterministic_report_kind() -> str:
     manifest_path = Path(raw).expanduser() / "report_manifest.json"
     if not manifest_path.is_file() or manifest_path.is_symlink():
         return ""
+    require_no_symlinked_ancestors(manifest_path, "deterministic report manifest")
     manifest = read_json(manifest_path)
     return str(manifest.get("report_kind", "")) if isinstance(manifest, dict) else ""
 
 
+def require_no_symlinked_ancestors(path: Path, label: str) -> Path:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
+    return path
+
+
 def require_real_nonempty_file(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
         raise ValueError(f"{label} must be a non-empty regular non-symlink file")
     return path
@@ -1471,7 +1483,11 @@ def bounded_phase3_fast_state(surface: str, state: str, blockers: list[str]) -> 
 
 def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
     report_root = diana_wgs_deterministic_report_dir()
-    manifest = read_json(report_root / "report_manifest.json")
+    paths = {
+        name: require_real_nonempty_file(report_root / name, f"deterministic {name}")
+        for name in {"crosscheck_input_plans.json", "readiness.csv", "report_manifest.json"}
+    }
+    manifest = read_json(paths["report_manifest.json"])
     if not isinstance(manifest, dict) or manifest.get("report_kind") != PHASE3_FAST_REPORT_KIND:
         raise ValueError("Diana WGS Phase 3 fast packet requires a phase3_fast_deterministic_evidence report")
     review_summary = manifest.get("review_summary")
@@ -1480,7 +1496,7 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
     groups = review_summary.get("artifact_groups")
     if not isinstance(groups, dict):
         groups = {}
-    crosscheck_input_plans = read_json(report_root / "crosscheck_input_plans.json")
+    crosscheck_input_plans = read_json(paths["crosscheck_input_plans.json"])
     crosscheck_routes = (
         crosscheck_input_plans.get("routes", {})
         if isinstance(crosscheck_input_plans, dict)
@@ -1503,7 +1519,7 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
     sequenza_alias_contract = compact_sequenza_alias_contract(sequenza_route)
     sequenza_attestations = sequenza_alias_contract["attestations"]
     sequenza_aliases = sequenza_alias_contract["planned_aliases"]
-    readiness_rows = parse_csv(read_text(report_root / "readiness.csv"))
+    readiness_rows = parse_csv(read_text(paths["readiness.csv"]))
     surfaces = [str(row.get("evidence_surface", "")) for row in readiness_rows if row.get("evidence_surface")]
     blockers: list[str] = []
 

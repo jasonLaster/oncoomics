@@ -714,6 +714,82 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 manifest["review_summary"]["provenance"]["artifact_count"] + 1,
             )
 
+    def test_diana_wgs_packet_rejects_deterministic_report_below_symlinked_parent(self):
+        self.assertFalse(packet.is_platform_root_alias(Path("linked-phase3-fast")))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                output_root / "phase3_fast"
+            )
+            real_parent = output_root / "real-phase3-fast"
+            real_parent.mkdir()
+            moved_root = real_parent / "deterministic"
+            deterministic_root.rename(moved_root)
+            linked_parent = output_root / "linked-phase3-fast"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(
+                            linked_parent / "deterministic"
+                        ),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
+                    },
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "deterministic report .* parent may not be a symlink",
+                ),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+            self.assertFalse(
+                (
+                    output_root
+                    / "results/rosalind_hrd/diana_wgs/phase3-fast/report_manifest.json"
+                ).exists()
+            )
+
+    def test_diana_wgs_phase3_fast_packet_rejects_symlinked_readiness(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                output_root / "phase3_fast"
+            )
+            real_readiness = deterministic_root / "real-readiness.csv"
+            readiness = deterministic_root / "readiness.csv"
+            readiness.rename(real_readiness)
+            readiness.symlink_to(real_readiness)
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
+                    },
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    r"deterministic readiness\.csv must be a non-empty regular non-symlink file",
+                ),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+            self.assertFalse(
+                (
+                    output_root
+                    / "results/rosalind_hrd/diana_wgs/phase3-fast/report_manifest.json"
+                ).exists()
+            )
+
     def test_diana_wgs_phase3_fast_packet_requires_sequenza_alias_contract(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp)
