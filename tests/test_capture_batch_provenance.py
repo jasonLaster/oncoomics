@@ -35,6 +35,42 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
             self.assertFalse(any(output.parent.glob(".execution.json.*.tmp")))
 
+    def test_evidence_path_rejects_symlinked_parent_without_reservation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-provenance"
+            real_parent.mkdir()
+            linked_parent = root / "linked-provenance"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+                MODULE.reserve_json(
+                    linked_parent / "missing" / "execution.json",
+                    {"status": "reserved"},
+                )
+
+            self.assertFalse((real_parent / "missing").exists())
+
+    def test_evidence_replacement_rejects_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-provenance"
+            real_parent.mkdir()
+            output = real_parent / "execution.json"
+            MODULE.reserve_json(output, {"status": "reserved"})
+
+            linked_parent = root / "linked-provenance"
+            real_parent.rename(linked_parent)
+            real_parent.symlink_to(linked_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+                MODULE.write_json_atomic(output, {"status": "passed"})
+
+            self.assertEqual(
+                json.loads((linked_parent / "execution.json").read_text()),
+                {"status": "reserved"},
+            )
+
     def test_failure_receipt_replaces_only_the_current_reservation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             context = {

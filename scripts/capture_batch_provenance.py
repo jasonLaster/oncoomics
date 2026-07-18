@@ -69,6 +69,7 @@ def fsync_directory(path: Path) -> None:
 
 def reserve_json(path: Path, value: dict[str, Any]) -> None:
     """Exclusively reserve an evidence path before remote inspection."""
+    require_safe_json_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -87,6 +88,7 @@ def reserve_json(path: Path, value: dict[str, Any]) -> None:
 
 def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
     """Atomically replace a reservation with complete evidence."""
+    require_safe_json_parent(path)
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
@@ -105,6 +107,24 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
         if descriptor >= 0:
             os.close(descriptor)
         temporary.unlink(missing_ok=True)
+
+
+def require_safe_json_parent(path: Path) -> None:
+    if path.is_symlink():
+        raise FileExistsError(f"JSON output may not be a symlink: {path}")
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise FileExistsError(
+                f"JSON output parent may not be a symlink: {parent}"
+            )
+        if parent == parent.parent:
+            raise FileExistsError(f"JSON output has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise FileExistsError(f"JSON output parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
 
 
 def parse_failure_context() -> dict[str, Any]:
