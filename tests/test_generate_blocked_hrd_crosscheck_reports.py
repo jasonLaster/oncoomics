@@ -101,6 +101,53 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             for forbidden in ("E019", "DRF-", "Personalis", "Echo"):
                 self.assertNotIn(forbidden.casefold(), serialized.casefold())
 
+    def test_reports_bind_upstream_report_manifests_without_exposing_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            rosalind = root / "rosalind-report-manifest.json"
+            rosalind.write_text('{"method_id":"rosalind_diana_wgs"}\n', encoding="utf-8")
+            output = root / "blocked"
+
+            GENERATOR.generate(
+                output,
+                "2026-07-17T00:00:00+00:00",
+                run_id="diana-wgs-hrd-unit",
+                source_report_manifests=GENERATOR.load_source_report_manifests(
+                    [f"rosalind_diana_wgs={rosalind}"]
+                ),
+            )
+
+            for method in GENERATOR.METHODS:
+                directory = output / method["directory"]
+                report = (directory / "report.md").read_text(encoding="utf-8")
+                manifest = json.loads(
+                    (directory / "report_manifest.json").read_text(encoding="utf-8")
+                )
+                spec = json.loads(
+                    (directory / "method_spec.json").read_text(encoding="utf-8")
+                )
+
+                self.assertIn("diana-wgs-hrd-unit", report)
+                self.assertIn("rosalind_diana_wgs report_manifest_sha256", report)
+                self.assertEqual("diana-wgs-hrd-unit", manifest["run_id"])
+                self.assertEqual(
+                    {"rosalind_diana_wgs": sha256(rosalind)},
+                    spec["source_report_manifests"],
+                )
+                self.assertEqual(
+                    sha256(rosalind),
+                    manifest["source_sha256"]["rosalind_diana_wgs_report_manifest"],
+                )
+                self.assertEqual(
+                    {"rosalind_diana_wgs": sha256(rosalind)},
+                    manifest["review_summary"]["source_report_manifests"],
+                )
+
+            serialized = "\n".join(
+                path.read_text(encoding="utf-8") for path in output.rglob("*.*")
+            )
+            self.assertNotIn(str(root), serialized)
+
     def test_generation_is_reproducible_with_fixed_timestamp(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -171,6 +218,47 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 )
 
             self.assertFalse(real_output.exists())
+
+    def test_cli_rejects_malformed_source_report_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "source report manifests must use method_id=path",
+            ):
+                GENERATOR.main(
+                    [
+                        "--output-dir",
+                        str(output),
+                        "--source-report-manifest",
+                        "rosalind_diana_wgs",
+                    ]
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_cli_rejects_mismatched_source_report_manifest_method(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            mismatched = root / "mismatched.json"
+            mismatched.write_text('{"method_id":"deterministic_full_wgs"}\n', encoding="utf-8")
+            output = root / "blocked"
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "source report manifest method_id does not match rosalind_diana_wgs",
+            ):
+                GENERATOR.main(
+                    [
+                        "--output-dir",
+                        str(output),
+                        "--source-report-manifest",
+                        f"rosalind_diana_wgs={mismatched}",
+                    ]
+                )
+
+            self.assertFalse(output.exists())
 
     def test_rejects_output_below_symlinked_parent_without_writing_packets(
         self,

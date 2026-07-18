@@ -1754,6 +1754,8 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
 
     "${params.python_bin}" "${params.repo_dir}/scripts/generate_blocked_hrd_crosscheck_reports.py" \
         --output-dir "\$PWD/workspace/results/phase3_wgs_fast/blocked_crosschecks" \
+        --run-id "${params.phase3_fast_run_id}" \
+        --source-report-manifest "rosalind_diana_wgs=${rosalind_report_manifest}" \
         --generated-at "${params.phase3_fast_generated_at}"
     """
 

@@ -343,6 +343,11 @@ class Phase3FastNextflowTests(unittest.TestCase):
             self.assertIn(f'test -s "${{{rosalind_input}}}"', process)
         self.assertIn("generate_blocked_hrd_crosscheck_reports.py", process)
         self.assertIn('--generated-at "${params.phase3_fast_generated_at}"', process)
+        self.assertIn('--run-id "${params.phase3_fast_run_id}"', process)
+        self.assertIn(
+            '--source-report-manifest "rosalind_diana_wgs=${rosalind_report_manifest}"',
+            process,
+        )
         self.assertIn("workspace/results/phase3_wgs_fast/blocked_crosschecks", process)
         for method_id in (
             "facets_scarhrd_blocked",

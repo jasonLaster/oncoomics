@@ -12,11 +12,12 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
-from hrd_report_inventory import BLOCKED_CROSSCHECK_METHOD_IDS
+from hrd_report_inventory import BLOCKED_CROSSCHECK_METHOD_IDS, REQUIRED_METHOD_IDS
 
 STATUS = {
     "execution_status": "not_run",
@@ -289,6 +290,8 @@ METHODS: tuple[dict[str, Any], ...] = (
 if tuple(method["method_id"] for method in METHODS) != BLOCKED_CROSSCHECK_METHOD_IDS:
     raise ValueError("blocked method generator drifted from the HRD report inventory")
 
+SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+
 
 def json_bytes(value: Any) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
@@ -300,6 +303,44 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def load_source_report_manifest(path: Path, method_id: str) -> None:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
+        raise ValueError(f"source report manifest must be a real non-empty file: {method_id}")
+    with path.open(encoding="utf-8") as handle:
+        manifest = json.load(handle)
+    if not isinstance(manifest, dict) or manifest.get("method_id") != method_id:
+        raise ValueError(f"source report manifest method_id does not match {method_id}")
+
+
+def load_source_report_manifests(values: Sequence[str]) -> dict[str, str]:
+    manifests: dict[str, str] = {}
+    for value in values:
+        method_id, separator, raw_path = value.partition("=")
+        if not separator:
+            raise ValueError("source report manifests must use method_id=path")
+        if method_id not in REQUIRED_METHOD_IDS:
+            raise ValueError(f"unexpected source report method: {method_id}")
+        if method_id in manifests:
+            raise ValueError(f"duplicate source report method: {method_id}")
+
+        path = Path(raw_path)
+        load_source_report_manifest(path, method_id)
+        manifests[method_id] = sha256_file(path)
+    return manifests
+
+
+def validate_source_report_manifests(value: Mapping[str, str] | None) -> dict[str, str]:
+    if value is None:
+        return {}
+    manifests = dict(value)
+    for method_id, digest in manifests.items():
+        if method_id not in REQUIRED_METHOD_IDS:
+            raise ValueError(f"unexpected source report method: {method_id}")
+        if SHA256_HEX.fullmatch(digest) is None:
+            raise ValueError(f"source report manifest SHA-256 is malformed: {method_id}")
+    return {method_id: manifests[method_id] for method_id in REQUIRED_METHOD_IDS if method_id in manifests}
 
 
 def write_file_create_only(path: Path, data: bytes) -> None:
@@ -356,7 +397,13 @@ def require_safe_output_parent(output_root: Path) -> None:
         raise NotADirectoryError(parent)
 
 
-def render_report(spec: dict[str, Any], generated_at: str) -> str:
+def render_report(
+    spec: dict[str, Any],
+    generated_at: str,
+    *,
+    run_id: str,
+    source_report_manifests: Mapping[str, str],
+) -> str:
     lines = [
         f"# {spec['title']} — blocked method report",
         "",
@@ -378,9 +425,24 @@ def render_report(spec: dict[str, Any], generated_at: str) -> str:
         "",
         "No direct identifiers, source object names, or patient-derived values are included.",
         "",
-        "## Intended computation — not executed",
+        "## Upstream report context",
         "",
+        f"- run_id: `{run_id or 'not_recorded'}`",
     ]
+    if source_report_manifests:
+        lines.extend(
+            f"- {method_id} report_manifest_sha256: `{digest}`"
+            for method_id, digest in source_report_manifests.items()
+        )
+    else:
+        lines.append("- source_report_manifests: `not_bound`")
+    lines.extend(
+        [
+            "",
+            "## Intended computation — not executed",
+            "",
+        ]
+    )
     lines.extend(f"- {value}" for value in spec["intended_computation"])
     lines.extend(["", "## Exact prerequisites", ""])
     lines.extend(f"- {value}" for value in spec["prerequisites"])
@@ -408,9 +470,16 @@ def render_report(spec: dict[str, Any], generated_at: str) -> str:
     return "\n".join(lines)
 
 
-def generate(output_root: Path, generated_at: str) -> list[Path]:
+def generate(
+    output_root: Path,
+    generated_at: str,
+    *,
+    run_id: str = "",
+    source_report_manifests: Mapping[str, str] | None = None,
+) -> list[Path]:
     output_root = prepare_output_root(output_root)
     generator_hash = sha256_file(Path(__file__).resolve())
+    source_report_manifests = validate_source_report_manifests(source_report_manifests)
     written: list[Path] = []
     for method in METHODS:
         target = output_root / str(method["directory"])
@@ -430,13 +499,20 @@ def generate(output_root: Path, generated_at: str) -> list[Path]:
             "blockers": method["blockers"],
             "next_gate": method["next_gate"],
             "sources": method["sources"],
+            "run_id": run_id,
+            "source_report_manifests": dict(source_report_manifests),
         }
         spec_path = target / "method_spec.json"
         write_file_create_only(spec_path, json_bytes(spec))
         report_path = target / "report.md"
         write_file_create_only(
             report_path,
-            render_report(method, generated_at).encode("utf-8"),
+            render_report(
+                method,
+                generated_at,
+                run_id=run_id,
+                source_report_manifests=source_report_manifests,
+            ).encode("utf-8"),
         )
         manifest = {
             "schema_version": 1,
@@ -457,8 +533,10 @@ def generate(output_root: Path, generated_at: str) -> list[Path]:
             "blockers": method["blockers"],
             "next_gate": method["next_gate"],
             "sources": method["sources"],
+            "run_id": run_id,
             "review_summary": {
                 "evidence_scope": f"{method['title']} blocked-method specification",
+                "source_report_manifests": dict(source_report_manifests),
                 "readiness": {
                     "execution_status": "not_run",
                     "evidence_status": "blocked",
@@ -474,6 +552,10 @@ def generate(output_root: Path, generated_at: str) -> list[Path]:
             },
             "source_sha256": {
                 "generator": generator_hash,
+                **{
+                    f"{method_id}_report_manifest": digest
+                    for method_id, digest in source_report_manifests.items()
+                },
             },
             "support_sha256": {
                 "method_spec.json": sha256_file(spec_path),
@@ -490,6 +572,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument(
+        "--run-id",
+        default="",
+        help="Pseudonymous run ID to bind into each blocked report.",
+    )
+    parser.add_argument(
+        "--source-report-manifest",
+        action="append",
+        default=[],
+        metavar="METHOD_ID=PATH",
+        help=(
+            "Hash-bind an upstream report manifest into each blocked packet; "
+            "may be passed more than once."
+        ),
+    )
+    parser.add_argument(
         "--generated-at",
         default=datetime.now(timezone.utc).isoformat(),
         help=(
@@ -499,7 +596,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     try:
-        written = generate(args.output_dir, args.generated_at)
+        written = generate(
+            args.output_dir,
+            args.generated_at,
+            run_id=args.run_id,
+            source_report_manifests=load_source_report_manifests(args.source_report_manifest),
+        )
     except (FileExistsError, ValueError) as error:
         raise SystemExit(f"Fail-closed: {error}") from error
     for path in written:

@@ -408,7 +408,10 @@ the final three canonical no-call method packets: FACETS→scarHRD,
 Oncoanalyser→CHORD, and HRDetect. These tiny reports contain no patient-derived
 result; they only document the exact route prerequisites, current blockers,
 source revisions, and next validation gates required before those methods can
-be executed or compared against the deterministic and Rosalind reports.
+be executed or compared against the deterministic and Rosalind reports. Each
+blocked report also records the fast run ID and the upstream Rosalind
+`report_manifest.json` SHA-256, so the seven-method bundle can prove the blocked
+methods were staged for the same deterministic/Rosalind evidence handoff.
 At that point the fast DAG has staged five of the seven source packets required
 by `scripts/render_source_report_freeze_runbook.py`. It must still withhold the
 private-freeze, independent AI-review, comparative-synthesis, and
