@@ -174,6 +174,22 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 VALIDATOR.run(args)
 
+    def test_rejects_validation_receipt_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-manifests"
+            linked_parent = root / "manifests"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                VALIDATOR.write_json_create_only(
+                    linked_parent / "report_packet_validation.json",
+                    {"status": "passed"},
+                )
+
+            self.assertFalse((real_parent / "report_packet_validation.json").exists())
+
     def test_rejects_malformed_receipt_token_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

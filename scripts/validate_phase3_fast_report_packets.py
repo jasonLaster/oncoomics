@@ -14,6 +14,7 @@ from typing import Any, Mapping
 from publish_private_report import canonical_packet_digest, validate_packet_dir
 from render_ai_synthesis_runbook import FORBIDDEN_TOKENS
 
+from diana_omics.commands.phase3_wgs.safe_json_output import require_safe_output_path
 from diana_omics.commands.phase3_wgs.validate_phase3_fast_forbidden_tokens import (
     normalize_forbidden_tokens,
 )
@@ -223,8 +224,7 @@ def validate_packets(
 
 
 def write_json_create_only(path: Path, payload: Mapping[str, Any]) -> None:
-    if path.is_symlink():
-        raise ValueError("packet validation output must not be a symlink")
+    require_safe_output_path(path, "packet validation output", ValueError)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("x", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, sort_keys=True)
