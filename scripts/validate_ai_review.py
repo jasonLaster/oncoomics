@@ -6,16 +6,14 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import html
 import json
 import os
 import re
-import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Sequence
-from urllib.parse import unquote
 
+from forbidden_text import forbidden_token_fingerprints, normalized_scan_text
 from hrd_report_inventory import (
     inventory_payload,
     inventory_sha256,
@@ -152,30 +150,6 @@ def parse_time(value: Any, label: str) -> datetime:
     if parsed.tzinfo is None:
         raise ValueError(f"{label} timestamp must include timezone")
     return parsed
-
-
-def normalized_scan_text(value: str) -> str:
-    normalized = unicodedata.normalize("NFKC", html.unescape(value))
-    for _ in range(2):
-        decoded = unquote(normalized)
-        if decoded == normalized:
-            break
-        normalized = decoded
-    return "".join(
-        character for character in normalized if unicodedata.category(character) != "Cf"
-    )
-
-
-def forbidden_token_fingerprints(tokens: list[str]) -> list[str]:
-    return sorted(
-        hashlib.sha256(
-            (
-                "diana-ai-review-forbidden-v1\0"
-                + normalized_scan_text(token).casefold()
-            ).encode("utf-8")
-        ).hexdigest()
-        for token in tokens
-    )
 
 
 def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str:

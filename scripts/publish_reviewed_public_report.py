@@ -12,19 +12,17 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
-import html
 import json
 import os
 import re
 import subprocess
 import tempfile
-import unicodedata
 from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
-from urllib.parse import unquote
 
+from forbidden_text import normalized_scan_text
 from hrd_report_inventory import require_report_methods
 
 REGION = "us-east-1"
@@ -429,18 +427,6 @@ def exact_source_checks(
         "exact_kms": metadata.get("SSEKMSKeyId") == PRIVATE_KMS_KEY_ARN,
         "metadata_sha256": metadata.get("Metadata", {}).get("sha256") == row["sha256"],
     }
-
-
-def normalized_scan_text(value: str) -> str:
-    normalized = unicodedata.normalize("NFKC", html.unescape(value))
-    for _ in range(2):
-        decoded = unquote(normalized)
-        if decoded == normalized:
-            break
-        normalized = decoded
-    return "".join(
-        character for character in normalized if unicodedata.category(character) != "Cf"
-    )
 
 
 def scan_text(path: Path, tokens: tuple[str, ...]) -> None:

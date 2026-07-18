@@ -5,18 +5,16 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import html
 import json
 import math
 import os
 import re
 import tempfile
-import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
-from urllib.parse import unquote
 
+from forbidden_text import forbidden_token_fingerprints, normalized_scan_text
 from hrd_report_inventory import (
     inventory_payload,
     inventory_sha256,
@@ -98,33 +96,9 @@ def scan_text(text: str, forbidden_tokens: list[str], context: str) -> None:
             raise ValueError(f"forbidden token found in {context}")
 
 
-def normalized_scan_text(value: str) -> str:
-    normalized = unicodedata.normalize("NFKC", html.unescape(value))
-    for _ in range(2):
-        decoded = unquote(normalized)
-        if decoded == normalized:
-            break
-        normalized = decoded
-    return "".join(
-        character for character in normalized if unicodedata.category(character) != "Cf"
-    )
-
-
 def normalized_key(value: str) -> str:
     camel_split = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", normalized_scan_text(value))
     return re.sub(r"[^a-z0-9]+", "_", camel_split.lower()).strip("_")
-
-
-def forbidden_token_fingerprints(tokens: list[str]) -> list[str]:
-    return sorted(
-        hashlib.sha256(
-            (
-                "diana-ai-review-forbidden-v1\0"
-                + normalized_scan_text(token).casefold()
-            ).encode("utf-8")
-        ).hexdigest()
-        for token in tokens
-    )
 
 
 def sanitize(
