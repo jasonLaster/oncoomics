@@ -111,6 +111,13 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("six-file\n  `deterministic_full_wgs` packet", text)
         self.assertNotIn("five-file\n  `deterministic_full_wgs` packet", text)
 
+    def test_scripts_readme_tracks_ten_receipt_public_index(self) -> None:
+        text = SCRIPTS_README.read_text(encoding="utf-8")
+
+        self.assertIn("ten passed reviewed-public report publication receipts", text)
+        self.assertIn("seven-source and ten-publication\n  Diana WGS report inventories", text)
+        self.assertIn("AI-review, comparative-synthesis, and reviewed-public index reporting", text)
+
 
 if __name__ == "__main__":
     unittest.main()

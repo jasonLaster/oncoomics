@@ -7,8 +7,9 @@ Current shell utilities:
 - `build_ai_review_bundle.py`: build a de-identified, hash-bound model review
   bundle from the frozen seven-method HRD report inventory without invoking a
   model.
-- `build_public_results_index.py`: build the reviewed static S3 object index that
-  powers `data.diana-tnbc.com`.
+- `build_public_results_index.py`: build the reviewed static S3 object index
+  from the ten passed reviewed-public report publication receipts that powers
+  `data.diana-tnbc.com`.
 - `capture_batch_provenance.py`: capture a successful full-WGS Batch execution
   and verify the exact worker source before terminal artifact freezing.
 - `capture_materializer_terminal.py`: capture a successful cross-check
@@ -39,9 +40,9 @@ Current shell utilities:
 - `generate_comparative_hrd_synthesis.py`: generate the offline
   `comparative_hrd_synthesis` packet from the frozen seven-method report
   inventory and two independently validated AI-review outputs.
-- `hrd_report_inventory.py`: pin the canonical seven-method Diana WGS report
-  inventory shared by deterministic, Rosalind, cross-check, and AI-review
-  reporting.
+- `hrd_report_inventory.py`: pin the canonical seven-source and ten-publication
+  Diana WGS report inventories shared by deterministic, Rosalind, cross-check,
+  AI-review, comparative-synthesis, and reviewed-public index reporting.
 - `launch_phase3_aws_full.sh`: legacy full Phase 3 WGS AWS wrapper with an
   explicit interlock for pre-fast-path CPU workflows.
 - `materialize_frozen_artifacts.py`: download a passed final-artifact private
