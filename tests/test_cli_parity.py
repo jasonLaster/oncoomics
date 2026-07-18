@@ -245,6 +245,7 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("phase3_wgs_fast", argv[argv.index("--workflow") + 1])
         self.assertEqual("apply", argv[argv.index("--phase3_fast_replication_mode") + 1])
         self.assertEqual("execute", argv[argv.index("--phase3_fast_small_variant_mode") + 1])
+        self.assertEqual("8", argv[argv.index("--phase3_fast_parabricks_num_gpus") + 1])
         self.assertIn("--aws_max_retries", argv)
         self.assertEqual("0", argv[argv.index("--aws_max_retries") + 1])
         self.assertIn("PARABRICKS_MIRROR_RECEIPT", PHASE3_FAST_AWS_EXECUTE_DESCRIPTION)
@@ -300,6 +301,7 @@ class CliParityTest(unittest.TestCase):
         env = run.call_args_list[1].kwargs["env"]
         self.assertEqual("phase3_wgs_fast", argv[argv.index("--workflow") + 1])
         self.assertEqual("execute", argv[argv.index("--phase3_fast_small_variant_mode") + 1])
+        self.assertEqual("8", argv[argv.index("--phase3_fast_parabricks_num_gpus") + 1])
         self.assertEqual("private-freeze.json", argv[argv.index("--phase3_fast_private_freeze_receipt") + 1])
         self.assertEqual('["E019"]', argv[argv.index("--phase3_fast_forbidden_tokens_json") + 1])
         self.assertEqual("YES", env["ALLOW_PHASE3_FAST_AWS_EXECUTE"])
@@ -315,6 +317,7 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("phase3_wgs_fast_gpu_smoke", argv[argv.index("--workflow") + 1])
         self.assertEqual("8", argv[argv.index("--phase3_fast_gpu_smoke_expected_gpus") + 1])
         self.assertEqual("H200", argv[argv.index("--phase3_fast_gpu_smoke_gpu_name") + 1])
+        self.assertEqual("8", argv[argv.index("--phase3_fast_parabricks_num_gpus") + 1])
         self.assertIn("--aws_max_retries", argv)
         self.assertEqual("0", argv[argv.index("--aws_max_retries") + 1])
 

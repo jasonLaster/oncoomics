@@ -52,6 +52,7 @@ LEGACY_PHASE3_AWS_FULL_DESCRIPTION = (
     "Set ALLOW_LEGACY_PHASE3_AWS_FULL=YES only for an explicitly approved legacy public WGS run."
 )
 PHASE3_FAST_AWS_EXECUTE_ENV = {"ALLOW_PHASE3_FAST_AWS_EXECUTE": "YES"}
+PHASE3_FAST_PARABRICKS_NUM_GPUS = "8"
 PHASE3_FAST_AWS_EXECUTE_DESCRIPTION = (
     "Phase 3 fast AWS execute mode runs the full Diana BAM-to-evidence P5en/Parabricks path. "
     "Set ALLOW_PHASE3_FAST_AWS_EXECUTE=YES only after Gate 0 receipts, P5en quota, a pinned mirrored "
@@ -711,6 +712,8 @@ TASKS: dict[str, Task] = {
             "8",
             "--phase3_fast_gpu_smoke_gpu_name",
             "H200",
+            "--phase3_fast_parabricks_num_gpus",
+            PHASE3_FAST_PARABRICKS_NUM_GPUS,
             "--aws_max_retries",
             "0",
         ),
@@ -728,6 +731,8 @@ TASKS: dict[str, Task] = {
             "apply",
             "--phase3_fast_small_variant_mode",
             "execute",
+            "--phase3_fast_parabricks_num_gpus",
+            PHASE3_FAST_PARABRICKS_NUM_GPUS,
             "--aws_max_retries",
             "0",
             append_args=True,
