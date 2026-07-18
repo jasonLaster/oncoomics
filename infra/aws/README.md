@@ -312,6 +312,12 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs:full
 
 Full-source WGS is the acceptance-scale path and can be expensive.
 
+Do not use this legacy full-source CPU launcher for the current Diana
+tumor/matched-normal evidence rerun. The July 2026 single-node CPU evidence
+retry was intentionally stopped before final publication; that rerun is now
+gated on the `phase3_wgs_fast` P5en/Parabricks architecture in
+`docs/operations/next-generation-fast-rerun.md`.
+
 That script requests memory-rich split alignment jobs through:
 
 ```txt

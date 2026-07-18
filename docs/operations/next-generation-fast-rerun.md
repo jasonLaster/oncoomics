@@ -1,6 +1,6 @@
 # Next-Generation WGS Fast-Rerun Strategy
 
-Status: selected implementation strategy based on the live `diana-wgs-hrd-20260716T033101Z` run, observed through 2026-07-16 19:25 UTC. This document authorizes no clinical interpretation and does not by itself submit new high-cost compute.
+Status: selected implementation strategy based on the live `diana-wgs-hrd-20260716T033101Z` run and the operator-stopped v4 retry observed through 2026-07-18 04:49 UTC. This document authorizes no clinical interpretation and does not by itself submit new high-cost compute.
 
 For the executive runtime and cost comparison, see [fast-rerun-performance-cost-summary.md](fast-rerun-performance-cost-summary.md).
 
@@ -10,11 +10,11 @@ For the executive runtime and cost comparison, see [fast-rerun-performance-cost-
 
 The superseded CPU scatter design is preserved as a historical artifact in [historical/2026-07-16-cpu-fast-rerun-plan.md](historical/2026-07-16-cpu-fast-rerun-plan.md). It is not an active fallback.
 
-For the live July WGS run, do not race the running CPU evidence job with an ad
-hoc GPU recomputation. The only immediate GPU-side action is the P5en quota
-request; keep the CPU job alive, and use the GPU architecture only after the
-requested quota, isolated Batch environment, and Parabricks smoke gate are in
-place.
+The July single-node CPU evidence retry was intentionally stopped during v4
+instead of spending further on the monolithic tail. Do not restart that S3-only
+worker or race it with an ad hoc GPU recomputation. The next full Diana WGS run
+must wait for the requested P5en quota, isolated Batch environment, checked-in
+`phase3_wgs_fast` DAG, and bounded Parabricks smoke gate.
 
 For the next run of the current tumor/matched-normal pair, do **not** rerun FASTQ alignment or BAM gathering. Reuse the two validated duplicate-marked BAMs as an immutable input checkpoint and rerun only the evidence DAG. For later FASTQ-origin runs, replace the lane-alignment-plus-gather critical path with parallel Parabricks `fq2bam` jobs only after a separate BAM and known-answer non-inferiority gate passes.
 
@@ -40,6 +40,7 @@ These are engineering targets, not measured Parabricks performance claims. Promo
 | Gather and mark duplicates | 64 vCPU, 120 GiB | 2.01 hours | Normal and tumor were processed serially. Downloads took about 100 seconds; merge/markdup dominated. |
 | Targeted early look | 32 vCPU, 100 GiB, On-Demand | 26.1 minutes | Bounded HRR calls, contamination, QC, and coarse CNV evidence can be produced quickly from the finished BAM pair. |
 | Full evidence v2 | 64 vCPU, 120 GiB, Spot | More than 7 hours 47 minutes and still running at observation time | The full CPU Mutect2 scatter is the dominant bottleneck. |
+| Full evidence v4 | 64 vCPU, 120 GiB, On-Demand | 25.9 minutes from start to operator stop after previous Mutect2 checkpoints had been restored | The patched worker passed the native-tool UTF-8 crash, completed CNV, reused 23 Mutect2 checkpoints, completed the orientation model, and was stopped during paired contamination pileups before final artifacts were published. |
 
 At the observation point, long-running shards such as `chr1` and `chr2` were still incomplete after roughly 450 minutes of caller progress. The current compute critical path had already exceeded 14.2 hours, excluding queue gaps, and was not complete.
 
@@ -52,6 +53,14 @@ The primary performance diagnosis is **same-host caller contention**:
 - All processes share one 2 TiB gp3 volume configured for 16,000 IOPS and 1,000 MB/s.
 - Each Mutect2 process uses an 8 GiB heap and two PairHMM threads. The 64-vCPU allocation therefore does not remove the shared random-read and cache-pressure bottleneck.
 - The current log stream shows highly uneven progress and long-contig stragglers, consistent with contention. This is a high-confidence diagnosis, but the current run did not publish host CPU, page-cache, or EBS queue-depth metrics, so the exact CPU-versus-I/O split remains an evidence gap.
+
+The v4 retry was a useful terminal probe even though it was stopped on purpose:
+it proved that the executed worker can restore every per-contig Mutect2
+checkpoint from S3 and avoid repeating the expensive caller shards. It also left
+`GetPileupSummaries`, contamination, filtering, SBS96, SV evidence, and final
+publication inside the same local worker. A failure or operator stop in that
+tail still discards those uncheckpointed branches, which is exactly the shape
+`phase3_wgs_fast` must remove.
 
 Secondary losses are also material:
 
@@ -274,11 +283,11 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
 
 ### Before quota approval
 
-1. Let the current evidence job finish or fail naturally and preserve its logs; do not treat its result as the speed baseline until terminal status is recorded.
+1. Preserve the stopped v4 Batch and CloudWatch logs; treat the run as non-terminal and do not restart the monolithic single-node CPU worker.
 2. Freeze the validated BAM pair, indices, reference, PoN, germline, and common-sites resources into an immutable input manifest with SHA-256 values.
 3. Implement the checked-in Parabricks evidence DAG and pointer-only result publication.
 4. Create the `us-east-2` private cache, KMS key, ECR mirrors, Batch compute environments, queues, job definitions, and CloudWatch dashboard.
-5. Request 384 On-Demand P vCPUs in `us-east-2` so the same approved quota can cover one immediate P5en caller job and the later two-P5en parallel `fq2bam` gate.
+5. Track the 384 On-Demand P vCPU request in `us-east-2`; the same approved quota should cover one immediate P5en caller job and the later two-P5en parallel `fq2bam` gate.
 
 ### After quota approval
 

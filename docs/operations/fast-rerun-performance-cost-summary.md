@@ -1,6 +1,6 @@
 # Fast-Rerun Performance and Cost Projection
 
-Status: planning projection based on the live `diana-wgs-hrd-20260716T033101Z` run observed through 2026-07-16 19:25 UTC and AWS public prices retrieved on 2026-07-16.
+Status: planning projection based on the live `diana-wgs-hrd-20260716T033101Z` run, the operator-stopped v4 retry observed through 2026-07-18 04:49 UTC, and AWS public prices retrieved on 2026-07-16.
 
 ## Executive summary
 
@@ -18,14 +18,15 @@ The speed ranges are engineering projections, not measured P5en or isolated-CPU 
 
 The operational decision remains: implement the GPU plan assuming quota lands, and retain the CPU plan only as a historical artifact. The GPU premium buys the shortest turnaround; it is not expected to make this single On-Demand rerun cheaper.
 
-For the live July WGS run, do not race the running CPU evidence job with an ad
-hoc P5en recomputation. The quota request is the only immediate GPU-side action;
-new GPU compute should wait for approved quota, an isolated `p5en.48xlarge`
-Batch queue, and a bounded Parabricks smoke gate.
+The July CPU evidence retry was stopped intentionally during v4. Do not restart
+that same monolithic single-node CPU topology or race it with an ad hoc P5en
+recomputation. New GPU compute should wait for approved quota, an isolated
+`p5en.48xlarge` Batch queue, a checked-in resumable DAG, and a bounded
+Parabricks smoke gate.
 
 ## Today's measured baseline
 
-The live run has already established a 14.2-hour lower bound and was still running at the observation point:
+By the 2026-07-16 observation point, the live run had established a 14.2-hour lower bound and the evidence v2 job was still running:
 
 | Critical-path stage | Observed wall time |
 | --- | ---: |
@@ -35,6 +36,13 @@ The live run has already established a 14.2-hour lower bound and was still runni
 | **Observed critical-path floor** | **More than 14.17 hours** |
 
 The evidence v2 job remained inside its CPU Mutect2 scatter. At approximately 450 minutes of caller progress, `chr1` had reached only about 124.2 million bases and remained the clearest straggler. Allowing for completion of the long-contig caller, gathering, filtering, independent evidence branches, uploads, and verification produces the **20-24-hour planning range**. The lower bound is measured; the completion range is a medium-confidence extrapolation.
+
+A patched v4 retry later reused all 23 Mutect2 checkpoints and reached paired
+`GetPileupSummaries` in about 26 minutes before it was intentionally terminated.
+That proves checkpoint restore works for the expensive Mutect2 shards, but it
+does not publish final evidence and does not fix the remaining monolithic
+post-caller tail. The cost and runtime target therefore move to the selected
+Parabricks architecture rather than to another single-node CPU retry.
 
 The current **$40-$55** run-cost estimate includes:
 
