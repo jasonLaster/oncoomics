@@ -342,6 +342,29 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
 
             self.assertEqual([], list(real_output.rglob("*")))
 
+    def test_removes_partially_installed_report_after_copy_failure(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            output = root / "deterministic"
+
+            def fail_after_partial_copy(_source, destination) -> None:
+                destination.write(b"partial deterministic report")
+                raise OSError("simulated deterministic report interruption")
+
+            with patch.object(stage_report.shutil, "copyfileobj", side_effect=fail_after_partial_copy):
+                with self.assertRaisesRegex(OSError, "simulated deterministic report interruption"):
+                    stage_report.stage_phase3_fast_deterministic_report(
+                        final_manifest,
+                        _crosscheck_materialization_plan(final_manifest, manifest_path),
+                        final_manifest_sha256=_sha256_path(manifest_path),
+                        final_manifest_bytes=manifest_path.stat().st_size,
+                        final_root=final_root,
+                        output_dir=output,
+                    )
+
+            self.assertEqual([], [path for path in output.rglob("*") if path.is_file()])
+
 
 if __name__ == "__main__":
     unittest.main()

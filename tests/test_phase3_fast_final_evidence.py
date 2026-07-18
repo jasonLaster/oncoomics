@@ -194,6 +194,29 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
 
             self.assertEqual([], list(real_dir.rglob("*")))
 
+    def test_removes_partial_temporary_copy_after_copy_failure(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "final"
+
+            def fail_after_partial_copy(_source: Path, destination: Path) -> None:
+                Path(destination).write_bytes(b"partial final artifact")
+                raise OSError("simulated copy interruption")
+
+            with patch.object(final_evidence.shutil, "copyfile", side_effect=fail_after_partial_copy):
+                with self.assertRaisesRegex(OSError, "simulated copy interruption"):
+                    final_evidence.build_phase3_fast_final_evidence_manifest(
+                        _join_manifest(root),
+                        evidence_join_sha256=SHA_4,
+                        small_variant_artifact_root=root / "small_variant_export",
+                        bam_qc_artifact_root=root / "bam_qc",
+                        cnv_evidence_artifact_root=root / "cnv_evidence",
+                        sv_evidence_artifact_root=root / "sv_evidence",
+                        output_root=output_root,
+                    )
+
+            self.assertEqual([], [path for path in output_root.rglob("*") if path.is_file()])
+
     def test_rejects_symlinked_output_root_without_copying_outputs(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

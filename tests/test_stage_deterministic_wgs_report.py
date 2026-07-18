@@ -93,6 +93,46 @@ def write_indexed_vcf(path: Path, records: list[str]) -> None:
     plain.unlink()
 
 
+class StageDeterministicWgsReportInstallTests(unittest.TestCase):
+    def test_failed_packet_install_removes_unexpected_child(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "report"
+            staging.mkdir()
+            output.mkdir()
+            staged_paths = []
+            for name in REPORT_MODULE.OUTPUT_NAMES:
+                path = staging / name
+                path.write_text(f"{name}\n", encoding="utf-8")
+                staged_paths.append(path)
+
+            real_copy = REPORT_MODULE.copy_create_only
+
+            def fail_with_unexpected_child(source: Path, destination: Path) -> None:
+                real_copy(source, destination)
+                if destination.name == "readiness.csv":
+                    (destination.parent / "unexpected.tmp").write_text(
+                        "stray partial file\n",
+                        encoding="utf-8",
+                    )
+                    raise ValueError("synthetic install failure")
+
+            with (
+                patch.object(
+                    REPORT_MODULE,
+                    "copy_create_only",
+                    side_effect=fail_with_unexpected_child,
+                ),
+                self.assertRaisesRegex(ValueError, "synthetic install failure"),
+            ):
+                REPORT_MODULE.install_packet_create_only(staged_paths, output)
+
+            self.assertFalse(output.exists())
+
+
 def readiness_rows(pass_records: int, bin_count: int, usable_snvs: int) -> list[dict[str, str]]:
     return [
         {"evidence_surface": "source_sha256", "status": "ready", "detail": "30/30 synthetic payload objects passed SHA-256."},

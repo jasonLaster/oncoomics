@@ -114,6 +114,17 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(verify.GpuSmokeConfigError, "phase3_fast_cache_region"):
             verify.validate_gpu_smoke_params(p5en_params(phase3_fast_cache_region="us-east-1"))
 
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "must end with -us-east-2"):
+            verify.validate_gpu_smoke_params(
+                p5en_params(
+                    aws_workdir="s3://diana-omics-work-172630973301-us-east-20/work",
+                    aws_private_results_dir="s3://diana-omics-private-results-172630973301-us-east-20/runs",
+                    phase3_fast_cache_prefix=(
+                        "s3://diana-omics-private-results-172630973301-us-east-20/phase3-fast-cache/wgs-v2"
+                    ),
+                )
+            )
+
         with self.assertRaisesRegex(verify.GpuSmokeConfigError, "phase3_fast_cache_kms_key_arn"):
             verify.validate_gpu_smoke_params(
                 p5en_params(

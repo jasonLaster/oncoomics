@@ -42,8 +42,8 @@ def _require_use2_s3_uri(params: Mapping[str, Any], key: str, errors: list[str])
         errors.append(f"{key} must be an S3 URI")
         return None
     bucket = value[5:].split("/", 1)[0]
-    if REQUIRED_AWS_REGION not in bucket:
-        errors.append(f"{key} bucket must be region-local to {REQUIRED_AWS_REGION}")
+    if not bucket.endswith(f"-{REQUIRED_AWS_REGION}"):
+        errors.append(f"{key} bucket must end with -{REQUIRED_AWS_REGION}")
     return value.rstrip("/")
 
 

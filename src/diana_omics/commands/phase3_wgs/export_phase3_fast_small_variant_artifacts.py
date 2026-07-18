@@ -189,13 +189,16 @@ def _copy_verified(
     ensure_parent(destination)
     temporary = destination.with_name(f".{destination.name}.tmp")
     temporary.unlink(missing_ok=True)
-    shutil.copyfile(source_path, temporary)
-    copied_bytes = temporary.stat().st_size
-    copied_sha = _sha256_path(temporary)
-    if copied_bytes != expected_bytes or copied_sha != expected_sha:
+    try:
+        shutil.copyfile(source_path, temporary)
+        copied_bytes = temporary.stat().st_size
+        copied_sha = _sha256_path(temporary)
+        if copied_bytes != expected_bytes or copied_sha != expected_sha:
+            raise ManifestError(f"{producer}.{key} export copy bytes and sha256 must match the receipt")
+        temporary.replace(destination)
+    except Exception:
         temporary.unlink(missing_ok=True)
-        raise ManifestError(f"{producer}.{key} export copy bytes and sha256 must match the receipt")
-    temporary.replace(destination)
+        raise
     if _sha256_path(destination) != expected_sha:
         raise ManifestError(f"{producer}.{key} exported sha256 must match the receipt")
     return {

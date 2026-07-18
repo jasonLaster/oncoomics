@@ -364,6 +364,46 @@ class GenerateSynthesisTests(unittest.TestCase):
 
             self.assertEqual(destination.read_bytes(), b"one\n")
 
+    def test_synthesis_install_failure_removes_unexpected_child(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "synthesis"
+            staging.mkdir()
+            output.mkdir()
+            staged_paths = []
+            for name in (
+                "report.md",
+                "agreement_disagreement.csv",
+                "report_manifest.json",
+            ):
+                path = staging / name
+                path.write_text(f"{name}\n", encoding="utf-8")
+                staged_paths.append(path)
+
+            real_copy = GENERATE.copy_create_only
+
+            def fail_with_unexpected_child(source: Path, destination: Path) -> None:
+                real_copy(source, destination)
+                if destination.name == "agreement_disagreement.csv":
+                    (destination.parent / "unexpected.tmp").write_text(
+                        "stray partial file\n",
+                        encoding="utf-8",
+                    )
+                    raise ValueError("synthetic install failure")
+
+            with (
+                mock.patch.object(
+                    GENERATE,
+                    "copy_create_only",
+                    side_effect=fail_with_unexpected_child,
+                ),
+                self.assertRaisesRegex(ValueError, "synthetic install failure"),
+            ):
+                GENERATE.install_packet_create_only(staged_paths, output)
+
+            self.assertFalse(output.exists())
+
     def test_generates_descriptive_report_table_and_schema_one_manifest(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             fixture = SynthesisFixture(Path(temporary))

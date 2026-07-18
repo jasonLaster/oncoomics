@@ -259,11 +259,14 @@ def _copy_verified(spec: CopySpec, output_root: Path) -> None:
     ensure_parent(destination)
     temporary = destination.with_name(f".{destination.name}.tmp")
     temporary.unlink(missing_ok=True)
-    shutil.copyfile(spec.source, temporary)
-    if temporary.stat().st_size != spec.bytes or _sha256_path(temporary) != spec.sha256:
+    try:
+        shutil.copyfile(spec.source, temporary)
+        if temporary.stat().st_size != spec.bytes or _sha256_path(temporary) != spec.sha256:
+            raise ManifestError(f"{spec.label} copied bytes and sha256 must match the evidence join")
+        temporary.replace(destination)
+    except Exception:
         temporary.unlink(missing_ok=True)
-        raise ManifestError(f"{spec.label} copied bytes and sha256 must match the evidence join")
-    temporary.replace(destination)
+        raise
 
 
 def build_phase3_fast_final_evidence_manifest(

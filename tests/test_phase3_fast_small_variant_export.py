@@ -174,6 +174,28 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
 
             self.assertEqual([stale], [path for path in output_root.rglob("*") if path.is_file()])
 
+    def test_removes_partial_temporary_export_after_copy_failure(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "exported"
+            parabricks_receipt, filter_receipt = _receipts(root)
+
+            def fail_after_partial_copy(_source: Path, destination: Path) -> None:
+                Path(destination).write_bytes(b"partial small variant artifact")
+                raise OSError("simulated export interruption")
+
+            with patch.object(export_small_variants.shutil, "copyfile", side_effect=fail_after_partial_copy):
+                with self.assertRaisesRegex(OSError, "simulated export interruption"):
+                    export_small_variants.export_phase3_fast_small_variant_artifacts(
+                        parabricks_receipt,
+                        filter_receipt,
+                        parabricks_mutect_receipt_sha256=SHA_2,
+                        filter_mutect_receipt_sha256=SHA_3,
+                        output_root=output_root,
+                    )
+
+            self.assertEqual([], [path for path in output_root.rglob("*") if path.is_file()])
+
     def test_rejects_untracked_symlinked_export_directory(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

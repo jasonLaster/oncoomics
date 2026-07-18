@@ -827,6 +827,7 @@ def _install_packet(
             with source.open("rb") as source_handle:
                 descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
                 try:
+                    installed.append(destination)
                     with os.fdopen(descriptor, "wb") as destination_handle:
                         descriptor = -1
                         shutil.copyfileobj(source_handle, destination_handle)
@@ -835,7 +836,6 @@ def _install_packet(
                 finally:
                     if descriptor >= 0:
                         os.close(descriptor)
-            installed.append(destination)
     except Exception:
         for path in installed:
             path.unlink(missing_ok=True)
