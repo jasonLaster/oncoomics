@@ -5,12 +5,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_input_manifest import SHA_1
-from tests.test_phase3_fast_staged_inputs import materialized_staging_plan
-
 from diana_omics.commands.phase3_wgs import render_phase3_fast_parabricks_mutect_plan as parabricks
 from diana_omics.commands.phase3_wgs import verify_phase3_fast_staged_inputs as staged
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_input_manifest import SHA_1
+from tests.test_phase3_fast_staged_inputs import materialized_staging_plan
 
 
 def staged_inputs_manifest(root: Path) -> dict:
@@ -51,12 +50,12 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
             Path(plan["inputs"]["reference_sequence_dictionary"]["local_path"]).parent,
         )
         self.assertEqual(
-            Path(plan["inputs"]["panel_of_normals_vcf"]["local_path"]).parent,
-            Path(plan["inputs"]["panel_of_normals_index"]["local_path"]).parent,
+            f'{plan["inputs"]["panel_of_normals_vcf"]["local_path"]}.tbi',
+            plan["inputs"]["panel_of_normals_index"]["local_path"],
         )
         self.assertEqual(
-            Path(plan["inputs"]["germline_resource_vcf"]["local_path"]).parent,
-            Path(plan["inputs"]["germline_resource_index"]["local_path"]).parent,
+            f'{plan["inputs"]["germline_resource_vcf"]["local_path"]}.tbi',
+            plan["inputs"]["germline_resource_index"]["local_path"],
         )
         self.assertTrue(
             plan["inputs"]["reference_fasta"]["source"]["uri"].startswith(
@@ -198,10 +197,10 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             manifest = staged_inputs_manifest(Path(tmp))
         manifest["caller_resources"]["panel_of_normals_index"]["local_path"] = (
-            "/scratch/diana/phase3_wgs_fast/caller_resources/elsewhere/panel.tbi"
+            f'{manifest["caller_resources"]["panel_of_normals_vcf"]["local_path"]}.bak'
         )
 
-        with self.assertRaisesRegex(parabricks.ManifestError, "panel_of_normals"):
+        with self.assertRaisesRegex(parabricks.ManifestError, ".vcf.gz.tbi sidecar"):
             parabricks.build_phase3_fast_parabricks_mutect_plan(
                 manifest,
                 staged_inputs_manifest_sha256=SHA_1,
@@ -211,10 +210,26 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             manifest = staged_inputs_manifest(Path(tmp))
         manifest["caller_resources"]["germline_resource_index"]["local_path"] = (
-            "/scratch/diana/phase3_wgs_fast/caller_resources/elsewhere/germline.tbi"
+            f'{manifest["caller_resources"]["germline_resource_vcf"]["local_path"]}.bak'
         )
 
-        with self.assertRaisesRegex(parabricks.ManifestError, "germline_resource"):
+        with self.assertRaisesRegex(parabricks.ManifestError, ".vcf.gz.tbi sidecar"):
+            parabricks.build_phase3_fast_parabricks_mutect_plan(
+                manifest,
+                staged_inputs_manifest_sha256=SHA_1,
+            )
+
+    def test_rejects_extensionless_caller_resource_vcf(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = staged_inputs_manifest(Path(tmp))
+        manifest["caller_resources"]["panel_of_normals_vcf"]["local_path"] = (
+            "/scratch/diana/phase3_wgs_fast/caller_resources/panel_of_normals/panel_of_normals"
+        )
+        manifest["caller_resources"]["panel_of_normals_index"]["local_path"] = (
+            "/scratch/diana/phase3_wgs_fast/caller_resources/panel_of_normals/panel_of_normals.tbi"
+        )
+
+        with self.assertRaisesRegex(parabricks.ManifestError, ".vcf.gz"):
             parabricks.build_phase3_fast_parabricks_mutect_plan(
                 manifest,
                 staged_inputs_manifest_sha256=SHA_1,

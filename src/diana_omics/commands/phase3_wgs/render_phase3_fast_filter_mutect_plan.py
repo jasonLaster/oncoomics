@@ -58,6 +58,13 @@ def _artifact_path(entry: Mapping[str, Any], artifact: str) -> str:
     return _require_absolute_path(entry.get("local_path"), f"{artifact} local_path")
 
 
+def _require_tabix_sidecar(vcf: str, index: str, label: str) -> None:
+    if not vcf.endswith(".vcf.gz"):
+        raise ManifestError(f"{label} VCF must be staged as .vcf.gz")
+    if index != f"{vcf}.tbi":
+        raise ManifestError(f"{label} index must be the .vcf.gz.tbi sidecar")
+
+
 def _require_source(entry: Mapping[str, Any], artifact: str) -> dict[str, Any]:
     source = _require_mapping(entry.get("source"), f"{artifact} source")
     return {
@@ -162,8 +169,7 @@ def build_phase3_fast_filter_mutect_plan(
         raise ManifestError("tumor.bam and tumor.bai must be staged together")
     if Path(normal_bam).parent != Path(normal_bai).parent:
         raise ManifestError("normal.bam and normal.bai must be staged together")
-    if Path(common_sites).parent != Path(common_sites_index).parent:
-        raise ManifestError("common_sites_vcf and common_sites_index must be staged together")
+    _require_tabix_sidecar(common_sites, common_sites_index, "common_sites")
 
     mutect_outputs = _require_mapping(mutect_plan.get("outputs"), "Mutect plan outputs")
     raw_vcf = _require_absolute_path(mutect_outputs.get("raw_vcf"), "raw_vcf")

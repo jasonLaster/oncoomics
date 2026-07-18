@@ -110,6 +110,28 @@ class Phase3FastCnvEvidenceRunTests(unittest.TestCase):
         self.assertEqual(2, len(runner.commands))
         self.assertIn('"manifest_type": "phase3_wgs_fast_cnv_evidence_receipt"', receipt_text)
 
+    def test_environment_command_rejects_redirected_plan_before_running_bedcov(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_plan = root / "real-cnv-plan.json"
+            redirected_plan = root / "cnv-plan.json"
+            write_json(real_plan, phase3_fast_cnv_evidence_plan(root))
+            redirected_plan.symlink_to(real_plan)
+
+            runner = MaterializingBedcovRunner()
+            with patch.dict(
+                "os.environ",
+                {
+                    "PHASE3_WGS_FAST_CNV_EVIDENCE_PLAN": str(redirected_plan),
+                    "PHASE3_WGS_FAST_CNV_EVIDENCE_RECEIPT_OUTPUT": str(root / "cnv-receipt.json"),
+                },
+                clear=False,
+            ):
+                with self.assertRaisesRegex(run_cnv.ManifestError, "real JSON file"):
+                    run_cnv.load_receipt_from_environment(runner=runner)
+
+        self.assertEqual([], runner.commands)
+
     def test_rejects_missing_planned_command(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_cnv_evidence_plan(Path(tmp))

@@ -173,6 +173,46 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
         self.assertEqual(expected_parabricks_sha256, receipt["source"]["parabricks_mutect_receipt_sha256"])
         self.assertIn('"manifest_type": "phase3_wgs_fast_filter_mutect_receipt"', receipt_text)
 
+    def test_environment_command_rejects_redirected_inputs_before_running_commands(self) -> None:
+        cases = (
+            (
+                "filter plan",
+                "PHASE3_WGS_FAST_FILTER_MUTECT_PLAN",
+                "filter-plan.json",
+            ),
+            (
+                "Parabricks receipt",
+                "PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT",
+                "parabricks-receipt.json",
+            ),
+        )
+        for label, env_name, file_name in cases:
+            with self.subTest(label=label), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plan, parabricks_receipt = filter_plan_and_parabricks_receipt(root)
+                plan_path = root / "filter-plan.json"
+                parabricks_receipt_path = root / "parabricks-receipt.json"
+                write_json(plan_path, plan)
+                write_json(parabricks_receipt_path, parabricks_receipt)
+                redirected_path = root / f"redirected-{file_name}"
+                redirected_path.symlink_to(root / file_name)
+
+                runner = FilterMutectRunner()
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_FILTER_MUTECT_PLAN": str(plan_path),
+                        "PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT": str(parabricks_receipt_path),
+                        "PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT_OUTPUT": str(root / "filter-receipt.json"),
+                        env_name: str(redirected_path),
+                    },
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(run_filter.ManifestError, "real JSON file"):
+                        run_filter.load_receipt_from_environment(runner=runner)
+
+            self.assertEqual([], runner.commands)
+
     def test_rejects_mismatched_parabricks_plan_sha(self) -> None:
         with TemporaryDirectory() as tmp:
             plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))

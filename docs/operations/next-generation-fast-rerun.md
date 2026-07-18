@@ -224,6 +224,11 @@ Implementation rules:
 - Keep S3 materialization, `staged_inputs_manifest.json` verification, and
   first-caller execution in a single worker-local task so `/scratch` paths never
   cross a Nextflow process boundary without their files.
+- Stage VCF caller resources with canonical worker-local names ending in
+  `.vcf.gz` beside their exact `.vcf.gz.tbi` tabix sidecar. The Parabricks and
+  FilterMutect plan renderers must fail closed when PoN, germline-resource, or
+  common-sites resources would not expose the sidecar filename that `pbrun` and
+  `GetPileupSummaries` auto-discover from the primary VCF path.
 
 ## Validation and promotion gates
 

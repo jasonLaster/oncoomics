@@ -102,6 +102,54 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
         self.assertEqual(expected_filter_sha, receipt["source"]["filter_mutect_receipt_sha256"])
         self.assertIn('"manifest_type": "phase3_wgs_fast_small_variant_artifact_export"', export_text)
 
+    def test_environment_command_rejects_redirected_receipts_before_copying_artifacts(self) -> None:
+        cases = (
+            (
+                "Parabricks receipt",
+                "PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT",
+                "parabricks-receipt.json",
+            ),
+            (
+                "FilterMutect receipt",
+                "PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT",
+                "filter-receipt.json",
+            ),
+        )
+        for label, env_name, file_name in cases:
+            with self.subTest(label=label), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                parabricks_receipt, filter_receipt = _receipts(root)
+                parabricks_path = root / "parabricks-receipt.json"
+                filter_path = root / "filter-receipt.json"
+                write_json(parabricks_path, parabricks_receipt)
+                filter_receipt["source"]["parabricks_mutect_receipt_sha256"] = _sha256_json(
+                    parabricks_path
+                )
+                write_json(filter_path, filter_receipt)
+                redirected_path = root / f"redirected-{file_name}"
+                redirected_path.symlink_to(root / file_name)
+                output_root = root / "exported"
+
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT": str(parabricks_path),
+                        "PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT": str(filter_path),
+                        "PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT_ROOT": str(output_root),
+                        "PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT_OUTPUT": str(
+                            root / "small-variant-export.json"
+                        ),
+                        env_name: str(redirected_path),
+                    },
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(
+                        export_small_variants.ManifestError, "real JSON file"
+                    ):
+                        export_small_variants.load_export_from_environment()
+
+                self.assertFalse(output_root.exists())
+
     def test_rejects_parabricks_file_that_changed_after_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

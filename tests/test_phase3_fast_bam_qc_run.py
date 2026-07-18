@@ -133,6 +133,28 @@ class Phase3FastBamQcRunTests(unittest.TestCase):
         self.assertEqual(6, len(runner.commands))
         self.assertIn('"manifest_type": "phase3_wgs_fast_bam_qc_receipt"', receipt_text)
 
+    def test_environment_command_rejects_redirected_plan_before_running_samtools(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_plan = root / "real-bam-qc-plan.json"
+            redirected_plan = root / "bam-qc-plan.json"
+            write_json(real_plan, phase3_fast_bam_qc_plan(root))
+            redirected_plan.symlink_to(real_plan)
+
+            runner = MaterializingSamtoolsRunner()
+            with patch.dict(
+                "os.environ",
+                {
+                    "PHASE3_WGS_FAST_BAM_QC_PLAN": str(redirected_plan),
+                    "PHASE3_WGS_FAST_BAM_QC_RECEIPT_OUTPUT": str(root / "bam-qc-receipt.json"),
+                },
+                clear=False,
+            ):
+                with self.assertRaisesRegex(run_qc.ManifestError, "real JSON file"):
+                    run_qc.load_receipt_from_environment(runner=runner)
+
+        self.assertEqual([], runner.commands)
+
     def test_rejects_missing_planned_command(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_bam_qc_plan(Path(tmp))

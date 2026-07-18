@@ -62,12 +62,16 @@ class Phase3FastStagingPlanTests(unittest.TestCase):
             plan["reference"]["fasta"]["local_path"],
         )
         self.assertEqual(
-            "/scratch/diana/phase3_wgs_fast/caller_resources/panel_of_normals/panel_of_normals_vcf",
+            "/scratch/diana/phase3_wgs_fast/caller_resources/panel_of_normals/panel_of_normals.vcf.gz",
             plan["caller_resources"]["panel_of_normals_vcf"]["local_path"],
         )
         self.assertEqual(
-            Path(plan["caller_resources"]["germline_resource_vcf"]["local_path"]).parent,
-            Path(plan["caller_resources"]["germline_resource_index"]["local_path"]).parent,
+            f'{plan["caller_resources"]["germline_resource_vcf"]["local_path"]}.tbi',
+            plan["caller_resources"]["germline_resource_index"]["local_path"],
+        )
+        self.assertEqual(
+            "/scratch/diana/phase3_wgs_fast/caller_resources/common_sites/common_sites.vcf.gz.tbi",
+            plan["caller_resources"]["common_sites_index"]["local_path"],
         )
 
     def test_rejects_non_ready_cache_manifest(self) -> None:

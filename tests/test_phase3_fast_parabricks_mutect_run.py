@@ -153,6 +153,28 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
         self.assertEqual(plan["commands"]["prepon"]["argv"], runner.commands[0])
         self.assertIn('"manifest_type": "phase3_wgs_fast_parabricks_mutect_receipt"', receipt_text)
 
+    def test_environment_command_rejects_redirected_plan_before_running_pbrun(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_plan = root / "real-parabricks-plan.json"
+            redirected_plan = root / "parabricks-plan.json"
+            write_json(real_plan, parabricks_plan(root))
+            redirected_plan.symlink_to(real_plan)
+
+            runner = MaterializingParabricksRunner(parabricks_plan(root))
+            with patch.dict(
+                "os.environ",
+                {
+                    "PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN": str(redirected_plan),
+                    "PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT_OUTPUT": str(root / "parabricks-receipt.json"),
+                },
+                clear=False,
+            ):
+                with self.assertRaisesRegex(run_mutect.ManifestError, "real JSON file"):
+                    run_mutect.load_receipt_from_environment(runner=runner)
+
+        self.assertEqual([], runner.commands)
+
     def test_rejects_missing_materialized_output(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = parabricks_plan(Path(tmp))

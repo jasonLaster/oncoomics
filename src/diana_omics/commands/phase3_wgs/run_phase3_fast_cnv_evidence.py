@@ -11,10 +11,10 @@ from statistics import median
 from typing import Any, Mapping, Protocol, Sequence
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json, round_value, write_csv
+from ...utils import ensure_parent, round_value, write_csv
 from .cnv_contigs import require_no_standard_autosome_gaps
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import require_no_symlinked_ancestors, require_safe_output_path
+from .safe_json_output import read_real_json, require_no_symlinked_ancestors, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/cnv_evidence_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/cnv_evidence_receipt.json"
@@ -503,7 +503,7 @@ def load_receipt_from_environment(
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_CNV_EVIDENCE_PLAN", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_CNV_EVIDENCE_RECEIPT_OUTPUT", DEFAULT_OUTPUT))
     receipt = run_phase3_fast_cnv_evidence(
-        read_json(input_path),
+        read_real_json(input_path, "CNV evidence plan", ManifestError),
         runner=runner if runner is not None else SubprocessBedcovRunner(),
         cnv_evidence_plan_sha256=_sha256_path(input_path),
     )

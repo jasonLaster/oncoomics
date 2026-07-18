@@ -75,6 +75,13 @@ def _artifact_path(entry: Mapping[str, Any], artifact: str) -> str:
     return _require_absolute_path(entry.get("local_path"), f"{artifact} local_path")
 
 
+def _require_tabix_sidecar(vcf: str, index: str, label: str) -> None:
+    if not vcf.endswith(".vcf.gz"):
+        raise ManifestError(f"{label} VCF must be staged as .vcf.gz")
+    if index != f"{vcf}.tbi":
+        raise ManifestError(f"{label} index must be the .vcf.gz.tbi sidecar")
+
+
 def _require_sample_id(entry: Mapping[str, Any], artifact: str) -> str:
     return _require_string(entry.get("sample_id"), f"{artifact} sample_id")
 
@@ -173,10 +180,8 @@ def build_phase3_fast_parabricks_mutect_plan(
         raise ManifestError("reference.fa and reference.fa.fai must be staged together")
     if Path(reference_fasta).parent != Path(reference_sequence_dictionary).parent:
         raise ManifestError("reference.fa and reference.dict must be staged together")
-    if Path(panel_of_normals_vcf).parent != Path(panel_of_normals_index).parent:
-        raise ManifestError("panel_of_normals_vcf and panel_of_normals_index must be staged together")
-    if Path(germline_resource_vcf).parent != Path(germline_resource_index).parent:
-        raise ManifestError("germline_resource_vcf and germline_resource_index must be staged together")
+    _require_tabix_sidecar(panel_of_normals_vcf, panel_of_normals_index, "panel_of_normals")
+    _require_tabix_sidecar(germline_resource_vcf, germline_resource_index, "germline_resource")
 
     tumor_name = _require_sample_id(tumor_bam, "tumor.bam")
     if _require_sample_id(tumor_bai, "tumor.bai") != tumor_name:

@@ -131,6 +131,28 @@ class Phase3FastSvEvidenceRunTests(unittest.TestCase):
         self.assertEqual(6, len(runner.commands))
         self.assertIn('"manifest_type": "phase3_wgs_fast_sv_evidence_receipt"', receipt_text)
 
+    def test_environment_command_rejects_redirected_plan_before_running_samtools(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_plan = root / "real-sv-plan.json"
+            redirected_plan = root / "sv-plan.json"
+            write_json(real_plan, phase3_fast_sv_evidence_plan(root))
+            redirected_plan.symlink_to(real_plan)
+
+            runner = MaterializingSamtoolsRunner()
+            with patch.dict(
+                "os.environ",
+                {
+                    "PHASE3_WGS_FAST_SV_EVIDENCE_PLAN": str(redirected_plan),
+                    "PHASE3_WGS_FAST_SV_EVIDENCE_RECEIPT_OUTPUT": str(root / "sv-receipt.json"),
+                },
+                clear=False,
+            ):
+                with self.assertRaisesRegex(run_sv.ManifestError, "real JSON file"):
+                    run_sv.load_receipt_from_environment(runner=runner)
+
+        self.assertEqual([], runner.commands)
+
     def test_rejects_missing_planned_command(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_sv_evidence_plan(Path(tmp))

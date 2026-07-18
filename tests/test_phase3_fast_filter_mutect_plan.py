@@ -6,12 +6,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_input_manifest import SHA_1
-from tests.test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
-
 from diana_omics.commands.phase3_wgs import render_phase3_fast_filter_mutect_plan as filter_mutect
 from diana_omics.commands.phase3_wgs import render_phase3_fast_parabricks_mutect_plan as parabricks
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_input_manifest import SHA_1
+from tests.test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
 
 SHA_2 = "b" * 64
 
@@ -47,8 +46,12 @@ class Phase3FastFilterMutectPlanTests(unittest.TestCase):
         self.assertEqual("phase3_wgs_fast_filter_mutect_plan", plan["manifest_type"])
         self.assertEqual("planned", plan["status"])
         self.assertEqual("no_call", plan["interpretation"]["authorized_hrd_state"])
-        self.assertTrue(plan["inputs"]["gatk_jar"]["local_path"].endswith("/caller_resources/gatk/gatk_jar"))
-        self.assertTrue(plan["inputs"]["common_sites_vcf"]["local_path"].endswith("/caller_resources/common_sites/common_sites_vcf"))
+        self.assertTrue(plan["inputs"]["gatk_jar"]["local_path"].endswith("/caller_resources/gatk/gatk.jar"))
+        self.assertTrue(plan["inputs"]["common_sites_vcf"]["local_path"].endswith("/caller_resources/common_sites/common_sites.vcf.gz"))
+        self.assertEqual(
+            f'{plan["inputs"]["common_sites_vcf"]["local_path"]}.tbi',
+            plan["inputs"]["common_sites_index"]["local_path"],
+        )
         self.assertEqual(
             Path(plan["inputs"]["reference_fasta"]["local_path"]).parent,
             Path(plan["inputs"]["reference_fai"]["local_path"]).parent,
@@ -195,9 +198,29 @@ class Phase3FastFilterMutectPlanTests(unittest.TestCase):
     def test_rejects_unpaired_common_sites_index(self) -> None:
         with TemporaryDirectory() as tmp:
             staged, mutect = parabricks_plan(Path(tmp))
-            staged["caller_resources"]["common_sites_index"]["local_path"] = "/scratch/diana/elsewhere/common_sites.idx"
+            staged["caller_resources"]["common_sites_index"]["local_path"] = (
+                f'{staged["caller_resources"]["common_sites_vcf"]["local_path"]}.bak'
+            )
 
-        with self.assertRaisesRegex(filter_mutect.ManifestError, "common_sites"):
+        with self.assertRaisesRegex(filter_mutect.ManifestError, ".vcf.gz.tbi sidecar"):
+            filter_mutect.build_phase3_fast_filter_mutect_plan(
+                staged,
+                mutect,
+                staged_inputs_manifest_sha256=SHA_1,
+                mutect_plan_sha256=SHA_2,
+            )
+
+    def test_rejects_extensionless_common_sites_vcf(self) -> None:
+        with TemporaryDirectory() as tmp:
+            staged, mutect = parabricks_plan(Path(tmp))
+            staged["caller_resources"]["common_sites_vcf"]["local_path"] = (
+                "/scratch/diana/phase3_wgs_fast/caller_resources/common_sites/common_sites"
+            )
+            staged["caller_resources"]["common_sites_index"]["local_path"] = (
+                "/scratch/diana/phase3_wgs_fast/caller_resources/common_sites/common_sites.tbi"
+            )
+
+        with self.assertRaisesRegex(filter_mutect.ManifestError, ".vcf.gz"):
             filter_mutect.build_phase3_fast_filter_mutect_plan(
                 staged,
                 mutect,

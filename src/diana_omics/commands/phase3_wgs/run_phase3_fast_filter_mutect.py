@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Protocol, Sequence
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import require_no_symlinked_ancestors, require_safe_output_path
+from .safe_json_output import read_real_json, require_no_symlinked_ancestors, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/filter_mutect_plan.json"
 DEFAULT_PARABRICKS_RECEIPT = "manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"
@@ -597,8 +597,8 @@ def load_receipt_from_environment(
     )
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT_OUTPUT", DEFAULT_OUTPUT))
     receipt = run_phase3_fast_filter_mutect(
-        read_json(input_path),
-        read_json(parabricks_receipt_path),
+        read_real_json(input_path, "FilterMutect plan", ManifestError),
+        read_real_json(parabricks_receipt_path, "Parabricks receipt", ManifestError),
         runner=runner if runner is not None else SubprocessCommandRunner(),
         filter_mutect_plan_sha256=_sha256_path(input_path),
         parabricks_mutect_receipt_sha256=_sha256_path(parabricks_receipt_path),

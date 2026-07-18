@@ -32,6 +32,16 @@ CALLER_RESOURCE_DIRECTORIES = {
     "panel_of_normals_index": "panel_of_normals",
     "panel_of_normals_vcf": "panel_of_normals",
 }
+CALLER_RESOURCE_FILENAMES = {
+    "common_sites_index": "common_sites.vcf.gz.tbi",
+    "common_sites_vcf": "common_sites.vcf.gz",
+    "gatk_jar": "gatk.jar",
+    "germline_resource_index": "germline_resource.vcf.gz.tbi",
+    "germline_resource_vcf": "germline_resource.vcf.gz",
+    "mutect2_interval_set": "mutect2.interval_list",
+    "panel_of_normals_index": "panel_of_normals.vcf.gz.tbi",
+    "panel_of_normals_vcf": "panel_of_normals.vcf.gz",
+}
 
 
 def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
@@ -95,7 +105,7 @@ def _local_path(root: Path, artifact: str, uri: str) -> Path:
         return root / "inputs" / "tumor" / filename
     if artifact in REFERENCE_CACHE_ARTIFACTS:
         return root / "reference" / filename
-    return root / "caller_resources" / CALLER_RESOURCE_DIRECTORIES[artifact] / filename
+    return root / "caller_resources" / CALLER_RESOURCE_DIRECTORIES[artifact] / CALLER_RESOURCE_FILENAMES[artifact]
 
 
 def _cache_entry(entry: Mapping[str, Any], artifact: str, root: Path, region: str) -> dict[str, Any]:
