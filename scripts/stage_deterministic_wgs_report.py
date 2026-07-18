@@ -1266,6 +1266,10 @@ def main() -> None:
     source_early_root = args.early_look_root.resolve()
     if args.output_dir.is_symlink():
         raise SystemExit("Fail-closed: report output may not be a symlink")
+    if args.output_dir.parent.is_symlink():
+        raise SystemExit(
+            f"Fail-closed: report output parent may not be a symlink: {args.output_dir.parent}"
+        )
     output = args.output_dir.resolve()
     if (
         output == source_artifact_root
