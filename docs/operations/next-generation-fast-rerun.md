@@ -396,6 +396,12 @@ Oncoanalyser→CHORD, and HRDetect. These tiny reports contain no patient-derive
 result; they only document the exact route prerequisites, current blockers,
 source revisions, and next validation gates required before those methods can
 be executed or compared against the deterministic and Rosalind reports.
+At that point the fast DAG has staged five of the seven source packets required
+by `scripts/render_source_report_freeze_runbook.py`. It must still withhold the
+private-freeze, independent AI-review, comparative-synthesis, and
+reviewed-public handoffs until `sequenza_scarhrd` and `sigprofiler_sbs3` have
+real executable-route report packets backed by a published, versioned,
+alias-only cross-check input contract.
 
 ### Gate 1: P5en and Parabricks smoke
 
