@@ -5,10 +5,10 @@ Most workflows should use `PYTHONPATH=src /usr/bin/python3 -m diana_omics ...` r
 Current shell utilities:
 
 - `build_ai_review_bundle.py`: build a de-identified, hash-bound model review
-  bundle from the frozen seven-method HRD report inventory without invoking a
+  bundle from the frozen seven-source HRD report inventory without invoking a
   model.
 - `build_public_results_index.py`: build the reviewed static S3 object index
-  from the ten passed reviewed-public report publication receipts that powers
+  from the ten passed reviewed-public report publication receipts that power
   `data.diana-tnbc.com`.
 - `capture_batch_provenance.py`: capture a successful full-WGS Batch execution
   and verify the exact worker source before terminal artifact freezing.
@@ -38,7 +38,7 @@ Current shell utilities:
   Oncoanalyser→CHORD, and HRDetect no-call packets for routes that are not yet
   executable or clinically authorized.
 - `generate_comparative_hrd_synthesis.py`: generate the offline
-  `comparative_hrd_synthesis` packet from the frozen seven-method report
+  `comparative_hrd_synthesis` packet from the frozen seven-source report
   inventory and two independently validated AI-review outputs.
 - `hrd_report_inventory.py`: pin the canonical seven-source and ten-publication
   Diana WGS report inventories shared by deterministic, Rosalind, cross-check,
@@ -54,7 +54,7 @@ Current shell utilities:
   private versioned results bucket before reviewed public release.
 - `publish_input_contract.py`: publish a finalized HRD cross-check input
   contract as a create-only, content-addressed, exact-VersionId private object.
-- `prepare_ai_review_run.py`: build a seven-method de-identified AI review
+- `prepare_ai_review_run.py`: build a seven-source de-identified AI review
   bundle and stage exact two-file input directories for reviewers A and B.
 - `publish_public_results_index.py`: publish a freshly built reviewed object
   index to `public-index/objects.json` with SHA-256 and S3 metadata custody.
@@ -62,7 +62,7 @@ Current shell utilities:
   packet into the reviewed public Diana WGS alias tree.
 - `render_ai_synthesis_runbook.py`: render the post-freeze AI review,
   validation, comparative-synthesis, and private-publication handoff from
-  seven current private publication receipts.
+  seven current source private-publication receipts.
 - `render_source_report_freeze_runbook.py`: render the private-freeze commands
   for the seven canonical source HRD report packets plus the exact-receipt AI
   handoff command.

@@ -117,6 +117,10 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("ten passed reviewed-public report publication receipts", text)
         self.assertIn("seven-source and ten-publication\n  Diana WGS report inventories", text)
         self.assertIn("AI-review, comparative-synthesis, and reviewed-public index reporting", text)
+        self.assertIn("frozen seven-source HRD report inventory", text)
+        self.assertIn("from the frozen seven-source report\n  inventory", text)
+        self.assertIn("build a seven-source de-identified AI review", text)
+        self.assertIn("seven current source private-publication receipts", text)
 
 
 if __name__ == "__main__":
