@@ -242,6 +242,68 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
 
             self.assertEqual(receipt.read_text(encoding="utf-8"), '{"status":"passed"}\n')
 
+    def test_refuses_symlinked_output_before_receipt_reservation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            direct_target = real_parent / "direct-target"
+            direct_target.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            linked_output = root / "linked-output"
+            linked_output.symlink_to(direct_target, target_is_directory=True)
+
+            for output in (linked_output, linked_parent / "materialized"):
+                with self.subTest(output=output):
+                    receipt = root / f"{output.name}.materialization.json"
+                    with self.assertRaisesRegex(
+                        SystemExit,
+                        "materialization output.* may not be a symlink",
+                    ):
+                        MODULE.main(self.args(freeze, output, receipt, kms))
+
+                    self.assertFalse(receipt.exists())
+                    self.assertFalse((real_parent / "materialized").exists())
+
+    def test_refuses_symlinked_receipt_before_writes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            real_receipt = root / "real-receipt.json"
+            real_receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            linked_receipt = root / "linked-receipt.json"
+            linked_receipt.symlink_to(real_receipt)
+            real_receipt_parent = root / "real-receipts"
+            real_receipt_parent.mkdir()
+            linked_receipt_parent = root / "linked-receipts"
+            linked_receipt_parent.symlink_to(
+                real_receipt_parent,
+                target_is_directory=True,
+            )
+
+            for receipt in (
+                linked_receipt,
+                linked_receipt_parent / "materialization.json",
+            ):
+                with self.subTest(receipt=receipt):
+                    output = root / f"{receipt.name}.materialized"
+                    with self.assertRaisesRegex(
+                        SystemExit,
+                        "materialization receipt.* may not be a symlink",
+                    ):
+                        MODULE.main(self.args(freeze, output, receipt, kms))
+
+                    self.assertEqual(
+                        real_receipt.read_text(encoding="utf-8"),
+                        '{"status":"passed"}\n',
+                    )
+                    self.assertFalse(output.exists())
+                    self.assertFalse((real_receipt_parent / "materialization.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

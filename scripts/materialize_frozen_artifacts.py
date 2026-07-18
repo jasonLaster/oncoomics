@@ -90,6 +90,15 @@ def safe_relative(value: Any) -> str:
     return text
 
 
+def resolve_new_output(path: Path, label: str) -> Path:
+    """Fail before resolving a create-only output through path-level symlinks."""
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink")
+    if path.parent.is_symlink():
+        raise ValueError(f"{label} parent may not be a symlink: {path.parent}")
+    return path.resolve()
+
+
 def validate_local_tree(root: Path, rows: list[dict[str, Any]]) -> None:
     if root.is_symlink() or not root.is_dir():
         raise ValueError("materialized tree is missing or is a symlink")
@@ -239,10 +248,8 @@ def validate_materialized(
 
 
 def materialize(args: argparse.Namespace) -> dict[str, Any]:
-    output = args.output_dir.resolve()
-    receipt_output = args.receipt_output.resolve()
-    if args.output_dir.is_symlink():
-        raise ValueError("materialization output may not be a symlink")
+    output = resolve_new_output(args.output_dir, "materialization output")
+    receipt_output = resolve_new_output(args.receipt_output, "materialization receipt")
     if receipt_output == output or receipt_output.is_relative_to(output):
         raise ValueError("materialization receipt must be outside the artifact tree")
 
