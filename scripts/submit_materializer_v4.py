@@ -926,12 +926,27 @@ def require_new_outputs(paths: Iterable[Path]) -> None:
     for path in values:
         if path.is_symlink():
             raise FileExistsError(f"private output may not be a symlink: {path}")
-        if path.parent.is_symlink():
-            raise FileExistsError(
-                f"private output parent may not be a symlink: {path.parent}"
-            )
+        require_safe_new_output_parent(path)
         if path.exists():
             raise FileExistsError(f"refusing to overwrite private output: {path}")
+
+
+def require_safe_new_output_parent(path: Path) -> None:
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise FileExistsError(
+                f"private output parent may not be a symlink: {parent}"
+            )
+        if parent == parent.parent:
+            raise FileExistsError(f"private output has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise FileExistsError(
+            f"private output parent may not be a symlink: {parent}"
+        )
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
 
 
 def build_parameters(sources: dict[str, str], references: dict[str, str]) -> dict[str, str]:
