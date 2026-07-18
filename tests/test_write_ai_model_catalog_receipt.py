@@ -79,6 +79,30 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
             self.assertIn("output parent is a symlink", result.stderr)
             self.assertFalse((real_parent / "model-catalog-receipt.json").exists())
 
+    def test_write_once_rechecks_output_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-output"
+            real_parent.mkdir()
+            symlink_parent = root / "linked-output"
+            symlink_parent.symlink_to(real_parent, target_is_directory=True)
+
+            writer = importlib.util.spec_from_file_location(
+                "write_ai_model_catalog_receipt",
+                SCRIPT_DIR / "write_ai_model_catalog_receipt.py",
+            )
+            assert writer and writer.loader
+            module = importlib.util.module_from_spec(writer)
+            writer.loader.exec_module(module)
+
+            with self.assertRaisesRegex(SystemExit, "output parent is a symlink"):
+                module.write_once(
+                    symlink_parent / "model-catalog-receipt.json",
+                    "{}\n",
+                )
+
+            self.assertFalse((real_parent / "model-catalog-receipt.json").exists())
+
     def test_requires_latest_model_attestation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary).resolve() / "model-catalog-receipt.json"

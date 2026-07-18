@@ -23,6 +23,7 @@ def prepare_create_only_output(path: Path) -> None:
 
 
 def write_once(path: Path, text: str) -> None:
+    prepare_create_only_output(path)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
