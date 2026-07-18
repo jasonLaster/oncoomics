@@ -38,18 +38,19 @@ from runbook_io import (
 )
 
 
-JOB_ID = "6f827d44-d19b-4a6c-9126-d65189aa66cf"
+JOB_ID = "0c1e11bc-5fab-4dc0-b072-69d8e9759f52"
 WORK_BUCKET = f"diana-omics-work-{ACCOUNT_ID}-{REGION}"
-PUBLIC_RESULTS_BUCKET = f"diana-omics-results-{ACCOUNT_ID}-{REGION}"
 PRIVATE_RUN_ROOT = f"s3://{PRIVATE_BUCKET}/runs/{SUBJECT_ALIAS}/{RUN_ID}/"
 DETERMINISTIC_PRIVATE_PREFIX = f"{PRIVATE_RUN_ROOT}deterministic/"
 WORKER_URI = (
     f"s3://{WORK_BUCKET}/runs/diana-hrd/{RUN_ID}/"
     "inputs/diana_hrd_wgs_worker.py"
 )
-PUBLIC_SOURCE_PREFIX = (
-    f"s3://{PUBLIC_RESULTS_BUCKET}/runs/diana-hrd/{RUN_ID}/artifacts/"
+WORK_FINAL_ARTIFACT_PREFIX = (
+    f"s3://{WORK_BUCKET}/runs/diana-hrd/{RUN_ID}/"
+    "private-results/final/artifacts/"
 )
+DETERMINISTIC_FINAL_PREFIX = DETERMINISTIC_PRIVATE_PREFIX + "final/"
 EARLY_LOOK_ARTIFACT_ROOT = Path(
     "results/diana_wgs_hrd/early-look-intersected-20260716T150517Z/artifacts"
 )
@@ -596,9 +597,9 @@ def render(root: Path) -> str:
                 "--execution-receipt",
                 deterministic / "terminal.execution.succeeded.json",
                 "--source-prefix",
-                PUBLIC_SOURCE_PREFIX,
+                WORK_FINAL_ARTIFACT_PREFIX,
                 "--destination-prefix",
-                DETERMINISTIC_PRIVATE_PREFIX + "artifacts/",
+                DETERMINISTIC_FINAL_PREFIX,
                 "--kms-key-arn",
                 PRIVATE_KMS_KEY_ARN,
                 "--output",
@@ -620,9 +621,9 @@ def render(root: Path) -> str:
                 "--execution-receipt",
                 deterministic / "terminal.execution.succeeded.json",
                 "--source-prefix",
-                PUBLIC_SOURCE_PREFIX,
+                WORK_FINAL_ARTIFACT_PREFIX,
                 "--destination-prefix",
-                DETERMINISTIC_PRIVATE_PREFIX + "artifacts/",
+                DETERMINISTIC_FINAL_PREFIX,
                 "--kms-key-arn",
                 PRIVATE_KMS_KEY_ARN,
                 "--output",

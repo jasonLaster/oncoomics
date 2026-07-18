@@ -330,7 +330,7 @@ def snapshot_inventory(bucket: str, prefix: str, region: str) -> list[dict[str, 
             not listed_stable
             or size <= 0
             or size > MAX_SINGLE_COPY_BYTES
-            or version_id in {"", "null", "None"}
+            or version_id in {"", "None"}
             or current.get("ChecksumType") != "FULL_OBJECT"
             or not checksums(current)
         ):
@@ -540,8 +540,8 @@ def validate_execution_binding(
     if len(arn_parts) != 6 or arn_parts[0:3] != ["arn", "aws", "batch"]:
         raise ValueError("successful Batch job has an invalid ARN")
     arn_region, account_id = arn_parts[3], arn_parts[4]
-    expected_bucket = f"diana-omics-results-{account_id}-{region}"
-    expected_prefix = f"runs/diana-hrd/{run_id}/artifacts/"
+    expected_bucket = f"diana-omics-work-{account_id}-{region}"
+    expected_prefix = f"runs/diana-hrd/{run_id}/private-results/final/artifacts/"
     if arn_region != region or source_bucket != expected_bucket or source_prefix != expected_prefix:
         raise ValueError(
             "source prefix is not the guarded artifact tree for the captured execution"
@@ -564,7 +564,9 @@ def copy_object(
     checksum_algorithm: str,
     region: str,
 ) -> dict[str, Any]:
-    encoded_source = f"{source_bucket}/{quote(source_key, safe='/')}?versionId={quote(source_version_id, safe='')}"
+    encoded_source = f"{source_bucket}/{quote(source_key, safe='/')}"
+    if source_version_id not in {"", "null", "None"}:
+        encoded_source += f"?versionId={quote(source_version_id, safe='')}"
     return aws_json(
         [
             "s3api",
@@ -645,7 +647,7 @@ def main() -> int:
         f"diana-omics-private-results-{account_id}-{args.region}"
     )
     expected_destination_prefix = (
-        f"runs/subject01/{args.run_id}/deterministic/artifacts/"
+        f"runs/subject01/{args.run_id}/deterministic/final/"
     )
     if (
         destination_bucket != expected_destination_bucket
@@ -708,12 +710,12 @@ def main() -> int:
             if (
                 int(before.get("ContentLength", -1)) <= 0
                 or int(before.get("ContentLength", -1)) > MAX_SINGLE_COPY_BYTES
-                or source_version_id in {"", "null", "None"}
+                or source_version_id in {"", "None"}
                 or before.get("ChecksumType") != "FULL_OBJECT"
                 or not checksums(before)
             ):
                 raise RuntimeError(
-                    "source object lacks a positive single-copy size, exact VersionId, "
+                    "source object lacks a positive single-copy size, current VersionId, "
                     f"or full-object checksum: {relative}"
                 )
             listed_stable = (

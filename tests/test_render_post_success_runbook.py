@@ -55,6 +55,23 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         text = MODULE.render(Path("/repo"))
 
         self.assertIn("--expected-status SUCCEEDED", text)
+        self.assertIn("--job-id 0c1e11bc-5fab-4dc0-b072-69d8e9759f52", text)
+        self.assertNotIn("--job-id 6f827d44-d19b-4a6c-9126-d65189aa66cf", text)
+        self.assertIn(
+            "s3://diana-omics-work-172630973301-us-east-1/runs/diana-hrd/"
+            "diana-wgs-hrd-20260716T033101Z/private-results/final/artifacts/",
+            text,
+        )
+        self.assertIn(
+            "s3://diana-omics-private-results-172630973301-us-east-1/runs/"
+            "subject01/diana-wgs-hrd-20260716T033101Z/deterministic/final/",
+            text,
+        )
+        self.assertNotIn(
+            "s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd/"
+            "diana-wgs-hrd-20260716T033101Z/artifacts/",
+            text,
+        )
         self.assertIn("HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES", text)
         self.assertIn("HRD_CROSSCHECK_LICENSE_REVIEWED=YES", text)
         self.assertIn("terminal.materializer.request.dry.json", text)

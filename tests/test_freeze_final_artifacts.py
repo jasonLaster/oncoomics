@@ -125,6 +125,34 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             ],
         )
 
+    def test_copy_omits_version_id_for_unversioned_work_bucket_source(self) -> None:
+        with patch.object(
+            MODULE,
+            "aws_json",
+            return_value={"VersionId": "destination-version"},
+        ) as mocked:
+            result = MODULE.copy_object(
+                "source-bucket",
+                "private-results/final/artifacts/README.md",
+                "null",
+                '"etag"',
+                "destination-bucket",
+                "deterministic/final/README.md",
+                "arn:aws:kms:us-east-1:1:key/test",
+                "SHA256",
+                "us-east-1",
+            )
+        self.assertEqual(result["VersionId"], "destination-version")
+        arguments, _region = mocked.call_args.args
+        self.assertIn(
+            "source-bucket/private-results/final/artifacts/README.md",
+            arguments,
+        )
+        self.assertNotIn(
+            "source-bucket/private-results/final/artifacts/README.md?versionId=null",
+            arguments,
+        )
+
     def test_list_objects_consumes_every_page(self) -> None:
         pages = [
             {
@@ -468,7 +496,10 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         ]
         source_row = {
             "relative_key": "variants/final.vcf.gz",
-            "key": f"runs/diana-hrd/{run_id}/artifacts/variants/final.vcf.gz",
+            "key": (
+                f"runs/diana-hrd/{run_id}/private-results/final/artifacts/"
+                "variants/final.vcf.gz"
+            ),
             "bytes": 10,
             "etag": '"etag"',
             "version_id": "source-version",
@@ -485,7 +516,10 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         observed = [
             {
                 "history_kind": "version",
-                "Key": f"runs/subject01/{run_id}/deterministic/artifacts/variants/final.vcf.gz",
+                "Key": (
+                    f"runs/subject01/{run_id}/deterministic/final/"
+                    "variants/final.vcf.gz"
+                ),
                 "VersionId": "destination-version",
                 "IsLatest": True,
             }
@@ -531,9 +565,9 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 "--execution-receipt",
                 str(execution),
                 "--source-prefix",
-                f"s3://diana-omics-results-172630973301-us-east-1/runs/diana-hrd/{run_id}/artifacts/",
+                f"s3://diana-omics-work-172630973301-us-east-1/runs/diana-hrd/{run_id}/private-results/final/artifacts/",
                 "--destination-prefix",
-                f"s3://diana-omics-private-results-172630973301-us-east-1/runs/subject01/{run_id}/deterministic/artifacts/",
+                f"s3://diana-omics-private-results-172630973301-us-east-1/runs/subject01/{run_id}/deterministic/final/",
                 "--kms-key-arn",
                 "arn:aws:kms:us-east-1:172630973301:key/test",
                 "--output",
@@ -577,6 +611,7 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         listed = [
             {"Key": "prefix/z", "Size": 2, "ETag": '"z"'},
             {"Key": "prefix/a", "Size": 1, "ETag": '"a"'},
+            {"Key": "prefix/unversioned", "Size": 3, "ETag": '"u"'},
         ]
         heads = {
             "prefix/z": {
@@ -593,13 +628,24 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 "ChecksumType": "FULL_OBJECT",
                 "ChecksumSHA256": "sa",
             },
+            "prefix/unversioned": {
+                "ContentLength": 3,
+                "ETag": '"u"',
+                "VersionId": "null",
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": "su",
+            },
         }
         with patch.object(MODULE, "list_objects", return_value=listed), patch.object(
             MODULE, "head", side_effect=lambda _bucket, key, _region: heads[key]
         ):
             snapshot = MODULE.snapshot_inventory("bucket", "prefix/", "us-east-1")
-        self.assertEqual([row["relative_key"] for row in snapshot], ["a", "z"])
+        self.assertEqual(
+            [row["relative_key"] for row in snapshot],
+            ["a", "unversioned", "z"],
+        )
         self.assertEqual(snapshot[0]["version_id"], "va")
+        self.assertEqual(snapshot[1]["version_id"], "null")
 
     def test_inventory_identity_detects_added_or_replaced_object(self) -> None:
         original = [
@@ -681,8 +727,10 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             "job": job,
             "job_id": "job-id",
             "run_id": "run-id",
-            "source_bucket": "diana-omics-results-172630973301-us-east-1",
-            "source_prefix": "runs/diana-hrd/run-id/artifacts/",
+            "source_bucket": "diana-omics-work-172630973301-us-east-1",
+            "source_prefix": (
+                "runs/diana-hrd/run-id/private-results/final/artifacts/"
+            ),
             "region": "us-east-1",
         }
         self.assertEqual(
@@ -695,7 +743,12 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "guarded artifact tree"):
             MODULE.validate_execution_binding(
                 receipt,
-                **{**kwargs, "source_prefix": "runs/diana-hrd/other/artifacts/"},
+                **{
+                    **kwargs,
+                    "source_prefix": (
+                        "runs/diana-hrd/other/private-results/final/artifacts/"
+                    ),
+                },
             )
         with self.assertRaisesRegex(ValueError, "exact successful Batch job"):
             MODULE.validate_execution_binding(
