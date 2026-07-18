@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 NEXT_GEN = ROOT / "docs/operations/next-generation-fast-rerun.md"
 SUMMARY = ROOT / "docs/operations/fast-rerun-performance-cost-summary.md"
 AWS_README = ROOT / "infra/aws/README.md"
+SCRIPTS_README = ROOT / "scripts/README.md"
 
 
 class FastRerunDocsTests(unittest.TestCase):
@@ -77,6 +78,12 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("Do not use this legacy full-source CPU launcher", text)
         self.assertIn("phase3_wgs_fast", text)
         self.assertIn("P5en/Parabricks", text)
+
+    def test_scripts_readme_tracks_six_file_deterministic_report(self) -> None:
+        text = SCRIPTS_README.read_text(encoding="utf-8")
+
+        self.assertIn("six-file\n  `deterministic_full_wgs` packet", text)
+        self.assertNotIn("five-file\n  `deterministic_full_wgs` packet", text)
 
 
 if __name__ == "__main__":

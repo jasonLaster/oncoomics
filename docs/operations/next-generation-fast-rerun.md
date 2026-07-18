@@ -197,15 +197,9 @@ FAST_BAM_QC_PLAN                   exact quickcheck, flagstat, and idxstats plan
 FAST_CNV_EVIDENCE_PLAN             exact full-depth bedcov coverage-bin plan
 FAST_FILTER_MUTECT_PLAN            exact contamination/orientation/filter plan
 FAST_SV_EVIDENCE_PLAN              exact split/discordant read evidence plan
-FAST_FQ2BAM_TUMOR                  optional GPU
-FAST_FQ2BAM_NORMAL                 optional GPU
-FAST_VALIDATE_BAMS
-FAST_MUTECT_PARABRICKS             selected GPU caller
-FAST_CONTAMINATION
-FAST_ORIENTATION_MODEL
-FAST_FILTER_MUTECT
-FAST_CNV_EVIDENCE
-FAST_SV_EVIDENCE
+FAST_GPU_SMOKE                     bounded P5en/Parabricks placement gate
+FAST_MUTECT_PARABRICKS_FILTER      worker-local Parabricks, FilterMutect, and small-variant export
+FAST_BAM_CNV_SV_EVIDENCE           worker-local BAM QC, coverage-CNV, and split/discordant export
 FAST_EVIDENCE_JOIN
 FAST_VERIFY_AND_PUBLISH
 FAST_STAGE_DETERMINISTIC_REPORT     six-file deterministic method report
@@ -326,7 +320,7 @@ when a BAM has no reads with the planned flags, requires non-empty
 `idxstats` and supplementary-count files, parses each count as one non-negative
 integer, hashes every role output, and writes a completed SHA-256 receipt while
 keeping CHORD and HRDetect `no_call`.
-`FAST_MUTECT_PARABRICKS` must consume that plan, run only those three pinned
+`run:phase3-fast-parabricks-mutect` must consume that plan, run only those three pinned
 argument vectors in order on the same staged GPU worker, and write a completed
 receipt that copies the plan inputs and outputs plus the plan SHA-256 and
 verifies the non-empty raw VCF, raw `.stats`, F1R2 tarball, and PoN-annotated
@@ -339,7 +333,7 @@ Parabricks Mutect plan and emits the exact CPU tail for matched-normal pileups,
 contamination, read-orientation priors, `FilterMutectCalls`, and VCF indexing.
 Its input contract also carries the implicit BAM, FASTA, and common-sites
 sidecars that GATK resolves beside those primary inputs.
-`FAST_FILTER_MUTECT` must require the completed Parabricks receipt, re-check
+`run:phase3-fast-filter-mutect` must require the completed Parabricks receipt, re-check
 the raw VCF, raw `.stats`, F1R2 tarball, and PoN-annotated VCF against that
 receipt, run only the planned GATK/bcftools commands, and write a completed
 receipt with bytes and SHA-256 for every tail artifact it materializes.

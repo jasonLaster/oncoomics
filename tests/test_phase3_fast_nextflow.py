@@ -135,9 +135,18 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("`FAST_INPUT_MANIFEST`", text)
         self.assertIn("`FAST_REPLICATION_PLAN`", text)
         self.assertIn("`FAST_REPLICATE_INPUTS`", text)
+        self.assertIn("FAST_GPU_SMOKE                     bounded P5en/Parabricks placement gate", text)
+        self.assertIn("FAST_MUTECT_PARABRICKS_FILTER      worker-local Parabricks", text)
+        self.assertIn("FAST_BAM_CNV_SV_EVIDENCE           worker-local BAM QC", text)
         self.assertIn("FAST_STAGE_DETERMINISTIC_REPORT     six-file deterministic method report", text)
         self.assertIn("`crosscheck_input_plans.json`", text)
+        self.assertIn("`run:phase3-fast-parabricks-mutect` must consume that plan", text)
+        self.assertIn("`run:phase3-fast-filter-mutect` must require", text)
         self.assertNotIn("five-file deterministic method report", text)
+        self.assertNotIn("FAST_FQ2BAM_TUMOR", text)
+        self.assertNotIn("FAST_MUTECT_PARABRICKS             selected GPU caller", text)
+        self.assertNotIn("`FAST_MUTECT_PARABRICKS` must consume", text)
+        self.assertNotIn("`FAST_FILTER_MUTECT` must require", text)
 
     def test_local_fast_stub_exercises_full_execute_branch_without_large_resources(self) -> None:
         script = FAST_STUB_SCRIPT.read_text(encoding="utf-8")
