@@ -116,9 +116,25 @@ def validate_gpu_smoke_result(
     csv_rows = _parse_nvidia_smi_csv(csv_path)
     if len(csv_rows) != observed_count:
         raise Phase3FastExecuteError("nvidia-smi CSV GPU count must match observedGpuCount")
+    observed_indexes: set[int] = set()
+    observed_uuids: set[str] = set()
     for row in csv_rows:
+        try:
+            observed_indexes.add(int(row["index"]))
+        except ValueError as error:
+            raise Phase3FastExecuteError(f"nvidia-smi GPU index must be numeric: {row['index']}") from error
+        uuid = row["uuid"]
+        if not uuid.startswith("GPU-"):
+            raise Phase3FastExecuteError(f"nvidia-smi GPU UUID must start with GPU-: {uuid}")
+        observed_uuids.add(uuid)
         if required_name not in row["name"]:
             raise Phase3FastExecuteError(f"nvidia-smi GPU {row['index']} was not an {required_name}: {row['name']}")
+    if sorted(observed_indexes) != list(range(REQUIRED_GPU_COUNT)):
+        raise Phase3FastExecuteError(
+            f"nvidia-smi CSV must prove distinct GPU indexes 0-{REQUIRED_GPU_COUNT - 1}"
+        )
+    if len(observed_uuids) != observed_count:
+        raise Phase3FastExecuteError("nvidia-smi CSV must prove unique GPU UUIDs")
 
     parabricks_version_path = csv_root / _require_parabricks_version_basename(payload.get("parabricksVersionTxt"))
     _require_existing_file(parabricks_version_path, "Parabricks version output")

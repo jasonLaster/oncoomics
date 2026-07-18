@@ -130,6 +130,30 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
                     passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
                 )
 
+    def test_rejects_smoke_result_without_distinct_gpu_csv_evidence(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_smoke_result(
+                root,
+                csv="\n".join("0, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000000" for _ in range(8))
+                + "\n",
+            )
+
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "distinct GPU indexes"):
+                verify.validate_gpu_smoke_result(
+                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
+                )
+
+            write_smoke_result(
+                root,
+                csv="\n".join(f"{index}, NVIDIA H200, GPU-duplicate" for index in range(8)) + "\n",
+            )
+
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "unique GPU UUIDs"):
+                verify.validate_gpu_smoke_result(
+                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
+                )
+
     def test_rejects_unbound_or_stale_queue_and_image_smoke_result(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
