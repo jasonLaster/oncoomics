@@ -10,12 +10,14 @@ from typing import Any, Mapping, Protocol
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import ManifestError, _require_s3_uri
+from .render_phase3_fast_cache_manifest import BAM_CACHE_ARTIFACTS, REFERENCE_CACHE_ARTIFACTS
+from .render_phase3_fast_input_manifest import CALLER_RESOURCES, ManifestError, _require_s3_uri
 from .render_phase3_fast_staging_plan import EXPECTED_STAGED_OBJECTS
 from .verify_phase3_fast_staged_inputs import build_phase3_fast_staged_inputs_manifest
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staging_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
+EXPECTED_STAGED_ARTIFACTS = set(BAM_CACHE_ARTIFACTS) | set(REFERENCE_CACHE_ARTIFACTS) | set(CALLER_RESOURCES)
 
 
 class S3GetObjectClient(Protocol):
@@ -94,6 +96,23 @@ def _verify_get_object_command(row: Mapping[str, Any], *, region: str) -> None:
         raise ManifestError(f"{artifact} get_object_command must match source VersionId and local path")
 
 
+def _verify_exact_artifacts(rows: list[Mapping[str, Any]]) -> None:
+    by_artifact: dict[str, Mapping[str, Any]] = {}
+    for row in rows:
+        artifact = _require_string(row.get("artifact"), "staged artifact")
+        if artifact in by_artifact:
+            raise ManifestError(f"staging plan contains duplicate artifact {artifact}")
+        by_artifact[artifact] = row
+
+    actual = set(by_artifact)
+    if actual != EXPECTED_STAGED_ARTIFACTS:
+        raise ManifestError(
+            f"staging plan expected exact artifacts {sorted(EXPECTED_STAGED_ARTIFACTS)}, "
+            f"found missing={sorted(EXPECTED_STAGED_ARTIFACTS - actual)} "
+            f"extra={sorted(actual - EXPECTED_STAGED_ARTIFACTS)}"
+        )
+
+
 def _preflight_staging_plan(staging_plan: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     if staging_plan.get("manifest_type") != "phase3_wgs_fast_staging_plan":
         raise ManifestError("staging plan manifest_type must be phase3_wgs_fast_staging_plan")
@@ -106,6 +125,7 @@ def _preflight_staging_plan(staging_plan: Mapping[str, Any]) -> list[Mapping[str
     rows = _require_list(staging_plan.get("staged_objects"), "staged_objects")
     if len(rows) != EXPECTED_STAGED_OBJECTS:
         raise ManifestError(f"staging plan must contain {EXPECTED_STAGED_OBJECTS} staged objects")
+    _verify_exact_artifacts(rows)
     for row in rows:
         _verify_get_object_command(row, region=region)
     destinations = [

@@ -140,6 +140,36 @@ class Phase3FastStageInputsTests(unittest.TestCase):
 
         self.assertEqual([], client.commands)
 
+    def test_rejects_duplicate_artifacts_before_download(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, payloads = downloadable_staging_plan(Path(tmp))
+            plan["staged_objects"][1]["artifact"] = plan["staged_objects"][0]["artifact"]
+            client = FakeS3GetObjectClient(payloads)
+
+            with self.assertRaisesRegex(stage.ManifestError, "duplicate artifact"):
+                stage.stage_phase3_fast_inputs(
+                    plan,
+                    client=client,
+                    staging_plan_sha256=SHA_1,
+                )
+
+        self.assertEqual([], client.commands)
+
+    def test_rejects_extra_artifacts_before_download(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, payloads = downloadable_staging_plan(Path(tmp))
+            plan["staged_objects"][0]["artifact"] = "extra.vcf"
+            client = FakeS3GetObjectClient(payloads)
+
+            with self.assertRaisesRegex(stage.ManifestError, "expected exact artifacts"):
+                stage.stage_phase3_fast_inputs(
+                    plan,
+                    client=client,
+                    staging_plan_sha256=SHA_1,
+                )
+
+        self.assertEqual([], client.commands)
+
     def test_environment_command_writes_staged_manifest(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
