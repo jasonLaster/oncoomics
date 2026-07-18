@@ -152,6 +152,25 @@ def _sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _require_safe_local_path(path: Path, artifact: str) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"{artifact} local_path may not be a symlink: {path}")
+
+    parent = path.parent
+    while not parent.exists() and not parent.is_symlink():
+        next_parent = parent.parent
+        if next_parent == parent:
+            raise ManifestError(f"{artifact} local_path parent does not exist: {path.parent}")
+        parent = next_parent
+
+    if parent.is_symlink():
+        raise ManifestError(f"{artifact} local_path parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ManifestError(f"{artifact} local_path parent is not a directory: {parent}")
+    if path.exists() and not path.is_file():
+        raise ManifestError(f"{artifact} local_path already exists and is not a file: {path}")
+
+
 def materialize_phase3_fast_staged_inputs(
     staging_plan: Mapping[str, Any],
     client: S3GetObjectClient,
@@ -160,6 +179,7 @@ def materialize_phase3_fast_staged_inputs(
     for row in rows:
         artifact = _require_string(row.get("artifact"), "staged artifact")
         local_path = _require_absolute_path(row.get("local_path"), f"{artifact} local_path")
+        _require_safe_local_path(local_path, artifact)
         ensure_parent(local_path)
         fd, tmp_name = tempfile.mkstemp(
             dir=local_path.parent,

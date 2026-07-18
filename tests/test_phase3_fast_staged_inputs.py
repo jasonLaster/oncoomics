@@ -108,6 +108,21 @@ class Phase3FastStagedInputsTests(unittest.TestCase):
                     staging_plan_sha256=SHA_1,
                 )
 
+    def test_rejects_symlinked_local_file(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plan = materialized_staging_plan(root)
+            local_path = Path(plan["staged_objects"][0]["local_path"])
+            real_path = root / "real-staged-object"
+            local_path.replace(real_path)
+            local_path.symlink_to(real_path)
+
+            with self.assertRaisesRegex(staged.ManifestError, "local_path may not be a symlink"):
+                staged.build_phase3_fast_staged_inputs_manifest(
+                    plan,
+                    staging_plan_sha256=SHA_1,
+                )
+
     def test_rejects_duplicate_artifacts(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = materialized_staging_plan(Path(tmp))

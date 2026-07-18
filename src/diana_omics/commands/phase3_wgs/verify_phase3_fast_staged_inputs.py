@@ -52,10 +52,28 @@ def _require_positive_int(value: Any, label: str) -> int:
     return value
 
 
+def _require_safe_local_path(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"{label} may not be a symlink: {path}")
+
+    parent = path.parent
+    while not parent.exists() and not parent.is_symlink():
+        next_parent = parent.parent
+        if next_parent == parent:
+            raise ManifestError(f"{label} parent does not exist: {path.parent}")
+        parent = next_parent
+
+    if parent.is_symlink():
+        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ManifestError(f"{label} parent is not a directory: {parent}")
+
+
 def _require_absolute_file(value: Any, label: str) -> Path:
     path = Path(_require_string(value, label))
     if not path.is_absolute():
         raise ManifestError(f"{label} must be an absolute path")
+    _require_safe_local_path(path, label)
     if not path.is_file():
         raise ManifestError(f"{label} does not exist as a file: {path}")
     return path

@@ -127,6 +127,25 @@ class Phase3FastStageInputsTests(unittest.TestCase):
             self.assertFalse(first_path.exists())
             self.assertEqual([], list(first_path.parent.glob("*.tmp")))
 
+    def test_rejects_symlinked_staging_root_before_download(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_scratch = root / "real-scratch"
+            real_scratch.mkdir()
+            (root / "scratch").symlink_to(real_scratch, target_is_directory=True)
+            plan, payloads = downloadable_staging_plan(root)
+            client = FakeS3GetObjectClient(payloads)
+
+            with self.assertRaisesRegex(stage.ManifestError, "parent may not be a symlink"):
+                stage.stage_phase3_fast_inputs(
+                    plan,
+                    client=client,
+                    staging_plan_sha256=SHA_1,
+                )
+
+            self.assertEqual([], client.commands)
+            self.assertEqual([], list(real_scratch.rglob("*")))
+
     def test_rejects_duplicate_local_paths_before_download(self) -> None:
         with TemporaryDirectory() as tmp:
             plan, payloads = downloadable_staging_plan(Path(tmp))
