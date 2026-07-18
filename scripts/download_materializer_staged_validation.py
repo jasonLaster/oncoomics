@@ -57,6 +57,7 @@ def fsync_directory(path: Path) -> None:
 
 
 def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    require_safe_new_output_parent(path, "JSON output")
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
@@ -79,6 +80,7 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
 
 
 def reserve_json(path: Path, value: dict[str, Any]) -> None:
+    require_safe_new_output_parent(path, "JSON output")
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -144,9 +146,22 @@ def resolve_real_file(path: Path, label: str) -> Path:
 def resolve_new_output(path: Path, label: str) -> Path:
     if path.is_symlink():
         raise ValueError(f"{label} may not be a symlink")
-    if path.parent.is_symlink():
-        raise ValueError(f"{label} parent may not be a symlink: {path.parent}")
+    require_safe_new_output_parent(path, label)
     return path.resolve()
+
+
+def require_safe_new_output_parent(path: Path, label: str) -> None:
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent == parent.parent:
+            raise ValueError(f"{label} has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise ValueError(f"{label} parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
 
 
 def aws_json(arguments: list[str], region: str) -> dict[str, Any]:

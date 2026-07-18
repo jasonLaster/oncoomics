@@ -455,6 +455,43 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                         (real_parent / "staged_input_validation.json").exists()
                     )
 
+    def test_refuses_output_below_symlinked_parent_before_verification_reservation(
+        self,
+    ) -> None:
+        payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            output = linked_parent / "missing" / "staged_input_validation.json"
+            verification = root / "verification.json"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "materializer output.* parent may not be a symlink",
+            ):
+                MODULE.materialize(
+                    argparse.Namespace(
+                        materializer_receipt=receipt_path,
+                        output=output,
+                        verification_output=verification,
+                        expected_kms_key_arn=KMS,
+                        region="us-east-1",
+                    )
+                )
+
+            self.assertFalse(verification.exists())
+            self.assertFalse((real_parent / "missing").exists())
+
     def test_refuses_symlinked_verification_before_writes(self) -> None:
         payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
 
@@ -502,10 +539,44 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                         real_verification.read_text(encoding="utf-8"),
                         '{"status":"passed"}\n',
                     )
-                    self.assertFalse(output.exists())
-                    self.assertFalse(
-                        (real_verification_parent / "verification.json").exists()
+
+    def test_refuses_verification_below_symlinked_parent_before_writes(self) -> None:
+        payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            real_verification_parent = root / "real-verifications"
+            real_verification_parent.mkdir()
+            linked_verification_parent = root / "linked-verifications"
+            linked_verification_parent.symlink_to(
+                real_verification_parent,
+                target_is_directory=True,
+            )
+
+            output = root / "staged_input_validation.json"
+            verification = linked_verification_parent / "missing" / "verification.json"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "verification output.* parent may not be a symlink",
+            ):
+                MODULE.materialize(
+                    argparse.Namespace(
+                        materializer_receipt=receipt_path,
+                        output=output,
+                        verification_output=verification,
+                        expected_kms_key_arn=KMS,
+                        region="us-east-1",
                     )
+                )
+
+            self.assertFalse(output.exists())
+            self.assertFalse((real_verification_parent / "missing").exists())
 
 if __name__ == "__main__":
     unittest.main()
