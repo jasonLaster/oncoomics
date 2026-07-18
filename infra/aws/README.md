@@ -149,7 +149,10 @@ Terraform writes `aws_gpu_queue`, `phase3_fast_cache_prefix`, and
 `parabricks_container` to `infra/aws/nextflow.aws.use2.json`. The cache prefix
 uses the regional private-results bucket under `phase3-fast-cache/wgs-v2`; keep
 `parabricks_container` empty until the Parabricks image has been selected and
-pinned by immutable digest.
+pinned by immutable digest. The `awsbatch_gpu` profile maps `gpu_parabricks`
+processes to that queue and image and sets the Nextflow `accelerator` request
+to `phase3_fast_parabricks_num_gpus`, so Batch receives an explicit eight-GPU
+request for the P5en jobs.
 
 The `us-east-2` Batch job role also receives versioned read permission on the
 `us-east-1` raw-inputs and private-results source buckets and KMS decrypt

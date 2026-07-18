@@ -265,6 +265,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("queue = params.aws_ondemand_queue", config)
         self.assertIn("withLabel: gpu_parabricks", config)
         self.assertIn("queue = params.aws_gpu_queue", config)
+        self.assertIn("accelerator = params.phase3_fast_parabricks_num_gpus as int", config)
         self.assertIn("phase3_fast_parabricks_cpus = 192", config)
         self.assertIn("phase3_fast_parabricks_memory = '1900 GB'", config)
         self.assertIn("phase3_fast_parabricks_num_gpus = 8", config)

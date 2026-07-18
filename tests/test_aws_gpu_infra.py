@@ -108,6 +108,7 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("withLabel: gpu_parabricks", nextflow)
         self.assertIn("queue = params.aws_gpu_queue", nextflow)
         self.assertIn("container = params.parabricks_container", nextflow)
+        self.assertIn("accelerator = params.phase3_fast_parabricks_num_gpus as int", nextflow)
         self.assertIn("withLabel: cpu_io", nextflow)
         self.assertIn("queue = params.aws_ondemand_queue", nextflow)
         self.assertIn("container = params.container", nextflow)

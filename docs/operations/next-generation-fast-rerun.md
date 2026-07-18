@@ -219,6 +219,7 @@ Implementation rules:
 - The workflow has one caller: Parabricks. Do not add a backend-selection flag to the first implementation.
 - Map processes to `cpu_io` and `gpu_parabricks` queues.
 - Keep the current ARM application image for compatible CPU tasks and use a pinned x86 Parabricks image only for GPU tasks.
+- Set the `gpu_parabricks` accelerator request from `phase3_fast_parabricks_num_gpus`; queue placement and a GPU instance type are not enough to reserve or expose H200s to the AWS Batch container.
 - Use `-resume` and content digests. Do not use a timestamp alone as a cache key.
 - Publish large inputs and intermediates once to the immutable cache. Publish pointer manifests and evidence outputs to the run result prefix.
 - Redact sample identifiers from job names and general CloudWatch command logs; retain them only in access-controlled provenance where required.
