@@ -129,6 +129,19 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                     output_dir=root / "output",
                 )
 
+    def test_capture_replaces_invalid_utf8_from_external_tools(self):
+        with patch.object(
+            module.subprocess,
+            "check_output",
+            return_value=b"samtools\xab\n",
+        ) as check_output:
+            self.assertEqual(module.capture(["samtools", "--version"]), "samtools�")
+
+        check_output.assert_called_once_with(
+            ["samtools", "--version"],
+            stderr=module.subprocess.STDOUT,
+        )
+
     def test_custody_gate_requires_exact_frozen_version(self):
         uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/input.vcf.gz"
         kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
@@ -193,7 +206,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
     def test_script_bytes_match_registered_materializer_revision(self):
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "513c55b347a4c57e5f7231642e851d03aa4dcdac9159781e4d1a79815dc1f35f",
+            "ca1a5e47fb2de1e8e1c502dbb9155bb6dafc0285cbb169c4ff0ebd1d7337faf1",
         )
 
     def test_upload_binds_local_sha256_in_object_metadata(self):

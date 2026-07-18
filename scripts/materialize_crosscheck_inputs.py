@@ -52,7 +52,8 @@ def run(command: list[str]) -> None:
 
 
 def capture(command: list[str]) -> str:
-    return subprocess.check_output(command, text=True, stderr=subprocess.STDOUT).strip()
+    output = subprocess.check_output(command, stderr=subprocess.STDOUT)
+    return output.decode("utf-8", errors="replace").strip()
 
 
 def normalize_context(row: dict[str, str]) -> str:
