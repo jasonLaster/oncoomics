@@ -12,10 +12,16 @@ import subprocess
 import tempfile
 from typing import Any, Sequence
 
+from publish_reviewed_public_report import METHOD_CONTRACTS, PUBLIC_ROOT
+
 REGION = "us-east-1"
 BUCKET = "diana-omics-results-172630973301-us-east-1"
+DIANA_HRD_PUBLIC_PREFIXES = tuple(
+    PUBLIC_ROOT + str(contract["destination"])
+    for contract in METHOD_CONTRACTS.values()
+)
 PUBLIC_PREFIXES = (
-    "runs/diana-hrd-public/subject01/diana-wgs-hrd-20260716T033101Z/",
+    *DIANA_HRD_PUBLIC_PREFIXES,
     "runs/known_answer_bounded_non_dry/",
     "runs/known_answer_expanded_cohort/",
     "runs/known_answer_public_findings/",

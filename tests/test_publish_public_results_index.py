@@ -180,6 +180,20 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             (
                 [
                     {
+                        "key": (
+                            "runs/diana-hrd-public/subject01/"
+                            "diana-wgs-hrd-20260716T033101Z/"
+                            "unreviewed-scratch/report.md"
+                        ),
+                        "size": 10,
+                        "last_modified": "2026-07-17T00:00:00+00:00",
+                    }
+                ],
+                "not allowlisted",
+            ),
+            (
+                [
+                    {
                         "key": MODULE.PUBLIC_PREFIXES[0] + "b.json",
                         "size": 20,
                         "last_modified": "2026-07-17T00:00:01+00:00",

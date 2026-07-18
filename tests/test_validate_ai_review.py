@@ -425,6 +425,65 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertNotEqual(leaked.returncode, 0)
             self.assertIn("raw object, URI, or local path", leaked.stderr)
 
+    def test_rejects_symlinked_custody_inputs(self) -> None:
+        cases = (
+            (
+                lambda fixture, review, root: (
+                    root / "source-manifest-link.json"
+                ).symlink_to(fixture.manifests[0]),
+                lambda fixture, root: fixture.manifests.__setitem__(
+                    0,
+                    root / "source-manifest-link.json",
+                ),
+                "source manifest",
+            ),
+            (
+                lambda fixture, review, root: (
+                    root / "bundle-link"
+                ).symlink_to(fixture.bundle_dir, target_is_directory=True),
+                lambda fixture, root: setattr(
+                    fixture,
+                    "bundle_dir",
+                    root / "bundle-link",
+                ),
+                "bundle directory",
+            ),
+            (
+                lambda fixture, review, root: (
+                    root / "catalog-link.json"
+                ).symlink_to(fixture.catalog_receipt),
+                lambda fixture, root: setattr(
+                    fixture,
+                    "catalog_receipt",
+                    root / "catalog-link.json",
+                ),
+                "model catalog receipt",
+            ),
+            (
+                lambda fixture, review, root: (
+                    root / "review-link"
+                ).symlink_to(review, target_is_directory=True),
+                lambda fixture, root: None,
+                "review directory",
+            ),
+        )
+        for link, mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = ValidateReviewFixture(root)
+                fixture.build()
+                review = root / "review-a"
+                fixture.write_review(review)
+                link(fixture, review, root)
+                mutate(fixture, root)
+
+                failed = fixture.validate(
+                    root / "review-link" if message == "review directory" else review
+                )
+
+                self.assertNotEqual(failed.returncode, 0)
+                self.assertIn(message, failed.stderr)
+
     def test_rejects_extra_review_output_before_validation_publication(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))

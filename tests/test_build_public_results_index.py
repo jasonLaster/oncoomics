@@ -29,10 +29,25 @@ PUBLISH_SPEC.loader.exec_module(PUBLISH)
 
 
 class PublicIndexTests(unittest.TestCase):
-    def test_diana_public_prefix_covers_reviewed_report_destinations(self) -> None:
-        self.assertIn(PUBLISH.PUBLIC_ROOT, MODULE.PUBLIC_PREFIXES)
-        self.assertTrue(
-            PUBLISH.PUBLIC_ROOT.startswith("runs/diana-hrd-public/subject01/")
+    def test_diana_public_prefixes_are_exact_reviewed_report_destinations(self) -> None:
+        expected = tuple(
+            PUBLISH.PUBLIC_ROOT + str(contract["destination"])
+            for contract in PUBLISH.METHOD_CONTRACTS.values()
+        )
+
+        self.assertEqual(MODULE.DIANA_HRD_PUBLIC_PREFIXES, expected)
+        self.assertEqual(
+            MODULE.PUBLIC_PREFIXES[: len(expected)],
+            expected,
+        )
+        self.assertNotIn(PUBLISH.PUBLIC_ROOT, MODULE.PUBLIC_PREFIXES)
+        self.assertFalse(
+            any(
+                (
+                    PUBLISH.PUBLIC_ROOT + "unreviewed-scratch/report.md"
+                ).startswith(prefix)
+                for prefix in MODULE.PUBLIC_PREFIXES
+            )
         )
         self.assertNotIn(f"runs/diana-hrd/{PUBLISH.RUN_ID}/", MODULE.PUBLIC_PREFIXES)
 

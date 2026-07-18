@@ -132,6 +132,18 @@ def load_object(path: Path) -> dict[str, Any]:
     return value
 
 
+def resolve_real_dir(path: Path, label: str) -> Path:
+    if path.is_symlink() or not path.is_dir():
+        raise ValueError(f"{label} is missing or a symlink")
+    return path.resolve()
+
+
+def resolve_real_file(path: Path, label: str) -> Path:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
+        raise ValueError(f"{label} is missing or a symlink")
+    return path.resolve()
+
+
 def parse_time(value: Any, label: str) -> datetime:
     try:
         parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
@@ -278,9 +290,10 @@ def validate_source_manifests(
 
     for index, (source_path, evidence) in enumerate(zip(paths, evidence_rows), 1):
         evidence_id = f"E{index:03d}"
-        path = source_path.resolve()
-        if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
-            raise ValueError(f"missing source manifest for {evidence_id}")
+        path = resolve_real_file(
+            source_path,
+            f"source manifest for {evidence_id}",
+        )
         if sha256(path) != input_hashes.get(evidence_id):
             raise ValueError(f"source-manifest hash mismatch for {evidence_id}")
 
@@ -1062,10 +1075,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--forbidden-token", action="append", default=[])
     args = parser.parse_args(argv)
 
-    review_dir = args.review_dir.resolve()
-    validation_path = review_dir / "validation.json"
-
     try:
+        review_dir = resolve_real_dir(args.review_dir, "review directory")
+        validation_path = review_dir / "validation.json"
         if validation_path.exists() or validation_path.is_symlink():
             raise ValueError("validation.json already exists")
         if args.reviewer == "B" and args.other_review_dir is None:
@@ -1081,7 +1093,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not forbidden:
             raise ValueError("at least one --forbidden-token is required")
 
-        bundle_dir = args.bundle_dir.resolve()
+        bundle_dir = resolve_real_dir(args.bundle_dir, "bundle directory")
         bundle_path = bundle_dir / "review_bundle.json"
         bundle_manifest_path = bundle_dir / "bundle_manifest.json"
         prompt_path = bundle_dir / f"reviewer-{args.reviewer.lower()}.prompt.md"
@@ -1125,7 +1137,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             prompt_hash,
             args.reviewer,
             forbidden,
-            args.model_catalog_receipt.resolve(),
+            resolve_real_file(args.model_catalog_receipt, "model catalog receipt"),
         )
         validate_source_manifests(
             args.source_manifest,
@@ -1175,7 +1187,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         if args.reviewer == "B":
             validate_other_reviewer(
-                args.other_review_dir.resolve(),
+                resolve_real_dir(args.other_review_dir, "other review directory"),
                 review_manifest,
                 expected_outputs,
                 bundle_hash,
