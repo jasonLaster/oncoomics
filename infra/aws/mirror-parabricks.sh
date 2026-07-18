@@ -169,17 +169,14 @@ def require_safe_receipt_path(path: Path) -> None:
     if path.exists() and not path.is_file():
         raise SystemExit(f"Parabricks mirror receipt output is not a file: {path}")
 
-    parent = path.parent
-    while not parent.exists() and not parent.is_symlink():
-        next_parent = parent.parent
-        if next_parent == parent:
-            raise SystemExit(f"Parabricks mirror receipt parent does not exist: {path.parent}")
-        parent = next_parent
+    for parent in path.parents:
+        if parent == parent.parent:
+            continue
 
-    if parent.is_symlink():
-        raise SystemExit(f"Parabricks mirror receipt parent may not be a symlink: {parent}")
-    if parent.exists() and not parent.is_dir():
-        raise SystemExit(f"Parabricks mirror receipt parent is not a directory: {parent}")
+        if parent.is_symlink():
+            raise SystemExit(f"Parabricks mirror receipt parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise SystemExit(f"Parabricks mirror receipt parent is not a directory: {parent}")
 
 
 receipt_path = Path(receipt_path)

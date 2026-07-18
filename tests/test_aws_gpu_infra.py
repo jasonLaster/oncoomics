@@ -286,7 +286,7 @@ class AwsGpuInfraTests(unittest.TestCase):
 
     def test_parabricks_mirror_receipt_writer_refuses_redirected_outputs(self) -> None:
         with TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             real_receipt = root / "real-receipt.json"
             symlink_receipt = root / "receipt.json"
             symlink_receipt.symlink_to(real_receipt)
@@ -300,7 +300,7 @@ class AwsGpuInfraTests(unittest.TestCase):
 
     def test_parabricks_mirror_receipt_writer_refuses_symlinked_parents(self) -> None:
         with TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             real_parent = root / "real-receipts"
             linked_parent = root / "receipts"
             real_parent.mkdir()
@@ -313,9 +313,28 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("parent may not be a symlink", result.stderr)
 
+    def test_parabricks_mirror_receipt_writer_refuses_existing_child_below_symlinked_parent(
+        self,
+    ) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            real_parent = root / "real-receipts"
+            linked_parent = root / "receipts"
+            (real_parent / "existing").mkdir(parents=True)
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            result = run_mirror_parabricks_receipt_writer(
+                linked_parent / "existing" / "receipt.json"
+            )
+
+            self.assertEqual([], list((real_parent / "existing").iterdir()))
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("parent may not be a symlink", result.stderr)
+
     def test_parabricks_mirror_receipt_writer_uses_single_use_temporary_file(self) -> None:
         with TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             (root / ".receipt.json.tmp").write_text("stale\n", encoding="utf-8")
 
             result = run_mirror_parabricks_receipt_writer(root / "receipt.json")
@@ -325,7 +344,7 @@ class AwsGpuInfraTests(unittest.TestCase):
 
     def test_parabricks_mirror_receipt_writer_writes_real_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
-            path = Path(tmp) / "nested" / "receipt.json"
+            path = Path(tmp).resolve() / "nested" / "receipt.json"
 
             result = run_mirror_parabricks_receipt_writer(path)
 

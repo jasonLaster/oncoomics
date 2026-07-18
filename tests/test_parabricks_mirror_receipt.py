@@ -84,6 +84,23 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
                 },
             )
 
+    def test_rejects_dockerfile_below_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-infra"
+            linked_parent = root / "infra"
+            dockerfile = linked_parent / "aws" / "Dockerfile.parabricks"
+            (real_parent / "aws").mkdir(parents=True)
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            (real_parent / "aws" / "Dockerfile.parabricks").write_text(
+                "FROM scratch\n",
+                encoding="utf-8",
+            )
+
+            self.assertTrue(dockerfile.is_file())
+            with self.assertRaisesRegex(verify.MirrorReceiptError, "parent may not be a symlink"):
+                verify.sha256_path(dockerfile)
+
     def test_rejects_unpinned_source_image(self) -> None:
         malformed = receipt()
         malformed["source"]["image"] = "nvcr.io/nvidia/clara/parabricks:latest"

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ...paths import path_from_root
-from .safe_json_output import read_real_json
+from .safe_json_output import read_real_json, require_no_symlinked_ancestors
 
 DEFAULT_RECEIPT = "results/phase3_wgs_fast/parabricks_mirror_receipt.json"
 DIANA_PARABRICKS_DOCKERFILE = "infra/aws/Dockerfile.parabricks"
@@ -113,6 +113,11 @@ def validate_mirror_receipt(receipt: Mapping[str, Any]) -> dict[str, str]:
 
 
 def sha256_path(path: Path) -> str:
+    require_no_symlinked_ancestors(
+        path,
+        "Diana Parabricks Dockerfile",
+        MirrorReceiptError,
+    )
     if path.is_symlink() or not path.is_file():
         raise MirrorReceiptError(f"{path} must be a real file")
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
