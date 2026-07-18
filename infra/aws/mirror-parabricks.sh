@@ -65,8 +65,15 @@ else
   echo "Logging in to ${registry}"
   aws ecr get-login-password --region "${REGION}" | docker login --username AWS --password-stdin "${registry}"
 
+  echo "Building Diana Parabricks runtime ${target_image}"
+  docker build \
+    --platform "${PLATFORM}" \
+    --build-arg "PARABRICKS_BASE_IMAGE=${SOURCE_IMAGE}" \
+    -f "${ROOT_DIR}/infra/aws/Dockerfile.parabricks" \
+    -t "${target_image}" \
+    "${ROOT_DIR}"
+
   echo "Pushing ${target_image}"
-  docker tag "${SOURCE_IMAGE}" "${target_image}"
   docker push "${target_image}"
 
   target_digest="$(describe_target_digest)"

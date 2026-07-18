@@ -11,6 +11,7 @@ OUTPUTS_TF = ROOT / "infra/aws/outputs.tf"
 NEXTFLOW_CONFIG = ROOT / "nextflow.config"
 PUSH_IMAGE = ROOT / "infra/aws/push-image.sh"
 MIRROR_PARABRICKS = ROOT / "infra/aws/mirror-parabricks.sh"
+PARABRICKS_DOCKERFILE = ROOT / "infra/aws/Dockerfile.parabricks"
 AWS_README = ROOT / "infra/aws/README.md"
 NEXT_GEN_DOC = ROOT / "docs/operations/next-generation-fast-rerun.md"
 
@@ -53,6 +54,20 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("aws_batch_compute_environment.gpu_p5en_ondemand.arn", block)
         self.assertNotIn("aws_batch_compute_environment.ondemand.arn", block)
         self.assertNotIn("aws_batch_compute_environment.spot.arn", block)
+
+    def test_launch_template_mounts_p5en_instance_store_as_scratch(self) -> None:
+        text = MAIN_TF.read_text(encoding="utf-8")
+        block = resource_block(text, "aws_launch_template", "batch")
+
+        self.assertIn("prepare_scratch()", block)
+        self.assertIn("mkdir -p /scratch", block)
+        self.assertIn("chmod 1777 /scratch", block)
+        self.assertIn("nvme-Amazon_EC2_NVMe_Instance_Storage", block)
+        self.assertIn("dnf install -y mdadm xfsprogs", block)
+        self.assertIn("mdadm --create /dev/md0", block)
+        self.assertIn("--raid-devices=\"$${#instance_store_devices[@]}\"", block)
+        self.assertIn("mkfs.xfs -f /dev/md0", block)
+        self.assertIn("mount -o noatime,nodiratime /dev/md0 /scratch", block)
 
     def test_nextflow_params_export_gpu_queue_and_unselected_parabricks_image(self) -> None:
         text = MAIN_TF.read_text(encoding="utf-8")
@@ -137,6 +152,7 @@ class AwsGpuInfraTests(unittest.TestCase):
     def test_outputs_and_nextflow_profile_expose_gpu_queue(self) -> None:
         outputs = OUTPUTS_TF.read_text(encoding="utf-8")
         nextflow = NEXTFLOW_CONFIG.read_text(encoding="utf-8")
+        awsbatch_gpu = nextflow[nextflow.index("awsbatch_gpu {") :]
 
         self.assertIn('output "gpu_p5en_compute_environment"', outputs)
         self.assertIn('output "gpu_p5en_queue"', outputs)
@@ -150,6 +166,7 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("withLabel: cpu_io", nextflow)
         self.assertIn("queue = params.aws_ondemand_queue", nextflow)
         self.assertIn("container = params.container", nextflow)
+        self.assertIn("aws.batch.volumes = ['/scratch:/scratch']", awsbatch_gpu)
 
     def test_ecr_push_can_target_dedicated_workspaces(self) -> None:
         script = PUSH_IMAGE.read_text(encoding="utf-8")
@@ -167,11 +184,27 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertNotIn("PARABRICKS_MIRROR_TAG", script)
         self.assertIn("Reusing immutable", script)
         self.assertIn('docker pull --platform "${PLATFORM}" "${SOURCE_IMAGE}"', script)
+        self.assertIn("Dockerfile.parabricks", script)
+        self.assertIn("PARABRICKS_BASE_IMAGE", script)
+        self.assertIn("docker build", script)
+        self.assertNotIn('docker tag "${SOURCE_IMAGE}" "${target_image}"', script)
         self.assertIn('output -raw parabricks_mirror_repository_url', script)
         self.assertIn('aws ecr describe-images', script)
         self.assertIn('"parabricks_mirror_receipt"', script)
         self.assertIn("verify:parabricks-mirror-receipt", script)
         self.assertIn('TF_VAR_parabricks_container', script)
+
+    def test_parabricks_mirror_image_extends_base_with_diana_runtime(self) -> None:
+        dockerfile = PARABRICKS_DOCKERFILE.read_text(encoding="utf-8")
+
+        self.assertIn("ARG PARABRICKS_BASE_IMAGE", dockerfile)
+        self.assertIn("FROM ${PARABRICKS_BASE_IMAGE}", dockerfile)
+        self.assertIn("awscli", dockerfile)
+        self.assertIn('aws_path="$(command -v aws)"', dockerfile)
+        self.assertIn("/opt/diana-aws/bin/aws", dockerfile)
+        self.assertIn("COPY . /opt/diana-omics", dockerfile)
+        self.assertIn("command -v pbrun", dockerfile)
+        self.assertIn("python3 -m diana_omics --help", dockerfile)
 
     def test_gpu_smoke_is_documented_as_placement_only(self) -> None:
         readme = AWS_README.read_text(encoding="utf-8")

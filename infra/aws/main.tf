@@ -877,6 +877,43 @@ resource "aws_launch_template" "batch" {
     mkdir -p /opt/diana-aws/bin
     ln -sf /usr/bin/aws /opt/diana-aws/bin/aws
 
+    prepare_scratch() {
+      mkdir -p /scratch
+      chmod 1777 /scratch
+
+      mapfile -t instance_store_devices < <(
+        find /dev/disk/by-id \
+          -maxdepth 1 \
+          -type l \
+          -name 'nvme-Amazon_EC2_NVMe_Instance_Storage*' \
+          ! -name '*-part*' \
+          -print | sort -V
+      )
+      if (( $${#instance_store_devices[@]} == 0 )); then
+        return 0
+      fi
+
+      dnf install -y mdadm xfsprogs
+      umount /scratch || true
+
+      if (( $${#instance_store_devices[@]} == 1 )); then
+        mkfs.xfs -f "$${instance_store_devices[0]}"
+        mount -o noatime,nodiratime "$${instance_store_devices[0]}" /scratch
+      else
+        mdadm --create /dev/md0 \
+          --level=0 \
+          --raid-devices="$${#instance_store_devices[@]}" \
+          --force \
+          "$${instance_store_devices[@]}"
+        mkfs.xfs -f /dev/md0
+        mount -o noatime,nodiratime /dev/md0 /scratch
+      fi
+
+      chmod 1777 /scratch
+    }
+
+    prepare_scratch
+
     --==DIANA_OMICS_USER_DATA==--
   USER_DATA
   )

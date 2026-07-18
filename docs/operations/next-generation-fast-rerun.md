@@ -458,10 +458,12 @@ capacity, a Parabricks image pinned by SHA-256 digest, and a `us-east-2`
 destination KMS key for the regional cache. It also queries the live EC2
 `Running On-Demand P instances` quota and requires at least 192 applied P vCPUs
 before Nextflow can submit the H200 placement job.
-The smoke itself records both `nvidia-smi` output and a non-empty
-`pbrun version` capture from inside the pinned Parabricks container, proving
-that the selected image starts on the selected GPU host before the full
-MutectCaller route can reference the smoke artifact.
+The smoke itself records `nvidia-smi`, `pbrun version`, `aws --version`, and
+`python3 -m diana_omics --help` output from inside the pinned Diana Parabricks
+runtime image. That proves the selected image starts on the selected GPU host
+and carries the exact Parabricks, AWS CLI, and Diana CLI tools needed by the
+worker-local MutectCaller route before the full route can reference the smoke
+artifact.
 
 After Gate 0 receipts have been reviewed and the GPU smoke has passed, launch
 the full BAM-to-evidence route through the guarded execute alias. Pass the
@@ -568,10 +570,13 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
    `infra:aws:apply:use2`. This writes `infra/aws/nextflow.aws.use2.json` and
    leaves the existing `sra-use1` / `infra/aws/nextflow.aws.json` CPU stack
    pointed at `us-east-1`.
-5. Mirror the reviewed digest-pinned Parabricks image with
-   `aws:ecr:mirror-parabricks:use2`, review the emitted
-   `parabricks_mirror_receipt.json`, and apply the verified
-   `TF_VAR_parabricks_container`.
+5. Build the Diana Parabricks runtime from a reviewed digest-pinned Parabricks
+   base image and mirror it with `aws:ecr:mirror-parabricks:use2`, review the
+   emitted `parabricks_mirror_receipt.json`, and apply the verified
+   `TF_VAR_parabricks_container`. The mirrored runtime must contain `pbrun`, the
+   AWS CLI, and the `diana_omics` Python CLI because GPU workers stage S3 inputs,
+   render exact command plans, and run Parabricks inside one container-local
+   `/scratch` boundary.
 6. Track the 384 On-Demand P vCPU request in `us-east-2`; the same approved
    quota should cover one immediate P5en caller job and the later two-P5en
    parallel `fq2bam` gate.

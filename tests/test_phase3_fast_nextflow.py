@@ -98,6 +98,9 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("oncoanalyser_chord_blocked", text)
         self.assertIn("hrdetect_blocked", text)
         self.assertIn("phase3_wgs_fast_filter_mutect_plan", text)
+        self.assertIn("aws-cli-version.txt", text)
+        self.assertIn("diana-omics-cli.txt", text)
+        self.assertIn("verify:phase3-fast-gpu-smoke", text)
 
     def test_fast_input_manifest_receipts_are_nextflow_path_inputs(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")

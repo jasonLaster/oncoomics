@@ -630,6 +630,12 @@ process FAST_GPU_SMOKE {
     pbrun version > workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt 2>&1
     test -s workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt
 
+    aws --version > workspace/results/phase3_wgs_fast_gpu_smoke/aws-cli-version.txt 2>&1
+    test -s workspace/results/phase3_wgs_fast_gpu_smoke/aws-cli-version.txt
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics --help > workspace/results/phase3_wgs_fast_gpu_smoke/diana-omics-cli.txt 2>&1
+    grep -q 'verify:phase3-fast-gpu-smoke' workspace/results/phase3_wgs_fast_gpu_smoke/diana-omics-cli.txt
+
     cat > workspace/results/phase3_wgs_fast_gpu_smoke/gpu_smoke.json <<JSON
     {
       "schema": "phase3_wgs_fast_gpu_smoke.v1",
@@ -641,6 +647,8 @@ process FAST_GPU_SMOKE {
       "observedGpuCount": \${gpu_count},
       "requiredGpuName": "\${required_name}",
       "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
+      "awsCliVersionTxt": "aws-cli-version.txt",
+      "dianaOmicsCliTxt": "diana-omics-cli.txt",
       "parabricksVersionCommand": "pbrun version",
       "parabricksVersionTxt": "parabricks-version.txt"
     }
@@ -664,6 +672,12 @@ process FAST_GPU_SMOKE {
     cat > workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt <<TXT
     Parabricks v4.5.1-1
     TXT
+    cat > workspace/results/phase3_wgs_fast_gpu_smoke/aws-cli-version.txt <<TXT
+    aws-cli/2.15.0
+    TXT
+    cat > workspace/results/phase3_wgs_fast_gpu_smoke/diana-omics-cli.txt <<TXT
+    verify:phase3-fast-gpu-smoke
+    TXT
     cat > workspace/results/phase3_wgs_fast_gpu_smoke/gpu_smoke.json <<JSON
     {
       "schema": "phase3_wgs_fast_gpu_smoke.v1",
@@ -675,6 +689,8 @@ process FAST_GPU_SMOKE {
       "observedGpuCount": 8,
       "requiredGpuName": "H200",
       "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
+      "awsCliVersionTxt": "aws-cli-version.txt",
+      "dianaOmicsCliTxt": "diana-omics-cli.txt",
       "parabricksVersionCommand": "pbrun version",
       "parabricksVersionTxt": "parabricks-version.txt"
     }

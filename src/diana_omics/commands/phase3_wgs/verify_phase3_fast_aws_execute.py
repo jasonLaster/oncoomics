@@ -53,6 +53,20 @@ def _require_parabricks_version_basename(value: Any) -> str:
     return name
 
 
+def _require_aws_cli_version_basename(value: Any) -> str:
+    name = _require_string(value, "awsCliVersionTxt")
+    if Path(name).name != name:
+        raise Phase3FastExecuteError("awsCliVersionTxt must be a sibling basename")
+    return name
+
+
+def _require_diana_omics_cli_basename(value: Any) -> str:
+    name = _require_string(value, "dianaOmicsCliTxt")
+    if Path(name).name != name:
+        raise Phase3FastExecuteError("dianaOmicsCliTxt must be a sibling basename")
+    return name
+
+
 def _require_matching_string(value: Any, label: str, expected: Any) -> str:
     observed = _require_string(value, label)
     expected_value = _require_string(expected, f"expected {label}")
@@ -141,9 +155,22 @@ def validate_gpu_smoke_result(
     if parabricks_version_path.stat().st_size <= 0:
         raise Phase3FastExecuteError("Parabricks version output must be non-empty")
 
+    aws_cli_version_path = csv_root / _require_aws_cli_version_basename(payload.get("awsCliVersionTxt"))
+    _require_existing_file(aws_cli_version_path, "AWS CLI version output")
+    if aws_cli_version_path.stat().st_size <= 0:
+        raise Phase3FastExecuteError("AWS CLI version output must be non-empty")
+
+    diana_omics_cli_path = csv_root / _require_diana_omics_cli_basename(payload.get("dianaOmicsCliTxt"))
+    _require_existing_file(diana_omics_cli_path, "Diana omics CLI output")
+    diana_omics_cli = diana_omics_cli_path.read_text(encoding="utf-8")
+    if "verify:phase3-fast-gpu-smoke" not in diana_omics_cli:
+        raise Phase3FastExecuteError("Diana omics CLI output must include verify:phase3-fast-gpu-smoke")
+
     return {
+        "aws_cli_version_txt": aws_cli_version_path.name,
         "aws_gpu_queue": aws_gpu_queue,
         "aws_region": aws_region,
+        "diana_omics_cli_txt": diana_omics_cli_path.name,
         "expected_gpu_count": expected_count,
         "observed_gpu_count": observed_count,
         "parabricks_container": parabricks_container,

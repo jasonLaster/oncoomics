@@ -51,6 +51,8 @@ def passed_smoke_result() -> dict:
         "observedGpuCount": 8,
         "requiredGpuName": "H200",
         "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
+        "awsCliVersionTxt": "aws-cli-version.txt",
+        "dianaOmicsCliTxt": "diana-omics-cli.txt",
         "parabricksVersionCommand": "pbrun version",
         "parabricksVersionTxt": "parabricks-version.txt",
     }
@@ -61,6 +63,8 @@ def write_smoke_result(
     payload: dict | None = None,
     *,
     csv: str | None = None,
+    aws_version: str | None = "aws-cli/2.15.0\n",
+    diana_omics_cli: str | None = "verify:phase3-fast-gpu-smoke\n",
     parabricks_version: str | None = "Parabricks v4.5.1-1\n",
 ) -> Path:
     path = root / "gpu_smoke.json"
@@ -73,6 +77,16 @@ def write_smoke_result(
     )
     if parabricks_version is not None:
         (root / "parabricks-version.txt").write_text(parabricks_version, encoding="utf-8")
+    else:
+        (root / "parabricks-version.txt").unlink(missing_ok=True)
+    if aws_version is not None:
+        (root / "aws-cli-version.txt").write_text(aws_version, encoding="utf-8")
+    else:
+        (root / "aws-cli-version.txt").unlink(missing_ok=True)
+    if diana_omics_cli is not None:
+        (root / "diana-omics-cli.txt").write_text(diana_omics_cli, encoding="utf-8")
+    else:
+        (root / "diana-omics-cli.txt").unlink(missing_ok=True)
     return path
 
 
@@ -88,8 +102,10 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
 
         self.assertEqual(
             {
+                "aws_cli_version_txt": "aws-cli-version.txt",
                 "aws_gpu_queue": "diana-omics-prod-use2-gpu-p5en",
                 "aws_region": "us-east-2",
+                "diana_omics_cli_txt": "diana-omics-cli.txt",
                 "expected_gpu_count": 8,
                 "observed_gpu_count": 8,
                 "parabricks_container": PARABRICKS_CONTAINER,
@@ -200,6 +216,47 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             wrong_command["parabricksVersionCommand"] = "pbrun mutectcaller"
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "pbrun version"):
                 verify.validate_gpu_smoke_result(wrong_command, csv_root=root, expected_params=expected_gpu_params())
+
+    def test_rejects_smoke_result_without_diana_runtime_evidence(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_smoke_result(root, aws_version=None)
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "AWS CLI version"):
+                verify.validate_gpu_smoke_result(
+                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
+                )
+
+            write_smoke_result(root, aws_version="")
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "AWS CLI version output must be non-empty"):
+                verify.validate_gpu_smoke_result(
+                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
+                )
+
+            aws_path_traversal = passed_smoke_result()
+            aws_path_traversal["awsCliVersionTxt"] = "../aws-cli-version.txt"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "awsCliVersionTxt"):
+                verify.validate_gpu_smoke_result(
+                    aws_path_traversal, csv_root=root, expected_params=expected_gpu_params()
+                )
+
+            write_smoke_result(root, diana_omics_cli=None)
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "Diana omics CLI"):
+                verify.validate_gpu_smoke_result(
+                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
+                )
+
+            write_smoke_result(root, diana_omics_cli="usage only\n")
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "verify:phase3-fast-gpu-smoke"):
+                verify.validate_gpu_smoke_result(
+                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
+                )
+
+            diana_path_traversal = passed_smoke_result()
+            diana_path_traversal["dianaOmicsCliTxt"] = "../diana-omics-cli.txt"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "dianaOmicsCliTxt"):
+                verify.validate_gpu_smoke_result(
+                    diana_path_traversal, csv_root=root, expected_params=expected_gpu_params()
+                )
 
     def test_rejects_csv_path_traversal(self) -> None:
         with TemporaryDirectory() as tmp:
