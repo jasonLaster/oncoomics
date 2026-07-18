@@ -26,6 +26,8 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("exact quickcheck, flagstat, and idxstats plan", text)
         self.assertIn("samtools quickcheck", text)
         self.assertIn("QC-only `no_call` artifact", text)
+        self.assertIn("run:phase3-fast-bam-qc", text)
+        self.assertIn("empty successful `quickcheck` log", text)
 
     def test_next_generation_doc_tracks_cnv_evidence_plan_seam(self) -> None:
         text = NEXT_GEN.read_text(encoding="utf-8")

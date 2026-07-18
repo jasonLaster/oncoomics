@@ -292,6 +292,11 @@ indexes, FASTA indexes, germline/PoN indexes, and `raw_vcf`, `raw_vcf_stats`,
 exact `samtools quickcheck`, `flagstat`, and `idxstats` commands for tumor and
 normal BAMs. Its plan is a QC-only `no_call` artifact; it can feed BAM health
 reporting, but it is not HRD interpretation evidence on its own.
+`run:phase3-fast-bam-qc` clears each declared quickcheck log, flagstat, and
+idxstats file before execution, runs only the pinned `samtools` QC commands,
+permits an empty successful `quickcheck` log, requires non-empty `flagstat` and
+`idxstats` outputs, hashes every role output, and writes a completed SHA-256
+receipt while preserving `qc_only_not_hrd_evidence`.
 `FAST_CNV_EVIDENCE_PLAN` reads the staged reference `.fai`, records one
 standard-contig BED shard and exact `samtools bedcov` tumor/normal command per
 contig, and declares the eventual combined bedcov, coverage-bin CSV, and CNV

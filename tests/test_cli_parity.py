@@ -47,6 +47,7 @@ class CliParityTest(unittest.TestCase):
             "run:known-answer-expanded-cohort",
             "run:known-answer-public-findings",
             "export:phase3-fast-small-variants",
+            "run:phase3-fast-bam-qc",
             "run:phase3-fast-cnv-evidence",
             "run:phase3-fast-filter-mutect",
             "run:phase3-fast-parabricks-mutect",
