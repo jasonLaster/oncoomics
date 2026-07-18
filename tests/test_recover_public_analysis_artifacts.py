@@ -7,7 +7,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 SCRIPT = (
     Path(__file__).resolve().parents[1]
     / "scripts/recover_public_analysis_artifacts.py"
@@ -49,12 +48,10 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
         self,
     ) -> None:
         raw_vcf = gzip.compress(
-            (
-                "##fileformat=VCFv4.2\n"
-                "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t"
-                "DRF-PSN49561_tumor\tDRF-PSN49561_normal\n"
-                "chr17\t43115780\t.\tC\tT\t.\tPASS\t.\tGT\t0/1\t0/0\n"
-            ).encode("utf-8")
+            b"##fileformat=VCFv4.2\n"
+            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t"
+            b"DRF-PSN49561_tumor\tDRF-PSN49561_normal\n"
+            b"chr17\t43115780\t.\tC\tT\t.\tPASS\t.\tGT\t0/1\t0/0\n"
         )
         source = {
             "bucket": "source-bucket",
@@ -110,21 +107,32 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
             real_parent.mkdir()
             linked_parent = root / "linked-parent"
             linked_parent.symlink_to(real_parent, target_is_directory=True)
-            path = linked_parent / "missing" / "receipt.json"
+            (real_parent / "existing").mkdir()
 
-            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
-                MODULE.write_private(path, {"status": "redirected"}, create=True)
+            for path in (
+                linked_parent / "missing" / "receipt.json",
+                linked_parent / "existing" / "receipt.json",
+            ):
+                with self.subTest(path=path):
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "parent may not be a symlink",
+                    ):
+                        MODULE.write_private(
+                            path, {"status": "redirected"}, create=True
+                        )
 
             self.assertFalse((real_parent / "missing" / "receipt.json").exists())
+            self.assertFalse((real_parent / "existing" / "receipt.json").exists())
 
     def test_main_rejects_receipt_symlink_parent_before_aws_observation(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             root = Path(value)
             real_parent = root / "real-parent"
-            real_parent.mkdir()
+            (real_parent / "existing").mkdir(parents=True)
             linked_parent = root / "linked-parent"
             linked_parent.symlink_to(real_parent, target_is_directory=True)
-            path = linked_parent / "missing" / "receipt.json"
+            path = linked_parent / "existing" / "receipt.json"
 
             with (
                 mock.patch(
