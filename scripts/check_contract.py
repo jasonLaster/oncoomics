@@ -211,6 +211,15 @@ def validate(contract: dict) -> dict:
     }
 
 
+def load_contract(path: Path) -> dict:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"contract must be a real JSON file: {path}")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"contract must be a JSON object: {path}")
+    return value
+
+
 def write_text_once(path: Path, value: str) -> None:
     if path.exists() or path.is_symlink():
         raise FileExistsError(f"contract readiness output already exists: {path}")
@@ -248,7 +257,10 @@ def main() -> int:
     parser.add_argument("--json-out", type=Path)
     parser.add_argument("--allow-blocked", action="store_true")
     args = parser.parse_args()
-    result = validate(json.loads(args.contract.read_text()))
+    try:
+        result = validate(load_contract(args.contract))
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
     rendered = json.dumps(result, indent=2, sort_keys=True)
     print(rendered)
     if args.json_out:

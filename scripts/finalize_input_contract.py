@@ -48,6 +48,8 @@ def sha256(path: Path) -> str:
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real JSON file: {path}")
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")

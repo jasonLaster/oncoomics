@@ -507,6 +507,41 @@ class CustodyHandoffTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "VersionId"):
                 finalizer.validate_anchor(receipt, anchor, "unit")
 
+    def test_anchor_validation_rejects_symlinked_input_json(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "receipt.json"
+            write_json(receipt, {"status": "passed"})
+            linked_receipt = root / "linked-receipt.json"
+            linked_receipt.symlink_to(receipt)
+
+            with self.assertRaisesRegex(ValueError, "receipt must be a real JSON file"):
+                finalizer.validate_anchor(linked_receipt, receipt, "unit")
+
+    def test_contract_check_rejects_symlinked_contract_without_writing_readiness(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            linked_contract = root / "linked-contract.json"
+            linked_contract.symlink_to(contract)
+            readiness = root / "input-contract.readiness.json"
+            argv = [
+                "check_contract.py",
+                "--contract",
+                str(linked_contract),
+                "--json-out",
+                str(readiness),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                self.assertRaisesRegex(SystemExit, "contract must be a real JSON file"),
+            ):
+                checker.main()
+
+            self.assertFalse(readiness.exists())
+
     def test_contract_publication_is_create_only_content_addressed_and_exact(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -722,6 +757,39 @@ class CustodyHandoffTests(unittest.TestCase):
                 publisher.main()
 
             self.assertFalse((real_parent / "anchor.json").exists())
+
+    def test_contract_publication_rejects_symlinked_contract_before_aws(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            linked_contract = root / "linked-contract.json"
+            linked_contract.symlink_to(contract)
+            anchor = root / "anchor.json"
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(linked_contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    publisher,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+                self.assertRaisesRegex(SystemExit, "contract must be a real JSON file"),
+            ):
+                publisher.main()
+
+            self.assertFalse(anchor.exists())
 
     def test_contract_version_history_consumes_key_and_version_markers(self):
         pages = [

@@ -115,6 +115,15 @@ def put_create_only(
     )
 
 
+def load_contract(path: Path) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"contract must be a real JSON file: {path}")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("contract is not a JSON object")
+    return value
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -250,9 +259,10 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
 
-    contract = json.loads(args.contract.read_text(encoding="utf-8"))
-    if not isinstance(contract, dict):
-        raise SystemExit("Fail-closed: contract is not a JSON object")
+    try:
+        contract = load_contract(args.contract)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
     checked = validate(contract)
     if checked.get("overall_status") != "ready":
         raise SystemExit("Fail-closed: finalized contract is not ready")
