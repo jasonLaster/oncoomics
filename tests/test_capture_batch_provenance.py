@@ -343,6 +343,56 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
         )
         self.assertTrue(all(evidence["checks"].values()))
 
+    def test_worker_freeze_command_pins_exact_checksum(self) -> None:
+        worker_sha256 = "a" * 64
+        commands = MODULE.expected_freeze_commands(
+            "runtime-id",
+            "private-bucket",
+            "provenance/executed-workers/worker.py",
+            "kms-key",
+            worker_sha256,
+            "us-east-1",
+        )
+
+        self.assertEqual(
+            commands,
+            [
+                " ".join(
+                    [
+                        "docker",
+                        "exec",
+                        "runtime-id",
+                        "/opt/diana-aws/bin/aws",
+                        "s3api",
+                        "put-object",
+                        "--bucket",
+                        "private-bucket",
+                        "--key",
+                        "provenance/executed-workers/worker.py",
+                        "--body",
+                        "/work/runner/worker.py",
+                        "--server-side-encryption",
+                        "aws:kms",
+                        "--ssekms-key-id",
+                        "kms-key",
+                        "--checksum-algorithm",
+                        "SHA256",
+                        "--checksum-sha256",
+                        MODULE.checksum_sha256(worker_sha256),
+                        "--metadata",
+                        (
+                            f"sha256={worker_sha256},"
+                            "source=active-ecs-task,classification=private"
+                        ),
+                        "--region",
+                        "us-east-1",
+                        "--output",
+                        "json",
+                    ]
+                )
+            ],
+        )
+
     def test_fabricated_output_cannot_replace_expected_command(self) -> None:
         command_id = "command-1"
         instance_id = "i-task-host"

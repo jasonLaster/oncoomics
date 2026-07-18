@@ -63,6 +63,10 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def checksum_sha256(digest: str) -> str:
+    return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -460,6 +464,8 @@ def expected_freeze_commands(
                 kms_key_id,
                 "--checksum-algorithm",
                 "SHA256",
+                "--checksum-sha256",
+                checksum_sha256(worker_sha256),
                 "--metadata",
                 f"sha256={worker_sha256},source=active-ecs-task,classification=private",
                 "--region",
