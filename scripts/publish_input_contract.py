@@ -162,12 +162,21 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
 def require_anchor_output(path: Path) -> None:
     if path.is_symlink():
         raise FileExistsError(f"contract publication anchor may not be a symlink: {path}")
-    if path.parent.is_symlink():
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise ValueError(
+                f"contract publication anchor parent may not be a symlink: {parent}"
+            )
+        if parent == parent.parent:
+            raise ValueError(f"contract publication anchor has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
         raise ValueError(
-            f"contract publication anchor parent may not be a symlink: {path.parent}"
+            f"contract publication anchor parent may not be a symlink: {parent}"
         )
-    if path.parent.exists() and not path.parent.is_dir():
-        raise NotADirectoryError(path.parent)
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
 
 
 def publication_identity_matches(

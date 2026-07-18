@@ -555,6 +555,22 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "anchor.json").exists())
 
+    def test_contract_publication_rejects_nested_symlinked_anchor_parent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-anchors"
+            real_parent.mkdir()
+            linked_parent = root / "linked-anchors"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                publisher.reserve_json(
+                    linked_parent / "missing" / "anchor.json",
+                    {"status": "dry_run"},
+                )
+
+            self.assertFalse((real_parent / "missing" / "anchor.json").exists())
+
     def test_contract_publication_rejects_symlinked_anchor_parent_before_aws(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
