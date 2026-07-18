@@ -124,7 +124,25 @@ def _destination_path(source: Mapping[str, Any], output_root: Path, producer: st
     return output_root / producer / key / _source_path(source, producer, key).name
 
 
+def _require_safe_destination_path(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"{label} may not be a symlink: {path}")
+
+    parent = path.parent
+    while not parent.exists() and not parent.is_symlink():
+        next_parent = parent.parent
+        if next_parent == parent:
+            raise ManifestError(f"{label} parent does not exist: {path.parent}")
+        parent = next_parent
+
+    if parent.is_symlink():
+        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ManifestError(f"{label} parent is not a directory: {parent}")
+
+
 def _prepare_output_root(output_root: Path, destinations: set[Path]) -> None:
+    _require_safe_destination_path(output_root, "output_root")
     if not output_root.exists():
         return
     if not output_root.is_dir():
@@ -139,6 +157,7 @@ def _prepare_output_root(output_root: Path, destinations: set[Path]) -> None:
         raise ManifestError(f"output_root contains unexpected existing export files: {unexpected[0]}")
 
     for destination in destinations:
+        _require_safe_destination_path(destination, "export destination")
         if destination.exists() and not destination.is_file():
             raise ManifestError(f"export destination exists and is not a file: {destination}")
         destination.unlink(missing_ok=True)

@@ -171,6 +171,27 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
                     output_root=root / "final",
                 )
 
+    def test_rejects_symlinked_output_root_without_copying_outputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_output = root / "real-final"
+            real_output.mkdir()
+            output_root = root / "final"
+            output_root.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(final_evidence.ManifestError, "output_root.*symlink"):
+                final_evidence.build_phase3_fast_final_evidence_manifest(
+                    _join_manifest(root),
+                    evidence_join_sha256=SHA_4,
+                    small_variant_artifact_root=root / "small_variant_export",
+                    bam_qc_artifact_root=root / "bam_qc",
+                    cnv_evidence_artifact_root=root / "cnv_evidence",
+                    sv_evidence_artifact_root=root / "sv_evidence",
+                    output_root=output_root,
+                )
+
+            self.assertEqual([], list(real_output.rglob("*")))
+
 
 if __name__ == "__main__":
     unittest.main()

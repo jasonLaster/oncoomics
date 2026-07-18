@@ -191,6 +191,26 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
                     output_root=output_root,
                 )
 
+    def test_rejects_symlinked_output_root_without_copying_outputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_output = root / "real-exported"
+            real_output.mkdir()
+            output_root = root / "exported"
+            output_root.symlink_to(real_output, target_is_directory=True)
+            parabricks_receipt, filter_receipt = _receipts(root)
+
+            with self.assertRaisesRegex(export_small_variants.ManifestError, "output_root.*symlink"):
+                export_small_variants.export_phase3_fast_small_variant_artifacts(
+                    parabricks_receipt,
+                    filter_receipt,
+                    parabricks_mutect_receipt_sha256=SHA_2,
+                    filter_mutect_receipt_sha256=SHA_3,
+                    output_root=output_root,
+                )
+
+            self.assertEqual([], list(real_output.rglob("*")))
+
 
 if __name__ == "__main__":
     unittest.main()
