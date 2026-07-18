@@ -288,6 +288,8 @@ class FakeAws:
             version = f"public-version-{len(self.public) + 1}"
             metadata = json.loads(self.value(arguments, "--metadata"))
             observed_checksum = checksum(payload)
+            if self.value(arguments, "--checksum-sha256") != observed_checksum:
+                raise AssertionError("unexpected put-object checksum")
             if self.wrong_destination_checksum:
                 observed_checksum = checksum(b"different")
             self.public[key] = {
@@ -519,6 +521,11 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 self.assertEqual(FakeAws.value(call, "--server-side-encryption"), "AES256")
                 self.assertEqual(FakeAws.value(call, "--checksum-algorithm"), "SHA256")
                 key = FakeAws.value(call, "--key")
+                relative = key.rsplit("/", 1)[-1]
+                self.assertEqual(
+                    FakeAws.value(call, "--checksum-sha256"),
+                    checksum(fixture.payloads[relative]),
+                )
                 self.assertTrue(key.startswith(MODULE.PUBLIC_ROOT + "rosalind/"))
 
     def test_second_scan_rejects_unauthorized_hrd_classification(self) -> None:

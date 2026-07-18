@@ -213,6 +213,7 @@ def head_object(bucket: str, key: str, region: str, version_id: str = "") -> dic
 
 
 def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, Any]:
+    expected_checksum = checksum_sha256(custody["sha256"])
     metadata = {
         "classification": CLASSIFICATION,
         "sha256": custody["sha256"],
@@ -235,6 +236,8 @@ def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, 
             SERVER_SIDE_ENCRYPTION,
             "--checksum-algorithm",
             "SHA256",
+            "--checksum-sha256",
+            expected_checksum,
             "--metadata",
             json.dumps(metadata, sort_keys=True, separators=(",", ":")),
         ],
@@ -243,7 +246,6 @@ def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, 
     version_id = str(response.get("VersionId", ""))
     if not non_null_version_id(version_id):
         raise ValueError("public index put omitted a non-null VersionId")
-    expected_checksum = checksum_sha256(custody["sha256"])
     exact = head_object(BUCKET, INDEX_KEY, region, version_id)
     current = head_object(BUCKET, INDEX_KEY, region)
     checks = {

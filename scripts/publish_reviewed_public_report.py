@@ -640,6 +640,8 @@ def upload_public(
             "AES256",
             "--checksum-algorithm",
             "SHA256",
+            "--checksum-sha256",
+            row["checksum_sha256"],
             "--metadata",
             json.dumps(
                 {"classification": CLASSIFICATION, "sha256": row["sha256"]},

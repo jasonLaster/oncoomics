@@ -58,6 +58,8 @@ class FakeAws:
             if payload != self.payload:
                 raise AssertionError("unexpected uploaded body")
             observed_checksum = checksum(b"different" if self.wrong_checksum else payload)
+            if self.value(arguments, "--checksum-sha256") != checksum(payload):
+                raise AssertionError("unexpected put-object checksum")
             self.public = {
                 "VersionId": "null" if self.literal_null_version else "public-index-version-1",
                 "ContentLength": len(payload),
@@ -164,6 +166,10 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             self.assertEqual(FakeAws.value(fake.put_calls[0], "--key"), MODULE.INDEX_KEY)
             self.assertEqual(
                 FakeAws.value(fake.put_calls[0], "--checksum-algorithm"), "SHA256"
+            )
+            self.assertEqual(
+                FakeAws.value(fake.put_calls[0], "--checksum-sha256"),
+                checksum(index.read_bytes()),
             )
             self.assertEqual(
                 json.loads(FakeAws.value(fake.put_calls[0], "--metadata")),
