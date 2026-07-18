@@ -93,6 +93,7 @@ def write_bytes_once(path: Path, payload: bytes) -> None:
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
     temporary = Path(temporary_value)
+    linked = False
     try:
         with os.fdopen(fd, "wb") as handle:
             handle.write(payload)
@@ -100,10 +101,24 @@ def write_bytes_once(path: Path, payload: bytes) -> None:
             os.fsync(handle.fileno())
         try:
             os.link(temporary, path)
+            linked = True
         except FileExistsError as error:
             raise RuntimeError(f"refusing to replace existing local evidence: {path}") from error
+        fsync_directory(path.parent)
+    except Exception:
+        if linked:
+            path.unlink(missing_ok=True)
+        raise
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def write_json_once(path: Path, payload: dict[str, Any]) -> None:

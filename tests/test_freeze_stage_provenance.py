@@ -406,6 +406,37 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 MODULE.write_json_once(path, {"status": "failed"})
             self.assertEqual(path.read_bytes(), first)
 
+    def test_atomic_writer_fsyncs_parent_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            path = Path(value) / "receipt.json"
+
+            with patch.object(
+                MODULE,
+                "fsync_directory",
+                wraps=MODULE.fsync_directory,
+            ) as fsync_directory:
+                MODULE.write_json_once(path, {"status": "passed"})
+
+            fsync_directory.assert_called_once_with(path.parent)
+
+    def test_atomic_writer_removes_receipt_after_parent_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            path = root / "receipt.json"
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=OSError("synthetic parent fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic parent fsync failure"),
+            ):
+                MODULE.write_json_once(path, {"status": "passed"})
+
+            self.assertFalse(path.exists())
+            self.assertEqual(list(root.glob(".receipt.json.*.tmp")), [])
+
     def test_atomic_writer_rejects_output_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             root = Path(value)
