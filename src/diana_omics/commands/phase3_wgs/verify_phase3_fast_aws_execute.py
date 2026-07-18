@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ...paths import path_from_root
-from ...utils import read_json
 from . import verify_parabricks_mirror_receipt as mirror_receipt
 from . import verify_phase3_fast_gpu_smoke as gpu_smoke
+from .safe_json_output import read_real_json, require_no_symlinked_ancestors
 
 GPU_SMOKE_RESULT_ENV = "PHASE3_FAST_GPU_SMOKE_RESULT"
 MIRROR_RECEIPT_ENV = "PARABRICKS_MIRROR_RECEIPT"
@@ -38,6 +38,7 @@ def _require_int(value: Any, label: str) -> int:
 def _require_existing_file(path: Path, label: str) -> None:
     if path.is_symlink():
         raise Phase3FastExecuteError(f"{label} may not be a symlink: {path}")
+    require_no_symlinked_ancestors(path, label, Phase3FastExecuteError)
     if not path.is_file():
         raise Phase3FastExecuteError(f"{label} must be an existing file: {path}")
 
@@ -234,8 +235,7 @@ def load_gpu_smoke_result_from_environment(*, expected_params: Mapping[str, Any]
         raise Phase3FastExecuteError(f"{GPU_SMOKE_RESULT_ENV} must point at the reviewed gpu_smoke.json")
 
     path = path_from_root(path_value)
-    _require_existing_file(path, "GPU smoke result")
-    payload = read_json(path)
+    payload = read_real_json(path, "GPU smoke result", Phase3FastExecuteError)
     if not isinstance(payload, dict):
         raise Phase3FastExecuteError("GPU smoke result must be a JSON object")
     return validate_gpu_smoke_result(payload, csv_root=path.parent, expected_params=expected_params), path

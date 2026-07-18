@@ -353,6 +353,35 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         self.assertEqual(path, loaded_path)
         self.assertEqual(8, summary["observed_gpu_count"])
 
+    def test_environment_loader_rejects_gpu_smoke_below_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-smoke"
+            linked_parent = root / "linked-smoke"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            path = write_smoke_result(linked_parent)
+
+            with patch.dict("os.environ", {"PHASE3_FAST_GPU_SMOKE_RESULT": str(path)}, clear=False):
+                with self.assertRaisesRegex(verify.Phase3FastExecuteError, "parent may not be a symlink"):
+                    verify.load_gpu_smoke_result_from_environment(expected_params=expected_gpu_params())
+
+    def test_rejects_smoke_support_file_below_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-smoke"
+            linked_parent = root / "linked-smoke"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            write_smoke_result(linked_parent)
+
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "parent may not be a symlink"):
+                verify.validate_gpu_smoke_result(
+                    passed_smoke_result(),
+                    csv_root=linked_parent,
+                    expected_params=expected_gpu_params(),
+                )
+
     def test_rejects_stale_parabricks_mirror_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "parabricks_mirror_receipt.json"

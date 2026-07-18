@@ -157,8 +157,22 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
                     {"PARABRICKS_MIRROR_RECEIPT": str(path)},
                     clear=False,
                 ):
-                    with self.assertRaisesRegex(verify.MirrorReceiptError, "real file"):
+                    with self.assertRaisesRegex(verify.MirrorReceiptError, "real JSON file"):
                         verify.load_receipt_from_environment()
+
+    def test_environment_loader_rejects_receipt_below_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-receipts"
+            linked_parent = root / "linked-receipts"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            path = linked_parent / "parabricks-mirror.json"
+            write_json(path, receipt())
+
+            with patch.dict("os.environ", {"PARABRICKS_MIRROR_RECEIPT": str(path)}, clear=False):
+                with self.assertRaisesRegex(verify.MirrorReceiptError, "parent may not be a symlink"):
+                    verify.load_receipt_from_environment()
 
     @patch("diana_omics.commands.phase3_wgs.verify_parabricks_mirror_receipt.subprocess.run")
     def test_loads_destination_image_digest_from_ecr(self, run) -> None:

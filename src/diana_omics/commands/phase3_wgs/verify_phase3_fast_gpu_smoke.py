@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ...paths import path_from_root
-from ...utils import read_json
 from . import verify_parabricks_mirror_receipt as mirror_receipt
+from .safe_json_output import read_real_json
 
 DEFAULT_PARAMS = "infra/aws/nextflow.aws.use2.json"
 REQUIRED_AWS_REGION = "us-east-2"
@@ -144,12 +144,11 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
 
 def load_params_from_environment() -> tuple[dict[str, Any], Path]:
     path = path_from_root(os.environ.get("PHASE3_FAST_GPU_NEXTFLOW_PARAMS", DEFAULT_PARAMS))
-    if path.is_symlink() or not path.is_file():
-        raise GpuSmokeConfigError(
-            f"Generated {REQUIRED_AWS_REGION} GPU params file must be a real file: {path}. "
-            "Run infra:aws:apply:use2 after the P5en quota and pinned Parabricks image are ready."
-        )
-    payload = read_json(path)
+    payload = read_real_json(
+        path,
+        f"Generated {REQUIRED_AWS_REGION} GPU params file",
+        GpuSmokeConfigError,
+    )
     if not isinstance(payload, dict):
         raise GpuSmokeConfigError(f"{path} must contain a JSON object")
     return payload, path

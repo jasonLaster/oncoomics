@@ -175,8 +175,22 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     {"PHASE3_FAST_GPU_NEXTFLOW_PARAMS": str(path)},
                     clear=False,
                 ):
-                    with self.assertRaisesRegex(verify.GpuSmokeConfigError, "real file"):
+                    with self.assertRaisesRegex(verify.GpuSmokeConfigError, "real JSON file"):
                         verify.load_params_from_environment()
+
+    def test_environment_loader_rejects_params_below_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-params"
+            linked_parent = root / "linked-params"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            path = linked_parent / "nextflow.aws.use2.json"
+            write_json(path, p5en_params())
+
+            with patch.dict("os.environ", {"PHASE3_FAST_GPU_NEXTFLOW_PARAMS": str(path)}, clear=False):
+                with self.assertRaisesRegex(verify.GpuSmokeConfigError, "parent may not be a symlink"):
+                    verify.load_params_from_environment()
 
     def test_environment_loader_reads_override_path(self) -> None:
         with TemporaryDirectory() as tmp:

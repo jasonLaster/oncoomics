@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ...paths import path_from_root
-from ...utils import read_json
+from .safe_json_output import read_real_json
 
 DEFAULT_RECEIPT = "results/phase3_wgs_fast/parabricks_mirror_receipt.json"
 DIANA_PARABRICKS_DOCKERFILE = "infra/aws/Dockerfile.parabricks"
@@ -237,9 +237,7 @@ def load_mirror_digest(
 
 def load_receipt_from_environment() -> tuple[dict[str, Any], Path]:
     path = path_from_root(os.environ.get("PARABRICKS_MIRROR_RECEIPT", DEFAULT_RECEIPT))
-    if path.is_symlink() or not path.is_file():
-        raise MirrorReceiptError(f"Parabricks mirror receipt must be a real file: {path}")
-    receipt = read_json(path)
+    receipt = read_real_json(path, "Parabricks mirror receipt", MirrorReceiptError)
     if not isinstance(receipt, dict):
         raise MirrorReceiptError(f"{path} must contain a JSON object")
     return receipt, path
