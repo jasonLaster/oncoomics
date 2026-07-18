@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
+import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
 MAIN_TF = ROOT / "infra/aws/main.tf"
@@ -45,6 +48,37 @@ def run_mirror_parabricks_preflight(*, source_image: str, platform: str = "linux
         check=False,
         cwd=ROOT,
         env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def mirror_parabricks_receipt_writer() -> str:
+    script = MIRROR_PARABRICKS.read_text(encoding="utf-8")
+    start = script.index("<<'PY'\n") + len("<<'PY'\n")
+    end = script.index("\nPY\n\nPARABRICKS_MIRROR_RECEIPT=", start)
+    return script[start:end]
+
+
+def run_mirror_parabricks_receipt_writer(receipt_path: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            sys.executable,
+            "-",
+            str(receipt_path),
+            "nvcr.io/nvidia/clara/parabricks@sha256:" + "a" * 64,
+            "sha256:" + "a" * 64,
+            "linux/amd64",
+            "us-east-2",
+            "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks",
+            "sha256-" + "a" * 64 + "-diana-" + "b" * 12,
+            "sha256:" + "c" * 64,
+            "b" * 40,
+            "sha256:" + "d" * 64,
+        ],
+        input=mirror_parabricks_receipt_writer(),
+        check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -214,10 +248,16 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("Dockerfile.parabricks", script)
         self.assertIn("PARABRICKS_BASE_IMAGE", script)
         self.assertIn("docker build", script)
+        self.assertIn("DIANA_PARABRICKS_DOCKERFILE", script)
+        self.assertIn("Diana Parabricks Dockerfile must be a real file", script)
         self.assertNotIn('docker tag "${SOURCE_IMAGE}" "${target_image}"', script)
         self.assertIn("output -raw parabricks_mirror_repository_url", script)
         self.assertIn("aws ecr describe-images", script)
         self.assertIn('"parabricks_mirror_receipt"', script)
+        self.assertIn("Parabricks mirror receipt output may not be a symlink", script)
+        self.assertIn("Parabricks mirror receipt parent may not be a symlink", script)
+        self.assertIn("Temporary Parabricks mirror receipt already exists", script)
+        self.assertIn("temporary_path.replace(receipt_path)", script)
         self.assertIn("verify:parabricks-mirror-receipt", script)
         self.assertIn("TF_VAR_parabricks_container", script)
 
@@ -243,6 +283,58 @@ class AwsGpuInfraTests(unittest.TestCase):
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("PARABRICKS_PLATFORM must be linux/amd64", result.stderr)
+
+    def test_parabricks_mirror_receipt_writer_refuses_redirected_outputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_receipt = root / "real-receipt.json"
+            symlink_receipt = root / "receipt.json"
+            symlink_receipt.symlink_to(real_receipt)
+
+            result = run_mirror_parabricks_receipt_writer(symlink_receipt)
+
+            self.assertFalse(real_receipt.exists())
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("may not be a symlink", result.stderr)
+
+    def test_parabricks_mirror_receipt_writer_refuses_symlinked_parents(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-receipts"
+            linked_parent = root / "receipts"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            result = run_mirror_parabricks_receipt_writer(linked_parent / "receipt.json")
+
+            self.assertEqual([], list(real_parent.iterdir()))
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("parent may not be a symlink", result.stderr)
+
+    def test_parabricks_mirror_receipt_writer_uses_single_use_temporary_file(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".receipt.json.tmp").write_text("stale\n", encoding="utf-8")
+
+            result = run_mirror_parabricks_receipt_writer(root / "receipt.json")
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Temporary Parabricks mirror receipt already exists", result.stderr)
+
+    def test_parabricks_mirror_receipt_writer_writes_real_receipt(self) -> None:
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "nested" / "receipt.json"
+
+            result = run_mirror_parabricks_receipt_writer(path)
+
+            payload = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("parabricks_mirror_receipt", payload["manifest_type"])
+        self.assertEqual("linux/amd64", payload["source"]["platform"])
+        self.assertEqual("b" * 40, payload["diana_omics"]["git_commit"])
 
     def test_parabricks_mirror_image_extends_base_with_diana_runtime(self) -> None:
         dockerfile = PARABRICKS_DOCKERFILE.read_text(encoding="utf-8")

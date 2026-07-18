@@ -6,6 +6,7 @@ TARGET_WORKSPACE="${DIANA_AWS_TERRAFORM_WORKSPACE:-}"
 SOURCE_IMAGE="${PARABRICKS_SOURCE_IMAGE:-${1:-}}"
 PLATFORM="${PARABRICKS_PLATFORM:-linux/amd64}"
 RECEIPT_PATH="${PARABRICKS_MIRROR_RECEIPT:-${ROOT_DIR}/results/phase3_wgs_fast/parabricks_mirror_receipt.json}"
+DIANA_PARABRICKS_DOCKERFILE="${ROOT_DIR}/infra/aws/Dockerfile.parabricks"
 
 die() {
   echo "mirror-parabricks: $*" >&2
@@ -21,6 +22,8 @@ restore_workspace() {
 [[ -n "${SOURCE_IMAGE}" ]] || die "set PARABRICKS_SOURCE_IMAGE or pass a digest-pinned source image"
 [[ "${SOURCE_IMAGE}" =~ ^[^[:space:]]+@sha256:[0-9a-fA-F]{64}$ ]] || die "PARABRICKS_SOURCE_IMAGE must be pinned as <registry>/<image>@sha256:<64 hex>"
 [[ "${PLATFORM}" == "linux/amd64" ]] || die "PARABRICKS_PLATFORM must be linux/amd64"
+[[ -f "${DIANA_PARABRICKS_DOCKERFILE}" && ! -L "${DIANA_PARABRICKS_DOCKERFILE}" ]] \
+  || die "Diana Parabricks Dockerfile must be a real file: ${DIANA_PARABRICKS_DOCKERFILE}"
 
 source_digest="${SOURCE_IMAGE##*@}"
 source_digest_hex="${source_digest#sha256:}"
@@ -60,7 +63,7 @@ remote_refs="$(git -C "${ROOT_DIR}" for-each-ref \
 [[ -n "${remote_refs}" ]] || die "push ${diana_revision} to a remote before mirroring the Diana Parabricks runtime"
 
 diana_revision_short="${diana_revision:0:12}"
-dockerfile_sha256="sha256:$(shasum -a 256 "${ROOT_DIR}/infra/aws/Dockerfile.parabricks" | awk '{print $1}')"
+dockerfile_sha256="sha256:$(shasum -a 256 "${DIANA_PARABRICKS_DOCKERFILE}" | awk '{print $1}')"
 target_tag="sha256-${source_digest_hex}-diana-${diana_revision_short}"
 [[ "${target_tag}" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]] || die "internal Parabricks mirror tag is not a valid ECR image tag"
 
@@ -105,7 +108,7 @@ else
   docker build \
     --platform "${PLATFORM}" \
     --build-arg "PARABRICKS_BASE_IMAGE=${SOURCE_IMAGE}" \
-    -f "${ROOT_DIR}/infra/aws/Dockerfile.parabricks" \
+    -f "${DIANA_PARABRICKS_DOCKERFILE}" \
     -t "${target_image}" \
     "${ROOT_DIR}"
 
@@ -116,7 +119,6 @@ else
 fi
 [[ "${target_digest}" =~ ^sha256:[0-9a-fA-F]{64}$ ]] || die "ECR did not return a digest for ${target_image}"
 
-mkdir -p "$(dirname "${RECEIPT_PATH}")"
 python3 - "${RECEIPT_PATH}" "${SOURCE_IMAGE}" "${source_digest}" "${PLATFORM}" "${REGION}" \
   "${repository_url}" "${target_tag}" "${target_digest}" "${diana_revision}" "${dockerfile_sha256}" <<'PY'
 from __future__ import annotations
@@ -159,7 +161,36 @@ payload = {
         "dockerfile_sha256": dockerfile_sha256,
     },
 }
-Path(receipt_path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def require_safe_receipt_path(path: Path) -> None:
+    if path.is_symlink():
+        raise SystemExit(f"Parabricks mirror receipt output may not be a symlink: {path}")
+    if path.exists() and not path.is_file():
+        raise SystemExit(f"Parabricks mirror receipt output is not a file: {path}")
+
+    parent = path.parent
+    while not parent.exists() and not parent.is_symlink():
+        next_parent = parent.parent
+        if next_parent == parent:
+            raise SystemExit(f"Parabricks mirror receipt parent does not exist: {path.parent}")
+        parent = next_parent
+
+    if parent.is_symlink():
+        raise SystemExit(f"Parabricks mirror receipt parent may not be a symlink: {parent}")
+    if parent.exists() and not parent.is_dir():
+        raise SystemExit(f"Parabricks mirror receipt parent is not a directory: {parent}")
+
+
+receipt_path = Path(receipt_path)
+require_safe_receipt_path(receipt_path)
+receipt_path.parent.mkdir(parents=True, exist_ok=True)
+temporary_path = receipt_path.with_name(f".{receipt_path.name}.tmp")
+if temporary_path.exists() or temporary_path.is_symlink():
+    raise SystemExit(f"Temporary Parabricks mirror receipt already exists: {temporary_path}")
+temporary_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+require_safe_receipt_path(receipt_path)
+temporary_path.replace(receipt_path)
 PY
 
 PARABRICKS_MIRROR_RECEIPT="${RECEIPT_PATH}" PYTHONPATH="${ROOT_DIR}/src" \
