@@ -59,6 +59,10 @@ def canonical_bytes(value: Any) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
 
 
+def checksum_sha256(digest: str) -> str:
+    return base64.b64encode(bytes.fromhex(digest)).decode()
+
+
 def aws_json(*arguments: str) -> dict[str, Any]:
     completed = subprocess.run(
         ["aws", *arguments, "--region", REGION, "--output", "json"],
@@ -388,6 +392,8 @@ def upload(item: dict[str, Any]) -> dict[str, Any]:
         "AES256",
         "--checksum-algorithm",
         "SHA256",
+        "--checksum-sha256",
+        expected_checksum,
         "--metadata",
         json.dumps(metadata, sort_keys=True, separators=(",", ":")),
     )
