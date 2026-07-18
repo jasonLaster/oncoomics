@@ -22,6 +22,14 @@ def prepare_create_only_output(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def write_once(path: Path, text: str) -> None:
     prepare_create_only_output(path)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -32,6 +40,7 @@ def write_once(path: Path, text: str) -> None:
                 handle.write(text)
                 handle.flush()
                 os.fsync(handle.fileno())
+            fsync_directory(path.parent)
         except Exception:
             path.unlink(missing_ok=True)
             raise

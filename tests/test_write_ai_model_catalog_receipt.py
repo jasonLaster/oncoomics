@@ -11,6 +11,8 @@ from pathlib import Path
 from unittest import mock
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 SPEC = importlib.util.spec_from_file_location(
     "ai_model_catalog", SCRIPT_DIR / "ai_model_catalog.py"
@@ -18,6 +20,14 @@ SPEC = importlib.util.spec_from_file_location(
 assert SPEC and SPEC.loader
 CATALOG = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CATALOG)
+
+WRITER_SPEC = importlib.util.spec_from_file_location(
+    "write_ai_model_catalog_receipt",
+    SCRIPT_DIR / "write_ai_model_catalog_receipt.py",
+)
+assert WRITER_SPEC and WRITER_SPEC.loader
+WRITER = importlib.util.module_from_spec(WRITER_SPEC)
+WRITER_SPEC.loader.exec_module(WRITER)
 
 
 class WriteAiModelCatalogReceiptTests(unittest.TestCase):
@@ -88,43 +98,61 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
             symlink_parent = root / "linked-output"
             symlink_parent.symlink_to(real_parent, target_is_directory=True)
 
-            writer = importlib.util.spec_from_file_location(
-                "write_ai_model_catalog_receipt",
-                SCRIPT_DIR / "write_ai_model_catalog_receipt.py",
-            )
-            assert writer and writer.loader
-            module = importlib.util.module_from_spec(writer)
-            writer.loader.exec_module(module)
-
             with self.assertRaisesRegex(SystemExit, "output parent is a symlink"):
-                module.write_once(
+                WRITER.write_once(
                     symlink_parent / "model-catalog-receipt.json",
                     "{}\n",
                 )
 
             self.assertFalse((real_parent / "model-catalog-receipt.json").exists())
 
-    def test_write_once_removes_partial_output_after_fsync_failure(self) -> None:
-        writer = importlib.util.spec_from_file_location(
-            "write_ai_model_catalog_receipt",
-            SCRIPT_DIR / "write_ai_model_catalog_receipt.py",
-        )
-        assert writer and writer.loader
-        module = importlib.util.module_from_spec(writer)
-        writer.loader.exec_module(module)
-
+    def test_write_once_fsyncs_file_and_parent_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary).resolve() / "model-catalog-receipt.json"
 
             with (
                 mock.patch.object(
-                    module.os,
+                    WRITER.os,
                     "fsync",
-                    side_effect=OSError("synthetic fsync failure"),
-                ),
-                self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+                    wraps=WRITER.os.fsync,
+                ) as fsync,
             ):
-                module.write_once(output, "{}\n")
+                WRITER.write_once(output, "{}\n")
+
+            self.assertEqual(output.read_text(encoding="utf-8"), "{}\n")
+            self.assertEqual(fsync.call_count, 2)
+
+    def test_write_once_removes_partial_output_after_file_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary).resolve() / "model-catalog-receipt.json"
+
+            with (
+                mock.patch.object(
+                    WRITER.os,
+                    "fsync",
+                    side_effect=OSError("synthetic file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                WRITER.write_once(output, "{}\n")
+
+            self.assertFalse(output.exists())
+
+    def test_write_once_removes_partial_output_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary).resolve() / "model-catalog-receipt.json"
+
+            with (
+                mock.patch.object(
+                    WRITER.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                WRITER.write_once(output, "{}\n")
 
             self.assertFalse(output.exists())
 
