@@ -305,6 +305,33 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "output already exists"):
                 STAGE.stage(source, verification, output, "sequenza_scarhrd")
 
+    def test_stage_rejects_symlinked_source_or_output(self) -> None:
+        cases = ("source", "output")
+
+        for target in cases:
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "exact"
+                verification = write_route_report(source)
+                output = root / "staged"
+
+                if target == "source":
+                    real_source = root / "exact-real"
+                    source.rename(real_source)
+                    source.symlink_to(real_source, target_is_directory=True)
+                    message = "exact route replay"
+                else:
+                    output.symlink_to(
+                        root / "staged-real",
+                        target_is_directory=True,
+                    )
+                    message = "output may not be a symlink"
+
+                with self.assertRaisesRegex(ValueError, message):
+                    STAGE.stage(source, verification, output, "sigprofiler_sbs3")
+
+                self.assertFalse((root / "staged-real").exists())
+
     def test_stage_cleans_current_attempt_after_install_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

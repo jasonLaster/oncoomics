@@ -318,9 +318,23 @@ def write_file_create_only(path: Path, data: bytes) -> None:
             os.close(descriptor)
 
 
-def require_new_directory(path: Path) -> None:
-    if path.exists() or path.is_symlink():
-        raise FileExistsError(f"blocked cross-check output already exists: {path}")
+def prepare_output_root(output_root: Path) -> Path:
+    if output_root.is_symlink():
+        raise ValueError("blocked cross-check output may not be a symlink")
+    if output_root.parent.is_symlink():
+        raise ValueError("blocked cross-check output parent may not be a symlink")
+    if output_root.exists() and not output_root.is_dir():
+        raise ValueError(f"blocked cross-check output is not a directory: {output_root}")
+
+    targets = [output_root / str(method["directory"]) for method in METHODS]
+    existing = [str(path) for path in targets if path.exists() or path.is_symlink()]
+    if existing:
+        raise FileExistsError(
+            "blocked cross-check output already exists: " + ", ".join(existing)
+        )
+
+    output_root.mkdir(parents=True, exist_ok=True)
+    return output_root.resolve()
 
 
 def render_report(spec: dict[str, Any], generated_at: str) -> str:
@@ -376,12 +390,11 @@ def render_report(spec: dict[str, Any], generated_at: str) -> str:
 
 
 def generate(output_root: Path, generated_at: str) -> list[Path]:
-    output_root.mkdir(parents=True, exist_ok=True)
+    output_root = prepare_output_root(output_root)
     generator_hash = sha256_file(Path(__file__).resolve())
     written: list[Path] = []
     for method in METHODS:
         target = output_root / str(method["directory"])
-        require_new_directory(target)
         target.mkdir(parents=True)
         spec = {
             "schema_version": 1,
@@ -466,7 +479,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     args = parser.parse_args(argv)
-    for path in generate(args.output_dir.resolve(), args.generated_at):
+    try:
+        written = generate(args.output_dir, args.generated_at)
+    except (FileExistsError, ValueError) as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
+    for path in written:
         print(path)
     return 0
 

@@ -134,6 +134,44 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 ["unexpected.txt"],
             )
 
+    def test_generation_preflights_all_method_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+            existing = output / GENERATOR.METHODS[-1]["directory"]
+            existing.mkdir(parents=True)
+            (existing / "unexpected.txt").write_text("stale\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                FileExistsError,
+                "blocked cross-check output already exists",
+            ):
+                GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+
+            for method in GENERATOR.METHODS[:-1]:
+                self.assertFalse((output / method["directory"]).exists())
+
+    def test_cli_rejects_symlinked_output_without_writing_packets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "blocked"
+            real_output = root / "blocked-real"
+            output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "blocked cross-check output may not be a symlink",
+            ):
+                GENERATOR.main(
+                    [
+                        "--output-dir",
+                        str(output),
+                        "--generated-at",
+                        "2026-07-17T00:00:00+00:00",
+                    ]
+                )
+
+            self.assertFalse(real_output.exists())
+
     def test_generated_packets_match_private_publication_contracts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "blocked"

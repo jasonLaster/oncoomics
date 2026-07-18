@@ -249,21 +249,34 @@ def install_staged_packet(staging: Path, output_dir: Path) -> None:
         raise
 
 
+def resolve_real_source_dir(source_dir: Path) -> Path:
+    if source_dir.is_symlink() or not source_dir.is_dir():
+        raise ValueError("exact route replay must be a real directory")
+    return source_dir.resolve()
+
+
+def resolve_new_output_dir(output_dir: Path) -> Path:
+    if output_dir.is_symlink():
+        raise ValueError("output may not be a symlink")
+    if output_dir.parent.is_symlink():
+        raise ValueError(f"output parent may not be a symlink: {output_dir.parent}")
+    output_dir = output_dir.resolve()
+    if output_dir.exists():
+        raise ValueError(f"output already exists: {output_dir}")
+    return output_dir
+
+
 def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: str) -> None:
     if route not in SUPPORTED_ROUTES:
         raise ValueError(f"unsupported executable cross-check route: {route}")
-    source_dir = source_dir.resolve()
-    output_dir = output_dir.resolve()
+    source_dir = resolve_real_source_dir(source_dir)
+    output_dir = resolve_new_output_dir(output_dir)
     if (
         source_dir == output_dir
         or source_dir.is_relative_to(output_dir)
         or output_dir.is_relative_to(source_dir)
     ):
         raise ValueError("output must be separate from the exact route replay")
-    if output_dir.exists() or output_dir.is_symlink():
-        raise ValueError(f"output already exists: {output_dir}")
-    if not source_dir.is_dir() or source_dir.is_symlink():
-        raise ValueError("exact route replay must be a real directory")
 
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
