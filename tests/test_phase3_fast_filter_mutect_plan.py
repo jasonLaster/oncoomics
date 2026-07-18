@@ -65,10 +65,20 @@ class Phase3FastFilterMutectPlanTests(unittest.TestCase):
             Path(plan["inputs"]["normal_bam"]["local_path"]).parent,
             Path(plan["inputs"]["normal_bai"]["local_path"]).parent,
         )
+        self.assertEqual("copy-version-1", plan["inputs"]["tumor_bam"]["source"]["version_id"])
+        self.assertEqual("copy-version-5", plan["inputs"]["reference_fasta"]["source"]["version_id"])
+        self.assertEqual("copy-version-10", plan["inputs"]["gatk_jar"]["source"]["version_id"])
+        self.assertEqual("copy-version-8", plan["inputs"]["common_sites_index"]["source"]["version_id"])
+        self.assertTrue(
+            plan["inputs"]["common_sites_vcf"]["source"]["uri"].startswith(
+                "s3://diana-omics-private-cache-us-east-2/wgs-v2/resources/common_sites_vcf/"
+            )
+        )
         self.assertEqual(
             "/scratch/diana/phase3_wgs_fast/parabricks/variants/diana.wgs.mutect2.parabricks.pon.vcf.gz",
             plan["inputs"]["pon_annotated_vcf"]["local_path"],
         )
+        self.assertNotIn("source", plan["inputs"]["raw_vcf"])
         self.assertEqual(
             "/scratch/diana/phase3_wgs_fast/parabricks/variants/diana.wgs.mutect2.parabricks.raw.vcf.gz.stats",
             plan["inputs"]["raw_vcf_stats"]["local_path"],

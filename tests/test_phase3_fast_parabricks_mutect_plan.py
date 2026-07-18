@@ -58,6 +58,21 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
             Path(plan["inputs"]["germline_resource_vcf"]["local_path"]).parent,
             Path(plan["inputs"]["germline_resource_index"]["local_path"]).parent,
         )
+        self.assertTrue(
+            plan["inputs"]["reference_fasta"]["source"]["uri"].startswith(
+                "s3://diana-omics-private-cache-us-east-2/wgs-v2/references/reference.fa/"
+            )
+        )
+        self.assertEqual("copy-version-5", plan["inputs"]["reference_fasta"]["source"]["version_id"])
+        self.assertEqual("copy-version-7", plan["inputs"]["reference_sequence_dictionary"]["source"]["version_id"])
+        self.assertEqual(
+            "copy-version-14",
+            plan["inputs"]["panel_of_normals_index"]["source"]["version_id"],
+        )
+        self.assertEqual(
+            "copy-version-13",
+            plan["inputs"]["mutect2_interval_set"]["source"]["version_id"],
+        )
 
         self.assertEqual(
             [

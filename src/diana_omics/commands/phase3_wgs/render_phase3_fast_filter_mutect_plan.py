@@ -8,7 +8,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri
 
 DEFAULT_STAGED_INPUTS = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
 DEFAULT_MUTECT_PLAN = "manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
@@ -49,6 +49,14 @@ def _artifact_path(entry: Mapping[str, Any], artifact: str) -> str:
     if entry.get("artifact") != artifact:
         raise ManifestError(f"{artifact} entry artifact must match")
     return _require_absolute_path(entry.get("local_path"), f"{artifact} local_path")
+
+
+def _require_source(entry: Mapping[str, Any], artifact: str) -> dict[str, str]:
+    source = _require_mapping(entry.get("source"), f"{artifact} source")
+    return {
+        "uri": _require_s3_uri(source.get("uri"), f"{artifact} source uri"),
+        "version_id": _require_string(source.get("version_id"), f"{artifact} source version_id"),
+    }
 
 
 def _output_root(value: str | os.PathLike[str]) -> Path:
@@ -116,16 +124,27 @@ def build_phase3_fast_filter_mutect_plan(
     tumor = _require_mapping(bam_pair.get("tumor"), "bam_pair.tumor")
     normal = _require_mapping(bam_pair.get("normal"), "bam_pair.normal")
 
-    gatk_jar = _artifact_path(_entry(caller_resources, "gatk_jar"), "gatk_jar")
-    common_sites = _artifact_path(_entry(caller_resources, "common_sites_vcf"), "common_sites_vcf")
-    common_sites_index = _artifact_path(_entry(caller_resources, "common_sites_index"), "common_sites_index")
-    reference_fasta = _artifact_path(_entry(reference, "fasta"), "reference.fa")
-    reference_fai = _artifact_path(_entry(reference, "fai"), "reference.fa.fai")
-    reference_sequence_dictionary = _artifact_path(_entry(reference, "sequence_dictionary"), "reference.dict")
-    tumor_bam = _artifact_path(_entry(tumor, "bam"), "tumor.bam")
-    tumor_bai = _artifact_path(_entry(tumor, "bai"), "tumor.bai")
-    normal_bam = _artifact_path(_entry(normal, "bam"), "normal.bam")
-    normal_bai = _artifact_path(_entry(normal, "bai"), "normal.bai")
+    gatk_jar_entry = _entry(caller_resources, "gatk_jar")
+    common_sites_entry = _entry(caller_resources, "common_sites_vcf")
+    common_sites_index_entry = _entry(caller_resources, "common_sites_index")
+    reference_fasta_entry = _entry(reference, "fasta")
+    reference_fai_entry = _entry(reference, "fai")
+    reference_sequence_dictionary_entry = _entry(reference, "sequence_dictionary")
+    tumor_bam_entry = _entry(tumor, "bam")
+    tumor_bai_entry = _entry(tumor, "bai")
+    normal_bam_entry = _entry(normal, "bam")
+    normal_bai_entry = _entry(normal, "bai")
+
+    gatk_jar = _artifact_path(gatk_jar_entry, "gatk_jar")
+    common_sites = _artifact_path(common_sites_entry, "common_sites_vcf")
+    common_sites_index = _artifact_path(common_sites_index_entry, "common_sites_index")
+    reference_fasta = _artifact_path(reference_fasta_entry, "reference.fa")
+    reference_fai = _artifact_path(reference_fai_entry, "reference.fa.fai")
+    reference_sequence_dictionary = _artifact_path(reference_sequence_dictionary_entry, "reference.dict")
+    tumor_bam = _artifact_path(tumor_bam_entry, "tumor.bam")
+    tumor_bai = _artifact_path(tumor_bai_entry, "tumor.bai")
+    normal_bam = _artifact_path(normal_bam_entry, "normal.bam")
+    normal_bai = _artifact_path(normal_bai_entry, "normal.bai")
     if Path(reference_fasta).parent != Path(reference_fai).parent:
         raise ManifestError("reference.fa and reference.fa.fai must be staged together")
     if Path(reference_fasta).parent != Path(reference_sequence_dictionary).parent:
@@ -278,16 +297,46 @@ def build_phase3_fast_filter_mutect_plan(
             "parabricks_mutect_plan_sha256": _require_hex(mutect_plan_sha256, "parabricks_mutect_plan_sha256"),
         },
         "inputs": {
-            "gatk_jar": {"local_path": gatk_jar},
-            "reference_fasta": {"local_path": reference_fasta},
-            "reference_fai": {"local_path": reference_fai},
-            "reference_sequence_dictionary": {"local_path": reference_sequence_dictionary},
-            "tumor_bam": {"local_path": tumor_bam},
-            "tumor_bai": {"local_path": tumor_bai},
-            "normal_bam": {"local_path": normal_bam},
-            "normal_bai": {"local_path": normal_bai},
-            "common_sites_vcf": {"local_path": common_sites},
-            "common_sites_index": {"local_path": common_sites_index},
+            "gatk_jar": {
+                "local_path": gatk_jar,
+                "source": _require_source(gatk_jar_entry, "gatk_jar"),
+            },
+            "reference_fasta": {
+                "local_path": reference_fasta,
+                "source": _require_source(reference_fasta_entry, "reference.fa"),
+            },
+            "reference_fai": {
+                "local_path": reference_fai,
+                "source": _require_source(reference_fai_entry, "reference.fa.fai"),
+            },
+            "reference_sequence_dictionary": {
+                "local_path": reference_sequence_dictionary,
+                "source": _require_source(reference_sequence_dictionary_entry, "reference.dict"),
+            },
+            "tumor_bam": {
+                "local_path": tumor_bam,
+                "source": _require_source(tumor_bam_entry, "tumor.bam"),
+            },
+            "tumor_bai": {
+                "local_path": tumor_bai,
+                "source": _require_source(tumor_bai_entry, "tumor.bai"),
+            },
+            "normal_bam": {
+                "local_path": normal_bam,
+                "source": _require_source(normal_bam_entry, "normal.bam"),
+            },
+            "normal_bai": {
+                "local_path": normal_bai,
+                "source": _require_source(normal_bai_entry, "normal.bai"),
+            },
+            "common_sites_vcf": {
+                "local_path": common_sites,
+                "source": _require_source(common_sites_entry, "common_sites_vcf"),
+            },
+            "common_sites_index": {
+                "local_path": common_sites_index,
+                "source": _require_source(common_sites_index_entry, "common_sites_index"),
+            },
             "raw_vcf": {"local_path": raw_vcf},
             "raw_vcf_stats": {"local_path": raw_stats},
             "pon_annotated_vcf": {"local_path": pon_annotated_vcf},
