@@ -68,6 +68,16 @@ def require_safe_new_output_parent(path: Path, label: str) -> None:
             raise NotADirectoryError(parent)
 
 
+def require_real_local_file(path: Path, label: str) -> None:
+    require_safe_new_output_parent(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
+def require_real_downloaded_file(path: Path, label: str) -> None:
+    require_real_local_file(path, label)
+
+
 def write_json_create_only(path: Path, value: dict[str, Any], label: str) -> None:
     require_safe_new_output_parent(path, label)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -251,6 +261,12 @@ def materialize(
         raise ValueError("run alias must be de-identified")
     if source_vcf_index != Path(f"{source_vcf}.tbi"):
         raise ValueError("source VCF index must be adjacent at VCF_PATH.tbi")
+    require_real_local_file(source_vcf, "source VCF")
+    require_real_local_file(source_vcf_index, "source VCF index")
+    require_real_local_file(source_matrix, "source SBS96 matrix")
+    require_real_local_file(fasta, "reference FASTA")
+    require_real_local_file(fai, "reference FASTA index")
+    require_safe_new_output_parent(output_dir, "materializer output directory")
     output_dir.mkdir(parents=True, exist_ok=True)
     capture(["bcftools", "index", "-n", str(source_vcf)])
     source_header = capture(["bcftools", "view", "-h", str(source_vcf)]) + "\n"
@@ -260,7 +276,9 @@ def materialize(
     roles = sample_roles(source_header, samples)
 
     raw_pass = output_dir / "pass-snvs.with-source-header.vcf.gz"
+    require_safe_new_output_parent(raw_pass, "PASS-SNV source-header VCF")
     run(["bcftools", "view", "-f", "PASS", "-v", "snps", "-Oz", "-o", str(raw_pass), str(source_vcf)])
+    require_real_local_file(raw_pass, "PASS-SNV source-header VCF")
     raw_header = capture(["bcftools", "view", "-h", str(raw_pass)]) + "\n"
     aliases = {
         roles["tumor"]: f"{run_alias}_tumor",
@@ -272,11 +290,17 @@ def materialize(
     if any(original in sanitized_header for original in aliases):
         raise ValueError("source sample identity remains in the sanitized VCF header")
     header_path = output_dir / "sanitized-header.vcf"
+    require_safe_new_output_parent(header_path, "sanitized VCF header")
     header_path.write_text(sanitized_header, encoding="utf-8")
+    require_real_local_file(header_path, "sanitized VCF header")
     final_vcf = output_dir / "somatic.pass.vcf.gz"
+    require_safe_new_output_parent(final_vcf, "alias-only PASS-SNV VCF")
     run(["bcftools", "reheader", "-h", str(header_path), "-o", str(final_vcf), str(raw_pass)])
+    require_real_local_file(final_vcf, "alias-only PASS-SNV VCF")
     final_index = Path(f"{final_vcf}.tbi")
+    require_safe_new_output_parent(final_index, "alias-only PASS-SNV VCF index")
     run(["bcftools", "index", "-t", "-f", str(final_vcf)])
+    require_real_local_file(final_index, "alias-only PASS-SNV VCF index")
     final_samples = set(capture(["bcftools", "query", "-l", str(final_vcf)]).splitlines())
     if final_samples != {f"{run_alias}_tumor", f"{run_alias}_normal"}:
         raise ValueError(f"unexpected alias-only VCF samples: {sorted(final_samples)}")
@@ -289,7 +313,9 @@ def materialize(
 
     observed = matrix_counts(source_matrix)
     final_matrix = output_dir / "sbs96.csv"
+    require_safe_new_output_parent(final_matrix, "alias-only SBS96 matrix")
     write_alias_matrix(observed, final_matrix)
+    require_real_local_file(final_matrix, "alias-only SBS96 matrix")
     independently_derived, allele_count = derive_counts(final_vcf, fasta, fai)
     mismatches = sorted(context for context in CANONICAL if observed[context] != independently_derived[context])
     if mismatches:
@@ -400,6 +426,7 @@ def require_private_versioned_kms(
 
 def download(uri: str, path: Path, region: str, version_id: str) -> None:
     bucket, key = s3_parts(uri)
+    require_safe_new_output_parent(path, "downloaded exact input")
     path.parent.mkdir(parents=True, exist_ok=True)
     run([
         AWS,
@@ -417,10 +444,12 @@ def download(uri: str, path: Path, region: str, version_id: str) -> None:
         "--region",
         region,
     ])
+    require_real_downloaded_file(path, "downloaded exact input")
 
 
 def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any]:
     """Publish one small artifact with PutObject create-only semantics."""
+    require_real_local_file(path, "upload source")
     local_sha256 = sha256(path)
     bucket, key = s3_parts(uri)
     if version_history(bucket, key, region):
@@ -605,6 +634,7 @@ def main() -> int:
         work = Path(temporary.name)
     else:
         work = args.work_dir
+        require_safe_new_output_parent(work, "work directory")
         work.mkdir(parents=True, exist_ok=True)
     try:
         local = {
@@ -650,6 +680,10 @@ def main() -> int:
                 version_ids[name],
             )
             download(uri, local[name], args.region, version_ids[name])
+            require_real_downloaded_file(
+                local[name],
+                f"downloaded exact input {name}",
+            )
             if local[name].stat().st_size != int(metadata["ContentLength"]):
                 raise ValueError(f"downloaded object size mismatch: {name}")
             observed_sha256 = sha256(local[name])
@@ -680,9 +714,14 @@ def main() -> int:
             run_alias=args.run_alias,
         )
         staged_validation_path = output_dir / "staged_input_validation.json"
-        staged_validation_path.write_text(
-            json.dumps(staged_validation(result), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
+        write_json_create_only(
+            staged_validation_path,
+            staged_validation(result),
+            "staged input validation output",
+        )
+        require_real_local_file(
+            staged_validation_path,
+            "staged input validation output",
         )
         output_custody: dict[str, Any] = {}
         for filename in (
@@ -735,7 +774,12 @@ def main() -> int:
             "authorized_hrd_state": "no_call",
         }
         receipt_path = work / "materialization-receipt.json"
-        receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        write_json_create_only(
+            receipt_path,
+            receipt,
+            "materialization receipt output",
+        )
+        require_real_local_file(receipt_path, "materialization receipt output")
         receipt_sha = sha256(receipt_path)
         receipt_uri = (
             f"s3://{receipt_bucket}/{receipt_prefix_key}"

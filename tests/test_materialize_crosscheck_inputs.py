@@ -179,6 +179,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp, patch.object(module, "run") as run:
             destination = Path(tmp) / "input.vcf.gz"
+            run.side_effect = lambda command: destination.write_bytes(b"downloaded\n")
             module.download(uri, destination, "us-east-1", "frozen-version")
         command = run.call_args.args[0]
         self.assertEqual(
@@ -201,10 +202,13 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
             ],
         )
 
-    def test_script_bytes_match_registered_materializer_revision(self):
+    def test_script_bytes_match_reviewed_next_materializer_revision(self):
+        # Batch materializer v4 remains pinned by submit/capture tests to its
+        # frozen registered script. This hash pins the reviewed local source
+        # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "21b44c05db409c77d1aed6b0fbf77c4065e79cf54b8b1f0b53f926d4ca8f7862",
+            "ca2e89a051931a010a677eff37b5087f7005565f411eb0f9428610140da335ec",
         )
 
     def test_upload_binds_local_sha256_in_object_metadata(self):
@@ -270,6 +274,27 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         self.assertEqual(receipt["checksums"]["ChecksumCRC64NVME"], "unit-crc")
         self.assertTrue(all(receipt["checks"].values()))
 
+    def test_upload_rejects_symlinked_source_before_aws(self):
+        uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_source = root / "real-output.json"
+            real_source.write_text("{}\n", encoding="utf-8")
+            linked_source = root / "output.json"
+            linked_source.symlink_to(real_source)
+
+            with (
+                patch.object(
+                    module,
+                    "version_history",
+                    side_effect=AssertionError("unexpected AWS call"),
+                ),
+                self.assertRaisesRegex(ValueError, "upload source may not be a symlink"),
+            ):
+                module.upload(linked_source, uri, kms, "us-east-1")
+
     def test_main_rejects_receipt_anchor_below_symlinked_parent_before_aws(self):
         bucket = "diana-omics-private-results-000000000000-us-east-1"
         kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
@@ -328,6 +353,154 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 module.main()
 
             self.assertFalse((real_parent / "existing" / "anchor.json").exists())
+
+    def test_download_rejects_symlinked_destination(self):
+        uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/input.vcf.gz"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            destination = root / "input.vcf.gz"
+
+            def fake_run(command):
+                real_download = root / "real-input.vcf.gz"
+                real_download.write_bytes(b"exact-s3-bytes\n")
+                destination.symlink_to(real_download)
+
+            with (
+                patch.object(module, "run", side_effect=fake_run),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "downloaded exact input may not be a symlink",
+                ),
+            ):
+                module.download(uri, destination, "us-east-1", "frozen-version")
+
+    def test_materialize_rejects_symlinked_source_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            vcf, index, matrix, fasta, fai = self.fixture(root)
+            real_matrix = root / "real-source.sbs96.csv"
+            matrix.replace(real_matrix)
+            matrix.symlink_to(real_matrix)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source SBS96 matrix may not be a symlink",
+            ):
+                module.materialize(
+                    source_vcf=vcf,
+                    source_vcf_index=index,
+                    source_matrix=matrix,
+                    fasta=fasta,
+                    fai=fai,
+                    output_dir=root / "output",
+                )
+
+    def test_materialize_rejects_symlinked_output_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            vcf, index, matrix, fasta, fai = self.fixture(root)
+            real_output = root / "real-output"
+            real_output.mkdir()
+            linked_output = root / "linked-output"
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "materializer output directory may not be a symlink",
+            ):
+                module.materialize(
+                    source_vcf=vcf,
+                    source_vcf_index=index,
+                    source_matrix=matrix,
+                    fasta=fasta,
+                    fai=fai,
+                    output_dir=linked_output,
+                )
+
+    def test_materialize_rejects_symlinked_external_writer_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            vcf, index, matrix, fasta, fai = self.fixture(root)
+            output = root / "output"
+
+            def fake_run(command):
+                self.assertEqual(command[1], "view")
+                destination = output / "pass-snvs.with-source-header.vcf.gz"
+                real_destination = output / "real-pass.vcf.gz"
+                real_destination.write_bytes(b"redirected\n")
+                destination.symlink_to(real_destination)
+
+            with (
+                patch.object(module, "run", side_effect=fake_run),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "PASS-SNV source-header VCF may not be a symlink",
+                ),
+            ):
+                module.materialize(
+                    source_vcf=vcf,
+                    source_vcf_index=index,
+                    source_matrix=matrix,
+                    fasta=fasta,
+                    fai=fai,
+                    output_dir=output,
+                )
+
+    def test_main_rejects_symlinked_work_dir_before_input_download(self):
+        bucket = "diana-omics-private-results-000000000000-us-east-1"
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_work = root / "real-work"
+            real_work.mkdir()
+            linked_work = root / "linked-work"
+            linked_work.symlink_to(real_work, target_is_directory=True)
+            anchor = root / "anchor.json"
+            argv = [
+                "materialize_crosscheck_inputs.py",
+                "--source-vcf-uri",
+                f"s3://{bucket}/runs/subject01/source.vcf.gz",
+                "--source-vcf-index-uri",
+                f"s3://{bucket}/runs/subject01/source.vcf.gz.tbi",
+                "--source-matrix-uri",
+                f"s3://{bucket}/runs/subject01/source.sbs96.csv",
+                "--reference-fasta-uri",
+                f"s3://{bucket}/runs/subject01/reference.fa",
+                "--reference-fai-uri",
+                f"s3://{bucket}/runs/subject01/reference.fa.fai",
+                "--source-vcf-version-id",
+                "source-vcf-version",
+                "--source-vcf-index-version-id",
+                "source-vcf-index-version",
+                "--source-matrix-version-id",
+                "source-matrix-version",
+                "--reference-fasta-version-id",
+                "reference-fasta-version",
+                "--reference-fai-version-id",
+                "reference-fai-version",
+                "--destination-prefix",
+                f"s3://{bucket}/runs/subject01/materialized/",
+                "--receipt-prefix",
+                f"s3://{bucket}/runs/subject01/materialized-receipts/",
+                "--receipt-anchor-output",
+                str(anchor),
+                "--kms-key-arn",
+                kms,
+                "--work-dir",
+                str(linked_work),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(module, "require_bucket_versioning"),
+                patch.object(module, "version_history", return_value=[]),
+                patch.object(module, "head", side_effect=AssertionError("unexpected download")),
+                self.assertRaisesRegex(ValueError, "work directory may not be a symlink"),
+            ):
+                module.main()
+
+            self.assertFalse(any(real_work.iterdir()))
 
 
 if __name__ == "__main__":
