@@ -369,8 +369,9 @@ final artifact tree, and writes a path-redacted `final_evidence_manifest.json`
 whose artifact entries use relative paths only.
 `FAST_CROSSCHECK_MATERIALIZATION_PLAN` derives the post-freeze
 SigProfiler/SBS3 alias materialization plan from that manifest as a cheap
-sidecar; it binds the final VCF, TBI, SBS96 matrix, and exact reference source
-identities without copying large BAMs or rerunning caller work.
+sidecar; it binds the final VCF, TBI, SBS96 matrix, exact reference source
+identities, and versioned BAM/BAI source quartet for the blocked Sequenza
+contract without copying large BAMs or rerunning caller work.
 `FAST_STAGE_DETERMINISTIC_REPORT` consumes that final manifest and portable
 artifact tree without rerunning BAM, VCF, or SBS96 work, rehashes the manifest-bound
 files, and writes the six-file deterministic report packet

@@ -74,6 +74,17 @@ def _source_blob(value: Any, label: str) -> dict[str, Any]:
     }
 
 
+def _sample_source_blob(value: Any, label: str) -> dict[str, Any]:
+    source = _source_blob(value, label)
+    return {
+        **source,
+        "sample_id": _require_string(
+            _require_mapping(value, label).get("sample_id"),
+            f"{label}.sample_id",
+        ),
+    }
+
+
 def _final_artifact(value: Any, role: str) -> dict[str, Any]:
     row = _require_mapping(value, f"artifacts.small_variants.filter_mutect.{role}")
     return {
@@ -116,6 +127,9 @@ def build_phase3_fast_crosscheck_materialization_plan(
     filter_mutect = _require_mapping(small_variants.get("filter_mutect"), "artifacts.small_variants.filter_mutect")
     input_sources = _require_mapping(final_evidence.get("input_sources"), "input_sources")
     reference = _require_mapping(input_sources.get("reference"), "input_sources.reference")
+    bam_pair = _require_mapping(input_sources.get("bam_pair"), "input_sources.bam_pair")
+    tumor = _require_mapping(bam_pair.get("tumor"), "input_sources.bam_pair.tumor")
+    normal = _require_mapping(bam_pair.get("normal"), "input_sources.bam_pair.normal")
 
     final_sources = {
         materializer_role: {
@@ -157,6 +171,25 @@ def build_phase3_fast_crosscheck_materialization_plan(
                 "sbs96_matrix": "sbs96.csv",
                 "staged_input_validation": "staged_input_validation.json",
             },
+        },
+        "sequenza_scarhrd": {
+            "status": "blocked",
+            "execution_status": "not_run",
+            "interpretation_status": "no_call",
+            "source_artifacts": {
+                "tumor_bam": _sample_source_blob(tumor.get("bam"), "input_sources.bam_pair.tumor.bam"),
+                "tumor_bai": _sample_source_blob(tumor.get("bai"), "input_sources.bam_pair.tumor.bai"),
+                "normal_bam": _sample_source_blob(normal.get("bam"), "input_sources.bam_pair.normal.bam"),
+                "normal_bai": _sample_source_blob(normal.get("bai"), "input_sources.bam_pair.normal.bai"),
+            },
+            "required_method_parameters": [
+                "method_parameters.sequenza.female",
+            ],
+            "blockers": [
+                "awaiting_final_bam_contract",
+                "awaiting_explicit_sequenza_sex_model",
+                "awaiting_validated_sequenza_scarhrd_runtime",
+            ],
         },
         "blocked_routes": {
             "sequenza_scarhrd": "awaiting_sequenza_sex_model_and_final_bam_contract",

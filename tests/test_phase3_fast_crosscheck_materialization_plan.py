@@ -32,7 +32,7 @@ def _final_evidence(root: Path) -> dict:
 
 
 class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
-    def test_plans_post_freeze_alias_inputs_for_sigprofiler_only(self) -> None:
+    def test_plans_post_freeze_alias_inputs_for_sigprofiler_and_binds_sequenza_bams(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             final_manifest = _final_evidence(root)
@@ -43,6 +43,7 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
 
         final_sources = plan["sigprofiler_sbs3"]["final_sources"]
         reference_sources = plan["sigprofiler_sbs3"]["reference_sources"]
+        sequenza_sources = plan["sequenza_scarhrd"]["source_artifacts"]
 
         self.assertEqual("phase3_wgs_fast_crosscheck_materialization_plan", plan["manifest_type"])
         self.assertEqual("awaiting_private_results_freeze", plan["status"])
@@ -69,6 +70,23 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
             reference_sources["reference_fai"]["sha256"],
         )
         self.assertEqual("somatic.pass.vcf.gz", plan["sigprofiler_sbs3"]["outputs"]["somatic_vcf"])
+        self.assertEqual("blocked", plan["sequenza_scarhrd"]["status"])
+        self.assertEqual(
+            ["method_parameters.sequenza.female"],
+            plan["sequenza_scarhrd"]["required_method_parameters"],
+        )
+        self.assertEqual(
+            final_manifest["input_sources"]["bam_pair"]["tumor"]["bam"]["version_id"],
+            sequenza_sources["tumor_bam"]["version_id"],
+        )
+        self.assertEqual(
+            final_manifest["input_sources"]["bam_pair"]["normal"]["bai"]["sha256"],
+            sequenza_sources["normal_bai"]["sha256"],
+        )
+        self.assertEqual(
+            "subject01_tumor",
+            sequenza_sources["tumor_bam"]["sample_id"],
+        )
         self.assertEqual(
             "awaiting_sequenza_sex_model_and_final_bam_contract",
             plan["blocked_routes"]["sequenza_scarhrd"],
