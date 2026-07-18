@@ -286,6 +286,27 @@ class PublishPrivateReportTests(unittest.TestCase):
             ):
                 MODULE.run(fixture.args())
 
+    def test_rejects_unauthorized_manifest_classification_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            manifest = json.loads(
+                (fixture.packet / "report_manifest.json").read_text(encoding="utf-8")
+            )
+            manifest["review_summary"]["overall"]["statement"] = (
+                "This profile is HRD-positive."
+            )
+            (fixture.packet / "report_manifest.json").write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError, "unauthorized HRD classification"
+            ), mock.patch.object(
+                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            ):
+                MODULE.run(fixture.args())
+
     def test_rejects_encoded_forbidden_token_before_aws(self) -> None:
         for encoded in (
             "p&#101;rsonalis\n",

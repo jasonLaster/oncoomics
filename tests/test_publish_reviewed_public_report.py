@@ -359,6 +359,34 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertEqual(fake.put_calls, [])
 
+    def test_second_scan_rejects_unauthorized_manifest_classification(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            manifest = json.loads(
+                (fixture.packet / "report_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            manifest["review_summary"]["overall"]["statement"] = (
+                "This profile is HRD-positive."
+            )
+            (fixture.packet / "report_manifest.json").write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            fixture.rebuild_receipt()
+            fake = FakeAws(fixture)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "unauthorized HRD classification",
+            ):
+                self.execute(fixture, fake, apply=True)
+
+            self.assertEqual(fake.put_calls, [])
+
     def test_version_history_consumes_key_and_version_markers(self) -> None:
         pages = [
             {

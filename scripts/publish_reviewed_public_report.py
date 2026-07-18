@@ -562,7 +562,7 @@ def validate_report_packet(
     for name in sorted(set(sources) & expected_support):
         if sources[name] != sha256(paths[name]):
             raise ValueError(f"report manifest source hash differs for {name}")
-    for name in sorted(set(expected) - {"report_manifest.json"}):
+    for name in sorted(expected):
         scan_no_call_language(paths[name])
     return manifest
 
