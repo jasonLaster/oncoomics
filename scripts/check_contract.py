@@ -233,12 +233,21 @@ def write_text_once(path: Path, value: str) -> None:
                 handle.write(value)
                 handle.flush()
                 os.fsync(handle.fileno())
+            fsync_directory(path.parent)
         except Exception:
             path.unlink(missing_ok=True)
             raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def require_safe_output_parent(path: Path) -> None:

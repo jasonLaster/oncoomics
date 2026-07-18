@@ -326,6 +326,35 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_finalizer_fsyncs_file_and_parent_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "input-contract.json"
+
+            with mock.patch.object(
+                finalizer.os,
+                "fsync",
+                wraps=finalizer.os.fsync,
+            ) as fsync:
+                finalizer.write_new_json(output, {"status": "passed"})
+
+            self.assertEqual(fsync.call_count, 2)
+
+    def test_finalizer_removes_partial_output_after_directory_fsync_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "input-contract.json"
+
+            with (
+                mock.patch.object(
+                    finalizer.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                finalizer.write_new_json(output, {"status": "passed"})
+
+            self.assertFalse(output.exists())
+
     def test_finalizer_rejects_output_below_symlinked_parent(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
@@ -420,6 +449,35 @@ class CustodyHandoffTests(unittest.TestCase):
                     side_effect=OSError("synthetic fsync failure"),
                 ),
                 self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+            ):
+                checker.write_text_once(output, "{}\n")
+
+            self.assertFalse(output.exists())
+
+    def test_contract_check_fsyncs_file_and_parent_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "input-contract.readiness.json"
+
+            with mock.patch.object(
+                checker.os,
+                "fsync",
+                wraps=checker.os.fsync,
+            ) as fsync:
+                checker.write_text_once(output, "{}\n")
+
+            self.assertEqual(fsync.call_count, 2)
+
+    def test_contract_check_removes_partial_output_after_directory_fsync_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "input-contract.readiness.json"
+
+            with (
+                mock.patch.object(
+                    checker.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
             ):
                 checker.write_text_once(output, "{}\n")
 
