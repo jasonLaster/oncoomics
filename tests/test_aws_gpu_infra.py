@@ -58,8 +58,10 @@ class AwsGpuInfraTests(unittest.TestCase):
 
         self.assertIn('filename        = "${path.module}/${var.nextflow_params_filename}"', text)
         self.assertIn('variable "nextflow_params_filename"', variables)
-        self.assertIn("aws_gpu_queue           = aws_batch_job_queue.gpu_p5en.name", text)
-        self.assertIn("parabricks_container    = var.parabricks_container", text)
+        self.assertRegex(text, r"aws_gpu_queue\s+=\s+aws_batch_job_queue\.gpu_p5en\.name")
+        self.assertRegex(text, r"batch_gpu_p5en_instance_types\s+=\s+var\.batch_gpu_p5en_instance_types")
+        self.assertRegex(text, r"gpu_p5en_max_vcpus\s+=\s+var\.gpu_p5en_max_vcpus")
+        self.assertRegex(text, r"parabricks_container\s+=\s+var\.parabricks_container")
 
     def test_gpu_defaults_match_requested_quota_and_leave_image_unpinned(self) -> None:
         text = VARIABLES_TF.read_text(encoding="utf-8")
@@ -79,8 +81,12 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("aws_gpu_queue = null", nextflow)
         self.assertIn("parabricks_container = null", nextflow)
         self.assertIn("awsbatch_gpu", nextflow)
-        self.assertIn("process.queue = params.aws_gpu_queue", nextflow)
-        self.assertIn("process.container = params.parabricks_container", nextflow)
+        self.assertIn("withLabel: gpu_parabricks", nextflow)
+        self.assertIn("queue = params.aws_gpu_queue", nextflow)
+        self.assertIn("container = params.parabricks_container", nextflow)
+        self.assertIn("withLabel: cpu_io", nextflow)
+        self.assertIn("queue = params.aws_ondemand_queue", nextflow)
+        self.assertIn("container = params.container", nextflow)
 
     def test_gpu_smoke_is_documented_as_placement_only(self) -> None:
         readme = AWS_README.read_text(encoding="utf-8")

@@ -628,6 +628,7 @@ TASKS: dict[str, Task] = {
         )
     ),
     "nf:aws:phase3-wgs-fast:gpu-smoke": _task(
+        _py("verify:phase3-fast-gpu-smoke"),
         _nextflow(
             "-profile",
             "awsbatch_gpu",
@@ -641,7 +642,7 @@ TASKS: dict[str, Task] = {
             "H200",
             "--aws_max_retries",
             "0",
-        )
+        ),
     ),
     "nf:aws:phase3-wgs:monolith:full": _task(
         _nextflow(

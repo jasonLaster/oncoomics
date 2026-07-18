@@ -1008,19 +1008,21 @@ resource "local_file" "nextflow_params" {
   filename        = "${path.module}/${var.nextflow_params_filename}"
   file_permission = "0600"
   content = jsonencode({
-    aws_region              = var.region
-    aws_workdir             = "s3://${aws_s3_bucket.this["work"].bucket}/work"
-    aws_results_dir         = "s3://${aws_s3_bucket.this["results"].bucket}/runs"
-    aws_private_results_dir = "s3://${aws_s3_bucket.this["private_results"].bucket}/runs"
-    aws_gpu_queue           = aws_batch_job_queue.gpu_p5en.name
-    aws_hrd_x86_queue       = aws_batch_job_queue.hrd_x86.name
-    aws_spot_queue          = aws_batch_job_queue.spot.name
-    aws_ondemand_queue      = aws_batch_job_queue.ondemand.name
-    aws_job_role            = aws_iam_role.batch_job.arn
-    aws_logs_group          = aws_cloudwatch_log_group.batch.name
-    container               = "${aws_ecr_repository.diana_omics.repository_url}:${var.image_tag}"
-    parabricks_container    = var.parabricks_container
-    phase3_asset_cache_uri  = "s3://${aws_s3_bucket.this["raw"].bucket}/cache/phase3_wgs"
-    diana_raw_inbox_uri     = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_inbox_prefix}"
+    aws_region                    = var.region
+    aws_workdir                   = "s3://${aws_s3_bucket.this["work"].bucket}/work"
+    aws_results_dir               = "s3://${aws_s3_bucket.this["results"].bucket}/runs"
+    aws_private_results_dir       = "s3://${aws_s3_bucket.this["private_results"].bucket}/runs"
+    aws_gpu_queue                 = aws_batch_job_queue.gpu_p5en.name
+    batch_gpu_p5en_instance_types = var.batch_gpu_p5en_instance_types
+    gpu_p5en_max_vcpus            = var.gpu_p5en_max_vcpus
+    aws_hrd_x86_queue             = aws_batch_job_queue.hrd_x86.name
+    aws_spot_queue                = aws_batch_job_queue.spot.name
+    aws_ondemand_queue            = aws_batch_job_queue.ondemand.name
+    aws_job_role                  = aws_iam_role.batch_job.arn
+    aws_logs_group                = aws_cloudwatch_log_group.batch.name
+    container                     = "${aws_ecr_repository.diana_omics.repository_url}:${var.image_tag}"
+    parabricks_container          = var.parabricks_container
+    phase3_asset_cache_uri        = "s3://${aws_s3_bucket.this["raw"].bucket}/cache/phase3_wgs"
+    diana_raw_inbox_uri           = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_inbox_prefix}"
   })
 }

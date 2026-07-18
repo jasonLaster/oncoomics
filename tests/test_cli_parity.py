@@ -21,6 +21,7 @@ class CliParityTest(unittest.TestCase):
             "build:diana-template",
             "build:packet",
             "build:phase3-fast-input-manifest",
+            "build:phase3-fast-replication-plan",
             "build:panel",
             "build:raw-samplesheets",
             "build:rosalind-hrd-packet",
@@ -66,6 +67,7 @@ class CliParityTest(unittest.TestCase):
             "verify:orthogonal",
             "verify:outputs",
             "verify:phase3-outputs",
+            "verify:phase3-fast-gpu-smoke",
             "verify:plan",
             "verify:sv-caller-readiness",
         }
@@ -170,7 +172,11 @@ class CliParityTest(unittest.TestCase):
         self.assertNotIn("64", argv[argv.index("--phase3_align_cpus") + 1])
 
     def test_p5en_gpu_smoke_task_uses_isolated_gpu_profile(self):
-        argv = TASKS["nf:aws:phase3-wgs-fast:gpu-smoke"].steps[0].argv
+        task = TASKS["nf:aws:phase3-wgs-fast:gpu-smoke"]
+
+        self.assertEqual("verify:phase3-fast-gpu-smoke", task.steps[0].argv[-1])
+
+        argv = task.steps[1].argv
         self.assertIn("awsbatch_gpu", argv)
         self.assertIn("infra/aws/nextflow.aws.use2.json", argv)
         self.assertEqual("phase3_wgs_fast_gpu_smoke", argv[argv.index("--workflow") + 1])

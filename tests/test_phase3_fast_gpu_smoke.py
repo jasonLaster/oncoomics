@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
+
+from diana_omics.commands.phase3_wgs import verify_phase3_fast_gpu_smoke as verify
+from diana_omics.utils import write_json
+
+
+def p5en_params(**overrides):
+    params = {
+        "aws_gpu_queue": "diana-omics-prod-use2-gpu-p5en",
+        "aws_job_role": "arn:aws:iam::172630973301:role/diana-omics-prod-use2-batch-job",
+        "aws_logs_group": "/aws/batch/diana-omics-prod-use2",
+        "aws_private_results_dir": "s3://diana-omics-private-results-172630973301-us-east-2/runs",
+        "aws_region": "us-east-2",
+        "aws_workdir": "s3://diana-omics-work-172630973301-us-east-2/work",
+        "batch_gpu_p5en_instance_types": ["p5en.48xlarge"],
+        "gpu_p5en_max_vcpus": 384,
+        "parabricks_container": "172630973301.dkr.ecr.us-east-2.amazonaws.com/parabricks@sha256:" + "a" * 64,
+    }
+    params.update(overrides)
+    return params
+
+
+class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
+    def test_validates_p5en_gpu_params_before_aws_submission(self) -> None:
+        summary = verify.validate_gpu_smoke_params(p5en_params())
+
+        self.assertEqual("ready", summary["status"])
+        self.assertEqual("diana-omics-prod-use2-gpu-p5en", summary["aws_gpu_queue"])
+        self.assertEqual(384, summary["gpu_p5en_max_vcpus"])
+        self.assertEqual(["p5en.48xlarge"], summary["instance_types"])
+
+    def test_rejects_empty_or_tagged_parabricks_container(self) -> None:
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "parabricks_container"):
+            verify.validate_gpu_smoke_params(p5en_params(parabricks_container=""))
+
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "sha256"):
+            verify.validate_gpu_smoke_params(
+                p5en_params(parabricks_container="172630973301.dkr.ecr.us-east-2.amazonaws.com/parabricks:latest")
+            )
+
+    def test_rejects_non_p5en_queue_and_capacity(self) -> None:
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "P5en GPU smoke is not ready"):
+            verify.validate_gpu_smoke_params(
+                p5en_params(
+                    aws_gpu_queue="diana-omics-prod-use1-spot",
+                    batch_gpu_p5en_instance_types=["p5.48xlarge"],
+                    gpu_p5en_max_vcpus=8,
+                )
+            )
+
+    def test_environment_loader_requires_generated_use2_params(self) -> None:
+        with TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "nextflow.aws.use2.json"
+            with patch.dict("os.environ", {"PHASE3_FAST_GPU_NEXTFLOW_PARAMS": str(missing)}, clear=False):
+                with self.assertRaisesRegex(verify.GpuSmokeConfigError, "Missing generated us-east-2 GPU params"):
+                    verify.load_params_from_environment()
+
+    def test_environment_loader_reads_override_path(self) -> None:
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "nextflow.aws.use2.json"
+            write_json(path, p5en_params())
+
+            with patch.dict("os.environ", {"PHASE3_FAST_GPU_NEXTFLOW_PARAMS": str(path)}, clear=False):
+                params, loaded_path = verify.load_params_from_environment()
+
+        self.assertEqual(path, loaded_path)
+        self.assertEqual("us-east-2", params["aws_region"])
+
+
+if __name__ == "__main__":
+    unittest.main()

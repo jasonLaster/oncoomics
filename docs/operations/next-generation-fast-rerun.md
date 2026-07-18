@@ -182,6 +182,7 @@ Add a checked-in `phase3_wgs_fast` workflow rather than another S3-only worker. 
 
 ```text
 FAST_INPUT_MANIFEST
+FAST_REPLICATION_PLAN             immutable copy plan and us-east-2 cache keys
 FAST_REPLICATE_INPUTS              source to us-east-2
 FAST_FQ2BAM_TUMOR                  optional GPU
 FAST_FQ2BAM_NORMAL                 optional GPU
@@ -242,6 +243,10 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics build:phase3-fast-input-manifest
 The `phase3_wgs_fast` Nextflow DAG starts with the same renderer as
 `FAST_INPUT_MANIFEST`, with each receipt staged as a real process input so
 `-resume` is keyed by receipt content rather than by a mutable local directory.
+It then renders a dry `FAST_REPLICATION_PLAN` with deterministic,
+content-addressed source-version to `us-east-2` cache-key rows. The following
+copy process is the first step that needs S3 write authority in the regional
+private cache.
 
 ### Gate 1: P5en and Parabricks smoke
 
@@ -251,6 +256,11 @@ image:
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
 ```
+
+The alias runs `verify:phase3-fast-gpu-smoke` first to fail locally unless the
+generated `infra/aws/nextflow.aws.use2.json` is bound to `us-east-2`, the
+isolated P5en queue, exactly `p5en.48xlarge`, at least one P5en worth of
+capacity, and a Parabricks image pinned by SHA-256 digest.
 
 Verify all eight H200 GPUs are visible with `nvidia-smi`, then execute a fixed
 bounded interval. Accept the environment only if:

@@ -56,6 +56,7 @@ params.phase3_fast_caller_resource_receipt = params.phase3_fast_caller_resource_
 params.phase3_fast_parameter_sha256 = params.phase3_fast_parameter_sha256 ?: null
 params.phase3_fast_parabricks_container_digest = params.phase3_fast_parabricks_container_digest ?: null
 params.phase3_fast_parabricks_version = params.phase3_fast_parabricks_version ?: null
+params.phase3_fast_cache_prefix = params.phase3_fast_cache_prefix ?: null
 params.phase3_fast_gatk_version = params.phase3_fast_gatk_version ?: '4.6.2.0'
 params.phase3_fast_source_commit = params.phase3_fast_source_commit ?: ''
 params.phase3_fast_run_id = params.phase3_fast_run_id ?: 'diana-wgs-hrd-20260716T033101Z'
@@ -508,6 +509,7 @@ process PHASE3_WGS {
 
 process FAST_INPUT_MANIFEST {
     tag "fast_input_manifest_${params.phase3_fast_run_id}"
+    label 'cpu_io'
     cpus 1
     memory '2 GB'
     time '15m'
@@ -567,6 +569,7 @@ process FAST_INPUT_MANIFEST {
 
 process FAST_GPU_SMOKE {
     tag "fast_gpu_smoke_${params.phase3_fast_gpu_smoke_expected_gpus}x_${params.phase3_fast_gpu_smoke_gpu_name}"
+    label 'gpu_parabricks'
     cpus { params.phase3_fast_gpu_smoke_cpus as int }
     memory { params.phase3_fast_gpu_smoke_memory }
     time '30m'
@@ -723,6 +726,48 @@ workflow PHASE3_WGS_ALIGN_SCATTER {
     }
 }
 
+process FAST_REPLICATION_PLAN {
+    tag "fast_replication_plan_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/replication_plan", mode: 'copy', overwrite: true
+
+    input:
+    path input_manifest
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/replication_plan.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_INPUT_MANIFEST="\$PWD/${input_manifest}"
+    export PHASE3_WGS_FAST_REPLICATION_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/replication_plan.json"
+    export PHASE3_WGS_FAST_CACHE_PREFIX="${params.phase3_fast_cache_prefix}"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-replication-plan
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/replication_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_replication_plan",
+      "status": "stubbed",
+      "copy_plan": [],
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -739,6 +784,7 @@ workflow PHASE3_WGS_FAST {
         'phase3_fast_parameter_sha256',
         'phase3_fast_parabricks_container_digest',
         'phase3_fast_parabricks_version',
+        'phase3_fast_cache_prefix',
     ]
     missing = requiredFastManifestParams.findAll { name ->
         def value = params[name]
@@ -758,6 +804,7 @@ workflow PHASE3_WGS_FAST {
         file(params.phase3_fast_caller_resource_receipt.toString(), checkIfExists: true)
     ))
     FAST_INPUT_MANIFEST(inputReceipts)
+    FAST_REPLICATION_PLAN(FAST_INPUT_MANIFEST.out)
 }
 
 workflow {

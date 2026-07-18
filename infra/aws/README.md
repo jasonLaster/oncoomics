@@ -150,7 +150,10 @@ Terraform writes `aws_gpu_queue` and `parabricks_container` to
 Parabricks image has been selected and pinned by immutable digest.
 
 After P5en quota is approved and the pinned image is supplied, run only the
-bounded placement/visibility smoke first:
+bounded placement/visibility smoke first. The alias starts with a local
+`verify:phase3-fast-gpu-smoke` preflight so a missing `nextflow.aws.use2.json`,
+tagged/empty Parabricks image, non-P5en queue, or too-small P5en capacity fails
+before Nextflow can submit to AWS Batch:
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
