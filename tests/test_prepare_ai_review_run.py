@@ -344,6 +344,68 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             self.assertEqual(moved, ["bundle"])
             self.assertFalse(output.exists())
 
+    def test_install_fsyncs_parent_and_output_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            staging.mkdir()
+            for name in ("bundle", "reviewer-inputs"):
+                directory = staging / name
+                directory.mkdir()
+                (directory / "payload.json").write_text("{}\n", encoding="utf-8")
+
+            with mock.patch.object(
+                PREPARE,
+                "fsync_directory",
+                wraps=PREPARE.fsync_directory,
+            ) as fsync_directory:
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertEqual(
+                fsync_directory.mock_calls,
+                [mock.call(output.parent), mock.call(output)],
+            )
+
+    def test_install_cleans_output_after_parent_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            staging.mkdir()
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "fsync_directory",
+                    side_effect=OSError("synthetic parent fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic parent fsync failure"),
+            ):
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertFalse(output.exists())
+
+    def test_install_cleans_output_after_output_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            staging.mkdir()
+            (staging / "bundle").mkdir()
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "fsync_directory",
+                    side_effect=(None, OSError("synthetic output fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic output fsync failure"),
+            ):
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

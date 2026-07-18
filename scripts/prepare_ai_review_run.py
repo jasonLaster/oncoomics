@@ -278,6 +278,14 @@ def move_staged_entry(source: Path, destination: Path) -> None:
     source.rename(destination)
 
 
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def resolve_new_output(path: Path) -> Path:
     if path.is_symlink():
         raise ValueError(f"output may not be a symlink: {path}")
@@ -300,8 +308,10 @@ def install_staged_run(staging: Path, output: Path) -> None:
         raise ValueError(f"output already exists: {output}") from error
 
     try:
+        fsync_directory(output.parent)
         for child in sorted(staging.iterdir(), key=lambda path: path.name):
             move_staged_entry(child, output / child.name)
+        fsync_directory(output)
     except Exception:
         shutil.rmtree(output, ignore_errors=True)
         raise
