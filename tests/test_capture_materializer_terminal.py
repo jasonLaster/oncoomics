@@ -442,6 +442,21 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "capture.json").exists())
 
+    def test_create_private_group_rejects_nested_symlinked_output_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+                MODULE.create_private_group(
+                    [(linked_parent / "missing" / "capture.json", b"capture")]
+                )
+
+            self.assertFalse((real_parent / "missing" / "capture.json").exists())
+
     def test_requires_all_eight_exact_well_formed_parameters(self) -> None:
         values = [f"{name}={self.parameters[name]}" for name in MODULE.PARAMETER_NAMES]
         self.assertEqual(MODULE.parse_parameters(values), self.parameters)

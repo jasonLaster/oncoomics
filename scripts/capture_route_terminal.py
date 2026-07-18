@@ -254,18 +254,33 @@ def require_new_private_output_paths(paths: Iterable[Path]) -> None:
     if not rows:
         raise ValueError("private output paths must be distinct and nonempty")
     for path in rows:
-        if path.is_symlink():
-            raise FileExistsError(f"private output may not be a symlink: {path}")
-        if path.parent.is_symlink():
-            raise FileExistsError(
-                f"private output parent may not be a symlink: {path.parent}"
-            )
+        require_safe_private_output_parent(path)
     resolved = {path.resolve(strict=False) for path in rows}
     if len(resolved) != len(rows):
         raise ValueError("private output paths must be distinct and nonempty")
     for path in rows:
         if path.exists():
             raise FileExistsError(f"refusing to overwrite private output: {path}")
+
+
+def require_safe_private_output_parent(path: Path) -> None:
+    if path.is_symlink():
+        raise FileExistsError(f"private output may not be a symlink: {path}")
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise FileExistsError(
+                f"private output parent may not be a symlink: {parent}"
+            )
+        if parent == parent.parent:
+            raise ValueError(f"private output has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise FileExistsError(
+            f"private output parent may not be a symlink: {parent}"
+        )
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
 
 
 def validate_arguments(args: argparse.Namespace) -> dict[str, str]:

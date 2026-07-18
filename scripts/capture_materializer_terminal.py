@@ -488,6 +488,7 @@ def validate_exact_receipt(
 
 
 def create_private(path: Path, content: bytes) -> None:
+    require_safe_private_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -503,17 +504,32 @@ def create_private(path: Path, content: bytes) -> None:
         raise ValueError(f"private output mode is not 0600: {path}")
 
 
+def require_safe_private_output_parent(path: Path) -> None:
+    if path.is_symlink():
+        raise FileExistsError(f"private output may not be a symlink: {path}")
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise FileExistsError(
+                f"private output parent may not be a symlink: {parent}"
+            )
+        if parent == parent.parent:
+            raise ValueError(f"private output has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise FileExistsError(
+            f"private output parent may not be a symlink: {parent}"
+        )
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
+
+
 def require_new_distinct_outputs(paths: Iterable[Path]) -> list[Path]:
     values = list(paths)
     if not values:
         raise ValueError("private output paths must be distinct")
     for path in values:
-        if path.is_symlink():
-            raise FileExistsError(f"private output may not be a symlink: {path}")
-        if path.parent.is_symlink():
-            raise FileExistsError(
-                f"private output parent may not be a symlink: {path.parent}"
-            )
+        require_safe_private_output_parent(path)
     resolved = [path.resolve(strict=False) for path in values]
     if len(set(resolved)) != len(resolved):
         raise ValueError("private output paths must be distinct")
