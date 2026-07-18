@@ -913,12 +913,21 @@ def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
+        fsync_directory(path.parent)
     except Exception:
         path.unlink(missing_ok=True)
         raise
     finally:
         if file_descriptor >= 0:
             os.close(file_descriptor)
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def require_safe_validation_parent(path: Path) -> None:

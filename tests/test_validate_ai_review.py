@@ -210,7 +210,9 @@ class ValidateReviewFixture(AiReviewBundleFixture):
 
 
 class ValidateAiReviewTests(unittest.TestCase):
-    def test_validation_receipt_is_born_private_create_only_and_fsynced(self) -> None:
+    def test_validation_receipt_is_born_private_create_only_and_fsynced(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "validation.json"
             with mock.patch.object(
@@ -225,12 +227,48 @@ class ValidateAiReviewTests(unittest.TestCase):
                 json.loads(output.read_text(encoding="utf-8")),
                 {"status": "passed"},
             )
-            self.assertEqual(fsync.call_count, 1)
+            self.assertEqual(fsync.call_count, 2)
 
             original = output.read_bytes()
             with self.assertRaisesRegex(ValueError, "validation.json already exists"):
                 VALIDATE.write_validation_create_only(output, {"status": "failed"})
             self.assertEqual(output.read_bytes(), original)
+
+    def test_validation_receipt_removes_partial_output_after_file_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "validation.json"
+
+            with (
+                mock.patch.object(
+                    VALIDATE.os,
+                    "fsync",
+                    side_effect=OSError("synthetic file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                VALIDATE.write_validation_create_only(output, {"status": "partial"})
+
+            self.assertFalse(output.exists())
+
+    def test_validation_receipt_removes_partial_output_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "validation.json"
+
+            with (
+                mock.patch.object(
+                    VALIDATE.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                VALIDATE.write_validation_create_only(output, {"status": "partial"})
+
+            self.assertFalse(output.exists())
 
     def test_validation_receipt_refuses_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
