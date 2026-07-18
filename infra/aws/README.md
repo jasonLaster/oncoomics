@@ -179,7 +179,9 @@ Use `nf:aws:phase3-wgs-fast:execute` only after Gate 0 inputs, the pinned image,
 and the smoke output have been reviewed. That alias runs the full
 BAM-to-evidence P5en path and therefore requires
 `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES` plus the reviewed Nextflow receipt
-parameters after `--`.
+parameters after `--`. It still repeats `verify:phase3-fast-gpu-smoke` before
+Nextflow starts so stale `us-east-2` GPU params cannot bypass the local P5en
+queue, pinned-image, cache, and quota checks.
 
 ## Smoke Test
 

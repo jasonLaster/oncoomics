@@ -680,6 +680,7 @@ TASKS: dict[str, Task] = {
         ),
     ),
     "nf:aws:phase3-wgs-fast:execute": _phase3_fast_aws_execute_task(
+        _py("verify:phase3-fast-gpu-smoke"),
         _nextflow(
             "-profile",
             "awsbatch_gpu",

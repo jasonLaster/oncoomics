@@ -211,10 +211,13 @@ class CliParityTest(unittest.TestCase):
         task = TASKS["nf:aws:phase3-wgs-fast:execute"]
 
         self.assertTrue(task.accepts_args)
-        self.assertTrue(task.steps[0].append_args)
+        self.assertEqual(2, len(task.steps))
+        self.assertEqual("verify:phase3-fast-gpu-smoke", task.steps[0].argv[-1])
+        self.assertFalse(task.steps[0].append_args)
+        self.assertTrue(task.steps[1].append_args)
         self.assertEqual(PHASE3_FAST_AWS_EXECUTE_ENV, task.required_env)
 
-        argv = task.steps[0].argv
+        argv = task.steps[1].argv
         self.assertIn("awsbatch_gpu", argv)
         self.assertIn("infra/aws/nextflow.aws.use2.json", argv)
         self.assertEqual("phase3_wgs_fast", argv[argv.index("--workflow") + 1])
@@ -266,9 +269,10 @@ class CliParityTest(unittest.TestCase):
         with patch.dict("os.environ", {"ALLOW_PHASE3_FAST_AWS_EXECUTE": "YES"}, clear=True):
             run_task("nf:aws:phase3-wgs-fast:execute", extra_args)
 
-        run.assert_called_once()
-        argv = run.call_args.args[0]
-        env = run.call_args.kwargs["env"]
+        self.assertEqual(2, run.call_count)
+        self.assertEqual("verify:phase3-fast-gpu-smoke", run.call_args_list[0].args[0][-1])
+        argv = run.call_args_list[1].args[0]
+        env = run.call_args_list[1].kwargs["env"]
         self.assertEqual("phase3_wgs_fast", argv[argv.index("--workflow") + 1])
         self.assertEqual("execute", argv[argv.index("--phase3_fast_small_variant_mode") + 1])
         self.assertEqual("private-freeze.json", argv[argv.index("--phase3_fast_private_freeze_receipt") + 1])

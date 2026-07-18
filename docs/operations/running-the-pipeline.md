@@ -100,7 +100,9 @@ placement gate for the isolated `phase3_wgs_fast` P5en/Parabricks queue; it does
 
 The full `phase3_wgs_fast` execute alias is available as
 `nf:aws:phase3-wgs-fast:execute`, accepts reviewed Gate 0 receipt paths after
-`--`, and intentionally requires `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES`.
+`--`, intentionally requires `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES`, and repeats
+the local `verify:phase3-fast-gpu-smoke` preflight before it can submit the
+full P5en/Parabricks workflow.
 
 Do not use the legacy full-source AWS CPU aliases for the current Diana tumor/matched-normal evidence rerun. They are blocked behind
 `ALLOW_LEGACY_PHASE3_AWS_FULL=YES` and kept only for explicitly approved legacy public-WGS regression runs.
