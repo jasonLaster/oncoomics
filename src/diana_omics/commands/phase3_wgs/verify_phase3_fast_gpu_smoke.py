@@ -205,19 +205,77 @@ def validate_running_on_demand_p_quota(value: float, *, minimum: int = P5EN_VCPU
         )
 
 
+def load_parabricks_mirror_image_digest(
+    *,
+    parabricks_container: str,
+    region: str,
+    aws_cli: str = "aws",
+) -> str:
+    repository, digest = parabricks_container.split("@", 1)
+    repository_name = repository.split("/", 1)[1]
+
+    try:
+        result = subprocess.run(
+            [
+                aws_cli,
+                "ecr",
+                "describe-images",
+                "--region",
+                region,
+                "--repository-name",
+                repository_name,
+                "--image-ids",
+                f"imageDigest={digest}",
+                "--output",
+                "json",
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except FileNotFoundError as error:
+        raise GpuSmokeConfigError(f"{aws_cli} is required to verify the mirrored Parabricks image") from error
+    except subprocess.CalledProcessError as error:
+        output = (error.stdout or "").strip()
+        detail = f": {output}" if output else ""
+        raise GpuSmokeConfigError(f"Unable to find mirrored Parabricks image {parabricks_container}{detail}") from error
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise GpuSmokeConfigError("ECR did not return JSON") from error
+
+    if not isinstance(payload, dict):
+        raise GpuSmokeConfigError("ECR response must be a JSON object")
+    image_details = payload.get("imageDetails")
+    if not isinstance(image_details, list) or not image_details:
+        raise GpuSmokeConfigError(f"ECR did not return imageDetails for {parabricks_container}")
+
+    image_digest = image_details[0].get("imageDigest")
+    if image_digest != digest:
+        raise GpuSmokeConfigError(f"ECR imageDigest must match {digest}")
+    return digest
+
+
 def main() -> None:
     try:
         params, path = load_params_from_environment()
         summary = validate_gpu_smoke_params(params)
         running_on_demand_p_vcpus = load_running_on_demand_p_vcpus(summary["aws_region"])
         validate_running_on_demand_p_quota(running_on_demand_p_vcpus)
+        image_digest = load_parabricks_mirror_image_digest(
+            parabricks_container=summary["parabricks_container"],
+            region=summary["aws_region"],
+        )
     except GpuSmokeConfigError as error:
         raise SystemExit(str(error)) from error
     print(
         f"Phase 3 WGS fast GPU smoke config passed: {path} "
         f"queue={summary['aws_gpu_queue']} "
         f"max_vcpus={summary['gpu_p5en_max_vcpus']} "
-        f"running_on_demand_p_vcpus={running_on_demand_p_vcpus:g}"
+        f"running_on_demand_p_vcpus={running_on_demand_p_vcpus:g} "
+        f"parabricks_image_digest={image_digest}"
     )
 
 

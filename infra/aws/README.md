@@ -198,11 +198,13 @@ version.
 After P5en quota is approved and the pinned image is supplied, run only the
 bounded placement/visibility smoke first. The alias starts with a local
 `verify:phase3-fast-gpu-smoke` preflight so a missing `nextflow.aws.use2.json`,
-tagged/empty Parabricks image, non-P5en queue, or too-small P5en capacity fails
-before Nextflow can submit to AWS Batch. The same preflight reads the live EC2
-`Running On-Demand P instances` quota and requires at least 192 vCPUs, the size
-of one `p5en.48xlarge`, so a submitted but still-open Service Quotas case
-cannot leak into an expensive doomed smoke job:
+tagged/empty/missing Parabricks image, non-P5en queue, or too-small P5en
+capacity fails before Nextflow can submit to AWS Batch. The same preflight
+reads the live EC2 `Running On-Demand P instances` quota and requires at least
+192 vCPUs, the size of one `p5en.48xlarge`, so a submitted but still-open
+Service Quotas case cannot leak into an expensive doomed smoke job. It also
+verifies that the pinned Parabricks ECR digest exists in the mirror repository
+before Batch tries to pull it:
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke

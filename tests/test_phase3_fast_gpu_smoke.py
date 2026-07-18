@@ -186,6 +186,56 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
 
         verify.validate_running_on_demand_p_quota(192.0)
 
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
+    def test_loads_mirrored_parabricks_image_digest_from_ecr(self, run) -> None:
+        digest = "sha256:" + "a" * 64
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout='{"imageDetails":[{"imageDigest":"' + digest + '"}]}',
+        )
+
+        observed = verify.load_parabricks_mirror_image_digest(
+            parabricks_container=(
+                "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@" + digest
+            ),
+            region="us-east-2",
+        )
+
+        self.assertEqual(digest, observed)
+        self.assertEqual(
+            [
+                "aws",
+                "ecr",
+                "describe-images",
+                "--region",
+                "us-east-2",
+                "--repository-name",
+                "diana-omics/parabricks",
+                "--image-ids",
+                "imageDigest=" + digest,
+                "--output",
+                "json",
+            ],
+            run.call_args.args[0],
+        )
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
+    def test_missing_mirrored_parabricks_image_is_reported_before_gpu_submission(self, run) -> None:
+        run.side_effect = subprocess.CalledProcessError(
+            returncode=254,
+            cmd=["aws"],
+            output="ImageNotFound",
+        )
+
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "ImageNotFound"):
+            verify.load_parabricks_mirror_image_digest(
+                parabricks_container=(
+                    "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + "a" * 64
+                ),
+                region="us-east-2",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
