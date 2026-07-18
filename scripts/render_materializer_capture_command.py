@@ -23,7 +23,6 @@ import shlex
 from pathlib import Path
 from typing import Any, Iterable
 
-
 REGION = "us-east-1"
 ACCOUNT_ID = "172630973301"
 SUBJECT_ALIAS = "subject01"
@@ -89,17 +88,11 @@ def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
 def write_once(path: Path, text: str) -> None:
     if path.exists() or path.is_symlink():
         raise FileExistsError(path)
-    parent = path.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"output parent is a symlink: {parent}")
-        if parent == parent.parent:
-            raise ValueError(f"output has no existing parent: {path}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(f"output parent is a symlink: {parent}")
-    if not parent.is_dir():
-        raise NotADirectoryError(parent)
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -115,6 +108,10 @@ def write_once(path: Path, text: str) -> None:
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
 
 
 def read_json_object(path: Path) -> dict[str, Any]:

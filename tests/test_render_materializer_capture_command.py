@@ -11,7 +11,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -243,6 +242,20 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
             )
 
         self.assertFalse((real_parent / "missing" / "capture.sh").exists())
+
+    def test_write_once_rejects_existing_child_under_symlinked_parent(self) -> None:
+        real_parent = self.root / "real-output"
+        (real_parent / "existing").mkdir(parents=True)
+        symlink_parent = self.root / "linked-output"
+        symlink_parent.symlink_to(real_parent, target_is_directory=True)
+
+        with self.assertRaisesRegex(ValueError, "output parent is a symlink"):
+            MODULE.write_once(
+                symlink_parent / "existing" / "capture.sh",
+                "redirected\n",
+            )
+
+        self.assertFalse((real_parent / "existing" / "capture.sh").exists())
 
 
 if __name__ == "__main__":
