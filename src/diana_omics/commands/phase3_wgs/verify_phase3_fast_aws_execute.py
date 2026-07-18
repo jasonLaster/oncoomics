@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -14,6 +15,8 @@ MIRROR_RECEIPT_ENV = "PARABRICKS_MIRROR_RECEIPT"
 REQUIRED_GPU_COUNT = 8
 REQUIRED_GPU_NAME = "H200"
 REQUIRED_PARABRICKS_VERSION_COMMAND = "pbrun version"
+REQUIRED_JAVA_VERSION_COMMAND = "java -version"
+REQUIRED_BCFTOOLS_VERSION_COMMAND = "bcftools --version"
 
 
 class Phase3FastExecuteError(ValueError):
@@ -68,10 +71,24 @@ def _require_aws_cli_version_basename(value: Any) -> str:
     return name
 
 
+def _require_bcftools_version_basename(value: Any) -> str:
+    name = _require_string(value, "bcftoolsVersionTxt")
+    if Path(name).name != name:
+        raise Phase3FastExecuteError("bcftoolsVersionTxt must be a sibling basename")
+    return name
+
+
 def _require_diana_omics_cli_basename(value: Any) -> str:
     name = _require_string(value, "dianaOmicsCliTxt")
     if Path(name).name != name:
         raise Phase3FastExecuteError("dianaOmicsCliTxt must be a sibling basename")
+    return name
+
+
+def _require_java_version_basename(value: Any) -> str:
+    name = _require_string(value, "javaVersionTxt")
+    if Path(name).name != name:
+        raise Phase3FastExecuteError("javaVersionTxt must be a sibling basename")
     return name
 
 
@@ -130,6 +147,10 @@ def validate_gpu_smoke_result(
         raise Phase3FastExecuteError(f"GPU smoke result must require {REQUIRED_GPU_NAME}")
     if payload.get("parabricksVersionCommand") != REQUIRED_PARABRICKS_VERSION_COMMAND:
         raise Phase3FastExecuteError(f"GPU smoke result must include {REQUIRED_PARABRICKS_VERSION_COMMAND}")
+    if payload.get("javaVersionCommand") != REQUIRED_JAVA_VERSION_COMMAND:
+        raise Phase3FastExecuteError(f"GPU smoke result must include {REQUIRED_JAVA_VERSION_COMMAND}")
+    if payload.get("bcftoolsVersionCommand") != REQUIRED_BCFTOOLS_VERSION_COMMAND:
+        raise Phase3FastExecuteError(f"GPU smoke result must include {REQUIRED_BCFTOOLS_VERSION_COMMAND}")
 
     csv_path = csv_root / _require_csv_basename(payload.get("nvidiaSmiCsv"))
     csv_rows = _parse_nvidia_smi_csv(csv_path)
@@ -161,6 +182,20 @@ def validate_gpu_smoke_result(
     if "parabricks" not in parabricks_version and "pbrun" not in parabricks_version:
         raise Phase3FastExecuteError("Parabricks version output must identify Parabricks or pbrun")
 
+    java_version_path = csv_root / _require_java_version_basename(payload.get("javaVersionTxt"))
+    java_version = _require_nonempty_text_file(java_version_path, "Java version output")
+    match = re.search(r'version "(\d+)', java_version)
+    if match is None or int(match.group(1)) < 17:
+        raise Phase3FastExecuteError("Java version output must prove Java 17+")
+
+    bcftools_version_path = csv_root / _require_bcftools_version_basename(payload.get("bcftoolsVersionTxt"))
+    bcftools_version = _require_nonempty_text_file(
+        bcftools_version_path,
+        "bcftools version output",
+    ).casefold()
+    if "bcftools" not in bcftools_version:
+        raise Phase3FastExecuteError("bcftools version output must identify bcftools")
+
     aws_cli_version_path = csv_root / _require_aws_cli_version_basename(payload.get("awsCliVersionTxt"))
     aws_cli_version = _require_nonempty_text_file(
         aws_cli_version_path,
@@ -178,8 +213,12 @@ def validate_gpu_smoke_result(
         "aws_cli_version_txt": aws_cli_version_path.name,
         "aws_gpu_queue": aws_gpu_queue,
         "aws_region": aws_region,
+        "bcftools_version_command": REQUIRED_BCFTOOLS_VERSION_COMMAND,
+        "bcftools_version_txt": bcftools_version_path.name,
         "diana_omics_cli_txt": diana_omics_cli_path.name,
         "expected_gpu_count": expected_count,
+        "java_version_command": REQUIRED_JAVA_VERSION_COMMAND,
+        "java_version_txt": java_version_path.name,
         "observed_gpu_count": observed_count,
         "parabricks_container": parabricks_container,
         "parabricks_version_command": REQUIRED_PARABRICKS_VERSION_COMMAND,

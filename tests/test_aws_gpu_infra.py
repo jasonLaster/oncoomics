@@ -250,9 +250,13 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("ARG PARABRICKS_BASE_IMAGE", dockerfile)
         self.assertIn("FROM ${PARABRICKS_BASE_IMAGE}", dockerfile)
         self.assertIn("awscli", dockerfile)
+        self.assertIn("bcftools", dockerfile)
+        self.assertIn("openjdk-17-jre-headless", dockerfile)
         self.assertIn('aws_path="$(command -v aws)"', dockerfile)
         self.assertIn("/opt/diana-aws/bin/aws", dockerfile)
         self.assertIn("COPY . /opt/diana-omics", dockerfile)
+        self.assertIn("bcftools --version", dockerfile)
+        self.assertIn("java -version", dockerfile)
         self.assertIn("command -v pbrun", dockerfile)
         self.assertIn("python3 -m diana_omics --help", dockerfile)
 

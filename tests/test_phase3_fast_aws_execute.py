@@ -63,7 +63,11 @@ def passed_smoke_result() -> dict:
         "requiredGpuName": "H200",
         "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
         "awsCliVersionTxt": "aws-cli-version.txt",
+        "bcftoolsVersionCommand": "bcftools --version",
+        "bcftoolsVersionTxt": "bcftools-version.txt",
         "dianaOmicsCliTxt": "diana-omics-cli.txt",
+        "javaVersionCommand": "java -version",
+        "javaVersionTxt": "java-version.txt",
         "parabricksVersionCommand": "pbrun version",
         "parabricksVersionTxt": "parabricks-version.txt",
     }
@@ -75,7 +79,9 @@ def write_smoke_result(
     *,
     csv: str | None = None,
     aws_version: str | None = "aws-cli/2.15.0\n",
+    bcftools_version: str | None = "bcftools 1.17\n",
     diana_omics_cli: str | None = "verify:phase3-fast-gpu-smoke\n",
+    java_version: str | None = 'openjdk version "17.0.15"\n',
     parabricks_version: str | None = "Parabricks v4.5.1-1\n",
 ) -> Path:
     path = root / "gpu_smoke.json"
@@ -88,6 +94,14 @@ def write_smoke_result(
         (root / "parabricks-version.txt").write_text(parabricks_version, encoding="utf-8")
     else:
         (root / "parabricks-version.txt").unlink(missing_ok=True)
+    if java_version is not None:
+        (root / "java-version.txt").write_text(java_version, encoding="utf-8")
+    else:
+        (root / "java-version.txt").unlink(missing_ok=True)
+    if bcftools_version is not None:
+        (root / "bcftools-version.txt").write_text(bcftools_version, encoding="utf-8")
+    else:
+        (root / "bcftools-version.txt").unlink(missing_ok=True)
     if aws_version is not None:
         (root / "aws-cli-version.txt").write_text(aws_version, encoding="utf-8")
     else:
@@ -116,8 +130,12 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
                 "aws_cli_version_txt": "aws-cli-version.txt",
                 "aws_gpu_queue": "diana-omics-prod-use2-gpu-p5en",
                 "aws_region": "us-east-2",
+                "bcftools_version_command": "bcftools --version",
+                "bcftools_version_txt": "bcftools-version.txt",
                 "diana_omics_cli_txt": "diana-omics-cli.txt",
                 "expected_gpu_count": 8,
+                "java_version_command": "java -version",
+                "java_version_txt": "java-version.txt",
                 "observed_gpu_count": 8,
                 "parabricks_container": PARABRICKS_CONTAINER,
                 "parabricks_version_command": "pbrun version",
@@ -217,6 +235,45 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             wrong_command["parabricksVersionCommand"] = "pbrun mutectcaller"
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "pbrun version"):
                 verify.validate_gpu_smoke_result(wrong_command, csv_root=root, expected_params=expected_gpu_params())
+
+    def test_rejects_smoke_result_without_filter_mutect_runtime_evidence(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_smoke_result(root, java_version=None)
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "Java version"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
+            write_smoke_result(root, java_version='openjdk version "11.0.24"\n')
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "Java 17"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
+            java_path_traversal = passed_smoke_result()
+            java_path_traversal["javaVersionTxt"] = "../java-version.txt"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "javaVersionTxt"):
+                verify.validate_gpu_smoke_result(java_path_traversal, csv_root=root, expected_params=expected_gpu_params())
+
+            wrong_java_command = passed_smoke_result()
+            wrong_java_command["javaVersionCommand"] = "java --help"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "java -version"):
+                verify.validate_gpu_smoke_result(wrong_java_command, csv_root=root, expected_params=expected_gpu_params())
+
+            write_smoke_result(root, bcftools_version=None)
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "bcftools version"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
+            write_smoke_result(root, bcftools_version="samtools 1.17\n")
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "identify bcftools"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
+            bcftools_path_traversal = passed_smoke_result()
+            bcftools_path_traversal["bcftoolsVersionTxt"] = "../bcftools-version.txt"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "bcftoolsVersionTxt"):
+                verify.validate_gpu_smoke_result(bcftools_path_traversal, csv_root=root, expected_params=expected_gpu_params())
+
+            wrong_bcftools_command = passed_smoke_result()
+            wrong_bcftools_command["bcftoolsVersionCommand"] = "bcftools index"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "bcftools --version"):
+                verify.validate_gpu_smoke_result(wrong_bcftools_command, csv_root=root, expected_params=expected_gpu_params())
 
     def test_rejects_smoke_result_without_diana_runtime_evidence(self) -> None:
         with TemporaryDirectory() as tmp:

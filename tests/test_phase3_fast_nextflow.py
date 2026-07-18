@@ -414,8 +414,16 @@ class Phase3FastNextflowTests(unittest.TestCase):
 
         self.assertIn("pbrun version", process)
         self.assertIn("parabricks-version.txt", process)
+        self.assertIn("java -version", process)
+        self.assertIn("java-version.txt", process)
+        self.assertIn("bcftools --version", process)
+        self.assertIn("bcftools-version.txt", process)
         self.assertIn('"parabricksVersionCommand": "pbrun version"', process)
         self.assertIn('"parabricksVersionTxt": "parabricks-version.txt"', process)
+        self.assertIn('"javaVersionCommand": "java -version"', process)
+        self.assertIn('"javaVersionTxt": "java-version.txt"', process)
+        self.assertIn('"bcftoolsVersionCommand": "bcftools --version"', process)
+        self.assertIn('"bcftoolsVersionTxt": "bcftools-version.txt"', process)
 
     def test_blocked_crosschecks_are_staged_after_rosalind(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")

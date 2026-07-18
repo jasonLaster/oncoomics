@@ -630,6 +630,12 @@ process FAST_GPU_SMOKE {
     pbrun version > workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt 2>&1
     test -s workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt
 
+    java -version > workspace/results/phase3_wgs_fast_gpu_smoke/java-version.txt 2>&1
+    test -s workspace/results/phase3_wgs_fast_gpu_smoke/java-version.txt
+
+    bcftools --version > workspace/results/phase3_wgs_fast_gpu_smoke/bcftools-version.txt 2>&1
+    test -s workspace/results/phase3_wgs_fast_gpu_smoke/bcftools-version.txt
+
     aws --version > workspace/results/phase3_wgs_fast_gpu_smoke/aws-cli-version.txt 2>&1
     test -s workspace/results/phase3_wgs_fast_gpu_smoke/aws-cli-version.txt
 
@@ -648,7 +654,11 @@ process FAST_GPU_SMOKE {
       "requiredGpuName": "\${required_name}",
       "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
       "awsCliVersionTxt": "aws-cli-version.txt",
+      "bcftoolsVersionCommand": "bcftools --version",
+      "bcftoolsVersionTxt": "bcftools-version.txt",
       "dianaOmicsCliTxt": "diana-omics-cli.txt",
+      "javaVersionCommand": "java -version",
+      "javaVersionTxt": "java-version.txt",
       "parabricksVersionCommand": "pbrun version",
       "parabricksVersionTxt": "parabricks-version.txt"
     }
@@ -672,6 +682,12 @@ process FAST_GPU_SMOKE {
     cat > workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt <<TXT
     Parabricks v4.5.1-1
     TXT
+    cat > workspace/results/phase3_wgs_fast_gpu_smoke/java-version.txt <<TXT
+    openjdk version "17.0.15"
+    TXT
+    cat > workspace/results/phase3_wgs_fast_gpu_smoke/bcftools-version.txt <<TXT
+    bcftools 1.17
+    TXT
     cat > workspace/results/phase3_wgs_fast_gpu_smoke/aws-cli-version.txt <<TXT
     aws-cli/2.15.0
     TXT
@@ -690,7 +706,11 @@ process FAST_GPU_SMOKE {
       "requiredGpuName": "H200",
       "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
       "awsCliVersionTxt": "aws-cli-version.txt",
+      "bcftoolsVersionCommand": "bcftools --version",
+      "bcftoolsVersionTxt": "bcftools-version.txt",
       "dianaOmicsCliTxt": "diana-omics-cli.txt",
+      "javaVersionCommand": "java -version",
+      "javaVersionTxt": "java-version.txt",
       "parabricksVersionCommand": "pbrun version",
       "parabricksVersionTxt": "parabricks-version.txt"
     }

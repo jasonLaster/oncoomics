@@ -9,17 +9,26 @@ ENV PYTHONPATH=/opt/diana-omics/src
 ENV PYTHONUNBUFFERED=1
 
 RUN set -eux; \
-    if ! command -v aws >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; then \
+    if ! command -v aws >/dev/null 2>&1 \
+        || ! command -v bcftools >/dev/null 2>&1 \
+        || ! command -v java >/dev/null 2>&1 \
+        || ! command -v python3 >/dev/null 2>&1; then \
         command -v apt-get >/dev/null 2>&1; \
         apt-get update; \
         apt-get install -y --no-install-recommends \
             awscli \
+            bcftools \
             ca-certificates \
+            openjdk-17-jre-headless \
             python3; \
         rm -rf /var/lib/apt/lists/*; \
     fi; \
     command -v aws; \
     aws --version; \
+    command -v bcftools; \
+    bcftools --version; \
+    command -v java; \
+    java -version; \
     command -v pbrun; \
     pbrun version; \
     command -v python3; \

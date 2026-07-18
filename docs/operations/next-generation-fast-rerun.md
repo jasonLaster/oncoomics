@@ -491,12 +491,13 @@ enabled, valid, scale-to-zero On-Demand EC2 capacity, backed only by
 Amazon Linux 2023 ECS image. It then queries the live EC2
 `Running On-Demand P instances` quota and requires at least 192 applied P vCPUs
 before Nextflow can submit the H200 placement job.
-The smoke itself records `nvidia-smi`, `pbrun version`, `aws --version`, and
-`python3 -m diana_omics --help` output from inside the pinned Diana Parabricks
-runtime image. That proves the selected image starts on the selected GPU host
-and carries the exact Parabricks, AWS CLI, and Diana CLI tools needed by the
-worker-local MutectCaller route before the full route can reference the smoke
-artifact.
+The smoke itself records `nvidia-smi`, `pbrun version`, `java -version`,
+`bcftools --version`, `aws --version`, and `python3 -m diana_omics --help`
+output from inside the pinned Diana Parabricks runtime image. That proves the
+selected image starts on the selected GPU host and carries the exact
+Parabricks, Java/GATK, bcftools, AWS CLI, and Diana CLI tools needed by the
+worker-local MutectCaller plus FilterMutectCalls route before the full route can
+reference the smoke artifact.
 
 After Gate 0 receipts have been reviewed and the GPU smoke has passed, launch
 the full BAM-to-evidence route through the guarded execute alias. Pass the
