@@ -135,11 +135,16 @@ def parse_s3(uri: str) -> tuple[str, str]:
 def resolve_real_file(path: Path, label: str) -> Path:
     if path.is_symlink():
         raise ValueError(f"{label} may not be a symlink")
-    if path.parent.is_symlink():
-        raise ValueError(f"{label} parent may not be a symlink: {path.parent}")
+    require_no_symlinked_ancestors(path, label)
     if not path.is_file():
         raise ValueError(f"{label} must be a real file")
     return path.resolve()
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
 
 
 def resolve_new_output(path: Path, label: str) -> Path:

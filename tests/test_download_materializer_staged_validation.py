@@ -408,6 +408,50 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                     self.assertFalse(output.exists())
                     self.assertFalse(verification.exists())
 
+    def test_refuses_receipt_below_symlinked_parent_before_writes(self) -> None:
+        payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_receipt_parent = root / "real-receipts"
+            real_receipt_dir = real_receipt_parent / "existing"
+            real_receipt_dir.mkdir(parents=True)
+            linked_receipt_parent = root / "linked-receipts"
+            linked_receipt_parent.symlink_to(
+                real_receipt_parent,
+                target_is_directory=True,
+            )
+
+            receipt_path = linked_receipt_parent / "existing" / "materializer.json"
+            (real_receipt_dir / "materializer.json").write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            output = root / "staged_input_validation.json"
+            verification = root / "verification.json"
+
+            with patch.object(
+                MODULE, "head_object", side_effect=AssertionError("AWS called")
+            ), patch.object(
+                MODULE, "get_object", side_effect=AssertionError("AWS called")
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "materializer receipt.* parent may not be a symlink",
+                ):
+                    MODULE.materialize(
+                        argparse.Namespace(
+                            materializer_receipt=receipt_path,
+                            output=output,
+                            verification_output=verification,
+                            expected_kms_key_arn=KMS,
+                            region="us-east-1",
+                        )
+                    )
+
+            self.assertFalse(output.exists())
+            self.assertFalse(verification.exists())
+
     def test_refuses_symlinked_output_before_verification_reservation(self) -> None:
         payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
 
