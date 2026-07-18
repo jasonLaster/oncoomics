@@ -94,6 +94,50 @@ def write_indexed_vcf(path: Path, records: list[str]) -> None:
 
 
 class StageDeterministicWgsReportInstallTests(unittest.TestCase):
+    def test_packet_file_install_removes_partial_after_file_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+
+            with (
+                patch.object(
+                    REPORT_MODULE.os,
+                    "fsync",
+                    side_effect=OSError("synthetic file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                REPORT_MODULE.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_packet_file_install_removes_partial_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+
+            with (
+                patch.object(
+                    REPORT_MODULE.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                REPORT_MODULE.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
     def test_failed_packet_install_removes_unexpected_child(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-install-"
@@ -127,6 +171,40 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                     side_effect=fail_with_unexpected_child,
                 ),
                 self.assertRaisesRegex(ValueError, "synthetic install failure"),
+            ):
+                REPORT_MODULE.install_packet_create_only(staged_paths, output)
+
+            self.assertFalse(output.exists())
+
+    def test_failed_packet_install_removes_output_after_final_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "report"
+            staging.mkdir()
+            output.mkdir()
+            staged_paths = []
+            for name in REPORT_MODULE.OUTPUT_NAMES:
+                path = staging / name
+                path.write_text(f"{name}\n", encoding="utf-8")
+                staged_paths.append(path)
+
+            side_effects = [None for _ in REPORT_MODULE.OUTPUT_NAMES]
+            side_effects.append(OSError("synthetic report directory fsync failure"))
+            with (
+                patch.object(
+                    REPORT_MODULE,
+                    "fsync_directory",
+                    side_effect=side_effects,
+                ),
+                self.assertRaisesRegex(
+                    OSError,
+                    "synthetic report directory fsync failure",
+                ),
             ):
                 REPORT_MODULE.install_packet_create_only(staged_paths, output)
 
@@ -1102,7 +1180,7 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                 REPORT_MODULE.copy_create_only(source, destination)
 
             self.assertEqual(destination.read_bytes(), b"one\n")
-            self.assertEqual(fsync.call_count, 1)
+            self.assertEqual(fsync.call_count, 2)
 
             source.write_bytes(b"two\n")
             with self.assertRaisesRegex(

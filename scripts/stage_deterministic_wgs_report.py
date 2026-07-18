@@ -1220,9 +1220,18 @@ def copy_create_only(source: Path, destination: Path) -> None:
                     destination_handle.write(chunk)
                 destination_handle.flush()
                 os.fsync(destination_handle.fileno())
+            fsync_directory(destination.parent)
         except Exception:
             destination.unlink(missing_ok=True)
             raise
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def install_packet_create_only(staged_paths: Iterable[Path], output: Path) -> None:
@@ -1232,6 +1241,7 @@ def install_packet_create_only(staged_paths: Iterable[Path], output: Path) -> No
             destination = output / path.name
             copy_create_only(path, destination)
             installed.append(destination)
+        fsync_directory(output)
     except Exception:
         shutil.rmtree(output, ignore_errors=True)
         raise
