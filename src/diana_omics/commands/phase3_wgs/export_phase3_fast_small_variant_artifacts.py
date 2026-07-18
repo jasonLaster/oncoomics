@@ -149,6 +149,10 @@ def _prepare_output_root(output_root: Path, destinations: set[Path]) -> None:
     if not output_root.is_dir():
         raise ManifestError(f"output_root already exists and is not a directory: {output_root}")
 
+    symlink = next((path for path in output_root.rglob("*") if path.is_symlink()), None)
+    if symlink is not None:
+        raise ManifestError(f"output_root contains a symlink: {symlink}")
+
     unexpected = sorted(
         path
         for path in output_root.rglob("*")

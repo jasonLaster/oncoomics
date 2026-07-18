@@ -174,6 +174,28 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
 
             self.assertEqual([stale], [path for path in output_root.rglob("*") if path.is_file()])
 
+    def test_rejects_untracked_symlinked_export_directory(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "exported"
+            linked_dir = output_root / "old"
+            real_dir = root / "real-old"
+            real_dir.mkdir()
+            linked_dir.parent.mkdir(parents=True)
+            linked_dir.symlink_to(real_dir, target_is_directory=True)
+            parabricks_receipt, filter_receipt = _receipts(root)
+
+            with self.assertRaisesRegex(export_small_variants.ManifestError, "output_root contains a symlink"):
+                export_small_variants.export_phase3_fast_small_variant_artifacts(
+                    parabricks_receipt,
+                    filter_receipt,
+                    parabricks_mutect_receipt_sha256=SHA_2,
+                    filter_mutect_receipt_sha256=SHA_3,
+                    output_root=output_root,
+                )
+
+            self.assertEqual([], list(real_dir.rglob("*")))
+
     def test_rejects_export_destination_that_is_not_a_file(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
