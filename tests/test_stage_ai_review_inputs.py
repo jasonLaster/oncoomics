@@ -143,6 +143,21 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse(self.output_root.exists())
         self.assertFalse(self.receipt.exists())
 
+    def test_write_once_removes_partial_output_after_fsync_failure(self) -> None:
+        output = self.root / "partial.json"
+
+        with (
+            mock.patch.object(
+                STAGE.os,
+                "fsync",
+                side_effect=OSError("synthetic fsync failure"),
+            ),
+            self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+        ):
+            STAGE.write_once(output, b"partial\n")
+
+        self.assertFalse(output.exists())
+
     def test_rejects_staged_bytes_that_differ_from_bundle_manifest(self) -> None:
         real_write_once = STAGE.write_once
 

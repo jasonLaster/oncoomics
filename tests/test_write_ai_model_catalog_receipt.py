@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 
@@ -102,6 +103,30 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
                 )
 
             self.assertFalse((real_parent / "model-catalog-receipt.json").exists())
+
+    def test_write_once_removes_partial_output_after_fsync_failure(self) -> None:
+        writer = importlib.util.spec_from_file_location(
+            "write_ai_model_catalog_receipt",
+            SCRIPT_DIR / "write_ai_model_catalog_receipt.py",
+        )
+        assert writer and writer.loader
+        module = importlib.util.module_from_spec(writer)
+        writer.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary).resolve() / "model-catalog-receipt.json"
+
+            with (
+                mock.patch.object(
+                    module.os,
+                    "fsync",
+                    side_effect=OSError("synthetic fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+            ):
+                module.write_once(output, "{}\n")
+
+            self.assertFalse(output.exists())
 
     def test_requires_latest_model_attestation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

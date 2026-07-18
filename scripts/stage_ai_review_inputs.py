@@ -41,11 +41,15 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
 def write_once(path: Path, data: bytes) -> None:
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
-        with os.fdopen(descriptor, "wb") as handle:
-            descriptor = -1
-            handle.write(data)
-            handle.flush()
-            os.fsync(handle.fileno())
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                descriptor = -1
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)

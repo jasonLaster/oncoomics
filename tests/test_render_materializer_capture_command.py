@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -202,6 +203,19 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(self.output.stat().st_mode), 0o600)
         with self.assertRaises(FileExistsError):
             MODULE.write_once(self.output, "two\n")
+
+    def test_write_once_removes_partial_output_after_fsync_failure(self) -> None:
+        with (
+            mock.patch.object(
+                MODULE.os,
+                "fsync",
+                side_effect=OSError("synthetic fsync failure"),
+            ),
+            self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+        ):
+            MODULE.write_once(self.output, "partial\n")
+
+        self.assertFalse(self.output.exists())
 
     def test_write_once_rejects_symlinked_parent_without_writing_target(self) -> None:
         real_parent = self.root / "real-output"
