@@ -64,7 +64,7 @@ def write_public_receipts(root: Path) -> list[Path]:
             "destination_objects": [],
         }
         for index, relative in enumerate(expected_files, 1):
-            digest = hashlib.sha256(f"{method_id}/{relative}".encode("utf-8")).hexdigest()
+            digest = hashlib.sha256(f"{method_id}/{relative}".encode()).hexdigest()
             key = f"{PUBLISH.PUBLIC_ROOT}{contract['destination']}{relative}"
             receipt["destination_objects"].append(
                 {
@@ -89,6 +89,28 @@ def write_public_receipts(root: Path) -> list[Path]:
         path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
         receipts.append(path)
     return receipts
+
+
+def expected_public_objects(receipts: list[Path]) -> list[dict[str, object]]:
+    objects = []
+    for receipt in receipts:
+        for row in json.loads(receipt.read_text(encoding="utf-8"))["destination_objects"]:
+            objects.append(
+                {
+                    "key": row["key"],
+                    "size": row["bytes"],
+                    "last_modified": "2026-07-17T00:00:00Z",
+                }
+            )
+    return sorted(objects, key=lambda row: str(row["key"]))
+
+
+def expected_public_prefix_pages(receipts: list[Path]) -> list[list[dict[str, object]]]:
+    objects = expected_public_objects(receipts)
+    return [
+        [row for row in objects if str(row["key"]).startswith(prefix)]
+        for prefix in MODULE.PUBLIC_PREFIXES
+    ]
 
 
 class PublicIndexTests(unittest.TestCase):
@@ -354,7 +376,7 @@ class PublicIndexTests(unittest.TestCase):
             with mock.patch.object(
                 MODULE,
                 "list_prefix",
-                side_effect=[[] for _ in MODULE.PUBLIC_PREFIXES],
+                side_effect=expected_public_prefix_pages(receipts),
             ) as list_prefix:
                 argv = ["--output", str(output)]
                 for receipt in receipts:
@@ -362,8 +384,45 @@ class PublicIndexTests(unittest.TestCase):
                 MODULE.main(argv)
 
             payload = json.loads(output.read_text(encoding="utf-8"))
-            self.assertEqual(payload["object_count"], 0)
+            self.assertEqual(payload["objects"], expected_public_objects(receipts))
+            self.assertEqual(payload["object_count"], len(expected_public_objects(receipts)))
             self.assertEqual(list_prefix.call_count, len(MODULE.PUBLIC_PREFIXES))
+
+    def test_main_rejects_reviewed_public_state_that_differs_from_receipts(self) -> None:
+        cases = (
+            (
+                lambda pages: pages[0].pop(),
+                "missing",
+            ),
+            (
+                lambda pages: pages[0].append(
+                    {
+                        "key": MODULE.PUBLIC_PREFIXES[0] + "unexpected.json",
+                        "size": 1,
+                        "last_modified": "2026-07-17T00:00:00Z",
+                    }
+                ),
+                "unexpected",
+            ),
+            (
+                lambda pages: pages[0][0].update({"size": int(pages[0][0]["size"]) + 1}),
+                "size_mismatches",
+            ),
+        )
+
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                receipts = write_public_receipts(root)
+                pages = expected_public_prefix_pages(receipts)
+                mutate(pages)
+                argv = ["--output", str(root / "objects.json")]
+                for receipt in receipts:
+                    argv.extend(["--reviewed-public-receipt", str(receipt)])
+
+                with mock.patch.object(MODULE, "list_prefix", side_effect=pages):
+                    with self.assertRaisesRegex(RuntimeError, message):
+                        MODULE.main(argv)
 
     def test_write_index_rejects_symlinked_parent_without_writing_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

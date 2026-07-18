@@ -143,12 +143,13 @@ def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
     return value
 
 
-def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> None:
+def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> dict[str, int]:
     if len(paths) != len(REPORT_METHOD_IDS):
         raise RuntimeError(
             "reviewed-public index build requires exactly ten public publication receipts"
         )
 
+    receipt_objects: dict[str, int] = {}
     for method_id, path in zip(REPORT_METHOD_IDS, paths):
         receipt = load_json_object(path, f"{method_id} reviewed-public receipt")
         contract = METHOD_CONTRACTS[method_id]
@@ -226,8 +227,41 @@ def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> None:
                 raise RuntimeError(
                     f"{method_id} reviewed-public destination object is not exact: {relative}"
                 )
+            if key in receipt_objects:
+                raise RuntimeError(f"{method_id} reviewed-public destination key is duplicated: {key}")
+            receipt_objects[key] = size
         if observed_keys != expected_keys or observed_relative_paths != set(expected_files):
             raise RuntimeError(f"{method_id} reviewed-public receipt objects do not match the public contract")
+
+    return receipt_objects
+
+
+def validate_reviewed_public_s3_state(
+    objects: Sequence[dict[str, Any]],
+    expected_objects: dict[str, int],
+) -> None:
+    observed_objects = {
+        str(item["key"]): int(item["size"])
+        for item in objects
+        if any(str(item["key"]).startswith(prefix) for prefix in DIANA_HRD_PUBLIC_PREFIXES)
+    }
+    missing = sorted(set(expected_objects) - set(observed_objects))
+    unexpected = sorted(set(observed_objects) - set(expected_objects))
+    size_mismatches = sorted(
+        key
+        for key, expected_size in expected_objects.items()
+        if key in observed_objects and observed_objects[key] != expected_size
+    )
+    if missing or unexpected or size_mismatches:
+        details = {
+            "missing": missing,
+            "unexpected": unexpected,
+            "size_mismatches": size_mismatches,
+        }
+        raise RuntimeError(
+            "reviewed-public S3 state does not match publication receipts: "
+            + json.dumps(details, sort_keys=True)
+        )
 
 
 def require_safe_index_parent(path: pathlib.Path) -> None:
@@ -263,8 +297,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    expected_reviewed_public_objects: dict[str, int] = {}
     if args.reviewed_public_receipt:
-        validate_reviewed_public_receipts(args.reviewed_public_receipt)
+        expected_reviewed_public_objects = validate_reviewed_public_receipts(args.reviewed_public_receipt)
 
     objects: list[dict[str, Any]] = []
     for prefix in PUBLIC_PREFIXES:
@@ -274,6 +309,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     keys = [item["key"] for item in objects]
     if len(keys) != len(set(keys)):
         raise RuntimeError("Public prefix overlap produced duplicate keys")
+    if expected_reviewed_public_objects:
+        validate_reviewed_public_s3_state(objects, expected_reviewed_public_objects)
 
     payload = {
         "schema_version": 1,
