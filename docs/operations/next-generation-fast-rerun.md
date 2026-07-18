@@ -447,16 +447,18 @@ MutectCaller route can reference the smoke artifact.
 After Gate 0 receipts have been reviewed and the GPU smoke has passed, launch
 the full BAM-to-evidence route through the guarded execute alias. Pass the
 reviewed smoke output as `PHASE3_FAST_GPU_SMOKE_RESULT`, and pass the reviewed
+Parabricks mirror receipt as `PARABRICKS_MIRROR_RECEIPT`, then pass the reviewed
 Gate 0 receipt paths and alias-only forbidden-token inventory as Nextflow
 arguments after `--`. The full execute alias intentionally repeats the GPU
-params, mirrored-image, cache, and live-quota checks before starting Nextflow,
-then rejects missing, stubbed, malformed, or non-H200 smoke output. A stale
-non-`us-east-2`, non-P5en, unpinned, unmirrored, under-quota, wrong-KMS, or
-smoke-skipping launch therefore still fails locally even when
+params, mirror-receipt, mirrored-image, cache, and live-quota checks before
+starting Nextflow, then rejects missing, stubbed, malformed, or non-H200 smoke
+output. A stale non-`us-east-2`, non-P5en, unpinned, unmirrored, under-quota,
+wrong-KMS, or smoke-skipping launch therefore still fails locally even when
 `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES` is present:
 
 ```sh
 PHASE3_FAST_GPU_SMOKE_RESULT=/path/to/gpu_smoke.json \
+PARABRICKS_MIRROR_RECEIPT=/path/to/parabricks_mirror_receipt.json \
 ALLOW_PHASE3_FAST_AWS_EXECUTE=YES \
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:execute -- \
   --phase3_fast_private_freeze_receipt /path/to/private-freeze.json \
@@ -541,9 +543,19 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
 1. Preserve the stopped v4 Batch and CloudWatch logs; treat the run as non-terminal and do not restart the monolithic single-node CPU worker.
 2. Freeze the validated BAM pair, indices, reference, PoN, germline, and common-sites resources into an immutable input manifest with SHA-256 values.
 3. Implement the checked-in Parabricks evidence DAG and pointer-only result publication.
-4. Create the `us-east-2` private cache, KMS key, ECR mirrors, Batch compute environments, queues, job definitions, and CloudWatch dashboard with `PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use2` and `infra:aws:apply:use2`. This writes `infra/aws/nextflow.aws.use2.json` and leaves the existing `sra-use1` / `infra/aws/nextflow.aws.json` CPU stack pointed at `us-east-1`.
-5. Mirror the reviewed digest-pinned Parabricks image with `aws:ecr:mirror-parabricks:use2`, review the emitted `parabricks_mirror_receipt.json`, and apply the verified `TF_VAR_parabricks_container`.
-6. Track the 384 On-Demand P vCPU request in `us-east-2`; the same approved quota should cover one immediate P5en caller job and the later two-P5en parallel `fq2bam` gate.
+4. Create the `us-east-2` private cache, KMS key, ECR mirrors, Batch compute
+   environments, queues, job definitions, and CloudWatch dashboard with
+   `PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use2` and
+   `infra:aws:apply:use2`. This writes `infra/aws/nextflow.aws.use2.json` and
+   leaves the existing `sra-use1` / `infra/aws/nextflow.aws.json` CPU stack
+   pointed at `us-east-1`.
+5. Mirror the reviewed digest-pinned Parabricks image with
+   `aws:ecr:mirror-parabricks:use2`, review the emitted
+   `parabricks_mirror_receipt.json`, and apply the verified
+   `TF_VAR_parabricks_container`.
+6. Track the 384 On-Demand P vCPU request in `us-east-2`; the same approved
+   quota should cover one immediate P5en caller job and the later two-P5en
+   parallel `fq2bam` gate.
 
 ### After quota approval
 

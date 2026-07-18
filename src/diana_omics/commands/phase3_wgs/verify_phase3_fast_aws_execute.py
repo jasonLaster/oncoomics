@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from ...paths import path_from_root
 from ...utils import read_json
 from . import verify_phase3_fast_gpu_smoke as gpu_smoke
+from . import verify_parabricks_mirror_receipt as mirror_receipt
 
 GPU_SMOKE_RESULT_ENV = "PHASE3_FAST_GPU_SMOKE_RESULT"
 REQUIRED_GPU_COUNT = 8
@@ -149,14 +150,30 @@ def load_gpu_smoke_result_from_environment(*, expected_params: Mapping[str, Any]
     return validate_gpu_smoke_result(payload, csv_root=path.parent, expected_params=expected_params), path
 
 
+def load_mirror_receipt_from_environment(*, expected_params: Mapping[str, Any]) -> tuple[dict[str, str], Path]:
+    try:
+        receipt, path = mirror_receipt.load_receipt_from_environment()
+        summary = mirror_receipt.validate_mirror_receipt(receipt)
+    except mirror_receipt.MirrorReceiptError as error:
+        raise Phase3FastExecuteError(f"Parabricks mirror receipt is not safe: {error}") from error
+
+    expected_container = _require_string(expected_params.get("parabricks_container"), "expected parabricks_container")
+    if summary["parabricks_container"] != expected_container:
+        raise Phase3FastExecuteError(
+            "Parabricks mirror receipt parabricks_container must match the current Nextflow params"
+        )
+    return summary, path
+
+
 def main() -> None:
     try:
         params, params_path = gpu_smoke.load_params_from_environment()
         params_summary = gpu_smoke.validate_gpu_smoke_params(params)
+        mirror_summary, mirror_path = load_mirror_receipt_from_environment(expected_params=params_summary)
         running_on_demand_p_vcpus = gpu_smoke.load_running_on_demand_p_vcpus(params_summary["aws_region"])
         gpu_smoke.validate_running_on_demand_p_quota(running_on_demand_p_vcpus)
         image_digest = gpu_smoke.load_parabricks_mirror_image_digest(
-            parabricks_container=params_summary["parabricks_container"],
+            parabricks_container=mirror_summary["parabricks_container"],
             region=params_summary["aws_region"],
         )
         smoke_summary, smoke_path = load_gpu_smoke_result_from_environment(expected_params=params_summary)
@@ -167,6 +184,7 @@ def main() -> None:
         f"Phase 3 WGS fast AWS execute preflight passed: {params_path} "
         f"queue={params_summary['aws_gpu_queue']} "
         f"running_on_demand_p_vcpus={running_on_demand_p_vcpus:g} "
+        f"parabricks_mirror_receipt={mirror_path} "
         f"parabricks_image_digest={image_digest} "
         f"gpu_smoke={smoke_path} "
         f"observed_gpus={smoke_summary['observed_gpu_count']}"

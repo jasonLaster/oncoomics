@@ -221,13 +221,14 @@ Use `nf:aws:phase3-wgs-fast:execute` only after Gate 0 inputs, the pinned image,
 and the smoke output have been reviewed. That alias runs the full
 BAM-to-evidence P5en path and therefore requires
 `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES`, `PHASE3_FAST_GPU_SMOKE_RESULT` pointed at
-the reviewed `gpu_smoke.json` with its sibling `nvidia-smi-gpus.csv`, plus the
+the reviewed `gpu_smoke.json` with its sibling `nvidia-smi-gpus.csv`,
+`PARABRICKS_MIRROR_RECEIPT` pointed at the reviewed mirror receipt, plus the
 reviewed Nextflow receipt parameters after `--`. It still repeats the GPU
-params, cache, and live-quota checks before Nextflow starts, then rejects
-missing, deleted-image, stubbed, stale-queue, stale-image, malformed, non-H200,
-or non-Parabricks-starting smoke output so a full run cannot skip the bounded
-placement gate or reuse an already-reviewed smoke after the mirrored digest is
-removed.
+params, mirror-receipt, cache, ECR-image, and live-quota checks before Nextflow
+starts, then rejects missing, deleted-image, stubbed, stale-queue, stale-image,
+malformed, non-H200, or non-Parabricks-starting smoke output so a full run
+cannot skip the bounded placement gate or reuse an already-reviewed smoke after
+the mirrored digest is removed.
 
 ## Smoke Test
 

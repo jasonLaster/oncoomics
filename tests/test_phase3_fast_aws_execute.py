@@ -9,6 +9,7 @@ from diana_omics.commands.phase3_wgs import verify_phase3_fast_aws_execute as ve
 from diana_omics.utils import write_json
 
 PARABRICKS_CONTAINER = "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + "a" * 64
+PARABRICKS_REPOSITORY = "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks"
 
 
 def expected_gpu_params() -> dict:
@@ -16,6 +17,26 @@ def expected_gpu_params() -> dict:
         "aws_region": "us-east-2",
         "aws_gpu_queue": "diana-omics-prod-use2-gpu-p5en",
         "parabricks_container": PARABRICKS_CONTAINER,
+    }
+
+
+def parabricks_mirror_receipt() -> dict:
+    return {
+        "schema_version": 1,
+        "manifest_type": "parabricks_mirror_receipt",
+        "generated_at": "2026-07-18T00:00:00+00:00",
+        "source": {
+            "image": "nvcr.io/nvidia/clara/parabricks@sha256:" + "b" * 64,
+            "digest": "sha256:" + "b" * 64,
+            "platform": "linux/amd64",
+        },
+        "destination": {
+            "region": "us-east-2",
+            "repository": PARABRICKS_REPOSITORY,
+            "tag": "sha256-" + "b" * 64,
+            "digest": "sha256:" + "a" * 64,
+            "parabricks_container": PARABRICKS_CONTAINER,
+        },
     }
 
 
@@ -183,6 +204,31 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         self.assertEqual(path, loaded_path)
         self.assertEqual(8, summary["observed_gpu_count"])
 
+    def test_rejects_stale_parabricks_mirror_receipt(self) -> None:
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parabricks_mirror_receipt.json"
+            stale = parabricks_mirror_receipt()
+            stale["destination"]["parabricks_container"] = PARABRICKS_REPOSITORY + "@sha256:" + "c" * 64
+            write_json(path, stale)
+
+            with patch.dict("os.environ", {"PARABRICKS_MIRROR_RECEIPT": str(path)}, clear=False):
+                with self.assertRaisesRegex(verify.Phase3FastExecuteError, "Parabricks mirror receipt"):
+                    verify.load_mirror_receipt_from_environment(expected_params=expected_gpu_params())
+
+    def test_environment_loader_reads_matching_parabricks_mirror_receipt(self) -> None:
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parabricks_mirror_receipt.json"
+            write_json(path, parabricks_mirror_receipt())
+
+            with patch.dict("os.environ", {"PARABRICKS_MIRROR_RECEIPT": str(path)}, clear=False):
+                summary, loaded_path = verify.load_mirror_receipt_from_environment(
+                    expected_params=expected_gpu_params()
+                )
+
+        self.assertEqual(path, loaded_path)
+        self.assertEqual(PARABRICKS_CONTAINER, summary["parabricks_container"])
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_mirror_receipt_from_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_gpu_smoke_result_from_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_parabricks_mirror_image_digest")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_running_on_demand_p_vcpus")
@@ -193,6 +239,7 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         load_quota,
         load_image,
         load_smoke,
+        load_mirror,
     ) -> None:
         load_params.return_value = (
             {
@@ -223,15 +270,15 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         load_quota.return_value = 384.0
         load_image.return_value = "sha256:" + "a" * 64
         load_smoke.return_value = ({"observed_gpu_count": 8}, Path("gpu_smoke.json"))
+        load_mirror.return_value = (
+            {"parabricks_container": PARABRICKS_CONTAINER},
+            Path("parabricks_mirror_receipt.json"),
+        )
 
         verify.main()
 
-        load_image.assert_called_once_with(
-            parabricks_container=(
-                "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + "a" * 64
-            ),
-            region="us-east-2",
-        )
+        load_mirror.assert_called_once()
+        load_image.assert_called_once_with(parabricks_container=PARABRICKS_CONTAINER, region="us-east-2")
         load_smoke.assert_called_once()
 
 
