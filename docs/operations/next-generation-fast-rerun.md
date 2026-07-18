@@ -354,6 +354,12 @@ handoff tree, rehashes the exported copies, and writes
 instead of ephemeral worker paths.
 It preserves the same `no_call` boundary: a filtered VCF is deterministic
 sample evidence, not a scalar HRD interpretation.
+Execution mode also selects `FAST_BAM_CNV_SV_EVIDENCE`, a separate `cpu_io`
+process that rematerializes the staging plan on its own local worker before it
+renders and runs BAM QC, coverage-CNV, and mechanical-SV receipts. That process
+publishes only the small `workspace/results/phase3_wgs_fast` evidence trees and
+the plan/receipt JSONs; staged BAM, BAI, FASTA, and caller-resource paths stay
+worker-local implementation details.
 
 ### Gate 1: P5en and Parabricks smoke
 

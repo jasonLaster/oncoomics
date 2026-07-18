@@ -1260,6 +1260,145 @@ process FAST_MUTECT_PARABRICKS_FILTER {
     """
 }
 
+process FAST_BAM_CNV_SV_EVIDENCE {
+    tag "fast_bam_cnv_sv_evidence_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus { params.phase3_fast_sv_evidence_threads as int }
+    memory '16 GB'
+    time '4h'
+    publishDir "${params.outdir}/phase3_wgs_fast/bam_cnv_sv_evidence_execution", mode: 'copy', overwrite: true
+
+    input:
+    path staging_plan
+
+    output:
+    tuple path('workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json'),
+          path('workspace/manifests/phase3_wgs_fast/bam_qc_plan.json'),
+          path('workspace/manifests/phase3_wgs_fast/bam_qc_receipt.json'),
+          path('workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json'),
+          path('workspace/manifests/phase3_wgs_fast/cnv_evidence_receipt.json'),
+          path('workspace/manifests/phase3_wgs_fast/sv_evidence_plan.json'),
+          path('workspace/manifests/phase3_wgs_fast/sv_evidence_receipt.json'),
+          path('workspace/results/phase3_wgs_fast/bam_qc'),
+          path('workspace/results/phase3_wgs_fast/cnv_evidence'),
+          path('workspace/results/phase3_wgs_fast/sv_evidence')
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_STAGING_PLAN="\$PWD/${staging_plan}"
+    export PHASE3_WGS_FAST_STAGED_INPUTS_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"
+    export PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST="\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"
+    export PHASE3_WGS_FAST_BAM_QC_PLAN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/bam_qc_plan.json"
+    export PHASE3_WGS_FAST_BAM_QC_OUTPUT_ROOT="\$PWD/workspace/results/phase3_wgs_fast/bam_qc"
+    export PHASE3_WGS_FAST_BAM_QC_THREADS="${params.phase3_fast_bam_qc_threads}"
+    export PHASE3_WGS_FAST_BAM_QC_PLAN="\$PWD/workspace/manifests/phase3_wgs_fast/bam_qc_plan.json"
+    export PHASE3_WGS_FAST_BAM_QC_RECEIPT_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/bam_qc_receipt.json"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_PLAN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_OUTPUT_ROOT="\$PWD/workspace/results/phase3_wgs_fast/cnv_evidence"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_BIN_SIZE="${params.phase3_fast_cnv_evidence_bin_size}"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_BEDCOV_WORKERS="${params.phase3_fast_cnv_evidence_bedcov_workers}"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_PLAN="\$PWD/workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_RECEIPT_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/cnv_evidence_receipt.json"
+    export PHASE3_WGS_FAST_SV_EVIDENCE_PLAN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/sv_evidence_plan.json"
+    export PHASE3_WGS_FAST_SV_EVIDENCE_OUTPUT_ROOT="\$PWD/workspace/results/phase3_wgs_fast/sv_evidence"
+    export PHASE3_WGS_FAST_SV_EVIDENCE_THREADS="${params.phase3_fast_sv_evidence_threads}"
+    export PHASE3_WGS_FAST_SV_EVIDENCE_PLAN="\$PWD/workspace/manifests/phase3_wgs_fast/sv_evidence_plan.json"
+    export PHASE3_WGS_FAST_SV_EVIDENCE_RECEIPT_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/sv_evidence_receipt.json"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics stage:phase3-fast-inputs
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-bam-qc-plan
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics run:phase3-fast-bam-qc
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-cnv-evidence-plan
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics run:phase3-fast-cnv-evidence
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-sv-evidence-plan
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics run:phase3-fast-sv-evidence
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    mkdir -p workspace/results/phase3_wgs_fast/bam_qc
+    mkdir -p workspace/results/phase3_wgs_fast/cnv_evidence
+    mkdir -p workspace/results/phase3_wgs_fast/sv_evidence
+    cat > workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_staged_inputs_manifest",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/bam_qc_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_bam_qc_plan",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/bam_qc_receipt.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_bam_qc_receipt",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call",
+        "hrd_use": "qc_only_not_hrd_evidence"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_cnv_evidence_plan",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/cnv_evidence_receipt.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_cnv_evidence_receipt",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call",
+        "scarhrd_use": "no_call_requires_allele_specific_cnv_loh_segments"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/sv_evidence_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_sv_evidence_plan",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/sv_evidence_receipt.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_sv_evidence_receipt",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call",
+        "chord_use": "no_call_requires_validated_production_sv_caller_vcf",
+        "hrdetect_use": "no_call_requires_validated_structural_variant_features"
+      }
+    }
+    JSON
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -1309,6 +1448,7 @@ workflow PHASE3_WGS_FAST {
         FAST_STAGING_PLAN(FAST_CACHE_MANIFEST.out)
         if (smallVariantMode == 'execute') {
             FAST_MUTECT_PARABRICKS_FILTER(FAST_STAGING_PLAN.out)
+            FAST_BAM_CNV_SV_EVIDENCE(FAST_STAGING_PLAN.out)
         } else {
             FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
             FAST_BAM_QC_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)

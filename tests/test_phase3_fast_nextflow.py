@@ -23,6 +23,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_CNV_EVIDENCE_PLAN", text)
         self.assertIn("process FAST_SV_EVIDENCE_PLAN", text)
         self.assertIn("process FAST_FILTER_MUTECT_PLAN", text)
+        self.assertIn("process FAST_BAM_CNV_SV_EVIDENCE", text)
         self.assertNotIn("process FAST_STAGE_INPUTS", text)
         self.assertIn("workflow PHASE3_WGS_FAST", text)
         self.assertIn("'phase3_wgs_fast'", text)
@@ -54,6 +55,9 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_wgs_fast_bam_qc_plan", text)
         self.assertIn("phase3_wgs_fast_cnv_evidence_plan", text)
         self.assertIn("phase3_wgs_fast_sv_evidence_plan", text)
+        self.assertIn("phase3_wgs_fast_bam_qc_receipt", text)
+        self.assertIn("phase3_wgs_fast_cnv_evidence_receipt", text)
+        self.assertIn("phase3_wgs_fast_sv_evidence_receipt", text)
         self.assertIn("phase3_wgs_fast_filter_mutect_plan", text)
 
     def test_fast_input_manifest_receipts_are_nextflow_path_inputs(self) -> None:
@@ -310,6 +314,56 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("FAST_MUTECT_PARABRICKS_FILTER(FAST_STAGING_PLAN.out)", text)
         self.assertIn("allowedSmallVariantModes = ['plan', 'execute']", text)
         self.assertIn("Unknown phase3_fast_small_variant_mode", text)
+
+    def test_bam_cnv_sv_execution_keeps_scratch_paths_worker_local(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_BAM_CNV_SV_EVIDENCE") :]
+        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        self.assertIn("label 'cpu_io'", process)
+        self.assertIn("stage:phase3-fast-inputs", process)
+        self.assertIn("build:phase3-fast-bam-qc-plan", process)
+        self.assertIn("run:phase3-fast-bam-qc", process)
+        self.assertIn("build:phase3-fast-cnv-evidence-plan", process)
+        self.assertIn("run:phase3-fast-cnv-evidence", process)
+        self.assertIn("build:phase3-fast-sv-evidence-plan", process)
+        self.assertIn("run:phase3-fast-sv-evidence", process)
+        self.assertLess(process.index("stage:phase3-fast-inputs"), process.index("build:phase3-fast-bam-qc-plan"))
+        self.assertLess(process.index("build:phase3-fast-bam-qc-plan"), process.index("run:phase3-fast-bam-qc"))
+        self.assertLess(process.index("build:phase3-fast-cnv-evidence-plan"), process.index("run:phase3-fast-cnv-evidence"))
+        self.assertLess(process.index("build:phase3-fast-sv-evidence-plan"), process.index("run:phase3-fast-sv-evidence"))
+        self.assertIn(
+            'export PHASE3_WGS_FAST_STAGED_INPUTS_OUTPUT="\\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_BAM_QC_PLAN="\\$PWD/workspace/manifests/phase3_wgs_fast/bam_qc_plan.json"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_BAM_QC_RECEIPT_OUTPUT="\\$PWD/workspace/manifests/phase3_wgs_fast/bam_qc_receipt.json"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_CNV_EVIDENCE_PLAN="\\$PWD/workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_CNV_EVIDENCE_RECEIPT_OUTPUT="\\$PWD/workspace/manifests/phase3_wgs_fast/cnv_evidence_receipt.json"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_SV_EVIDENCE_PLAN="\\$PWD/workspace/manifests/phase3_wgs_fast/sv_evidence_plan.json"',
+            process,
+        )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_SV_EVIDENCE_RECEIPT_OUTPUT="\\$PWD/workspace/manifests/phase3_wgs_fast/sv_evidence_receipt.json"',
+            process,
+        )
+        self.assertIn("workspace/results/phase3_wgs_fast/bam_qc", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/cnv_evidence", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/sv_evidence", process)
+        self.assertIn("FAST_BAM_CNV_SV_EVIDENCE(FAST_STAGING_PLAN.out)", text)
 
 
 if __name__ == "__main__":
