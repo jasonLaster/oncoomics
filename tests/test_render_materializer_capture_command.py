@@ -18,6 +18,13 @@ if str(SCRIPT_DIR) not in sys.path:
 import render_materializer_capture_command as MODULE  # noqa: E402
 
 
+def submitter_canonical_bytes(value: object) -> bytes:
+    return (
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        + "\n"
+    ).encode("utf-8")
+
+
 class RenderMaterializerCaptureCommandTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -69,7 +76,7 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
                 "sha256": hashlib.sha256(self.request_path.read_bytes()).hexdigest(),
             },
             "submit_job_request_sha256": hashlib.sha256(
-                MODULE.canonical_bytes(request["submit_job_request"])
+                submitter_canonical_bytes(request["submit_job_request"])
             ).hexdigest(),
             "response": {
                 "jobName": request["submit_job_request"]["jobName"],
@@ -150,6 +157,18 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
             ],
         )
         self.assertNotIn("<", command)
+
+    def test_submit_request_hash_matches_submitter_newline_canonical_json(self) -> None:
+        self.assertEqual(
+            MODULE.canonical_bytes({"z": 1, "a": 2}),
+            b'{"a":2,"z":1}\n',
+        )
+        self.assertEqual(
+            hashlib.sha256(
+                MODULE.canonical_bytes(self.request["submit_job_request"])
+            ).hexdigest(),
+            self.response["submit_job_request_sha256"],
+        )
 
     def test_refuses_to_render_from_tampered_request(self) -> None:
         self.response = self.bound_response(self.request)

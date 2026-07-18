@@ -101,6 +101,38 @@ def submission_id_assign(variable: str, route: str) -> str:
     )
 
 
+def batch_wait_lines(
+    job_id_variable: str,
+    response: Path,
+    job_id_field: str,
+) -> list[str]:
+    job = f'"${job_id_variable}"'
+    describe = (
+        f"aws batch describe-jobs --jobs {job} "
+        f"--region {REGION} --output json"
+    )
+    job_display = f"${{{job_id_variable}}}"
+    return [
+        "set -euo pipefail",
+        jq_assign(job_id_variable, job_id_field, response),
+        "while true; do",
+        f"  HRD_BATCH_STATUS=$({describe} | jq -er '.jobs[0].status')",
+        '  case "$HRD_BATCH_STATUS" in',
+        "    SUCCEEDED) break ;;",
+        "    SUBMITTED|PENDING|RUNNABLE|STARTING|RUNNING) sleep 30 ;;",
+        "    FAILED)",
+        f"      {describe} >&2",
+        "      exit 1",
+        "      ;;",
+        "    *)",
+        f'      echo "Unexpected Batch status for {job_display}: $HRD_BATCH_STATUS" >&2',
+        "      exit 1",
+        "      ;;",
+        "  esac",
+        "done",
+    ]
+
+
 def route_var(route: str, suffix: str) -> str:
     return f"{route.upper()}_{suffix}"
 
@@ -384,6 +416,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
             scripts / "materialize_frozen_artifacts.py",
             scripts / "submit_materializer_v4.py",
             scripts / "render_materializer_capture_command.py",
+            scripts / "capture_materializer_terminal.py",
             scripts / "download_materializer_staged_validation.py",
             scripts / "finalize_input_contract.py",
             scripts / "check_contract.py",
@@ -632,6 +665,13 @@ def render(root: Path) -> str:
         "`terminal.materializer.response.json` to reach `SUCCEEDED`, then "
         "render and run the terminal capture command.",
         "",
+        bash_block(
+            batch_wait_lines(
+                "MATERIALIZER_JOB_ID",
+                deterministic / "terminal.materializer.response.json",
+                ".response.jobId",
+            )
+        ),
         block(
             [
                 "python3",
@@ -797,7 +837,7 @@ def render(root: Path) -> str:
                 "",
                 bash_block(
                     [
-                        jq_assign(job_id, ".job_id", response),
+                        *batch_wait_lines(job_id, response, ".job_id"),
                         shell_join(capture_route_command(scripts, deterministic, route)),
                         shell_join(
                             download_route_command(
@@ -839,6 +879,8 @@ def render(root: Path) -> str:
                             scripts / "render_source_report_freeze_runbook.py",
                             "--output",
                             Raw('"$SOURCE_FREEZE_RUNBOOK"'),
+                            "--root",
+                            root,
                         ]
                     ),
                 ]

@@ -68,8 +68,9 @@ AWS_BATCH_ARN_PREFIX = f"arn:aws:batch:{REGION}:{ACCOUNT_ID}:job/"
 
 
 def canonical_bytes(value: Any) -> bytes:
-    return json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    return (
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        + "\n"
     ).encode("utf-8")
 
 

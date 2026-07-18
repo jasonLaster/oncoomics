@@ -375,7 +375,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "terminal.reviewed-public-runbook.$(date -u +%Y%m%dT%H%M%SZ).md",
             text,
         )
-        self.assertIn('--output "$REVIEWED_PUBLIC_RUNBOOK"', text)
+        self.assertIn('--output "$REVIEWED_PUBLIC_RUNBOOK" --root /repo', text)
         self.assertNotIn("terminal.reviewed-public-runbook.md\n", text)
         self.assertEqual(text.count("--private-publication-receipt "), 10)
 
@@ -406,6 +406,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         output = Path("/repo/.codex-tmp/hrd-reports/publication/runbook.md")
         command = MODULE.reviewed_publication_runbook_command(
             Path("/repo/scripts"),
+            Path("/repo"),
             output,
             [Path("/receipts/a.json"), Path("/receipts/b.json")],
         )
@@ -417,6 +418,8 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 Path("/repo/scripts/render_reviewed_publication_runbook.py"),
                 "--output",
                 output,
+                "--root",
+                Path("/repo"),
                 "--private-publication-receipt",
                 Path("/receipts/a.json"),
                 "--private-publication-receipt",

@@ -91,9 +91,23 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
 
         materializer_submit = text.index("terminal.materializer.request.json")
         materializer_wait = text.index("Wait for the submitted materializer job")
+        materializer_waiter = text.index(
+            "MATERIALIZER_JOB_ID=$(jq -er .response.jobId",
+            materializer_wait,
+        )
         materializer_capture = text.index("render_materializer_capture_command.py")
         self.assertLess(materializer_submit, materializer_wait)
-        self.assertLess(materializer_wait, materializer_capture)
+        self.assertLess(materializer_wait, materializer_waiter)
+        self.assertLess(materializer_waiter, materializer_capture)
+        self.assertIn(
+            'aws batch describe-jobs --jobs "$MATERIALIZER_JOB_ID" '
+            "--region us-east-1 --output json",
+            text,
+        )
+        self.assertIn(
+            "SUBMITTED|PENDING|RUNNABLE|STARTING|RUNNING) sleep 30 ;;",
+            text,
+        )
 
     def test_routes_render_in_canonical_executable_order(self) -> None:
         text = MODULE.render(Path("/repo"))
@@ -124,9 +138,14 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
                 "Wait for this route's submitted Batch job to reach `SUCCEEDED`",
                 submit,
             )
+            waiter = text.index(
+                f"{MODULE.route_var(route, 'JOB_ID')}=$(jq -er .job_id",
+                wait,
+            )
             capture = text.index(f"capture_route_terminal.py --route {route}", wait)
             self.assertLess(submit, wait)
-            self.assertLess(wait, capture)
+            self.assertLess(wait, waiter)
+            self.assertLess(waiter, capture)
 
     def test_route_submit_command_has_exact_response_output_argv(self) -> None:
         response = Path("/run/terminal.sequenza_scarhrd.response.json")
@@ -175,7 +194,7 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             "$(date -u +%Y%m%dT%H%M%SZ).md",
             text,
         )
-        self.assertIn('--output "$SOURCE_FREEZE_RUNBOOK"', text)
+        self.assertIn('--output "$SOURCE_FREEZE_RUNBOOK" --root /repo', text)
         self.assertNotIn("source-freeze-runbook.md\n", text)
 
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
@@ -184,6 +203,7 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         }
 
         self.assertIn("/repo/aws/submit_route.py", prerequisites)
+        self.assertIn("/repo/scripts/capture_materializer_terminal.py", prerequisites)
         self.assertIn("/repo/scripts/stage_hrd_crosscheck_report.py", prerequisites)
         self.assertIn(
             "/repo/scripts/render_source_report_freeze_runbook.py",

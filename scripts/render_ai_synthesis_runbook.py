@@ -242,6 +242,7 @@ def comparative_synthesis_command(
 
 def reviewed_publication_runbook_command(
     scripts: Path,
+    root: Path,
     output: str | Path,
     receipt_paths: Iterable[Path],
 ) -> list[str | Path]:
@@ -250,6 +251,8 @@ def reviewed_publication_runbook_command(
         scripts / "render_reviewed_publication_runbook.py",
         "--output",
         output,
+        "--root",
+        root,
         *[
             token
             for path in receipt_paths
@@ -538,6 +541,7 @@ def render(
                     shell_join(
                         reviewed_publication_runbook_command(
                             scripts,
+                            root,
                             Raw('"$REVIEWED_PUBLIC_RUNBOOK"'),
                             reviewed_publication_receipt_paths(root, receipt_stem),
                         )

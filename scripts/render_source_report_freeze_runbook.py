@@ -132,6 +132,7 @@ def publish_command(
 
 def ai_runbook_command(
     scripts: Path,
+    root: Path,
     output: str | Path,
     receipt_paths: Iterable[Path],
 ) -> list[str | Path]:
@@ -140,6 +141,8 @@ def ai_runbook_command(
         scripts / "render_ai_synthesis_runbook.py",
         "--output",
         output,
+        "--root",
+        root,
         *[
             token
             for path in receipt_paths
@@ -227,6 +230,7 @@ def render(
                     shell_join(
                         ai_runbook_command(
                             scripts,
+                            root,
                             Raw('"$AI_REVIEW_RUNBOOK"'),
                             receipt_paths,
                         )
