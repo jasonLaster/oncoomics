@@ -481,6 +481,49 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertIn("model catalog receipt", built.stderr)
             self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
+    def test_rejects_model_catalog_receipt_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            real_parent = root / "real-receipts"
+            real_parent.mkdir()
+            moved = real_parent / "model-catalog-receipt.json"
+            fixture.catalog_receipt.rename(moved)
+            linked_parent = root / "linked-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            fixture.catalog_receipt = linked_parent / moved.name
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn("model catalog receipt parent may not be a symlink", built.stderr)
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_rejects_manifest_and_report_below_symlinked_parent(self) -> None:
+        for name in ("report_manifest.json", "report.md"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = AiReviewBundleFixture(root)
+                real_parent = root / "real-reports"
+                real_packet = real_parent / "method-01"
+                real_packet.mkdir(parents=True)
+                linked_parent = root / "linked-reports"
+                linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+                source = fixture.manifests[0].parent / name
+                source.rename(real_packet / name)
+                other = "report.md" if name == "report_manifest.json" else "report_manifest.json"
+                (real_packet / other).write_bytes(
+                    (fixture.manifests[0].parent / other).read_bytes()
+                )
+                fixture.manifests[0] = linked_parent / "method-01/report_manifest.json"
+
+                built = fixture.run()
+
+                self.assertNotEqual(built.returncode, 0)
+                self.assertIn("parent may not be a symlink", built.stderr)
+                self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
     def test_rejects_symlinked_output_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

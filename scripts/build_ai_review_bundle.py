@@ -206,11 +206,7 @@ def validate_catalog_receipt(
     catalog_verified_at: str,
     model_contracts: dict[str, dict[str, Any]],
 ) -> str:
-    if path.is_symlink():
-        raise ValueError("model catalog receipt is missing, unsafe, or empty")
-    resolved = path.resolve()
-    if not resolved.is_file() or resolved.stat().st_size == 0:
-        raise ValueError("model catalog receipt is missing or empty")
+    resolved = require_real_input_file(path, "model catalog receipt")
     receipt = load_object(resolved)
     if receipt.get("schema_version") != 1:
         raise ValueError("model catalog receipt schema is unsupported")
@@ -343,6 +339,17 @@ def authorized_state(rows: list[dict[str, Any]]) -> str:
 
 def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_real_input_file(path: Path, label: str) -> Path:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+    if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
+        raise ValueError(f"{label} is missing, unsafe, or empty: {path}")
+    return path.resolve()
 
 
 def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
@@ -532,15 +539,13 @@ def main() -> None:
     input_hashes: dict[str, str] = {}
     observed_methods: list[str] = []
     for index, manifest_path in enumerate(args.manifest, 1):
-        if (
-            manifest_path.is_symlink()
-            or not manifest_path.is_file()
-            or manifest_path.stat().st_size == 0
-        ):
+        try:
+            path = require_real_input_file(manifest_path, "report manifest")
+        except ValueError as error:
             raise SystemExit(
-                f"Fail-closed: missing or unsafe report manifest {manifest_path}"
-            )
-        path = manifest_path.resolve()
+                f"Fail-closed: missing or unsafe report manifest {manifest_path}: "
+                f"{error}"
+            ) from error
         manifest = load_object(path)
         if manifest.get("schema_version") != 1:
             raise SystemExit(
@@ -578,11 +583,13 @@ def main() -> None:
             raise SystemExit(f"Fail-closed: missing report SHA-256 for {method}")
 
         report_path = path.parent / "report.md"
-        if (
-            report_path.is_symlink()
-            or not report_path.is_file()
-            or sha256(report_path) != report_hash
-        ):
+        try:
+            report_path = require_real_input_file(report_path, "source report")
+        except ValueError as error:
+            raise SystemExit(
+                f"Fail-closed: report hash mismatch for {method}: {error}"
+            ) from error
+        if sha256(report_path) != report_hash:
             raise SystemExit(f"Fail-closed: report hash mismatch for {method}")
 
         try:
