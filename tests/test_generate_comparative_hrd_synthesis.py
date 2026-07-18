@@ -97,8 +97,17 @@ class SynthesisFixture:
         directory.mkdir(parents=True)
         report = directory / "report.md"
         report.write_text("# Safe synthetic report\n\nAlias-only evidence.\n", encoding="utf-8")
+        support = directory / "support.json"
+        write_json(
+            support,
+            {
+                "source_name": name,
+                "source_kind": payload["report_kind"],
+            },
+        )
         payload["report_sha256"] = sha256(report)
         payload["source_sha256"] = {"safe_summary": hashlib.sha256(name.encode()).hexdigest()}
+        payload["support_sha256"] = {"support.json": sha256(support)}
         manifest = directory / "report_manifest.json"
         write_json(manifest, payload)
         self.source_manifests.append(manifest)
@@ -820,6 +829,55 @@ class GenerateSynthesisTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("source report hash mismatch", result.stdout + result.stderr)
             self.assertFalse((fixture.output_dir / "report.md").exists())
+
+    def test_changed_source_support_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            fixture.source_manifests[0].with_name("support.json").write_text(
+                '{"changed": true}\n',
+                encoding="utf-8",
+            )
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                f"support hash mismatch for {fixture.methods[0]}: support.json",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
+    def test_unbound_source_support_file_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            write_json(fixture.source_manifests[0].with_name("unbound.json"), {"unbound": True})
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                f"support inventory is not exact for {fixture.methods[0]}",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
+    def test_symlinked_source_support_file_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            support = fixture.source_manifests[0].with_name("support.json")
+            copy = Path(temporary) / "linked-support.json"
+            copy.write_bytes(support.read_bytes())
+            support.unlink()
+            support.symlink_to(copy)
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                f"support hash mismatch for {fixture.methods[0]}: support.json",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
 
     def test_changed_ai_output_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:

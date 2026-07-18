@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
+from build_ai_review_bundle import validate_report_manifest_support
 from forbidden_text import has_unauthorized_hrd_classification
 from hrd_report_inventory import (
     inventory_payload,
@@ -330,6 +331,7 @@ def verify_sources(
         if not isinstance(source_hashes, dict) or not source_hashes:
             raise ValueError("source-artifact hash inventory is missing for " + method)
         normalized_hashes = sorted(checked_hash(value, method + " source artifact") for value in source_hashes.values())
+        validate_report_manifest_support(source_path.parent, source, method)
         summary = source.get("review_summary")
         if not isinstance(summary, dict) or not summary:
             raise ValueError("review summary is missing for " + method)
