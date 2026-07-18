@@ -193,8 +193,62 @@ def require_download_verification(
     }
 
 
-def write_json(path: Path, value: dict[str, Any]) -> None:
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+def canonical_json_bytes(value: dict[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def require_installed_json(path: Path, expected_sha256: str) -> None:
+    path = require_real_file(path, "staged cross-check JSON")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"staged cross-check JSON mode is not 0600: {path}")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"staged cross-check JSON changed during write: {path}")
+
+
+def write_json(path: Path, value: dict[str, Any], *, create: bool = False) -> None:
+    require_no_symlinked_ancestors(path, "staged cross-check JSON")
+    if path.is_symlink():
+        raise ValueError(f"staged cross-check JSON may not be a symlink: {path}")
+    if create and path.exists():
+        raise FileExistsError(f"staged cross-check JSON already exists: {path}")
+    if not create:
+        require_real_file(path, "staged cross-check JSON")
+
+    data = canonical_json_bytes(value)
+    expected_sha256 = sha256_bytes(data)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+    )
+    temporary = Path(temporary_name)
+    linked = False
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if create:
+            os.link(temporary, path)
+            linked = True
+        else:
+            os.replace(temporary, path)
+        fsync_directory(path.parent)
+        require_installed_json(path, expected_sha256)
+    except Exception:
+        if create and linked:
+            path.unlink(missing_ok=True)
+        raise
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        temporary.unlink(missing_ok=True)
 
 
 def copy_create_only(source: Path, destination: Path) -> None:
@@ -379,7 +433,7 @@ def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: st
             ],
             "source_review_summary": source_manifest["review_summary"],
         }
-        write_json(staging / "method_spec.json", method_spec)
+        write_json(staging / "method_spec.json", method_spec, create=True)
 
         manifest = {
             "schema_version": 1,

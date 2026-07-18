@@ -261,6 +261,69 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 sorted(PUBLISH.METHOD_CONTRACTS["sigprofiler_sbs3"]["files"]),
             )
 
+    def test_stage_rehashes_method_spec_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            output = root / "staged"
+            real_fsync_directory = STAGE.fsync_directory
+
+            def tamper_method_spec_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                method_spec = path / "method_spec.json"
+                if method_spec.exists():
+                    method_spec.write_text('{"tampered": true}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    STAGE,
+                    "fsync_directory",
+                    side_effect=tamper_method_spec_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged cross-check JSON changed during write",
+                ),
+            ):
+                STAGE.stage(source, verification, output, "sigprofiler_sbs3")
+
+            self.assertFalse(output.exists())
+
+    def test_stage_rehashes_report_manifest_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            output = root / "staged"
+            real_fsync_directory = STAGE.fsync_directory
+            calls = 0
+
+            def tamper_report_manifest_after_parent_fsync(path: Path) -> None:
+                nonlocal calls
+                calls += 1
+                real_fsync_directory(path)
+                if calls == 2:
+                    (path / "report_manifest.json").write_text(
+                        '{"tampered": true}\n',
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    STAGE,
+                    "fsync_directory",
+                    side_effect=tamper_report_manifest_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged cross-check JSON changed during write",
+                ),
+            ):
+                STAGE.stage(source, verification, output, "sigprofiler_sbs3")
+
+            self.assertFalse(output.exists())
+
     def test_stage_rejects_stale_download_verification(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
