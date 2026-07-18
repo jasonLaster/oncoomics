@@ -41,6 +41,10 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
             "artifacts/contamination/tumor.pileups.table",
             "inputs/validated_bams/tumor.markdup.bam",
             "handoff/provenance/aws_batch_jobs.json",
+            "artifacts/qc/../../../../escaped.txt",
+            "artifacts/variants/../../../../core_hrr_pass_variants.csv",
+            "/artifacts/qc/tumor.flagstat.txt",
+            "artifacts/qc/./tumor.flagstat.txt",
         ):
             with self.subTest(relative=relative):
                 self.assertFalse(MODULE.selected_early_look(relative))
@@ -81,6 +85,30 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
         self.assertIn(b"subject01_normal", rewritten)
         self.assertNotIn(b"DRF-PSN49561", rewritten)
         self.assertTrue(staged["transformed"])
+
+    def test_materialize_source_rejects_destination_traversal_without_downloading(
+        self,
+    ) -> None:
+        source = {
+            "bucket": "source-bucket",
+            "key": "preserved/artifacts/qc/escaped.txt",
+            "bytes": len(b"public\n"),
+            "checksum_crc64nvme": "crc64",
+        }
+
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+            MODULE, "download", return_value=b"public\n"
+        ) as download:
+            with self.assertRaisesRegex(ValueError, "destination key is unsafe"):
+                MODULE.materialize_source(
+                    source,
+                    MODULE.DESTINATION_PREFIX
+                    + "early-look/artifacts/qc/../../../../escaped.txt",
+                    Path(temporary),
+                )
+
+            download.assert_not_called()
+            self.assertFalse((Path(temporary) / "escaped.txt").exists())
 
     def test_materialize_source_rejects_forbidden_text_identifiers(self) -> None:
         raw = b"# Personalis Echo handoff\n"
@@ -131,7 +159,7 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                 "ChecksumType": "FULL_OBJECT",
                 "ServerSideEncryption": "AES256",
                 "VersionId": "v1",
-                "Metadata": {"sha256": digest},
+                "Metadata": metadata,
             }
 
             with (
@@ -178,6 +206,45 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                 json.dumps(metadata, sort_keys=True, separators=(",", ":")),
             ),
         )
+
+    def test_public_upload_rejects_missing_classification_or_source_crc_metadata(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = b"# public recovery\n"
+            path = Path(temporary) / "README.md"
+            path.write_bytes(payload)
+            digest = MODULE.hashlib.sha256(payload).hexdigest()
+            item = {
+                "source": {
+                    "bucket": "source-bucket",
+                    "key": "source-key",
+                    "checksum_crc64nvme": "crc64",
+                },
+                "destination_key": MODULE.DESTINATION_PREFIX + "README.md",
+                "path": str(path),
+                "bytes": len(payload),
+                "sha256": digest,
+                "content_type": "text/markdown; charset=utf-8",
+                "transformed": False,
+            }
+            head_response = {
+                "ContentLength": len(payload),
+                "ChecksumSHA256": MODULE.checksum_sha256(digest),
+                "ChecksumType": "FULL_OBJECT",
+                "ServerSideEncryption": "AES256",
+                "VersionId": "v1",
+                "Metadata": {"sha256": digest},
+            }
+
+            with (
+                mock.patch.object(
+                    MODULE, "aws_json", return_value={"VersionId": "v1"}
+                ),
+                mock.patch.object(MODULE, "head", return_value=head_response),
+                self.assertRaisesRegex(ValueError, "destination verification failed"),
+            ):
+                MODULE.upload(item)
 
     def test_private_receipt_rejects_output_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as value:

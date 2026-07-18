@@ -230,6 +230,11 @@ def download(source: dict[str, Any], path: pathlib.Path) -> bytes:
 
 
 def selected_early_look(relative: str) -> bool:
+    try:
+        relative = safe_relative_key(relative, "early-look source key")
+    except ValueError:
+        return False
+
     if relative in {"artifacts/README.md", "artifacts/early_look_summary.json"}:
         return True
     if relative.startswith("artifacts/qc/"):
@@ -248,6 +253,29 @@ def selected_early_look(relative: str) -> bool:
         "handoff/VARIANT_REVIEW.tsv",
         "handoff/annotations/core_hrr.mutect2.filtered.ensembl116.vcf.gz",
     }
+
+
+def safe_relative_key(value: str, label: str) -> str:
+    path = pathlib.PurePosixPath(value)
+    if (
+        not value
+        or path.is_absolute()
+        or path.as_posix() != value
+        or ".." in path.parts
+    ):
+        raise ValueError(f"{label} is unsafe: {value}")
+    return value
+
+
+def destination_relative(destination_key: str) -> str:
+    if not destination_key.startswith(DESTINATION_PREFIX):
+        raise ValueError(
+            f"destination key is outside the public alias prefix: {destination_key}"
+        )
+    return safe_relative_key(
+        destination_key.removeprefix(DESTINATION_PREFIX),
+        "destination key",
+    )
 
 
 def replace_tokens(data: bytes) -> bytes:
@@ -279,9 +307,9 @@ def materialize_source(
     destination_key: str,
     staging: pathlib.Path,
 ) -> dict[str, Any]:
+    destination_path = staging / "public" / destination_relative(destination_key)
     raw_path = staging / "downloads" / hashlib.sha256(source["key"].encode()).hexdigest()
     raw = download(source, raw_path)
-    destination_path = staging / "public" / destination_key.removeprefix(DESTINATION_PREFIX)
     destination_path.parent.mkdir(parents=True, exist_ok=True)
     transformed = False
     if destination_key.endswith(".vcf.gz"):
@@ -324,6 +352,7 @@ def content_type(key: str) -> str:
 
 
 def generated_object(staging: pathlib.Path, relative: str, data: bytes) -> dict[str, Any]:
+    relative = safe_relative_key(relative, "generated object key")
     key = f"{DESTINATION_PREFIX}{relative}"
     scan_public_bytes(key, data)
     path = staging / "public" / relative
@@ -407,7 +436,7 @@ def upload(item: dict[str, Any]) -> dict[str, Any]:
         "checksum_type": evidence.get("ChecksumType") == "FULL_OBJECT",
         "encryption": evidence.get("ServerSideEncryption") == "AES256",
         "version": evidence.get("VersionId") == version_id,
-        "metadata": evidence.get("Metadata", {}).get("sha256") == item["sha256"],
+        "metadata": evidence.get("Metadata", {}) == metadata,
     }
     if not all(checks.values()):
         raise ValueError(f"destination verification failed for {item['destination_key']}: {checks}")
