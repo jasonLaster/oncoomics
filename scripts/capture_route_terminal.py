@@ -837,6 +837,8 @@ def create_private_outputs(outputs: Iterable[tuple[Path, bytes]]) -> None:
         for path, _ in rows:
             if (path.stat().st_mode & 0o777) != 0o600:
                 raise ValueError(f"private output mode is not 0600: {path}")
+        for parent in dict.fromkeys(path.parent for path, _ in rows):
+            fsync_directory(parent)
     except Exception:
         for descriptor in descriptors.values():
             with contextlib.suppress(OSError):
@@ -849,6 +851,14 @@ def create_private_outputs(outputs: Iterable[tuple[Path, bytes]]) -> None:
 
 def create_private(path: Path, content: bytes) -> None:
     create_private_outputs([(path, content)])
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def capture(args: argparse.Namespace) -> dict[str, Any]:

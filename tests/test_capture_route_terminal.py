@@ -643,6 +643,46 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                     MODULE.create_private_outputs([(path, f"content-{index}".encode()) for index, path in enumerate(paths)])
             self.assertTrue(all(not path.exists() for path in paths))
 
+    def test_three_output_atomic_fsyncs_unique_parent_directories(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first_parent = root / "first"
+            second_parent = root / "second"
+            rows = [
+                (first_parent / "capture.json", b"capture"),
+                (first_parent / "anchor.json", b"anchor"),
+                (second_parent / "receipt.json", b"receipt"),
+            ]
+
+            with mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                wraps=MODULE.fsync_directory,
+            ) as fsync_directory:
+                MODULE.create_private_outputs(rows)
+
+            self.assertEqual(
+                fsync_directory.mock_calls,
+                [mock.call(first_parent), mock.call(second_parent)],
+            )
+
+    def test_three_output_parent_fsync_failure_removes_all_outputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = [root / f"{index}.json" for index in range(3)]
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=OSError("simulated parent fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "simulated parent fsync failure"),
+            ):
+                MODULE.create_private_outputs([(path, f"content-{index}".encode()) for index, path in enumerate(paths)])
+
+            self.assertTrue(all(not path.exists() for path in paths))
+
     def test_rejects_wrong_revision_queue_or_non_x86_compute_environment(self):
         fixture = self.fixture()
         wrong_definition = copy.deepcopy(fixture["job"])
