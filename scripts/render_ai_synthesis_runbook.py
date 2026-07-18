@@ -202,15 +202,11 @@ def forbidden_flags() -> list[str]:
     ]
 
 
-def append_receipt_suffix(stem: Path, suffix: str) -> Path:
-    return stem.parent / f"{stem.name}{suffix}"
-
-
 def publish_command(
     scripts: Path,
     source: Path,
     method_id: str,
-    receipt_stem: Path,
+    receipt_output: Path,
 ) -> list[str | Path]:
     return [
         "python3",
@@ -220,7 +216,7 @@ def publish_command(
         "--method-id",
         method_id,
         "--receipt-output",
-        append_receipt_suffix(receipt_stem, ".private.json"),
+        receipt_output,
         "--region",
         REGION,
         *forbidden_flags(),

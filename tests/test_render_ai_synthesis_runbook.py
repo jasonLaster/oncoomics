@@ -4,6 +4,8 @@ import base64
 import hashlib
 import importlib.util
 import json
+import re
+import shlex
 import stat
 import sys
 import tempfile
@@ -120,6 +122,13 @@ def render(root: Path = Path("/repo"), receipt_stem: str = "terminal") -> str:
     )
 
 
+def rendered_commands(text: str) -> list[list[str]]:
+    return [
+        shlex.split(source)
+        for source in re.findall(r"```bash\n(.*?)\n```", text, re.DOTALL)
+    ]
+
+
 class RenderAiSynthesisRunbookTests(unittest.TestCase):
     def test_renderer_prepares_ai_review_run_atomically(self) -> None:
         text = render(receipt_stem="unit")
@@ -172,6 +181,14 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         root = Path("/repo")
         text = render()
         receipt_paths = MODULE.ai_private_receipt_paths(root, "terminal")
+        commands = rendered_commands(text)
+        publish_commands = [
+            command
+            for command in commands
+            if command[:2] == ["python3", "/repo/scripts/publish_private_report.py"]
+            and command[command.index("--method-id") + 1]
+            in (*MODULE.AI_REVIEW_METHOD_IDS, *MODULE.COMPARATIVE_METHOD_IDS)
+        ]
 
         self.assertEqual(
             tuple(method_id for method_id, _ in MODULE.AI_PRIVATE_RECEIPT_STEMS),
@@ -188,9 +205,16 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             MODULE.required_absent(root, "terminal")[3:6],
             receipt_paths,
         )
+        self.assertEqual(
+            tuple(
+                Path(command[command.index("--receipt-output") + 1])
+                for command in publish_commands
+            ),
+            receipt_paths,
+        )
         for receipt_path in receipt_paths:
-            self.assertIn(f"--receipt-output {receipt_path}", text)
             self.assertIn(f"--private-publication-receipt {receipt_path}", text)
+            self.assertNotIn(f"{receipt_path}.private.json", text)
 
     def test_reviewed_publication_receipts_reuse_source_and_ai_helpers(self) -> None:
         root = Path("/repo")
