@@ -187,6 +187,29 @@ class StageAiReviewInputsTests(unittest.TestCase):
 
         self.assertFalse(output.exists())
 
+    def test_write_once_rehashes_after_directory_fsync(self) -> None:
+        output = self.root / "complete.json"
+        real_fsync_directory = STAGE.fsync_directory
+
+        def tamper_after_directory_fsync(path: Path) -> None:
+            real_fsync_directory(path)
+            output.write_bytes(b"tampered\n")
+
+        with (
+            mock.patch.object(
+                STAGE,
+                "fsync_directory",
+                side_effect=tamper_after_directory_fsync,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "staged AI review input changed during write",
+            ),
+        ):
+            STAGE.write_once(output, b"complete\n")
+
+        self.assertFalse(output.exists())
+
     def test_stage_fsyncs_published_input_directories(self) -> None:
         with mock.patch.object(
             STAGE,

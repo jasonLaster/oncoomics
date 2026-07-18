@@ -39,6 +39,7 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
 
 
 def write_once(path: Path, data: bytes) -> None:
+    expected_sha256 = hashlib.sha256(data).hexdigest()
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         try:
@@ -48,12 +49,21 @@ def write_once(path: Path, data: bytes) -> None:
                 handle.flush()
                 os.fsync(handle.fileno())
             fsync_directory(path.parent)
+            require_installed_file(path, expected_sha256)
         except Exception:
             path.unlink(missing_ok=True)
             raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def require_installed_file(path: Path, expected_sha256: str) -> None:
+    require_no_symlink_ancestors(path, "staged AI review input")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"staged AI review input changed during write: {path}")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"staged AI review input changed during write: {path}")
 
 
 def fsync_directory(path: Path) -> None:
