@@ -204,6 +204,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
         self.assertEqual(
             {
                 "/repo/scripts/hrd_report_inventory.py",
+                "/repo/scripts/forbidden_text.py",
                 "/repo/scripts/publish_private_report.py",
                 "/repo/scripts/render_ai_synthesis_runbook.py",
                 "/repo/scripts/prepare_ai_review_run.py",

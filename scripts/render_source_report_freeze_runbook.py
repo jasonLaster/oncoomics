@@ -153,6 +153,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
     return unique_paths(
         (
             scripts / "hrd_report_inventory.py",
+            scripts / "forbidden_text.py",
             scripts / "publish_private_report.py",
             scripts / "render_ai_synthesis_runbook.py",
             *ai_required_existing(root),

@@ -157,6 +157,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
     return (
         scripts / "hrd_report_inventory.py",
         scripts / "runbook_io.py",
+        scripts / "forbidden_text.py",
         scripts / "publish_reviewed_public_report.py",
         scripts / "build_public_results_index.py",
         scripts / "publish_public_results_index.py",

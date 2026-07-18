@@ -194,6 +194,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         for expected in (
             "/repo/scripts/write_ai_model_catalog_receipt.py",
             "/repo/scripts/hrd_report_inventory.py",
+            "/repo/scripts/forbidden_text.py",
             "/repo/scripts/prepare_ai_review_run.py",
             "/repo/scripts/build_ai_review_bundle.py",
             "/repo/scripts/stage_ai_review_inputs.py",
