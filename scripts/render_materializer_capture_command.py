@@ -88,6 +88,7 @@ def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
 def write_once(path: Path, text: str) -> None:
     if path.exists() or path.is_symlink():
         raise FileExistsError(path)
+    expected_sha256 = sha256_bytes(text.encode("utf-8"))
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"output parent is a symlink: {parent}")
@@ -110,9 +111,20 @@ def write_once(path: Path, text: str) -> None:
             os.close(descriptor)
     try:
         fsync_directory(path.parent)
+        require_installed_output(path, expected_sha256)
     except Exception:
         path.unlink(missing_ok=True)
         raise
+
+
+def require_installed_output(path: Path, expected_sha256: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"output changed during write: {path}")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"output changed during write: {path}")
+    if sha256_path(path) != expected_sha256:
+        raise ValueError(f"output changed during write: {path}")
 
 
 def fsync_directory(path: Path) -> None:
