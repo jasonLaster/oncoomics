@@ -818,6 +818,46 @@ process FAST_REPLICATE_INPUTS {
     """
 }
 
+process FAST_CACHE_MANIFEST {
+    tag "fast_cache_manifest_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/cache_manifest", mode: 'copy', overwrite: true
+
+    input:
+    path replication_receipt
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/cache_manifest.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_REPLICATION_RECEIPT="\$PWD/${replication_receipt}"
+    export PHASE3_WGS_FAST_CACHE_MANIFEST_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/cache_manifest.json"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-cache-manifest
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/cache_manifest.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_cache_manifest",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -857,6 +897,9 @@ workflow PHASE3_WGS_FAST {
     FAST_INPUT_MANIFEST(inputReceipts)
     FAST_REPLICATION_PLAN(FAST_INPUT_MANIFEST.out)
     FAST_REPLICATE_INPUTS(FAST_REPLICATION_PLAN.out)
+    if (params.phase3_fast_replication_mode.toString().replace('-', '_') == 'apply') {
+        FAST_CACHE_MANIFEST(FAST_REPLICATE_INPUTS.out)
+    }
 }
 
 workflow {

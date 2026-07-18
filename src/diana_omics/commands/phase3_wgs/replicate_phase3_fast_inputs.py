@@ -586,6 +586,8 @@ def build_phase3_fast_replication_receipt(
         "status": "dry_run" if normalized_mode == "dry_run" else "planned",
         "mode": normalized_mode,
         "workflow": dict(_require_mapping(replication_plan.get("workflow"), "workflow")),
+        "run": dict(_require_mapping(replication_plan.get("run"), "run")),
+        "runtime": dict(_require_mapping(replication_plan.get("runtime"), "runtime")),
         "cache": {
             "kms_key_arn": kms_key_arn,
             "prefix": prefix,

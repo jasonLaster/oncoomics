@@ -16,15 +16,18 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_INPUT_MANIFEST", text)
         self.assertIn("process FAST_REPLICATION_PLAN", text)
         self.assertIn("process FAST_REPLICATE_INPUTS", text)
+        self.assertIn("process FAST_CACHE_MANIFEST", text)
         self.assertIn("workflow PHASE3_WGS_FAST", text)
         self.assertIn("'phase3_wgs_fast'", text)
         self.assertIn("PHASE3_WGS_FAST()", text)
         self.assertIn("build:phase3-fast-input-manifest", text)
         self.assertIn("build:phase3-fast-replication-plan", text)
         self.assertIn("replicate:phase3-fast-inputs", text)
+        self.assertIn("build:phase3-fast-cache-manifest", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/input_manifest.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/replication_plan.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/replication_receipt.json", text)
+        self.assertIn("workspace/manifests/phase3_wgs_fast/cache_manifest.json", text)
 
     def test_fast_input_manifest_receipts_are_nextflow_path_inputs(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")
@@ -78,6 +81,8 @@ class Phase3FastNextflowTests(unittest.TestCase):
 
         self.assertIn("FAST_REPLICATION_PLAN(FAST_INPUT_MANIFEST.out)", text)
         self.assertIn("FAST_REPLICATE_INPUTS(FAST_REPLICATION_PLAN.out)", text)
+        self.assertIn("FAST_CACHE_MANIFEST(FAST_REPLICATE_INPUTS.out)", text)
+        self.assertIn("phase3_fast_replication_mode.toString().replace('-', '_') == 'apply'", text)
         self.assertIn('export PHASE3_WGS_FAST_INPUT_MANIFEST="\\$PWD/${input_manifest}"', text)
         self.assertIn('export PHASE3_WGS_FAST_CACHE_PREFIX="${params.phase3_fast_cache_prefix}"', text)
         self.assertIn('export PHASE3_WGS_FAST_CACHE_KMS_KEY_ARN="${params.phase3_fast_cache_kms_key_arn}"', text)
@@ -86,6 +91,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             'export PHASE3_WGS_FAST_REPLICATION_PART_SIZE_BYTES="${params.phase3_fast_replication_part_size_bytes}"',
             text,
         )
+        self.assertIn('export PHASE3_WGS_FAST_REPLICATION_RECEIPT="\\$PWD/${replication_receipt}"', text)
 
     def test_fast_planning_and_gpu_processes_have_separate_aws_labels(self) -> None:
         main = MAIN_NF.read_text(encoding="utf-8")

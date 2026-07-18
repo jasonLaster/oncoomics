@@ -159,6 +159,8 @@ def build_phase3_fast_replication_plan(
         "manifest_type": "phase3_wgs_fast_replication_plan",
         "status": "planned",
         "workflow": dict(_require_mapping(input_manifest.get("workflow"), "workflow")),
+        "run": dict(_require_mapping(input_manifest.get("run"), "run")),
+        "runtime": dict(_require_mapping(input_manifest.get("runtime"), "runtime")),
         "cache": {
             "kms_key_arn": kms_key_arn,
             "prefix": prefix,

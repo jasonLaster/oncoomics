@@ -21,6 +21,7 @@ class CliParityTest(unittest.TestCase):
             "build:diana-template",
             "build:packet",
             "build:phase3-fast-input-manifest",
+            "build:phase3-fast-cache-manifest",
             "build:phase3-fast-replication-plan",
             "build:panel",
             "build:raw-samplesheets",

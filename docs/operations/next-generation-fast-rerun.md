@@ -190,6 +190,7 @@ Add a checked-in `phase3_wgs_fast` workflow rather than another S3-only worker. 
 FAST_INPUT_MANIFEST
 FAST_REPLICATION_PLAN             immutable copy plan and us-east-2 cache keys
 FAST_REPLICATE_INPUTS              source to us-east-2
+FAST_CACHE_MANIFEST                verified region-local BAM/resource pointers
 FAST_FQ2BAM_TUMOR                  optional GPU
 FAST_FQ2BAM_NORMAL                 optional GPU
 FAST_VALIDATE_BAMS
@@ -261,6 +262,12 @@ deterministic `UploadPartCopy` part counts and byte ranges from
 CopySource strings so every copy and multipart part reads the exact source
 `VersionId` that SHA-256 validation reviewed, then verifies the destination
 size, VersionId, SHA-256 metadata, and KMS key with `HeadObject`.
+After an applied copy, `FAST_CACHE_MANIFEST` fails closed unless all 15
+content-addressed cache objects were copied or already present with durable
+destination `VersionId`s and expected destination checks. Its output is a small
+region-local pointer manifest for the existing BAM pair, hg38 reference, and
+caller resources; no downstream Parabricks or evidence process should read from
+the original `us-east-1` run prefix directly.
 
 ### Gate 1: P5en and Parabricks smoke
 
