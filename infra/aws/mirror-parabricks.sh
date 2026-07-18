@@ -23,8 +23,10 @@ restore_workspace() {
 
 source_digest="${SOURCE_IMAGE##*@}"
 source_digest_hex="${source_digest#sha256:}"
-target_tag="${PARABRICKS_MIRROR_TAG:-sha256-${source_digest_hex:0:16}}"
-[[ "${target_tag}" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]] || die "PARABRICKS_MIRROR_TAG is not a valid ECR image tag"
+source_digest_hex="${source_digest_hex,,}"
+source_digest="sha256:${source_digest_hex}"
+target_tag="sha256-${source_digest_hex}"
+[[ "${target_tag}" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]] || die "internal Parabricks mirror tag is not a valid ECR image tag"
 
 if [[ -n "${TARGET_WORKSPACE}" ]]; then
   ORIGINAL_WORKSPACE="$(terraform -chdir="${ROOT_DIR}/infra/aws" workspace show)"
@@ -41,24 +43,34 @@ registry="${repository_url%%/*}"
 repository_name="${repository_url#*/}"
 target_image="${repository_url}:${target_tag}"
 
-echo "Pulling ${PLATFORM} ${SOURCE_IMAGE}"
-docker pull --platform "${PLATFORM}" "${SOURCE_IMAGE}"
-
-echo "Logging in to ${registry}"
-aws ecr get-login-password --region "${REGION}" | docker login --username AWS --password-stdin "${registry}"
-
-echo "Pushing ${target_image}"
-docker tag "${SOURCE_IMAGE}" "${target_image}"
-docker push "${target_image}"
-
-target_digest="$(
+describe_target_digest() {
   aws ecr describe-images \
     --region "${REGION}" \
     --repository-name "${repository_name}" \
     --image-ids "imageTag=${target_tag}" \
     --query 'imageDetails[0].imageDigest' \
     --output text
-)"
+}
+
+target_digest=""
+if existing_target_digest="$(describe_target_digest 2>&1)"; then
+  target_digest="${existing_target_digest}"
+  echo "Reusing immutable ${target_image}"
+else
+  [[ "${existing_target_digest}" == *ImageNotFound* ]] || die "unable to inspect ${target_image}: ${existing_target_digest}"
+
+  echo "Pulling ${PLATFORM} ${SOURCE_IMAGE}"
+  docker pull --platform "${PLATFORM}" "${SOURCE_IMAGE}"
+
+  echo "Logging in to ${registry}"
+  aws ecr get-login-password --region "${REGION}" | docker login --username AWS --password-stdin "${registry}"
+
+  echo "Pushing ${target_image}"
+  docker tag "${SOURCE_IMAGE}" "${target_image}"
+  docker push "${target_image}"
+
+  target_digest="$(describe_target_digest)"
+fi
 [[ "${target_digest}" =~ ^sha256:[0-9a-fA-F]{64}$ ]] || die "ECR did not return a digest for ${target_image}"
 
 mkdir -p "$(dirname "${RECEIPT_PATH}")"
@@ -91,6 +103,9 @@ payload = {
 }
 Path(receipt_path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
+
+PARABRICKS_MIRROR_RECEIPT="${RECEIPT_PATH}" PYTHONPATH="${ROOT_DIR}/src" \
+  /usr/bin/python3 -m diana_omics verify:parabricks-mirror-receipt
 
 echo "Mirrored ${repository_url}@${target_digest}"
 echo "Wrote ${RECEIPT_PATH}"

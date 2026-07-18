@@ -175,11 +175,12 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:ecr:mirror-parabricks:use2
 
 The helper pulls only digest-pinned source images, logs into the `us-east-2`
 ECR registry from the `phase3-fast-use2` Terraform workspace, pushes a
-`sha256-<prefix>` tag into `parabricks_mirror_repository`, writes
-`results/phase3_wgs_fast/parabricks_mirror_receipt.json`, and prints the exact
-`TF_VAR_parabricks_container=<repository>@sha256:<digest>` value to review and
-apply. Leave `parabricks_container` empty until that mirror receipt has been
-checked.
+`sha256-<full-source-digest>` tag into `parabricks_mirror_repository`, writes
+and verifies `results/phase3_wgs_fast/parabricks_mirror_receipt.json`, and
+prints the exact `TF_VAR_parabricks_container=<repository>@sha256:<digest>`
+value to review and apply. Re-running the helper for the same source digest
+reuses the immutable ECR tag. Leave `parabricks_container` empty until that
+mirror receipt has passed `verify:parabricks-mirror-receipt`.
 
 The `us-east-2` Batch job role also receives versioned read permission on the
 `us-east-1` raw-inputs and private-results source buckets and KMS decrypt

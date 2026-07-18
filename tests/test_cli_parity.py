@@ -93,6 +93,7 @@ class CliParityTest(unittest.TestCase):
             "verify:known-answer-sample-pull-plan",
             "verify:orthogonal",
             "verify:outputs",
+            "verify:parabricks-mirror-receipt",
             "verify:phase3-outputs",
             "verify:phase3-fast-aws-execute",
             "verify:phase3-fast-gpu-smoke",

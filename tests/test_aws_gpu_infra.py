@@ -163,10 +163,14 @@ class AwsGpuInfraTests(unittest.TestCase):
         script = MIRROR_PARABRICKS.read_text(encoding="utf-8")
 
         self.assertIn('PARABRICKS_SOURCE_IMAGE must be pinned as <registry>/<image>@sha256:<64 hex>', script)
+        self.assertIn('target_tag="sha256-${source_digest_hex}"', script)
+        self.assertNotIn("PARABRICKS_MIRROR_TAG", script)
+        self.assertIn("Reusing immutable", script)
         self.assertIn('docker pull --platform "${PLATFORM}" "${SOURCE_IMAGE}"', script)
         self.assertIn('output -raw parabricks_mirror_repository_url', script)
         self.assertIn('aws ecr describe-images', script)
         self.assertIn('"parabricks_mirror_receipt"', script)
+        self.assertIn("verify:parabricks-mirror-receipt", script)
         self.assertIn('TF_VAR_parabricks_container', script)
 
     def test_gpu_smoke_is_documented_as_placement_only(self) -> None:

@@ -88,6 +88,9 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "benchmark:full-wes": CommandSpec("diana_omics.commands.alignment_validation.run_full_wes_benchmark"),
     "smoke:human-reference": CommandSpec("diana_omics.commands.alignment_validation.run_human_reference_smoke"),
     "validate:phase3-wgs": CommandSpec("diana_omics.commands.phase3_wgs.run_phase3_wgs_smoke"),
+    "verify:parabricks-mirror-receipt": CommandSpec(
+        "diana_omics.commands.phase3_wgs.verify_parabricks_mirror_receipt"
+    ),
     "verify:phase3-fast-aws-execute": CommandSpec("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute"),
     "verify:phase3-fast-gpu-smoke": CommandSpec("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke"),
     "verify:phase3-fast-staged-inputs": CommandSpec("diana_omics.commands.phase3_wgs.verify_phase3_fast_staged_inputs"),
@@ -326,6 +329,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "aws:ecr:push:use1",
             "aws:ecr:push:use2",
             "aws:ecr:mirror-parabricks:use2",
+            "verify:parabricks-mirror-receipt",
             "aws:hrd-packet:cloud-submit",
             "deploy:aws",
             "nf:aws:monitor",

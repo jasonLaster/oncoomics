@@ -542,7 +542,8 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
 2. Freeze the validated BAM pair, indices, reference, PoN, germline, and common-sites resources into an immutable input manifest with SHA-256 values.
 3. Implement the checked-in Parabricks evidence DAG and pointer-only result publication.
 4. Create the `us-east-2` private cache, KMS key, ECR mirrors, Batch compute environments, queues, job definitions, and CloudWatch dashboard with `PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use2` and `infra:aws:apply:use2`. This writes `infra/aws/nextflow.aws.use2.json` and leaves the existing `sra-use1` / `infra/aws/nextflow.aws.json` CPU stack pointed at `us-east-1`.
-5. Track the 384 On-Demand P vCPU request in `us-east-2`; the same approved quota should cover one immediate P5en caller job and the later two-P5en parallel `fq2bam` gate.
+5. Mirror the reviewed digest-pinned Parabricks image with `aws:ecr:mirror-parabricks:use2`, review the emitted `parabricks_mirror_receipt.json`, and apply the verified `TF_VAR_parabricks_container`.
+6. Track the 384 On-Demand P vCPU request in `us-east-2`; the same approved quota should cover one immediate P5en caller job and the later two-P5en parallel `fq2bam` gate.
 
 ### After quota approval
 
