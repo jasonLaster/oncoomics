@@ -212,6 +212,10 @@ def write_private_atomic(path: Path, value: dict[str, Any], *, create: bool) -> 
             os.fsync(handle.fileno())
         if temporary is not None:
             os.replace(temporary, path)
+    except Exception:
+        if temporary is None:
+            path.unlink(missing_ok=True)
+        raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)

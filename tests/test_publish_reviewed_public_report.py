@@ -642,6 +642,26 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "missing" / "receipt.json").exists())
 
+    def test_create_receipt_removes_partial_output_after_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+
+            with (
+                mock.patch.object(
+                    MODULE.os,
+                    "fsync",
+                    side_effect=OSError("synthetic fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+            ):
+                MODULE.write_private_atomic(
+                    receipt,
+                    {"status": "preflighting"},
+                    create=True,
+                )
+
+            self.assertFalse(receipt.exists())
+
     def test_private_receipt_symlink_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
