@@ -94,6 +94,8 @@ class Phase3FastEvidenceJoinTests(unittest.TestCase):
         self.assertIn("tumor", manifest["evidence"]["bam_qc"]["materialized_outputs"])
         self.assertIn("coverage_bins", manifest["evidence"]["cnv_evidence"]["materialized_outputs"])
         self.assertEqual(7, manifest["evidence"]["sv_evidence"]["metrics"]["tumor"]["supplementary_alignments"])
+        self.assertEqual("copy-version-5", manifest["input_sources"]["reference"]["fasta"]["version_id"])
+        self.assertEqual("copy-version-8", manifest["input_sources"]["caller_resources"]["common_sites_index"]["version_id"])
         self.assertNotIn("commands", manifest)
         self.assertNotIn("inputs", manifest)
 

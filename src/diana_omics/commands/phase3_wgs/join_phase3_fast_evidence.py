@@ -100,6 +100,13 @@ def _require_materialized(receipt: Mapping[str, Any], key: str) -> Mapping[str, 
     return materialized
 
 
+def _require_input_sources(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    sources = _require_mapping(receipt.get("input_sources"), "small_variant_artifact_export.input_sources")
+    for key in ("reference", "bam_pair", "caller_resources"):
+        _require_mapping(sources.get(key), f"small_variant_artifact_export.input_sources.{key}")
+    return dict(sources)
+
+
 def build_phase3_fast_evidence_join_manifest(
     small_variant_artifact_export: Mapping[str, Any],
     bam_qc_receipt: Mapping[str, Any],
@@ -167,6 +174,7 @@ def build_phase3_fast_evidence_join_manifest(
                 "metrics": dict(_require_mapping(sv_evidence_receipt.get("metrics"), "sv_evidence.metrics")),
             },
         },
+        "input_sources": _require_input_sources(small_variant_artifact_export),
         "interpretation": {
             "authorized_hrd_state": "no_call",
             "small_variants_use": "deterministic_sample_evidence_not_scalar_hrd",

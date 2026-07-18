@@ -9,7 +9,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .render_phase3_fast_input_manifest import HEX64, ManifestError
+from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri
 from .run_phase3_fast_filter_mutect import MATERIALIZED_OUTPUTS as FILTER_MUTECT_OUTPUTS
 from .run_phase3_fast_parabricks_mutect import MATERIALIZED_OUTPUTS as PARABRICKS_MUTECT_OUTPUTS
 
@@ -17,6 +17,16 @@ DEFAULT_PARABRICKS_RECEIPT = "manifests/phase3_wgs_fast/parabricks_mutect_receip
 DEFAULT_FILTER_RECEIPT = "manifests/phase3_wgs_fast/filter_mutect_receipt.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/small_variant_artifact_export.json"
 DEFAULT_OUTPUT_ROOT = "workspace/results/phase3_wgs_fast/small_variant_execution/artifacts"
+
+SHARED_INPUTS = (
+    "reference_fasta",
+    "reference_fai",
+    "reference_sequence_dictionary",
+    "tumor_bam",
+    "tumor_bai",
+    "normal_bam",
+    "normal_bai",
+)
 
 
 def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
@@ -35,6 +45,29 @@ def _require_hex(value: Any, label: str) -> str:
     if not isinstance(value, str) or HEX64.fullmatch(value) is None:
         raise ManifestError(f"{label} must be 64 hex characters")
     return value.lower()
+
+
+def _require_source(entry: Mapping[str, Any], label: str) -> dict[str, str]:
+    source = _require_mapping(entry.get("source"), f"{label} source")
+    return {
+        "uri": _require_s3_uri(source.get("uri"), f"{label} source uri"),
+        "version_id": _require_string(source.get("version_id"), f"{label} source version_id"),
+    }
+
+
+def _input_source(receipt: Mapping[str, Any], receipt_label: str, key: str) -> dict[str, str]:
+    inputs = _require_mapping(receipt.get("inputs"), f"{receipt_label} inputs")
+    entry = _require_mapping(inputs.get(key), f"{receipt_label} inputs.{key}")
+    return _require_source(entry, f"{receipt_label} inputs.{key}")
+
+
+def _sample_input_source(receipt: Mapping[str, Any], receipt_label: str, key: str) -> dict[str, str]:
+    inputs = _require_mapping(receipt.get("inputs"), f"{receipt_label} inputs")
+    entry = _require_mapping(inputs.get(key), f"{receipt_label} inputs.{key}")
+    return {
+        "sample_id": _require_string(entry.get("sample_id"), f"{receipt_label} inputs.{key} sample_id"),
+        **_require_source(entry, f"{receipt_label} inputs.{key}"),
+    }
 
 
 def _require_positive_int(value: Any, label: str) -> int:
@@ -147,6 +180,68 @@ def _copy_verified(
     }
 
 
+def _source_inputs(parabricks_receipt: Mapping[str, Any], filter_receipt: Mapping[str, Any]) -> dict[str, Any]:
+    for key in SHARED_INPUTS:
+        if _input_source(parabricks_receipt, "Parabricks receipt", key) != _input_source(
+            filter_receipt,
+            "FilterMutect receipt",
+            key,
+        ):
+            raise ManifestError(f"FilterMutect {key} source must match the Parabricks receipt")
+
+    return {
+        "reference": {
+            "fasta": _input_source(parabricks_receipt, "Parabricks receipt", "reference_fasta"),
+            "fai": _input_source(parabricks_receipt, "Parabricks receipt", "reference_fai"),
+            "sequence_dictionary": _input_source(
+                parabricks_receipt,
+                "Parabricks receipt",
+                "reference_sequence_dictionary",
+            ),
+        },
+        "bam_pair": {
+            "tumor": {
+                "bam": _sample_input_source(parabricks_receipt, "Parabricks receipt", "tumor_bam"),
+                "bai": _sample_input_source(parabricks_receipt, "Parabricks receipt", "tumor_bai"),
+            },
+            "normal": {
+                "bam": _sample_input_source(parabricks_receipt, "Parabricks receipt", "normal_bam"),
+                "bai": _sample_input_source(parabricks_receipt, "Parabricks receipt", "normal_bai"),
+            },
+        },
+        "caller_resources": {
+            "gatk_jar": _input_source(filter_receipt, "FilterMutect receipt", "gatk_jar"),
+            "common_sites_vcf": _input_source(filter_receipt, "FilterMutect receipt", "common_sites_vcf"),
+            "common_sites_index": _input_source(filter_receipt, "FilterMutect receipt", "common_sites_index"),
+            "germline_resource_vcf": _input_source(
+                parabricks_receipt,
+                "Parabricks receipt",
+                "germline_resource_vcf",
+            ),
+            "germline_resource_index": _input_source(
+                parabricks_receipt,
+                "Parabricks receipt",
+                "germline_resource_index",
+            ),
+            "panel_of_normals_vcf": _input_source(
+                parabricks_receipt,
+                "Parabricks receipt",
+                "panel_of_normals_vcf",
+            ),
+            "panel_of_normals_index": _input_source(
+                parabricks_receipt,
+                "Parabricks receipt",
+                "panel_of_normals_index",
+            ),
+            "mutect2_interval_set": _input_source(
+                parabricks_receipt,
+                "Parabricks receipt",
+                "mutect2_interval_set",
+            ),
+        },
+    }
+
+
 def export_phase3_fast_small_variant_artifacts(
     parabricks_receipt: Mapping[str, Any],
     filter_receipt: Mapping[str, Any],
@@ -180,6 +275,7 @@ def export_phase3_fast_small_variant_artifacts(
         raise ManifestError("FilterMutect receipt must reference the exported Parabricks receipt SHA-256")
     if filter_source.get("parabricks_mutect_plan_sha256") != parabricks_source.get("parabricks_mutect_plan_sha256"):
         raise ManifestError("FilterMutect receipt must share the Parabricks plan SHA-256")
+    input_sources = _source_inputs(parabricks_receipt, filter_receipt)
 
     root = Path(output_root)
     parabricks_outputs = _materialized(
@@ -237,6 +333,7 @@ def export_phase3_fast_small_variant_artifacts(
             "parabricks_mutect_receipt_sha256": parabricks_receipt_sha,
             "filter_mutect_receipt_sha256": filter_receipt_sha,
         },
+        "input_sources": input_sources,
         "output_root": str(root),
         "exports": exports,
         "interpretation": {

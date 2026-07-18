@@ -66,6 +66,8 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(manifest["artifacts"]["cnv_evidence"]["coverage_bins"]["sha256"], cnv_bins_sha256)
         self.assertEqual(97, len(sbs96_rows))
         self.assertEqual(0, sv_discordant_bytes)
+        self.assertEqual("copy-version-5", manifest["input_sources"]["reference"]["fasta"]["version_id"])
+        self.assertEqual("copy-version-13", manifest["input_sources"]["caller_resources"]["mutect2_interval_set"]["version_id"])
         self.assertNotIn(str(root), json.dumps(manifest))
         self.assertNotIn("commands", manifest)
         self.assertNotIn("inputs", manifest)

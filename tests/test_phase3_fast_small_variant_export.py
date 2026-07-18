@@ -56,6 +56,13 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
         self.assertEqual(SHA_3, receipt["source"]["filter_mutect_receipt_sha256"])
         self.assertEqual(set(run_parabricks.MATERIALIZED_OUTPUTS), set(receipt["exports"]["parabricks_mutect"]))
         self.assertEqual(set(run_filter.MATERIALIZED_OUTPUTS), set(receipt["exports"]["filter_mutect"]))
+        self.assertEqual("copy-version-5", receipt["input_sources"]["reference"]["fasta"]["version_id"])
+        self.assertEqual("copy-version-1", receipt["input_sources"]["bam_pair"]["tumor"]["bam"]["version_id"])
+        self.assertEqual("subject01_tumor", receipt["input_sources"]["bam_pair"]["tumor"]["bam"]["sample_id"])
+        self.assertEqual(
+            "copy-version-15",
+            receipt["input_sources"]["caller_resources"]["panel_of_normals_vcf"]["version_id"],
+        )
         exported_filtered = receipt["exports"]["filter_mutect"]["filtered_vcf"]
         self.assertEqual(
             filter_receipt["materialized_outputs"]["filtered_vcf"]["sha256"],
@@ -120,6 +127,23 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
             filter_receipt["source"]["parabricks_mutect_receipt_sha256"] = "d" * 64
 
             with self.assertRaisesRegex(export_small_variants.ManifestError, "Parabricks receipt SHA-256"):
+                export_small_variants.export_phase3_fast_small_variant_artifacts(
+                    parabricks_receipt,
+                    filter_receipt,
+                    parabricks_mutect_receipt_sha256=SHA_2,
+                    filter_mutect_receipt_sha256=SHA_3,
+                    output_root=root / "exported",
+                )
+
+            self.assertFalse((root / "exported").exists())
+
+    def test_rejects_filter_receipt_with_different_reference_source(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            parabricks_receipt, filter_receipt = _receipts(root)
+            filter_receipt["inputs"]["reference_fasta"]["source"]["version_id"] = "raced-version"
+
+            with self.assertRaisesRegex(export_small_variants.ManifestError, "reference_fasta source"):
                 export_small_variants.export_phase3_fast_small_variant_artifacts(
                     parabricks_receipt,
                     filter_receipt,

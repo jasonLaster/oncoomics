@@ -320,6 +320,7 @@ def build_phase3_fast_final_evidence_manifest(
                 )
             ),
         },
+        "input_sources": dict(_require_mapping(evidence_join.get("input_sources"), "input_sources")),
         "interpretation": dict(_require_mapping(evidence_join.get("interpretation"), "interpretation")),
     }
 
