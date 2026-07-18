@@ -156,7 +156,9 @@ The `us-east-2` Batch job role also receives versioned read permission on the
 permission constrained to the `alias/diana-omics-prod-use1` source key. Those
 grants are what let `FAST_REPLICATE_INPUTS` promote the reviewed dry-run plan
 into the regional private cache without giving the GPU stack broad cross-region
-S3 or KMS access.
+S3 or KMS access. The dry receipt also plans deterministic UploadPartCopy byte
+ranges and encoded CopySource `VersionId`s for the large BAMs so the future
+apply path can avoid the 5 GiB single-object `CopyObject` limit.
 
 After P5en quota is approved and the pinned image is supplied, run only the
 bounded placement/visibility smoke first. The alias starts with a local

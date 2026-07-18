@@ -60,6 +60,7 @@ params.phase3_fast_cache_prefix = params.phase3_fast_cache_prefix ?: null
 params.phase3_fast_cache_kms_key_arn = params.phase3_fast_cache_kms_key_arn ?: null
 params.phase3_fast_cache_region = params.phase3_fast_cache_region ?: 'us-east-2'
 params.phase3_fast_replication_mode = params.phase3_fast_replication_mode ?: 'dry_run'
+params.phase3_fast_replication_part_size_bytes = params.phase3_fast_replication_part_size_bytes ?: 536870912
 params.phase3_fast_gatk_version = params.phase3_fast_gatk_version ?: '4.6.2.0'
 params.phase3_fast_source_commit = params.phase3_fast_source_commit ?: ''
 params.phase3_fast_run_id = params.phase3_fast_run_id ?: 'diana-wgs-hrd-20260716T033101Z'
@@ -793,6 +794,7 @@ process FAST_REPLICATE_INPUTS {
     export PHASE3_WGS_FAST_REPLICATION_PLAN="\$PWD/${replication_plan}"
     export PHASE3_WGS_FAST_REPLICATION_RECEIPT_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/replication_receipt.json"
     export PHASE3_WGS_FAST_REPLICATION_MODE="${params.phase3_fast_replication_mode}"
+    export PHASE3_WGS_FAST_REPLICATION_PART_SIZE_BYTES="${params.phase3_fast_replication_part_size_bytes}"
 
     PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics replicate:phase3-fast-inputs
     """

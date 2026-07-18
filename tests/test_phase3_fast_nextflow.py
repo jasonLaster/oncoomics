@@ -52,6 +52,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             "phase3_fast_cache_kms_key_arn",
             "phase3_fast_cache_region",
             "phase3_fast_replication_mode",
+            "phase3_fast_replication_part_size_bytes",
             "phase3_fast_gatk_version",
             "phase3_fast_source_commit",
             "phase3_fast_run_id",
@@ -81,6 +82,10 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn('export PHASE3_WGS_FAST_CACHE_PREFIX="${params.phase3_fast_cache_prefix}"', text)
         self.assertIn('export PHASE3_WGS_FAST_CACHE_KMS_KEY_ARN="${params.phase3_fast_cache_kms_key_arn}"', text)
         self.assertIn('export PHASE3_WGS_FAST_REPLICATION_MODE="${params.phase3_fast_replication_mode}"', text)
+        self.assertIn(
+            'export PHASE3_WGS_FAST_REPLICATION_PART_SIZE_BYTES="${params.phase3_fast_replication_part_size_bytes}"',
+            text,
+        )
 
     def test_fast_planning_and_gpu_processes_have_separate_aws_labels(self) -> None:
         main = MAIN_NF.read_text(encoding="utf-8")
