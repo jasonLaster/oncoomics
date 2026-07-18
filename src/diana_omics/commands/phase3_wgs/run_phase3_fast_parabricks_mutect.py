@@ -14,6 +14,7 @@ from .render_phase3_fast_input_manifest import HEX64, ManifestError
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"
 EXPECTED_COMMANDS = ("prepon", "mutectcaller", "postpon")
+MATERIALIZED_OUTPUTS = ("raw_vcf", "raw_vcf_stats", "pon_annotated_vcf", "f1r2_tar_gz")
 
 
 class CommandRunner(Protocol):
@@ -52,12 +53,37 @@ def _require_argv(value: Any, name: str) -> list[str]:
     return argv
 
 
+def _require_absolute_path(value: Any, label: str) -> Path:
+    path = Path(_require_string(value, label))
+    if not path.is_absolute():
+        raise ManifestError(f"{label} must be an absolute path")
+    return path
+
+
 def _sha256_path(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         while chunk := handle.read(1024 * 1024):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _materialized_outputs(plan: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    outputs = _require_mapping(plan.get("outputs"), "outputs")
+    materialized: dict[str, dict[str, Any]] = {}
+    for key in MATERIALIZED_OUTPUTS:
+        path = _require_absolute_path(outputs.get(key), key)
+        if not path.is_file():
+            raise ManifestError(f"{key} must exist after Parabricks Mutect execution: {path}")
+        bytes_ = path.stat().st_size
+        if bytes_ <= 0:
+            raise ManifestError(f"{key} must be non-empty after Parabricks Mutect execution: {path}")
+        materialized[key] = {
+            "local_path": str(path),
+            "bytes": bytes_,
+            "sha256": _sha256_path(path),
+        }
+    return materialized
 
 
 def _planned_commands(plan: Mapping[str, Any]) -> list[tuple[str, list[str]]]:
@@ -95,6 +121,7 @@ def run_phase3_fast_parabricks_mutect(
     commands = _validate_plan(plan)
     for _, argv in commands:
         runner.run(argv)
+    materialized_outputs = _materialized_outputs(plan)
 
     return {
         "schema_version": 1,
@@ -112,6 +139,7 @@ def run_phase3_fast_parabricks_mutect(
         },
         "inputs": dict(_require_mapping(plan.get("inputs"), "inputs")),
         "outputs": dict(_require_mapping(plan.get("outputs"), "outputs")),
+        "materialized_outputs": materialized_outputs,
         "commands": {
             name: {
                 "argv": argv,
