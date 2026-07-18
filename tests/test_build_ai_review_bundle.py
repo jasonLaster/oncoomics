@@ -114,6 +114,8 @@ class AiReviewBundleFixture:
             "# Safe synthetic source report\n\nNo direct identifiers or raw data.\n",
             encoding="utf-8",
         )
+        support = directory / "support.json"
+        support.write_text('{"status":"passed"}\n', encoding="utf-8")
         manifest = {
             "schema_version": 1,
             "report_kind": "deterministic" if index == 0 else "method",
@@ -125,6 +127,7 @@ class AiReviewBundleFixture:
             "classification_qc_status": "not_applicable",
             "review_summary": review_summary,
             "report_sha256": BUILD.sha256(report),
+            "support_sha256": {"support.json": BUILD.sha256(support)},
             "source_sha256": {"safe_summary": "a" * 64},
         }
         path = directory / "report_manifest.json"
@@ -541,6 +544,75 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 Path(temporary) / "stage-receipt.json",
             )
             self.assertEqual(receipt["status"], "passed")
+
+    def test_rejects_stale_source_packet_support_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            support = fixture.manifests[0].parent / "support.json"
+            support.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn(
+                "support hash mismatch for deterministic_full_wgs: support.json",
+                built.stderr,
+            )
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_rejects_inexact_source_packet_support_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            (fixture.manifests[0].parent / "unbound.json").write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn(
+                "support inventory is not exact for deterministic_full_wgs",
+                built.stderr,
+            )
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_rejects_malformed_source_packet_support_bindings(self) -> None:
+        cases = (
+            ("missing", {}, "missing support hashes"),
+            ("nested", {"nested/support.json": "a" * 64}, "malformed support path"),
+            ("core", {"report.md": "a" * 64}, "malformed support path"),
+            ("bad_sha", {"support.json": "BAD"}, "malformed support SHA-256"),
+        )
+
+        for name, support_sha256, message in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                fixture = AiReviewBundleFixture(Path(temporary))
+                fixture.update_manifest(0, {"support_sha256": support_sha256})
+
+                built = fixture.run()
+
+                self.assertNotEqual(built.returncode, 0)
+                self.assertIn(message, built.stderr)
+                self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_rejects_symlinked_source_packet_support_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            support = fixture.manifests[0].parent / "support.json"
+            linked_support = root / "linked-support.json"
+            support.replace(linked_support)
+            support.symlink_to(linked_support)
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn(
+                "support hash mismatch for deterministic_full_wgs: support.json",
+                built.stderr,
+            )
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
     def test_accepts_real_phase3_fast_rosalind_summary(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -65,6 +65,7 @@ BUNDLE_MANIFEST_BOUND_FILES = {
     "reviewer-a.prompt.md": ("prompt_sha256", "A"),
     "reviewer-b.prompt.md": ("prompt_sha256", "B"),
 }
+CORE_REPORT_FILES = {"report.md", "report_manifest.json"}
 
 
 def sha256(path: Path) -> str:
@@ -358,6 +359,48 @@ def require_real_input_file(path: Path, label: str) -> Path:
     if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
         raise ValueError(f"{label} is missing, unsafe, or empty: {path}")
     return path.resolve()
+
+
+def validate_report_manifest_support(
+    packet_dir: Path,
+    manifest: dict[str, Any],
+    method: str,
+) -> None:
+    support_hashes = manifest.get("support_sha256")
+    if not isinstance(support_hashes, dict) or not support_hashes:
+        raise ValueError(f"missing support hashes for {method}")
+
+    bound_support_files: set[str] = set()
+    for relative, digest in support_hashes.items():
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or Path(relative).name != relative
+            or relative in CORE_REPORT_FILES
+        ):
+            raise ValueError(f"malformed support path for {method}: {relative}")
+
+        expected_sha256 = str(digest).lower()
+        if not HEX64.fullmatch(expected_sha256):
+            raise ValueError(f"malformed support SHA-256 for {method}: {relative}")
+
+        try:
+            support_path = require_real_input_file(
+                packet_dir / relative,
+                f"{method} support file",
+            )
+        except ValueError as error:
+            raise ValueError(
+                f"support hash mismatch for {method}: {relative}: {error}"
+            ) from error
+        if sha256(support_path) != expected_sha256:
+            raise ValueError(f"support hash mismatch for {method}: {relative}")
+        bound_support_files.add(relative)
+
+    expected_inventory = CORE_REPORT_FILES | bound_support_files
+    observed_inventory = {path.name for path in packet_dir.iterdir()}
+    if observed_inventory != expected_inventory:
+        raise ValueError(f"support inventory is not exact for {method}")
 
 
 def require_safe_new_bundle_file(path: Path) -> Path:
@@ -746,6 +789,10 @@ def main() -> None:
             HEX64.fullmatch(str(value).lower()) for value in source_hashes.values()
         ):
             raise SystemExit(f"Fail-closed: malformed source hashes for {method}")
+        try:
+            validate_report_manifest_support(path.parent, manifest, method)
+        except ValueError as error:
+            raise SystemExit(f"Fail-closed: {error}") from error
 
         evidence.append(
             {
