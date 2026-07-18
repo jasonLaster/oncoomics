@@ -35,7 +35,21 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
         self.assertEqual("no_call", plan["interpretation"]["authorized_hrd_state"])
         self.assertEqual(8, plan["runtime"]["num_gpus"])
         self.assertEqual("subject01_tumor", plan["inputs"]["tumor_bam"]["sample_id"])
+        self.assertEqual("subject01_tumor", plan["inputs"]["tumor_bai"]["sample_id"])
         self.assertEqual("subject01_normal", plan["inputs"]["normal_bam"]["sample_id"])
+        self.assertEqual("subject01_normal", plan["inputs"]["normal_bai"]["sample_id"])
+        self.assertEqual(
+            Path(plan["inputs"]["tumor_bam"]["local_path"]).parent,
+            Path(plan["inputs"]["tumor_bai"]["local_path"]).parent,
+        )
+        self.assertEqual(
+            Path(plan["inputs"]["reference_fasta"]["local_path"]).parent,
+            Path(plan["inputs"]["reference_fai"]["local_path"]).parent,
+        )
+        self.assertEqual(
+            Path(plan["inputs"]["reference_fasta"]["local_path"]).parent,
+            Path(plan["inputs"]["reference_sequence_dictionary"]["local_path"]).parent,
+        )
 
         self.assertEqual(
             [
@@ -112,8 +126,42 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             manifest = staged_inputs_manifest(Path(tmp))
         manifest["bam_pair"]["normal"]["bam"]["sample_id"] = "subject01_tumor"
+        manifest["bam_pair"]["normal"]["bai"]["sample_id"] = "subject01_tumor"
 
         with self.assertRaisesRegex(parabricks.ManifestError, "must differ"):
+            parabricks.build_phase3_fast_parabricks_mutect_plan(
+                manifest,
+                staged_inputs_manifest_sha256=SHA_1,
+            )
+
+    def test_rejects_bam_index_sample_name_mismatch(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = staged_inputs_manifest(Path(tmp))
+        manifest["bam_pair"]["tumor"]["bai"]["sample_id"] = "wrong"
+
+        with self.assertRaisesRegex(parabricks.ManifestError, "tumor.bai sample_id"):
+            parabricks.build_phase3_fast_parabricks_mutect_plan(
+                manifest,
+                staged_inputs_manifest_sha256=SHA_1,
+            )
+
+    def test_rejects_unpaired_bam_index_layout(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = staged_inputs_manifest(Path(tmp))
+        manifest["bam_pair"]["tumor"]["bai"]["local_path"] = "/scratch/diana/phase3_wgs_fast/inputs/elsewhere/tumor.bai"
+
+        with self.assertRaisesRegex(parabricks.ManifestError, "tumor.bam"):
+            parabricks.build_phase3_fast_parabricks_mutect_plan(
+                manifest,
+                staged_inputs_manifest_sha256=SHA_1,
+            )
+
+    def test_rejects_unpaired_reference_sidecar_layout(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = staged_inputs_manifest(Path(tmp))
+        manifest["reference"]["fai"]["local_path"] = "/scratch/diana/phase3_wgs_fast/elsewhere/reference.fa.fai"
+
+        with self.assertRaisesRegex(parabricks.ManifestError, "reference.fa"):
             parabricks.build_phase3_fast_parabricks_mutect_plan(
                 manifest,
                 staged_inputs_manifest_sha256=SHA_1,
