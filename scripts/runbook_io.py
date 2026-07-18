@@ -40,9 +40,9 @@ def unique_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
 
 
 def missing_required_files(paths: Iterable[Path]) -> tuple[Path, ...]:
-    """Return prerequisite paths that are absent or not regular files."""
+    """Return prerequisite paths that are absent, symlinked, or not regular files."""
 
-    return tuple(path for path in paths if not path.is_file())
+    return tuple(path for path in paths if path.is_symlink() or not path.is_file())
 
 
 def preexisting_create_only_paths(paths: Iterable[Path]) -> tuple[Path, ...]:

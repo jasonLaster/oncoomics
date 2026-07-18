@@ -53,22 +53,24 @@ class RunbookIoTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             regular = root / "regular.txt"
+            symlinked_regular = root / "symlinked-regular.txt"
             directory = root / "directory"
             missing = root / "missing.txt"
             broken_symlink = root / "broken"
             regular.write_text("ok\n", encoding="utf-8")
+            symlinked_regular.symlink_to(regular)
             directory.mkdir()
             broken_symlink.symlink_to(root / "absent")
 
-            paths = (regular, directory, missing, broken_symlink)
+            paths = (regular, symlinked_regular, directory, missing, broken_symlink)
 
             self.assertEqual(
                 MODULE.missing_required_files(paths),
-                (directory, missing, broken_symlink),
+                (symlinked_regular, directory, missing, broken_symlink),
             )
             self.assertEqual(
                 MODULE.preexisting_create_only_paths(paths),
-                (regular, directory, broken_symlink),
+                (regular, symlinked_regular, directory, broken_symlink),
             )
 
     def test_load_json_object_rejects_non_objects_and_symlinks(self) -> None:

@@ -241,6 +241,22 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     "sigprofiler_sbs3",
                 )
 
+    def test_stage_rejects_unexpected_download_verification_object(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            (source / "stale.vcf").write_text("stale route output\n", encoding="utf-8")
+            refresh_download_verification(source, verification)
+
+            with self.assertRaisesRegex(ValueError, "inventory is not exact"):
+                STAGE.stage(
+                    source,
+                    verification,
+                    root / "staged",
+                    "sigprofiler_sbs3",
+                )
+
     def test_stage_rejects_support_file_behind_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

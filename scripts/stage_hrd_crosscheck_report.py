@@ -104,6 +104,7 @@ def require_download_verification(
         if not isinstance(row, dict):
             raise ValueError("download verification contains a malformed row")
         relative = str(row.get("relative_path", ""))
+        require_safe_relative_path(relative, "download verification path")
         if relative in expected:
             raise ValueError(f"download verification repeats {relative}")
         expected[relative] = row
@@ -167,6 +168,11 @@ def require_download_verification(
             raise ValueError(
                 f"route report manifest support hash differs for {relative}"
             )
+
+    if set(expected) != CORE_REPORT_FILES | set(support):
+        raise ValueError(
+            "download verification inventory is not exact for the route report packet"
+        )
 
     return {
         "route": route,
