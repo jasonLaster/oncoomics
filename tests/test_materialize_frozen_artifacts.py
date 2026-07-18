@@ -273,6 +273,64 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                     self.assertFalse(receipt.exists())
                     self.assertFalse((real_parent / "materialized").exists())
 
+    def test_refuses_existing_output_dir_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            (real_parent / "existing").mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            receipt = root / "materialization.json"
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "materialization output.* parent may not be a symlink",
+            ):
+                MODULE.main(
+                    self.args(
+                        freeze,
+                        linked_parent / "existing" / "materialized",
+                        receipt,
+                        kms,
+                    )
+                )
+
+            self.assertFalse(receipt.exists())
+            self.assertFalse((real_parent / "existing" / "materialized").exists())
+
+    def test_refuses_materialized_object_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            (real_parent / "existing").mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with (
+                patch.object(
+                    MODULE.subprocess,
+                    "check_output",
+                    side_effect=AssertionError("AWS called"),
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materialized object parent may not be a symlink",
+                ),
+            ):
+                MODULE.get_exact_object(
+                    "diana-omics-private-results-test",
+                    "runs/subject01/synthetic-run/deterministic/artifacts/final.vcf.gz",
+                    "version",
+                    linked_parent / "existing" / "final.vcf.gz",
+                    "us-east-1",
+                )
+
+            self.assertFalse((real_parent / "existing" / "final.vcf.gz").exists())
+
     def test_refuses_symlinked_receipt_before_writes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -308,6 +366,29 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                     )
                     self.assertFalse(output.exists())
                     self.assertFalse((real_receipt_parent / "materialization.json").exists())
+
+    def test_refuses_symlinked_freeze_receipt_before_writes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            linked_freeze = root / "linked-freeze.json"
+            linked_freeze.symlink_to(freeze)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+
+            with (
+                patch.object(
+                    MODULE,
+                    "get_exact_object",
+                    side_effect=AssertionError("AWS called"),
+                ),
+                self.assertRaisesRegex(SystemExit, "freeze receipt must be a real JSON file"),
+            ):
+                MODULE.main(self.args(linked_freeze, output, receipt, kms))
+
+            self.assertFalse(receipt.exists())
+            self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":

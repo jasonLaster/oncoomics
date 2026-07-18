@@ -28,6 +28,10 @@ CHECKSUM_FIELDS = (
 )
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -95,12 +99,10 @@ def resolve_new_output(path: Path, label: str) -> Path:
     if path.is_symlink():
         raise ValueError(f"{label} may not be a symlink: {path}")
     for parent in path.parents:
-        if parent.is_symlink():
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"{label} parent may not be a symlink: {parent}")
-        if parent.exists():
-            if not parent.is_dir():
-                raise ValueError(f"{label} parent is not a directory: {parent}")
-            return path.resolve()
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
     return path.resolve()
 
 
@@ -110,12 +112,10 @@ def require_safe_new_child_path(path: Path, label: str) -> None:
     if path.exists():
         raise ValueError(f"{label} already exists")
     for parent in path.parents:
-        if parent.is_symlink():
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"{label} parent may not be a symlink: {parent}")
-        if parent.exists():
-            if not parent.is_dir():
-                raise ValueError(f"{label} parent is not a directory: {parent}")
-            return
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
 
 
 def validate_local_tree(root: Path, rows: list[dict[str, Any]]) -> None:
@@ -175,6 +175,8 @@ def recover_local_cutover(
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real JSON file: {path}")
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
