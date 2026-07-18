@@ -226,6 +226,8 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                     index,
                     "--receipt-output",
                     Path("/repo/.codex-tmp/public-index/public-index.unit.json"),
+                    "--dry-run-receipt",
+                    Path("/repo/.codex-tmp/public-index/public-index.unit.dry.json"),
                     "--apply",
                 ],
             ],

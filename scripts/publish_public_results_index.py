@@ -257,8 +257,63 @@ def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, 
     }
 
 
+def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("public index dry-run receipt must be a real file")
+    receipt = load_json(path)
+    index = receipt.get("index")
+    destination = receipt.get("destination")
+    checks = receipt.get("checks")
+    if (
+        receipt.get("schema_version") != 1
+        or receipt.get("status") != "dry_run"
+        or receipt.get("apply") is not False
+        or not isinstance(index, dict)
+        or not isinstance(destination, dict)
+        or not isinstance(checks, dict)
+    ):
+        raise ValueError("public index dry-run receipt contract is malformed")
+    expected_index = {
+        "sha256": custody["sha256"],
+        "bytes": custody["bytes"],
+        "object_count": custody["object_count"],
+        "total_size": custody["total_size"],
+    }
+    if {field: index.get(field) for field in expected_index} != expected_index:
+        raise ValueError("public index dry-run receipt does not match the index")
+    expected_destination = {
+        "bucket": BUCKET,
+        "key": INDEX_KEY,
+        "uri": f"s3://{BUCKET}/{INDEX_KEY}",
+    }
+    if {field: destination.get(field) for field in expected_destination} != expected_destination:
+        raise ValueError("public index dry-run receipt does not match the destination")
+    required_checks = {
+        "index_allowlisted_prefixes",
+        "index_schema",
+        "index_sorted_unique_keys",
+    }
+    if not required_checks.issubset(checks) or not all(
+        checks[field] is True for field in required_checks
+    ):
+        raise ValueError("public index dry-run receipt did not pass preflight checks")
+    return {
+        "path": str(path.resolve()),
+        "sha256": sha256(path),
+        "index_sha256": custody["sha256"],
+        "status": "dry_run",
+    }
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     custody = validate_public_index(args.index)
+    dry_run_receipt = None
+    if args.apply:
+        if args.dry_run_receipt is None:
+            raise ValueError("public index apply requires --dry-run-receipt")
+        dry_run_receipt = validate_dry_run_receipt(args.dry_run_receipt, custody)
+    elif args.dry_run_receipt is not None:
+        raise ValueError("--dry-run-receipt is only valid with --apply")
     receipt: dict[str, Any] = {
         "schema_version": 1,
         "status": "preflighting",
@@ -279,6 +334,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "index_sorted_unique_keys": True,
         },
     }
+    if dry_run_receipt is not None:
+        receipt["dry_run_receipt"] = dry_run_receipt
+        receipt["checks"]["dry_run_receipt"] = True
     write_private_atomic(args.receipt_output, receipt, create=True)
     try:
         if args.apply:
@@ -319,6 +377,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--index", required=True, type=Path)
     parser.add_argument("--receipt-output", required=True, type=Path)
+    parser.add_argument("--dry-run-receipt", type=Path)
     parser.add_argument("--region", default=REGION, choices=(REGION,))
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)

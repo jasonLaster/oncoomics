@@ -102,13 +102,27 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
         path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
         return path
 
-    def args(self, index: Path, receipt: Path, *, apply: bool = False) -> argparse.Namespace:
+    def args(
+        self,
+        index: Path,
+        receipt: Path,
+        *,
+        apply: bool = False,
+        dry_run_receipt: Path | None = None,
+    ) -> argparse.Namespace:
         return argparse.Namespace(
             index=index,
             receipt_output=receipt,
+            dry_run_receipt=dry_run_receipt,
             region=MODULE.REGION,
             apply=apply,
         )
+
+    def write_dry_run_receipt(self, root: Path, index: Path) -> Path:
+        receipt = root / "dry-run-receipt.json"
+        with mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")):
+            MODULE.run(self.args(index, receipt))
+        return receipt
 
     def test_dry_run_validates_index_without_uploading(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -128,14 +142,23 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             root = Path(temporary)
             index = self.write_index(root)
             receipt = root / "receipt.json"
+            dry_run_receipt = self.write_dry_run_receipt(root, index)
             fake = FakeAws(index.read_bytes())
 
             with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json):
-                result = MODULE.run(self.args(index, receipt, apply=True))
+                result = MODULE.run(
+                    self.args(index, receipt, apply=True, dry_run_receipt=dry_run_receipt)
+                )
 
             self.assertEqual(result["status"], "passed")
+            self.assertEqual(result["dry_run_receipt"]["path"], str(dry_run_receipt.resolve()))
+            self.assertEqual(
+                result["dry_run_receipt"]["sha256"],
+                digest(dry_run_receipt.read_bytes()),
+            )
             self.assertEqual(result["destination_object"]["version_id"], "public-index-version-1")
             self.assertTrue(result["checks"]["destination_current_version_exact"])
+            self.assertTrue(result["checks"]["dry_run_receipt"])
             self.assertEqual(len(fake.put_calls), 1)
             self.assertEqual(FakeAws.value(fake.put_calls[0], "--bucket"), MODULE.BUCKET)
             self.assertEqual(FakeAws.value(fake.put_calls[0], "--key"), MODULE.INDEX_KEY)
@@ -155,12 +178,15 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             root = Path(temporary)
             index = self.write_index(root)
             receipt = root / "receipt.json"
+            dry_run_receipt = self.write_dry_run_receipt(root, index)
             fake = FakeAws(index.read_bytes())
             fake.versioning_status = "Suspended"
 
             with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json):
                 with self.assertRaisesRegex(ValueError, "versioning is not enabled"):
-                    MODULE.run(self.args(index, receipt, apply=True))
+                    MODULE.run(
+                        self.args(index, receipt, apply=True, dry_run_receipt=dry_run_receipt)
+                    )
 
             self.assertEqual(fake.put_calls, [])
             self.assertEqual(json.loads(receipt.read_text())["status"], "failed")
@@ -225,12 +251,15 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             root = Path(temporary)
             index = self.write_index(root)
             receipt = root / "receipt.json"
+            dry_run_receipt = self.write_dry_run_receipt(root, index)
             fake = FakeAws(index.read_bytes())
             fake.wrong_checksum = True
 
             with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json):
                 with self.assertRaisesRegex(ValueError, "destination verification failed"):
-                    MODULE.run(self.args(index, receipt, apply=True))
+                    MODULE.run(
+                        self.args(index, receipt, apply=True, dry_run_receipt=dry_run_receipt)
+                    )
 
             self.assertEqual(json.loads(receipt.read_text())["status"], "failed")
 
@@ -240,14 +269,94 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 root = Path(temporary)
                 index = self.write_index(root)
                 receipt = root / "receipt.json"
+                dry_run_receipt = self.write_dry_run_receipt(root, index)
                 fake = FakeAws(index.read_bytes())
                 setattr(fake, field, True)
 
                 with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json):
                     with self.assertRaisesRegex(ValueError, "non-null VersionId"):
-                        MODULE.run(self.args(index, receipt, apply=True))
+                        MODULE.run(
+                            self.args(index, receipt, apply=True, dry_run_receipt=dry_run_receipt)
+                        )
 
                 self.assertEqual(json.loads(receipt.read_text())["status"], "failed")
+
+    def test_apply_requires_matching_dry_run_receipt_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = self.write_index(root)
+
+            with self.assertRaisesRegex(
+                ValueError, "requires --dry-run-receipt"
+            ), mock.patch.object(
+                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            ):
+                MODULE.run(self.args(index, root / "missing.json", apply=True))
+
+            dry_run_index = self.write_index(
+                root, generated_at="2026-07-18T00:00:00+00:00"
+            )
+            dry_run_receipt = self.write_dry_run_receipt(root, dry_run_index)
+            index = self.write_index(root)
+
+            with self.assertRaisesRegex(
+                ValueError, "does not match the index"
+            ), mock.patch.object(
+                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            ):
+                MODULE.run(
+                    self.args(
+                        index,
+                        root / "mismatched.json",
+                        apply=True,
+                        dry_run_receipt=dry_run_receipt,
+                    )
+                )
+
+    def test_apply_rejects_failed_or_redirected_dry_run_receipts_before_aws(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = self.write_index(root)
+            dry_run_receipt = self.write_dry_run_receipt(root, index)
+            failed_receipt = json.loads(dry_run_receipt.read_text())
+            failed_receipt["status"] = "failed"
+            dry_run_receipt.write_text(
+                json.dumps(failed_receipt, indent=2, sort_keys=True) + "\n"
+            )
+
+            with self.assertRaisesRegex(
+                ValueError, "contract is malformed"
+            ), mock.patch.object(
+                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            ):
+                MODULE.run(
+                    self.args(
+                        index,
+                        root / "apply.json",
+                        apply=True,
+                        dry_run_receipt=dry_run_receipt,
+                    )
+                )
+
+            real_receipt = root / "real-receipt.json"
+            dry_run_receipt.replace(real_receipt)
+            dry_run_receipt.symlink_to(real_receipt)
+
+            with self.assertRaisesRegex(
+                ValueError, "must be a real file"
+            ), mock.patch.object(
+                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            ):
+                MODULE.run(
+                    self.args(
+                        index,
+                        root / "redirected.json",
+                        apply=True,
+                        dry_run_receipt=dry_run_receipt,
+                    )
+                )
 
     def test_existing_receipt_output_is_never_replaced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

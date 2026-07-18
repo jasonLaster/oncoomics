@@ -155,6 +155,8 @@ def index_commands(root: Path, receipt_stem: str = "terminal") -> list[list[str 
             index,
             "--receipt-output",
             apply_receipt,
+            "--dry-run-receipt",
+            dry_receipt,
             "--apply",
         ],
     ]
