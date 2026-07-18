@@ -295,6 +295,7 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as value:
             receipt = Path(value) / "receipt.json"
             receipt.write_text("{}")
+            receipt_checksum = MODULE.checksum_sha256(MODULE.sha256(receipt))
             with patch.object(MODULE, "aws_json", return_value={}) as mocked_put:
                 MODULE.put_receipt(
                     receipt, "private-bucket", "receipt-key", KMS, REGION
@@ -320,6 +321,8 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 KMS,
                 "--checksum-algorithm",
                 "SHA256",
+                "--checksum-sha256",
+                receipt_checksum,
                 "--content-type",
                 "application/json",
             ],

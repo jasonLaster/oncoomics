@@ -52,6 +52,10 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def checksum_sha256(digest: str) -> str:
+    return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -294,6 +298,8 @@ def put_receipt(
             kms_key_arn,
             "--checksum-algorithm",
             "SHA256",
+            "--checksum-sha256",
+            checksum_sha256(sha256(path)),
             "--content-type",
             "application/json",
         ],

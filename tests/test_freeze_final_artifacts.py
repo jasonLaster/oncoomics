@@ -487,10 +487,14 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             )
 
     def test_receipt_put_is_create_only(self) -> None:
-        with patch.object(MODULE, "aws_json", return_value={"VersionId": "v1"}) as mocked:
-            MODULE.put_receipt(
-                Path("receipt.json"), "bucket", "key", "kms", "us-east-1"
-            )
+        with tempfile.TemporaryDirectory() as value:
+            receipt = Path(value) / "receipt.json"
+            receipt.write_text("{}")
+            receipt_checksum = MODULE.checksum_sha256(MODULE.sha256(receipt))
+            with patch.object(
+                MODULE, "aws_json", return_value={"VersionId": "v1"}
+            ) as mocked:
+                MODULE.put_receipt(receipt, "bucket", "key", "kms", "us-east-1")
         arguments, region = mocked.call_args.args
         self.assertEqual(region, "us-east-1")
         self.assertEqual(
@@ -503,7 +507,7 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 "--key",
                 "key",
                 "--body",
-                "receipt.json",
+                str(receipt),
                 "--if-none-match",
                 "*",
                 "--server-side-encryption",
@@ -512,6 +516,8 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 "kms",
                 "--checksum-algorithm",
                 "SHA256",
+                "--checksum-sha256",
+                receipt_checksum,
                 "--content-type",
                 "application/json",
             ],
