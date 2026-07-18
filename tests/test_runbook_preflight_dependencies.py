@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -25,6 +26,7 @@ RENDERERS = (
     "render_ai_synthesis_runbook",
     "render_reviewed_publication_runbook",
 )
+LOCAL_COMMAND = re.compile(r"\bpython3 /repo/((?:aws|scripts)/[A-Za-z0-9_.-]+\.py)\b")
 
 
 def load_script(name: str):
@@ -71,11 +73,88 @@ def missing_preflight_imports(renderer: str) -> set[str]:
     }
 
 
+def ai_receipt_summaries(
+    ai_synthesis: object,
+) -> tuple[dict[str, str | int], ...]:
+    return tuple(
+        {
+            "method_id": method_id,
+            "receipt": f"{method_id}.private.json",
+            "destination_prefix": f"s3://private/{method_id}/",
+            "report_manifest_version_id": f"version-{index}",
+            "report_manifest_sha256": f"{index:064x}",
+            "object_count": 5,
+        }
+        for index, method_id in enumerate(ai_synthesis.REQUIRED_METHOD_IDS, 1)
+    )
+
+
+def reviewed_publication_receipt_summaries(
+    reviewed_publication: object,
+) -> tuple[dict[str, str | int], ...]:
+    return tuple(
+        {
+            "method_id": method_id,
+            "receipt": f"{method_id}.private.json",
+            "receipt_sha256": f"{index:064x}",
+            "destination_prefix": reviewed_publication.destination_prefix(method_id),
+            "object_count": 3,
+        }
+        for index, method_id in enumerate(
+            reviewed_publication.REPORT_METHOD_IDS, 1
+        )
+    )
+
+
+def rendered_runbooks() -> dict[str, str]:
+    root = RUNBOOK_ROOT
+    post_success = load_script("render_post_success_runbook")
+    source_freeze = load_script("render_source_report_freeze_runbook")
+    ai_synthesis = load_script("render_ai_synthesis_runbook")
+    reviewed_publication = load_script("render_reviewed_publication_runbook")
+    reviewed_public_receipts = [
+        Path(f"/receipts/{method_id}.private.json")
+        for method_id in reviewed_publication.REPORT_METHOD_IDS
+    ]
+    return {
+        "render_post_success_runbook": post_success.render(
+            root,
+            "12345678-1234-1234-1234-123456789abc",
+        ),
+        "render_source_report_freeze_runbook": source_freeze.render(root, "unit"),
+        "render_ai_synthesis_runbook": ai_synthesis.render(
+            root,
+            "unit",
+            receipt_summaries=ai_receipt_summaries(ai_synthesis),
+        ),
+        "render_reviewed_publication_runbook": reviewed_publication.render(
+            root,
+            reviewed_public_receipts,
+            "unit",
+            receipt_summaries=reviewed_publication_receipt_summaries(
+                reviewed_publication
+            ),
+        ),
+    }
+
+
+def generated_local_commands(text: str) -> set[Path]:
+    return {Path(match) for match in LOCAL_COMMAND.findall(text)}
+
+
 class RunbookPreflightDependencyTests(unittest.TestCase):
     def test_handoff_preflights_include_transitive_local_imports(self) -> None:
         for renderer in RENDERERS:
             with self.subTest(renderer=renderer):
                 self.assertEqual(missing_preflight_imports(renderer), set())
+
+    def test_handoff_preflights_include_rendered_local_commands(self) -> None:
+        for renderer, text in rendered_runbooks().items():
+            with self.subTest(renderer=renderer):
+                self.assertLessEqual(
+                    generated_local_commands(text),
+                    required_local_paths(renderer),
+                )
 
     def test_post_success_preflight_covers_aws_route_submitter_imports(self) -> None:
         local_paths = required_local_paths("render_post_success_runbook")
