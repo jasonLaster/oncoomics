@@ -74,6 +74,10 @@ def json_bytes(value: Any) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
 def load_object(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -370,6 +374,82 @@ def require_safe_new_bundle_file(path: Path) -> Path:
             "AI review bundle output already exists: " + path.name
         )
     return path.resolve()
+
+
+def require_safe_new_staged_file(path: Path) -> Path:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(
+                f"staged AI review bundle file parent may not be a symlink: {parent}"
+            )
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(
+                f"staged AI review bundle file parent is not a directory: {parent}"
+            )
+    if path.is_symlink():
+        raise ValueError(
+            "staged AI review bundle file may not be a symlink: " + path.name
+        )
+    if path.exists():
+        raise ValueError(
+            "staged AI review bundle file already exists: " + path.name
+        )
+    return path.resolve()
+
+
+def require_staged_bytes(path: Path, expected_sha256: str) -> None:
+    path = require_real_input_file(path, "staged AI review bundle file")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"staged AI review bundle file mode is not 0600: {path}")
+    if sha256(path) != expected_sha256:
+        raise ValueError(
+            "staged AI review bundle file changed during write: " + path.name
+        )
+
+
+def write_staged_bytes(path: Path, payload: bytes) -> None:
+    expected_sha256 = sha256_bytes(payload)
+    path = require_safe_new_staged_file(path)
+    descriptor = -1
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        fsync_directory(path.parent)
+        require_staged_bytes(path, expected_sha256)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def require_staged_bundle_manifest(staging: Path) -> None:
+    manifest = load_object(staging / "bundle_manifest.json")
+    prompt_sha256 = manifest.get("prompt_sha256")
+    if not isinstance(prompt_sha256, dict):
+        raise ValueError("AI review bundle manifest lacks prompt hashes")
+
+    expected = {
+        "review_bundle.json": str(manifest.get("review_bundle_sha256", "")),
+        "reviewer-a.prompt.md": str(prompt_sha256.get("A", "")),
+        "reviewer-b.prompt.md": str(prompt_sha256.get("B", "")),
+    }
+    for filename, expected_sha256 in expected.items():
+        observed_sha256 = sha256(
+            require_real_input_file(
+                staging / filename,
+                "staged AI review bundle file",
+            )
+        )
+        if observed_sha256 != expected_sha256:
+            raise ValueError(
+                "AI review bundle manifest is stale for " + filename
+            )
 
 
 def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
@@ -713,15 +793,20 @@ def main() -> None:
     ) as temporary:
         staging = Path(temporary)
         bundle_path = staging / "review_bundle.json"
-        bundle_path.write_bytes(json_bytes(bundle))
+        write_staged_bytes(bundle_path, json_bytes(bundle))
         bundle_hash = sha256(bundle_path)
 
         prompt_paths = {}
         for role in ("A", "B"):
             path = staging / f"reviewer-{role.lower()}.prompt.md"
-            path.write_text(
-                prompt(role, bundle_hash, args.subject_alias, model_contracts[role]),
-                encoding="utf-8",
+            write_staged_bytes(
+                path,
+                prompt(
+                    role,
+                    bundle_hash,
+                    args.subject_alias,
+                    model_contracts[role],
+                ).encode("utf-8"),
             )
             prompt_paths[role] = path
 
@@ -743,7 +828,8 @@ def main() -> None:
             "model_catalog_receipt_sha256": catalog_receipt_hash,
         }
         manifest_path = staging / "bundle_manifest.json"
-        manifest_path.write_bytes(json_bytes(manifest))
+        write_staged_bytes(manifest_path, json_bytes(manifest))
+        require_staged_bundle_manifest(staging)
 
         try:
             install_bundle_create_only(

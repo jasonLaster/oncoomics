@@ -334,6 +334,93 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
+    def test_bundle_staged_file_write_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "review_bundle.json"
+            real_fsync_directory = BUILD.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_bytes(b"tampered bundle\n")
+
+            with (
+                mock.patch.object(
+                    BUILD,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged AI review bundle file changed during write",
+                ),
+            ):
+                BUILD.write_staged_bytes(output, b"review bundle\n")
+
+            self.assertFalse(output.exists())
+
+    def test_bundle_rejects_stale_staged_prompt_manifest_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            staging = Path(temporary)
+            BUILD.write_staged_bytes(staging / "review_bundle.json", b"{}\n")
+            BUILD.write_staged_bytes(staging / "reviewer-a.prompt.md", b"prompt a\n")
+            BUILD.write_staged_bytes(staging / "reviewer-b.prompt.md", b"prompt b\n")
+            BUILD.write_staged_bytes(
+                staging / "bundle_manifest.json",
+                BUILD.json_bytes(
+                    {
+                        "review_bundle_sha256": BUILD.sha256(
+                            staging / "review_bundle.json",
+                        ),
+                        "prompt_sha256": {
+                            "A": BUILD.sha256(staging / "reviewer-a.prompt.md"),
+                            "B": BUILD.sha256(staging / "reviewer-b.prompt.md"),
+                        },
+                    },
+                ),
+            )
+            (staging / "reviewer-a.prompt.md").write_text(
+                "stale prompt\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "AI review bundle manifest is stale for reviewer-a.prompt.md",
+            ):
+                BUILD.require_staged_bundle_manifest(staging)
+
+    def test_bundle_rejects_stale_staged_bundle_manifest_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            staging = Path(temporary)
+            BUILD.write_staged_bytes(staging / "review_bundle.json", b"{}\n")
+            BUILD.write_staged_bytes(staging / "reviewer-a.prompt.md", b"prompt a\n")
+            BUILD.write_staged_bytes(staging / "reviewer-b.prompt.md", b"prompt b\n")
+            BUILD.write_staged_bytes(
+                staging / "bundle_manifest.json",
+                BUILD.json_bytes(
+                    {
+                        "review_bundle_sha256": BUILD.sha256(
+                            staging / "review_bundle.json",
+                        ),
+                        "prompt_sha256": {
+                            "A": BUILD.sha256(staging / "reviewer-a.prompt.md"),
+                            "B": BUILD.sha256(staging / "reviewer-b.prompt.md"),
+                        },
+                    },
+                ),
+            )
+            (staging / "review_bundle.json").write_text(
+                '{"stale": true}\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "AI review bundle manifest is stale for review_bundle.json",
+            ):
+                BUILD.require_staged_bundle_manifest(staging)
+
     def test_bundle_install_removes_installed_files_after_final_directory_fsync_failure(
         self,
     ) -> None:
