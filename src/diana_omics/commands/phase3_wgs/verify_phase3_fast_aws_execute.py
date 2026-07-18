@@ -11,6 +11,7 @@ from . import verify_phase3_fast_gpu_smoke as gpu_smoke
 GPU_SMOKE_RESULT_ENV = "PHASE3_FAST_GPU_SMOKE_RESULT"
 REQUIRED_GPU_COUNT = 8
 REQUIRED_GPU_NAME = "H200"
+REQUIRED_PARABRICKS_VERSION_COMMAND = "pbrun version"
 
 
 class Phase3FastExecuteError(ValueError):
@@ -40,6 +41,13 @@ def _require_csv_basename(value: Any) -> str:
     name = _require_string(value, "nvidiaSmiCsv")
     if Path(name).name != name:
         raise Phase3FastExecuteError("nvidiaSmiCsv must be a sibling basename")
+    return name
+
+
+def _require_parabricks_version_basename(value: Any) -> str:
+    name = _require_string(value, "parabricksVersionTxt")
+    if Path(name).name != name:
+        raise Phase3FastExecuteError("parabricksVersionTxt must be a sibling basename")
     return name
 
 
@@ -99,6 +107,8 @@ def validate_gpu_smoke_result(
         raise Phase3FastExecuteError(f"GPU smoke result must prove exactly {REQUIRED_GPU_COUNT} visible GPUs")
     if required_name != REQUIRED_GPU_NAME:
         raise Phase3FastExecuteError(f"GPU smoke result must require {REQUIRED_GPU_NAME}")
+    if payload.get("parabricksVersionCommand") != REQUIRED_PARABRICKS_VERSION_COMMAND:
+        raise Phase3FastExecuteError(f"GPU smoke result must include {REQUIRED_PARABRICKS_VERSION_COMMAND}")
 
     csv_path = csv_root / _require_csv_basename(payload.get("nvidiaSmiCsv"))
     csv_rows = _parse_nvidia_smi_csv(csv_path)
@@ -108,12 +118,19 @@ def validate_gpu_smoke_result(
         if required_name not in row["name"]:
             raise Phase3FastExecuteError(f"nvidia-smi GPU {row['index']} was not an {required_name}: {row['name']}")
 
+    parabricks_version_path = csv_root / _require_parabricks_version_basename(payload.get("parabricksVersionTxt"))
+    _require_existing_file(parabricks_version_path, "Parabricks version output")
+    if parabricks_version_path.stat().st_size <= 0:
+        raise Phase3FastExecuteError("Parabricks version output must be non-empty")
+
     return {
         "aws_gpu_queue": aws_gpu_queue,
         "aws_region": aws_region,
         "expected_gpu_count": expected_count,
         "observed_gpu_count": observed_count,
         "parabricks_container": parabricks_container,
+        "parabricks_version_command": REQUIRED_PARABRICKS_VERSION_COMMAND,
+        "parabricks_version_txt": parabricks_version_path.name,
         "required_gpu_name": required_name,
         "status": "passed",
     }

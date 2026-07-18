@@ -183,7 +183,8 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
 
 The smoke workflow verifies that the Batch job lands on the isolated GPU queue
 with the pinned Parabricks image and that `nvidia-smi` reports the expected
-eight H200 GPUs. It is a placement gate only; it does not run Parabricks MutectCaller
+eight H200 GPUs. It also captures `pbrun version` from inside the selected
+container. It is a placement/startup gate only; it does not run Parabricks MutectCaller
 or Diana WGS evidence.
 
 Use `nf:aws:phase3-wgs-fast:execute` only after Gate 0 inputs, the pinned image,
@@ -193,8 +194,9 @@ BAM-to-evidence P5en path and therefore requires
 the reviewed `gpu_smoke.json` with its sibling `nvidia-smi-gpus.csv`, plus the
 reviewed Nextflow receipt parameters after `--`. It still repeats the GPU
 params, cache, and live-quota checks before Nextflow starts, then rejects
-missing, stubbed, stale-queue, stale-image, malformed, or non-H200 smoke output
-so a full run cannot skip the bounded placement gate.
+missing, stubbed, stale-queue, stale-image, malformed, non-H200, or
+non-Parabricks-starting smoke output so a full run cannot skip the bounded
+placement gate.
 
 ## Smoke Test
 

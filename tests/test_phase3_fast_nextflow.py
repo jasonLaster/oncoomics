@@ -320,6 +320,16 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_fast_sv_evidence_threads = 8", config)
         self.assertIn("phase3_fast_filter_mutect_output_root = '/scratch/diana/phase3_wgs_fast/filter_mutect'", config)
 
+    def test_gpu_smoke_records_parabricks_startup(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+        process = text[text.index("process FAST_GPU_SMOKE") :]
+        process = process[: process.index("process ALL_PUBLIC")]
+
+        self.assertIn("pbrun version", process)
+        self.assertIn("parabricks-version.txt", process)
+        self.assertIn('"parabricksVersionCommand": "pbrun version"', process)
+        self.assertIn('"parabricksVersionTxt": "parabricks-version.txt"', process)
+
     def test_blocked_crosschecks_are_staged_after_rosalind(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")
 

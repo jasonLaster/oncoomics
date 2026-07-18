@@ -435,6 +435,10 @@ capacity, a Parabricks image pinned by SHA-256 digest, and a `us-east-2`
 destination KMS key for the regional cache. It also queries the live EC2
 `Running On-Demand P instances` quota and requires at least 192 applied P vCPUs
 before Nextflow can submit the H200 placement job.
+The smoke itself records both `nvidia-smi` output and a non-empty
+`pbrun version` capture from inside the pinned Parabricks container, proving
+that the selected image starts on the selected GPU host before the full
+MutectCaller route can reference the smoke artifact.
 
 After Gate 0 receipts have been reviewed and the GPU smoke has passed, launch
 the full BAM-to-evidence route through the guarded execute alias. Pass the

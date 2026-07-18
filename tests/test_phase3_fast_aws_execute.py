@@ -30,10 +30,18 @@ def passed_smoke_result() -> dict:
         "observedGpuCount": 8,
         "requiredGpuName": "H200",
         "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
+        "parabricksVersionCommand": "pbrun version",
+        "parabricksVersionTxt": "parabricks-version.txt",
     }
 
 
-def write_smoke_result(root: Path, payload: dict | None = None, *, csv: str | None = None) -> Path:
+def write_smoke_result(
+    root: Path,
+    payload: dict | None = None,
+    *,
+    csv: str | None = None,
+    parabricks_version: str | None = "Parabricks v4.5.1-1\n",
+) -> Path:
     path = root / "gpu_smoke.json"
     write_json(path, payload or passed_smoke_result())
     (root / "nvidia-smi-gpus.csv").write_text(
@@ -42,6 +50,8 @@ def write_smoke_result(root: Path, payload: dict | None = None, *, csv: str | No
         + "\n",
         encoding="utf-8",
     )
+    if parabricks_version is not None:
+        (root / "parabricks-version.txt").write_text(parabricks_version, encoding="utf-8")
     return path
 
 
@@ -62,6 +72,8 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
                 "expected_gpu_count": 8,
                 "observed_gpu_count": 8,
                 "parabricks_container": PARABRICKS_CONTAINER,
+                "parabricks_version_command": "pbrun version",
+                "parabricks_version_txt": "parabricks-version.txt",
                 "required_gpu_name": "H200",
                 "status": "passed",
             },
@@ -118,6 +130,31 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "parabricksContainer"):
                 verify.validate_gpu_smoke_result(stale_image, csv_root=root, expected_params=expected_gpu_params())
+
+    def test_rejects_smoke_result_without_parabricks_startup_evidence(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_smoke_result(root, parabricks_version=None)
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "Parabricks version"):
+                verify.validate_gpu_smoke_result(
+                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
+                )
+
+            write_smoke_result(root, parabricks_version="")
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "non-empty"):
+                verify.validate_gpu_smoke_result(
+                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
+                )
+
+            path_traversal = passed_smoke_result()
+            path_traversal["parabricksVersionTxt"] = "../parabricks-version.txt"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "sibling basename"):
+                verify.validate_gpu_smoke_result(path_traversal, csv_root=root, expected_params=expected_gpu_params())
+
+            wrong_command = passed_smoke_result()
+            wrong_command["parabricksVersionCommand"] = "pbrun mutectcaller"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "pbrun version"):
+                verify.validate_gpu_smoke_result(wrong_command, csv_root=root, expected_params=expected_gpu_params())
 
     def test_rejects_csv_path_traversal(self) -> None:
         with TemporaryDirectory() as tmp:

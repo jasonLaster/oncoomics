@@ -624,6 +624,9 @@ process FAST_GPU_SMOKE {
       ' workspace/results/phase3_wgs_fast_gpu_smoke/nvidia-smi-gpus.csv
     fi
 
+    pbrun version > workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt 2>&1
+    test -s workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt
+
     cat > workspace/results/phase3_wgs_fast_gpu_smoke/gpu_smoke.json <<JSON
     {
       "schema": "phase3_wgs_fast_gpu_smoke.v1",
@@ -634,7 +637,9 @@ process FAST_GPU_SMOKE {
       "expectedGpuCount": \${expected_gpus},
       "observedGpuCount": \${gpu_count},
       "requiredGpuName": "\${required_name}",
-      "nvidiaSmiCsv": "nvidia-smi-gpus.csv"
+      "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
+      "parabricksVersionCommand": "pbrun version",
+      "parabricksVersionTxt": "parabricks-version.txt"
     }
     JSON
     """
@@ -653,6 +658,9 @@ process FAST_GPU_SMOKE {
     6, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000006
     7, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000007
     CSV
+    cat > workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt <<TXT
+    Parabricks v4.5.1-1
+    TXT
     cat > workspace/results/phase3_wgs_fast_gpu_smoke/gpu_smoke.json <<JSON
     {
       "schema": "phase3_wgs_fast_gpu_smoke.v1",
@@ -663,7 +671,9 @@ process FAST_GPU_SMOKE {
       "expectedGpuCount": 8,
       "observedGpuCount": 8,
       "requiredGpuName": "H200",
-      "nvidiaSmiCsv": "nvidia-smi-gpus.csv"
+      "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
+      "parabricksVersionCommand": "pbrun version",
+      "parabricksVersionTxt": "parabricks-version.txt"
     }
     JSON
     """
