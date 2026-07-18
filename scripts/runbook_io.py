@@ -46,9 +46,18 @@ def missing_required_files(paths: Iterable[Path]) -> tuple[Path, ...]:
 
 
 def preexisting_create_only_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
-    """Return create-only outputs that already exist, including broken symlinks."""
+    """Return create-only outputs that already exist or would be redirected."""
 
-    return tuple(path for path in paths if path.exists() or path.is_symlink())
+    return tuple(
+        path
+        for path in paths
+        if path.exists()
+        or path.is_symlink()
+        or any(
+            parent.is_symlink() and not is_platform_root_alias(parent)
+            for parent in path.parents
+        )
+    )
 
 
 def load_json_object(path: Path, label: str) -> dict[str, Any]:

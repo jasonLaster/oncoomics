@@ -91,17 +91,19 @@ def ai_receipt_summaries(
 
 def reviewed_publication_receipt_summaries(
     reviewed_publication: object,
+    receipt_paths: list[Path],
 ) -> tuple[dict[str, str | int], ...]:
     return tuple(
         {
             "method_id": method_id,
-            "receipt": f"{method_id}.private.json",
+            "receipt": str(receipt_path),
             "receipt_sha256": f"{index:064x}",
             "destination_prefix": reviewed_publication.destination_prefix(method_id),
             "object_count": 3,
         }
-        for index, method_id in enumerate(
-            reviewed_publication.REPORT_METHOD_IDS, 1
+        for index, (method_id, receipt_path) in enumerate(
+            zip(reviewed_publication.REPORT_METHOD_IDS, receipt_paths, strict=True),
+            1,
         )
     )
 
@@ -132,7 +134,8 @@ def rendered_runbooks() -> dict[str, str]:
             reviewed_public_receipts,
             "unit",
             receipt_summaries=reviewed_publication_receipt_summaries(
-                reviewed_publication
+                reviewed_publication,
+                reviewed_public_receipts,
             ),
         ),
     }

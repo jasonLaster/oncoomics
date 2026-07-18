@@ -599,6 +599,23 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "existing" / "runbook.md").exists())
 
+    def test_create_only_preflight_rejects_missing_child_below_symlinked_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-outputs"
+            real_parent.mkdir()
+            linked_parent = root / "linked-outputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            output = linked_parent / "missing" / "receipt.json"
+
+            self.assertEqual(
+                RUNBOOK_IO.preexisting_create_only_paths([output]),
+                (output,),
+            )
+            self.assertFalse((real_parent / "missing" / "receipt.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
