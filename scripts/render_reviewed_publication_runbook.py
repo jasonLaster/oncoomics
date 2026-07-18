@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Iterable
 
 from hrd_report_inventory import REPORT_METHOD_IDS
 from publish_reviewed_public_report import (
@@ -22,6 +22,7 @@ from publish_reviewed_public_report import (
 )
 from runbook_io import (
     block,
+    load_json_object,
     missing_required_files,
     preexisting_create_only_paths,
     write_once,
@@ -38,15 +39,6 @@ STALE_TOKENS = (
 )
 
 
-def load_object(path: Path) -> dict[str, Any]:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"private publication receipt is missing or a symlink: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(value, dict):
-        raise ValueError(f"private publication receipt is not a JSON object: {path}")
-    return value
-
-
 def validate_private_report_receipts(
     receipt_paths: Iterable[Path],
 ) -> tuple[dict[str, str | int], ...]:
@@ -54,7 +46,10 @@ def validate_private_report_receipts(
     if len(paths) != len(REPORT_METHOD_IDS):
         raise ValueError("exactly ten private publication receipts are required")
 
-    method_ids = [str(load_object(path).get("method_id", "")) for path in paths]
+    method_ids = [
+        str(load_json_object(path, "private publication receipt").get("method_id", ""))
+        for path in paths
+    ]
     if method_ids != list(REPORT_METHOD_IDS):
         raise ValueError(
             "private publication receipts must be passed in canonical "

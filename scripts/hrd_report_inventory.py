@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 from typing import Any, Sequence
 
 INVENTORY_SCHEMA_VERSION = 1
@@ -73,3 +74,49 @@ def require_report_methods(values: Sequence[str], label: str) -> list[str]:
 def require_inventory_binding(payload: Any, digest: Any, label: str) -> None:
     if payload != inventory_payload() or str(digest).lower() != inventory_sha256():
         raise ValueError(f"{label} differs from the pinned seven-method inventory")
+
+
+def source_report_packet_dirs(
+    root: Path,
+    run_id: str,
+    sigprofiler_report_dir: Path | None = None,
+    sequenza_report_dir: Path | None = None,
+) -> dict[str, Path]:
+    """Return the canonical source report packet directories in method order."""
+
+    reports = root / ".codex-tmp/hrd-reports"
+    crosschecks = reports / "crosschecks"
+    blocked = reports / "blocked-crosschecks"
+    paths = {
+        "deterministic_full_wgs": reports / "deterministic-full/report",
+        "rosalind_diana_wgs": root / "results/rosalind_hrd/diana_wgs" / run_id,
+        "sequenza_scarhrd": (
+            sequenza_report_dir or crosschecks / "sequenza_scarhrd"
+        ),
+        "sigprofiler_sbs3": (
+            sigprofiler_report_dir or crosschecks / "sigprofiler_sbs3"
+        ),
+    }
+    for method_id, directory in BLOCKED_CROSSCHECK_REPORT_DIRS.items():
+        paths[method_id] = blocked / directory
+    require_pinned_methods(tuple(paths), "source report packet directories")
+    return paths
+
+
+def source_report_manifest_paths(
+    root: Path,
+    run_id: str,
+    sigprofiler_report_dir: Path | None = None,
+    sequenza_report_dir: Path | None = None,
+) -> dict[str, Path]:
+    """Return each canonical source report packet's manifest path."""
+
+    return {
+        method_id: path / "report_manifest.json"
+        for method_id, path in source_report_packet_dirs(
+            root,
+            run_id,
+            sigprofiler_report_dir,
+            sequenza_report_dir,
+        ).items()
+    }

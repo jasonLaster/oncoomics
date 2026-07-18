@@ -94,6 +94,61 @@ class HrdReportInventoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "differs"):
             INVENTORY.require_inventory_binding(payload, "0" * 64, "test binding")
 
+    def test_source_report_paths_follow_pinned_method_order(self) -> None:
+        root = Path("/repo")
+
+        packet_dirs = INVENTORY.source_report_packet_dirs(root, "run-20260718")
+        manifest_paths = INVENTORY.source_report_manifest_paths(root, "run-20260718")
+
+        self.assertEqual(tuple(packet_dirs), INVENTORY.REQUIRED_METHOD_IDS)
+        self.assertEqual(
+            packet_dirs["deterministic_full_wgs"],
+            root / ".codex-tmp/hrd-reports/deterministic-full/report",
+        )
+        self.assertEqual(
+            packet_dirs["rosalind_diana_wgs"],
+            root / "results/rosalind_hrd/diana_wgs/run-20260718",
+        )
+        self.assertEqual(
+            packet_dirs["sequenza_scarhrd"],
+            root / ".codex-tmp/hrd-reports/crosschecks/sequenza_scarhrd",
+        )
+        self.assertEqual(
+            packet_dirs["sigprofiler_sbs3"],
+            root / ".codex-tmp/hrd-reports/crosschecks/sigprofiler_sbs3",
+        )
+        for method_id, directory in INVENTORY.BLOCKED_CROSSCHECK_REPORT_DIRS.items():
+            self.assertEqual(
+                packet_dirs[method_id],
+                root / ".codex-tmp/hrd-reports/blocked-crosschecks" / directory,
+            )
+        self.assertEqual(
+            manifest_paths,
+            {
+                method_id: packet_dir / "report_manifest.json"
+                for method_id, packet_dir in packet_dirs.items()
+            },
+        )
+
+    def test_source_report_paths_accept_executable_route_overrides(self) -> None:
+        root = Path("/repo")
+
+        packet_dirs = INVENTORY.source_report_packet_dirs(
+            root,
+            "run-20260718",
+            sigprofiler_report_dir=Path("/tmp/sigprofiler"),
+            sequenza_report_dir=Path("/tmp/sequenza"),
+        )
+
+        self.assertEqual(
+            packet_dirs["sequenza_scarhrd"],
+            Path("/tmp/sequenza"),
+        )
+        self.assertEqual(
+            packet_dirs["sigprofiler_sbs3"],
+            Path("/tmp/sigprofiler"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

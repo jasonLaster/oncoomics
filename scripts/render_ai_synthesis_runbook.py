@@ -17,10 +17,10 @@ from ai_model_catalog import (
 )
 from hrd_report_inventory import (
     AI_REVIEW_METHOD_IDS,
-    BLOCKED_CROSSCHECK_REPORT_DIRS,
     COMPARATIVE_METHOD_IDS,
     REPORT_METHOD_IDS,
     REQUIRED_METHOD_IDS,
+    source_report_manifest_paths,
 )
 from prepare_ai_review_run import METHOD_ARGUMENTS
 from publish_reviewed_public_report import (
@@ -37,6 +37,7 @@ from runbook_io import (
     Raw,
     bash_block,
     block,
+    load_json_object,
     missing_required_files,
     preexisting_create_only_paths,
     shell_join,
@@ -62,15 +63,6 @@ def sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
-def load_object(path: Path, label: str) -> dict[str, Any]:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"{label} is missing or a symlink: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(value, dict):
-        raise ValueError(f"{label} is not a JSON object: {path}")
-    return value
-
-
 def validate_private_report_receipt(
     receipt_path: Path,
     method_id: str,
@@ -94,7 +86,7 @@ def validate_private_report_receipt(
         "method_id": method_id,
         "receipt": str(receipt_path),
         "destination_prefix": str(
-            load_object(receipt_path, f"{method_id} private publication receipt")[
+            load_json_object(receipt_path, f"{method_id} private publication receipt")[
                 "destination_prefix"
             ]
         ),
@@ -113,7 +105,7 @@ def validate_private_report_receipts(
         raise ValueError("exactly seven private publication receipts are required")
 
     method_ids = [
-        str(load_object(path, "private publication receipt").get("method_id", ""))
+        str(load_json_object(path, "private publication receipt").get("method_id", ""))
         for path in paths
     ]
     if method_ids != list(REQUIRED_METHOD_IDS):
@@ -136,28 +128,12 @@ def report_manifest_paths(
     sigprofiler_report_dir: Path | None = None,
     sequenza_report_dir: Path | None = None,
 ) -> dict[str, Path]:
-    reports = root / ".codex-tmp/hrd-reports"
-    crosschecks = reports / "crosschecks"
-    blocked = reports / "blocked-crosschecks"
-    paths = {
-        "deterministic_full_wgs": (
-            reports / "deterministic-full/report/report_manifest.json"
-        ),
-        "rosalind_diana_wgs": (
-            root / "results/rosalind_hrd/diana_wgs" / RUN_ID / "report_manifest.json"
-        ),
-        "sequenza_scarhrd": (
-            sequenza_report_dir or crosschecks / "sequenza_scarhrd"
-        )
-        / "report_manifest.json",
-        "sigprofiler_sbs3": (
-            sigprofiler_report_dir or crosschecks / "sigprofiler_sbs3"
-        )
-        / "report_manifest.json",
-    }
-    for method_id, directory in BLOCKED_CROSSCHECK_REPORT_DIRS.items():
-        paths[method_id] = blocked / directory / "report_manifest.json"
-    return paths
+    return source_report_manifest_paths(
+        root,
+        RUN_ID,
+        sigprofiler_report_dir,
+        sequenza_report_dir,
+    )
 
 
 def prepare_manifest_flags(paths: dict[str, Path]) -> list[str | Path]:

@@ -69,3 +69,24 @@ class RunbookIoTests(unittest.TestCase):
                 MODULE.preexisting_create_only_paths(paths),
                 (regular, directory, broken_symlink),
             )
+
+    def test_load_json_object_rejects_non_objects_and_symlinks(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "receipt.json"
+            array = root / "array.json"
+            broken_symlink = root / "broken.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            array.write_text('["not", "an", "object"]\n', encoding="utf-8")
+            broken_symlink.symlink_to(root / "absent.json")
+
+            self.assertEqual(
+                MODULE.load_json_object(receipt, "private publication receipt"),
+                {"status": "passed"},
+            )
+            with self.assertRaisesRegex(ValueError, "not a JSON object"):
+                MODULE.load_json_object(array, "private publication receipt")
+            with self.assertRaisesRegex(ValueError, "missing or a symlink"):
+                MODULE.load_json_object(broken_symlink, "private publication receipt")
+            with self.assertRaisesRegex(ValueError, "missing or a symlink"):
+                MODULE.load_json_object(root / "missing.json", "missing receipt")

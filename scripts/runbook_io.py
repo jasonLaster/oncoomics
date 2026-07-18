@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shlex
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 
 class Raw(str):
@@ -48,6 +49,17 @@ def preexisting_create_only_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
     """Return create-only outputs that already exist, including broken symlinks."""
 
     return tuple(path for path in paths if path.exists() or path.is_symlink())
+
+
+def load_json_object(path: Path, label: str) -> dict[str, Any]:
+    """Load a required JSON object while rejecting symlinked receipts."""
+
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} is missing or a symlink: {path}")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} is not a JSON object: {path}")
+    return value
 
 
 def source_private_receipt_path(

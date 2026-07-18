@@ -168,6 +168,35 @@ class StageAiReviewInputsTests(unittest.TestCase):
         with self.assertRaisesRegex(FileExistsError, "receipt already exists"):
             STAGE.stage(self.bundle, self.output_root, self.receipt)
 
+    def test_rejects_overlapping_bundle_output_and_receipt_paths(self) -> None:
+        cases = (
+            (
+                self.bundle / "reviewer-inputs",
+                self.receipt,
+                "output root must be separate",
+            ),
+            (
+                self.output_root,
+                self.output_root / "reviewer-a-input" / "stage-receipt.json",
+                "receipt output must be separate",
+            ),
+            (
+                self.output_root,
+                self.bundle / "stage-receipt.json",
+                "receipt output must be separate",
+            ),
+        )
+
+        for output_root, receipt, message in cases:
+            with self.subTest(output_root=output_root, receipt=receipt):
+                with self.assertRaisesRegex(ValueError, message):
+                    STAGE.stage(self.bundle, output_root, receipt)
+
+                self.assertFalse((self.bundle / "reviewer-inputs").exists())
+                self.assertFalse((self.output_root / "reviewer-a-input").exists())
+                self.assertFalse((self.output_root / "reviewer-b-input").exists())
+                self.assertFalse(receipt.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

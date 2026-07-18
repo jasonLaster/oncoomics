@@ -174,10 +174,13 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             )
 
             paths = MODULE.source_packet_dirs(root)
+            blocked_method_ids = {
+                method["method_id"] for method in BLOCKED_GENERATOR.METHODS
+            }
             source_paths = {
                 method_id: path
                 for method_id, path in paths.items()
-                if method_id not in MODULE.BLOCKED_CROSSCHECK_REPORT_DIRS
+                if method_id not in blocked_method_ids
             }
             write_packet_dirs(source_paths)
 

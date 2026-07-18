@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Iterable
 
 from hrd_report_inventory import (
-    BLOCKED_CROSSCHECK_REPORT_DIRS,
     REQUIRED_METHOD_IDS,
+    source_report_packet_dirs,
 )
 from publish_reviewed_public_report import METHOD_CONTRACTS, REGION, RUN_ID
 from render_ai_synthesis_runbook import (
@@ -55,20 +55,12 @@ def source_packet_dirs(
     sigprofiler_report_dir: Path | None = None,
     sequenza_report_dir: Path | None = None,
 ) -> dict[str, Path]:
-    reports = root / ".codex-tmp/hrd-reports"
-    crosschecks = reports / "crosschecks"
-    blocked = reports / "blocked-crosschecks"
-    paths = {
-        "deterministic_full_wgs": reports / "deterministic-full/report",
-        "rosalind_diana_wgs": root
-        / "results/rosalind_hrd/diana_wgs"
-        / RUN_ID,
-        "sequenza_scarhrd": sequenza_report_dir or crosschecks / "sequenza_scarhrd",
-        "sigprofiler_sbs3": sigprofiler_report_dir or crosschecks / "sigprofiler_sbs3",
-    }
-    for method_id, directory in BLOCKED_CROSSCHECK_REPORT_DIRS.items():
-        paths[method_id] = blocked / directory
-    return paths
+    return source_report_packet_dirs(
+        root,
+        RUN_ID,
+        sigprofiler_report_dir,
+        sequenza_report_dir,
+    )
 
 
 def validate_packet_dirs(paths: dict[str, Path]) -> None:

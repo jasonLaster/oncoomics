@@ -109,6 +109,22 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
     bundle_dir = bundle_dir.resolve()
     output_root = output_root.resolve()
     receipt_output = receipt_output.resolve()
+    if (
+        bundle_dir == output_root
+        or bundle_dir.is_relative_to(output_root)
+        or output_root.is_relative_to(bundle_dir)
+    ):
+        raise ValueError("output root must be separate from the review bundle")
+    if (
+        receipt_output == bundle_dir
+        or receipt_output.is_relative_to(bundle_dir)
+        or receipt_output == output_root
+        or receipt_output.is_relative_to(output_root)
+    ):
+        raise ValueError(
+            "receipt output must be separate from the review bundle and output root"
+        )
+
     hashes = validate_bundle(bundle_dir)
 
     if receipt_output.exists() or receipt_output.is_symlink():
