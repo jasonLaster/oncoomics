@@ -36,6 +36,46 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
             self.assertFalse(any(output.parent.glob(".execution.json.*.tmp")))
 
+    def test_reserve_json_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "execution.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "JSON output changed during write"),
+            ):
+                MODULE.reserve_json(output, {"status": "in_progress"})
+
+            self.assertFalse(output.exists())
+
+    def test_write_json_atomic_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "execution.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "JSON output changed during write"),
+            ):
+                MODULE.write_json_atomic(output, {"status": "passed"})
+
     def test_evidence_path_rejects_symlinked_parent_without_reservation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
