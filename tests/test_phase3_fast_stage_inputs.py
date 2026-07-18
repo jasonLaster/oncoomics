@@ -218,6 +218,19 @@ class Phase3FastStageInputsTests(unittest.TestCase):
             self.assertEqual("ready", manifest["status"])
             self.assertIn('"manifest_type": "phase3_wgs_fast_staged_inputs_manifest"', output_path.read_text(encoding="utf-8"))
 
+    def test_manifest_output_rejects_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_output = root / "real-output"
+            real_output.mkdir()
+            linked_output = root / "linked-output"
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(stage.ManifestError, "parent may not be a symlink"):
+                stage.write_manifest(linked_output / "staged-inputs.json", {"status": "redirected"})
+
+            self.assertEqual([], list(real_output.rglob("*")))
+
 
 if __name__ == "__main__":
     unittest.main()

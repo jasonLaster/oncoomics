@@ -152,23 +152,23 @@ def _sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _require_safe_local_path(path: Path, artifact: str) -> None:
+def _require_safe_output_path(path: Path, label: str) -> None:
     if path.is_symlink():
-        raise ManifestError(f"{artifact} local_path may not be a symlink: {path}")
+        raise ManifestError(f"{label} may not be a symlink: {path}")
 
     parent = path.parent
     while not parent.exists() and not parent.is_symlink():
         next_parent = parent.parent
         if next_parent == parent:
-            raise ManifestError(f"{artifact} local_path parent does not exist: {path.parent}")
+            raise ManifestError(f"{label} parent does not exist: {path.parent}")
         parent = next_parent
 
     if parent.is_symlink():
-        raise ManifestError(f"{artifact} local_path parent may not be a symlink: {parent}")
+        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
     if not parent.is_dir():
-        raise ManifestError(f"{artifact} local_path parent is not a directory: {parent}")
+        raise ManifestError(f"{label} parent is not a directory: {parent}")
     if path.exists() and not path.is_file():
-        raise ManifestError(f"{artifact} local_path already exists and is not a file: {path}")
+        raise ManifestError(f"{label} already exists and is not a file: {path}")
 
 
 def materialize_phase3_fast_staged_inputs(
@@ -179,7 +179,7 @@ def materialize_phase3_fast_staged_inputs(
     for row in rows:
         artifact = _require_string(row.get("artifact"), "staged artifact")
         local_path = _require_absolute_path(row.get("local_path"), f"{artifact} local_path")
-        _require_safe_local_path(local_path, artifact)
+        _require_safe_output_path(local_path, f"{artifact} local_path")
         ensure_parent(local_path)
         fd, tmp_name = tempfile.mkstemp(
             dir=local_path.parent,
@@ -215,6 +215,7 @@ def stage_phase3_fast_inputs(
 
 
 def write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
+    _require_safe_output_path(path, "staged inputs manifest output")
     ensure_parent(path)
     path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

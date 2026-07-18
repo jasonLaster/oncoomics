@@ -65,6 +65,23 @@ def _sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _require_safe_output_path(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"{label} may not be a symlink: {path}")
+
+    parent = path.parent
+    while not parent.exists() and not parent.is_symlink():
+        next_parent = parent.parent
+        if next_parent == parent:
+            raise ManifestError(f"{label} parent does not exist: {path.parent}")
+        parent = next_parent
+
+    if parent.is_symlink():
+        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ManifestError(f"{label} parent is not a directory: {parent}")
+
+
 def _source_blob(value: Any, label: str) -> dict[str, Any]:
     source = _require_mapping(value, label)
     return {
@@ -214,6 +231,7 @@ def build_phase3_fast_crosscheck_materialization_plan(
 
 
 def write_plan(path: Path, plan: Mapping[str, Any]) -> None:
+    _require_safe_output_path(path, "cross-check materialization plan output")
     ensure_parent(path)
     path.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

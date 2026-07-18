@@ -266,6 +266,7 @@ def build_phase3_fast_staged_inputs_manifest(
 
 
 def write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
+    _require_safe_local_path(path, "staged inputs manifest output")
     ensure_parent(path)
     path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

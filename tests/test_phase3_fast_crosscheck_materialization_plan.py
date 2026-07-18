@@ -182,6 +182,22 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
         self.assertEqual(expected_manifest_sha256, plan["source"]["final_evidence_manifest_sha256"])
         self.assertIn('"manifest_type": "phase3_wgs_fast_crosscheck_materialization_plan"', output_text)
 
+    def test_plan_output_rejects_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_output = root / "real-output"
+            real_output.mkdir()
+            linked_output = root / "linked-output"
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(crosscheck_plan.ManifestError, "parent may not be a symlink"):
+                crosscheck_plan.write_plan(
+                    linked_output / "crosscheck-materialization-plan.json",
+                    {"status": "redirected"},
+                )
+
+            self.assertEqual([], list(real_output.rglob("*")))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -192,6 +192,22 @@ class Phase3FastEvidenceJoinTests(unittest.TestCase):
                 sv_evidence_receipt_sha256=SHA_7,
             )
 
+    def test_manifest_output_rejects_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_output = root / "real-output"
+            real_output.mkdir()
+            linked_output = root / "linked-output"
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(join_evidence.ManifestError, "parent may not be a symlink"):
+                join_evidence.write_manifest(
+                    linked_output / "evidence-join.json",
+                    {"status": "redirected"},
+                )
+
+            self.assertEqual([], list(real_output.rglob("*")))
+
 
 if __name__ == "__main__":
     unittest.main()
