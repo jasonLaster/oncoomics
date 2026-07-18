@@ -44,6 +44,20 @@ class MaterializingSamtoolsRunner:
             stdout_path.write_bytes(b"read1\t99\tchr1\t1\t60\t1M\t=\t10\t9\tA\t*\n")
 
 
+class SymlinkSamtoolsRunner(MaterializingSamtoolsRunner):
+    def run(self, argv: list[str], *, stdout_path: Path) -> None:
+        super().run(argv, stdout_path=stdout_path)
+        role = stdout_path.parent.name
+        name = _command_name(stdout_path)
+        if (role, name) != ("tumor", "supplementary_alignments"):
+            return
+
+        target = stdout_path.parent / "supplementary_alignments.redirected.txt"
+        target.write_text("7\n", encoding="utf-8")
+        stdout_path.unlink()
+        stdout_path.symlink_to(target)
+
+
 def _command_name(path: Path) -> str:
     if path.name == "idxstats.tsv":
         return "idxstats"
@@ -201,6 +215,17 @@ class Phase3FastSvEvidenceRunTests(unittest.TestCase):
                 run_sv.run_phase3_fast_sv_evidence(
                     plan,
                     runner=MaterializingSamtoolsRunner(malformed={("tumor", "supplementary_alignments")}),
+                    sv_evidence_plan_sha256=SHA_1,
+                )
+
+    def test_rejects_tool_created_symlink_output_before_reading_counts(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = phase3_fast_sv_evidence_plan(Path(tmp))
+
+            with self.assertRaisesRegex(run_sv.ManifestError, "may not be a symlink"):
+                run_sv.run_phase3_fast_sv_evidence(
+                    plan,
+                    runner=SymlinkSamtoolsRunner(),
                     sv_evidence_plan_sha256=SHA_1,
                 )
 

@@ -47,6 +47,19 @@ class MaterializingParabricksRunner(RecordingRunner):
         self.payloads[key] = payload
 
 
+class SymlinkMaterializingParabricksRunner(MaterializingParabricksRunner):
+    def _write_output(self, key: str) -> None:
+        super()._write_output(key)
+        if key != "pon_annotated_vcf":
+            return
+
+        path = Path(self.plan["outputs"][key])
+        target = path.parent / f"{key}.redirected"
+        target.write_bytes(b"redirected pon annotated vcf\n")
+        path.unlink()
+        path.symlink_to(target)
+
+
 def _sha256_json(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -196,6 +209,17 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
                 run_mutect.run_phase3_fast_parabricks_mutect(
                     plan,
                     runner=runner,
+                    parabricks_mutect_plan_sha256=SHA_1,
+                )
+
+    def test_rejects_tool_created_symlink_output_before_hashing_receipt(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = parabricks_plan(Path(tmp))
+
+            with self.assertRaisesRegex(run_mutect.ManifestError, "may not be a symlink"):
+                run_mutect.run_phase3_fast_parabricks_mutect(
+                    plan,
+                    runner=SymlinkMaterializingParabricksRunner(plan),
                     parabricks_mutect_plan_sha256=SHA_1,
                 )
 

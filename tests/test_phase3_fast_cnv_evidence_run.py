@@ -37,6 +37,18 @@ class MaterializingBedcovRunner:
         stdout_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
 
+class SymlinkBedcovRunner(MaterializingBedcovRunner):
+    def run(self, argv: list[str], *, stdout_path: Path) -> None:
+        super().run(argv, stdout_path=stdout_path)
+        if stdout_path.name.split(".", 1)[0] != "chr1":
+            return
+
+        target = stdout_path.parent / "chr1.redirected.tsv"
+        target.write_text("chr1\t0\t10\t200\t100\nchr1\t10\t20\t200\t100\n", encoding="utf-8")
+        stdout_path.unlink()
+        stdout_path.symlink_to(target)
+
+
 def _sha256_json(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -196,6 +208,17 @@ class Phase3FastCnvEvidenceRunTests(unittest.TestCase):
                 run_cnv.run_phase3_fast_cnv_evidence(
                     plan,
                     runner=MaterializingBedcovRunner(first_bin_only=True),
+                    cnv_evidence_plan_sha256=SHA_1,
+                )
+
+    def test_rejects_tool_created_symlink_output_before_parsing_bedcov(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = phase3_fast_cnv_evidence_plan(Path(tmp))
+
+            with self.assertRaisesRegex(run_cnv.ManifestError, "may not be a symlink"):
+                run_cnv.run_phase3_fast_cnv_evidence(
+                    plan,
+                    runner=SymlinkBedcovRunner(),
                     cnv_evidence_plan_sha256=SHA_1,
                 )
 

@@ -51,6 +51,27 @@ class MaterializingSamtoolsRunner:
             output_path.write_text("chr1\t25\t10\t0\n", encoding="utf-8")
 
 
+class SymlinkSamtoolsRunner(MaterializingSamtoolsRunner):
+    def run(
+        self,
+        argv: list[str],
+        *,
+        stdout_path: Path | None = None,
+        stderr_path: Path | None = None,
+    ) -> None:
+        super().run(argv, stdout_path=stdout_path, stderr_path=stderr_path)
+        role = (stderr_path or stdout_path).parent.name
+        name = _command_name(stdout_path=stdout_path, stderr_path=stderr_path)
+        if (role, name) != ("normal", "idxstats"):
+            return
+
+        output_path = stdout_path or stderr_path
+        target = output_path.parent / "idxstats.redirected.tsv"
+        target.write_text("chr1\t25\t10\t0\n", encoding="utf-8")
+        output_path.unlink()
+        output_path.symlink_to(target)
+
+
 def _command_name(*, stdout_path: Path | None, stderr_path: Path | None) -> str:
     if stderr_path is not None:
         return "quickcheck"
@@ -203,6 +224,17 @@ class Phase3FastBamQcRunTests(unittest.TestCase):
                 run_qc.run_phase3_fast_bam_qc(
                     plan,
                     runner=MaterializingSamtoolsRunner(empty={("normal", "flagstat")}),
+                    bam_qc_plan_sha256=SHA_1,
+                )
+
+    def test_rejects_tool_created_symlink_output_before_hashing_receipt(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = phase3_fast_bam_qc_plan(Path(tmp))
+
+            with self.assertRaisesRegex(run_qc.ManifestError, "may not be a symlink"):
+                run_qc.run_phase3_fast_bam_qc(
+                    plan,
+                    runner=SymlinkSamtoolsRunner(),
                     bam_qc_plan_sha256=SHA_1,
                 )
 

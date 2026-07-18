@@ -72,6 +72,19 @@ class IncompleteFilterMutectRunner(FilterMutectRunner):
             self._write_option_output(argv, "-O")
 
 
+class SymlinkFilterMutectRunner(FilterMutectRunner):
+    def run(self, argv: list[str]) -> None:
+        super().run(argv)
+        if argv[:2] != ["bcftools", "index"] or not argv[-1].endswith("filtered.vcf.gz"):
+            return
+
+        path = Path(f"{argv[-1]}.tbi")
+        target = path.parent / "filtered_vcf_index.redirected"
+        target.write_bytes(b"redirected filtered index\n")
+        path.unlink()
+        path.symlink_to(target)
+
+
 def _sha256_json(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -450,6 +463,19 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
                     plan,
                     parabricks_receipt,
                     runner=RecordingRunner(),
+                    filter_mutect_plan_sha256=SHA_1,
+                    parabricks_mutect_receipt_sha256=SHA_3,
+                )
+
+    def test_rejects_tool_created_symlink_output_before_hashing_receipt(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
+
+            with self.assertRaisesRegex(run_filter.ManifestError, "may not be a symlink"):
+                run_filter.run_phase3_fast_filter_mutect(
+                    plan,
+                    parabricks_receipt,
+                    runner=SymlinkFilterMutectRunner(),
                     filter_mutect_plan_sha256=SHA_1,
                     parabricks_mutect_receipt_sha256=SHA_3,
                 )

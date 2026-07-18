@@ -255,6 +255,7 @@ def _sha256_path(path: Path) -> str:
 
 
 def _hash_materialized(path: Path, key: str, *, allow_empty: bool) -> dict[str, Any]:
+    _require_safe_output_path(path)
     if not path.is_file():
         raise ManifestError(f"{key} must exist after BAM QC execution: {path}")
     bytes_ = path.stat().st_size

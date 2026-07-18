@@ -284,6 +284,7 @@ def _parse_bedcov_rows(shards: Sequence[Mapping[str, Any]]) -> tuple[list[dict[s
     combined_lines: list[str] = []
     for shard in shards:
         path = Path(shard["bedcov_tsv"])
+        _require_safe_output_path(path)
         if not path.is_file():
             raise ManifestError(f"{shard['contig']} bedcov output must exist after execution: {path}")
         shard_count = 0
@@ -366,6 +367,7 @@ def _sha256_path(path: Path) -> str:
 
 
 def _hash_materialized(path: Path, key: str) -> dict[str, Any]:
+    _require_safe_output_path(path)
     if not path.is_file():
         raise ManifestError(f"{key} must exist after CNV evidence execution: {path}")
     bytes_ = path.stat().st_size

@@ -189,6 +189,7 @@ def _materialized_outputs(plan: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     materialized: dict[str, dict[str, Any]] = {}
     for key in MATERIALIZED_OUTPUTS:
         path = _require_absolute_path(outputs.get(key), key)
+        _require_safe_output_path(path, key)
         if not path.is_file():
             raise ManifestError(f"{key} must exist after Parabricks Mutect execution: {path}")
         bytes_ = path.stat().st_size

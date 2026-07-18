@@ -430,6 +430,7 @@ def _require_safe_output_path(path: Path, key: str) -> None:
 
 
 def _hash_materialized(path: Path, key: str, *, producer: str) -> dict[str, Any]:
+    _require_safe_output_path(path, key)
     if not path.is_file():
         raise ManifestError(f"{key} must exist after {producer} execution: {path}")
     bytes_ = path.stat().st_size

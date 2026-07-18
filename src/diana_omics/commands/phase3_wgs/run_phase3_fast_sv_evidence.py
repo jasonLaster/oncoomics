@@ -207,6 +207,7 @@ def _sha256_path(path: Path) -> str:
 
 
 def _read_supplementary_count(path: Path, role: str) -> int:
+    _require_safe_output_path(path)
     if not path.is_file():
         raise ManifestError(f"{role} supplementary_alignments must exist after SV evidence execution: {path}")
     text = path.read_text(encoding="utf-8").strip()
@@ -216,6 +217,7 @@ def _read_supplementary_count(path: Path, role: str) -> int:
 
 
 def _hash_materialized(path: Path, key: str, *, allow_empty: bool) -> dict[str, Any]:
+    _require_safe_output_path(path)
     if not path.is_file():
         raise ManifestError(f"{key} must exist after SV evidence execution: {path}")
     bytes_ = path.stat().st_size
