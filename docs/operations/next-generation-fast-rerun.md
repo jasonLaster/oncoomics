@@ -272,6 +272,9 @@ the original `us-east-1` run prefix directly.
 `FAST_STAGING_PLAN` converts that manifest into a plan-only, version-pinned
 `aws s3api get-object --version-id` contract with deterministic `/scratch` paths
 for the eventual GPU or distributed CPU workers.
+After those commands materialize local files, `verify:phase3-fast-staged-inputs`
+hashes every staged object and writes the grouped local-file manifest that GPU
+and distributed CPU callers should consume.
 
 ### Gate 1: P5en and Parabricks smoke
 

@@ -71,6 +71,7 @@ class CliParityTest(unittest.TestCase):
             "verify:outputs",
             "verify:phase3-outputs",
             "verify:phase3-fast-gpu-smoke",
+            "verify:phase3-fast-staged-inputs",
             "verify:plan",
             "verify:sv-caller-readiness",
         }
