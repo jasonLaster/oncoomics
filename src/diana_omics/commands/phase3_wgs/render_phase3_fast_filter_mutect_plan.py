@@ -129,6 +129,7 @@ def build_phase3_fast_filter_mutect_plan(
     raw_vcf = _require_absolute_path(mutect_outputs.get("raw_vcf"), "raw_vcf")
     raw_stats = f"{raw_vcf}.stats"
     pon_annotated_vcf = _require_absolute_path(mutect_outputs.get("pon_annotated_vcf"), "pon_annotated_vcf")
+    pon_annotated_vcf_index = f"{pon_annotated_vcf}.tbi"
     f1r2 = _require_absolute_path(mutect_outputs.get("f1r2_tar_gz"), "f1r2_tar_gz")
 
     tumor_pileups = str(pileups / "tumor.pileups.table")
@@ -207,6 +208,15 @@ def build_phase3_fast_filter_mutect_plan(
                 ],
             ),
         },
+        "index_pon_annotated_vcf": {
+            "argv": [
+                "bcftools",
+                "index",
+                "-t",
+                "-f",
+                pon_annotated_vcf,
+            ],
+        },
         "filter_mutect_calls": {
             "argv": _gatk(
                 gatk_jar,
@@ -270,6 +280,7 @@ def build_phase3_fast_filter_mutect_plan(
             "contamination": contamination,
             "tumor_segments": tumor_segments,
             "read_orientation_model": priors,
+            "pon_annotated_vcf_index": pon_annotated_vcf_index,
             "filtered_vcf": filtered,
             "filtered_vcf_index": f"{filtered}.tbi",
         },

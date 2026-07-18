@@ -81,6 +81,14 @@ class Phase3FastFilterMutectPlanTests(unittest.TestCase):
         self.assertIn(plan["inputs"]["raw_vcf_stats"]["local_path"], filter_command)
 
         self.assertEqual(
+            f'{plan["inputs"]["pon_annotated_vcf"]["local_path"]}.tbi',
+            plan["outputs"]["pon_annotated_vcf_index"],
+        )
+        self.assertEqual(
+            ["bcftools", "index", "-t", "-f", plan["inputs"]["pon_annotated_vcf"]["local_path"]],
+            plan["commands"]["index_pon_annotated_vcf"]["argv"],
+        )
+        self.assertEqual(
             ["bcftools", "index", "-t", "-f", plan["outputs"]["filtered_vcf"]],
             plan["commands"]["index_filtered_vcf"]["argv"],
         )
