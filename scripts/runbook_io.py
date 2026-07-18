@@ -54,12 +54,23 @@ def preexisting_create_only_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
 def load_json_object(path: Path, label: str) -> dict[str, Any]:
     """Load a required JSON object while rejecting symlinked receipts."""
 
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"{label} is missing or a symlink: {path}")
+    require_real_input_file(path, label)
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ValueError(f"{label} is not a JSON object: {path}")
     return value
+
+
+def require_real_input_file(path: Path, label: str) -> None:
+    """Reject input files with redirected leaf or parent path components."""
+
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} is missing or a symlink: {path}")
 
 
 def source_private_receipt_path(

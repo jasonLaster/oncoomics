@@ -395,6 +395,20 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "report-bound"):
                 MODULE.validate_private_report_receipts(receipts, manifests)
 
+    def test_private_freeze_gate_rejects_receipts_below_symlinked_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifests = write_manifest_files(root)
+            receipts = write_receipts(root, manifests)
+            real_parent = root / "real-receipts"
+            (root / "receipts").rename(real_parent)
+            (root / "receipts").symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.validate_private_report_receipts(receipts, manifests)
+
     def test_private_freeze_gate_rejects_non_exact_private_receipts(self) -> None:
         cases = {
             "wrong_run": lambda receipt: receipt.update({"run_id": "other-run"}),

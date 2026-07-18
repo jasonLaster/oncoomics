@@ -302,7 +302,8 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
 
     def test_private_receipt_gate_accepts_current_checked_in_receipts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            receipts = write_receipts(Path(temporary))
+            root = Path(temporary)
+            receipts = write_receipts(root)
 
             summaries = MODULE.validate_private_report_receipts(receipts)
 
@@ -327,6 +328,19 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             failed["status"] = "failed"
             receipts[0].write_text(json.dumps(failed, indent=2, sort_keys=True) + "\n")
             with self.assertRaisesRegex(ValueError, "not exact and passed"):
+                MODULE.validate_private_report_receipts(receipts)
+
+    def test_private_receipt_gate_rejects_receipts_below_symlinked_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipts = write_receipts(root)
+            real_parent = root / "real-receipts"
+            (root / "receipts").rename(real_parent)
+            (root / "receipts").symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
                 MODULE.validate_private_report_receipts(receipts)
 
     def test_receipt_gate_pins_every_public_publish_command(self) -> None:
