@@ -9,6 +9,7 @@ MAIN_TF = ROOT / "infra/aws/main.tf"
 VARIABLES_TF = ROOT / "infra/aws/variables.tf"
 OUTPUTS_TF = ROOT / "infra/aws/outputs.tf"
 NEXTFLOW_CONFIG = ROOT / "nextflow.config"
+PUSH_IMAGE = ROOT / "infra/aws/push-image.sh"
 AWS_README = ROOT / "infra/aws/README.md"
 NEXT_GEN_DOC = ROOT / "docs/operations/next-generation-fast-rerun.md"
 
@@ -133,6 +134,14 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("withLabel: cpu_io", nextflow)
         self.assertIn("queue = params.aws_ondemand_queue", nextflow)
         self.assertIn("container = params.container", nextflow)
+
+    def test_ecr_push_can_target_dedicated_workspaces(self) -> None:
+        script = PUSH_IMAGE.read_text(encoding="utf-8")
+
+        self.assertIn("DIANA_AWS_TERRAFORM_WORKSPACE", script)
+        self.assertIn('terraform -chdir="${ROOT_DIR}/infra/aws" workspace select "${TARGET_WORKSPACE}"', script)
+        self.assertIn('trap restore_workspace EXIT', script)
+        self.assertIn('output -raw region', script)
 
     def test_gpu_smoke_is_documented_as_placement_only(self) -> None:
         readme = AWS_README.read_text(encoding="utf-8")

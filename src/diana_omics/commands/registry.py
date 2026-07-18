@@ -323,6 +323,8 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "infra:aws:plan:use2",
             "infra:aws:apply:use2",
             "aws:ecr:push",
+            "aws:ecr:push:use1",
+            "aws:ecr:push:use2",
             "aws:hrd-packet:cloud-submit",
             "deploy:aws",
             "nf:aws:monitor",

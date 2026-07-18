@@ -13,6 +13,8 @@ from .paths import ROOT
 NEXTFLOW_LOG_PATH = Path("logs") / "nextflow.log"
 AWS_USE1_NEXTFLOW_PARAMS = "infra/aws/nextflow.aws.json"
 AWS_USE2_NEXTFLOW_PARAMS = "infra/aws/nextflow.aws.use2.json"
+AWS_USE1_TERRAFORM_WORKSPACE = "sra-use1"
+AWS_USE2_TERRAFORM_WORKSPACE = "phase3-fast-use2"
 AWS_USE1_TERRAFORM_ENV = {
     "TF_VAR_region": "us-east-1",
     "TF_VAR_environment": "prod-use1",
@@ -23,6 +25,14 @@ AWS_USE2_TERRAFORM_ENV = {
     "TF_VAR_environment": "prod-use2",
     "TF_VAR_manage_service_linked_roles": "false",
     "TF_VAR_nextflow_params_filename": "nextflow.aws.use2.json",
+}
+AWS_USE1_ECR_PUSH_ENV = {
+    "AWS_REGION": "us-east-1",
+    "DIANA_AWS_TERRAFORM_WORKSPACE": AWS_USE1_TERRAFORM_WORKSPACE,
+}
+AWS_USE2_ECR_PUSH_ENV = {
+    "AWS_REGION": "us-east-2",
+    "DIANA_AWS_TERRAFORM_WORKSPACE": AWS_USE2_TERRAFORM_WORKSPACE,
 }
 SRA_BENCH_RANGE_MATRIX = ",".join(
     (
@@ -252,34 +262,36 @@ TASKS: dict[str, Task] = {
     "infra:aws:fmt": _task(_terraform("fmt")),
     "infra:aws:fmt:check": _task(_terraform("fmt", "-check")),
     "infra:aws:validate": _task(_terraform("validate")),
-    "infra:aws:use1": _task(_terraform("workspace", "select", "sra-use1")),
-    "infra:aws:use2": _task(_terraform("workspace", "select", "-or-create", "phase3-fast-use2")),
+    "infra:aws:use1": _task(_terraform("workspace", "select", AWS_USE1_TERRAFORM_WORKSPACE)),
+    "infra:aws:use2": _task(_terraform("workspace", "select", "-or-create", AWS_USE2_TERRAFORM_WORKSPACE)),
     "infra:aws:plan": _task(_terraform("plan", env=_tf_image_env())),
     "infra:aws:apply": _task(_terraform("apply", env=_tf_image_env())),
     "infra:aws:plan:use1": _task(
-        _terraform("workspace", "select", "sra-use1"),
+        _terraform("workspace", "select", AWS_USE1_TERRAFORM_WORKSPACE),
         _terraform("plan", env=_tf_image_env(AWS_USE1_TERRAFORM_ENV)),
     ),
     "infra:aws:apply:use1": _task(
-        _terraform("workspace", "select", "sra-use1"),
+        _terraform("workspace", "select", AWS_USE1_TERRAFORM_WORKSPACE),
         _terraform("apply", env=_tf_image_env(AWS_USE1_TERRAFORM_ENV)),
     ),
     "infra:aws:plan:use2": _task(
-        _terraform("workspace", "select", "-or-create", "phase3-fast-use2"),
+        _terraform("workspace", "select", "-or-create", AWS_USE2_TERRAFORM_WORKSPACE),
         _terraform("plan", env=_tf_image_env(AWS_USE2_TERRAFORM_ENV)),
     ),
     "infra:aws:apply:use2": _task(
-        _terraform("workspace", "select", "-or-create", "phase3-fast-use2"),
+        _terraform("workspace", "select", "-or-create", AWS_USE2_TERRAFORM_WORKSPACE),
         _terraform("apply", env=_tf_image_env(AWS_USE2_TERRAFORM_ENV)),
     ),
     "aws:ecr:push": _task(_tool("bash", "infra/aws/push-image.sh")),
+    "aws:ecr:push:use1": _task(_tool("bash", "infra/aws/push-image.sh", env=AWS_USE1_ECR_PUSH_ENV)),
+    "aws:ecr:push:use2": _task(_tool("bash", "infra/aws/push-image.sh", env=AWS_USE2_ECR_PUSH_ENV)),
     "aws:hrd-packet:cloud-submit": _task(
         _tool("bash", "infra/aws/submit-hrd-packet-cloud.sh", append_args=True),
         accepts_args=True,
     ),
     "deploy:aws": _task(
-        _tool("bash", "infra/aws/push-image.sh"),
-        _terraform("workspace", "select", "sra-use1"),
+        _tool("bash", "infra/aws/push-image.sh", env=AWS_USE1_ECR_PUSH_ENV),
+        _terraform("workspace", "select", AWS_USE1_TERRAFORM_WORKSPACE),
         _terraform("apply", "-auto-approve", env=_tf_image_env(AWS_USE1_TERRAFORM_ENV)),
     ),
     "nf:aws:monitor": _task(_tool("bash", "infra/aws/monitor-batch-job.sh", append_args=True), accepts_args=True),

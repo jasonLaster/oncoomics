@@ -84,9 +84,17 @@ After the ECR repository exists:
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:ecr:push
+PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:ecr:push:use2
 ```
 
-The image push defaults to `us-east-1` and the current git SHA. Override it with `AWS_REGION=...` or `AWS_IMAGE_TAG=...` when testing an image before a commit. Because the ECR repository uses immutable tags, use a new tag for every pushed cloud image.
+The default image push uses the current Terraform workspace and infers the ECR
+login region from that workspace's `region` output. Use `aws:ecr:push:use1` for
+the existing `sra-use1` CPU stack and `aws:ecr:push:use2` for the P5en
+`phase3-fast-use2` stack; those aliases select the intended workspace before
+reading the regional ECR repository URL and restore the prior workspace when
+the push exits. Override the current git SHA with `AWS_IMAGE_TAG=...` when
+testing an image before a commit. Because the ECR repository uses immutable
+tags, use a new tag for every pushed cloud image.
 
 AWS Batch mounts the host-side AWS CLI path configured in `nextflow.config` into task containers. The Batch launch template creates `/opt/diana-aws/bin/aws` on each EC2 host so Nextflow can stage S3 work files while the container image still carries the Python code and bioinformatics tools.
 

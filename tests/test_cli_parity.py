@@ -5,7 +5,14 @@ from unittest.mock import patch
 import diana_omics.commands as command_package
 from diana_omics.cli import _format_command_families, _load_commands
 from diana_omics.commands.registry import COMMAND_FAMILIES, COMMAND_SPECS, FAMILY_PACKAGES, TASK_ONLY_MODULES
-from diana_omics.workflow_tasks import LEGACY_PHASE3_AWS_FULL_ENV, PHASE3_FAST_AWS_EXECUTE_ENV, TASKS, run_task
+from diana_omics.workflow_tasks import (
+    AWS_USE2_ECR_PUSH_ENV,
+    AWS_USE2_TERRAFORM_WORKSPACE,
+    LEGACY_PHASE3_AWS_FULL_ENV,
+    PHASE3_FAST_AWS_EXECUTE_ENV,
+    TASKS,
+    run_task,
+)
 
 
 class CliParityTest(unittest.TestCase):
@@ -306,7 +313,7 @@ class CliParityTest(unittest.TestCase):
     def test_use2_terraform_tasks_write_dedicated_gpu_params(self):
         plan_steps = TASKS["infra:aws:plan:use2"].steps
         self.assertEqual(
-            ("terraform", "-chdir=infra/aws", "workspace", "select", "-or-create", "phase3-fast-use2"),
+            ("terraform", "-chdir=infra/aws", "workspace", "select", "-or-create", AWS_USE2_TERRAFORM_WORKSPACE),
             plan_steps[0].argv,
         )
         plan_env = plan_steps[1].env
@@ -320,6 +327,20 @@ class CliParityTest(unittest.TestCase):
         use1_env = use1_steps[1].env
         assert use1_env is not None
         self.assertEqual("nextflow.aws.json", use1_env["TF_VAR_nextflow_params_filename"])
+
+    def test_use2_ecr_push_selects_gpu_workspace_and_region(self):
+        task = TASKS["aws:ecr:push:use2"]
+
+        self.assertEqual(("bash", "infra/aws/push-image.sh"), task.steps[0].argv)
+        self.assertEqual(AWS_USE2_ECR_PUSH_ENV, task.steps[0].env)
+
+    def test_deploy_aws_pushes_to_use1_before_applying_use1(self):
+        task = TASKS["deploy:aws"]
+
+        env = task.steps[0].env
+        assert env is not None
+        self.assertEqual("sra-use1", env["DIANA_AWS_TERRAFORM_WORKSPACE"])
+        self.assertEqual(("terraform", "-chdir=infra/aws", "workspace", "select", "sra-use1"), task.steps[1].argv)
 
 
 if __name__ == "__main__":
