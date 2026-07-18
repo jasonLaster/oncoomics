@@ -9,7 +9,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -389,7 +388,7 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             linked_parent.symlink_to(real_parent, target_is_directory=True)
             path = linked_parent / "missing" / "receipt.json"
 
-            with self.assertRaisesRegex(ValueError, "nearest existing parent"):
+            with self.assertRaisesRegex(ValueError, "parent must not be a symlink"):
                 MODULE.require_new_output(path, "receipt")
 
             self.assertFalse((real_parent / "missing" / "receipt.json").exists())
@@ -403,10 +402,36 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             linked_parent.symlink_to(real_parent, target_is_directory=True)
             path = linked_parent / "missing" / "receipt.json"
 
-            with self.assertRaisesRegex(ValueError, "nearest existing parent"):
+            with self.assertRaisesRegex(ValueError, "parent must not be a symlink"):
                 MODULE.write_json_atomic(path, {"status": "redirected"}, create=True)
 
             self.assertFalse((real_parent / "missing" / "receipt.json").exists())
+
+    def test_rejects_output_below_existing_dir_under_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            (real_parent / "existing").mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            path = linked_parent / "existing" / "receipt.json"
+
+            with self.assertRaisesRegex(ValueError, "parent must not be a symlink"):
+                MODULE.write_json_atomic(path, {"status": "redirected"}, create=True)
+
+            self.assertFalse((real_parent / "existing" / "receipt.json").exists())
+
+    def test_load_json_rejects_symlinked_input(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            target = root / "execution.json"
+            target.write_text('{"status":"passed"}\n', encoding="utf-8")
+            linked = root / "linked-execution.json"
+            linked.symlink_to(target)
+
+            with self.assertRaisesRegex(ValueError, "must be a real file"):
+                MODULE.load_json(linked)
 
     def test_create_only_receipt_write_preserves_late_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as value:

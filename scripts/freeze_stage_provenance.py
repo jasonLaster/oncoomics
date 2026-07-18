@@ -23,7 +23,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-
 SOURCE_NAMES = ("preflight.json", "gather.json")
 REFERENCE_LABEL = "ucsc_hg38_analysis_set_full"
 PREFLIGHT_REFERENCE_LABEL = "UCSC hg38 analysis set full"
@@ -43,6 +42,10 @@ CHECKSUM_ALGORITHMS = {
 }
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -52,6 +55,8 @@ def sha256(path: Path) -> str:
 
 
 def load_json(path: Path) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"JSON document must be a real file: {path}")
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ValueError(f"JSON document is not an object: {path}")
@@ -65,24 +70,13 @@ def valid_version_id(value: Any) -> bool:
 def require_safe_output_parent(path: Path, label: str) -> None:
     if path.is_symlink():
         raise ValueError(f"{label} must not be a symlink: {path}")
-    nearest_parent = path.parent
-    while not nearest_parent.exists():
-        if nearest_parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(
-                f"{label} missing parent must not be a symlink: {nearest_parent}"
+                f"{label} parent must not be a symlink: {parent}"
             )
-        next_parent = nearest_parent.parent
-        if next_parent == nearest_parent:
-            raise ValueError(f"{label} has no existing parent: {path}")
-        nearest_parent = next_parent
-    if nearest_parent.is_symlink():
-        raise ValueError(
-            f"{label} nearest existing parent must not be a symlink: {nearest_parent}"
-        )
-    if not nearest_parent.is_dir():
-        raise ValueError(
-            f"{label} nearest existing parent must be a directory: {nearest_parent}"
-        )
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent must be a directory: {parent}")
 
 
 def require_safe_new_output(path: Path, label: str) -> None:

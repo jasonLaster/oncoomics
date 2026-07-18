@@ -11,7 +11,6 @@ from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -416,10 +415,36 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             linked_parent.symlink_to(real_parent, target_is_directory=True)
             output = linked_parent / "missing" / "receipt.json"
 
-            with self.assertRaisesRegex(ValueError, "nearest existing parent"):
+            with self.assertRaisesRegex(ValueError, "parent must not be a symlink"):
                 MODULE.write_json_once(output, {"status": "redirected"})
 
             self.assertFalse((real_parent / "missing" / "receipt.json").exists())
+
+    def test_atomic_writer_rejects_existing_dir_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            (real_parent / "existing").mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            output = linked_parent / "existing" / "receipt.json"
+
+            with self.assertRaisesRegex(ValueError, "parent must not be a symlink"):
+                MODULE.write_json_once(output, {"status": "redirected"})
+
+            self.assertFalse((real_parent / "existing" / "receipt.json").exists())
+
+    def test_load_json_rejects_symlinked_input(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            target = root / "execution.json"
+            target.write_text('{"status":"passed"}\n', encoding="utf-8")
+            linked = root / "linked-execution.json"
+            linked.symlink_to(target)
+
+            with self.assertRaisesRegex(ValueError, "must be a real file"):
+                MODULE.load_json(linked)
 
     def test_main_rejects_symlink_output_before_aws_observation(self) -> None:
         with tempfile.TemporaryDirectory() as value:
