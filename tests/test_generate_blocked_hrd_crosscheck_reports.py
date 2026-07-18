@@ -35,6 +35,26 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def write_source_report_manifest(path: Path, **updates: object) -> None:
+    payload = {
+        "schema_version": 1,
+        "method_id": "rosalind_diana_wgs",
+        "report_kind": "rosalind_hrd_reviewer_packet",
+        "evidence_status": "partial_evidence",
+        "authorized_hrd_state": "no_call",
+        "classification_authorized": False,
+        "report_sha256": "a" * 64,
+        "review_summary": {
+            "overall": {
+                "evidence_status": "partial_evidence",
+                "authorized_hrd_state": "no_call",
+            },
+        },
+    }
+    payload.update(updates)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
     def test_packet_files_are_create_only_fsynced_public_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -105,7 +125,7 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             rosalind = root / "rosalind-report-manifest.json"
-            rosalind.write_text('{"method_id":"rosalind_diana_wgs"}\n', encoding="utf-8")
+            write_source_report_manifest(rosalind)
             output = root / "blocked"
 
             GENERATOR.generate(
@@ -263,7 +283,7 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             mismatched = root / "mismatched.json"
-            mismatched.write_text('{"method_id":"deterministic_full_wgs"}\n', encoding="utf-8")
+            write_source_report_manifest(mismatched, method_id="deterministic_full_wgs")
             output = root / "blocked"
 
             with self.assertRaisesRegex(
@@ -276,6 +296,54 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                         str(output),
                         "--source-report-manifest",
                         f"rosalind_diana_wgs={mismatched}",
+                    ]
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_cli_rejects_classifying_source_report_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            classifying = root / "classifying.json"
+            write_source_report_manifest(
+                classifying,
+                authorized_hrd_state="positive",
+                classification_authorized=True,
+            )
+            output = root / "blocked"
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "source report manifest must preserve no_call: rosalind_diana_wgs",
+            ):
+                GENERATOR.main(
+                    [
+                        "--output-dir",
+                        str(output),
+                        "--source-report-manifest",
+                        f"rosalind_diana_wgs={classifying}",
+                    ]
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_cli_rejects_unbound_source_report_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            unbound = root / "unbound.json"
+            write_source_report_manifest(unbound, report_sha256="unbound")
+            output = root / "blocked"
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "source report manifest report_sha256 is malformed: rosalind_diana_wgs",
+            ):
+                GENERATOR.main(
+                    [
+                        "--output-dir",
+                        str(output),
+                        "--source-report-manifest",
+                        f"rosalind_diana_wgs={unbound}",
                     ]
                 )
 

@@ -313,6 +313,15 @@ def load_source_report_manifest(path: Path, method_id: str) -> None:
         manifest = json.load(handle)
     if not isinstance(manifest, dict) or manifest.get("method_id") != method_id:
         raise ValueError(f"source report manifest method_id does not match {method_id}")
+    if manifest.get("authorized_hrd_state") != "no_call":
+        raise ValueError(f"source report manifest must preserve no_call: {method_id}")
+    if manifest.get("classification_authorized") is not False:
+        raise ValueError(f"source report manifest must not authorize classification: {method_id}")
+    if SHA256_HEX.fullmatch(str(manifest.get("report_sha256", ""))) is None:
+        raise ValueError(f"source report manifest report_sha256 is malformed: {method_id}")
+    review_summary = manifest.get("review_summary")
+    if not isinstance(review_summary, dict) or not review_summary:
+        raise ValueError(f"source report manifest review_summary is required: {method_id}")
 
 
 def load_source_report_manifests(values: Sequence[str]) -> dict[str, str]:
