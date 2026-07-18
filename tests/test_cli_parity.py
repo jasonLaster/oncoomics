@@ -23,6 +23,7 @@ class CliParityTest(unittest.TestCase):
             "build:phase3-fast-bam-qc-plan",
             "build:phase3-fast-input-manifest",
             "build:phase3-fast-cache-manifest",
+            "build:phase3-fast-cnv-evidence-plan",
             "build:phase3-fast-filter-mutect-plan",
             "build:phase3-fast-parabricks-mutect-plan",
             "build:phase3-fast-replication-plan",

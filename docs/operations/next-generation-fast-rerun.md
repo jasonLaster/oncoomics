@@ -194,6 +194,7 @@ FAST_CACHE_MANIFEST                verified region-local BAM/resource pointers
 FAST_STAGING_PLAN                  exact VersionId to local scratch path map
 FAST_PARABRICKS_MUTECT_PLAN        worker-local S3 materialization, SHA-256 verify, exact Parabricks command plan
 FAST_BAM_QC_PLAN                   exact quickcheck, flagstat, and idxstats plan
+FAST_CNV_EVIDENCE_PLAN             exact full-depth bedcov coverage-bin plan
 FAST_FILTER_MUTECT_PLAN            exact contamination/orientation/filter plan
 FAST_SV_EVIDENCE_PLAN              exact split/discordant read evidence plan
 FAST_FQ2BAM_TUMOR                  optional GPU
@@ -291,6 +292,11 @@ indexes, FASTA indexes, germline/PoN indexes, and `raw_vcf`, `raw_vcf_stats`,
 exact `samtools quickcheck`, `flagstat`, and `idxstats` commands for tumor and
 normal BAMs. Its plan is a QC-only `no_call` artifact; it can feed BAM health
 reporting, but it is not HRD interpretation evidence on its own.
+`FAST_CNV_EVIDENCE_PLAN` reads the staged reference `.fai`, records one
+standard-contig BED shard and exact `samtools bedcov` tumor/normal command per
+contig, and declares the eventual combined bedcov, coverage-bin CSV, and CNV
+summary outputs. It preserves a scarHRD `no_call`: these full-depth normalized
+coverage bins are WGS feature evidence, not allele-specific CNV/LOH segments.
 `FAST_SV_EVIDENCE_PLAN` also fans out from the staged-input handoff and records
 the exact `samtools idxstats` and `samtools view` flag commands that will derive
 mechanical supplementary/split-read and discordant-pair evidence from the tumor

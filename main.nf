@@ -68,6 +68,9 @@ params.phase3_fast_parabricks_num_gpus = params.phase3_fast_parabricks_num_gpus 
 params.phase3_fast_parabricks_output_root = params.phase3_fast_parabricks_output_root ?: '/scratch/diana/phase3_wgs_fast/parabricks_mutect'
 params.phase3_fast_bam_qc_output_root = params.phase3_fast_bam_qc_output_root ?: '/scratch/diana/phase3_wgs_fast/bam_qc'
 params.phase3_fast_bam_qc_threads = params.phase3_fast_bam_qc_threads ?: 8
+params.phase3_fast_cnv_evidence_output_root = params.phase3_fast_cnv_evidence_output_root ?: '/scratch/diana/phase3_wgs_fast/cnv_evidence'
+params.phase3_fast_cnv_evidence_bin_size = params.phase3_fast_cnv_evidence_bin_size ?: 5000000
+params.phase3_fast_cnv_evidence_bedcov_workers = params.phase3_fast_cnv_evidence_bedcov_workers ?: 4
 params.phase3_fast_sv_evidence_output_root = params.phase3_fast_sv_evidence_output_root ?: '/scratch/diana/phase3_wgs_fast/sv_evidence'
 params.phase3_fast_sv_evidence_threads = params.phase3_fast_sv_evidence_threads ?: 8
 params.phase3_fast_filter_mutect_output_root = params.phase3_fast_filter_mutect_output_root ?: '/scratch/diana/phase3_wgs_fast/filter_mutect'
@@ -1052,6 +1055,50 @@ process FAST_BAM_QC_PLAN {
     """
 }
 
+process FAST_CNV_EVIDENCE_PLAN {
+    tag "fast_cnv_evidence_plan_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/cnv_evidence_plan", mode: 'copy', overwrite: true
+
+    input:
+    tuple path(staged_inputs_manifest), path(parabricks_mutect_plan)
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST="\$PWD/${staged_inputs_manifest}"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_PLAN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_OUTPUT_ROOT="${params.phase3_fast_cnv_evidence_output_root}"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_BIN_SIZE="${params.phase3_fast_cnv_evidence_bin_size}"
+    export PHASE3_WGS_FAST_CNV_EVIDENCE_BEDCOV_WORKERS="${params.phase3_fast_cnv_evidence_bedcov_workers}"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-cnv-evidence-plan
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_cnv_evidence_plan",
+      "status": "stubbed",
+      "commands": {},
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
 process FAST_SV_EVIDENCE_PLAN {
     tag "fast_sv_evidence_plan_${params.phase3_fast_run_id}"
     label 'cpu_io'
@@ -1265,6 +1312,7 @@ workflow PHASE3_WGS_FAST {
         } else {
             FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
             FAST_BAM_QC_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
+            FAST_CNV_EVIDENCE_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
             FAST_SV_EVIDENCE_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
             FAST_FILTER_MUTECT_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
         }

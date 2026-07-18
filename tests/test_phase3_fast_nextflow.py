@@ -20,6 +20,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_STAGING_PLAN", text)
         self.assertIn("process FAST_PARABRICKS_MUTECT_PLAN", text)
         self.assertIn("process FAST_BAM_QC_PLAN", text)
+        self.assertIn("process FAST_CNV_EVIDENCE_PLAN", text)
         self.assertIn("process FAST_SV_EVIDENCE_PLAN", text)
         self.assertIn("process FAST_FILTER_MUTECT_PLAN", text)
         self.assertNotIn("process FAST_STAGE_INPUTS", text)
@@ -34,6 +35,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("stage:phase3-fast-inputs", text)
         self.assertIn("build:phase3-fast-parabricks-mutect-plan", text)
         self.assertIn("build:phase3-fast-bam-qc-plan", text)
+        self.assertIn("build:phase3-fast-cnv-evidence-plan", text)
         self.assertIn("build:phase3-fast-sv-evidence-plan", text)
         self.assertIn("build:phase3-fast-filter-mutect-plan", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/input_manifest.json", text)
@@ -44,11 +46,13 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/bam_qc_plan.json", text)
+        self.assertIn("workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/sv_evidence_plan.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/filter_mutect_plan.json", text)
         self.assertIn("phase3_wgs_fast_staged_inputs_manifest", text)
         self.assertIn("phase3_wgs_fast_parabricks_mutect_plan", text)
         self.assertIn("phase3_wgs_fast_bam_qc_plan", text)
+        self.assertIn("phase3_wgs_fast_cnv_evidence_plan", text)
         self.assertIn("phase3_wgs_fast_sv_evidence_plan", text)
         self.assertIn("phase3_wgs_fast_filter_mutect_plan", text)
 
@@ -86,6 +90,9 @@ class Phase3FastNextflowTests(unittest.TestCase):
             "phase3_fast_parabricks_output_root",
             "phase3_fast_bam_qc_output_root",
             "phase3_fast_bam_qc_threads",
+            "phase3_fast_cnv_evidence_output_root",
+            "phase3_fast_cnv_evidence_bin_size",
+            "phase3_fast_cnv_evidence_bedcov_workers",
             "phase3_fast_sv_evidence_output_root",
             "phase3_fast_sv_evidence_threads",
             "phase3_fast_filter_mutect_output_root",
@@ -119,6 +126,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("FAST_STAGING_PLAN(FAST_CACHE_MANIFEST.out)", text)
         self.assertIn("FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)", text)
         self.assertIn("FAST_BAM_QC_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
+        self.assertIn("FAST_CNV_EVIDENCE_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
         self.assertIn("FAST_SV_EVIDENCE_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
         self.assertIn("FAST_FILTER_MUTECT_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
         self.assertIn("phase3_fast_replication_mode.toString().replace('-', '_') == 'apply'", text)
@@ -207,6 +215,27 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn('export PHASE3_WGS_FAST_SV_EVIDENCE_THREADS="${params.phase3_fast_sv_evidence_threads}"', process)
         self.assertIn("build:phase3-fast-sv-evidence-plan", process)
 
+    def test_cnv_evidence_plan_consumes_staged_bam_handoff_tuple(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_CNV_EVIDENCE_PLAN") :]
+        process = process[: process.index("process FAST_SV_EVIDENCE_PLAN")]
+        self.assertIn("label 'cpu_io'", process)
+        self.assertIn("tuple path(staged_inputs_manifest), path(parabricks_mutect_plan)", process)
+        self.assertIn("workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json", process)
+        self.assertIn('export PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST="\\$PWD/${staged_inputs_manifest}"', process)
+        self.assertIn(
+            'export PHASE3_WGS_FAST_CNV_EVIDENCE_PLAN_OUTPUT="\\$PWD/workspace/manifests/phase3_wgs_fast/cnv_evidence_plan.json"',
+            process,
+        )
+        self.assertIn('export PHASE3_WGS_FAST_CNV_EVIDENCE_OUTPUT_ROOT="${params.phase3_fast_cnv_evidence_output_root}"', process)
+        self.assertIn('export PHASE3_WGS_FAST_CNV_EVIDENCE_BIN_SIZE="${params.phase3_fast_cnv_evidence_bin_size}"', process)
+        self.assertIn(
+            'export PHASE3_WGS_FAST_CNV_EVIDENCE_BEDCOV_WORKERS="${params.phase3_fast_cnv_evidence_bedcov_workers}"',
+            process,
+        )
+        self.assertIn("build:phase3-fast-cnv-evidence-plan", process)
+
     def test_fast_planning_and_gpu_processes_have_separate_aws_labels(self) -> None:
         main = MAIN_NF.read_text(encoding="utf-8")
         config = NEXTFLOW_CONFIG.read_text(encoding="utf-8")
@@ -223,6 +252,9 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_fast_parabricks_output_root = '/scratch/diana/phase3_wgs_fast/parabricks_mutect'", config)
         self.assertIn("phase3_fast_bam_qc_output_root = '/scratch/diana/phase3_wgs_fast/bam_qc'", config)
         self.assertIn("phase3_fast_bam_qc_threads = 8", config)
+        self.assertIn("phase3_fast_cnv_evidence_output_root = '/scratch/diana/phase3_wgs_fast/cnv_evidence'", config)
+        self.assertIn("phase3_fast_cnv_evidence_bin_size = 5000000", config)
+        self.assertIn("phase3_fast_cnv_evidence_bedcov_workers = 4", config)
         self.assertIn("phase3_fast_sv_evidence_output_root = '/scratch/diana/phase3_wgs_fast/sv_evidence'", config)
         self.assertIn("phase3_fast_sv_evidence_threads = 8", config)
         self.assertIn("phase3_fast_filter_mutect_output_root = '/scratch/diana/phase3_wgs_fast/filter_mutect'", config)

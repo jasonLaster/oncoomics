@@ -30,6 +30,9 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "build:phase3-fast-bam-qc-plan": CommandSpec("diana_omics.commands.phase3_wgs.render_phase3_fast_bam_qc_plan"),
     "build:phase3-fast-input-manifest": CommandSpec("diana_omics.commands.phase3_wgs.render_phase3_fast_input_manifest"),
     "build:phase3-fast-cache-manifest": CommandSpec("diana_omics.commands.phase3_wgs.render_phase3_fast_cache_manifest"),
+    "build:phase3-fast-cnv-evidence-plan": CommandSpec(
+        "diana_omics.commands.phase3_wgs.render_phase3_fast_cnv_evidence_plan"
+    ),
     "build:phase3-fast-filter-mutect-plan": CommandSpec(
         "diana_omics.commands.phase3_wgs.render_phase3_fast_filter_mutect_plan"
     ),
@@ -172,6 +175,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "build:phase3-fast-bam-qc-plan",
             "build:phase3-fast-input-manifest",
             "build:phase3-fast-cache-manifest",
+            "build:phase3-fast-cnv-evidence-plan",
             "build:phase3-fast-filter-mutect-plan",
             "build:phase3-fast-parabricks-mutect-plan",
             "build:phase3-fast-replication-plan",

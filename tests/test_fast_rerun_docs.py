@@ -27,6 +27,14 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("samtools quickcheck", text)
         self.assertIn("QC-only `no_call` artifact", text)
 
+    def test_next_generation_doc_tracks_cnv_evidence_plan_seam(self) -> None:
+        text = NEXT_GEN.read_text(encoding="utf-8")
+
+        self.assertIn("FAST_CNV_EVIDENCE_PLAN", text)
+        self.assertIn("exact full-depth bedcov coverage-bin plan", text)
+        self.assertIn("one\nstandard-contig BED shard", text)
+        self.assertIn("scarHRD `no_call`", text)
+
     def test_next_generation_doc_tracks_sv_evidence_plan_seam(self) -> None:
         text = NEXT_GEN.read_text(encoding="utf-8")
 
