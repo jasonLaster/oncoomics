@@ -52,6 +52,14 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def canonical_json_bytes(value: dict[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
 def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
@@ -83,25 +91,41 @@ def write_json_atomic(
 ) -> None:
     require_safe_output_parent(path, "JSON receipt output")
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = canonical_json_bytes(value)
+    expected_sha256 = sha256_bytes(data)
     staging = path.with_name(f".{path.name}.tmp-{os.getpid()}")
     descriptor = -1
+    linked = False
     try:
         descriptor = os.open(staging, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        with os.fdopen(descriptor, "wb") as handle:
             descriptor = -1
-            json.dump(value, handle, indent=2, sort_keys=True)
-            handle.write("\n")
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
         if create:
             os.link(staging, path)
+            linked = True
         else:
             staging.replace(path)
         fsync_directory(path.parent)
+        require_installed_json(path, expected_sha256)
+    except Exception:
+        if create and linked:
+            path.unlink(missing_ok=True)
+        raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
         staging.unlink(missing_ok=True)
+
+
+def require_installed_json(path: Path, expected_sha256: str) -> None:
+    require_real_downloaded_file(path, "JSON receipt output")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"JSON receipt output mode is not 0600: {path}")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"JSON receipt output changed during write: {path}")
 
 
 def require_safe_output_parent(path: Path, label: str) -> None:

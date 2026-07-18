@@ -486,6 +486,48 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 {"status": "initial"},
             )
 
+    def test_create_only_receipt_removes_link_after_parent_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            path = Path(value) / "receipt.json"
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=OSError("synthetic parent fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic parent fsync failure"),
+            ):
+                MODULE.write_json_atomic(path, {"status": "linked"}, create=True)
+
+            self.assertFalse(path.exists())
+            self.assertFalse(any(path.parent.glob(".receipt.json.tmp-*")))
+
+    def test_create_only_receipt_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            path = Path(value) / "receipt.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                real_fsync_directory(parent)
+                path.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "JSON receipt output changed during write",
+                ),
+            ):
+                MODULE.write_json_atomic(path, {"status": "linked"}, create=True)
+
+            self.assertFalse(path.exists())
+            self.assertFalse(any(path.parent.glob(".receipt.json.tmp-*")))
+
     def test_receipt_put_is_create_only(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             receipt = Path(value) / "receipt.json"
