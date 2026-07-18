@@ -82,7 +82,20 @@ class Fixture:
         value.update(updates)
         path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
 
-    def args(self, *, apply: bool = False) -> argparse.Namespace:
+    def mutate_support_file(self, relative: str, text: str) -> None:
+        path = self.packet / relative
+        path.write_text(text)
+        manifest_path = self.packet / "report_manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["support_sha256"][relative] = digest(path.read_bytes())
+        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+    def args(
+        self,
+        *,
+        apply: bool = False,
+        dry_run_receipt: Path | None = None,
+    ) -> argparse.Namespace:
         return argparse.Namespace(
             packet_dir=self.packet,
             method_id=self.method_id,
@@ -90,6 +103,7 @@ class Fixture:
             receipt_output=self.receipt_path,
             forbidden_token=[],
             forbidden_tokens_file=[],
+            dry_run_receipt=dry_run_receipt,
             region=MODULE.REGION,
             apply=apply,
         )
@@ -188,13 +202,30 @@ class FakeAws:
 
 
 class PublishPrivateReportTests(unittest.TestCase):
-    def execute(self, fixture: Fixture, fake: FakeAws, *, apply: bool = False) -> dict[str, object]:
+    def write_dry_run_receipt(self, fixture: Fixture) -> Path:
+        output = fixture.root / "private-publication.dry.json"
+        args = fixture.args()
+        args.receipt_output = output
+        with mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")):
+            MODULE.run(args)
+        return output
+
+    def execute(
+        self,
+        fixture: Fixture,
+        fake: FakeAws,
+        *,
+        apply: bool = False,
+        dry_run_receipt: Path | None = None,
+    ) -> dict[str, object]:
         with (
             mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
             mock.patch.object(MODULE, "head_object", side_effect=fake.head_object),
             mock.patch.object(MODULE, "version_history", side_effect=fake.version_history),
         ):
-            return MODULE.run(fixture.args(apply=apply))
+            return MODULE.run(
+                fixture.args(apply=apply, dry_run_receipt=dry_run_receipt)
+            )
 
     def test_dry_run_validates_allowlisted_packet_without_uploading(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -211,9 +242,23 @@ class PublishPrivateReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
             fake = FakeAws()
-            result = self.execute(fixture, fake, apply=True)
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
+            result = self.execute(
+                fixture,
+                fake,
+                apply=True,
+                dry_run_receipt=dry_run_receipt,
+            )
 
             self.assertEqual(result["status"], "passed")
+            self.assertEqual(
+                result["dry_run_receipt"]["path"],
+                str(dry_run_receipt.resolve()),
+            )
+            self.assertEqual(
+                result["dry_run_receipt"]["packet_revision"],
+                result["packet_revision"],
+            )
             self.assertEqual(result["passed_count"], 8)
             self.assertEqual(len(fake.put_calls), 8)
             for call in fake.put_calls:
@@ -361,9 +406,15 @@ class PublishPrivateReportTests(unittest.TestCase):
             fixture = Fixture(Path(temporary))
             fake = FakeAws()
             fake.preexisting_history = [{"Key": "old", "VersionId": "old", "IsLatest": True, "Size": 1}]
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
 
             with self.assertRaisesRegex(ValueError, "prior history"):
-                self.execute(fixture, fake, apply=True)
+                self.execute(
+                    fixture,
+                    fake,
+                    apply=True,
+                    dry_run_receipt=dry_run_receipt,
+                )
 
             self.assertEqual(fake.put_calls, [])
             self.assertEqual(json.loads(fixture.receipt_path.read_text())["status"], "failed")
@@ -373,9 +424,15 @@ class PublishPrivateReportTests(unittest.TestCase):
             fixture = Fixture(Path(temporary))
             fake = FakeAws()
             fake.literal_null_version = True
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
 
             with self.assertRaisesRegex(ValueError, "non-null VersionId"):
-                self.execute(fixture, fake, apply=True)
+                self.execute(
+                    fixture,
+                    fake,
+                    apply=True,
+                    dry_run_receipt=dry_run_receipt,
+                )
 
             self.assertEqual(json.loads(fixture.receipt_path.read_text())["status"], "failed")
 
@@ -384,9 +441,60 @@ class PublishPrivateReportTests(unittest.TestCase):
             fixture = Fixture(Path(temporary))
             fake = FakeAws()
             fake.wrong_checksum = True
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
 
             with self.assertRaisesRegex(ValueError, "destination verification failed"):
-                self.execute(fixture, fake, apply=True)
+                self.execute(
+                    fixture,
+                    fake,
+                    apply=True,
+                    dry_run_receipt=dry_run_receipt,
+                )
+
+    def test_apply_requires_matching_dry_run_receipt_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            with (
+                self.assertRaisesRegex(ValueError, "requires --dry-run-receipt"),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            ):
+                MODULE.run(fixture.args(apply=True))
+
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
+            fixture.mutate_support_file("next_actions.md", "# Changed no-call next actions\n")
+
+            with (
+                self.assertRaisesRegex(ValueError, "does not match this apply"),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_run_receipt))
+
+    def test_apply_rejects_failed_or_redirected_dry_run_receipts_before_aws(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = Fixture(root)
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
+            failed = json.loads(dry_run_receipt.read_text())
+            failed["status"] = "failed"
+            dry_run_receipt.write_text(json.dumps(failed, indent=2, sort_keys=True) + "\n")
+
+            with (
+                self.assertRaisesRegex(ValueError, "contract is malformed"),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_run_receipt))
+
+            real_receipt = root / "real-dry-run.json"
+            dry_run_receipt.replace(real_receipt)
+            dry_run_receipt.symlink_to(real_receipt)
+
+            with (
+                self.assertRaisesRegex(ValueError, "must be a real file"),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_run_receipt))
 
 
 if __name__ == "__main__":

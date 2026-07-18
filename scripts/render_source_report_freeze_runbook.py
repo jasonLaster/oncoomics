@@ -131,17 +131,26 @@ def receipt_path(root: Path, receipt_stem: str, method_id: str) -> Path:
     return source_private_receipt_path(root, receipt_stem, method_id)
 
 
+def dry_receipt_path(root: Path, receipt_stem: str, method_id: str) -> Path:
+    return source_private_receipt_path(root, receipt_stem, method_id).with_suffix(
+        ".dry.json"
+    )
+
+
 def publish_command(
     scripts: Path,
     packet_dir: Path,
     method_id: str,
     receipt_output: Path,
     forbidden_tokens_file: Path | None = None,
+    *,
+    apply: bool,
+    dry_run_receipt: Path | None = None,
 ) -> list[str | Path]:
     forbidden_tokens_file_flags: list[str | Path] = (
         ["--forbidden-tokens-file", forbidden_tokens_file] if forbidden_tokens_file is not None else []
     )
-    return [
+    command: list[str | Path] = [
         "python3",
         scripts / "publish_private_report.py",
         "--packet-dir",
@@ -154,8 +163,12 @@ def publish_command(
         REGION,
         *forbidden_flags(),
         *forbidden_tokens_file_flags,
-        "--apply",
     ]
+    if dry_run_receipt is not None:
+        command.extend(["--dry-run-receipt", dry_run_receipt])
+    if apply:
+        command.append("--apply")
+    return command
 
 
 def ai_runbook_command(
@@ -214,6 +227,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
 
 def required_absent(root: Path, receipt_stem: str) -> tuple[Path, ...]:
     return (
+        *(dry_receipt_path(root, receipt_stem, method_id) for method_id in REQUIRED_METHOD_IDS),
         *(receipt_path(root, receipt_stem, method_id) for method_id in REQUIRED_METHOD_IDS),
         *ai_required_absent(root, receipt_stem),
     )
@@ -254,6 +268,8 @@ def render(
         "",
     ]
     for method_id, packet_dir in packet_dirs.items():
+        dry_receipt = dry_receipt_path(root, receipt_stem, method_id)
+        apply_receipt = receipt_path(root, receipt_stem, method_id)
         lines.extend(
             [
                 f"### {method_id}",
@@ -263,8 +279,20 @@ def render(
                         scripts,
                         packet_dir,
                         method_id,
-                        receipt_path(root, receipt_stem, method_id),
+                        dry_receipt,
                         forbidden_tokens_file=phase3_fast_forbidden_tokens_file,
+                        apply=False,
+                    )
+                ),
+                block(
+                    publish_command(
+                        scripts,
+                        packet_dir,
+                        method_id,
+                        apply_receipt,
+                        forbidden_tokens_file=phase3_fast_forbidden_tokens_file,
+                        apply=True,
+                        dry_run_receipt=dry_receipt,
                     )
                 ),
             ]

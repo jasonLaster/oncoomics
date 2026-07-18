@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Sequence
 
-from forbidden_text import merge_forbidden_tokens
+from forbidden_text import forbidden_token_fingerprints, merge_forbidden_tokens
 from publish_reviewed_public_report import (
     DEFAULT_FORBIDDEN_TOKENS,
     MAX_FILE_BYTES,
@@ -156,6 +156,58 @@ def upload_private(
     }
 
 
+def validate_dry_run_receipt(
+    path: Path, receipt: dict[str, Any]
+) -> dict[str, str]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("private report dry-run receipt must be a real file")
+    dry_run = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(dry_run, dict):
+        raise ValueError("private report dry-run receipt must be a JSON object")
+    if (
+        dry_run.get("schema_version") != 1
+        or dry_run.get("status") != "dry_run"
+        or dry_run.get("apply") is not False
+        or dry_run.get("passed_count") != 0
+        or dry_run.get("objects") != []
+    ):
+        raise ValueError("private report dry-run receipt contract is malformed")
+
+    expected_fields = (
+        "subject_alias",
+        "run_id",
+        "method_id",
+        "packet_revision",
+        "source_packet_dir",
+        "destination_prefix",
+        "kms_key_arn",
+        "expected_files",
+        "object_count",
+        "forbidden_token_count",
+        "forbidden_token_sha256",
+    )
+    if any(dry_run.get(field) != receipt.get(field) for field in expected_fields):
+        raise ValueError("private report dry-run receipt does not match this apply")
+
+    checks = dry_run.get("checks")
+    required_checks = (
+        "packet_inventory_exact",
+        "packet_manifest_no_call_boundary",
+        "packet_forbidden_token_scan",
+    )
+    if not isinstance(checks, dict) or any(
+        checks.get(check) is not True for check in required_checks
+    ):
+        raise ValueError("private report dry-run receipt did not pass packet checks")
+
+    return {
+        "path": str(path.resolve()),
+        "sha256": sha256(path),
+        "packet_revision": str(receipt["packet_revision"]),
+        "status": "dry_run",
+    }
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     method_id = args.method_id
     expected = tuple(sorted(METHOD_CONTRACTS[method_id]["files"]))
@@ -183,6 +235,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "object_count": len(expected),
         "passed_count": 0,
         "forbidden_token_count": len(tokens),
+        "forbidden_token_sha256": forbidden_token_fingerprints(tokens),
         "objects": [],
         "checks": {
             "packet_inventory_exact": True,
@@ -190,6 +243,15 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "packet_forbidden_token_scan": True,
         },
     }
+    dry_run_receipt = None
+    if args.apply:
+        if args.dry_run_receipt is None:
+            raise ValueError("private report apply requires --dry-run-receipt")
+        dry_run_receipt = validate_dry_run_receipt(args.dry_run_receipt, receipt)
+        receipt["dry_run_receipt"] = dry_run_receipt
+        receipt["checks"]["dry_run_receipt"] = True
+    elif args.dry_run_receipt is not None:
+        raise ValueError("--dry-run-receipt is only valid with --apply")
     write_private_atomic(args.receipt_output, receipt, create=True)
 
     try:
@@ -251,6 +313,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--receipt-output", required=True, type=Path)
     parser.add_argument("--forbidden-token", action="append", default=[])
     parser.add_argument("--forbidden-tokens-file", action="append", default=[], type=Path)
+    parser.add_argument("--dry-run-receipt", type=Path)
     parser.add_argument("--region", default=REGION, choices=(REGION,))
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)

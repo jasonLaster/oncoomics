@@ -195,11 +195,14 @@ def publish_command(
     method_id: str,
     receipt_output: Path,
     forbidden_tokens_file: Path | None = None,
+    *,
+    apply: bool,
+    dry_run_receipt: Path | None = None,
 ) -> list[str | Path]:
     forbidden_tokens_file_flags: list[str | Path] = (
         ["--forbidden-tokens-file", forbidden_tokens_file] if forbidden_tokens_file is not None else []
     )
-    return [
+    command: list[str | Path] = [
         "python3",
         scripts / "publish_private_report.py",
         "--packet-dir",
@@ -212,8 +215,45 @@ def publish_command(
         REGION,
         *forbidden_flags(),
         *forbidden_tokens_file_flags,
-        "--apply",
     ]
+    if dry_run_receipt is not None:
+        command.extend(["--dry-run-receipt", dry_run_receipt])
+    if apply:
+        command.append("--apply")
+    return command
+
+
+def private_publish_blocks(
+    scripts: Path,
+    packet_dir: Path,
+    method_id: str,
+    dry_receipt: Path,
+    apply_receipt: Path,
+    forbidden_tokens_file: Path | None = None,
+) -> tuple[str, str]:
+    return (
+        block(
+            publish_command(
+                scripts,
+                packet_dir,
+                method_id,
+                dry_receipt,
+                forbidden_tokens_file=forbidden_tokens_file,
+                apply=False,
+            )
+        ),
+        block(
+            publish_command(
+                scripts,
+                packet_dir,
+                method_id,
+                apply_receipt,
+                forbidden_tokens_file=forbidden_tokens_file,
+                apply=True,
+                dry_run_receipt=dry_receipt,
+            )
+        ),
+    )
 
 
 def reviewed_publication_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
@@ -284,13 +324,17 @@ def model_catalog_receipt_path(root: Path) -> Path:
     return root / ".codex-tmp/hrd-reports/ai-review/model-catalog-receipts" / RUN_ID / MODEL_CATALOG_RECEIPT
 
 
-def ai_private_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
+def ai_private_receipt_paths(
+    root: Path, receipt_stem: str, suffix: str = ""
+) -> tuple[Path, ...]:
     receipt_root = root / ".codex-tmp/hrd-reports/ai-review" / RUN_ID / "publication-receipts"
-    return tuple(receipt_root / f"{receipt_stem}.{stem}.private.json" for _, stem in AI_PRIVATE_RECEIPT_STEMS)
+    return tuple(receipt_root / f"{receipt_stem}.{stem}.private{suffix}.json" for _, stem in AI_PRIVATE_RECEIPT_STEMS)
 
 
-def ai_private_receipt_outputs(root: Path, receipt_stem: str) -> tuple[tuple[str, Path], ...]:
-    receipt_paths = ai_private_receipt_paths(root, receipt_stem)
+def ai_private_receipt_outputs(
+    root: Path, receipt_stem: str, suffix: str = ""
+) -> tuple[tuple[str, Path], ...]:
+    receipt_paths = ai_private_receipt_paths(root, receipt_stem, suffix)
     return tuple((method_id, receipt_paths[index]) for index, (method_id, _) in enumerate(AI_PRIVATE_RECEIPT_STEMS))
 
 
@@ -320,6 +364,7 @@ def required_absent(root: Path, receipt_stem: str) -> tuple[Path, ...]:
         model_catalog_receipt_path(root),
         root / ".codex-tmp/hrd-reports/ai-review" / RUN_ID,
         root / ".codex-tmp/hrd-reports/synthesis" / RUN_ID,
+        *ai_private_receipt_paths(root, receipt_stem, ".dry"),
         *ai_private_receipt_paths(root, receipt_stem),
         *reviewed_public_required_absent(root, receipt_stem),
     )
@@ -361,6 +406,9 @@ def render(
         AI_REVIEW_METHOD_IDS[1]: reviewer_b,
         COMPARATIVE_METHOD_IDS[0]: synthesis,
     }
+    dry_private_receipt_outputs = dict(
+        ai_private_receipt_outputs(root, receipt_stem, ".dry")
+    )
 
     lines = [
         "# Diana WGS independent AI review and synthesis handoff",
@@ -533,16 +581,16 @@ def render(
             "## 7. Publish reviewed private AI and synthesis reports",
             "",
             *[
-                block(
-                    publish_command(
-                        scripts,
-                        ai_private_packet_dirs[method_id],
-                        method_id,
-                        receipt_output,
-                        forbidden_tokens_file=forbidden_tokens_file,
-                    )
-                )
+                line
                 for method_id, receipt_output in ai_private_receipt_outputs(root, receipt_stem)
+                for line in private_publish_blocks(
+                    scripts,
+                    ai_private_packet_dirs[method_id],
+                    method_id,
+                    dry_private_receipt_outputs[method_id],
+                    receipt_output,
+                    forbidden_tokens_file=forbidden_tokens_file,
+                )
             ],
             "## 8. Render the reviewed-public publication handoff",
             "",

@@ -174,7 +174,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "comparative_hrd_synthesis",
         ):
             self.assertIn(f"--method-id {method_id}", text)
-        self.assertEqual(text.count("--packet-dir "), 3)
+        self.assertEqual(text.count("--packet-dir "), 6)
         self.assertNotIn("--source-dir", text)
         self.assertNotIn("--expected-file", text)
         self.assertNotIn("--receipt-upload-output", text)
@@ -201,10 +201,18 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         )
         self.assertEqual(
             MODULE.required_absent(root, "terminal")[3:6],
+            MODULE.ai_private_receipt_paths(root, "terminal", ".dry"),
+        )
+        self.assertEqual(
+            MODULE.required_absent(root, "terminal")[6:9],
             receipt_paths,
         )
         self.assertEqual(
-            tuple(Path(command[command.index("--receipt-output") + 1]) for command in publish_commands),
+            tuple(
+                Path(command[command.index("--receipt-output") + 1])
+                for command in publish_commands
+                if "--apply" in command
+            ),
             receipt_paths,
         )
         for receipt_path in receipt_paths:
@@ -230,10 +238,10 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
 
         self.assertEqual(len(prepare_commands), 1)
         self.assertEqual(len(validate_commands), 2)
-        self.assertEqual(len(publish_commands), 3)
+        self.assertEqual(len(publish_commands), 6)
         self.assertEqual(
             text.count("--forbidden-tokens-file /fast/forbidden_tokens.json"),
-            6,
+            9,
         )
         for command in (*prepare_commands, *validate_commands, *publish_commands):
             self.assertEqual(command.count("--forbidden-tokens-file"), 1)

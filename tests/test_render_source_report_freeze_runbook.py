@@ -97,16 +97,20 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
     def test_renderer_freezes_seven_sources_in_canonical_order(self) -> None:
         text = MODULE.render(Path("/repo"), "terminal")
 
-        self.assertEqual(text.count("/repo/scripts/publish_private_report.py"), 7)
-        self.assertEqual(text.count("--packet-dir "), 7)
-        self.assertEqual(text.count("--method-id "), 7)
-        self.assertEqual(text.count("--receipt-output "), 7)
+        self.assertEqual(text.count("/repo/scripts/publish_private_report.py"), 14)
+        self.assertEqual(text.count("--packet-dir "), 14)
+        self.assertEqual(text.count("--method-id "), 14)
+        self.assertEqual(text.count("--receipt-output "), 14)
         previous = -1
         for method_id in MODULE.REQUIRED_METHOD_IDS:
             index = text.find(f"--method-id {method_id}", previous + 1)
             self.assertGreater(index, previous)
             self.assertIn(
                 f"/repo/.codex-tmp/hrd-reports/deterministic-full/terminal.{method_id}.private.json",
+                text,
+            )
+            self.assertIn(
+                f"/repo/.codex-tmp/hrd-reports/deterministic-full/terminal.{method_id}.private.dry.json",
                 text,
             )
             previous = index
@@ -163,14 +167,40 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             ],
         )
 
-    def test_publish_command_has_exact_apply_argv(self) -> None:
+    def test_publish_command_has_exact_dry_and_apply_argv(self) -> None:
+        dry = Path("/receipts/deterministic.dry.json")
+        dry_command = MODULE.publish_command(
+            Path("/repo/scripts"),
+            Path("/packets/deterministic"),
+            "deterministic_full_wgs",
+            dry,
+            apply=False,
+        )
         command = MODULE.publish_command(
             Path("/repo/scripts"),
             Path("/packets/deterministic"),
             "deterministic_full_wgs",
             Path("/receipts/deterministic.json"),
+            apply=True,
+            dry_run_receipt=dry,
         )
 
+        self.assertEqual(
+            dry_command,
+            [
+                "python3",
+                Path("/repo/scripts/publish_private_report.py"),
+                "--packet-dir",
+                Path("/packets/deterministic"),
+                "--method-id",
+                "deterministic_full_wgs",
+                "--receipt-output",
+                dry,
+                "--region",
+                MODULE.REGION,
+                *MODULE.forbidden_flags(),
+            ],
+        )
         self.assertEqual(
             command,
             [
@@ -185,6 +215,8 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                 "--region",
                 MODULE.REGION,
                 *MODULE.forbidden_flags(),
+                "--dry-run-receipt",
+                dry,
                 "--apply",
             ],
         )
@@ -196,6 +228,8 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             "deterministic_full_wgs",
             Path("/receipts/deterministic.json"),
             forbidden_tokens_file=Path("/run/forbidden_tokens.json"),
+            apply=True,
+            dry_run_receipt=Path("/receipts/deterministic.dry.json"),
         )
 
         self.assertIn("--forbidden-tokens-file", command)
@@ -209,7 +243,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             phase3_fast_forbidden_tokens_file=Path("/fast/forbidden_tokens.json"),
         )
 
-        self.assertEqual(text.count("--forbidden-tokens-file /fast/forbidden_tokens.json"), 8)
+        self.assertEqual(text.count("--forbidden-tokens-file /fast/forbidden_tokens.json"), 15)
 
     def test_source_packet_dirs_match_required_methods(self) -> None:
         paths = MODULE.source_packet_dirs(Path("/repo"))
@@ -496,6 +530,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
         outputs = {path.as_posix() for path in MODULE.required_absent(Path("/repo"), "unit")}
 
         for path in (
+            *(f"/repo/.codex-tmp/hrd-reports/deterministic-full/unit.{method_id}.private.dry.json" for method_id in MODULE.REQUIRED_METHOD_IDS),
             *(f"/repo/.codex-tmp/hrd-reports/deterministic-full/unit.{method_id}.private.json" for method_id in MODULE.REQUIRED_METHOD_IDS),
             f"/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/{MODULE.RUN_ID}/model-catalog-receipt.20260717T115311Z.json",
             f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}",
