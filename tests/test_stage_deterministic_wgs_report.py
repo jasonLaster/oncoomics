@@ -70,6 +70,32 @@ def write_csv(
         writer.writerows(rows)
 
 
+def write_minimal_report_packet(staging: Path) -> None:
+    REPORT_MODULE.write_staged_text(staging / "report.md", "# Deterministic WGS\n")
+    for name in (
+        "crosscheck_input_plans.json",
+        "evidence_checks.json",
+        "input_sha256.csv",
+        "readiness.csv",
+    ):
+        REPORT_MODULE.write_staged_text(staging / name, f"{name}\n")
+    REPORT_MODULE.write_staged_json(
+        staging / "report_manifest.json",
+        {
+            "report_sha256": sha256(staging / "report.md"),
+            "support_sha256": {
+                name: sha256(staging / name)
+                for name in (
+                    "crosscheck_input_plans.json",
+                    "evidence_checks.json",
+                    "input_sha256.csv",
+                    "readiness.csv",
+                )
+            },
+        },
+    )
+
+
 def write_indexed_vcf(path: Path, records: list[str]) -> None:
     plain = path.with_suffix("")
     plain.parent.mkdir(parents=True, exist_ok=True)
@@ -237,6 +263,63 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                 REPORT_MODULE.copy_create_only(source, destination)
 
             self.assertFalse(destination.exists())
+
+    def test_staged_report_write_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            output = root / "report.md"
+            real_fsync_directory = REPORT_MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_bytes(b"tampered deterministic report\n")
+
+            with (
+                patch.object(
+                    REPORT_MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged report packet changed during write",
+                ),
+            ):
+                REPORT_MODULE.write_staged_text(output, "# Report\n")
+
+            self.assertFalse(output.exists())
+
+    def test_staged_report_manifest_rejects_stale_report_binding(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            staging = Path(temporary)
+            write_minimal_report_packet(staging)
+
+            (staging / "report.md").write_text("tampered\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged report manifest is stale for report.md",
+            ):
+                REPORT_MODULE.require_staged_report_manifest(staging)
+
+    def test_staged_report_manifest_rejects_stale_support_binding(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            staging = Path(temporary)
+            write_minimal_report_packet(staging)
+
+            (staging / "readiness.csv").write_text("tampered\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged report manifest is stale for readiness.csv",
+            ):
+                REPORT_MODULE.require_staged_report_manifest(staging)
 
     def test_failed_packet_install_removes_only_installed_packet_files(self) -> None:
         with tempfile.TemporaryDirectory(

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import os
 import re
@@ -96,6 +97,14 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def json_bytes(value: dict[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
@@ -958,24 +967,23 @@ def write_outputs(
     input_rows: list[dict[str, Any]],
 ) -> list[Path]:
     report_path = staging / "report.md"
-    report_path.write_text(report, encoding="utf-8")
+    write_staged_text(report_path, report)
     readiness_path = staging / "readiness.csv"
-    with readiness_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["evidence_surface", "state", "reason"])
-        writer.writeheader()
-        writer.writerows(readiness_rows)
-    checks_path = staging / "evidence_checks.json"
-    checks_path.write_text(json.dumps(checks_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    crosscheck_input_plans_path = staging / "crosscheck_input_plans.json"
-    crosscheck_input_plans_path.write_text(
-        json.dumps(crosscheck_input_plans, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
+    write_staged_csv(
+        readiness_path,
+        readiness_rows,
+        ["evidence_surface", "state", "reason"],
     )
+    checks_path = staging / "evidence_checks.json"
+    write_staged_json(checks_path, checks_payload)
+    crosscheck_input_plans_path = staging / "crosscheck_input_plans.json"
+    write_staged_json(crosscheck_input_plans_path, crosscheck_input_plans)
     hashes_path = staging / "input_sha256.csv"
-    with hashes_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["input_id", "path", "bytes", "sha256"])
-        writer.writeheader()
-        writer.writerows(input_rows)
+    write_staged_csv(
+        hashes_path,
+        input_rows,
+        ["input_id", "path", "bytes", "sha256"],
+    )
     return [
         report_path,
         readiness_path,
@@ -1221,6 +1229,91 @@ def require_safe_new_packet(path: Path) -> Path:
     if path.exists():
         raise ValueError("report output packet already exists: " + path.name)
     return path.resolve()
+
+
+def require_safe_new_staged_file(path: Path) -> Path:
+    require_no_symlinked_ancestors(path, "staged report packet")
+    if path.is_symlink():
+        raise ValueError("staged report packet may not be a symlink: " + path.name)
+    if path.exists():
+        raise ValueError("staged report packet already exists: " + path.name)
+    return path.resolve()
+
+
+def require_staged_file(path: Path, expected_sha256: str | None = None) -> None:
+    require_real_input_path(path, "staged report packet")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"staged report packet mode is not 0600: {path}")
+    if expected_sha256 is not None and sha256(path) != expected_sha256:
+        raise ValueError("staged report packet changed during write: " + path.name)
+
+
+def write_staged_bytes(path: Path, data: bytes) -> None:
+    expected_sha256 = sha256_bytes(data)
+    path = require_safe_new_staged_file(path)
+    descriptor = -1
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        fsync_directory(path.parent)
+        require_staged_file(path, expected_sha256)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def write_staged_text(path: Path, text: str) -> None:
+    write_staged_bytes(path, text.encode("utf-8"))
+
+
+def write_staged_json(path: Path, value: dict[str, Any]) -> None:
+    write_staged_bytes(path, json_bytes(value))
+
+
+def write_staged_csv(
+    path: Path,
+    rows: list[dict[str, Any]],
+    fieldnames: list[str],
+) -> None:
+    buffer = io.StringIO(newline="")
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
+    write_staged_text(path, buffer.getvalue())
+
+
+def require_staged_report_manifest(staging: Path) -> None:
+    manifest_path = staging / "report_manifest.json"
+    require_staged_file(manifest_path)
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("staged report manifest must be a JSON object")
+    support_hashes = payload.get("support_sha256")
+    if not isinstance(support_hashes, dict):
+        raise ValueError("staged report manifest lacks support hashes")
+    expected = [("report.md", str(payload.get("report_sha256", "")))]
+    expected.extend(
+        (name, str(support_hashes.get(name, "")))
+        for name in (
+            "crosscheck_input_plans.json",
+            "evidence_checks.json",
+            "input_sha256.csv",
+            "readiness.csv",
+        )
+    )
+    for name, expected_sha256 in expected:
+        if not HEX64.fullmatch(expected_sha256):
+            raise ValueError("staged report manifest has malformed SHA-256 for " + name)
+        require_staged_file(staging / name)
+        if sha256(staging / name) != expected_sha256:
+            raise ValueError("staged report manifest is stale for " + name)
 
 
 def copy_create_only(source: Path, destination: Path) -> None:
@@ -2434,10 +2527,8 @@ def main() -> None:
             "review_summary": review_summary,
         }
         manifest_path = staging / "report_manifest.json"
-        manifest_path.write_text(
-            json.dumps(report_manifest, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+        write_staged_json(manifest_path, report_manifest)
+        require_staged_report_manifest(staging)
         staged_paths.append(manifest_path)
         findings = scan_outputs(staged_paths, tokens)
         if findings:
