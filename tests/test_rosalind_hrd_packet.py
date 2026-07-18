@@ -1046,6 +1046,26 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 ["unexpected.txt"],
             )
 
+    def test_diana_wgs_packet_rejects_output_below_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            real_parent = output_root / "real-rosalind"
+            real_parent.mkdir()
+            linked_parent = output_root / "results/rosalind_hrd"
+            linked_parent.parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "Diana WGS packet output parent may not be a symlink",
+            ):
+                packet.prepare_diana_wgs_output_dir(
+                    linked_parent / "diana_wgs" / "unit",
+                    packet.PACKET_REPORT_FILES,
+                )
+
+            self.assertFalse((real_parent / "diana_wgs").exists())
+
     def test_diana_wgs_packet_identifier_scan_removes_generated_outputs(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)

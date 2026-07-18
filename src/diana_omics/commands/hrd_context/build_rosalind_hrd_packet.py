@@ -1947,6 +1947,7 @@ def prepare_diana_wgs_output_dir(output: Path, expected_files: Iterable[str]) ->
     expected = set(expected_files)
     if output.is_symlink():
         raise ValueError("Diana WGS packet output may not be a symlink")
+    require_safe_diana_wgs_output_parent(output)
     if output.exists() and not output.is_dir():
         raise ValueError(f"Diana WGS packet output is not a directory: {output}")
 
@@ -1976,6 +1977,24 @@ def prepare_diana_wgs_output_dir(output: Path, expected_files: Iterable[str]) ->
             "Diana WGS packet output already contains packet files: "
             + ", ".join(existing)
         )
+
+
+def require_safe_diana_wgs_output_parent(output: Path) -> None:
+    parent = output.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise ValueError(
+                f"Diana WGS packet output parent may not be a symlink: {parent}"
+            )
+        if parent == parent.parent:
+            raise ValueError(f"Diana WGS packet output has no existing parent: {output}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise ValueError(
+            f"Diana WGS packet output parent may not be a symlink: {parent}"
+        )
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
 
 
 def copy_diana_wgs_packet_file(source: Path, destination: Path) -> None:
