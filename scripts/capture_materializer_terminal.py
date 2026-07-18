@@ -496,6 +496,7 @@ def validate_exact_receipt(
 def create_private(path: Path, content: bytes) -> None:
     require_safe_private_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    expected_sha256 = sha256_bytes(content)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         try:
@@ -507,12 +508,21 @@ def create_private(path: Path, content: bytes) -> None:
             if (path.stat().st_mode & 0o777) != 0o600:
                 raise ValueError(f"private output mode is not 0600: {path}")
             fsync_directory(path.parent)
+            require_installed_private_output(path, expected_sha256)
         except Exception:
             path.unlink(missing_ok=True)
             raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def require_installed_private_output(path: Path, expected_sha256: str) -> None:
+    require_no_symlinked_ancestors(path, "private output")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"private output changed during write: {path}")
+    if sha256_bytes(path.read_bytes()) != expected_sha256:
+        raise ValueError(f"private output changed during write: {path}")
 
 
 def fsync_directory(path: Path) -> None:

@@ -689,6 +689,30 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
 
             self.assertFalse(path.exists())
 
+    def test_private_create_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "private.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                real_fsync_directory(parent)
+                path.write_bytes(b"tampered")
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private output changed during write",
+                ),
+            ):
+                MODULE.create_private(path, b"complete")
+
+            self.assertFalse(path.exists())
+
     def test_private_group_rolls_back_only_its_partial_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
