@@ -9,6 +9,7 @@ import json
 import math
 import os
 import re
+import shutil
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -420,8 +421,7 @@ def install_bundle_create_only(staged_paths: Sequence[Path], output: Path) -> No
             copy_create_only(path, destination)
             installed.append(destination)
     except Exception:
-        for path in installed:
-            path.unlink(missing_ok=True)
+        shutil.rmtree(output, ignore_errors=True)
         raise
 
 

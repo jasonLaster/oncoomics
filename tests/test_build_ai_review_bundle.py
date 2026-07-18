@@ -179,6 +179,42 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
             self.assertEqual(destination.read_bytes(), b"one\n")
 
+    def test_bundle_install_failure_removes_unexpected_child(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            staging.mkdir()
+            output.mkdir()
+            staged_paths = []
+            for name in BUILD.BUNDLE_FILENAMES:
+                path = staging / name
+                path.write_text(f"{name}\n", encoding="utf-8")
+                staged_paths.append(path)
+
+            real_copy = BUILD.copy_create_only
+
+            def fail_with_unexpected_child(source: Path, destination: Path) -> None:
+                real_copy(source, destination)
+                if destination.name == "reviewer-a.prompt.md":
+                    (destination.parent / "unexpected.tmp").write_text(
+                        "stray partial file\n",
+                        encoding="utf-8",
+                    )
+                    raise ValueError("synthetic bundle install failure")
+
+            with (
+                mock.patch.object(
+                    BUILD,
+                    "copy_create_only",
+                    side_effect=fail_with_unexpected_child,
+                ),
+                self.assertRaisesRegex(ValueError, "synthetic bundle install failure"),
+            ):
+                BUILD.install_bundle_create_only(staged_paths, output)
+
+            self.assertFalse(output.exists())
+
     def test_builds_bundle_for_staged_two_file_reviewer_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))
