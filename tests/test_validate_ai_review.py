@@ -565,6 +565,23 @@ class ValidateAiReviewTests(unittest.TestCase):
             fixture = ValidateReviewFixture(Path(temporary))
             fixture.build()
             review = Path(temporary) / "review-a"
+            fixture.write_review(review)
+            fixture.manifests[0].with_name("support.json").write_text(
+                '{"changed": true}\n',
+                encoding="utf-8",
+            )
+
+            tampered = fixture.validate(review)
+
+            self.assertNotEqual(tampered.returncode, 0)
+            self.assertIn("source support mismatch for E001", tampered.stderr)
+            self.assertIn("support hash mismatch", tampered.stderr)
+            self.assertFalse((review / "validation.json").exists())
+
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review = Path(temporary) / "review-a"
             fixture.write_review(
                 review,
                 body="The evidence was copied from /private/results/sample.bam [C001|E001].",

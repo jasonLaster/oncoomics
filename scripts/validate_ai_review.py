@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Sequence
 
+from build_ai_review_bundle import validate_report_manifest_support
 from forbidden_text import (
     forbidden_token_fingerprints,
     has_unauthorized_hrd_classification,
@@ -299,6 +300,14 @@ def validate_source_manifests(
             raise ValueError(f"source report hash mismatch for {evidence_id}")
         if not isinstance(source_hashes, dict) or not source_hashes:
             raise ValueError(f"source artifact hashes are missing for {evidence_id}")
+        try:
+            validate_report_manifest_support(
+                path.parent,
+                source,
+                str(source.get("method_id") or source.get("route") or evidence_id),
+            )
+        except ValueError as error:
+            raise ValueError(f"source support mismatch for {evidence_id}: {error}") from error
 
         expected_evidence = {
             "method_id": str(source.get("method_id") or source.get("route") or ""),
