@@ -1692,6 +1692,14 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
     test -s "${rosalind_run_manifest}"
     test -s "${rosalind_packet_index}"
     test -s "${rosalind_report_manifest}"
+    test -s "${rosalind_cloud_materialization_plan}"
+    test -s "${rosalind_input_evidence_index}"
+    test -s "${rosalind_sample_validation_summary}"
+    test -s "${rosalind_hrd_adapter_status}"
+    test -s "${rosalind_research_context_sources}"
+    test -s "${rosalind_next_actions}"
+    test -s "${rosalind_reviewer_packet}"
+    test -s "${rosalind_report}"
 
     "${params.python_bin}" "${params.repo_dir}/scripts/generate_blocked_hrd_crosscheck_reports.py" \
         --output-dir "\$PWD/workspace/results/phase3_wgs_fast/blocked_crosschecks"

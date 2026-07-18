@@ -308,7 +308,21 @@ class Phase3FastNextflowTests(unittest.TestCase):
         process = text[text.index("process FAST_STAGE_BLOCKED_CROSSCHECKS") :]
         process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
         self.assertIn("label 'cpu_io'", process)
-        self.assertIn("path(rosalind_report_manifest)", process)
+        for rosalind_input in (
+            "rosalind_run_manifest",
+            "rosalind_packet_index",
+            "rosalind_cloud_materialization_plan",
+            "rosalind_input_evidence_index",
+            "rosalind_sample_validation_summary",
+            "rosalind_hrd_adapter_status",
+            "rosalind_research_context_sources",
+            "rosalind_next_actions",
+            "rosalind_reviewer_packet",
+            "rosalind_report",
+            "rosalind_report_manifest",
+        ):
+            self.assertIn(f"path({rosalind_input})", process)
+            self.assertIn(f'test -s "${{{rosalind_input}}}"', process)
         self.assertIn("generate_blocked_hrd_crosscheck_reports.py", process)
         self.assertIn("workspace/results/phase3_wgs_fast/blocked_crosschecks", process)
         for method_id in (
