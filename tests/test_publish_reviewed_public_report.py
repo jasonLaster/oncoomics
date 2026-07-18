@@ -605,6 +605,25 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                     MODULE.run(fixture.args())
             self.assertEqual(fixture.output_path.read_text(), "preserve\n")
 
+    def test_receipt_output_rejects_symlinked_parent_without_writing_target(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary).resolve())
+            real_parent = fixture.root / "real-receipts"
+            real_parent.mkdir()
+            linked_parent = fixture.root / "linked-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            args = fixture.args()
+            args.receipt_output = linked_parent / "public-publication.json"
+            fake = FakeAws(fixture)
+
+            with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json):
+                with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                    MODULE.run(args)
+
+            self.assertFalse((real_parent / "public-publication.json").exists())
+
     def test_private_receipt_symlink_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
