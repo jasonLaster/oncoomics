@@ -1147,9 +1147,8 @@ def build_input_rows(
 
 
 def prepare_output_dir(output: Path, expected_names: Iterable[str]) -> None:
+    output = resolve_report_output_dir(output)
     expected = set(expected_names)
-    if output.is_symlink():
-        raise ValueError("report output may not be a symlink")
     if output.exists() and not output.is_dir():
         raise ValueError(f"report output is not a directory: {output}")
 
@@ -1178,6 +1177,21 @@ def prepare_output_dir(output: Path, expected_names: Iterable[str]) -> None:
         raise ValueError(
             "report output already contains packet files: " + ", ".join(existing)
         )
+
+
+def resolve_report_output_dir(output: Path) -> Path:
+    if output.is_symlink():
+        raise ValueError("report output may not be a symlink")
+    parent = output.parent
+    while not parent.exists() and not parent.is_symlink():
+        if parent == parent.parent:
+            break
+        parent = parent.parent
+    if parent.is_symlink():
+        raise ValueError(f"report output parent may not be a symlink: {parent}")
+    if parent.exists() and not parent.is_dir():
+        raise ValueError(f"report output parent is not a directory: {parent}")
+    return output.resolve()
 
 
 def copy_create_only(source: Path, destination: Path) -> None:
@@ -1264,13 +1278,10 @@ def main() -> None:
         raise SystemExit("Fail-closed: input roots may not be symlinks")
     source_artifact_root = args.artifact_root.resolve()
     source_early_root = args.early_look_root.resolve()
-    if args.output_dir.is_symlink():
-        raise SystemExit("Fail-closed: report output may not be a symlink")
-    if args.output_dir.parent.is_symlink():
-        raise SystemExit(
-            f"Fail-closed: report output parent may not be a symlink: {args.output_dir.parent}"
-        )
-    output = args.output_dir.resolve()
+    try:
+        output = resolve_report_output_dir(args.output_dir)
+    except ValueError as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
     if (
         output == source_artifact_root
         or output.is_relative_to(source_artifact_root)
