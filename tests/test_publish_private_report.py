@@ -314,6 +314,28 @@ class PublishPrivateReportTests(unittest.TestCase):
                 ):
                     MODULE.run(fixture.args())
 
+    def test_rejects_packet_dir_below_symlinked_parent_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = Fixture(root)
+            real_parent = root / "real-packets"
+            real_parent.mkdir()
+            moved_packet = real_parent / "packet"
+            fixture.packet.rename(moved_packet)
+            linked_parent = root / "linked-packets"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            fixture.packet = linked_parent / "packet"
+
+            with (
+                self.assertRaisesRegex(
+                    ValueError, "packet directory parent may not be a symlink"
+                ),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            ):
+                MODULE.run(fixture.args())
+
+            self.assertFalse(fixture.receipt_path.exists())
+
     def test_rejects_unauthorized_hrd_classification_before_aws(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
@@ -495,6 +517,35 @@ class PublishPrivateReportTests(unittest.TestCase):
                 mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
             ):
                 MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_run_receipt))
+
+    def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_aws(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = Fixture(root)
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
+            real_parent = root / "real-dry-run-receipts"
+            real_parent.mkdir()
+            moved_receipt = real_parent / "private-publication.dry.json"
+            dry_run_receipt.rename(moved_receipt)
+            linked_parent = root / "linked-dry-run-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with (
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private report dry-run receipt parent may not be a symlink",
+                ),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            ):
+                MODULE.run(
+                    fixture.args(
+                        apply=True,
+                        dry_run_receipt=linked_parent
+                        / "private-publication.dry.json",
+                    )
+                )
 
 
 if __name__ == "__main__":

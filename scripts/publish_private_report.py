@@ -39,6 +39,32 @@ from publish_reviewed_public_report import (
 CLASSIFICATION = "private-reviewed-hrd-report"
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
+def require_real_packet_dir(packet_dir: Path) -> Path:
+    require_no_symlinked_ancestors(packet_dir, "packet directory")
+    if packet_dir.is_symlink() or not packet_dir.is_dir():
+        raise ValueError("packet directory must be a real directory")
+    return packet_dir.resolve()
+
+
+def require_real_input_file(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file")
+    return path.resolve()
+
+
 def forbidden_tokens(args: argparse.Namespace) -> tuple[str, ...]:
     return merge_forbidden_tokens(
         (*DEFAULT_FORBIDDEN_TOKENS, *args.forbidden_token),
@@ -47,8 +73,7 @@ def forbidden_tokens(args: argparse.Namespace) -> tuple[str, ...]:
 
 
 def validate_packet_dir(packet_dir: Path, method_id: str, tokens: tuple[str, ...]) -> list[dict[str, Any]]:
-    if packet_dir.is_symlink() or not packet_dir.is_dir():
-        raise ValueError("packet directory must be a real directory")
+    packet_dir = require_real_packet_dir(packet_dir)
     expected = tuple(sorted(METHOD_CONTRACTS[method_id]["files"]))
     present = sorted(child.name for child in packet_dir.iterdir())
     if present != list(expected):
@@ -159,8 +184,7 @@ def upload_private(
 def validate_dry_run_receipt(
     path: Path, receipt: dict[str, Any]
 ) -> dict[str, str]:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError("private report dry-run receipt must be a real file")
+    path = require_real_input_file(path, "private report dry-run receipt")
     dry_run = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(dry_run, dict):
         raise ValueError("private report dry-run receipt must be a JSON object")
