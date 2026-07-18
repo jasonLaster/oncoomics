@@ -373,12 +373,21 @@ def write_file_create_only(path: Path, data: bytes) -> None:
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
+        fsync_directory(path.parent)
     except Exception:
         path.unlink(missing_ok=True)
         raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def prepare_output_root(output_root: Path) -> Path:
@@ -565,6 +574,7 @@ def generate(
             manifest_path = target / "report_manifest.json"
             write_file_create_only(manifest_path, json_bytes(manifest))
             written.extend((spec_path, report_path, manifest_path))
+        fsync_directory(output_root)
     except Exception:
         for target in created_targets:
             shutil.rmtree(target, ignore_errors=True)

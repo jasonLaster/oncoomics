@@ -67,11 +67,56 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
             self.assertEqual(output.read_bytes(), b"first\n")
             self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o644)
-            self.assertEqual(fsync.call_count, 1)
+            self.assertEqual(fsync.call_count, 2)
 
             with self.assertRaises(FileExistsError):
                 GENERATOR.write_file_create_only(output, b"second\n")
             self.assertEqual(output.read_bytes(), b"first\n")
+
+    def test_packet_file_removes_partial_after_file_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report.md"
+
+            with (
+                mock.patch.object(
+                    GENERATOR.os,
+                    "fsync",
+                    side_effect=OSError("synthetic file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                GENERATOR.write_file_create_only(output, b"first\n")
+
+            self.assertFalse(output.exists())
+
+    def test_packet_file_removes_partial_after_directory_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report.md"
+
+            with (
+                mock.patch.object(
+                    GENERATOR.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                GENERATOR.write_file_create_only(output, b"first\n")
+
+            self.assertFalse(output.exists())
+
+    def test_generation_fsyncs_output_root_after_method_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+
+            with mock.patch.object(
+                GENERATOR,
+                "fsync_directory",
+                wraps=GENERATOR.fsync_directory,
+            ) as fsync_directory:
+                GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+
+            self.assertIn(mock.call(output.resolve()), fsync_directory.mock_calls)
 
     def test_reports_preserve_blocked_no_call_state(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -228,6 +273,26 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(OSError, "synthetic blocked packet failure"):
                     GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+
+            self.assertFalse(output.exists())
+
+    def test_generation_cleans_created_method_directories_after_final_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+            side_effects = [None for _ in range(len(GENERATOR.METHODS) * 3)]
+            side_effects.append(OSError("synthetic output root fsync failure"))
+
+            with (
+                mock.patch.object(
+                    GENERATOR,
+                    "fsync_directory",
+                    side_effect=side_effects,
+                ),
+                self.assertRaisesRegex(OSError, "synthetic output root fsync failure"),
+            ):
+                GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
 
             self.assertFalse(output.exists())
 
