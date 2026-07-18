@@ -1939,11 +1939,23 @@ def diana_wgs_forbidden_tokens() -> list[str]:
     tokens = [str(input_summary.get(key, "")).strip() for key in ("dataset", "pair")]
     raw = os.environ.get("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON", "").strip()
     if raw:
-        supplied = json.loads(raw)
-        if not isinstance(supplied, list) or any(not isinstance(value, str) for value in supplied):
-            raise ValueError("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON must be a JSON string array")
+        try:
+            supplied = json.loads(raw)
+        except json.JSONDecodeError as error:
+            raise ValueError("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON must be a JSON string array") from error
+        if not isinstance(supplied, list) or any(
+            not isinstance(value, str) or not value.strip() for value in supplied
+        ) or not supplied:
+            raise ValueError("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON must be a non-empty JSON string array")
         tokens.extend(value.strip() for value in supplied)
-    return sorted({token for token in tokens if token}, key=str.casefold)
+
+    unique_tokens = sorted({token for token in tokens if token}, key=str.casefold)
+    if not unique_tokens:
+        raise ValueError(
+            "Diana WGS generated-output identifier scan requires at least one forbidden token; "
+            "set ROSALIND_HRD_FORBIDDEN_TOKENS_JSON to a non-empty JSON string array"
+        )
+    return unique_tokens
 
 
 def scan_generated_packet(paths: Sequence[Path], forbidden_tokens: Sequence[str]) -> None:
@@ -2052,17 +2064,25 @@ def install_diana_wgs_packet(staged_paths: Sequence[Path], output: Path) -> None
 def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
     output_dir = f"{RESULT_ROOT}/{spec.sample_set}/{packet_run_id}"
     output_path = path_from_root(output_dir)
+    forbidden_tokens = (
+        diana_wgs_forbidden_tokens() if spec.sample_set == "diana_wgs" else []
+    )
     if spec.sample_set == "diana_wgs":
         prepare_diana_wgs_output_dir(output_path, PACKET_REPORT_FILES)
         with tempfile.TemporaryDirectory(
             prefix=f".{output_path.name}.", dir=output_path.parent
         ) as staging:
             return write_packet_to_dir(
-                spec, packet_run_id, output_dir, Path(staging), output_path
+                spec,
+                packet_run_id,
+                output_dir,
+                Path(staging),
+                output_path,
+                forbidden_tokens,
             )
 
     ensure_dir(output_path)
-    return write_packet_to_dir(spec, packet_run_id, output_dir, output_path, None)
+    return write_packet_to_dir(spec, packet_run_id, output_dir, output_path, None, [])
 
 
 def diana_wgs_deterministic_process_lines(deterministic_binding: Mapping[str, Any]) -> list[str]:
@@ -2132,6 +2152,7 @@ def write_packet_to_dir(
     output_dir: str,
     output_path: Path,
     final_output_path: Path | None,
+    forbidden_tokens: Sequence[str],
 ) -> dict[str, Any]:
     evidence_rows, adapter_rows, blockers = EVIDENCE_BUILDERS[spec.sample_set]()
     deterministic_binding = (
@@ -2284,7 +2305,7 @@ def write_packet_to_dir(
     if spec.sample_set == "diana_wgs":
         scan_generated_packet(
             packet_files,
-            diana_wgs_forbidden_tokens(),
+            forbidden_tokens,
         )
     report_manifest_sha256 = sha256_file(report_manifest_path)
     if final_output_path is not None:

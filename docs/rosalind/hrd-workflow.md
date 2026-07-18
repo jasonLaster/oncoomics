@@ -172,6 +172,7 @@ env \
   ROSALIND_HRD_RUN_ID=<run_id> \
   ROSALIND_HRD_ARTIFACT_ROOT=<materialized-final-artifact-root> \
   ROSALIND_HRD_DETERMINISTIC_REPORT_DIR=<deterministic_full_wgs-report-dir> \
+  ROSALIND_HRD_FORBIDDEN_TOKENS_JSON='["<private-token>"]' \
   PYTHONPATH=src \
   /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet
 ```

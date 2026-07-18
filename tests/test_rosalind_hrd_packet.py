@@ -12,6 +12,8 @@ from diana_omics import utils
 from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as packet
 from diana_omics.commands.phase3_wgs import stage_phase3_fast_deterministic_report as stage_phase3_fast_report
 
+PHASE3_FAST_FORBIDDEN_TOKENS_JSON = json.dumps(["UNIT-FORBIDDEN-PHASE3-FAST"])
+
 
 def write_diana_wgs_worker_artifacts(root: Path, readiness_overrides: Optional[Dict[str, str]] = None) -> None:
     readiness_overrides = readiness_overrides or {}
@@ -583,6 +585,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     {
                         "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
                         "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
                     },
                 ),
             ):
@@ -731,11 +734,38 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     {
                         "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
                         "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
                     },
                 ),
                 self.assertRaisesRegex(ValueError, "lacks an alias input contract"),
             ):
                 packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+    def test_diana_wgs_phase3_fast_packet_requires_forbidden_token_inventory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(output_root / "phase3_fast")
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                with self.assertRaisesRegex(ValueError, "requires at least one forbidden token"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/phase3-fast"
+            self.assertFalse(output_dir.exists())
+
+    def test_diana_wgs_packet_rejects_empty_forbidden_token_inventory(self):
+        with self.assertRaisesRegex(ValueError, "non-empty JSON string array"):
+            with patch.dict("os.environ", {"ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": "[]"}):
+                packet.diana_wgs_forbidden_tokens()
 
     def test_diana_wgs_phase3_fast_packet_rejects_final_artifact_tampering(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -753,6 +783,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     {
                         "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
                         "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
                     },
                 ),
             ):
