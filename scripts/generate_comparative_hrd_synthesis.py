@@ -808,19 +808,19 @@ def main() -> None:
         raise SystemExit("Fail-closed: " + str(error)) from error
     try:
         bundle, bundle_manifest, bundle_hash = verify_bundle(
-            args.review_bundle.resolve(), args.bundle_manifest.resolve(), required_methods
+            args.review_bundle, args.bundle_manifest, required_methods
         )
         evidence_rows = verify_sources(
-            [path.resolve() for path in args.source_manifest],
+            args.source_manifest,
             required_methods,
             bundle,
             bundle_manifest,
         )
         review_a = verify_review(
-            args.reviewer_a_dir.resolve(), "A", bundle, bundle_manifest, bundle_hash
+            args.reviewer_a_dir, "A", bundle, bundle_manifest, bundle_hash
         )
         review_b = verify_review(
-            args.reviewer_b_dir.resolve(), "B", bundle, bundle_manifest, bundle_hash
+            args.reviewer_b_dir, "B", bundle, bundle_manifest, bundle_hash
         )
         verify_pair(review_a, review_b)
         ceiling = derive_authorized_state(evidence_rows)

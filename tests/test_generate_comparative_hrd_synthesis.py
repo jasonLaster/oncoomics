@@ -304,6 +304,10 @@ class SynthesisFixture:
         self,
         source_manifests: Optional[List[Path]] = None,
         methods: Optional[List[str]] = None,
+        review_bundle: Optional[Path] = None,
+        bundle_manifest: Optional[Path] = None,
+        reviewer_a_dir: Optional[Path] = None,
+        reviewer_b_dir: Optional[Path] = None,
     ) -> subprocess.CompletedProcess[str]:
         command = [sys.executable, str(GENERATOR)]
         for source in source_manifests if source_manifests is not None else self.source_manifests:
@@ -313,13 +317,13 @@ class SynthesisFixture:
         command.extend(
             [
                 "--review-bundle",
-                str(self.bundle_dir / "review_bundle.json"),
+                str(review_bundle or self.bundle_dir / "review_bundle.json"),
                 "--bundle-manifest",
-                str(self.bundle_dir / "bundle_manifest.json"),
+                str(bundle_manifest or self.bundle_dir / "bundle_manifest.json"),
                 "--reviewer-a-dir",
-                str(self.review_a),
+                str(reviewer_a_dir or self.review_a),
                 "--reviewer-b-dir",
-                str(self.review_b),
+                str(reviewer_b_dir or self.review_b),
                 "--output-dir",
                 str(self.output_dir),
             ]
@@ -515,6 +519,61 @@ class GenerateSynthesisTests(unittest.TestCase):
             result = fixture.run()
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("output differs", result.stdout + result.stderr)
+
+    def test_rejects_symlinked_cli_inputs_without_final_output(self) -> None:
+        cases = (
+            (
+                lambda fixture, root: {
+                    "review_bundle": (
+                        root / "review-bundle-link.json"
+                    ).symlink_to(fixture.bundle_dir / "review_bundle.json")
+                    or root / "review-bundle-link.json",
+                },
+                "review_bundle.json",
+            ),
+            (
+                lambda fixture, root: {
+                    "bundle_manifest": (
+                        root / "bundle-manifest-link.json"
+                    ).symlink_to(fixture.bundle_dir / "bundle_manifest.json")
+                    or root / "bundle-manifest-link.json",
+                },
+                "bundle_manifest.json",
+            ),
+            (
+                lambda fixture, root: {
+                    "source_manifests": [
+                        (root / "source-manifest-link.json").symlink_to(
+                            fixture.source_manifests[0]
+                        )
+                        or root / "source-manifest-link.json",
+                        *fixture.source_manifests[1:],
+                    ],
+                },
+                "E001 report_manifest.json",
+            ),
+            (
+                lambda fixture, root: {
+                    "reviewer_a_dir": (
+                        root / "review-a-link"
+                    ).symlink_to(fixture.review_a, target_is_directory=True)
+                    or root / "review-a-link",
+                },
+                "reviewer A directory",
+            ),
+        )
+        for build_kwargs, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-symlink-"
+            ) as temporary:
+                root = Path(temporary)
+                fixture = SynthesisFixture(root)
+
+                result = fixture.run(**build_kwargs(fixture, root))
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stdout + result.stderr)
+                self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
 
     def test_duplicate_model_and_invocation_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-model-") as temporary:
