@@ -414,6 +414,48 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
                 self.assertFalse((real_parent / nested / "staged").exists())
 
+    def test_stage_rejects_source_or_verification_below_symlinked_parent(
+        self,
+    ) -> None:
+        cases = (
+            ("source", "exact route replay"),
+            ("verification", "download verification"),
+        )
+
+        for target, message in cases:
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "exact"
+                verification = write_route_report(source)
+                real_parent = root / "real-inputs"
+                real_parent.mkdir()
+                linked_parent = root / "linked-inputs"
+                linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+                if target == "source":
+                    shutil.copytree(source, real_parent / source.name)
+                    source = linked_parent / source.name
+                else:
+                    shutil.copy2(
+                        verification,
+                        real_parent / verification.name,
+                    )
+                    verification = linked_parent / verification.name
+
+                output = root / "staged"
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"{message} parent may not be a symlink",
+                ):
+                    STAGE.stage(
+                        source,
+                        verification,
+                        output,
+                        "sigprofiler_sbs3",
+                    )
+
+                self.assertFalse(output.exists())
+
     def test_stage_cleans_current_attempt_after_install_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

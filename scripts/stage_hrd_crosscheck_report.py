@@ -30,6 +30,7 @@ def sha256(path: Path) -> str:
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} is missing or a symlink")
     value = json.loads(path.read_text(encoding="utf-8"))
@@ -271,6 +272,7 @@ def install_staged_packet(staging: Path, output_dir: Path) -> None:
 
 
 def resolve_real_source_dir(source_dir: Path) -> Path:
+    require_no_symlinked_ancestors(source_dir, "exact route replay")
     if source_dir.is_symlink() or not source_dir.is_dir():
         raise ValueError("exact route replay must be a real directory")
     return source_dir.resolve()
@@ -280,14 +282,18 @@ def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
 
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
 def resolve_new_output_dir(output_dir: Path) -> Path:
     if output_dir.is_symlink():
         raise ValueError("output may not be a symlink")
-    for parent in output_dir.parents:
-        if parent.is_symlink() and not is_platform_root_alias(parent):
-            raise ValueError(f"output parent may not be a symlink: {parent}")
-        if parent.exists() and not parent.is_dir():
-            raise ValueError(f"output parent is not a directory: {parent}")
+    require_no_symlinked_ancestors(output_dir, "output")
     output_dir = output_dir.resolve()
     if output_dir.exists():
         raise ValueError(f"output already exists: {output_dir}")
