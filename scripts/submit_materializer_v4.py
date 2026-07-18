@@ -890,25 +890,43 @@ def create_private(path: Path, content: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
-        with os.fdopen(descriptor, "wb") as handle:
-            descriptor = -1
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                descriptor = -1
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            if (path.stat().st_mode & 0o777) != 0o600:
+                raise ValueError(f"private output mode is not 0600: {path}")
+            fsync_directory(path.parent)
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
-    if (path.stat().st_mode & 0o777) != 0o600:
-        raise ValueError(f"private output mode is not 0600: {path}")
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def reserve_private(path: Path) -> int:
     require_safe_new_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    if (path.stat().st_mode & 0o777) != 0o600:
+    try:
+        if (path.stat().st_mode & 0o777) != 0o600:
+            raise ValueError(f"private output mode is not 0600: {path}")
+        fsync_directory(path.parent)
+    except Exception:
         os.close(descriptor)
-        raise ValueError(f"private output mode is not 0600: {path}")
+        path.unlink(missing_ok=True)
+        raise
     return descriptor
 
 
