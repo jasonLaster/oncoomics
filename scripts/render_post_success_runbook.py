@@ -442,7 +442,9 @@ def required_existing(root: Path) -> tuple[Path, ...]:
 def required_absent(root: Path) -> tuple[Path, ...]:
     reports = root / ".codex-tmp/hrd-reports"
     deterministic = reports / "deterministic-full"
-    rosalind = root / "results/rosalind_hrd/diana_wgs" / RUN_ID
+    rosalind_root = root / "results/rosalind_hrd"
+    rosalind_run = rosalind_root / RUN_ID
+    rosalind_diana_wgs = rosalind_root / "diana_wgs" / RUN_ID
     blocked = reports / "blocked-crosschecks"
 
     terminal_outputs = [
@@ -491,7 +493,10 @@ def required_absent(root: Path) -> tuple[Path, ...]:
         *(deterministic / name for name in terminal_outputs),
         deterministic / "materialized-final",
         deterministic / "report",
-        rosalind,
+        rosalind_diana_wgs,
+        rosalind_run / "run_manifest.json",
+        rosalind_run / "packet_index.md",
+        rosalind_run / "cloud_materialization_plan.md",
         *route_outputs,
         *(
             blocked / directory

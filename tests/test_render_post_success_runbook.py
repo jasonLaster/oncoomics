@@ -295,6 +295,12 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             "/repo/.codex-tmp/hrd-reports/deterministic-full/report",
             "/repo/results/rosalind_hrd/diana_wgs/"
             f"{MODULE.RUN_ID}",
+            "/repo/results/rosalind_hrd/"
+            f"{MODULE.RUN_ID}/run_manifest.json",
+            "/repo/results/rosalind_hrd/"
+            f"{MODULE.RUN_ID}/packet_index.md",
+            "/repo/results/rosalind_hrd/"
+            f"{MODULE.RUN_ID}/cloud_materialization_plan.md",
             "/repo/.codex-tmp/hrd-reports/route-replays/"
             "sequenza_scarhrd",
             "/repo/.codex-tmp/hrd-reports/crosschecks/"
