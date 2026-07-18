@@ -17,6 +17,7 @@ from .render_phase3_fast_input_manifest import (
     normalize_method_parameters,
 )
 from .render_phase3_fast_staging_plan import EXPECTED_STAGED_OBJECTS
+from .safe_json_output import require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staging_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
@@ -53,20 +54,7 @@ def _require_positive_int(value: Any, label: str) -> int:
 
 
 def _require_safe_local_path(path: Path, label: str) -> None:
-    if path.is_symlink():
-        raise ManifestError(f"{label} may not be a symlink: {path}")
-
-    parent = path.parent
-    while not parent.exists() and not parent.is_symlink():
-        next_parent = parent.parent
-        if next_parent == parent:
-            raise ManifestError(f"{label} parent does not exist: {path.parent}")
-        parent = next_parent
-
-    if parent.is_symlink():
-        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise ManifestError(f"{label} parent is not a directory: {parent}")
+    require_safe_output_path(path, label, ManifestError)
 
 
 def _require_absolute_file(value: Any, label: str) -> Path:

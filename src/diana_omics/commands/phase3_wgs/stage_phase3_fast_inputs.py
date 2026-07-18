@@ -13,6 +13,7 @@ from ...utils import ensure_parent, read_json
 from .render_phase3_fast_cache_manifest import BAM_CACHE_ARTIFACTS, REFERENCE_CACHE_ARTIFACTS
 from .render_phase3_fast_input_manifest import CALLER_RESOURCES, ManifestError, _require_s3_uri
 from .render_phase3_fast_staging_plan import EXPECTED_STAGED_OBJECTS
+from .safe_json_output import require_safe_output_path
 from .verify_phase3_fast_staged_inputs import build_phase3_fast_staged_inputs_manifest
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staging_plan.json"
@@ -153,22 +154,7 @@ def _sha256_path(path: Path) -> str:
 
 
 def _require_safe_output_path(path: Path, label: str) -> None:
-    if path.is_symlink():
-        raise ManifestError(f"{label} may not be a symlink: {path}")
-
-    parent = path.parent
-    while not parent.exists() and not parent.is_symlink():
-        next_parent = parent.parent
-        if next_parent == parent:
-            raise ManifestError(f"{label} parent does not exist: {path.parent}")
-        parent = next_parent
-
-    if parent.is_symlink():
-        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise ManifestError(f"{label} parent is not a directory: {parent}")
-    if path.exists() and not path.is_file():
-        raise ManifestError(f"{label} already exists and is not a file: {path}")
+    require_safe_output_path(path, label, ManifestError)
 
 
 def materialize_phase3_fast_staged_inputs(

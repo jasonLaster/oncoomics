@@ -10,6 +10,7 @@ from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
 from .crosscheck_contracts import sequenza_alias_input_contract
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
+from .safe_json_output import require_safe_output_path
 
 DEFAULT_FINAL_EVIDENCE = "manifests/phase3_wgs_fast/final_evidence_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/crosscheck_materialization_plan.json"
@@ -63,23 +64,6 @@ def _sha256_path(path: Path) -> str:
         while chunk := handle.read(1024 * 1024):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def _require_safe_output_path(path: Path, label: str) -> None:
-    if path.is_symlink():
-        raise ManifestError(f"{label} may not be a symlink: {path}")
-
-    parent = path.parent
-    while not parent.exists() and not parent.is_symlink():
-        next_parent = parent.parent
-        if next_parent == parent:
-            raise ManifestError(f"{label} parent does not exist: {path.parent}")
-        parent = next_parent
-
-    if parent.is_symlink():
-        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
-    if not parent.is_dir():
-        raise ManifestError(f"{label} parent is not a directory: {parent}")
 
 
 def _source_blob(value: Any, label: str) -> dict[str, Any]:
@@ -231,7 +215,7 @@ def build_phase3_fast_crosscheck_materialization_plan(
 
 
 def write_plan(path: Path, plan: Mapping[str, Any]) -> None:
-    _require_safe_output_path(path, "cross-check materialization plan output")
+    require_safe_output_path(path, "cross-check materialization plan output", ManifestError)
     ensure_parent(path)
     path.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
