@@ -197,6 +197,27 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             for method in GENERATOR.METHODS[:-1]:
                 self.assertFalse((output / method["directory"]).exists())
 
+    def test_generation_cleans_created_method_directories_after_write_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+            original_write = GENERATOR.write_file_create_only
+
+            def fail_after_first_method(path: Path, data: bytes) -> None:
+                if path.name == "method_spec.json" and path.parent.name == GENERATOR.METHODS[1]["directory"]:
+                    path.write_text("partial blocked packet\n", encoding="utf-8")
+                    raise OSError("synthetic blocked packet failure")
+                original_write(path, data)
+
+            with mock.patch.object(
+                GENERATOR,
+                "write_file_create_only",
+                side_effect=fail_after_first_method,
+            ):
+                with self.assertRaisesRegex(OSError, "synthetic blocked packet failure"):
+                    GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+
+            self.assertFalse(output.exists())
+
     def test_cli_rejects_symlinked_output_without_writing_packets(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

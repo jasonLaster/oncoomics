@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -481,90 +482,101 @@ def generate(
     generator_hash = sha256_file(Path(__file__).resolve())
     source_report_manifests = validate_source_report_manifests(source_report_manifests)
     written: list[Path] = []
-    for method in METHODS:
-        target = output_root / str(method["directory"])
-        target.mkdir(parents=True)
-        spec = {
-            "schema_version": 1,
-            "method_id": method["method_id"],
-            "title": method["title"],
-            **STATUS,
-            "explicit_no_patient_result": (
-                "The method was not run and no patient result was generated, "
-                "inferred, or reported."
-            ),
-            "alias_scope": method["alias_scope"],
-            "intended_computation": method["intended_computation"],
-            "prerequisites": method["prerequisites"],
-            "blockers": method["blockers"],
-            "next_gate": method["next_gate"],
-            "sources": method["sources"],
-            "run_id": run_id,
-            "source_report_manifests": dict(source_report_manifests),
-        }
-        spec_path = target / "method_spec.json"
-        write_file_create_only(spec_path, json_bytes(spec))
-        report_path = target / "report.md"
-        write_file_create_only(
-            report_path,
-            render_report(
-                method,
-                generated_at,
-                run_id=run_id,
-                source_report_manifests=source_report_manifests,
-            ).encode("utf-8"),
-        )
-        manifest = {
-            "schema_version": 1,
-            "method_id": method["method_id"],
-            "report_kind": "blocked_method",
-            "generated_at": generated_at,
-            **STATUS,
-            "authorized_hrd_state": "no_call",
-            "classification_authorized": False,
-            "classification_qc_status": "not_applicable",
-            "explicit_no_patient_result": (
-                "The method was not run and no patient result was generated, "
-                "inferred, or reported."
-            ),
-            "alias_scope": method["alias_scope"],
-            "intended_computation": method["intended_computation"],
-            "prerequisites": method["prerequisites"],
-            "blockers": method["blockers"],
-            "next_gate": method["next_gate"],
-            "sources": method["sources"],
-            "run_id": run_id,
-            "review_summary": {
-                "evidence_scope": f"{method['title']} blocked-method specification",
+    created_targets: list[Path] = []
+    try:
+        for method in METHODS:
+            target = output_root / str(method["directory"])
+            target.mkdir(parents=True)
+            created_targets.append(target)
+            spec = {
+                "schema_version": 1,
+                "method_id": method["method_id"],
+                "title": method["title"],
+                **STATUS,
+                "explicit_no_patient_result": (
+                    "The method was not run and no patient result was generated, "
+                    "inferred, or reported."
+                ),
+                "alias_scope": method["alias_scope"],
+                "intended_computation": method["intended_computation"],
+                "prerequisites": method["prerequisites"],
+                "blockers": method["blockers"],
+                "next_gate": method["next_gate"],
+                "sources": method["sources"],
+                "run_id": run_id,
                 "source_report_manifests": dict(source_report_manifests),
-                "readiness": {
-                    "execution_status": "not_run",
-                    "evidence_status": "blocked",
-                    "authorized_hrd_state": "no_call",
-                    "classification_authorization": "none",
+            }
+            spec_path = target / "method_spec.json"
+            write_file_create_only(spec_path, json_bytes(spec))
+            report_path = target / "report.md"
+            write_file_create_only(
+                report_path,
+                render_report(
+                    method,
+                    generated_at,
+                    run_id=run_id,
+                    source_report_manifests=source_report_manifests,
+                ).encode("utf-8"),
+            )
+            manifest = {
+                "schema_version": 1,
+                "method_id": method["method_id"],
+                "report_kind": "blocked_method",
+                "generated_at": generated_at,
+                **STATUS,
+                "authorized_hrd_state": "no_call",
+                "classification_authorized": False,
+                "classification_qc_status": "not_applicable",
+                "explicit_no_patient_result": (
+                    "The method was not run and no patient result was generated, "
+                    "inferred, or reported."
+                ),
+                "alias_scope": method["alias_scope"],
+                "intended_computation": method["intended_computation"],
+                "prerequisites": method["prerequisites"],
+                "blockers": method["blockers"],
+                "next_gate": method["next_gate"],
+                "sources": method["sources"],
+                "run_id": run_id,
+                "review_summary": {
+                    "evidence_scope": f"{method['title']} blocked-method specification",
+                    "source_report_manifests": dict(source_report_manifests),
+                    "readiness": {
+                        "execution_status": "not_run",
+                        "evidence_status": "blocked",
+                        "authorized_hrd_state": "no_call",
+                        "classification_authorization": "none",
+                    },
+                    "observations": {},
+                    "limitations": [
+                        "The method was not run.",
+                        "No patient result is present.",
+                        "No HRD classification is authorized.",
+                    ],
                 },
-                "observations": {},
-                "limitations": [
-                    "The method was not run.",
-                    "No patient result is present.",
-                    "No HRD classification is authorized.",
-                ],
-            },
-            "source_sha256": {
-                "generator": generator_hash,
-                **{
-                    f"{method_id}_report_manifest": digest
-                    for method_id, digest in source_report_manifests.items()
+                "source_sha256": {
+                    "generator": generator_hash,
+                    **{
+                        f"{method_id}_report_manifest": digest
+                        for method_id, digest in source_report_manifests.items()
+                    },
                 },
-            },
-            "support_sha256": {
-                "method_spec.json": sha256_file(spec_path),
-            },
-            "report_sha256": sha256_file(report_path),
-        }
-        manifest_path = target / "report_manifest.json"
-        write_file_create_only(manifest_path, json_bytes(manifest))
-        written.extend((spec_path, report_path, manifest_path))
+                "support_sha256": {
+                    "method_spec.json": sha256_file(spec_path),
+                },
+                "report_sha256": sha256_file(report_path),
+            }
+            manifest_path = target / "report_manifest.json"
+            write_file_create_only(manifest_path, json_bytes(manifest))
+            written.extend((spec_path, report_path, manifest_path))
+    except Exception:
+        for target in created_targets:
+            shutil.rmtree(target, ignore_errors=True)
+        try:
+            output_root.rmdir()
+        except OSError:
+            pass
+        raise
     return written
 
 
