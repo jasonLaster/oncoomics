@@ -176,14 +176,25 @@ def load_json(path: Path, label: str) -> dict[str, Any]:
     return value
 
 
-def write_private_atomic(path: Path, value: dict[str, Any], *, create: bool) -> None:
-    if path.parent.is_symlink():
-        raise ValueError(f"receipt output parent may not be a symlink: {path.parent}")
-    if path.parent.exists() and not path.parent.is_dir():
-        raise ValueError(f"receipt output parent is not a directory: {path.parent}")
-    path.parent.mkdir(parents=True, exist_ok=True)
+def require_safe_receipt_output_parent(path: Path) -> None:
     if path.is_symlink():
         raise ValueError("receipt output may not be a symlink")
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise ValueError(f"receipt output parent may not be a symlink: {parent}")
+        if parent == parent.parent:
+            raise ValueError(f"receipt output has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise ValueError(f"receipt output parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ValueError(f"receipt output parent is not a directory: {parent}")
+
+
+def write_private_atomic(path: Path, value: dict[str, Any], *, create: bool) -> None:
+    require_safe_receipt_output_parent(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
     if create:
         descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         temporary: Path | None = None

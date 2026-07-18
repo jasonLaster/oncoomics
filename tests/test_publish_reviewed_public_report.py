@@ -624,6 +624,24 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "public-publication.json").exists())
 
+    def test_receipt_output_rejects_nested_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-receipts"
+            real_parent.mkdir()
+            linked_parent = root / "linked-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            receipt = linked_parent / "missing" / "receipt.json"
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.write_private_atomic(
+                    receipt,
+                    {"status": "redirected"},
+                    create=True,
+                )
+
+            self.assertFalse((real_parent / "missing" / "receipt.json").exists())
+
     def test_private_receipt_symlink_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
