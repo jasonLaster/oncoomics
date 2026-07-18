@@ -240,6 +240,44 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                     output_dir=root / "deterministic",
                 )
 
+    def test_rejects_final_artifact_below_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            linked_coverage_bins = final_root / "artifacts/cnv_evidence/coverage_bins"
+            real_coverage_bins = root / "real-coverage-bins"
+            linked_coverage_bins.replace(real_coverage_bins)
+            linked_coverage_bins.symlink_to(real_coverage_bins, target_is_directory=True)
+
+            with self.assertRaisesRegex(stage_report.ManifestError, "final artifact parent may not be a symlink"):
+                stage_report.stage_phase3_fast_deterministic_report(
+                    final_manifest,
+                    final_manifest_sha256=_sha256_path(manifest_path),
+                    final_manifest_bytes=manifest_path.stat().st_size,
+                    final_root=final_root,
+                    output_dir=root / "deterministic",
+                )
+
+    def test_rejects_output_below_symlinked_parent_before_writing_report(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            real_output = root / "real-output"
+            real_output.mkdir()
+            linked_output = root / "linked-output"
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(stage_report.ManifestError, "parent may not be a symlink"):
+                stage_report.stage_phase3_fast_deterministic_report(
+                    final_manifest,
+                    final_manifest_sha256=_sha256_path(manifest_path),
+                    final_manifest_bytes=manifest_path.stat().st_size,
+                    final_root=final_root,
+                    output_dir=linked_output / "deterministic",
+                )
+
+            self.assertEqual([], list(real_output.rglob("*")))
+
 
 if __name__ == "__main__":
     unittest.main()

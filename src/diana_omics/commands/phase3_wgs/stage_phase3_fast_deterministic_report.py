@@ -97,6 +97,23 @@ def _sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _require_unsymlinked_path(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"{label} may not be a symlink: {path}")
+
+    parent = path.parent
+    while not parent.exists() and not parent.is_symlink():
+        next_parent = parent.parent
+        if next_parent == parent:
+            raise ManifestError(f"{label} parent does not exist: {path.parent}")
+        parent = next_parent
+
+    if parent.is_symlink():
+        raise ManifestError(f"{label} parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise ManifestError(f"{label} parent is not a directory: {parent}")
+
+
 def _flatten_artifacts(
     value: Mapping[str, Any],
     *,
@@ -177,6 +194,7 @@ def _validate_artifacts(final_root: Path, artifacts: Sequence[FinalArtifact]) ->
 
     expected_empty_paths = {artifact.path for artifact in artifacts if artifact.sha256 == EMPTY_SHA256}
     for artifact in artifacts:
+        _require_unsymlinked_path(artifact.path, f"{artifact.input_id} final artifact")
         if not artifact.path.is_file():
             raise ManifestError(f"{artifact.input_id} final artifact is missing: {artifact.relative_path}")
         if artifact.path.stat().st_size != artifact.bytes:
@@ -191,6 +209,9 @@ def _validate_artifacts(final_root: Path, artifacts: Sequence[FinalArtifact]) ->
         for path in final_root.rglob("*")
         if path.is_file() and path not in expected_paths
     )
+    symlinked = next((path for path in final_root.rglob("*") if path.is_symlink()), None)
+    if symlinked is not None:
+        raise ManifestError(f"final evidence root contains a symlink: {symlinked.relative_to(final_root).as_posix()}")
     if unexpected:
         raise ManifestError(f"final evidence root contains an unmanifested file: {unexpected[0]}")
 
@@ -588,6 +609,7 @@ def _report_markdown(
 
 
 def _prepare_output_dir(output: Path) -> None:
+    _require_unsymlinked_path(output, "deterministic report output")
     if output.is_symlink():
         raise ManifestError("deterministic report output may not be a symlink")
     if output.exists() and not output.is_dir():
