@@ -409,6 +409,28 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
                 MODULE.validate_private_report_receipts(receipts, manifests)
 
+    def test_private_freeze_gate_rejects_local_manifest_below_symlinked_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifests = write_manifest_files(root)
+            receipts = write_receipts(root, manifests)
+            method_id = MODULE.REQUIRED_METHOD_IDS[0]
+
+            real_parent = root / "real-reports"
+            real_packet = real_parent / "existing"
+            real_packet.mkdir(parents=True)
+            linked_parent = root / "linked-reports"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            for filename in ("report.md", "report_manifest.json"):
+                source = manifests[method_id].parent / filename
+                (real_packet / filename).write_bytes(source.read_bytes())
+            manifests[method_id] = linked_parent / "existing" / "report_manifest.json"
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.validate_private_report_receipts(receipts, manifests)
+
     def test_private_freeze_gate_rejects_non_exact_private_receipts(self) -> None:
         cases = {
             "wrong_run": lambda receipt: receipt.update({"run_id": "other-run"}),

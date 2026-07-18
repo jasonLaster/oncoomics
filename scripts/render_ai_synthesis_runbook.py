@@ -42,6 +42,7 @@ from runbook_io import (
     load_json_object,
     missing_required_files,
     preexisting_create_only_paths,
+    require_real_input_file,
     shell_join,
     source_private_receipt_paths,
     timestamped_runbook_assignment,
@@ -77,10 +78,13 @@ def validate_private_report_receipt(
     )
     if manifest_row is None:
         raise ValueError(f"{method_id} private receipt omits report_manifest.json")
-    if report_manifest_path.is_symlink() or not report_manifest_path.is_file():
-        raise ValueError(f"{method_id} local report_manifest.json is missing")
+    require_real_input_file(
+        report_manifest_path,
+        f"{method_id} local report_manifest.json",
+    )
     report_path = report_manifest_path.parent / "report.md"
-    if report_path.is_symlink() or not report_path.is_file() or report_path.stat().st_size <= 0:
+    require_real_input_file(report_path, f"{method_id} local report.md")
+    if report_path.stat().st_size <= 0:
         raise ValueError(f"{method_id} local report.md is missing")
     manifest = load_json_object(
         report_manifest_path,
