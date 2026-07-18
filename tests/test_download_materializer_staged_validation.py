@@ -117,7 +117,11 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as value:
             destination = Path(value) / "staged_input_validation.json"
-            with patch.object(MODULE, "aws_json", return_value={"ok": True}) as aws:
+            def aws_json(arguments: list[str], region: str) -> dict[str, object]:
+                destination.write_text('{"schema_version":1}\n', encoding="utf-8")
+                return {"ok": True}
+
+            with patch.object(MODULE, "aws_json", side_effect=aws_json) as aws:
                 self.assertEqual(
                     MODULE.get_object(
                         "private-bucket",
@@ -145,6 +149,71 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
             ],
             "us-east-1",
         )
+
+    def test_get_object_rejects_symlinked_destination_after_aws(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            destination = root / "staged_input_validation.json"
+
+            def aws_json(_arguments: list[str], _region: str) -> dict[str, object]:
+                real_download = root / "real-staged_input_validation.json"
+                real_download.write_text('{"schema_version":1}\n', encoding="utf-8")
+                destination.symlink_to(real_download)
+                return {"ok": True}
+
+            with (
+                patch.object(MODULE, "aws_json", side_effect=aws_json),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "downloaded staged_input_validation.json may not be a symlink",
+                ),
+            ):
+                MODULE.get_object(
+                    "private-bucket",
+                    "path/to/staged_input_validation.json",
+                    "version-1",
+                    destination,
+                    "us-east-1",
+                )
+
+    def test_install_file_create_only_revalidates_source_and_destination(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_source = root / "real-staging.json"
+            real_source.write_text('{"schema_version":1}\n', encoding="utf-8")
+            linked_source = root / ".staging"
+            linked_source.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged materializer output may not be a symlink",
+            ):
+                MODULE.install_file_create_only(
+                    linked_source,
+                    root / "staged_input_validation.json",
+                )
+
+            real_parent = root / "real-parent"
+            (real_parent / "existing").mkdir(parents=True)
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "materializer output parent may not be a symlink",
+            ):
+                MODULE.install_file_create_only(
+                    real_source,
+                    linked_parent / "existing" / "staged_input_validation.json",
+                )
+
+            self.assertFalse(
+                (real_parent / "existing" / "staged_input_validation.json").exists()
+            )
 
     def test_materialize_downloads_exact_version_and_writes_mode_0600_receipt(self) -> None:
         payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()

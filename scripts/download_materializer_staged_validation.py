@@ -96,6 +96,10 @@ def reserve_json(path: Path, value: dict[str, Any]) -> None:
 
 
 def install_file_create_only(source: Path, destination: Path) -> None:
+    source = resolve_real_file(source, "staged materializer output")
+    destination = resolve_new_output(destination, "materializer output")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
     try:
         file_descriptor = os.open(
             destination,
@@ -114,6 +118,8 @@ def install_file_create_only(source: Path, destination: Path) -> None:
             file_descriptor = -1
             for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
                 destination_handle.write(chunk)
+            destination_handle.flush()
+            os.fsync(destination_handle.fileno())
     except Exception:
         if file_descriptor >= 0:
             os.close(file_descriptor)
@@ -202,7 +208,7 @@ def get_object(
         raise ValueError(f"{OUTPUT_NAME} download may not be a symlink")
     require_safe_new_output_parent(destination, OUTPUT_NAME)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    return aws_json(
+    response = aws_json(
         [
             "s3api",
             "get-object",
@@ -218,6 +224,8 @@ def get_object(
         ],
         region,
     )
+    resolve_real_file(destination, f"downloaded {OUTPUT_NAME}")
+    return response
 
 
 def checksums(value: dict[str, Any]) -> dict[str, str]:

@@ -208,7 +208,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "ca2e89a051931a010a677eff37b5087f7005565f411eb0f9428610140da335ec",
+            "66c7c1388be2f37dfcc2144923d59bbb7d8c462d1bae1e81520d4a2df2f384e3",
         )
 
     def test_upload_binds_local_sha256_in_object_metadata(self):
@@ -374,6 +374,24 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
             ):
                 module.download(uri, destination, "us-east-1", "frozen-version")
 
+    def test_download_rejects_existing_destination_before_aws(self):
+        uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/input.vcf.gz"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp) / "source.filtered.vcf.gz"
+            destination.write_bytes(b"stale-local-bytes\n")
+
+            with (
+                patch.object(module, "run", side_effect=AssertionError("AWS called")),
+                self.assertRaisesRegex(
+                    FileExistsError,
+                    "downloaded exact input already exists",
+                ),
+            ):
+                module.download(uri, destination, "us-east-1", "frozen-version")
+
+            self.assertEqual(destination.read_bytes(), b"stale-local-bytes\n")
+
     def test_materialize_rejects_symlinked_source_input(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -416,6 +434,30 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                     fai=fai,
                     output_dir=linked_output,
                 )
+
+    def test_materialize_rejects_existing_generated_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            vcf, index, matrix, fasta, fai = self.fixture(root)
+            output = root / "output"
+            output.mkdir()
+            stale = output / "pass-snvs.with-source-header.vcf.gz"
+            stale.write_bytes(b"stale-pass-vcf\n")
+
+            with self.assertRaisesRegex(
+                FileExistsError,
+                "PASS-SNV source-header VCF already exists",
+            ):
+                module.materialize(
+                    source_vcf=vcf,
+                    source_vcf_index=index,
+                    source_matrix=matrix,
+                    fasta=fasta,
+                    fai=fai,
+                    output_dir=output,
+                )
+
+            self.assertEqual(stale.read_bytes(), b"stale-pass-vcf\n")
 
     def test_materialize_rejects_symlinked_external_writer_output(self):
         with tempfile.TemporaryDirectory() as tmp:

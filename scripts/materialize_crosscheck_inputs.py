@@ -68,6 +68,12 @@ def require_safe_new_output_parent(path: Path, label: str) -> None:
             raise NotADirectoryError(parent)
 
 
+def require_safe_new_output(path: Path, label: str) -> None:
+    require_safe_new_output_parent(path, label)
+    if path.exists():
+        raise FileExistsError(f"{label} already exists: {path}")
+
+
 def require_real_local_file(path: Path, label: str) -> None:
     require_safe_new_output_parent(path, label)
     if path.is_symlink() or not path.is_file():
@@ -276,7 +282,7 @@ def materialize(
     roles = sample_roles(source_header, samples)
 
     raw_pass = output_dir / "pass-snvs.with-source-header.vcf.gz"
-    require_safe_new_output_parent(raw_pass, "PASS-SNV source-header VCF")
+    require_safe_new_output(raw_pass, "PASS-SNV source-header VCF")
     run(["bcftools", "view", "-f", "PASS", "-v", "snps", "-Oz", "-o", str(raw_pass), str(source_vcf)])
     require_real_local_file(raw_pass, "PASS-SNV source-header VCF")
     raw_header = capture(["bcftools", "view", "-h", str(raw_pass)]) + "\n"
@@ -290,15 +296,15 @@ def materialize(
     if any(original in sanitized_header for original in aliases):
         raise ValueError("source sample identity remains in the sanitized VCF header")
     header_path = output_dir / "sanitized-header.vcf"
-    require_safe_new_output_parent(header_path, "sanitized VCF header")
+    require_safe_new_output(header_path, "sanitized VCF header")
     header_path.write_text(sanitized_header, encoding="utf-8")
     require_real_local_file(header_path, "sanitized VCF header")
     final_vcf = output_dir / "somatic.pass.vcf.gz"
-    require_safe_new_output_parent(final_vcf, "alias-only PASS-SNV VCF")
+    require_safe_new_output(final_vcf, "alias-only PASS-SNV VCF")
     run(["bcftools", "reheader", "-h", str(header_path), "-o", str(final_vcf), str(raw_pass)])
     require_real_local_file(final_vcf, "alias-only PASS-SNV VCF")
     final_index = Path(f"{final_vcf}.tbi")
-    require_safe_new_output_parent(final_index, "alias-only PASS-SNV VCF index")
+    require_safe_new_output(final_index, "alias-only PASS-SNV VCF index")
     run(["bcftools", "index", "-t", "-f", str(final_vcf)])
     require_real_local_file(final_index, "alias-only PASS-SNV VCF index")
     final_samples = set(capture(["bcftools", "query", "-l", str(final_vcf)]).splitlines())
@@ -313,7 +319,7 @@ def materialize(
 
     observed = matrix_counts(source_matrix)
     final_matrix = output_dir / "sbs96.csv"
-    require_safe_new_output_parent(final_matrix, "alias-only SBS96 matrix")
+    require_safe_new_output(final_matrix, "alias-only SBS96 matrix")
     write_alias_matrix(observed, final_matrix)
     require_real_local_file(final_matrix, "alias-only SBS96 matrix")
     independently_derived, allele_count = derive_counts(final_vcf, fasta, fai)
@@ -426,7 +432,7 @@ def require_private_versioned_kms(
 
 def download(uri: str, path: Path, region: str, version_id: str) -> None:
     bucket, key = s3_parts(uri)
-    require_safe_new_output_parent(path, "downloaded exact input")
+    require_safe_new_output(path, "downloaded exact input")
     path.parent.mkdir(parents=True, exist_ok=True)
     run([
         AWS,
