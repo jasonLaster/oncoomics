@@ -601,6 +601,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     "coverage_cnv",
                     "sbs96_input",
                     "sigprofiler_sbs3_input_plan",
+                    "sequenza_scarhrd_input_plan",
                     "bam_derived_sv_evidence",
                 },
             )
@@ -620,10 +621,15 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 next(row for row in adapter_rows if row["adapter"] == "SigProfiler/SBS3 input materializer")["state"],
                 "ready_to_materialize",
             )
+            self.assertEqual(
+                next(row for row in adapter_rows if row["adapter"] == "Sequenza/scarHRD input materializer")["state"],
+                "blocked",
+            )
 
             reviewer = utils.read_text(output_dir / "reviewer_packet.md")
             self.assertIn("Phase 3 fast final evidence", reviewer)
             self.assertIn("SigProfiler/SBS3 input materialization: `plan_ready`", reviewer)
+            self.assertIn("Sequenza/scarHRD input materialization: `blocked`", reviewer)
             self.assertIn("SBS96", reviewer)
             manifest = utils.read_json(output_dir / "report_manifest.json")
             self.assertEqual(manifest["method_id"], "rosalind_diana_wgs")
@@ -638,6 +644,12 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 "plan_ready",
                 manifest["review_summary"]["provenance"]["phase3_fast"]["crosscheck_input_plans"][
                     "sigprofiler_sbs3"
+                ],
+            )
+            self.assertEqual(
+                "blocked",
+                manifest["review_summary"]["provenance"]["phase3_fast"]["crosscheck_input_plans"][
+                    "sequenza_scarhrd"
                 ],
             )
             self.assertIn("small_variants.filter_mutect.filtered_vcf", manifest["source_sha256"])

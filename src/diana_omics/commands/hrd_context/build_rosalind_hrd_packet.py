@@ -1320,6 +1320,13 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
     )
     if not isinstance(sigprofiler_route, dict):
         sigprofiler_route = {}
+    sequenza_route = (
+        crosscheck_routes.get("sequenza_scarhrd", {})
+        if isinstance(crosscheck_routes, dict)
+        else {}
+    )
+    if not isinstance(sequenza_route, dict):
+        sequenza_route = {}
     readiness_rows = parse_csv(read_text(report_root / "readiness.csv"))
     surfaces = [str(row.get("evidence_surface", "")) for row in readiness_rows if row.get("evidence_surface")]
     blockers: list[str] = []
@@ -1402,6 +1409,20 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
             "This is an executable input plan only; SBS3 assignment and threshold policy remain no_call.",
         ),
         evidence_row(
+            "sequenza_scarhrd_input_plan",
+            "blocked",
+            (
+                "Alias-only Sequenza/scarHRD materialization is "
+                f"{sequenza_route.get('status', 'missing')}; "
+                f"execution is {sequenza_route.get('execution_status', 'missing')}."
+            ),
+            "crosscheck_input_plans.json",
+            (
+                "Finalized BAM aliases plus an explicit Sequenza sex model are required before "
+                "materializing this route; scarHRD remains no_call."
+            ),
+        ),
+        evidence_row(
             "bam_derived_sv_evidence",
             "partial_evidence",
             reason("sv"),
@@ -1465,6 +1486,12 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
                 "ready_to_materialize",
                 "Alias-only inputs are planned but have not been materialized by the exact-version route.",
                 "Run the materializer on exact final inputs, then stage a no-call SigProfiler/SBS3 cross-check report.",
+            ),
+            adapter_row(
+                "Sequenza/scarHRD input materializer",
+                "blocked",
+                "Alias-only BAM/BAM-index inputs need a finalized contract and explicit Sequenza sex model.",
+                "Publish the exact BAM contract with method_parameters.sequenza.female before staging Sequenza.",
             ),
         ]
     )
@@ -1863,6 +1890,7 @@ def diana_wgs_deterministic_process_lines(deterministic_binding: Mapping[str, An
             f"Phase 3 fast workflow: `{workflow.get('name', 'phase3_wgs_fast')}`.",
             f"Final artifact binding: {deterministic_binding['artifact_count']} Phase 3 fast final artifacts matched the deterministic input inventory.",
             f"SigProfiler/SBS3 input materialization: `{crosscheck_input_plans.get('sigprofiler_sbs3', 'missing')}`.",
+            f"Sequenza/scarHRD input materialization: `{crosscheck_input_plans.get('sequenza_scarhrd', 'missing')}`.",
             "",
         ]
 
