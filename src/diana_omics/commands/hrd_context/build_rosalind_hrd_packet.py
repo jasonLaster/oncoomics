@@ -197,6 +197,7 @@ def read_json_or_empty(relative_path: str) -> dict[str, Any]:
 
 
 def write_text_create_only(path: Path, value: str) -> None:
+    require_safe_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
     try:
@@ -210,6 +211,20 @@ def write_text_create_only(path: Path, value: str) -> None:
             os.close(descriptor)
         path.unlink(missing_ok=True)
         raise
+
+
+def require_safe_output_parent(path: Path) -> None:
+    parent = path.parent
+    while not parent.exists():
+        if parent.is_symlink():
+            raise ValueError(f"HRD packet output parent may not be a symlink: {parent}")
+        if parent == parent.parent:
+            raise ValueError(f"HRD packet output has no existing parent: {path}")
+        parent = parent.parent
+    if parent.is_symlink():
+        raise ValueError(f"HRD packet output parent may not be a symlink: {parent}")
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
 
 
 def write_json_create_only(path: Path, value: Any) -> None:

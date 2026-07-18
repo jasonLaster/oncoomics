@@ -1240,6 +1240,28 @@ class RosalindHrdPacketTest(unittest.TestCase):
         self.assertIn("artifact directory that directly contains `diana_hrd_summary.json`", plan)
         self.assertIn("Do not point it at the parent run directory", plan)
 
+    def test_cloud_materialization_plan_rejects_symlinked_parent_without_writing_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            real_output = root / "real-rosalind"
+            real_output.mkdir()
+            linked_output = root / "results" / "rosalind_hrd"
+            linked_output.parent.mkdir()
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with patch.object(packet, "path_from_root", lambda relative: root / relative):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "HRD packet output parent may not be a symlink",
+                ):
+                    packet.write_cloud_materialization_plan(
+                        "results/rosalind_hrd/unit",
+                        "unit",
+                        [{"sampleSet": "diana_wgs", "missingArtifacts": []}],
+                    )
+
+            self.assertFalse((real_output / "unit").exists())
+
     def test_diana_raw_intake_packet_marks_waiting_input_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
