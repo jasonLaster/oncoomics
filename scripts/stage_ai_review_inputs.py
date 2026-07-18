@@ -55,14 +55,16 @@ def write_once(path: Path, data: bytes) -> None:
             os.close(descriptor)
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def require_no_symlink_ancestors(path: Path, label: str) -> None:
     for parent in path.parents:
-        if parent.is_symlink():
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"{label} parent may not be a symlink: {parent}")
-        if parent.exists():
-            if not parent.is_dir():
-                raise ValueError(f"{label} parent is not a directory: {parent}")
-            return
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
 
 
 def require_real_or_new_directory(path: Path, label: str) -> Path:

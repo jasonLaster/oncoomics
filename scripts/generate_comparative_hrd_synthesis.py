@@ -710,19 +710,19 @@ def write_agreement(path: Path, rows: Sequence[Dict[str, str]]) -> None:
         writer.writerows(rows)
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
     expected = set(expected_files)
     if output.is_symlink():
         raise ValueError("synthesis output may not be a symlink")
-    parent = output.parent
-    while not parent.exists() and not parent.is_symlink():
-        if parent == parent.parent:
-            break
-        parent = parent.parent
-    if parent.is_symlink():
-        raise ValueError(f"synthesis output parent may not be a symlink: {parent}")
-    if parent.exists() and not parent.is_dir():
-        raise ValueError(f"synthesis output parent is not a directory: {parent}")
+    for parent in output.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"synthesis output parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"synthesis output parent is not a directory: {parent}")
     if output.exists() and not output.is_dir():
         raise ValueError(f"synthesis output is not a directory: {output}")
 
