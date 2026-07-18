@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import unittest
 from pathlib import Path
@@ -235,6 +236,66 @@ class Phase3FastEvidenceJoinTests(unittest.TestCase):
                 cnv_evidence_receipt_sha256=SHA_3,
                 sv_evidence_receipt_sha256=SHA_4,
             )
+
+    def test_rejects_unexpected_branch_output_keys(self) -> None:
+        with TemporaryDirectory() as tmp:
+            base_receipts = list(phase3_fast_receipts(Path(tmp)))
+
+        cases = (
+            (
+                lambda receipts: receipts[0]["exports"]["filter_mutect"].__setitem__(
+                    "stale_filtered_vcf",
+                    copy.deepcopy(receipts[0]["exports"]["filter_mutect"]["filtered_vcf"]),
+                ),
+                "filter_mutect exports",
+            ),
+            (
+                lambda receipts: receipts[1]["materialized_outputs"]["tumor"].__setitem__(
+                    "stale_idxstats",
+                    copy.deepcopy(receipts[1]["materialized_outputs"]["tumor"]["idxstats"]),
+                ),
+                "bam_qc materialized_outputs.tumor",
+            ),
+            (
+                lambda receipts: receipts[2]["materialized_outputs"].__setitem__(
+                    "stale_coverage_bins",
+                    copy.deepcopy(receipts[2]["materialized_outputs"]["coverage_bins"]),
+                ),
+                "cnv_evidence materialized_outputs",
+            ),
+            (
+                lambda receipts: receipts[2]["materialized_outputs"]["interval_shards"]["chr1"].__setitem__(
+                    "stale_bedcov_tsv",
+                    copy.deepcopy(
+                        receipts[2]["materialized_outputs"]["interval_shards"]["chr1"]["bedcov_tsv"]
+                    ),
+                ),
+                "cnv_evidence interval_shards.chr1",
+            ),
+            (
+                lambda receipts: receipts[3]["materialized_outputs"]["normal"].__setitem__(
+                    "stale_discordant_mapped_pairs",
+                    copy.deepcopy(
+                        receipts[3]["materialized_outputs"]["normal"]["discordant_mapped_pairs"]
+                    ),
+                ),
+                "sv_evidence materialized_outputs.normal",
+            ),
+        )
+
+        for mutate, message in cases:
+            with self.subTest(message=message):
+                receipts = copy.deepcopy(base_receipts)
+                mutate(receipts)
+
+                with self.assertRaisesRegex(join_evidence.ManifestError, message):
+                    join_evidence.build_phase3_fast_evidence_join_manifest(
+                        *receipts,
+                        small_variant_artifact_export_sha256=SHA_1,
+                        bam_qc_receipt_sha256=SHA_2,
+                        cnv_evidence_receipt_sha256=SHA_3,
+                        sv_evidence_receipt_sha256=SHA_4,
+                    )
 
     def test_manifest_output_rejects_symlinked_parent(self) -> None:
         with TemporaryDirectory() as tmp:

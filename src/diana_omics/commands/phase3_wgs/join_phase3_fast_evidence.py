@@ -9,6 +9,11 @@ from typing import Any, Mapping
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
+from .run_phase3_fast_bam_qc import EXPECTED_OUTPUTS as BAM_QC_OUTPUTS
+from .run_phase3_fast_cnv_evidence import MATERIALIZED_OUTPUTS as CNV_OUTPUTS
+from .run_phase3_fast_filter_mutect import MATERIALIZED_OUTPUTS as FILTER_MUTECT_OUTPUTS
+from .run_phase3_fast_parabricks_mutect import MATERIALIZED_OUTPUTS as PARABRICKS_MUTECT_OUTPUTS
+from .run_phase3_fast_sv_evidence import EXPECTED_COMMANDS as SV_OUTPUTS
 from .safe_json_output import require_safe_output_path
 
 DEFAULT_SMALL_VARIANT_EXPORT = "manifests/phase3_wgs_fast/small_variant_artifact_export.json"
@@ -23,6 +28,7 @@ RECEIPT_MANIFEST_TYPES = {
     "cnv_evidence": "phase3_wgs_fast_cnv_evidence_receipt",
     "sv_evidence": "phase3_wgs_fast_sv_evidence_receipt",
 }
+ROLES = ("tumor", "normal")
 
 
 def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
@@ -95,9 +101,30 @@ def _require_evidence_boundaries(receipts: Mapping[str, Mapping[str, Any]]) -> N
 
 def _require_small_variant_exports(receipt: Mapping[str, Any]) -> Mapping[str, Any]:
     exports = _require_mapping(receipt.get("exports"), "small_variant_artifact_export.exports")
-    _require_mapping(exports.get("parabricks_mutect"), "small_variant_artifact_export.exports.parabricks_mutect")
-    _require_mapping(exports.get("filter_mutect"), "small_variant_artifact_export.exports.filter_mutect")
-    return exports
+    expected = {
+        "parabricks_mutect": PARABRICKS_MUTECT_OUTPUTS,
+        "filter_mutect": FILTER_MUTECT_OUTPUTS,
+    }
+    if set(exports) != set(expected):
+        raise ManifestError("small_variant_artifact_export exports must be exactly parabricks_mutect and filter_mutect")
+    output: dict[str, dict[str, Any]] = {}
+    for producer, expected_keys in expected.items():
+        produced = _require_mapping(
+            exports.get(producer),
+            f"small_variant_artifact_export.exports.{producer}",
+        )
+        if set(produced) != set(expected_keys):
+            raise ManifestError(
+                f"{producer} exports must be exactly {', '.join(expected_keys)}"
+            )
+        output[producer] = {
+            key: _require_mapping(
+                produced.get(key),
+                f"small_variant_artifact_export.exports.{producer}.{key}",
+            )
+            for key in expected_keys
+        }
+    return output
 
 
 def _require_materialized(receipt: Mapping[str, Any], key: str) -> Mapping[str, Any]:
@@ -105,6 +132,77 @@ def _require_materialized(receipt: Mapping[str, Any], key: str) -> Mapping[str, 
     if not materialized:
         raise ManifestError(f"{key} materialized_outputs must be non-empty")
     return materialized
+
+
+def _require_role_materialized(
+    receipt: Mapping[str, Any],
+    key: str,
+    expected_outputs: tuple[str, ...],
+) -> Mapping[str, Any]:
+    materialized = _require_materialized(receipt, key)
+    if set(materialized) != set(ROLES):
+        raise ManifestError(f"{key} materialized_outputs must be exactly tumor and normal")
+
+    output: dict[str, dict[str, Any]] = {}
+    for role in ROLES:
+        role_outputs = _require_mapping(
+            materialized.get(role),
+            f"{key}.materialized_outputs.{role}",
+        )
+        if set(role_outputs) != set(expected_outputs):
+            raise ManifestError(
+                f"{key} materialized_outputs.{role} must be exactly {', '.join(expected_outputs)}"
+            )
+        output[role] = {
+            name: _require_mapping(
+                role_outputs.get(name),
+                f"{key}.materialized_outputs.{role}.{name}",
+            )
+            for name in expected_outputs
+        }
+    return output
+
+
+def _require_cnv_materialized(receipt: Mapping[str, Any]) -> Mapping[str, Any]:
+    materialized = _require_materialized(receipt, "cnv_evidence")
+    expected = {*CNV_OUTPUTS, "interval_shards"}
+    if set(materialized) != expected:
+        raise ManifestError(
+            "cnv_evidence materialized_outputs must contain exactly "
+            + ", ".join((*CNV_OUTPUTS, "interval_shards"))
+        )
+
+    output = {
+        key: _require_mapping(
+            materialized.get(key),
+            f"cnv_evidence.materialized_outputs.{key}",
+        )
+        for key in CNV_OUTPUTS
+    }
+    interval_shards = _require_mapping(
+        materialized.get("interval_shards"),
+        "cnv_evidence.materialized_outputs.interval_shards",
+    )
+    if not interval_shards:
+        raise ManifestError("cnv_evidence interval_shards must be non-empty")
+    output["interval_shards"] = {}
+    for contig, shard in interval_shards.items():
+        shard_outputs = _require_mapping(
+            shard,
+            f"cnv_evidence.materialized_outputs.interval_shards.{contig}",
+        )
+        if set(shard_outputs) != {"intervals_bed", "bedcov_tsv"}:
+            raise ManifestError(
+                f"cnv_evidence interval_shards.{contig} must contain exactly intervals_bed and bedcov_tsv"
+            )
+        output["interval_shards"][str(contig)] = {
+            key: _require_mapping(
+                shard_outputs.get(key),
+                f"cnv_evidence.materialized_outputs.interval_shards.{contig}.{key}",
+            )
+            for key in ("intervals_bed", "bedcov_tsv")
+        }
+    return output
 
 
 def _require_input_sources(receipt: Mapping[str, Any]) -> dict[str, Any]:
@@ -273,13 +371,25 @@ def build_phase3_fast_evidence_join_manifest(
                 "exports": dict(_require_small_variant_exports(small_variant_artifact_export)),
             },
             "bam_qc": {
-                "materialized_outputs": dict(_require_materialized(bam_qc_receipt, "bam_qc")),
+                "materialized_outputs": dict(
+                    _require_role_materialized(
+                        bam_qc_receipt,
+                        "bam_qc",
+                        BAM_QC_OUTPUTS,
+                    )
+                ),
             },
             "cnv_evidence": {
-                "materialized_outputs": dict(_require_materialized(cnv_evidence_receipt, "cnv_evidence")),
+                "materialized_outputs": dict(_require_cnv_materialized(cnv_evidence_receipt)),
             },
             "sv_evidence": {
-                "materialized_outputs": dict(_require_materialized(sv_evidence_receipt, "sv_evidence")),
+                "materialized_outputs": dict(
+                    _require_role_materialized(
+                        sv_evidence_receipt,
+                        "sv_evidence",
+                        SV_OUTPUTS,
+                    )
+                ),
                 "metrics": dict(_require_mapping(sv_evidence_receipt.get("metrics"), "sv_evidence.metrics")),
             },
         },
