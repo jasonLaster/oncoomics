@@ -62,6 +62,10 @@ params.phase3_fast_cache_region = params.phase3_fast_cache_region ?: 'us-east-2'
 params.phase3_fast_replication_mode = params.phase3_fast_replication_mode ?: 'dry_run'
 params.phase3_fast_replication_part_size_bytes = params.phase3_fast_replication_part_size_bytes ?: 536870912
 params.phase3_fast_staging_root = params.phase3_fast_staging_root ?: '/scratch/diana/phase3_wgs_fast'
+params.phase3_fast_parabricks_cpus = params.phase3_fast_parabricks_cpus ?: 192
+params.phase3_fast_parabricks_memory = params.phase3_fast_parabricks_memory ?: '1900 GB'
+params.phase3_fast_parabricks_num_gpus = params.phase3_fast_parabricks_num_gpus ?: 8
+params.phase3_fast_parabricks_output_root = params.phase3_fast_parabricks_output_root ?: '/scratch/diana/phase3_wgs_fast/parabricks_mutect'
 params.phase3_fast_gatk_version = params.phase3_fast_gatk_version ?: '4.6.2.0'
 params.phase3_fast_source_commit = params.phase3_fast_source_commit ?: ''
 params.phase3_fast_run_id = params.phase3_fast_run_id ?: 'diana-wgs-hrd-20260716T033101Z'
@@ -900,6 +904,63 @@ process FAST_STAGING_PLAN {
     """
 }
 
+process FAST_PARABRICKS_MUTECT_PLAN {
+    tag "fast_parabricks_mutect_plan_${params.phase3_fast_run_id}"
+    label 'gpu_parabricks'
+    cpus { params.phase3_fast_parabricks_cpus as int }
+    memory { params.phase3_fast_parabricks_memory }
+    time '4h'
+    publishDir "${params.outdir}/phase3_wgs_fast/parabricks_mutect_plan", mode: 'copy', overwrite: true
+
+    input:
+    path staging_plan
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json'
+    path 'workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_STAGING_PLAN="\$PWD/${staging_plan}"
+    export PHASE3_WGS_FAST_STAGED_INPUTS_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"
+    export PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST="\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"
+    export PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
+    export PHASE3_WGS_FAST_PARABRICKS_OUTPUT_ROOT="${params.phase3_fast_parabricks_output_root}"
+    export PHASE3_WGS_FAST_PARABRICKS_NUM_GPUS="${params.phase3_fast_parabricks_num_gpus}"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics stage:phase3-fast-inputs
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-parabricks-mutect-plan
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_staged_inputs_manifest",
+      "status": "stubbed",
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    cat > workspace/manifests/phase3_wgs_fast/parabricks_mutect_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_parabricks_mutect_plan",
+      "status": "stubbed",
+      "commands": {},
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
 workflow PHASE3_WGS_FAST_GPU_SMOKE {
     FAST_GPU_SMOKE()
 }
@@ -942,6 +1003,7 @@ workflow PHASE3_WGS_FAST {
     if (params.phase3_fast_replication_mode.toString().replace('-', '_') == 'apply') {
         FAST_CACHE_MANIFEST(FAST_REPLICATE_INPUTS.out)
         FAST_STAGING_PLAN(FAST_CACHE_MANIFEST.out)
+        FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
     }
 }
 

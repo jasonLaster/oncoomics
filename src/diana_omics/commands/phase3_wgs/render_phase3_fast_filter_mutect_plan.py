@@ -127,7 +127,9 @@ def build_phase3_fast_filter_mutect_plan(
 
     mutect_outputs = _require_mapping(mutect_plan.get("outputs"), "Mutect plan outputs")
     raw_vcf = _require_absolute_path(mutect_outputs.get("raw_vcf"), "raw_vcf")
-    raw_stats = f"{raw_vcf}.stats"
+    raw_stats = _require_absolute_path(mutect_outputs.get("raw_vcf_stats"), "raw_vcf_stats")
+    if raw_stats != f"{raw_vcf}.stats":
+        raise ManifestError("raw_vcf_stats must be the raw_vcf .stats sidecar")
     pon_annotated_vcf = _require_absolute_path(mutect_outputs.get("pon_annotated_vcf"), "pon_annotated_vcf")
     pon_annotated_vcf_index = f"{pon_annotated_vcf}.tbi"
     f1r2 = _require_absolute_path(mutect_outputs.get("f1r2_tar_gz"), "f1r2_tar_gz")

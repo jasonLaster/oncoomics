@@ -79,6 +79,10 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
         self.assertIn("--mutect-germline-resource", mutect)
         self.assertIn("--interval-file", mutect)
         self.assertIn("--mutect-f1r2-tar-gz", mutect)
+        self.assertEqual(
+            f'{plan["outputs"]["raw_vcf"]}.stats',
+            plan["outputs"]["raw_vcf_stats"],
+        )
 
         self.assertEqual(
             [

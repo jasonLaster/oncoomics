@@ -174,6 +174,7 @@ def build_phase3_fast_parabricks_mutect_plan(
         raise ManifestError("tumor and normal sample names must differ")
 
     raw_vcf = str(variants / "diana.wgs.mutect2.parabricks.raw.vcf.gz")
+    raw_vcf_stats = f"{raw_vcf}.stats"
     pon_annotated_vcf = str(variants / "diana.wgs.mutect2.parabricks.pon.vcf.gz")
     f1r2 = str(variants / "diana.wgs.mutect2.parabricks.f1r2.tar.gz")
 
@@ -293,6 +294,7 @@ def build_phase3_fast_parabricks_mutect_plan(
         },
         "outputs": {
             "raw_vcf": raw_vcf,
+            "raw_vcf_stats": raw_vcf_stats,
             "pon_annotated_vcf": pon_annotated_vcf,
             "f1r2_tar_gz": f1r2,
             "logs_dir": str(logs),

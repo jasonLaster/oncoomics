@@ -192,8 +192,7 @@ FAST_REPLICATION_PLAN             immutable copy plan and us-east-2 cache keys
 FAST_REPLICATE_INPUTS              source to us-east-2
 FAST_CACHE_MANIFEST                verified region-local BAM/resource pointers
 FAST_STAGING_PLAN                  exact VersionId to local scratch path map
-FAST_STAGE_INPUTS                  materialize and SHA-256 verify scratch inputs
-FAST_PARABRICKS_MUTECT_PLAN        exact Parabricks command plan
+FAST_PARABRICKS_MUTECT_PLAN        worker-local S3 materialization, SHA-256 verify, exact Parabricks command plan
 FAST_FILTER_MUTECT_PLAN            exact contamination/orientation/filter plan
 FAST_FQ2BAM_TUMOR                  optional GPU
 FAST_FQ2BAM_NORMAL                 optional GPU
@@ -278,19 +277,14 @@ the original `us-east-1` run prefix directly.
 `FAST_STAGING_PLAN` converts that manifest into a plan-only, version-pinned
 `aws s3api get-object --version-id` contract with deterministic `/scratch` paths
 for the eventual GPU or distributed CPU workers.
-`FAST_STAGE_INPUTS` executes those exact planned `get-object` commands through
-per-file temp paths, atomically renames each successful download into place,
-then hashes every staged object and writes the grouped
-`staged_inputs_manifest.json` that GPU and distributed CPU callers should
-consume.
-
-Run that materializer inside the same worker-local `/scratch` task that invokes
-Parabricks or the distributed CPU caller. A standalone Nextflow staging process
-would either strand the files on a different node or force Nextflow to shuttle
-hundreds of GiB as task outputs, defeating the point of node-local staging.
-`FAST_PARABRICKS_MUTECT_PLAN` consumes that manifest and emits the exact
+`FAST_PARABRICKS_MUTECT_PLAN` executes those exact planned `get-object`
+commands through per-file temp paths, atomically renames each successful
+download into place, hashes every staged object, writes the grouped
+`staged_inputs_manifest.json`, then consumes that worker-local manifest to emit the exact
 `pbrun prepon`, `pbrun mutectcaller`, and `pbrun postpon` argument vectors for
-the first GPU short-variant pass without launching Parabricks.
+the first GPU short-variant pass without launching Parabricks, with declared
+`raw_vcf`, `raw_vcf_stats`, `f1r2_tar_gz`, and `pon_annotated_vcf` handoff
+outputs.
 `FAST_FILTER_MUTECT_PLAN` consumes the same staged-input manifest plus the
 Parabricks Mutect plan and emits the exact CPU tail for matched-normal pileups,
 contamination, read-orientation priors, `FilterMutectCalls`, and VCF indexing.

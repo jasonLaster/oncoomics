@@ -106,6 +106,32 @@ class Phase3FastFilterMutectPlanTests(unittest.TestCase):
                 mutect_plan_sha256=SHA_2,
             )
 
+    def test_rejects_missing_raw_vcf_stats_output(self) -> None:
+        with TemporaryDirectory() as tmp:
+            staged, mutect = parabricks_plan(Path(tmp))
+            mutect["outputs"].pop("raw_vcf_stats")
+
+        with self.assertRaisesRegex(filter_mutect.ManifestError, "raw_vcf_stats"):
+            filter_mutect.build_phase3_fast_filter_mutect_plan(
+                staged,
+                mutect,
+                staged_inputs_manifest_sha256=SHA_1,
+                mutect_plan_sha256=SHA_2,
+            )
+
+    def test_rejects_raw_vcf_stats_output_for_different_vcf(self) -> None:
+        with TemporaryDirectory() as tmp:
+            staged, mutect = parabricks_plan(Path(tmp))
+            mutect["outputs"]["raw_vcf_stats"] = "/scratch/diana/phase3_wgs_fast/parabricks/variants/other.vcf.gz.stats"
+
+        with self.assertRaisesRegex(filter_mutect.ManifestError, "raw_vcf_stats"):
+            filter_mutect.build_phase3_fast_filter_mutect_plan(
+                staged,
+                mutect,
+                staged_inputs_manifest_sha256=SHA_1,
+                mutect_plan_sha256=SHA_2,
+            )
+
     def test_rejects_non_no_call_mutect_plan(self) -> None:
         with TemporaryDirectory() as tmp:
             staged, mutect = parabricks_plan(Path(tmp))
