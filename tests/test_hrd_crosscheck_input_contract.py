@@ -925,6 +925,52 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertFalse(anchor_path.exists())
 
+    def test_contract_publication_reservation_rehashes_after_parent_fsync(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            anchor_path = Path(temporary) / "anchor.json"
+            real_fsync_directory = publisher.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                anchor_path.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    publisher,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "contract publication anchor changed during write",
+                ),
+            ):
+                publisher.reserve_json(anchor_path, {"status": "dry_run"})
+
+            self.assertFalse(anchor_path.exists())
+
+    def test_contract_publication_anchor_update_rehashes_after_parent_fsync(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            anchor_path = Path(temporary) / "anchor.json"
+            real_fsync_directory = publisher.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                anchor_path.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    publisher,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "contract publication anchor changed during write",
+                ),
+            ):
+                publisher.write_json_atomic(anchor_path, {"status": "passed"})
+
     def test_contract_publication_rejects_symlinked_anchor_parent_without_writing_target(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
