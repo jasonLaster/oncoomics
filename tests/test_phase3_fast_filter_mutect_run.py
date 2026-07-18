@@ -60,6 +60,17 @@ def _sha256_json(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _without_flag(argv: list[str], flag: str) -> list[str]:
+    index = argv.index(flag)
+    return [*argv[:index], *argv[index + 2 :]]
+
+
+def _replace_flag_value(argv: list[str], flag: str, value: str) -> list[str]:
+    updated = list(argv)
+    updated[updated.index(flag) + 1] = value
+    return updated
+
+
 def filter_plan_and_parabricks_receipt(root: Path) -> tuple[dict, dict]:
     staged = staged_inputs_manifest(root)
     mutect_plan = parabricks.build_phase3_fast_parabricks_mutect_plan(
@@ -217,6 +228,113 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
             plan["commands"]["index_filtered_vcf"]["argv"] = ["true"]
+            runner = FilterMutectRunner()
+
+            with self.assertRaisesRegex(run_filter.ManifestError, "bcftools index"):
+                run_filter.run_phase3_fast_filter_mutect(
+                    plan,
+                    parabricks_receipt,
+                    runner=runner,
+                    filter_mutect_plan_sha256=SHA_1,
+                    parabricks_mutect_receipt_sha256=SHA_3,
+                )
+
+        self.assertEqual([], runner.commands)
+
+    def test_rejects_gatk_command_missing_required_flag(self) -> None:
+        cases = (
+            ("get_tumor_pileups", "-V"),
+            ("learn_read_orientation_model", "-O"),
+            ("calculate_contamination", "--tumor-segmentation"),
+            ("filter_mutect_calls", "--stats"),
+            ("filter_mutect_calls", "--orientation-bias-artifact-priors"),
+        )
+        for command_name, flag in cases:
+            with self.subTest(command_name=command_name, flag=flag), TemporaryDirectory() as tmp:
+                plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
+                plan["commands"][command_name]["argv"] = _without_flag(
+                    plan["commands"][command_name]["argv"],
+                    flag,
+                )
+                runner = FilterMutectRunner()
+
+                with self.assertRaisesRegex(run_filter.ManifestError, flag):
+                    run_filter.run_phase3_fast_filter_mutect(
+                        plan,
+                        parabricks_receipt,
+                        runner=runner,
+                        filter_mutect_plan_sha256=SHA_1,
+                        parabricks_mutect_receipt_sha256=SHA_3,
+                    )
+
+            self.assertEqual([], runner.commands)
+
+    def test_rejects_gatk_command_with_unplanned_flag(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
+            plan["commands"]["filter_mutect_calls"]["argv"].extend(["--verbosity", "INFO"])
+            runner = FilterMutectRunner()
+
+            with self.assertRaisesRegex(run_filter.ManifestError, "unexpected --verbosity"):
+                run_filter.run_phase3_fast_filter_mutect(
+                    plan,
+                    parabricks_receipt,
+                    runner=runner,
+                    filter_mutect_plan_sha256=SHA_1,
+                    parabricks_mutect_receipt_sha256=SHA_3,
+                )
+
+        self.assertEqual([], runner.commands)
+
+    def test_rejects_gatk_command_that_drifts_from_plan_contract(self) -> None:
+        cases = (
+            ("get_normal_pileups", "-I", "normal.wrong.bam"),
+            ("calculate_contamination", "-matched", "normal.wrong.pileups.table"),
+            ("filter_mutect_calls", "-O", "filtered.wrong.vcf.gz"),
+        )
+        for command_name, flag, file_name in cases:
+            with self.subTest(command_name=command_name, flag=flag), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plan, parabricks_receipt = filter_plan_and_parabricks_receipt(root)
+                plan["commands"][command_name]["argv"] = _replace_flag_value(
+                    plan["commands"][command_name]["argv"],
+                    flag,
+                    str(root / "wrong" / file_name),
+                )
+                runner = FilterMutectRunner()
+
+                with self.assertRaisesRegex(run_filter.ManifestError, flag):
+                    run_filter.run_phase3_fast_filter_mutect(
+                        plan,
+                        parabricks_receipt,
+                        runner=runner,
+                        filter_mutect_plan_sha256=SHA_1,
+                        parabricks_mutect_receipt_sha256=SHA_3,
+                    )
+
+            self.assertEqual([], runner.commands)
+
+    def test_rejects_wrong_gatk_jar(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
+            plan["commands"]["filter_mutect_calls"]["argv"][3] = str(Path(tmp) / "wrong" / "GenomeAnalysisTK.jar")
+            runner = FilterMutectRunner()
+
+            with self.assertRaisesRegex(run_filter.ManifestError, "GATK FilterMutectCalls"):
+                run_filter.run_phase3_fast_filter_mutect(
+                    plan,
+                    parabricks_receipt,
+                    runner=runner,
+                    filter_mutect_plan_sha256=SHA_1,
+                    parabricks_mutect_receipt_sha256=SHA_3,
+                )
+
+        self.assertEqual([], runner.commands)
+
+    def test_rejects_wrong_bcftools_index_target(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
+            plan["commands"]["index_filtered_vcf"]["argv"][-1] = str(Path(tmp) / "wrong" / "filtered.vcf.gz")
             runner = FilterMutectRunner()
 
             with self.assertRaisesRegex(run_filter.ManifestError, "bcftools index"):
