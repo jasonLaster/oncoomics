@@ -131,6 +131,24 @@ def parse_s3(uri: str) -> tuple[str, str]:
     return parsed.netloc, key
 
 
+def resolve_real_file(path: Path, label: str) -> Path:
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink")
+    if path.parent.is_symlink():
+        raise ValueError(f"{label} parent may not be a symlink: {path.parent}")
+    if not path.is_file():
+        raise ValueError(f"{label} must be a real file")
+    return path.resolve()
+
+
+def resolve_new_output(path: Path, label: str) -> Path:
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink")
+    if path.parent.is_symlink():
+        raise ValueError(f"{label} parent may not be a symlink: {path.parent}")
+    return path.resolve()
+
+
 def aws_json(arguments: list[str], region: str) -> dict[str, Any]:
     command = ["aws", *arguments, "--region", region, "--output", "json"]
     value = subprocess.check_output(command, text=True, stderr=subprocess.STDOUT)
@@ -278,13 +296,13 @@ def validate_download(
 
 
 def materialize(args: argparse.Namespace) -> dict[str, Any]:
-    receipt_path = args.materializer_receipt.resolve()
-    output_path = args.output.resolve()
-    verify_path = args.verification_output.resolve()
+    receipt_path = resolve_real_file(args.materializer_receipt, "materializer receipt")
+    output_path = resolve_new_output(args.output, "materializer output")
+    verify_path = resolve_new_output(
+        args.verification_output, "verification output"
+    )
     if len({receipt_path, output_path, verify_path}) != 3:
         raise ValueError("receipt, output, and verification paths must be distinct")
-    if args.output.is_symlink() or args.verification_output.is_symlink():
-        raise ValueError("outputs may not be symlinks")
     if args.output.exists() or args.verification_output.exists():
         raise FileExistsError("refusing to replace local materializer outputs")
     staging = output_path.with_name(f".{output_path.name}.staging")
