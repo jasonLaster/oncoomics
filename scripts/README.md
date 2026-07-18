@@ -63,6 +63,9 @@ Current shell utilities:
 - `render_ai_synthesis_runbook.py`: render the post-freeze AI review,
   validation, comparative-synthesis, and private-publication handoff from
   seven current source private-publication receipts.
+- `render_materializer_job_definition.py`: render a reviewed, frozen-script
+  AWS Batch job definition payload for the next cross-check materializer
+  revision without uploading, registering, or submitting anything.
 - `render_source_report_freeze_runbook.py`: render the private-freeze commands
   for the seven canonical source HRD report packets plus the exact-receipt AI
   handoff command.

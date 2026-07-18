@@ -82,6 +82,15 @@ submitted Batch jobs.
 | Compact executable cross-check outputs and render no-call packets for blocked routes | `scripts/download_exact_report_tree.py`, `scripts/stage_hrd_crosscheck_report.py`, `scripts/generate_blocked_hrd_crosscheck_reports.py` |
 | Render the seven-source private-freeze and AI-review handoff | `scripts/render_source_report_freeze_runbook.py` |
 
+`scripts/submit_materializer_v4.py` is intentionally pinned to the registered
+materializer revision `:4`. To prepare a future materializer revision, first
+freeze the reviewed `scripts/materialize_crosscheck_inputs.py` bytes as an
+exact private S3 object, then use `scripts/render_materializer_job_definition.py`
+to render the immutable Batch payload for human review and explicit
+`register-job-definition`. Do not retarget the post-success runbook until the
+returned revision, script anchor, and local job-definition payload are all
+cross-bound in a registration receipt.
+
 The deterministic stager writes exactly the six `deterministic_full_wgs` packet
 files that Rosalind, cross-check materialization, and the private/public
 publishers accept:
