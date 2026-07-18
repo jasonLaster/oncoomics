@@ -42,6 +42,10 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def checksum_sha256(digest: str) -> str:
+    return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
+
+
 def aws_json(arguments: list[str], region: str) -> dict[str, Any]:
     value = json.loads(
         subprocess.check_output(
@@ -116,7 +120,9 @@ def put_create_only(
             "s3api", "put-object", "--bucket", bucket, "--key", key,
             "--body", str(path), "--if-none-match", "*",
             "--server-side-encryption", "aws:kms", "--sse-kms-key-id", kms_key_arn,
-            "--checksum-algorithm", "SHA256", "--content-type", "application/json",
+            "--checksum-algorithm", "SHA256",
+            "--checksum-sha256", checksum_sha256(sha256(path)),
+            "--content-type", "application/json",
             "--metadata", f"sha256={sha256(path)}",
         ],
         region,

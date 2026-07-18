@@ -701,6 +701,56 @@ class CustodyHandoffTests(unittest.TestCase):
             self.assertTrue(all(value["checks"].values()))
             self.assertIn(contract_sha, value["receipt_uri"])
 
+    def test_contract_publication_put_pins_exact_checksum(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            contract = Path(temporary) / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            contract_sha = publisher.sha256(contract)
+
+            with patch.object(
+                publisher,
+                "aws_json",
+                return_value={"VersionId": "contract-version"},
+            ) as aws_json:
+                publisher.put_create_only(
+                    contract,
+                    BUCKET,
+                    f"runs/subject01/{RUN}/deterministic/contracts/{contract_sha}.json",
+                    KMS,
+                    "us-east-1",
+                )
+
+        self.assertEqual(
+            aws_json.call_args.args,
+            (
+                [
+                    "s3api",
+                    "put-object",
+                    "--bucket",
+                    BUCKET,
+                    "--key",
+                    f"runs/subject01/{RUN}/deterministic/contracts/{contract_sha}.json",
+                    "--body",
+                    str(contract),
+                    "--if-none-match",
+                    "*",
+                    "--server-side-encryption",
+                    "aws:kms",
+                    "--sse-kms-key-id",
+                    KMS,
+                    "--checksum-algorithm",
+                    "SHA256",
+                    "--checksum-sha256",
+                    publisher.checksum_sha256(contract_sha),
+                    "--content-type",
+                    "application/json",
+                    "--metadata",
+                    f"sha256={contract_sha}",
+                ],
+                "us-east-1",
+            ),
+        )
+
     def test_contract_publication_recovers_put_before_anchor_update_without_second_put(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
