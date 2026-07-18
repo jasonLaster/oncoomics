@@ -617,6 +617,23 @@ class CaptureRouteTerminalTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "missing" / "capture.json").exists())
 
+    def test_three_output_create_rejects_existing_dir_below_symlinked_parent(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-parent"
+            (real_parent / "existing").mkdir(parents=True)
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+                MODULE.create_private_outputs(
+                    [(linked_parent / "existing" / "capture.json", b"capture")]
+                )
+
+            self.assertFalse((real_parent / "existing" / "capture.json").exists())
+
     def test_three_output_atomic_write_failure_removes_all_reserved_outputs(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

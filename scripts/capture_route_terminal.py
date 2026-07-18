@@ -140,6 +140,10 @@ def canonical_sha256(value: Any) -> str:
     return sha256_bytes(encoded)
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def decode_sha256(value: Any, label: str) -> str:
     try:
         decoded = base64.b64decode(str(value), validate=True)
@@ -266,21 +270,13 @@ def require_new_private_output_paths(paths: Iterable[Path]) -> None:
 def require_safe_private_output_parent(path: Path) -> None:
     if path.is_symlink():
         raise FileExistsError(f"private output may not be a symlink: {path}")
-    parent = path.parent
-    while not parent.exists():
-        if parent.is_symlink():
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
             raise FileExistsError(
                 f"private output parent may not be a symlink: {parent}"
             )
-        if parent == parent.parent:
-            raise ValueError(f"private output has no existing parent: {path}")
-        parent = parent.parent
-    if parent.is_symlink():
-        raise FileExistsError(
-            f"private output parent may not be a symlink: {parent}"
-        )
-    if not parent.is_dir():
-        raise NotADirectoryError(parent)
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
 
 
 def validate_arguments(args: argparse.Namespace) -> dict[str, str]:
