@@ -38,6 +38,12 @@ LEGACY_PHASE3_AWS_FULL_DESCRIPTION = (
     "Use the P5en/Parabricks phase3_wgs_fast path after quota and GPU smoke pass. "
     "Set ALLOW_LEGACY_PHASE3_AWS_FULL=YES only for an explicitly approved legacy public WGS run."
 )
+PHASE3_FAST_AWS_EXECUTE_ENV = {"ALLOW_PHASE3_FAST_AWS_EXECUTE": "YES"}
+PHASE3_FAST_AWS_EXECUTE_DESCRIPTION = (
+    "Phase 3 fast AWS execute mode runs the full Diana BAM-to-evidence P5en/Parabricks path. "
+    "Set ALLOW_PHASE3_FAST_AWS_EXECUTE=YES only after Gate 0 receipts, P5en quota, a pinned image, "
+    "the GPU smoke gate, and the forbidden-token scan inventory have been reviewed."
+)
 
 
 @dataclass(frozen=True)
@@ -95,8 +101,8 @@ def _tool(*argv: str, env: Optional[Mapping[str, str]] = None, append_args: bool
     return TaskStep(tuple(argv), env=env, append_args=append_args)
 
 
-def _nextflow(*args: str) -> TaskStep:
-    return _tool("nextflow", "-log", str(NEXTFLOW_LOG_PATH), "run", "main.nf", *args)
+def _nextflow(*args: str, append_args: bool = False) -> TaskStep:
+    return _tool("nextflow", "-log", str(NEXTFLOW_LOG_PATH), "run", "main.nf", *args, append_args=append_args)
 
 
 def _terraform(*args: str, env: Optional[Mapping[str, str]] = None) -> TaskStep:
@@ -124,6 +130,15 @@ def _legacy_phase3_aws_full_task(*steps: TaskStep) -> Task:
         *steps,
         description=LEGACY_PHASE3_AWS_FULL_DESCRIPTION,
         required_env=LEGACY_PHASE3_AWS_FULL_ENV,
+    )
+
+
+def _phase3_fast_aws_execute_task(*steps: TaskStep) -> Task:
+    return _task(
+        *steps,
+        accepts_args=True,
+        description=PHASE3_FAST_AWS_EXECUTE_DESCRIPTION,
+        required_env=PHASE3_FAST_AWS_EXECUTE_ENV,
     )
 
 
@@ -663,6 +678,23 @@ TASKS: dict[str, Task] = {
             "--aws_max_retries",
             "0",
         ),
+    ),
+    "nf:aws:phase3-wgs-fast:execute": _phase3_fast_aws_execute_task(
+        _nextflow(
+            "-profile",
+            "awsbatch_gpu",
+            "-params-file",
+            AWS_USE2_NEXTFLOW_PARAMS,
+            "--workflow",
+            "phase3_wgs_fast",
+            "--phase3_fast_replication_mode",
+            "apply",
+            "--phase3_fast_small_variant_mode",
+            "execute",
+            "--aws_max_retries",
+            "0",
+            append_args=True,
+        )
     ),
     "nf:aws:phase3-wgs:monolith:full": _legacy_phase3_aws_full_task(
         _nextflow(

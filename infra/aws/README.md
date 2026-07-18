@@ -175,6 +175,12 @@ The smoke workflow verifies that the Batch job lands on the isolated GPU queue
 and that `nvidia-smi` reports the expected eight H200 GPUs. It is a placement
 gate only; it does not run Parabricks MutectCaller or Diana WGS evidence.
 
+Use `nf:aws:phase3-wgs-fast:execute` only after Gate 0 inputs, the pinned image,
+and the smoke output have been reviewed. That alias runs the full
+BAM-to-evidence P5en path and therefore requires
+`ALLOW_PHASE3_FAST_AWS_EXECUTE=YES` plus the reviewed Nextflow receipt
+parameters after `--`.
+
 ## Smoke Test
 
 Run a cloud-side stub only. This submits a real AWS Batch job but does not fetch data or run analysis:

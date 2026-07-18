@@ -410,6 +410,29 @@ generated `infra/aws/nextflow.aws.use2.json` is bound to `us-east-2`, the
 isolated P5en queue, exactly `p5en.48xlarge`, at least one P5en worth of
 capacity, and a Parabricks image pinned by SHA-256 digest.
 
+After Gate 0 receipts have been reviewed and the GPU smoke has passed, launch
+the full BAM-to-evidence route through the guarded execute alias. Pass the
+reviewed receipt paths and alias-only forbidden-token inventory as Nextflow
+arguments after `--`:
+
+```sh
+ALLOW_PHASE3_FAST_AWS_EXECUTE=YES \
+PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:execute -- \
+  --phase3_fast_private_freeze_receipt /path/to/private-freeze.json \
+  --phase3_fast_private_sha256_receipt /path/to/private-sha256.json \
+  --phase3_fast_reference_freeze_receipt /path/to/reference-freeze.json \
+  --phase3_fast_reference_sha256_receipt /path/to/reference-sha256.json \
+  --phase3_fast_bam_validation_receipt /path/to/bam-validation.json \
+  --phase3_fast_contig_compatibility_receipt /path/to/contig-compatibility.json \
+  --phase3_fast_caller_resource_receipt /path/to/caller-resources.json \
+  --phase3_fast_parameter_sha256 <sha256> \
+  --phase3_fast_parabricks_container_digest <sha256:digest> \
+  --phase3_fast_parabricks_version <version> \
+  --phase3_fast_cache_prefix s3://<regional-private-cache>/wgs-v2/ \
+  --phase3_fast_cache_kms_key_arn <us-east-2-kms-key-arn> \
+  --phase3_fast_forbidden_tokens_json '["<private-token>"]'
+```
+
 Verify all eight H200 GPUs are visible with `nvidia-smi`, then execute a fixed
 bounded interval. Accept the environment only if:
 

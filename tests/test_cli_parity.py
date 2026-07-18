@@ -5,7 +5,7 @@ from unittest.mock import patch
 import diana_omics.commands as command_package
 from diana_omics.cli import _format_command_families, _load_commands
 from diana_omics.commands.registry import COMMAND_FAMILIES, COMMAND_SPECS, FAMILY_PACKAGES, TASK_ONLY_MODULES
-from diana_omics.workflow_tasks import LEGACY_PHASE3_AWS_FULL_ENV, TASKS, run_task
+from diana_omics.workflow_tasks import LEGACY_PHASE3_AWS_FULL_ENV, PHASE3_FAST_AWS_EXECUTE_ENV, TASKS, run_task
 
 
 class CliParityTest(unittest.TestCase):
@@ -155,6 +155,7 @@ class CliParityTest(unittest.TestCase):
         self.assertIn("aws:hrd-packet:cloud-submit", TASKS)
         self.assertIn("nf:aws:sra-bench:tiny", TASKS)
         self.assertIn("nf:aws:phase3-wgs-fast:gpu-smoke", TASKS)
+        self.assertIn("nf:aws:phase3-wgs-fast:execute", TASKS)
         self.assertIn("nf:aws:known-answer-bounded-non-dry", TASKS)
         self.assertIn("nf:aws:known-answer-expanded-cohort", TASKS)
         self.assertIn("phase3:stage:align:tumor", TASKS)
@@ -206,6 +207,22 @@ class CliParityTest(unittest.TestCase):
         self.assertIsNone(TASKS["nf:aws:phase3-wgs:stub"].required_env)
         self.assertIsNone(TASKS["nf:aws:phase3-wgs:dev"].required_env)
 
+    def test_phase3_fast_aws_execute_task_uses_guarded_p5en_path(self):
+        task = TASKS["nf:aws:phase3-wgs-fast:execute"]
+
+        self.assertTrue(task.accepts_args)
+        self.assertTrue(task.steps[0].append_args)
+        self.assertEqual(PHASE3_FAST_AWS_EXECUTE_ENV, task.required_env)
+
+        argv = task.steps[0].argv
+        self.assertIn("awsbatch_gpu", argv)
+        self.assertIn("infra/aws/nextflow.aws.use2.json", argv)
+        self.assertEqual("phase3_wgs_fast", argv[argv.index("--workflow") + 1])
+        self.assertEqual("apply", argv[argv.index("--phase3_fast_replication_mode") + 1])
+        self.assertEqual("execute", argv[argv.index("--phase3_fast_small_variant_mode") + 1])
+        self.assertIn("--aws_max_retries", argv)
+        self.assertEqual("0", argv[argv.index("--aws_max_retries") + 1])
+
     @patch("diana_omics.workflow_tasks.subprocess.run")
     def test_legacy_phase3_aws_full_task_fails_before_nextflow_without_override(self, run):
         with patch.dict("os.environ", {}, clear=True):
@@ -227,6 +244,36 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("phase3_wgs", argv[argv.index("--workflow") + 1])
         self.assertEqual("full", argv[argv.index("--phase3_reads") + 1])
         self.assertEqual("YES", env["ALLOW_LEGACY_PHASE3_AWS_FULL"])
+
+    @patch("diana_omics.workflow_tasks.subprocess.run")
+    def test_phase3_fast_aws_execute_task_fails_before_nextflow_without_override(self, run):
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaises(SystemExit) as error:
+                run_task("nf:aws:phase3-wgs-fast:execute")
+
+        self.assertIn("ALLOW_PHASE3_FAST_AWS_EXECUTE=YES", str(error.exception))
+        run.assert_not_called()
+
+    @patch("diana_omics.workflow_tasks.subprocess.run")
+    def test_phase3_fast_aws_execute_task_appends_reviewed_gate0_params(self, run):
+        extra_args = (
+            "--",
+            "--phase3_fast_private_freeze_receipt",
+            "private-freeze.json",
+            "--phase3_fast_forbidden_tokens_json",
+            '["E019"]',
+        )
+        with patch.dict("os.environ", {"ALLOW_PHASE3_FAST_AWS_EXECUTE": "YES"}, clear=True):
+            run_task("nf:aws:phase3-wgs-fast:execute", extra_args)
+
+        run.assert_called_once()
+        argv = run.call_args.args[0]
+        env = run.call_args.kwargs["env"]
+        self.assertEqual("phase3_wgs_fast", argv[argv.index("--workflow") + 1])
+        self.assertEqual("execute", argv[argv.index("--phase3_fast_small_variant_mode") + 1])
+        self.assertEqual("private-freeze.json", argv[argv.index("--phase3_fast_private_freeze_receipt") + 1])
+        self.assertEqual('["E019"]', argv[argv.index("--phase3_fast_forbidden_tokens_json") + 1])
+        self.assertEqual("YES", env["ALLOW_PHASE3_FAST_AWS_EXECUTE"])
 
     def test_p5en_gpu_smoke_task_uses_isolated_gpu_profile(self):
         task = TASKS["nf:aws:phase3-wgs-fast:gpu-smoke"]
