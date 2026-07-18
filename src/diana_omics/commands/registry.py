@@ -27,6 +27,7 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     ),
     "build:diana-template": CommandSpec("diana_omics.commands.diana_intake.build_diana_raw_template"),
     "build:packet": CommandSpec("diana_omics.commands.hrd_context.build_reviewer_packet"),
+    "build:phase3-fast-bam-qc-plan": CommandSpec("diana_omics.commands.phase3_wgs.render_phase3_fast_bam_qc_plan"),
     "build:phase3-fast-input-manifest": CommandSpec("diana_omics.commands.phase3_wgs.render_phase3_fast_input_manifest"),
     "build:phase3-fast-cache-manifest": CommandSpec("diana_omics.commands.phase3_wgs.render_phase3_fast_cache_manifest"),
     "build:phase3-fast-filter-mutect-plan": CommandSpec(
@@ -165,6 +166,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
         "Run full-source WGS fetch, stage-local validation, and range-read experiments.",
         (
             "fetch:phase3-wgs",
+            "build:phase3-fast-bam-qc-plan",
             "build:phase3-fast-input-manifest",
             "build:phase3-fast-cache-manifest",
             "build:phase3-fast-filter-mutect-plan",

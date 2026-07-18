@@ -20,6 +20,7 @@ class CliParityTest(unittest.TestCase):
             "build:diana-samplesheet-from-delivery",
             "build:diana-template",
             "build:packet",
+            "build:phase3-fast-bam-qc-plan",
             "build:phase3-fast-input-manifest",
             "build:phase3-fast-cache-manifest",
             "build:phase3-fast-filter-mutect-plan",

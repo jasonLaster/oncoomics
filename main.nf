@@ -66,6 +66,8 @@ params.phase3_fast_parabricks_cpus = params.phase3_fast_parabricks_cpus ?: 192
 params.phase3_fast_parabricks_memory = params.phase3_fast_parabricks_memory ?: '1900 GB'
 params.phase3_fast_parabricks_num_gpus = params.phase3_fast_parabricks_num_gpus ?: 8
 params.phase3_fast_parabricks_output_root = params.phase3_fast_parabricks_output_root ?: '/scratch/diana/phase3_wgs_fast/parabricks_mutect'
+params.phase3_fast_bam_qc_output_root = params.phase3_fast_bam_qc_output_root ?: '/scratch/diana/phase3_wgs_fast/bam_qc'
+params.phase3_fast_bam_qc_threads = params.phase3_fast_bam_qc_threads ?: 8
 params.phase3_fast_filter_mutect_output_root = params.phase3_fast_filter_mutect_output_root ?: '/scratch/diana/phase3_wgs_fast/filter_mutect'
 params.phase3_fast_small_variant_mode = params.phase3_fast_small_variant_mode ?: 'plan'
 params.phase3_fast_gatk_version = params.phase3_fast_gatk_version ?: '4.6.2.0'
@@ -1005,6 +1007,49 @@ process FAST_FILTER_MUTECT_PLAN {
     """
 }
 
+process FAST_BAM_QC_PLAN {
+    tag "fast_bam_qc_plan_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '2 GB'
+    time '15m'
+    publishDir "${params.outdir}/phase3_wgs_fast/bam_qc_plan", mode: 'copy', overwrite: true
+
+    input:
+    tuple path(staged_inputs_manifest), path(parabricks_mutect_plan)
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/bam_qc_plan.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST="\$PWD/${staged_inputs_manifest}"
+    export PHASE3_WGS_FAST_BAM_QC_PLAN_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/bam_qc_plan.json"
+    export PHASE3_WGS_FAST_BAM_QC_OUTPUT_ROOT="${params.phase3_fast_bam_qc_output_root}"
+    export PHASE3_WGS_FAST_BAM_QC_THREADS="${params.phase3_fast_bam_qc_threads}"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:phase3-fast-bam-qc-plan
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    mkdir -p workspace/manifests/phase3_wgs_fast
+    cat > workspace/manifests/phase3_wgs_fast/bam_qc_plan.json <<JSON
+    {
+      "schema_version": 1,
+      "manifest_type": "phase3_wgs_fast_bam_qc_plan",
+      "status": "stubbed",
+      "commands": {},
+      "interpretation": {
+        "authorized_hrd_state": "no_call"
+      }
+    }
+    JSON
+    """
+}
+
 process FAST_MUTECT_PARABRICKS_FILTER {
     tag "fast_mutect_parabricks_filter_${params.phase3_fast_run_id}"
     label 'gpu_parabricks'
@@ -1174,6 +1219,7 @@ workflow PHASE3_WGS_FAST {
             FAST_MUTECT_PARABRICKS_FILTER(FAST_STAGING_PLAN.out)
         } else {
             FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
+            FAST_BAM_QC_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
             FAST_FILTER_MUTECT_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
         }
     }
