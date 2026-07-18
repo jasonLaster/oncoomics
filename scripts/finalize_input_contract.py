@@ -47,6 +47,14 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def canonical_json_bytes(value: dict[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
 def require_no_symlinked_ancestors(path: Path, label: str) -> None:
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
@@ -351,22 +359,34 @@ def write_new_json(path: Path, value: dict[str, Any]) -> None:
         raise FileExistsError(path)
     require_safe_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = canonical_json_bytes(value)
+    expected_sha256 = sha256_bytes(data)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         try:
-            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            with os.fdopen(descriptor, "wb") as handle:
                 descriptor = -1
-                json.dump(value, handle, indent=2, sort_keys=True)
-                handle.write("\n")
+                handle.write(data)
                 handle.flush()
                 os.fsync(handle.fileno())
             fsync_directory(path.parent)
+            require_installed_contract_output(path, expected_sha256)
         except Exception:
             path.unlink(missing_ok=True)
             raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+def require_installed_contract_output(path: Path, expected_sha256: str) -> None:
+    require_no_symlinked_ancestors(path, "contract output")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"contract output changed during write: {path}")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"contract output mode is not 0600: {path}")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"contract output changed during write: {path}")
 
 
 def fsync_directory(path: Path) -> None:

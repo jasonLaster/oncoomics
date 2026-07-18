@@ -355,6 +355,30 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_finalizer_rehashes_after_parent_fsync(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "input-contract.json"
+            real_fsync_directory = finalizer.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    finalizer,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "contract output changed during write",
+                ),
+            ):
+                finalizer.write_new_json(output, {"status": "passed"})
+
+            self.assertFalse(output.exists())
+
     def test_finalizer_rejects_output_below_symlinked_parent(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
@@ -478,6 +502,30 @@ class CustodyHandoffTests(unittest.TestCase):
                     side_effect=(None, OSError("synthetic directory fsync failure")),
                 ),
                 self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                checker.write_text_once(output, "{}\n")
+
+            self.assertFalse(output.exists())
+
+    def test_contract_check_rehashes_after_parent_fsync(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "input-contract.readiness.json"
+            real_fsync_directory = checker.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    checker,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "contract readiness output changed during write",
+                ),
             ):
                 checker.write_text_once(output, "{}\n")
 
