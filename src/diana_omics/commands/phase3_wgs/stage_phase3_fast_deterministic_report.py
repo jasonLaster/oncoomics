@@ -837,8 +837,7 @@ def _install_packet(
                     if descriptor >= 0:
                         os.close(descriptor)
     except Exception:
-        for path in installed:
-            path.unlink(missing_ok=True)
+        shutil.rmtree(output, ignore_errors=True)
         raise
 
 

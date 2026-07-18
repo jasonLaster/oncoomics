@@ -348,8 +348,12 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             manifest_path, final_root, final_manifest = _write_final_manifest(root)
             output = root / "deterministic"
 
-            def fail_after_partial_copy(_source, destination) -> None:
-                destination.write(b"partial deterministic report")
+            def fail_after_partial_copy(_source, destination_handle) -> None:
+                destination_handle.write(b"partial deterministic report")
+                (output / "unexpected.tmp").write_text(
+                    "stray partial file\n",
+                    encoding="utf-8",
+                )
                 raise OSError("simulated deterministic report interruption")
 
             with patch.object(stage_report.shutil, "copyfileobj", side_effect=fail_after_partial_copy):
@@ -363,7 +367,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                         output_dir=output,
                     )
 
-            self.assertEqual([], [path for path in output.rglob("*") if path.is_file()])
+            self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":
