@@ -589,6 +589,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         process = text[text.index("process FAST_STAGE_DETERMINISTIC_REPORT") :]
         process = process[: process.index("process FAST_STAGE_ROSALIND_PACKET")]
         self.assertIn("label 'cpu_io'", process)
+        self.assertIn("path crosscheck_materialization_plan", process)
         self.assertIn("tuple path(final_evidence_manifest)", process)
         self.assertIn("path(final_evidence_root)", process)
         self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report", process)
@@ -605,8 +606,15 @@ class Phase3FastNextflowTests(unittest.TestCase):
             'export PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT="\\$PWD/${final_evidence_root}"',
             process,
         )
+        self.assertIn(
+            'export PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN="\\$PWD/${crosscheck_materialization_plan}"',
+            process,
+        )
         self.assertIn("stage:phase3-fast-deterministic-report", process)
-        self.assertIn("FAST_STAGE_DETERMINISTIC_REPORT(FAST_VERIFY_AND_PUBLISH.out)", text)
+        self.assertIn(
+            "FAST_STAGE_DETERMINISTIC_REPORT(FAST_CROSSCHECK_MATERIALIZATION_PLAN.out, FAST_VERIFY_AND_PUBLISH.out)",
+            text,
+        )
 
     def test_stage_rosalind_packet_consumes_phase3_fast_deterministic_report(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")

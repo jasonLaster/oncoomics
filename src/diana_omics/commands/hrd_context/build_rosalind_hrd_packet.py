@@ -1101,7 +1101,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
         not isinstance(crosscheck_input_plans, dict)
         or crosscheck_input_plans.get("schema_version") != 1
         or crosscheck_input_plans.get("plan_type") != "phase3_fast_crosscheck_input_materialization_plan"
-        or crosscheck_input_plans.get("status") != "planned"
+        or crosscheck_input_plans.get("status") != "awaiting_private_results_freeze"
         or crosscheck_input_plans.get("authorized_hrd_state") != "no_call"
         or crosscheck_input_plans.get("classification_authorized") is not False
     ):
@@ -1110,7 +1110,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
     if not isinstance(crosscheck_routes, dict):
         raise ValueError("Phase 3 fast cross-check input plan lacks exact routes")
     crosscheck_route_states = {
-        "sigprofiler_sbs3": "plan_ready",
+        "sigprofiler_sbs3": "awaiting_private_results_freeze",
         "sequenza_scarhrd": "blocked",
     }
     for route, expected_status in crosscheck_route_states.items():
@@ -1658,8 +1658,8 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
             ),
             adapter_row(
                 "SigProfiler/SBS3 input materializer",
-                "ready_to_materialize",
-                "Alias-only inputs are planned but have not been materialized by the exact-version route.",
+                "blocked",
+                "The final evidence artifacts must be frozen to private-results before alias-only materialization.",
                 "Run the materializer on exact final inputs, then stage a no-call SigProfiler/SBS3 cross-check report.",
             ),
             adapter_row(

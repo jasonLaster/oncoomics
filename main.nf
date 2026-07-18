@@ -1536,6 +1536,7 @@ process FAST_STAGE_DETERMINISTIC_REPORT {
     publishDir "${params.outdir}/phase3_wgs_fast/deterministic_report", mode: 'copy', overwrite: true
 
     input:
+    path crosscheck_materialization_plan
     tuple path(final_evidence_manifest),
           path(final_evidence_root)
 
@@ -1550,6 +1551,7 @@ process FAST_STAGE_DETERMINISTIC_REPORT {
     script:
     """
     set -euo pipefail
+    export PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN="\$PWD/${crosscheck_materialization_plan}"
     export PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST="\$PWD/${final_evidence_manifest}"
     export PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT="\$PWD/${final_evidence_root}"
     export PHASE3_WGS_FAST_DETERMINISTIC_REPORT_OUTPUT="\$PWD/workspace/results/phase3_wgs_fast/deterministic_report"
@@ -1899,7 +1901,7 @@ workflow PHASE3_WGS_FAST {
             }
             FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out, small_variant_artifacts_for_publish, aux_artifacts_for_publish)
             FAST_CROSSCHECK_MATERIALIZATION_PLAN(FAST_VERIFY_AND_PUBLISH.out)
-            FAST_STAGE_DETERMINISTIC_REPORT(FAST_VERIFY_AND_PUBLISH.out)
+            FAST_STAGE_DETERMINISTIC_REPORT(FAST_CROSSCHECK_MATERIALIZATION_PLAN.out, FAST_VERIFY_AND_PUBLISH.out)
             FAST_STAGE_ROSALIND_PACKET(FAST_STAGE_DETERMINISTIC_REPORT.out, FAST_VERIFY_AND_PUBLISH.out)
             FAST_STAGE_BLOCKED_CROSSCHECKS(FAST_STAGE_ROSALIND_PACKET.out)
         } else {

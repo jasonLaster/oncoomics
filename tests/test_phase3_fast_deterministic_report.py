@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from test_phase3_fast_final_evidence import _join_manifest
 
+from diana_omics.commands.phase3_wgs import plan_phase3_fast_crosscheck_inputs as crosscheck_plan
 from diana_omics.commands.phase3_wgs import publish_phase3_fast_final_evidence as final_evidence
 from diana_omics.commands.phase3_wgs import stage_phase3_fast_deterministic_report as stage_report
 from diana_omics.utils import read_json, write_json
@@ -44,6 +45,13 @@ def _write_final_manifest(root: Path) -> tuple[Path, Path, dict]:
     return manifest_path, final_root, manifest
 
 
+def _crosscheck_materialization_plan(manifest: dict, manifest_path: Path) -> dict:
+    return crosscheck_plan.build_phase3_fast_crosscheck_materialization_plan(
+        manifest,
+        final_evidence_sha256=_sha256_path(manifest_path),
+    )
+
+
 def _read_csv(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8", newline="") as handle:
         return [dict(row) for row in csv.DictReader(handle)]
@@ -58,6 +66,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
 
             report_manifest = stage_report.stage_phase3_fast_deterministic_report(
                 final_manifest,
+                _crosscheck_materialization_plan(final_manifest, manifest_path),
                 final_manifest_sha256=_sha256_path(manifest_path),
                 final_manifest_bytes=manifest_path.stat().st_size,
                 final_root=final_root,
@@ -88,9 +97,10 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         self.assertIn("`4` depth bins", report)
         self.assertIn("no production SV VCF/BEDPE", report)
         self.assertEqual(
-            "SigProfiler/SBS3 input materialization is plan-ready; "
-            "Sequenza/scarHRD has an explicit sex-model parameter but remains "
-            "blocked on a finalized BAM contract and validated runtime.",
+            "SigProfiler/SBS3 input materialization is bound to the "
+            "post-freeze plan; Sequenza/scarHRD has an explicit sex-model "
+            "parameter but remains blocked on a finalized BAM contract and "
+            "validated runtime.",
             next(
                 check["detail"]
                 for check in evidence_checks["checks"]
@@ -100,7 +110,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         self.assertNotIn(str(root), json.dumps(report_manifest))
         self.assertNotIn(str(root), report)
         self.assertEqual(
-            "plan_ready",
+            "awaiting_private_results_freeze",
             crosscheck_input_plans["routes"]["sigprofiler_sbs3"]["status"],
         )
         self.assertEqual(
@@ -155,7 +165,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            "plan_ready",
+            "awaiting_private_results_freeze",
             report_manifest["review_summary"]["crosscheck_input_plans"]["sigprofiler_sbs3"],
         )
 
@@ -176,12 +186,21 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             manifest_path, final_root, _ = _write_final_manifest(root)
+            plan_path = root / "crosscheck_materialization_plan.json"
+            write_json(
+                plan_path,
+                _crosscheck_materialization_plan(
+                    read_json(manifest_path),
+                    manifest_path,
+                ),
+            )
             output = root / "deterministic"
 
             with patch.dict(
                 "os.environ",
                 {
                     "PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST": str(manifest_path),
+                    "PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN": str(plan_path),
                     "PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT": str(final_root),
                     "PHASE3_WGS_FAST_DETERMINISTIC_REPORT_OUTPUT": str(output),
                 },
@@ -203,6 +222,47 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(stage_report.ManifestError, "scarhrd_use"):
                 stage_report.stage_phase3_fast_deterministic_report(
                     final_manifest,
+                    _crosscheck_materialization_plan(final_manifest, manifest_path),
+                    final_manifest_sha256=_sha256_path(manifest_path),
+                    final_manifest_bytes=manifest_path.stat().st_size,
+                    final_root=final_root,
+                    output_dir=root / "deterministic",
+                )
+
+    def test_rejects_crosscheck_plan_bound_to_another_final_manifest(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            materialization_plan = _crosscheck_materialization_plan(
+                final_manifest,
+                manifest_path,
+            )
+            materialization_plan["source"]["final_evidence_manifest_sha256"] = "b" * 64
+
+            with self.assertRaisesRegex(stage_report.ManifestError, "not bound"):
+                stage_report.stage_phase3_fast_deterministic_report(
+                    final_manifest,
+                    materialization_plan,
+                    final_manifest_sha256=_sha256_path(manifest_path),
+                    final_manifest_bytes=manifest_path.stat().st_size,
+                    final_root=final_root,
+                    output_dir=root / "deterministic",
+                )
+
+    def test_rejects_crosscheck_plan_that_promotes_sequenza(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            materialization_plan = _crosscheck_materialization_plan(
+                final_manifest,
+                manifest_path,
+            )
+            materialization_plan["sequenza_scarhrd"]["status"] = "ready"
+
+            with self.assertRaisesRegex(stage_report.ManifestError, "Sequenza/scarHRD"):
+                stage_report.stage_phase3_fast_deterministic_report(
+                    final_manifest,
+                    materialization_plan,
                     final_manifest_sha256=_sha256_path(manifest_path),
                     final_manifest_bytes=manifest_path.stat().st_size,
                     final_root=final_root,
@@ -218,6 +278,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(stage_report.ManifestError, "cnv_evidence.coverage_bins"):
                 stage_report.stage_phase3_fast_deterministic_report(
                     final_manifest,
+                    _crosscheck_materialization_plan(final_manifest, manifest_path),
                     final_manifest_sha256=_sha256_path(manifest_path),
                     final_manifest_bytes=manifest_path.stat().st_size,
                     final_root=final_root,
@@ -234,6 +295,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(stage_report.ManifestError, "unmanifested"):
                 stage_report.stage_phase3_fast_deterministic_report(
                     final_manifest,
+                    _crosscheck_materialization_plan(final_manifest, manifest_path),
                     final_manifest_sha256=_sha256_path(manifest_path),
                     final_manifest_bytes=manifest_path.stat().st_size,
                     final_root=final_root,
@@ -252,6 +314,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(stage_report.ManifestError, "final artifact parent may not be a symlink"):
                 stage_report.stage_phase3_fast_deterministic_report(
                     final_manifest,
+                    _crosscheck_materialization_plan(final_manifest, manifest_path),
                     final_manifest_sha256=_sha256_path(manifest_path),
                     final_manifest_bytes=manifest_path.stat().st_size,
                     final_root=final_root,
@@ -270,6 +333,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(stage_report.ManifestError, "parent may not be a symlink"):
                 stage_report.stage_phase3_fast_deterministic_report(
                     final_manifest,
+                    _crosscheck_materialization_plan(final_manifest, manifest_path),
                     final_manifest_sha256=_sha256_path(manifest_path),
                     final_manifest_bytes=manifest_path.stat().st_size,
                     final_root=final_root,

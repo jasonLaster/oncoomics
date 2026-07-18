@@ -268,6 +268,151 @@ def _source_identity(input_sources: Mapping[str, Any], label: str, *path: str) -
     }
 
 
+def _planned_sigprofiler_source(
+    crosscheck_materialization_plan: Mapping[str, Any],
+    artifact_map: Mapping[str, Any],
+    materializer_role: str,
+    input_id: str,
+    *artifact_path: str,
+) -> dict[str, Any]:
+    sigprofiler = _require_mapping(
+        crosscheck_materialization_plan.get("sigprofiler_sbs3"),
+        "crosscheck_materialization_plan.sigprofiler_sbs3",
+    )
+    final_sources = _require_mapping(
+        sigprofiler.get("final_sources"),
+        "crosscheck_materialization_plan.sigprofiler_sbs3.final_sources",
+    )
+    planned = _require_mapping(
+        final_sources.get(materializer_role),
+        f"crosscheck_materialization_plan.sigprofiler_sbs3.final_sources.{materializer_role}",
+    )
+    expected = _planned_artifact(artifact_map, input_id, *artifact_path)
+    actual = {
+        "input_id": input_id,
+        "path": f"final/{_require_relative_path(planned.get('final_relative_path'), f'{materializer_role}.final_relative_path')}",
+        "bytes": _require_non_negative_int(planned.get("bytes"), f"{materializer_role}.bytes"),
+        "sha256": _require_hex(planned.get("sha256"), f"{materializer_role}.sha256"),
+    }
+    if actual != expected:
+        raise ManifestError(f"{materializer_role} cross-check plan source differs from the final evidence manifest")
+    return actual
+
+
+def _planned_sigprofiler_reference(
+    crosscheck_materialization_plan: Mapping[str, Any],
+    input_sources: Mapping[str, Any],
+    materializer_role: str,
+    final_role: str,
+) -> dict[str, Any]:
+    sigprofiler = _require_mapping(
+        crosscheck_materialization_plan.get("sigprofiler_sbs3"),
+        "crosscheck_materialization_plan.sigprofiler_sbs3",
+    )
+    reference_sources = _require_mapping(
+        sigprofiler.get("reference_sources"),
+        "crosscheck_materialization_plan.sigprofiler_sbs3.reference_sources",
+    )
+    planned = _source_identity(
+        reference_sources,
+        f"crosscheck_materialization_plan.sigprofiler_sbs3.reference_sources.{materializer_role}",
+        materializer_role,
+    )
+    expected = _source_identity(
+        input_sources,
+        f"input_sources.reference.{final_role}",
+        "reference",
+        final_role,
+    )
+    if planned != expected:
+        raise ManifestError(f"{materializer_role} cross-check reference differs from the final evidence manifest")
+    return planned
+
+
+def _validate_crosscheck_materialization_plan(
+    crosscheck_materialization_plan: Mapping[str, Any],
+    *,
+    final_manifest_sha256: str,
+    final_manifest: Mapping[str, Any],
+) -> None:
+    if crosscheck_materialization_plan.get("schema_version") != 1:
+        raise ManifestError("cross-check materialization plan schema_version must be 1")
+    if (
+        crosscheck_materialization_plan.get("manifest_type")
+        != "phase3_wgs_fast_crosscheck_materialization_plan"
+    ):
+        raise ManifestError(
+            "cross-check materialization plan manifest_type must be "
+            "phase3_wgs_fast_crosscheck_materialization_plan"
+        )
+    if crosscheck_materialization_plan.get("status") != "awaiting_private_results_freeze":
+        raise ManifestError("cross-check materialization plan must await the private results freeze")
+
+    source = _require_mapping(crosscheck_materialization_plan.get("source"), "crosscheck_materialization_plan.source")
+    if _require_hex(source.get("final_evidence_manifest_sha256"), "source.final_evidence_manifest_sha256") != final_manifest_sha256:
+        raise ManifestError("cross-check materialization plan is not bound to this final evidence manifest")
+
+    run = _require_mapping(crosscheck_materialization_plan.get("run"), "crosscheck_materialization_plan.run")
+    expected_run = _require_mapping(final_manifest.get("run"), "run")
+    for key in ("run_id", "subject_alias", "pair_id"):
+        if run.get(key) != expected_run.get(key):
+            raise ManifestError(f"cross-check materialization plan run.{key} differs from the final evidence manifest")
+
+    interpretation = _require_mapping(
+        crosscheck_materialization_plan.get("interpretation"),
+        "crosscheck_materialization_plan.interpretation",
+    )
+    if interpretation != _require_mapping(final_manifest.get("interpretation"), "interpretation"):
+        raise ManifestError("cross-check materialization plan interpretation differs from the final evidence manifest")
+
+    sigprofiler = _require_mapping(
+        crosscheck_materialization_plan.get("sigprofiler_sbs3"),
+        "crosscheck_materialization_plan.sigprofiler_sbs3",
+    )
+    if sigprofiler.get("status") != "awaiting_private_results_freeze":
+        raise ManifestError("SigProfiler/SBS3 must still await the private results freeze")
+    if sigprofiler.get("materializer_script") != "scripts/materialize_crosscheck_inputs.py":
+        raise ManifestError("SigProfiler/SBS3 must use the reviewed materializer")
+    if _require_string(sigprofiler.get("run_alias"), "sigprofiler_sbs3.run_alias") != expected_run.get("subject_alias"):
+        raise ManifestError("SigProfiler/SBS3 run_alias differs from the final evidence manifest")
+    outputs = _require_mapping(
+        sigprofiler.get("outputs"),
+        "crosscheck_materialization_plan.sigprofiler_sbs3.outputs",
+    )
+    if outputs != {
+        "somatic_vcf": "somatic.pass.vcf.gz",
+        "somatic_vcf_index": "somatic.pass.vcf.gz.tbi",
+        "sbs96_matrix": "sbs96.csv",
+        "staged_input_validation": "staged_input_validation.json",
+    }:
+        raise ManifestError("SigProfiler/SBS3 planned alias outputs are not exact")
+
+    sequenza = _require_mapping(
+        crosscheck_materialization_plan.get("sequenza_scarhrd"),
+        "crosscheck_materialization_plan.sequenza_scarhrd",
+    )
+    if sequenza.get("status") != "blocked" or sequenza.get("interpretation_status") != "no_call":
+        raise ManifestError("Sequenza/scarHRD must remain blocked and no_call")
+    alias_contract = _require_mapping(
+        sequenza.get("alias_input_contract"),
+        "crosscheck_materialization_plan.sequenza_scarhrd.alias_input_contract",
+    )
+    if alias_contract.get("status") != "blocked":
+        raise ManifestError("Sequenza/scarHRD alias input contract must stay blocked")
+    input_sources = _require_mapping(final_manifest.get("input_sources"), "input_sources")
+    method_parameters = normalize_method_parameters(final_manifest.get("method_parameters"))
+    bam_pair = _require_mapping(input_sources.get("bam_pair"), "input_sources.bam_pair")
+    expected_alias_contract = sequenza_alias_input_contract(
+        run_alias=expected_run.get("subject_alias"),
+        reference=_require_mapping(input_sources.get("reference"), "input_sources.reference"),
+        tumor=_require_mapping(bam_pair.get("tumor"), "input_sources.bam_pair.tumor"),
+        normal=_require_mapping(bam_pair.get("normal"), "input_sources.bam_pair.normal"),
+        method_parameters=method_parameters,
+    )
+    if alias_contract != expected_alias_contract:
+        raise ManifestError("Sequenza/scarHRD alias input contract differs from the final evidence manifest")
+
+
 def _cnv_metric(cnv_summary: Mapping[str, Any], key: str) -> Any:
     if key in cnv_summary:
         return cnv_summary[key]
@@ -381,49 +526,90 @@ def _readiness_rows(
     ]
 
 
-def _build_crosscheck_input_plans(manifest: Mapping[str, Any], artifact_map: Mapping[str, Any]) -> dict[str, Any]:
+def _build_crosscheck_input_plans(
+    manifest: Mapping[str, Any],
+    artifact_map: Mapping[str, Any],
+    crosscheck_materialization_plan: Mapping[str, Any],
+    *,
+    final_manifest_sha256: str,
+) -> dict[str, Any]:
+    _validate_crosscheck_materialization_plan(
+        crosscheck_materialization_plan,
+        final_manifest_sha256=final_manifest_sha256,
+        final_manifest=manifest,
+    )
     input_sources = _require_mapping(manifest.get("input_sources"), "input_sources")
-    method_parameters = normalize_method_parameters(manifest.get("method_parameters"))
-    run = _require_mapping(manifest.get("run"), "run")
+    sigprofiler = _require_mapping(
+        crosscheck_materialization_plan.get("sigprofiler_sbs3"),
+        "crosscheck_materialization_plan.sigprofiler_sbs3",
+    )
+    outputs = _require_mapping(
+        sigprofiler.get("outputs"),
+        "crosscheck_materialization_plan.sigprofiler_sbs3.outputs",
+    )
+    sequenza = _require_mapping(
+        crosscheck_materialization_plan.get("sequenza_scarhrd"),
+        "crosscheck_materialization_plan.sequenza_scarhrd",
+    )
     sigprofiler_sources = {
-        "source_vcf": _planned_artifact(
+        "source_vcf": _planned_sigprofiler_source(
+            crosscheck_materialization_plan,
             artifact_map,
+            "source_vcf",
             "small_variants.filter_mutect.filtered_vcf",
             "small_variants",
             "filter_mutect",
             "filtered_vcf",
         ),
-        "source_vcf_index": _planned_artifact(
+        "source_vcf_index": _planned_sigprofiler_source(
+            crosscheck_materialization_plan,
             artifact_map,
+            "source_vcf_index",
             "small_variants.filter_mutect.filtered_vcf_index",
             "small_variants",
             "filter_mutect",
             "filtered_vcf_index",
         ),
-        "source_sbs96_matrix": _planned_artifact(
+        "source_sbs96_matrix": _planned_sigprofiler_source(
+            crosscheck_materialization_plan,
             artifact_map,
+            "source_matrix",
             "small_variants.filter_mutect.sbs96_matrix",
             "small_variants",
             "filter_mutect",
             "sbs96_matrix",
         ),
     }
+    alias_contract = _require_mapping(
+        sequenza.get("alias_input_contract"),
+        "crosscheck_materialization_plan.sequenza_scarhrd.alias_input_contract",
+    )
     return {
         "schema_version": 1,
         "plan_type": "phase3_fast_crosscheck_input_materialization_plan",
-        "status": "planned",
+        "status": "awaiting_private_results_freeze",
         "authorized_hrd_state": "no_call",
         "classification_authorized": False,
         "routes": {
             "sigprofiler_sbs3": {
-                "status": "plan_ready",
+                "status": "awaiting_private_results_freeze",
                 "execution_status": "not_run",
                 "interpretation_status": "no_call",
-                "materializer": "scripts/materialize_crosscheck_inputs.py",
+                "materializer": _require_string(sigprofiler.get("materializer_script"), "sigprofiler_sbs3.materializer_script"),
                 "source_artifacts": sigprofiler_sources,
                 "reference": {
-                    "fasta": _source_identity(input_sources, "reference.fasta", "reference", "fasta"),
-                    "fai": _source_identity(input_sources, "reference.fai", "reference", "fai"),
+                    "fasta": _planned_sigprofiler_reference(
+                        crosscheck_materialization_plan,
+                        input_sources,
+                        "reference_fasta",
+                        "fasta",
+                    ),
+                    "fai": _planned_sigprofiler_reference(
+                        crosscheck_materialization_plan,
+                        input_sources,
+                        "reference_fai",
+                        "fai",
+                    ),
                     "sequence_dictionary": _source_identity(
                         input_sources,
                         "reference.sequence_dictionary",
@@ -432,12 +618,13 @@ def _build_crosscheck_input_plans(manifest: Mapping[str, Any], artifact_map: Map
                     ),
                 },
                 "planned_alias_outputs": {
-                    "somatic_vcf": "somatic.pass.vcf.gz",
-                    "somatic_vcf_index": "somatic.pass.vcf.gz.tbi",
-                    "sbs96_matrix": "sbs96.csv",
-                    "staged_validation": "staged_input_validation.json",
+                    "somatic_vcf": _require_string(outputs.get("somatic_vcf"), "sigprofiler_sbs3.outputs.somatic_vcf"),
+                    "somatic_vcf_index": _require_string(outputs.get("somatic_vcf_index"), "sigprofiler_sbs3.outputs.somatic_vcf_index"),
+                    "sbs96_matrix": _require_string(outputs.get("sbs96_matrix"), "sigprofiler_sbs3.outputs.sbs96_matrix"),
+                    "staged_validation": _require_string(outputs.get("staged_input_validation"), "sigprofiler_sbs3.outputs.staged_input_validation"),
                 },
                 "blockers": [
+                    "The final evidence artifacts have not been frozen to private-results with exact S3 VersionIds.",
                     "Alias-only cross-check inputs have not been materialized.",
                     "SBS3 assignment and threshold policy are not validated.",
                 ],
@@ -446,30 +633,13 @@ def _build_crosscheck_input_plans(manifest: Mapping[str, Any], artifact_map: Map
                 "status": "blocked",
                 "execution_status": "not_run",
                 "interpretation_status": "no_call",
-                "method_parameters": {
-                    "sequenza": {
-                        "female": method_parameters["sequenza"]["female"],
-                    },
-                },
-                "source_artifacts": {
-                    "tumor_bam": _source_identity(input_sources, "bam_pair.tumor.bam", "bam_pair", "tumor", "bam"),
-                    "tumor_bai": _source_identity(input_sources, "bam_pair.tumor.bai", "bam_pair", "tumor", "bai"),
-                    "normal_bam": _source_identity(input_sources, "bam_pair.normal.bam", "bam_pair", "normal", "bam"),
-                    "normal_bai": _source_identity(input_sources, "bam_pair.normal.bai", "bam_pair", "normal", "bai"),
-                },
-                "alias_input_contract": sequenza_alias_input_contract(
-                    run_alias=run.get("subject_alias"),
-                    reference=_require_mapping(input_sources.get("reference"), "input_sources.reference"),
-                    tumor=_require_mapping(
-                        _require_mapping(input_sources.get("bam_pair"), "input_sources.bam_pair").get("tumor"),
-                        "input_sources.bam_pair.tumor",
-                    ),
-                    normal=_require_mapping(
-                        _require_mapping(input_sources.get("bam_pair"), "input_sources.bam_pair").get("normal"),
-                        "input_sources.bam_pair.normal",
-                    ),
-                    method_parameters=method_parameters,
+                "method_parameters": dict(
+                    _require_mapping(sequenza.get("method_parameters"), "sequenza_scarhrd.method_parameters")
                 ),
+                "source_artifacts": dict(
+                    _require_mapping(sequenza.get("source_artifacts"), "sequenza_scarhrd.source_artifacts")
+                ),
+                "alias_input_contract": dict(alias_contract),
                 "blockers": [
                     "A finalized alias-only BAM/BAM-index contract has not been published for the Sequenza route.",
                     "Sequenza execution, purity/ploidy, and scarHRD interpretation thresholds are not validated.",
@@ -679,6 +849,7 @@ def _parse_csv(path: Path) -> list[dict[str, str]]:
 
 def stage_phase3_fast_deterministic_report(
     final_manifest: Mapping[str, Any],
+    crosscheck_materialization_plan: Mapping[str, Any],
     *,
     final_manifest_sha256: str,
     final_manifest_bytes: int,
@@ -720,7 +891,12 @@ def stage_phase3_fast_deterministic_report(
         sbs96_summary=sbs96_summary,
         sv_supplementary_total=sv_supplementary_total,
     )
-    crosscheck_input_plans = _build_crosscheck_input_plans(final_manifest, artifact_map)
+    crosscheck_input_plans = _build_crosscheck_input_plans(
+        final_manifest,
+        artifact_map,
+        crosscheck_materialization_plan,
+        final_manifest_sha256=final_manifest_sha256,
+    )
     checks = {
         "schema_version": 1,
         "status": "passed",
@@ -746,9 +922,10 @@ def stage_phase3_fast_deterministic_report(
                 "check_id": "crosscheck_input_materialization_plan",
                 "status": "passed",
                 "detail": (
-                    "SigProfiler/SBS3 input materialization is plan-ready; "
-                    "Sequenza/scarHRD has an explicit sex-model parameter but remains "
-                    "blocked on a finalized BAM contract and validated runtime."
+                    "SigProfiler/SBS3 input materialization is bound to the "
+                    "post-freeze plan; Sequenza/scarHRD has an explicit sex-model "
+                    "parameter but remains blocked on a finalized BAM contract and "
+                    "validated runtime."
                 ),
             },
         ],
@@ -806,7 +983,7 @@ def stage_phase3_fast_deterministic_report(
                     "HRDetect": "no_call_requires_validated_structural_variant_features",
                 },
                 "crosscheck_input_plans": {
-                    "sigprofiler_sbs3": "plan_ready",
+                    "sigprofiler_sbs3": "awaiting_private_results_freeze",
                     "sequenza_scarhrd": "blocked",
                 },
             },
@@ -829,11 +1006,18 @@ def stage_phase3_fast_deterministic_report(
 
 def load_report_from_environment() -> tuple[dict[str, Any], Path]:
     manifest_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST", DEFAULT_FINAL_EVIDENCE_MANIFEST))
+    crosscheck_plan_path = path_from_root(
+        os.environ.get(
+            "PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN",
+            "manifests/phase3_wgs_fast/crosscheck_materialization_plan.json",
+        )
+    )
     final_root = path_from_root(os.environ.get("PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT", DEFAULT_FINAL_EVIDENCE_ROOT))
     output = path_from_root(os.environ.get("PHASE3_WGS_FAST_DETERMINISTIC_REPORT_OUTPUT", DEFAULT_OUTPUT_ROOT))
 
     manifest = stage_phase3_fast_deterministic_report(
         _require_mapping(read_json(manifest_path), "final_evidence_manifest"),
+        _require_mapping(read_json(crosscheck_plan_path), "crosscheck_materialization_plan"),
         final_manifest_sha256=_sha256_path(manifest_path),
         final_manifest_bytes=manifest_path.stat().st_size,
         final_root=final_root,

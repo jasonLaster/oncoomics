@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Optional
 from unittest.mock import patch
 
-from test_phase3_fast_deterministic_report import _write_final_manifest
+from test_phase3_fast_deterministic_report import _crosscheck_materialization_plan, _write_final_manifest
 
 from diana_omics import utils
 from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as packet
@@ -221,6 +221,7 @@ def write_phase3_fast_deterministic_report(root: Path) -> tuple[Path, Path]:
     deterministic_root = root / "deterministic"
     stage_phase3_fast_report.stage_phase3_fast_deterministic_report(
         final_manifest,
+        _crosscheck_materialization_plan(final_manifest, final_manifest_path),
         final_manifest_sha256=hashlib.sha256(final_manifest_path.read_bytes()).hexdigest(),
         final_manifest_bytes=final_manifest_path.stat().st_size,
         final_root=final_root,
@@ -620,7 +621,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
             )
             self.assertEqual(
                 next(row for row in adapter_rows if row["adapter"] == "SigProfiler/SBS3 input materializer")["state"],
-                "ready_to_materialize",
+                "blocked",
             )
             self.assertEqual(
                 next(row for row in adapter_rows if row["adapter"] == "Sequenza/scarHRD input materializer")["state"],
@@ -629,7 +630,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
             reviewer = utils.read_text(output_dir / "reviewer_packet.md")
             self.assertIn("Phase 3 fast final evidence", reviewer)
-            self.assertIn("SigProfiler/SBS3 input materialization: `plan_ready`", reviewer)
+            self.assertIn("SigProfiler/SBS3 input materialization: `awaiting_private_results_freeze`", reviewer)
             self.assertIn("Sequenza/scarHRD input materialization: `blocked`", reviewer)
             self.assertIn(
                 "Sequenza/scarHRD alias contract: `blocked` with `sequenza.female=true`.",
@@ -651,7 +652,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 "phase3_fast_final",
             )
             self.assertEqual(
-                "plan_ready",
+                "awaiting_private_results_freeze",
                 manifest["review_summary"]["provenance"]["phase3_fast"]["crosscheck_input_plans"][
                     "sigprofiler_sbs3"
                 ],
