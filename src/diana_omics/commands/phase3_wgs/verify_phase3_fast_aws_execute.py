@@ -155,6 +155,10 @@ def main() -> None:
         params_summary = gpu_smoke.validate_gpu_smoke_params(params)
         running_on_demand_p_vcpus = gpu_smoke.load_running_on_demand_p_vcpus(params_summary["aws_region"])
         gpu_smoke.validate_running_on_demand_p_quota(running_on_demand_p_vcpus)
+        image_digest = gpu_smoke.load_parabricks_mirror_image_digest(
+            parabricks_container=params_summary["parabricks_container"],
+            region=params_summary["aws_region"],
+        )
         smoke_summary, smoke_path = load_gpu_smoke_result_from_environment(expected_params=params_summary)
     except (gpu_smoke.GpuSmokeConfigError, Phase3FastExecuteError) as error:
         raise SystemExit(str(error)) from error
@@ -163,6 +167,7 @@ def main() -> None:
         f"Phase 3 WGS fast AWS execute preflight passed: {params_path} "
         f"queue={params_summary['aws_gpu_queue']} "
         f"running_on_demand_p_vcpus={running_on_demand_p_vcpus:g} "
+        f"parabricks_image_digest={image_digest} "
         f"gpu_smoke={smoke_path} "
         f"observed_gpus={smoke_summary['observed_gpu_count']}"
     )

@@ -223,9 +223,10 @@ BAM-to-evidence P5en path and therefore requires
 the reviewed `gpu_smoke.json` with its sibling `nvidia-smi-gpus.csv`, plus the
 reviewed Nextflow receipt parameters after `--`. It still repeats the GPU
 params, cache, and live-quota checks before Nextflow starts, then rejects
-missing, stubbed, stale-queue, stale-image, malformed, non-H200, or
-non-Parabricks-starting smoke output so a full run cannot skip the bounded
-placement gate.
+missing, deleted-image, stubbed, stale-queue, stale-image, malformed, non-H200,
+or non-Parabricks-starting smoke output so a full run cannot skip the bounded
+placement gate or reuse an already-reviewed smoke after the mirrored digest is
+removed.
 
 ## Smoke Test
 

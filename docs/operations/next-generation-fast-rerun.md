@@ -445,10 +445,11 @@ the full BAM-to-evidence route through the guarded execute alias. Pass the
 reviewed smoke output as `PHASE3_FAST_GPU_SMOKE_RESULT`, and pass the reviewed
 Gate 0 receipt paths and alias-only forbidden-token inventory as Nextflow
 arguments after `--`. The full execute alias intentionally repeats the GPU
-params, cache, and live-quota checks before starting Nextflow, then rejects
-missing, stubbed, malformed, or non-H200 smoke output. A stale non-`us-east-2`,
-non-P5en, unpinned, under-quota, wrong-KMS, or smoke-skipping launch therefore
-still fails locally even when `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES` is present:
+params, mirrored-image, cache, and live-quota checks before starting Nextflow,
+then rejects missing, stubbed, malformed, or non-H200 smoke output. A stale
+non-`us-east-2`, non-P5en, unpinned, unmirrored, under-quota, wrong-KMS, or
+smoke-skipping launch therefore still fails locally even when
+`ALLOW_PHASE3_FAST_AWS_EXECUTE=YES` is present:
 
 ```sh
 PHASE3_FAST_GPU_SMOKE_RESULT=/path/to/gpu_smoke.json \
