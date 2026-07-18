@@ -190,6 +190,7 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             prerequisites,
         )
         self.assertIn("/repo/scripts/publish_private_report.py", prerequisites)
+        self.assertIn("/repo/scripts/ai_model_catalog.py", prerequisites)
         self.assertIn("/repo/scripts/forbidden_text.py", prerequisites)
         self.assertIn("/repo/scripts/prepare_ai_review_run.py", prerequisites)
         self.assertIn("/repo/scripts/build_ai_review_bundle.py", prerequisites)
