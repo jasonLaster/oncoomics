@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from test_phase3_fast_input_manifest import SHA_3, metadata, receipts
+from tests.test_phase3_fast_input_manifest import SHA_3, metadata, receipts
 
 from diana_omics.commands.phase3_wgs import render_phase3_fast_input_manifest as render_input
 from diana_omics.commands.phase3_wgs import render_phase3_fast_replication_plan as render_plan

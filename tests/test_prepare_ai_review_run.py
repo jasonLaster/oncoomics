@@ -19,7 +19,7 @@ if str(TEST_DIR) not in sys.path:
 
 import hrd_report_inventory as INVENTORY  # noqa: E402
 import prepare_ai_review_run as PREPARE  # noqa: E402
-from test_build_ai_review_bundle import AiReviewBundleFixture, write_json  # noqa: E402
+from tests.test_build_ai_review_bundle import AiReviewBundleFixture, write_json  # noqa: E402
 
 
 def namespace(fixture: AiReviewBundleFixture, output_dir: Path) -> SimpleNamespace:

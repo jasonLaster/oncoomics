@@ -7,8 +7,8 @@ from tempfile import TemporaryDirectory
 from typing import Any, Mapping
 from unittest.mock import patch
 
-from test_phase3_fast_input_manifest import SHA_1
-from test_phase3_fast_staging_plan import ready_cache_manifest
+from tests.test_phase3_fast_input_manifest import SHA_1
+from tests.test_phase3_fast_staging_plan import ready_cache_manifest
 
 from diana_omics.commands.phase3_wgs import render_phase3_fast_staging_plan as staging
 from diana_omics.commands.phase3_wgs import stage_phase3_fast_inputs as stage

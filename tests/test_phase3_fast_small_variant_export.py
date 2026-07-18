@@ -6,8 +6,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from test_phase3_fast_filter_mutect_run import FilterMutectRunner, filter_plan_and_parabricks_receipt
-from test_phase3_fast_input_manifest import SHA_1
+from tests.test_phase3_fast_filter_mutect_run import FilterMutectRunner, filter_plan_and_parabricks_receipt
+from tests.test_phase3_fast_input_manifest import SHA_1
 
 from diana_omics.commands.phase3_wgs import export_phase3_fast_small_variant_artifacts as export_small_variants
 from diana_omics.commands.phase3_wgs import run_phase3_fast_filter_mutect as run_filter

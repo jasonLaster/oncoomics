@@ -6,8 +6,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from test_phase3_fast_input_manifest import SHA_1
-from test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
+from tests.test_phase3_fast_input_manifest import SHA_1
+from tests.test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
 
 from diana_omics.commands.phase3_wgs import render_phase3_fast_bam_qc_plan as bam_qc
 from diana_omics.utils import write_json

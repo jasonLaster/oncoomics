@@ -19,7 +19,7 @@ for path in (SCRIPT_DIR, TEST_DIR):
 
 import hrd_report_inventory as INVENTORY  # noqa: E402
 import validate_ai_review as VALIDATE  # noqa: E402
-from test_build_ai_review_bundle import (  # noqa: E402
+from tests.test_build_ai_review_bundle import (  # noqa: E402
     AiReviewBundleFixture,
     write_json,
 )

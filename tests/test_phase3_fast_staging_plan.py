@@ -5,8 +5,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from test_phase3_fast_cache_manifest import applied_receipt
-from test_phase3_fast_input_manifest import SHA_1, SHA_3
+from tests.test_phase3_fast_cache_manifest import applied_receipt
+from tests.test_phase3_fast_input_manifest import SHA_1, SHA_3
 
 from diana_omics.commands.phase3_wgs import render_phase3_fast_cache_manifest as cache
 from diana_omics.commands.phase3_wgs import render_phase3_fast_staging_plan as staging

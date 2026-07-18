@@ -7,8 +7,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from test_phase3_fast_evidence_join import SHA_4
-from test_phase3_fast_final_evidence import _join_manifest
+from tests.test_phase3_fast_evidence_join import SHA_4
+from tests.test_phase3_fast_final_evidence import _join_manifest
 
 from diana_omics.commands.phase3_wgs import plan_phase3_fast_crosscheck_inputs as crosscheck_plan
 from diana_omics.commands.phase3_wgs import publish_phase3_fast_final_evidence as final_evidence

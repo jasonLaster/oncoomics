@@ -6,8 +6,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from test_phase3_fast_input_manifest import SHA_1
-from test_phase3_fast_staging_plan import ready_cache_manifest
+from tests.test_phase3_fast_input_manifest import SHA_1
+from tests.test_phase3_fast_staging_plan import ready_cache_manifest
 
 from diana_omics.commands.phase3_wgs import render_phase3_fast_staging_plan as staging
 from diana_omics.commands.phase3_wgs import verify_phase3_fast_staged_inputs as staged

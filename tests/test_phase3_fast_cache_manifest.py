@@ -5,9 +5,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from test_phase3_fast_input_manifest import SHA_1, SHA_3
-from test_phase3_fast_replicate_inputs import FakeS3CopyClient
-from test_phase3_fast_replication_plan import Phase3FastReplicationPlanTests
+from tests.test_phase3_fast_input_manifest import SHA_1, SHA_3
+from tests.test_phase3_fast_replicate_inputs import FakeS3CopyClient
+from tests.test_phase3_fast_replication_plan import Phase3FastReplicationPlanTests
 
 from diana_omics.commands.phase3_wgs import render_phase3_fast_cache_manifest as cache
 from diana_omics.commands.phase3_wgs import replicate_phase3_fast_inputs as replicate

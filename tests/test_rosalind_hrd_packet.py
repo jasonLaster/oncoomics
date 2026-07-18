@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import Dict, Optional
 from unittest.mock import patch
 
-from test_phase3_fast_deterministic_report import _crosscheck_materialization_plan, _write_final_manifest
+from tests.test_phase3_fast_deterministic_report import (
+    _crosscheck_materialization_plan,
+    _write_final_manifest,
+)
 
 from diana_omics import utils
 from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as packet

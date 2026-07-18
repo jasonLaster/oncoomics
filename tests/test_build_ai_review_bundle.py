@@ -18,7 +18,7 @@ import build_ai_review_bundle as BUILD  # noqa: E402
 import hrd_report_inventory as INVENTORY  # noqa: E402
 import stage_ai_review_inputs as STAGE  # noqa: E402
 from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as PACKET  # noqa: E402
-from test_rosalind_hrd_packet import (  # noqa: E402
+from tests.test_rosalind_hrd_packet import (  # noqa: E402
     PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
     write_phase3_fast_deterministic_report,
 )

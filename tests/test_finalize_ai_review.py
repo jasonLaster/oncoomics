@@ -17,8 +17,8 @@ for path in (SCRIPT_DIR, TEST_DIR):
 
 import finalize_ai_review as FINALIZE  # noqa: E402
 import publish_private_report as PUBLISH_PRIVATE  # noqa: E402
-from test_build_ai_review_bundle import write_json  # noqa: E402
-from test_validate_ai_review import ValidateReviewFixture  # noqa: E402
+from tests.test_build_ai_review_bundle import write_json  # noqa: E402
+from tests.test_validate_ai_review import ValidateReviewFixture  # noqa: E402
 
 
 def load_json(path: Path) -> dict:

@@ -6,8 +6,8 @@ from tempfile import TemporaryDirectory
 from typing import Any, Mapping
 from unittest.mock import patch
 
-from test_phase3_fast_input_manifest import SHA_3
-from test_phase3_fast_replication_plan import Phase3FastReplicationPlanTests
+from tests.test_phase3_fast_input_manifest import SHA_3
+from tests.test_phase3_fast_replication_plan import Phase3FastReplicationPlanTests
 
 from diana_omics.commands.phase3_wgs import replicate_phase3_fast_inputs as replicate
 from diana_omics.utils import write_json
