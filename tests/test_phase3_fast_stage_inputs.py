@@ -57,6 +57,11 @@ class FailingS3GetObjectClient:
         raise RuntimeError("boom")
 
 
+class SymlinkS3GetObjectClient:
+    def get_object(self, row: Mapping[str, Any]) -> None:
+        Path(row["local_path"]).symlink_to("/tmp/diana-redirected-download")
+
+
 class Phase3FastStageInputsTests(unittest.TestCase):
     def test_stage_inputs_materializes_exact_get_object_plan_then_verifies(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -120,6 +125,21 @@ class Phase3FastStageInputsTests(unittest.TestCase):
                 stage.stage_phase3_fast_inputs(
                     plan,
                     client=FailingS3GetObjectClient(),
+                    staging_plan_sha256=SHA_1,
+                )
+
+            self.assertFalse(first_path.exists())
+            self.assertEqual([], list(first_path.parent.glob("*.tmp")))
+
+    def test_rejects_downloaded_temporary_symlink_before_installing_staged_input(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, _payloads = downloadable_staging_plan(Path(tmp))
+            first_path = Path(plan["staged_objects"][0]["local_path"])
+
+            with self.assertRaisesRegex(stage.ManifestError, "temporary local_path.*symlink"):
+                stage.stage_phase3_fast_inputs(
+                    plan,
+                    client=SymlinkS3GetObjectClient(),
                     staging_plan_sha256=SHA_1,
                 )
 

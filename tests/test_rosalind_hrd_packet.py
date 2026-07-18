@@ -868,6 +868,32 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "final artifact hash differs"):
                     packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
 
+    def test_diana_wgs_phase3_fast_packet_rejects_final_artifact_below_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(output_root / "phase3_fast")
+            linked = final_root / "artifacts/cnv_evidence"
+            real = output_root / "real-cnv-evidence"
+            linked.replace(real)
+            linked.symlink_to(real, target_is_directory=True)
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
+                    },
+                ),
+            ):
+                with self.assertRaisesRegex(ValueError, "final artifact .* parent may not be a symlink"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/phase3-fast"
+            self.assertFalse((output_dir / "report_manifest.json").exists())
+
     def test_diana_wgs_packet_clamps_unsupported_adapter_promotions(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)

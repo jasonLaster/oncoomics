@@ -181,6 +181,9 @@ def materialize_phase3_fast_staged_inputs(
         temp_row["get_object_command"] = [*command[:-1], str(temp_path)]
         try:
             client.get_object(temp_row)
+            _require_safe_output_path(temp_path, f"{artifact} temporary local_path")
+            if not temp_path.is_file():
+                raise ManifestError(f"{artifact} temporary local_path must exist after get-object: {temp_path}")
             temp_path.replace(local_path)
         except Exception:
             temp_path.unlink(missing_ok=True)

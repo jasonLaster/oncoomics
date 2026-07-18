@@ -79,6 +79,12 @@ def _require_safe_destination_path(path: Path, label: str) -> None:
     require_no_symlinked_ancestors(path, label, ManifestError)
 
 
+def _require_safe_source_path(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"{label} source may not be a symlink: {path}")
+    require_no_symlinked_ancestors(path, f"{label} source", ManifestError)
+
+
 def _require_completed_join(manifest: Mapping[str, Any]) -> None:
     if manifest.get("manifest_type") != "phase3_wgs_fast_evidence_join_manifest":
         raise ManifestError("evidence_join manifest_type must be phase3_wgs_fast_evidence_join_manifest")
@@ -243,20 +249,24 @@ def _prepare_output_root(output_root: Path, destinations: set[Path]) -> None:
 
 
 def _copy_verified(spec: CopySpec, output_root: Path) -> None:
+    _require_safe_source_path(spec.source, spec.label)
     if not spec.source.is_file():
         raise ManifestError(f"{spec.label} source artifact is missing: {spec.source}")
     if spec.source.stat().st_size != spec.bytes or _sha256_path(spec.source) != spec.sha256:
         raise ManifestError(f"{spec.label} source bytes and sha256 must match the evidence join")
 
     destination = output_root / spec.relative_path
+    _require_safe_destination_path(destination, "final artifact destination")
     ensure_parent(destination)
     temporary = destination.with_name(f".{destination.name}.tmp")
     temporary.unlink(missing_ok=True)
     try:
         shutil.copyfile(spec.source, temporary)
+        _require_safe_destination_path(temporary, "temporary final artifact")
         if temporary.stat().st_size != spec.bytes or _sha256_path(temporary) != spec.sha256:
             raise ManifestError(f"{spec.label} copied bytes and sha256 must match the evidence join")
         temporary.replace(destination)
+        _require_safe_destination_path(destination, "final artifact destination")
     except Exception:
         temporary.unlink(missing_ok=True)
         raise

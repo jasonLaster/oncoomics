@@ -1184,6 +1184,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
             if not relative.startswith("final/"):
                 raise ValueError(f"Phase 3 fast final artifact {input_id} does not use the final/ input namespace")
             artifact = artifact_path_from_root(relative.removeprefix("final/"))
+            require_no_symlinked_ancestors(artifact, f"Phase 3 fast final artifact {input_id}")
             if artifact.is_symlink() or not artifact.is_file():
                 raise ValueError(f"Phase 3 fast final artifact is missing: {input_id}")
             if artifact.stat().st_size != bytes_ or sha256_file(artifact) != digest:

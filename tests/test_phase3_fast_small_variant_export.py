@@ -167,6 +167,26 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
 
             self.assertFalse((root / "exported").exists())
 
+    def test_rejects_symlinked_source_before_exporting_artifact(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            parabricks_receipt, filter_receipt = _receipts(root)
+            source = Path(parabricks_receipt["materialized_outputs"]["raw_vcf"]["local_path"])
+            redirected = source.parent / "raw_vcf.redirected"
+            source.rename(redirected)
+            source.symlink_to(redirected)
+
+            with self.assertRaisesRegex(export_small_variants.ManifestError, "source may not be a symlink"):
+                export_small_variants.export_phase3_fast_small_variant_artifacts(
+                    parabricks_receipt,
+                    filter_receipt,
+                    parabricks_mutect_receipt_sha256=SHA_2,
+                    filter_mutect_receipt_sha256=SHA_3,
+                    output_root=root / "exported",
+                )
+
+            self.assertFalse((root / "exported").exists())
+
     def test_rejects_filter_receipt_that_does_not_match_parabricks_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -233,6 +253,29 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
 
             with patch.object(export_small_variants.shutil, "copyfile", side_effect=fail_after_partial_copy):
                 with self.assertRaisesRegex(OSError, "simulated export interruption"):
+                    export_small_variants.export_phase3_fast_small_variant_artifacts(
+                        parabricks_receipt,
+                        filter_receipt,
+                        parabricks_mutect_receipt_sha256=SHA_2,
+                        filter_mutect_receipt_sha256=SHA_3,
+                        output_root=output_root,
+                    )
+
+            self.assertEqual([], [path for path in output_root.rglob("*") if path.is_file()])
+
+    def test_rejects_symlinked_temporary_export_before_installing_artifact(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "exported"
+            redirected = root / "redirected-small-variant-artifact"
+            parabricks_receipt, filter_receipt = _receipts(root)
+
+            def write_symlink(_source: Path, destination: Path) -> None:
+                redirected.write_bytes(b"redirected small variant artifact")
+                Path(destination).symlink_to(redirected)
+
+            with patch.object(export_small_variants.shutil, "copyfile", side_effect=write_symlink):
+                with self.assertRaisesRegex(export_small_variants.ManifestError, "may not be a symlink"):
                     export_small_variants.export_phase3_fast_small_variant_artifacts(
                         parabricks_receipt,
                         filter_receipt,

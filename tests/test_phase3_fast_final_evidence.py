@@ -207,6 +207,26 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
                     output_root=root / "final",
                 )
 
+    def test_rejects_symlinked_source_before_copy(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            join = _join_manifest(root)
+            source = root / "bam_qc" / "normal" / "idxstats.tsv"
+            redirected = source.parent / "idxstats.redirected.tsv"
+            source.rename(redirected)
+            source.symlink_to(redirected)
+
+            with self.assertRaisesRegex(final_evidence.ManifestError, "source may not be a symlink"):
+                final_evidence.build_phase3_fast_final_evidence_manifest(
+                    join,
+                    evidence_join_sha256=SHA_4,
+                    small_variant_artifact_root=root / "small_variant_export",
+                    bam_qc_artifact_root=root / "bam_qc",
+                    cnv_evidence_artifact_root=root / "cnv_evidence",
+                    sv_evidence_artifact_root=root / "sv_evidence",
+                    output_root=root / "final",
+                )
+
     def test_rejects_unexpected_existing_final_artifacts(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -259,6 +279,30 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
 
             with patch.object(final_evidence.shutil, "copyfile", side_effect=fail_after_partial_copy):
                 with self.assertRaisesRegex(OSError, "simulated copy interruption"):
+                    final_evidence.build_phase3_fast_final_evidence_manifest(
+                        _join_manifest(root),
+                        evidence_join_sha256=SHA_4,
+                        small_variant_artifact_root=root / "small_variant_export",
+                        bam_qc_artifact_root=root / "bam_qc",
+                        cnv_evidence_artifact_root=root / "cnv_evidence",
+                        sv_evidence_artifact_root=root / "sv_evidence",
+                        output_root=output_root,
+                    )
+
+            self.assertEqual([], [path for path in output_root.rglob("*") if path.is_file()])
+
+    def test_rejects_symlinked_temporary_copy_before_installing_artifact(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "final"
+            redirected = root / "redirected-final-artifact"
+
+            def write_symlink(_source: Path, destination: Path) -> None:
+                redirected.write_bytes(b"redirected final artifact")
+                Path(destination).symlink_to(redirected)
+
+            with patch.object(final_evidence.shutil, "copyfile", side_effect=write_symlink):
+                with self.assertRaisesRegex(final_evidence.ManifestError, "may not be a symlink"):
                     final_evidence.build_phase3_fast_final_evidence_manifest(
                         _join_manifest(root),
                         evidence_join_sha256=SHA_4,

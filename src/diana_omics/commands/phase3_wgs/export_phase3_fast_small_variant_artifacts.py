@@ -131,6 +131,12 @@ def _require_safe_destination_path(path: Path, label: str) -> None:
     require_no_symlinked_ancestors(path, label, ManifestError)
 
 
+def _require_safe_source_path(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ManifestError(f"{label} source may not be a symlink: {path}")
+    require_no_symlinked_ancestors(path, f"{label} source", ManifestError)
+
+
 def _prepare_output_root(output_root: Path, destinations: set[Path]) -> None:
     _require_safe_destination_path(output_root, "output_root")
     if not output_root.exists():
@@ -166,12 +172,14 @@ def _copy_verified(
     source_path = _source_path(source, producer, key)
     expected_bytes = _require_positive_int(source.get("bytes"), f"{producer}.{key}.bytes")
     expected_sha = _require_hex(source.get("sha256"), f"{producer}.{key}.sha256")
+    _require_safe_source_path(source_path, f"{producer}.{key}")
     if not source_path.is_file():
         raise ManifestError(f"{producer}.{key} source must exist before export: {source_path}")
     if source_path.stat().st_size != expected_bytes or _sha256_path(source_path) != expected_sha:
         raise ManifestError(f"{producer}.{key} source bytes and sha256 must still match the receipt")
 
     destination = _destination_path(source, output_root, producer, key)
+    _require_safe_destination_path(destination, f"{producer}.{key} export destination")
     if destination.exists() and not destination.is_file():
         raise ManifestError(f"{producer}.{key} export destination exists and is not a file: {destination}")
 
@@ -180,11 +188,13 @@ def _copy_verified(
     temporary.unlink(missing_ok=True)
     try:
         shutil.copyfile(source_path, temporary)
+        _require_safe_destination_path(temporary, f"{producer}.{key} temporary export")
         copied_bytes = temporary.stat().st_size
         copied_sha = _sha256_path(temporary)
         if copied_bytes != expected_bytes or copied_sha != expected_sha:
             raise ManifestError(f"{producer}.{key} export copy bytes and sha256 must match the receipt")
         temporary.replace(destination)
+        _require_safe_destination_path(destination, f"{producer}.{key} export destination")
     except Exception:
         temporary.unlink(missing_ok=True)
         raise
