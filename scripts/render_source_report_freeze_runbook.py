@@ -126,6 +126,12 @@ def ai_runbook_command(
     output: str | Path,
     receipt_paths: Iterable[Path],
     receipt_stem: str = "terminal",
+    *,
+    deterministic_report_dir: Path | None = None,
+    rosalind_report_dir: Path | None = None,
+    blocked_crosscheck_root: Path | None = None,
+    sigprofiler_report_dir: Path | None = None,
+    sequenza_report_dir: Path | None = None,
 ) -> list[str | Path]:
     return [
         "python3",
@@ -136,6 +142,18 @@ def ai_runbook_command(
         root,
         "--receipt-stem",
         receipt_stem,
+        *[
+            token
+            for flag, path in (
+                ("--deterministic-report-dir", deterministic_report_dir),
+                ("--rosalind-report-dir", rosalind_report_dir),
+                ("--blocked-crosscheck-root", blocked_crosscheck_root),
+                ("--sigprofiler-report-dir", sigprofiler_report_dir),
+                ("--sequenza-report-dir", sequenza_report_dir),
+            )
+            if path is not None
+            for token in (flag, path)
+        ],
         *[token for path in receipt_paths for token in ("--private-publication-receipt", path)],
     ]
 
@@ -227,6 +245,11 @@ def render(
                             Raw('"$AI_REVIEW_RUNBOOK"'),
                             receipt_paths,
                             receipt_stem,
+                            deterministic_report_dir=deterministic_report_dir,
+                            rosalind_report_dir=rosalind_report_dir,
+                            blocked_crosscheck_root=blocked_crosscheck_root,
+                            sigprofiler_report_dir=sigprofiler_report_dir,
+                            sequenza_report_dir=sequenza_report_dir,
                         )
                     ),
                 ]

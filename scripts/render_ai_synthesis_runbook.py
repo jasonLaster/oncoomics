@@ -7,7 +7,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Iterable
 
 from ai_model_catalog import (
     MODEL_CATALOG_RECEIPT,
@@ -31,6 +31,8 @@ from publish_reviewed_public_report import (
 )
 from render_reviewed_publication_runbook import (
     required_absent as reviewed_public_required_absent,
+)
+from render_reviewed_publication_runbook import (
     required_existing as reviewed_public_required_existing,
 )
 from runbook_io import (
@@ -85,11 +87,7 @@ def validate_private_report_receipt(
     return {
         "method_id": method_id,
         "receipt": str(receipt_path),
-        "destination_prefix": str(
-            load_json_object(receipt_path, f"{method_id} private publication receipt")[
-                "destination_prefix"
-            ]
-        ),
+        "destination_prefix": str(load_json_object(receipt_path, f"{method_id} private publication receipt")["destination_prefix"]),
         "report_manifest_version_id": str(manifest_row["version_id"]),
         "report_manifest_sha256": local_manifest_sha256,
         "object_count": len(expected),
@@ -104,22 +102,14 @@ def validate_private_report_receipts(
     if len(paths) != len(REQUIRED_METHOD_IDS):
         raise ValueError("exactly seven private publication receipts are required")
 
-    method_ids = [
-        str(load_json_object(path, "private publication receipt").get("method_id", ""))
-        for path in paths
-    ]
+    method_ids = [str(load_json_object(path, "private publication receipt").get("method_id", "")) for path in paths]
     if method_ids != list(REQUIRED_METHOD_IDS):
-        raise ValueError(
-            "private publication receipts must be passed in canonical "
-            f"seven-method order; observed={method_ids!r}"
-        )
+        raise ValueError(f"private publication receipts must be passed in canonical seven-method order; observed={method_ids!r}")
 
     summaries = []
     for index, path in enumerate(paths):
         method_id = REQUIRED_METHOD_IDS[index]
-        summaries.append(
-            validate_private_report_receipt(path, method_id, manifests[method_id])
-        )
+        summaries.append(validate_private_report_receipt(path, method_id, manifests[method_id]))
     return tuple(summaries)
 
 
@@ -127,21 +117,24 @@ def report_manifest_paths(
     root: Path,
     sigprofiler_report_dir: Path | None = None,
     sequenza_report_dir: Path | None = None,
+    *,
+    deterministic_report_dir: Path | None = None,
+    rosalind_report_dir: Path | None = None,
+    blocked_crosscheck_root: Path | None = None,
 ) -> dict[str, Path]:
     return source_report_manifest_paths(
         root,
         RUN_ID,
         sigprofiler_report_dir,
         sequenza_report_dir,
+        deterministic_report_dir=deterministic_report_dir,
+        rosalind_report_dir=rosalind_report_dir,
+        blocked_crosscheck_root=blocked_crosscheck_root,
     )
 
 
 def prepare_manifest_flags(paths: dict[str, Path]) -> list[str | Path]:
-    return [
-        token
-        for method_id, argument in METHOD_ARGUMENTS
-        for token in ("--" + argument.replace("_", "-"), paths[method_id])
-    ]
+    return [token for method_id, argument in METHOD_ARGUMENTS for token in ("--" + argument.replace("_", "-"), paths[method_id])]
 
 
 def expected_source_manifest_flags(
@@ -164,42 +157,25 @@ def require_receipt_summaries(
     method_ids = [str(summary.get("method_id", "")) for summary in summaries]
     if method_ids != list(REQUIRED_METHOD_IDS):
         raise ValueError(
-            "AI synthesis rendering requires seven receipt-bound source "
-            f"manifests in canonical order; observed={method_ids!r}"
+            f"AI synthesis rendering requires seven receipt-bound source manifests in canonical order; observed={method_ids!r}"
         )
     for summary in summaries:
         digest = str(summary.get("report_manifest_sha256", ""))
-        if len(digest) != 64 or any(
-            character not in "0123456789abcdef" for character in digest
-        ):
-            raise ValueError(
-                f"{summary['method_id']} report_manifest.json SHA-256 is malformed"
-            )
+        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+            raise ValueError(f"{summary['method_id']} report_manifest.json SHA-256 is malformed")
     return summaries
 
 
 def manifest_flags(paths: dict[str, Path], flag: str = "--source-manifest") -> list[str | Path]:
-    return [
-        token
-        for method_id in REQUIRED_METHOD_IDS
-        for token in (flag, paths[method_id])
-    ]
+    return [token for method_id in REQUIRED_METHOD_IDS for token in (flag, paths[method_id])]
 
 
 def require_method_flags() -> list[str]:
-    return [
-        token
-        for method_id in REQUIRED_METHOD_IDS
-        for token in ("--require-method", method_id)
-    ]
+    return [token for method_id in REQUIRED_METHOD_IDS for token in ("--require-method", method_id)]
 
 
 def forbidden_flags() -> list[str]:
-    return [
-        token
-        for value in FORBIDDEN_TOKENS
-        for token in ("--forbidden-token", value)
-    ]
+    return [token for value in FORBIDDEN_TOKENS for token in ("--forbidden-token", value)]
 
 
 def publish_command(
@@ -224,9 +200,7 @@ def publish_command(
     ]
 
 
-def reviewed_publication_receipt_paths(
-    root: Path, receipt_stem: str
-) -> tuple[Path, ...]:
+def reviewed_publication_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
     receipt_paths = {
         **dict(
             zip(
@@ -286,44 +260,22 @@ def reviewed_publication_runbook_command(
         root,
         "--receipt-stem",
         receipt_stem,
-        *[
-            token
-            for path in receipt_paths
-            for token in ("--private-publication-receipt", path)
-        ],
+        *[token for path in receipt_paths for token in ("--private-publication-receipt", path)],
     ]
 
 
 def model_catalog_receipt_path(root: Path) -> Path:
-    return (
-        root
-        / ".codex-tmp/hrd-reports/ai-review/model-catalog-receipts"
-        / RUN_ID
-        / MODEL_CATALOG_RECEIPT
-    )
+    return root / ".codex-tmp/hrd-reports/ai-review/model-catalog-receipts" / RUN_ID / MODEL_CATALOG_RECEIPT
 
 
 def ai_private_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, ...]:
-    receipt_root = (
-        root
-        / ".codex-tmp/hrd-reports/ai-review"
-        / RUN_ID
-        / "publication-receipts"
-    )
-    return tuple(
-        receipt_root / f"{receipt_stem}.{stem}.private.json"
-        for _, stem in AI_PRIVATE_RECEIPT_STEMS
-    )
+    receipt_root = root / ".codex-tmp/hrd-reports/ai-review" / RUN_ID / "publication-receipts"
+    return tuple(receipt_root / f"{receipt_stem}.{stem}.private.json" for _, stem in AI_PRIVATE_RECEIPT_STEMS)
 
 
-def ai_private_receipt_outputs(
-    root: Path, receipt_stem: str
-) -> tuple[tuple[str, Path], ...]:
+def ai_private_receipt_outputs(root: Path, receipt_stem: str) -> tuple[tuple[str, Path], ...]:
     receipt_paths = ai_private_receipt_paths(root, receipt_stem)
-    return tuple(
-        (method_id, receipt_paths[index])
-        for index, (method_id, _) in enumerate(AI_PRIVATE_RECEIPT_STEMS)
-    )
+    return tuple((method_id, receipt_paths[index]) for index, (method_id, _) in enumerate(AI_PRIVATE_RECEIPT_STEMS))
 
 
 def required_existing(root: Path) -> tuple[Path, ...]:
@@ -363,11 +315,22 @@ def render(
     sigprofiler_report_dir: Path | None = None,
     sequenza_report_dir: Path | None = None,
     receipt_summaries: tuple[dict[str, str | int], ...] = (),
+    *,
+    deterministic_report_dir: Path | None = None,
+    rosalind_report_dir: Path | None = None,
+    blocked_crosscheck_root: Path | None = None,
 ) -> str:
     receipt_summaries = require_receipt_summaries(receipt_summaries)
     reports = root / ".codex-tmp/hrd-reports"
     scripts = root / "scripts"
-    manifests = report_manifest_paths(root, sigprofiler_report_dir, sequenza_report_dir)
+    manifests = report_manifest_paths(
+        root,
+        sigprofiler_report_dir,
+        sequenza_report_dir,
+        deterministic_report_dir=deterministic_report_dir,
+        rosalind_report_dir=rosalind_report_dir,
+        blocked_crosscheck_root=blocked_crosscheck_root,
+    )
 
     run_root = reports / "ai-review" / RUN_ID
     catalog = model_catalog_receipt_path(root)
@@ -400,8 +363,7 @@ def render(
         [
             "## 0. Private publication receipt gate",
             "",
-            "The renderer bound this handoff to seven passed private "
-            "publication receipts in canonical method order:",
+            "The renderer bound this handoff to seven passed private publication receipts in canonical method order:",
             "",
         ]
     )
@@ -559,9 +521,7 @@ def render(
                         receipt_output,
                     )
                 )
-                for method_id, receipt_output in ai_private_receipt_outputs(
-                    root, receipt_stem
-                )
+                for method_id, receipt_output in ai_private_receipt_outputs(root, receipt_stem)
             ],
             "## 8. Render the reviewed-public publication handoff",
             "",
@@ -605,6 +565,9 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--root", default=Path.cwd(), type=Path)
     parser.add_argument("--receipt-stem", default="terminal")
+    parser.add_argument("--deterministic-report-dir", type=Path)
+    parser.add_argument("--rosalind-report-dir", type=Path)
+    parser.add_argument("--blocked-crosscheck-root", type=Path)
     parser.add_argument("--sigprofiler-report-dir", type=Path)
     parser.add_argument("--sequenza-report-dir", type=Path)
     parser.add_argument(
@@ -612,35 +575,27 @@ def main() -> int:
         action="append",
         type=Path,
         required=True,
-        help=(
-            "repeat once for each source-method private publication receipt, "
-            "in canonical method-inventory order"
-        ),
+        help=("repeat once for each source-method private publication receipt, in canonical method-inventory order"),
     )
     args = parser.parse_args()
 
     root = args.root.resolve()
     missing = missing_required_files(required_existing(root))
     if missing:
-        raise SystemExit(
-            "Fail-closed: missing AI synthesis runbook prerequisites: "
-            + ", ".join(str(path) for path in missing)
-        )
+        raise SystemExit("Fail-closed: missing AI synthesis runbook prerequisites: " + ", ".join(str(path) for path in missing))
     if args.output.exists() or args.output.is_symlink():
         raise SystemExit(f"Fail-closed: output already exists: {args.output}")
-    preexisting = preexisting_create_only_paths(
-        required_absent(root, args.receipt_stem)
-    )
+    preexisting = preexisting_create_only_paths(required_absent(root, args.receipt_stem))
     if preexisting:
-        raise SystemExit(
-            "Fail-closed: AI synthesis create-only outputs already exist: "
-            + ", ".join(str(path) for path in preexisting)
-        )
+        raise SystemExit("Fail-closed: AI synthesis create-only outputs already exist: " + ", ".join(str(path) for path in preexisting))
 
     manifests = report_manifest_paths(
         root,
         args.sigprofiler_report_dir,
         args.sequenza_report_dir,
+        deterministic_report_dir=args.deterministic_report_dir,
+        rosalind_report_dir=args.rosalind_report_dir,
+        blocked_crosscheck_root=args.blocked_crosscheck_root,
     )
     try:
         receipt_summaries = validate_private_report_receipts(
@@ -658,6 +613,9 @@ def main() -> int:
             args.sigprofiler_report_dir,
             args.sequenza_report_dir,
             receipt_summaries,
+            deterministic_report_dir=args.deterministic_report_dir,
+            rosalind_report_dir=args.rosalind_report_dir,
+            blocked_crosscheck_root=args.blocked_crosscheck_root,
         ),
     )
     print(json.dumps({"status": "rendered", "output": str(args.output)}, sort_keys=True))

@@ -21,9 +21,7 @@ import publish_reviewed_public_report as PUBLISH  # noqa: E402
 import render_reviewed_publication_runbook as REVIEWED_PUBLIC  # noqa: E402
 import runbook_io as RUNBOOK_IO  # noqa: E402
 
-SPEC = importlib.util.spec_from_file_location(
-    "render_ai_synthesis_runbook", SCRIPT_DIR / "render_ai_synthesis_runbook.py"
-)
+SPEC = importlib.util.spec_from_file_location("render_ai_synthesis_runbook", SCRIPT_DIR / "render_ai_synthesis_runbook.py")
 assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
@@ -53,11 +51,7 @@ def write_receipts(root: Path, manifest_paths: dict[str, Path]) -> list[Path]:
         expected = tuple(sorted(PUBLISH.METHOD_CONTRACTS[method_id]["files"]))
         rows = []
         for index, relative in enumerate(expected, 1):
-            sha256 = (
-                digest(manifest_paths[method_id].read_bytes())
-                if relative == "report_manifest.json"
-                else f"{index:064x}"
-            )
+            sha256 = digest(manifest_paths[method_id].read_bytes()) if relative == "report_manifest.json" else f"{index:064x}"
             rows.append(
                 {
                     "relative_path": relative,
@@ -73,10 +67,7 @@ def write_receipts(root: Path, manifest_paths: dict[str, Path]) -> list[Path]:
                 }
             )
         revision = PUBLISH.canonical_packet_digest(rows)
-        prefix = (
-            f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{MODULE.SUBJECT_ALIAS}/"
-            f"{MODULE.RUN_ID}/reports/{method_id}/revisions/{revision}/"
-        )
+        prefix = f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{MODULE.SUBJECT_ALIAS}/{MODULE.RUN_ID}/reports/{method_id}/revisions/{revision}/"
         key_prefix = prefix.removeprefix(f"s3://{PUBLISH.PRIVATE_BUCKET}/")
         for row in rows:
             key = key_prefix + row["relative_path"]
@@ -126,10 +117,7 @@ def render(root: Path = Path("/repo"), receipt_stem: str = "terminal") -> str:
 
 
 def rendered_commands(text: str) -> list[list[str]]:
-    return [
-        shlex.split(source)
-        for source in re.findall(r"```bash\n(.*?)\n```", text, re.DOTALL)
-    ]
+    return [shlex.split(source) for source in re.findall(r"```bash\n(.*?)\n```", text, re.DOTALL)]
 
 
 class RenderAiSynthesisRunbookTests(unittest.TestCase):
@@ -150,13 +138,11 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             previous = index
 
         self.assertIn(
-            "/repo/.codex-tmp/hrd-reports/ai-review/"
-            f"{MODULE.RUN_ID}/reviewer-inputs/reviewer-a-input/review_bundle.json",
+            f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/reviewer-inputs/reviewer-a-input/review_bundle.json",
             text,
         )
         self.assertIn(
-            "/repo/.codex-tmp/hrd-reports/ai-review/"
-            f"{MODULE.RUN_ID}/reviewer-inputs/reviewer-b-input/reviewer-b.prompt.md",
+            f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/reviewer-inputs/reviewer-b-input/reviewer-b.prompt.md",
             text,
         )
 
@@ -189,8 +175,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             command
             for command in commands
             if command[:2] == ["python3", "/repo/scripts/publish_private_report.py"]
-            and command[command.index("--method-id") + 1]
-            in (*MODULE.AI_REVIEW_METHOD_IDS, *MODULE.COMPARATIVE_METHOD_IDS)
+            and command[command.index("--method-id") + 1] in (*MODULE.AI_REVIEW_METHOD_IDS, *MODULE.COMPARATIVE_METHOD_IDS)
         ]
 
         self.assertEqual(
@@ -199,20 +184,14 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         )
         self.assertEqual(
             MODULE.ai_private_receipt_outputs(root, "terminal"),
-            tuple(
-                (MODULE.AI_PRIVATE_RECEIPT_STEMS[index][0], receipt_path)
-                for index, receipt_path in enumerate(receipt_paths)
-            ),
+            tuple((MODULE.AI_PRIVATE_RECEIPT_STEMS[index][0], receipt_path) for index, receipt_path in enumerate(receipt_paths)),
         )
         self.assertEqual(
             MODULE.required_absent(root, "terminal")[3:6],
             receipt_paths,
         )
         self.assertEqual(
-            tuple(
-                Path(command[command.index("--receipt-output") + 1])
-                for command in publish_commands
-            ),
+            tuple(Path(command[command.index("--receipt-output") + 1]) for command in publish_commands),
             receipt_paths,
         )
         for receipt_path in receipt_paths:
@@ -225,20 +204,13 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         self.assertEqual(
             MODULE.reviewed_publication_receipt_paths(root, "terminal"),
             (
-                *(
-                    RUNBOOK_IO.source_private_receipt_path(
-                        root, "terminal", method_id
-                    )
-                    for method_id in MODULE.REQUIRED_METHOD_IDS
-                ),
+                *(RUNBOOK_IO.source_private_receipt_path(root, "terminal", method_id) for method_id in MODULE.REQUIRED_METHOD_IDS),
                 *MODULE.ai_private_receipt_paths(root, "terminal"),
             ),
         )
 
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
-        prerequisites = {
-            path.as_posix() for path in MODULE.required_existing(Path("/repo"))
-        }
+        prerequisites = {path.as_posix() for path in MODULE.required_existing(Path("/repo"))}
 
         for expected in (
             "/repo/scripts/write_ai_model_catalog_receipt.py",
@@ -267,28 +239,16 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             self.assertNotIn("/repo/" + stale, prerequisites)
 
     def test_required_absent_includes_child_create_only_outputs(self) -> None:
-        outputs = {
-            path.as_posix()
-            for path in MODULE.required_absent(Path("/repo"), "unit")
-        }
+        outputs = {path.as_posix() for path in MODULE.required_absent(Path("/repo"), "unit")}
 
         for path in (
-            "/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/"
-            f"{MODULE.RUN_ID}/{MODULE.MODEL_CATALOG_RECEIPT}",
-            "/repo/.codex-tmp/hrd-reports/ai-review/"
-            f"{MODULE.RUN_ID}",
-            "/repo/.codex-tmp/hrd-reports/synthesis/"
-            f"{MODULE.RUN_ID}",
-            "/repo/.codex-tmp/hrd-reports/ai-review/"
-            f"{MODULE.RUN_ID}/publication-receipts/"
-            "unit.ai-reviewer-a.private.json",
-            "/repo/.codex-tmp/hrd-reports/ai-review/"
-            f"{MODULE.RUN_ID}/publication-receipts/"
-            "unit.comparative-synthesis.private.json",
-            "/repo/.codex-tmp/hrd-reports/publication/"
-            "unit.deterministic_full_wgs.public.dry.json",
-            "/repo/.codex-tmp/hrd-reports/publication/"
-            "unit.comparative_hrd_synthesis.public.json",
+            f"/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/{MODULE.RUN_ID}/{MODULE.MODEL_CATALOG_RECEIPT}",
+            f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}",
+            f"/repo/.codex-tmp/hrd-reports/synthesis/{MODULE.RUN_ID}",
+            f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/publication-receipts/unit.ai-reviewer-a.private.json",
+            f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/publication-receipts/unit.comparative-synthesis.private.json",
+            "/repo/.codex-tmp/hrd-reports/publication/unit.deterministic_full_wgs.public.dry.json",
+            "/repo/.codex-tmp/hrd-reports/publication/unit.comparative_hrd_synthesis.public.json",
             "/repo/.codex-tmp/public-index/public-index.unit.json",
         ):
             self.assertIn(path, outputs)
@@ -310,11 +270,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("{}\n", encoding="utf-8")
 
-            stale = (
-                root
-                / ".codex-tmp/hrd-reports/ai-review"
-                / MODULE.RUN_ID
-            )
+            stale = root / ".codex-tmp/hrd-reports/ai-review" / MODULE.RUN_ID
             stale.mkdir(parents=True)
             output = root / "ai-review.md"
             argv = [
@@ -358,9 +314,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "canonical"):
-                MODULE.validate_private_report_receipts(
-                    [receipts[1], receipts[0], *receipts[2:]], manifests
-                )
+                MODULE.validate_private_report_receipts([receipts[1], receipts[0], *receipts[2:]], manifests)
             with self.assertRaisesRegex(ValueError, "exactly seven"):
                 MODULE.validate_private_report_receipts(receipts[:-1], manifests)
 
@@ -373,19 +327,10 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "wrong_run": lambda receipt: receipt.update({"run_id": "other-run"}),
             "wrong_kms": lambda receipt: receipt.update({"kms_key_arn": "wrong"}),
             "wrong_prefix": lambda receipt: receipt.update(
-                {
-                    "destination_prefix": (
-                        f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/"
-                        f"{MODULE.SUBJECT_ALIAS}/{MODULE.RUN_ID}/reports/other_method/"
-                    )
-                }
+                {"destination_prefix": (f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{MODULE.SUBJECT_ALIAS}/{MODULE.RUN_ID}/reports/other_method/")}
             ),
-            "null_version": lambda receipt: receipt["objects"][0].update(
-                {"version_id": "null"}
-            ),
-            "failed_check": lambda receipt: receipt["objects"][0]["checks"].update(
-                {"kms": False}
-            ),
+            "null_version": lambda receipt: receipt["objects"][0].update({"version_id": "null"}),
+            "failed_check": lambda receipt: receipt["objects"][0]["checks"].update({"kms": False}),
         }
         for name, mutate in cases.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
@@ -394,9 +339,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 receipts = write_receipts(root, manifests)
                 receipt = json.loads(receipts[0].read_text())
                 mutate(receipt)
-                receipts[0].write_text(
-                    json.dumps(receipt, indent=2, sort_keys=True) + "\n"
-                )
+                receipts[0].write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
 
                 with self.assertRaises(ValueError):
                     MODULE.validate_private_report_receipts(receipts, manifests)
@@ -408,12 +351,46 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         for method in BLOCKED_GENERATOR.METHODS:
             self.assertEqual(
                 paths[method["method_id"]],
-                root
-                / ".codex-tmp/hrd-reports/blocked-crosschecks"
-                / method["directory"]
-                / "report_manifest.json",
+                root / ".codex-tmp/hrd-reports/blocked-crosschecks" / method["directory"] / "report_manifest.json",
             )
         self.assertEqual(tuple(paths), MODULE.REQUIRED_METHOD_IDS)
+
+    def test_report_manifest_paths_accept_phase3_fast_packet_overrides(self) -> None:
+        root = Path("/repo")
+        paths = MODULE.report_manifest_paths(
+            root,
+            sigprofiler_report_dir=Path("/fast/sigprofiler"),
+            sequenza_report_dir=Path("/fast/sequenza"),
+            deterministic_report_dir=Path("/fast/deterministic_report"),
+            rosalind_report_dir=Path("/fast/rosalind_hrd/diana_wgs"),
+            blocked_crosscheck_root=Path("/fast/blocked_crosschecks"),
+        )
+        text = MODULE.render(
+            root,
+            "terminal",
+            sigprofiler_report_dir=Path("/fast/sigprofiler"),
+            sequenza_report_dir=Path("/fast/sequenza"),
+            receipt_summaries=receipt_summaries(),
+            deterministic_report_dir=Path("/fast/deterministic_report"),
+            rosalind_report_dir=Path("/fast/rosalind_hrd/diana_wgs"),
+            blocked_crosscheck_root=Path("/fast/blocked_crosschecks"),
+        )
+
+        self.assertEqual(tuple(paths), MODULE.REQUIRED_METHOD_IDS)
+        self.assertEqual(
+            paths["deterministic_full_wgs"],
+            Path("/fast/deterministic_report/report_manifest.json"),
+        )
+        self.assertEqual(
+            paths["rosalind_diana_wgs"],
+            Path("/fast/rosalind_hrd/diana_wgs/report_manifest.json"),
+        )
+        self.assertEqual(
+            paths["facets_scarhrd_blocked"],
+            Path("/fast/blocked_crosschecks/facets_scarhrd_blocked/report_manifest.json"),
+        )
+        for manifest_path in paths.values():
+            self.assertIn(str(manifest_path), text)
 
     def test_renderer_hands_ten_private_receipts_to_public_renderer(self) -> None:
         text = render()
@@ -429,9 +406,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         self.assertEqual(text.count("--private-publication-receipt "), 10)
 
         previous = -1
-        for receipt_path in MODULE.reviewed_publication_receipt_paths(
-            Path("/repo"), "terminal"
-        ):
+        for receipt_path in MODULE.reviewed_publication_receipt_paths(Path("/repo"), "terminal"):
             index = text.find(
                 f"--private-publication-receipt {receipt_path}",
                 previous + 1,
@@ -445,9 +420,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             "terminal.comparative-synthesis.private.json",
         ):
             self.assertIn(
-                "/repo/.codex-tmp/hrd-reports/ai-review/"
-                f"{MODULE.RUN_ID}/publication-receipts/"
-                f"{receipt}",
+                f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/publication-receipts/{receipt}",
                 text,
             )
 
@@ -483,19 +456,10 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         command = MODULE.comparative_synthesis_command(
             Path("/repo/scripts"),
             MODULE.report_manifest_paths(Path("/repo")),
-            Path(
-                "/repo/.codex-tmp/hrd-reports/ai-review/"
-                f"{MODULE.RUN_ID}/bundle"
-            ),
-            Path(
-                "/repo/.codex-tmp/hrd-reports/ai-review/"
-                f"{MODULE.RUN_ID}/reviewer-a"
-            ),
-            Path(
-                "/repo/.codex-tmp/hrd-reports/ai-review/"
-                f"{MODULE.RUN_ID}/reviewer-b"
-            ),
-            Path("/repo/.codex-tmp/hrd-reports/synthesis" f"/{MODULE.RUN_ID}"),
+            Path(f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/bundle"),
+            Path(f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/reviewer-a"),
+            Path(f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/reviewer-b"),
+            Path(f"/repo/.codex-tmp/hrd-reports/synthesis/{MODULE.RUN_ID}"),
         )
 
         self.assertEqual(
@@ -504,40 +468,19 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 "python3",
                 Path("/repo/scripts/generate_comparative_hrd_synthesis.py"),
                 "--source-manifest",
-                Path(
-                    "/repo/.codex-tmp/hrd-reports/deterministic-full/"
-                    "report/report_manifest.json"
-                ),
+                Path("/repo/.codex-tmp/hrd-reports/deterministic-full/report/report_manifest.json"),
                 "--source-manifest",
-                Path(
-                    "/repo/results/rosalind_hrd/diana_wgs/"
-                    f"{MODULE.RUN_ID}/report_manifest.json"
-                ),
+                Path(f"/repo/results/rosalind_hrd/diana_wgs/{MODULE.RUN_ID}/report_manifest.json"),
                 "--source-manifest",
-                Path(
-                    "/repo/.codex-tmp/hrd-reports/crosschecks/"
-                    "sequenza_scarhrd/report_manifest.json"
-                ),
+                Path("/repo/.codex-tmp/hrd-reports/crosschecks/sequenza_scarhrd/report_manifest.json"),
                 "--source-manifest",
-                Path(
-                    "/repo/.codex-tmp/hrd-reports/crosschecks/"
-                    "sigprofiler_sbs3/report_manifest.json"
-                ),
+                Path("/repo/.codex-tmp/hrd-reports/crosschecks/sigprofiler_sbs3/report_manifest.json"),
                 "--source-manifest",
-                Path(
-                    "/repo/.codex-tmp/hrd-reports/blocked-crosschecks/"
-                    "facets_scarhrd_blocked/report_manifest.json"
-                ),
+                Path("/repo/.codex-tmp/hrd-reports/blocked-crosschecks/facets_scarhrd_blocked/report_manifest.json"),
                 "--source-manifest",
-                Path(
-                    "/repo/.codex-tmp/hrd-reports/blocked-crosschecks/"
-                    "oncoanalyser_chord_blocked/report_manifest.json"
-                ),
+                Path("/repo/.codex-tmp/hrd-reports/blocked-crosschecks/oncoanalyser_chord_blocked/report_manifest.json"),
                 "--source-manifest",
-                Path(
-                    "/repo/.codex-tmp/hrd-reports/blocked-crosschecks/"
-                    "hrdetect_blocked/report_manifest.json"
-                ),
+                Path("/repo/.codex-tmp/hrd-reports/blocked-crosschecks/hrdetect_blocked/report_manifest.json"),
                 "--require-method",
                 "deterministic_full_wgs",
                 "--require-method",
@@ -553,36 +496,22 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 "--require-method",
                 "hrdetect_blocked",
                 "--review-bundle",
-                Path(
-                    "/repo/.codex-tmp/hrd-reports/ai-review/"
-                    f"{MODULE.RUN_ID}/bundle/review_bundle.json"
-                ),
+                Path(f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/bundle/review_bundle.json"),
                 "--bundle-manifest",
-                Path(
-                    "/repo/.codex-tmp/hrd-reports/ai-review/"
-                    f"{MODULE.RUN_ID}/bundle/bundle_manifest.json"
-                ),
+                Path(f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/bundle/bundle_manifest.json"),
                 "--reviewer-a-dir",
-                Path(
-                    "/repo/.codex-tmp/hrd-reports/ai-review/"
-                    f"{MODULE.RUN_ID}/reviewer-a"
-                ),
+                Path(f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/reviewer-a"),
                 "--reviewer-b-dir",
-                Path(
-                    "/repo/.codex-tmp/hrd-reports/ai-review/"
-                    f"{MODULE.RUN_ID}/reviewer-b"
-                ),
+                Path(f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/reviewer-b"),
                 "--output-dir",
-                Path("/repo/.codex-tmp/hrd-reports/synthesis" f"/{MODULE.RUN_ID}"),
+                Path(f"/repo/.codex-tmp/hrd-reports/synthesis/{MODULE.RUN_ID}"),
             ],
         )
 
     def test_renderer_materializes_pinned_model_catalog_receipt(self) -> None:
         text = render()
         catalog = (
-            "/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/"
-            f"{MODULE.RUN_ID}/"
-            "model-catalog-receipt.20260717T115311Z.json"
+            f"/repo/.codex-tmp/hrd-reports/ai-review/model-catalog-receipts/{MODULE.RUN_ID}/model-catalog-receipt.20260717T115311Z.json"
         )
 
         self.assertIn("/repo/scripts/write_ai_model_catalog_receipt.py", text)
@@ -600,22 +529,11 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
 
     def test_model_catalog_receipt_stays_outside_prepare_output_dir(self) -> None:
         root = Path("/repo")
-        catalog = (
-            root
-            / ".codex-tmp/hrd-reports/ai-review/model-catalog-receipts"
-            / MODULE.RUN_ID
-            / MODULE.MODEL_CATALOG_RECEIPT
-        )
-        run_root = (
-            root
-            / ".codex-tmp/hrd-reports/ai-review"
-            / MODULE.RUN_ID
-        )
+        catalog = root / ".codex-tmp/hrd-reports/ai-review/model-catalog-receipts" / MODULE.RUN_ID / MODULE.MODEL_CATALOG_RECEIPT
+        run_root = root / ".codex-tmp/hrd-reports/ai-review" / MODULE.RUN_ID
 
         self.assertEqual(MODULE.model_catalog_receipt_path(root), catalog)
-        self.assertFalse(
-            catalog.is_relative_to(run_root)
-        )
+        self.assertFalse(catalog.is_relative_to(run_root))
 
     def test_runbook_can_include_private_receipt_gate(self) -> None:
         summaries = receipt_summaries()
@@ -651,10 +569,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         self.assertEqual(text.count("--expected-source-manifest-sha256 "), 7)
         previous = -1
         for summary in summaries:
-            flag = (
-                "--expected-source-manifest-sha256 "
-                f"{summary['method_id']}={summary['report_manifest_sha256']}"
-            )
+            flag = f"--expected-source-manifest-sha256 {summary['method_id']}={summary['report_manifest_sha256']}"
             index = text.find(flag, previous + 1)
             self.assertGreater(index, previous)
             previous = index

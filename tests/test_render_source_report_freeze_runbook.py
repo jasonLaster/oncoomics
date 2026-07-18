@@ -162,6 +162,11 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
         for packet_dir in paths.values():
             self.assertIn(f"--packet-dir {packet_dir}", text)
         self.assertIn("/fast/blocked_crosschecks/facets_scarhrd_blocked", text)
+        self.assertIn("--deterministic-report-dir /fast/deterministic_report", text)
+        self.assertIn("--rosalind-report-dir /fast/rosalind_hrd/diana_wgs", text)
+        self.assertIn("--blocked-crosscheck-root /fast/blocked_crosschecks", text)
+        self.assertIn("--sigprofiler-report-dir /fast/sigprofiler", text)
+        self.assertIn("--sequenza-report-dir /fast/sequenza", text)
 
     def test_validate_packet_dirs_rejects_missing_or_reordered_dirs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
