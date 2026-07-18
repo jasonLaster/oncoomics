@@ -586,6 +586,36 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         self.assertIn("## 0. Private publication receipt gate", text)
         self.assertIn("VersionId `version-1`", text)
 
+    def test_receipt_summaries_pin_prepare_source_manifest_sha256(self) -> None:
+        summaries = tuple(
+            {
+                "method_id": method_id,
+                "receipt": f"{method_id}.private.json",
+                "destination_prefix": f"s3://private/{method_id}/",
+                "report_manifest_version_id": f"version-{index}",
+                "report_manifest_sha256": f"{index + 1:064x}",
+                "object_count": 5,
+            }
+            for index, method_id in enumerate(MODULE.REQUIRED_METHOD_IDS)
+        )
+
+        text = MODULE.render(
+            Path("/repo"),
+            "unit",
+            receipt_summaries=summaries,
+        )
+
+        self.assertEqual(text.count("--expected-source-manifest-sha256 "), 7)
+        previous = -1
+        for summary in summaries:
+            flag = (
+                "--expected-source-manifest-sha256 "
+                f"{summary['method_id']}={summary['report_manifest_sha256']}"
+            )
+            index = text.find(flag, previous + 1)
+            self.assertGreater(index, previous)
+            previous = index
+
     def test_renderer_has_no_template_placeholders(self) -> None:
         text = MODULE.render(Path("/repo"), "unit")
 

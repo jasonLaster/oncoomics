@@ -644,6 +644,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError(
             "destination is not the exact reviewed public child for this method"
         )
+    if not re.fullmatch(r"[0-9a-f]{64}", args.private_publication_receipt_sha256):
+        raise ValueError("expected private publication receipt SHA-256 is malformed")
+    actual_receipt_sha256 = sha256(args.private_publication_receipt)
+    if actual_receipt_sha256 != args.private_publication_receipt_sha256:
+        raise ValueError("private publication receipt SHA-256 does not match expected")
     private_receipt, expected, source_rows = validate_private_receipt(
         args.private_publication_receipt, method_id
     )
@@ -805,6 +810,7 @@ def main() -> int:
         description="Publish one allowlisted report packet to the reviewed Diana public alias tree."
     )
     parser.add_argument("--private-publication-receipt", required=True, type=Path)
+    parser.add_argument("--private-publication-receipt-sha256", required=True)
     parser.add_argument("--method-id", required=True, choices=tuple(METHOD_CONTRACTS))
     parser.add_argument("--destination-prefix", required=True)
     parser.add_argument("--receipt-output", required=True, type=Path)

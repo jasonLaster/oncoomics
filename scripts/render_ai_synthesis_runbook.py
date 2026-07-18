@@ -144,6 +144,19 @@ def prepare_manifest_flags(paths: dict[str, Path]) -> list[str | Path]:
     ]
 
 
+def expected_source_manifest_flags(
+    receipt_summaries: Iterable[dict[str, str | int]],
+) -> list[str]:
+    return [
+        token
+        for summary in receipt_summaries
+        for token in (
+            "--expected-source-manifest-sha256",
+            f"{summary['method_id']}={summary['report_manifest_sha256']}",
+        )
+    ]
+
+
 def manifest_flags(paths: dict[str, Path], flag: str = "--source-manifest") -> list[str | Path]:
     return [
         token
@@ -400,6 +413,7 @@ def render(
                     "python3",
                     scripts / "prepare_ai_review_run.py",
                     *prepare_manifest_flags(manifests),
+                    *expected_source_manifest_flags(receipt_summaries),
                     "--output-dir",
                     run_root,
                     "--subject-alias",

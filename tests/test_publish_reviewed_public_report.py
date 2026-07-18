@@ -139,10 +139,18 @@ class Fixture:
         path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
         self.rebuild_receipt()
 
-    def args(self, *, apply: bool = False, destination: str | None = None) -> argparse.Namespace:
+    def args(
+        self,
+        *,
+        apply: bool = False,
+        destination: str | None = None,
+        private_receipt_sha256: str | None = None,
+    ) -> argparse.Namespace:
         prefix = MODULE.PUBLIC_ROOT + MODULE.METHOD_CONTRACTS[self.method_id]["destination"]
         return argparse.Namespace(
             private_publication_receipt=self.receipt_path,
+            private_publication_receipt_sha256=private_receipt_sha256
+            or MODULE.sha256(self.receipt_path),
             method_id=self.method_id,
             destination_prefix=destination or f"s3://{MODULE.PUBLIC_BUCKET}/{prefix}",
             receipt_output=self.output_path,
@@ -285,6 +293,25 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             self.assertEqual(len(fake.get_calls), 8)
             self.assertEqual(fake.put_calls, [])
             self.assertEqual(fixture.output_path.stat().st_mode & 0o777, 0o600)
+
+    def test_rejects_stale_private_receipt_path_before_s3(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+
+            with (
+                mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
+                mock.patch.object(
+                    MODULE,
+                    "download_exact",
+                    side_effect=fake.download_exact,
+                ),
+                self.assertRaisesRegex(ValueError, "SHA-256 does not match expected"),
+            ):
+                MODULE.run(fixture.args(private_receipt_sha256="0" * 64))
+
+            self.assertEqual(fake.get_calls, [])
+            self.assertEqual(fake.put_calls, [])
 
     def test_apply_uses_create_only_sse_s3_sha256_and_exact_final_history(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

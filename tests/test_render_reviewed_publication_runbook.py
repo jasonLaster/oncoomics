@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import importlib.util
 import json
 import sys
@@ -24,6 +25,10 @@ SPEC.loader.exec_module(MODULE)
 
 def checksum_from_digest(value: str) -> str:
     return base64.b64encode(bytes.fromhex(value)).decode("ascii")
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def write_receipts(root: Path) -> list[Path]:
@@ -103,6 +108,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
         dry_command = MODULE.publish_command(
             scripts,
             receipt,
+            "a" * 64,
             "deterministic_full_wgs",
             output,
             apply=False,
@@ -110,6 +116,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
         apply_command = MODULE.publish_command(
             scripts,
             receipt,
+            "a" * 64,
             "deterministic_full_wgs",
             output,
             apply=True,
@@ -130,6 +137,8 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                 output,
                 "--region",
                 MODULE.REGION,
+                "--private-publication-receipt-sha256",
+                "a" * 64,
             ],
         )
         self.assertEqual(apply_command, [*dry_command, "--apply"])
@@ -219,6 +228,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                 summaries[-1]["destination_prefix"],
                 MODULE.destination_prefix("comparative_hrd_synthesis"),
             )
+            self.assertEqual(summaries[0]["receipt_sha256"], sha256(receipts[0]))
 
             with self.assertRaisesRegex(ValueError, "canonical"):
                 MODULE.validate_private_report_receipts(
@@ -232,6 +242,28 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             receipts[0].write_text(json.dumps(failed, indent=2, sort_keys=True) + "\n")
             with self.assertRaisesRegex(ValueError, "not exact and passed"):
                 MODULE.validate_private_report_receipts(receipts)
+
+    def test_receipt_gate_pins_every_public_publish_command(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipts = write_receipts(Path(temporary))
+            summaries = MODULE.validate_private_report_receipts(receipts)
+
+            text = MODULE.render(
+                Path("/repo"),
+                receipts,
+                "terminal",
+                receipt_summaries=summaries,
+            )
+
+            self.assertEqual(text.count("--private-publication-receipt-sha256 "), 20)
+            for summary in summaries:
+                self.assertEqual(
+                    text.count(
+                        "--private-publication-receipt-sha256 "
+                        f"{summary['receipt_sha256']}"
+                    ),
+                    2,
+                )
 
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
         prerequisites = {
@@ -315,6 +347,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             {
                 "method_id": "comparative_hrd_synthesis",
                 "receipt": "receipt.json",
+                "receipt_sha256": "a" * 64,
                 "destination_prefix": MODULE.destination_prefix(
                     "comparative_hrd_synthesis"
                 ),

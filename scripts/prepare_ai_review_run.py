@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -31,6 +32,7 @@ METHOD_ARGUMENTS = (
     ("oncoanalyser_chord_blocked", "oncoanalyser_blocked_manifest"),
     ("hrdetect_blocked", "hrdetect_blocked_manifest"),
 )
+SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 
 
 def now() -> str:
@@ -94,8 +96,36 @@ def method_manifest_paths(args: argparse.Namespace) -> dict[str, Path]:
     }
 
 
+def parse_expected_source_manifest_sha256(values: Sequence[str]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for value in values:
+        method_id, separator, digest = value.partition("=")
+        if not separator:
+            raise ValueError(
+                "expected source manifest SHA-256 values must use method_id=sha256"
+            )
+        if method_id not in REQUIRED_METHOD_IDS:
+            raise ValueError(f"unexpected source manifest method: {method_id}")
+        if method_id in result:
+            raise ValueError(f"duplicate source manifest SHA-256 for {method_id}")
+        if SHA256_PATTERN.fullmatch(digest) is None:
+            raise ValueError(
+                f"source manifest SHA-256 for {method_id} is not lowercase hex"
+            )
+        result[method_id] = digest
+
+    if set(result) != set(REQUIRED_METHOD_IDS):
+        raise ValueError(
+            "expected source manifest SHA-256 values must cover exactly the "
+            "seven required methods"
+        )
+    return {method_id: result[method_id] for method_id in REQUIRED_METHOD_IDS}
+
+
 def validate_sources(
-    output: Path, manifest_paths: dict[str, Path]
+    output: Path,
+    manifest_paths: dict[str, Path],
+    expected_sha256: dict[str, str],
 ) -> dict[str, dict[str, str]]:
     source_manifests: dict[str, dict[str, str]] = {}
     seen_paths: set[Path] = set()
@@ -110,9 +140,14 @@ def validate_sources(
         if path.is_relative_to(output) or directory.is_relative_to(output):
             raise ValueError(f"source manifest for {method_id} is inside output")
         require_manifest(path, method_id)
+        actual_sha256 = sha256(path)
+        if actual_sha256 != expected_sha256.get(method_id):
+            raise ValueError(
+                f"{method_id} source manifest SHA-256 is not receipt-bound"
+            )
         source_manifests[method_id] = {
             "path": str(path),
-            "sha256": sha256(path),
+            "sha256": actual_sha256,
         }
         seen_paths.add(path)
         seen_dirs.add(directory)
@@ -302,7 +337,14 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
         method: path.resolve()
         for method, path in method_manifest_paths(args).items()
     }
-    source_manifests = validate_sources(output, manifest_paths)
+    expected_source_sha256 = parse_expected_source_manifest_sha256(
+        args.expected_source_manifest_sha256
+    )
+    source_manifests = validate_sources(
+        output,
+        manifest_paths,
+        expected_source_sha256,
+    )
 
     staging = Path(
         tempfile.mkdtemp(prefix=f".{output.name}.", dir=str(output.parent))
@@ -382,6 +424,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--reviewer-b-provider", required=True)
     parser.add_argument("--reviewer-b-model-id", required=True)
     parser.add_argument("--forbidden-token", required=True, action="append")
+    parser.add_argument(
+        "--expected-source-manifest-sha256",
+        required=True,
+        action="append",
+        help=(
+            "repeat as method_id=sha256 once for each source manifest in the "
+            "canonical seven-method order"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:

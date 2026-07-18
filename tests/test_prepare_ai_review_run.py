@@ -39,6 +39,10 @@ def namespace(fixture: AiReviewBundleFixture, output_dir: Path) -> SimpleNamespa
             "reviewer_b_provider": "synthetic-provider-b",
             "reviewer_b_model_id": "synthetic-model-b-current",
             "forbidden_token": ["DirectIdentifier"],
+            "expected_source_manifest_sha256": [
+                f"{method_id}={PREPARE.sha256(by_method[method_id])}"
+                for method_id in INVENTORY.REQUIRED_METHOD_IDS
+            ],
         }
     )
     return SimpleNamespace(**args)
@@ -81,6 +85,14 @@ def command(fixture: AiReviewBundleFixture, output_dir: Path) -> list[str]:
         "synthetic-model-b-current",
         "--forbidden-token",
         "DirectIdentifier",
+        *[
+            token
+            for method_id in INVENTORY.REQUIRED_METHOD_IDS
+            for token in (
+                "--expected-source-manifest-sha256",
+                f"{method_id}={PREPARE.sha256(by_method[method_id])}",
+            )
+        ],
     ]
 
 
@@ -199,6 +211,22 @@ class PrepareAiReviewRunTests(unittest.TestCase):
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("rosalind_diana_wgs", result.stderr)
+            self.assertFalse(output.exists())
+
+    def test_refuses_stale_receipt_bound_manifest_sha256(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            output = Path(temporary) / "ai-review"
+            args = command(fixture, output)
+            manifest_path = fixture.manifests[0]
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["review_summary"]["stale"] = "true"
+            write_json(manifest_path, manifest)
+
+            result = subprocess.run(args, text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("source manifest SHA-256 is not receipt-bound", result.stderr)
             self.assertFalse(output.exists())
 
     def test_propagates_builder_fail_closed_behavior(self) -> None:

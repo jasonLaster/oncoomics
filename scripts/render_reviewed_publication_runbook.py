@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Iterable
@@ -39,6 +40,14 @@ STALE_TOKENS = (
 )
 
 
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def validate_private_report_receipts(
     receipt_paths: Iterable[Path],
 ) -> tuple[dict[str, str | int], ...]:
@@ -64,6 +73,7 @@ def validate_private_report_receipts(
             {
                 "method_id": method_id,
                 "receipt": str(path),
+                "receipt_sha256": sha256(path),
                 "destination_prefix": destination_prefix(method_id),
                 "object_count": len(rows),
             }
@@ -89,6 +99,7 @@ def receipt_output(root: Path, receipt_stem: str, method_id: str, suffix: str) -
 def publish_command(
     scripts: Path,
     receipt_path: Path,
+    receipt_sha256: str | None,
     method_id: str,
     output: Path,
     *,
@@ -108,6 +119,8 @@ def publish_command(
         "--region",
         REGION,
     ]
+    if receipt_sha256 is not None:
+        command.extend(["--private-publication-receipt-sha256", receipt_sha256])
     if apply:
         command.append("--apply")
     return command
@@ -183,6 +196,10 @@ def render(
 ) -> str:
     paths = list(receipt_paths)
     scripts = root / "scripts"
+    receipt_sha256_by_method = {
+        str(summary["method_id"]): str(summary["receipt_sha256"])
+        for summary in receipt_summaries
+    }
 
     lines = [
         "# Diana WGS reviewed-public publication handoff",
@@ -222,6 +239,7 @@ def render(
                     publish_command(
                         scripts,
                         receipt,
+                        receipt_sha256_by_method.get(method_id),
                         method_id,
                         receipt_output(root, receipt_stem, method_id, ".dry"),
                         apply=False,
@@ -231,6 +249,7 @@ def render(
                     publish_command(
                         scripts,
                         receipt,
+                        receipt_sha256_by_method.get(method_id),
                         method_id,
                         receipt_output(root, receipt_stem, method_id, ""),
                         apply=True,
