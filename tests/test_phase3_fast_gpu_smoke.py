@@ -497,6 +497,28 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "launchTemplate": {"launchTemplateId": "lt-p5en"},
                 }
             ),
+            self.p5en_compute_environment(
+                computeResources={
+                    "allocationStrategy": "BEST_FIT_PROGRESSIVE",
+                    "type": "EC2",
+                    "minvCpus": 0,
+                    "instanceTypes": ["p5en.48xlarge"],
+                    "maxvCpus": 384,
+                    "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
+                    "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "$Latest"},
+                }
+            ),
+            self.p5en_compute_environment(
+                computeResources={
+                    "allocationStrategy": "BEST_FIT_PROGRESSIVE",
+                    "type": "EC2",
+                    "minvCpus": 0,
+                    "instanceTypes": ["p5en.48xlarge"],
+                    "maxvCpus": 384,
+                    "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
+                    "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "$Default"},
+                }
+            ),
         ):
             with self.subTest(environment=environment):
                 with self.assertRaisesRegex(verify.GpuSmokeConfigError, "P5en compute environment is not ready"):

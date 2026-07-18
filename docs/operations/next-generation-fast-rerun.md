@@ -515,9 +515,10 @@ Parabricks mirror receipt as `PARABRICKS_MIRROR_RECEIPT`, then pass the reviewed
 Gate 0 receipt paths and alias-only forbidden-token inventory as Nextflow
 arguments after `--`. The full execute alias intentionally repeats the GPU
 params, live Batch queue, live P5en compute-environment, mirror-receipt,
-source-bound ECR tag, mirrored-image, cache, and live-quota checks before starting Nextflow. It also
-requires the reviewed mirror receipt to match the current Diana Git commit and
-`infra/aws/Dockerfile.parabricks` SHA-256, then rejects missing, stubbed,
+source-bound ECR tag, mirrored-image, cache, and live-quota checks before
+starting Nextflow. It also requires the reviewed mirror receipt to match the
+current Diana Git commit and `infra/aws/Dockerfile.parabricks` SHA-256, then
+rejects missing, stubbed,
 malformed, or non-H200 smoke output. A stale non-`us-east-2`, non-P5en,
 misrouted, source-mismatched, unpinned, unmirrored, under-quota, wrong-KMS, or
 smoke-skipping launch therefore still fails locally even when
@@ -630,8 +631,10 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
 
 ### After quota approval
 
-1. Run Gate 1 with `nvidia-smi` and a fixed small Parabricks interval on `p5en.48xlarge`.
-2. Run the full existing-BAM Parabricks caller and Gate 2 comparison.
+1. Run Gate 1 with `nvidia-smi`, `/scratch` read/write proof, and a tiny
+   `pbrun prepon` startup on `p5en.48xlarge`.
+2. Review the smoke artifacts, then run the full existing-BAM Parabricks caller
+   and Gate 2 comparison.
 3. Promote the accepted Parabricks caller into the complete checkpointed evidence DAG.
 4. Verify caller completeness, resume behavior, known-answer boundaries, evidence packaging, and the 90-minute acceptance target.
 5. Only then benchmark parallel tumor/normal `fq2bam` and Gate 3.

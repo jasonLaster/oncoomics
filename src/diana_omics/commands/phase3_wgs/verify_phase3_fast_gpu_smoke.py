@@ -367,8 +367,8 @@ def validate_gpu_batch_compute_environment(
             if not any(isinstance(value, str) and value for value in launch_template_identity):
                 errors.append("P5en computeResources launchTemplate must include an id or name")
             version = launch_template.get("version")
-            if not isinstance(version, str) or not version:
-                errors.append("P5en computeResources launchTemplate version must be pinned")
+            if not isinstance(version, str) or not re.fullmatch(r"[1-9]\d*", version):
+                errors.append("P5en computeResources launchTemplate version must be pinned to a numeric version")
 
     if errors:
         raise GpuSmokeConfigError("P5en compute environment is not ready:\n- " + "\n- ".join(errors))
