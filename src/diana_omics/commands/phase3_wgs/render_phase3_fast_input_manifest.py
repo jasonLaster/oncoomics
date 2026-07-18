@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 
 from ...paths import ROOT, path_from_root
 from ...utils import ensure_parent, read_json
+from .safe_json_output import require_safe_output_path
 
 HEX64 = re.compile(r"^[0-9a-fA-F]{64}$")
 IMAGE_DIGEST = re.compile(r"^(?:.+@)?sha256:[0-9a-fA-F]{64}$")
@@ -476,6 +477,7 @@ def build_phase3_wgs_fast_input_manifest(
 
 
 def write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
+    require_safe_output_path(path, "fast input manifest output", ManifestError)
     ensure_parent(path)
     path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

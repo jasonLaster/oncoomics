@@ -11,6 +11,7 @@ from typing import Any, Mapping
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
+from .safe_json_output import require_safe_output_path
 
 DEFAULT_EVIDENCE_JOIN = "manifests/phase3_wgs_fast/evidence_join_manifest.json"
 DEFAULT_SMALL_VARIANT_ARTIFACT_ROOT = "workspace/results/phase3_wgs_fast/small_variant_execution/artifacts"
@@ -346,6 +347,7 @@ def build_phase3_fast_final_evidence_manifest(
 
 
 def write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
+    require_safe_output_path(path, "fast final evidence manifest output", ManifestError)
     ensure_parent(path)
     path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

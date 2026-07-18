@@ -9,6 +9,7 @@ from typing import Any, Mapping
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
+from .safe_json_output import require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/bam_qc_plan.json"
@@ -208,6 +209,7 @@ def build_phase3_fast_bam_qc_plan(
 
 
 def write_plan(path: Path, plan: Mapping[str, Any]) -> None:
+    require_safe_output_path(path, "fast BAM QC plan output", ManifestError)
     ensure_parent(path)
     path.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

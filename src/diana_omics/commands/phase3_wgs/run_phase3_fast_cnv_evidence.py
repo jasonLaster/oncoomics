@@ -13,6 +13,7 @@ from typing import Any, Mapping, Protocol, Sequence
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json, round_value, write_csv
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
+from .safe_json_output import require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/cnv_evidence_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/cnv_evidence_receipt.json"
@@ -500,6 +501,7 @@ def run_phase3_fast_cnv_evidence(
 
 
 def write_receipt(path: Path, receipt: Mapping[str, Any]) -> None:
+    require_safe_output_path(path, "fast CNV evidence receipt output", ManifestError)
     ensure_parent(path)
     path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

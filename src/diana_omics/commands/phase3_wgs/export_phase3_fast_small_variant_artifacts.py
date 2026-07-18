@@ -12,6 +12,7 @@ from ...utils import ensure_parent, read_json
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 from .run_phase3_fast_filter_mutect import MATERIALIZED_OUTPUTS as FILTER_MUTECT_OUTPUTS
 from .run_phase3_fast_parabricks_mutect import MATERIALIZED_OUTPUTS as PARABRICKS_MUTECT_OUTPUTS
+from .safe_json_output import require_safe_output_path
 
 DEFAULT_PARABRICKS_RECEIPT = "manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"
 DEFAULT_FILTER_RECEIPT = "manifests/phase3_wgs_fast/filter_mutect_receipt.json"
@@ -368,6 +369,7 @@ def export_phase3_fast_small_variant_artifacts(
 
 
 def write_receipt(path: Path, receipt: Mapping[str, Any]) -> None:
+    require_safe_output_path(path, "fast small-variant export receipt output", ManifestError)
     ensure_parent(path)
     path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
