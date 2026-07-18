@@ -42,6 +42,10 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
         self.assertEqual("us-east-2", summary["phase3_fast_cache_region"])
         self.assertEqual(384, summary["gpu_p5en_max_vcpus"])
         self.assertEqual(["p5en.48xlarge"], summary["instance_types"])
+        self.assertEqual(
+            "172630973301.dkr.ecr.us-east-2.amazonaws.com/parabricks@sha256:" + "a" * 64,
+            summary["parabricks_container"],
+        )
 
     def test_rejects_empty_or_tagged_parabricks_container(self) -> None:
         with self.assertRaisesRegex(verify.GpuSmokeConfigError, "parabricks_container"):

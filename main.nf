@@ -628,6 +628,9 @@ process FAST_GPU_SMOKE {
     {
       "schema": "phase3_wgs_fast_gpu_smoke.v1",
       "status": "passed",
+      "awsRegion": "${params.aws_region}",
+      "awsGpuQueue": "${params.aws_gpu_queue}",
+      "parabricksContainer": "${params.parabricks_container}",
       "expectedGpuCount": \${expected_gpus},
       "observedGpuCount": \${gpu_count},
       "requiredGpuName": "\${required_name}",
@@ -654,6 +657,9 @@ process FAST_GPU_SMOKE {
     {
       "schema": "phase3_wgs_fast_gpu_smoke.v1",
       "status": "stubbed",
+      "awsRegion": "${params.aws_region}",
+      "awsGpuQueue": "${params.aws_gpu_queue}",
+      "parabricksContainer": "${params.parabricks_container}",
       "expectedGpuCount": 8,
       "observedGpuCount": 8,
       "requiredGpuName": "H200",

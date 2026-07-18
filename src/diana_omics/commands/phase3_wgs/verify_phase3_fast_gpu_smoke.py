@@ -115,6 +115,7 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "aws_gpu_queue": queue,
         "aws_region": REQUIRED_AWS_REGION,
+        "parabricks_container": image,
         "phase3_fast_cache_kms_key_arn": cache_kms_key_arn,
         "phase3_fast_cache_region": REQUIRED_AWS_REGION,
         "gpu_p5en_max_vcpus": max_vcpus,
