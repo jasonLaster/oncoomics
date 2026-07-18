@@ -519,6 +519,184 @@ def validate_stage_provenance(
     }
 
 
+def validate_crosscheck_terminal_capture(
+    capture: dict[str, Any],
+    anchor: dict[str, Any],
+    receipt: dict[str, Any],
+    download: dict[str, Any],
+    *,
+    capture_path: Path,
+    anchor_path: Path,
+    receipt_path: Path,
+    download_path: Path,
+    staged_input_validation_path: Path,
+    expected_kms_key_arn: str,
+    run_id: str,
+) -> dict[str, Any]:
+    capture_checks = (
+        capture.get("checks") if isinstance(capture.get("checks"), dict) else {}
+    )
+    cloudwatch = (
+        capture.get("cloudwatch")
+        if isinstance(capture.get("cloudwatch"), dict)
+        else {}
+    )
+    receipt_summary = (
+        capture.get("receipt") if isinstance(capture.get("receipt"), dict) else {}
+    )
+    local_anchor = (
+        capture.get("local_anchor")
+        if isinstance(capture.get("local_anchor"), dict)
+        else {}
+    )
+    receipt_upload = (
+        cloudwatch.get("receipt_upload")
+        if isinstance(cloudwatch.get("receipt_upload"), dict)
+        else {}
+    )
+    batch = capture.get("batch") if isinstance(capture.get("batch"), dict) else {}
+    batch_checks = (
+        batch.get("checks") if isinstance(batch.get("checks"), dict) else {}
+    )
+    anchor_checks = (
+        anchor.get("checks") if isinstance(anchor.get("checks"), dict) else {}
+    )
+    receipt_checks = (
+        receipt_summary.get("checks")
+        if isinstance(receipt_summary.get("checks"), dict)
+        else {}
+    )
+    download_checks = (
+        download.get("checks") if isinstance(download.get("checks"), dict) else {}
+    )
+    download_object = (
+        download.get("object") if isinstance(download.get("object"), dict) else {}
+    )
+    crosscheck_outputs = (
+        receipt.get("outputs") if isinstance(receipt.get("outputs"), dict) else {}
+    )
+    staged_output = (
+        crosscheck_outputs.get("staged_input_validation.json")
+        if isinstance(crosscheck_outputs.get("staged_input_validation.json"), dict)
+        else {}
+    )
+    receipt_sha = sha256(receipt_path)
+    anchor_sha = sha256(anchor_path)
+    staged_sha = sha256(staged_input_validation_path)
+    expected_receipt_uri = (
+        "s3://diana-omics-private-results-"
+        + f"[^/]+/runs/subject01/{re.escape(run_id)}/deterministic/"
+        + f"provenance/crosscheck-materialization-receipts/{receipt_sha}\\.json"
+    )
+    history = (
+        receipt_summary.get("history")
+        if isinstance(receipt_summary.get("history"), list)
+        else []
+    )
+    single_receipt_version = (
+        len(history) == 1
+        and isinstance(history[0], dict)
+        and history[0].get("history_kind") == "version"
+        and history[0].get("IsLatest") is True
+        and history[0].get("VersionId") == anchor.get("receipt_version_id")
+    )
+    checks = {
+        "capture_schema_status": (
+            capture.get("schema_version") == 1
+            and capture.get("status") == "passed"
+            and capture.get("scope")
+            == "private read-only terminal materializer custody capture"
+        ),
+        "capture_checks_passed": bool(capture_checks)
+        and all(value is True for value in capture_checks.values()),
+        "batch_terminal_identity": (
+            batch.get("status") == "SUCCEEDED"
+            and batch.get("log_group") == "/aws/batch/job"
+            and batch.get("attempt_count") == 1
+            and batch.get("exit_code") == 0
+            and bool(batch_checks)
+            and all(value is True for value in batch_checks.values())
+        ),
+        "cloudwatch_anchor_matches_local_anchor": (
+            cloudwatch.get("receipt_anchor") == anchor
+            and valid_sha256(cloudwatch.get("terminal_payload_sha256"))
+            and valid_sha256(cloudwatch.get("terminal_json_sha256"))
+            and valid_sha256(cloudwatch.get("messages_sha256"))
+            and positive_int(cloudwatch.get("event_count"))
+            and receipt_upload.get("uri") == anchor.get("receipt_uri")
+            and receipt_upload.get("version_id") == anchor.get("receipt_version_id")
+            and receipt_upload.get("sha256") == receipt_sha
+            and integer_equals(receipt_upload.get("bytes"), receipt_path.stat().st_size)
+            and receipt_upload.get("kms_key_arn") == expected_kms_key_arn
+        ),
+        "anchor_schema_checks": (
+            anchor.get("schema_version") == 1
+            and anchor.get("status") == "passed"
+            and bool(anchor_checks)
+            and all(value is True for value in anchor_checks.values())
+        ),
+        "anchor_binds_receipt": (
+            anchor.get("receipt_sha256") == receipt_sha
+            and integer_equals(anchor.get("receipt_bytes"), receipt_path.stat().st_size)
+            and re.fullmatch(expected_receipt_uri, str(anchor.get("receipt_uri", "")))
+            is not None
+            and valid_version_id(anchor.get("receipt_version_id"))
+        ),
+        "capture_binds_local_anchor": (
+            local_anchor.get("sha256") == anchor_sha
+            and integer_equals(local_anchor.get("bytes"), anchor_path.stat().st_size)
+        ),
+        "capture_binds_local_receipt": (
+            receipt_summary.get("uri") == anchor.get("receipt_uri")
+            and receipt_summary.get("version_id") == anchor.get("receipt_version_id")
+            and receipt_summary.get("sha256") == receipt_sha
+            and integer_equals(receipt_summary.get("bytes"), receipt_path.stat().st_size)
+            and receipt_summary.get("local_sha256") == receipt_sha
+            and integer_equals(
+                receipt_summary.get("local_bytes"), receipt_path.stat().st_size
+            )
+            and bool(receipt_checks)
+            and all(value is True for value in receipt_checks.values())
+            and receipt_summary.get("kms_key_arn") == expected_kms_key_arn
+            and single_receipt_version
+        ),
+        "download_schema_checks": (
+            download.get("schema_version") == 1
+            and download.get("status") == "passed"
+            and download.get("expected_kms_key_arn") == expected_kms_key_arn
+            and download.get("materializer_receipt_sha256") == receipt_sha
+            and bool(download_checks)
+            and all(value is True for value in download_checks.values())
+        ),
+        "download_binds_staged_validation": (
+            download_object.get("uri") == staged_output.get("uri")
+            and download_object.get("version_id") == staged_output.get("version_id")
+            and download_object.get("expected_sha256") == staged_output.get("sha256")
+            and integer_equals(download_object.get("expected_bytes"), staged_output.get("bytes"))
+            and download_object.get("sha256") == staged_sha
+            and integer_equals(
+                download_object.get("bytes"),
+                staged_input_validation_path.stat().st_size,
+            )
+            and staged_output.get("sha256") == staged_sha
+        ),
+        "boundary_preserved": (
+            capture.get("classification_authorization") == "none"
+            and capture.get("authorized_hrd_state") == "no_call"
+            and receipt.get("classification_authorization") == "none"
+            and receipt.get("authorized_hrd_state") == "no_call"
+        ),
+    }
+    return {
+        "status": "passed" if all(checks.values()) else "failed",
+        "capture_sha256": sha256(capture_path),
+        "anchor_sha256": anchor_sha,
+        "receipt_sha256": receipt_sha,
+        "download_sha256": sha256(download_path),
+        "checks": checks,
+    }
+
+
 def validate_final_freeze_provenance(
     receipt: dict[str, Any],
     anchor: dict[str, Any],
@@ -912,9 +1090,18 @@ def main() -> None:
     parser.add_argument(
         "--crosscheck-materialization-receipt", required=True, type=Path
     )
+    parser.add_argument(
+        "--crosscheck-materialization-capture", required=True, type=Path
+    )
+    parser.add_argument(
+        "--crosscheck-materialization-anchor", required=True, type=Path
+    )
     parser.add_argument("--stage-provenance-receipt", required=True, type=Path)
     parser.add_argument("--stage-provenance-anchor", required=True, type=Path)
     parser.add_argument("--staged-input-validation-json", required=True, type=Path)
+    parser.add_argument(
+        "--staged-input-validation-download-receipt", required=True, type=Path
+    )
     parser.add_argument("--expected-kms-key-arn", required=True)
     parser.add_argument("--early-look-root", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
@@ -950,9 +1137,16 @@ def main() -> None:
         "final_freeze_anchor": args.final_freeze_anchor,
         "exact_materialization": args.exact_materialization_receipt,
         "crosscheck_materialization": args.crosscheck_materialization_receipt,
+        "crosscheck_materialization_capture": (
+            args.crosscheck_materialization_capture
+        ),
+        "crosscheck_materialization_anchor": args.crosscheck_materialization_anchor,
         "stage_provenance": args.stage_provenance_receipt,
         "stage_provenance_anchor": args.stage_provenance_anchor,
         "staged_input_validation": args.staged_input_validation_json,
+        "staged_input_validation_download": (
+            args.staged_input_validation_download_receipt
+        ),
     }
     snapshot_guard = tempfile.TemporaryDirectory(
         prefix="deterministic-full-input-snapshot-", dir=str(output.parent)
@@ -1008,9 +1202,18 @@ def main() -> None:
         "crosscheck_materialization": external_paths[
             "crosscheck_materialization"
         ],
+        "crosscheck_materialization_capture": external_paths[
+            "crosscheck_materialization_capture"
+        ],
+        "crosscheck_materialization_anchor": external_paths[
+            "crosscheck_materialization_anchor"
+        ],
         "stage_provenance": external_paths["stage_provenance"],
         "stage_provenance_anchor": external_paths["stage_provenance_anchor"],
         "staged_input_validation": external_paths["staged_input_validation"],
+        "staged_input_validation_download": external_paths[
+            "staged_input_validation_download"
+        ],
         "early_summary": early_root / "early_look_summary.json",
         "early_pass_variants": early_root / "variants/core_hrr_pass_variants.csv",
         "early_cnv_bins": early_root / "coverage_cnv/coverage_cnv_bins.csv",
@@ -1048,9 +1251,18 @@ def main() -> None:
     final_freeze_anchor = load_json(paths["final_freeze_anchor"])
     exact_materialization = load_json(paths["exact_materialization"])
     crosscheck_materialization = load_json(paths["crosscheck_materialization"])
+    crosscheck_materialization_capture = load_json(
+        paths["crosscheck_materialization_capture"]
+    )
+    crosscheck_materialization_anchor = load_json(
+        paths["crosscheck_materialization_anchor"]
+    )
     stage_provenance = load_json(paths["stage_provenance"])
     stage_provenance_anchor = load_json(paths["stage_provenance_anchor"])
     staged_input_validation = load_json(paths["staged_input_validation"])
+    staged_input_validation_download = load_json(
+        paths["staged_input_validation_download"]
+    )
     input_snapshot = load_json(paths["input_snapshot"])
     early = load_json(paths["early_summary"])
     early_pass_rows = load_csv(paths["early_pass_variants"])
@@ -1538,6 +1750,19 @@ def main() -> None:
         and int(crosscheck_validation.get("sbs96_burden", -1))
         == int(staged_sbs96.get("matrix_burden", -2))
     )
+    crosscheck_terminal_evidence = validate_crosscheck_terminal_capture(
+        crosscheck_materialization_capture,
+        crosscheck_materialization_anchor,
+        crosscheck_materialization,
+        staged_input_validation_download,
+        capture_path=paths["crosscheck_materialization_capture"],
+        anchor_path=paths["crosscheck_materialization_anchor"],
+        receipt_path=paths["crosscheck_materialization"],
+        download_path=paths["staged_input_validation_download"],
+        staged_input_validation_path=paths["staged_input_validation"],
+        expected_kms_key_arn=args.expected_kms_key_arn,
+        run_id=str(summary.get("run_id", "")),
+    )
     add_check(
         checks,
         "crosscheck_materialization_custody",
@@ -1554,6 +1779,12 @@ def main() -> None:
         and crosscheck_outputs_valid
         and crosscheck_validation_valid,
         "The cross-check materializer consumed the exact frozen VCF/index/matrix VersionIds and SHA-256 values, used hash-pinned reference inputs, and emitted versioned KMS-bound canonical outputs whose staged-validation bytes are consumed by this report.",
+    )
+    add_check(
+        checks,
+        "crosscheck_terminal_custody",
+        crosscheck_terminal_evidence["status"] == "passed",
+        "The report consumed the exact terminal Batch materializer capture, its CloudWatch receipt anchor, its downloaded receipt bytes, and the exact staged-input-validation download receipt.",
     )
 
     audit_objects = audit.get("objects", []) if isinstance(audit.get("objects"), list) else []
@@ -1741,6 +1972,7 @@ def main() -> None:
             f"The final private freeze receipt contains {format_int(len(freeze_rows))} passed objects, including {format_int(len(consumed_artifacts))} directly consumed by this report, and binds the complete worker artifact tree to exact non-null S3 VersionIds, matching byte counts/checksums, the successful Batch job, and the declared KMS key. The source inventory was unchanged across the transaction, the destination has exactly one version per expected key and no extras/delete markers, and the receipt is frozen under content-addressed VersionId `{final_freeze_evidence['receipt_version_id']}`. Receipt SHA-256: `{sha256(paths['final_freeze'])}`; anchor SHA-256: `{sha256(paths['final_freeze_anchor'])}`.",
             f"The exact-version local materialization receipt re-downloaded all {format_int(len(materialized_rows))} frozen objects by VersionId and bound their returned S3 checksums and local SHA-256 values. Receipt SHA-256: `{sha256(paths['exact_materialization'])}`.",
             f"The cross-check materialization receipt independently re-bound the final filtered VCF, index, and SBS96 source matrix to those frozen VersionIds and SHA-256 values, then recorded exact VersionIds, SHA-256 values, checksums, byte counts, and the run KMS key for all four canonical outputs. Receipt SHA-256: `{sha256(paths['crosscheck_materialization'])}`.",
+            f"The terminal materializer capture bound that receipt to the one successful Batch/CloudWatch terminal payload, and the staged-input-validation download receipt re-bound the consumed local staged-validation bytes. Capture SHA-256: `{crosscheck_terminal_evidence['capture_sha256']}`.",
             f"Preflight and gather were independently frozen in private storage at exact VersionIds under the run KMS key. Their receipt is content-addressed at VersionId `{stage_provenance_evidence['receipt_version_id']}` with SHA-256 `{stage_provenance_evidence['receipt_sha256']}`.",
             f"Before validation, all {format_int(input_snapshot['file_count'])} files in the artifact tree, early-look tree, and external receipt set were copied into a private stable snapshot using no-follow opens, file-descriptor identity checks, and a global source re-stat. Snapshot receipt SHA-256: `{sha256(paths['input_snapshot'])}`.",
             "",
@@ -1848,6 +2080,7 @@ def main() -> None:
             "strategy": input_snapshot["snapshot_strategy"],
         },
         "stage_provenance": stage_provenance_evidence,
+        "crosscheck_terminal": crosscheck_terminal_evidence,
         "early_full_comparison": comparison_rows,
     }
     review_summary = {
@@ -1873,6 +2106,15 @@ def main() -> None:
             "exact_materialization_receipt_sha256": sha256(paths["exact_materialization"]),
             "crosscheck_materialization_receipt_sha256": sha256(
                 paths["crosscheck_materialization"]
+            ),
+            "crosscheck_materialization_capture_sha256": (
+                crosscheck_terminal_evidence["capture_sha256"]
+            ),
+            "crosscheck_materialization_anchor_sha256": (
+                crosscheck_terminal_evidence["anchor_sha256"]
+            ),
+            "staged_input_validation_download_receipt_sha256": (
+                crosscheck_terminal_evidence["download_sha256"]
             ),
             "stage_provenance_receipt_sha256": sha256(
                 paths["stage_provenance"]

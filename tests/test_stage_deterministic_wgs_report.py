@@ -882,6 +882,112 @@ class SyntheticFixture:
                 "authorized_hrd_state": "no_call",
             },
         )
+        crosscheck_receipt = self.aux / "crosscheck-materialization.json"
+        crosscheck_receipt_sha = sha256(crosscheck_receipt)
+        crosscheck_receipt_uri = (
+            f"s3://diana-omics-private-results-test/runs/subject01/{RUN_ID}/"
+            "deterministic/provenance/crosscheck-materialization-receipts/"
+            f"{crosscheck_receipt_sha}.json"
+        )
+        write_json(
+            self.aux / "crosscheck-materialization-anchor.json",
+            {
+                "schema_version": 1,
+                "status": "passed",
+                "receipt_sha256": crosscheck_receipt_sha,
+                "receipt_bytes": crosscheck_receipt.stat().st_size,
+                "receipt_uri": crosscheck_receipt_uri,
+                "receipt_version_id": "crosscheck-receipt-version",
+                "checks": {
+                    "version_exact": True,
+                    "bytes_exact": True,
+                    "sha256_exact": True,
+                    "sha256_checksum_exact": True,
+                    "metadata_sha256_exact": True,
+                    "exact_kms": True,
+                    "single_create_only_version": True,
+                },
+            },
+        )
+        anchor_path = self.aux / "crosscheck-materialization-anchor.json"
+        anchor = json.loads(anchor_path.read_text(encoding="utf-8"))
+        write_json(
+            self.aux / "crosscheck-materialization-capture.json",
+            {
+                "schema_version": 1,
+                "status": "passed",
+                "scope": "private read-only terminal materializer custody capture",
+                "batch": {
+                    "status": "SUCCEEDED",
+                    "attempt_count": 1,
+                    "exit_code": 0,
+                    "log_group": "/aws/batch/job",
+                    "checks": {"terminal": True},
+                },
+                "cloudwatch": {
+                    "event_count": 3,
+                    "messages_sha256": "1" * 64,
+                    "terminal_payload_sha256": "2" * 64,
+                    "terminal_json_sha256": "3" * 64,
+                    "receipt_anchor": anchor,
+                    "receipt_upload": {
+                        "uri": crosscheck_receipt_uri,
+                        "version_id": "crosscheck-receipt-version",
+                        "sha256": crosscheck_receipt_sha,
+                        "bytes": crosscheck_receipt.stat().st_size,
+                        "kms_key_arn": KMS_ARN,
+                    },
+                },
+                "receipt": {
+                    "uri": crosscheck_receipt_uri,
+                    "version_id": "crosscheck-receipt-version",
+                    "sha256": crosscheck_receipt_sha,
+                    "bytes": crosscheck_receipt.stat().st_size,
+                    "local_sha256": crosscheck_receipt_sha,
+                    "local_bytes": crosscheck_receipt.stat().st_size,
+                    "kms_key_arn": KMS_ARN,
+                    "history": [
+                        {
+                            "Key": (
+                                f"runs/subject01/{RUN_ID}/deterministic/"
+                                "provenance/crosscheck-materialization-receipts/"
+                                f"{crosscheck_receipt_sha}.json"
+                            ),
+                            "VersionId": "crosscheck-receipt-version",
+                            "IsLatest": True,
+                            "history_kind": "version",
+                        }
+                    ],
+                    "checks": {"exact_version": True},
+                },
+                "local_anchor": {
+                    "sha256": sha256(anchor_path),
+                    "bytes": anchor_path.stat().st_size,
+                },
+                "classification_authorization": "none",
+                "authorized_hrd_state": "no_call",
+                "checks": {"terminal_batch_identity": True},
+            },
+        )
+        staged_output = outputs["staged_input_validation.json"]
+        write_json(
+            self.aux / "staged-input-validation-download.json",
+            {
+                "schema_version": 1,
+                "status": "passed",
+                "materializer_receipt_sha256": crosscheck_receipt_sha,
+                "expected_kms_key_arn": KMS_ARN,
+                "checks": {"sha256_exact": True},
+                "object": {
+                    "uri": staged_output["uri"],
+                    "version_id": staged_output["version_id"],
+                    "expected_sha256": staged_output["sha256"],
+                    "expected_bytes": staged_output["bytes"],
+                    "sha256": staged_output["sha256"],
+                    "bytes": staged_output["bytes"],
+                },
+            },
+        )
 
     def command(self) -> list[str]:
         return [
@@ -898,9 +1004,12 @@ class SyntheticFixture:
             "--final-freeze-anchor", str(self.aux / "final-freeze-anchor.json"),
             "--exact-materialization-receipt", str(self.aux / "exact-materialization.json"),
             "--crosscheck-materialization-receipt", str(self.aux / "crosscheck-materialization.json"),
+            "--crosscheck-materialization-capture", str(self.aux / "crosscheck-materialization-capture.json"),
+            "--crosscheck-materialization-anchor", str(self.aux / "crosscheck-materialization-anchor.json"),
             "--stage-provenance-receipt", str(self.aux / "stage-provenance.json"),
             "--stage-provenance-anchor", str(self.aux / "stage-provenance-anchor.json"),
             "--staged-input-validation-json", str(self.aux / "staged-input-validation.json"),
+            "--staged-input-validation-download-receipt", str(self.aux / "staged-input-validation-download.json"),
             "--expected-kms-key-arn", KMS_ARN,
             "--early-look-root", str(self.early),
             "--output-dir", str(self.output),
@@ -1030,8 +1139,10 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertIn("final_artifact_freeze", {row["check_id"] for row in checks["checks"]})
             self.assertIn("exact_version_materialization", {row["check_id"] for row in checks["checks"]})
             self.assertIn("crosscheck_materialization_custody", {row["check_id"] for row in checks["checks"]})
+            self.assertIn("crosscheck_terminal_custody", {row["check_id"] for row in checks["checks"]})
             self.assertIn("stable_input_snapshot", {row["check_id"] for row in checks["checks"]})
             self.assertIn("stage_provenance_custody", {row["check_id"] for row in checks["checks"]})
+            self.assertEqual(checks["crosscheck_terminal"]["status"], "passed")
             self.assertEqual(checks["stage_provenance"]["status"], "passed")
             self.assertEqual(checks["input_snapshot"]["strategy"], "open_no_follow_fstat_copy_global_restat")
             with (fixture.output / "input_sha256.csv").open(
@@ -1062,6 +1173,18 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertTrue(
                 manifest["review_summary"]["custody"]
                 ["crosscheck_materialization_receipt_sha256"]
+            )
+            self.assertTrue(
+                manifest["review_summary"]["custody"]
+                ["crosscheck_materialization_capture_sha256"]
+            )
+            self.assertTrue(
+                manifest["review_summary"]["custody"]
+                ["crosscheck_materialization_anchor_sha256"]
+            )
+            self.assertTrue(
+                manifest["review_summary"]["custody"]
+                ["staged_input_validation_download_receipt_sha256"]
             )
             self.assertEqual(
                 manifest["review_summary"]["custody"]
@@ -1296,6 +1419,30 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("crosscheck_materialization_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_changed_terminal_anchor_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            anchor_path = fixture.aux / "crosscheck-materialization-anchor.json"
+            anchor = json.loads(anchor_path.read_text(encoding="utf-8"))
+            anchor["receipt_sha256"] = "0" * 64
+            write_json(anchor_path, anchor)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_changed_staged_validation_download_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            download_path = fixture.aux / "staged-input-validation-download.json"
+            download = json.loads(download_path.read_text(encoding="utf-8"))
+            download["object"]["sha256"] = "0" * 64
+            write_json(download_path, download)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
 
     def test_changed_stage_provenance_version_fails_before_report_publication(self) -> None:

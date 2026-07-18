@@ -59,6 +59,9 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertIn("HRD_CROSSCHECK_LICENSE_REVIEWED=YES", text)
         self.assertIn("terminal.materializer.request.dry.json", text)
         self.assertIn("terminal.materializer.capture-command.sh", text)
+        self.assertIn("--crosscheck-materialization-capture", text)
+        self.assertIn("--crosscheck-materialization-anchor", text)
+        self.assertIn("--staged-input-validation-download-receipt", text)
         self.assertIn(
             "Wait for the submitted materializer job in "
             "`terminal.materializer.response.json` to reach `SUCCEEDED`",
