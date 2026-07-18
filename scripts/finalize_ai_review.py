@@ -71,6 +71,10 @@ def resolve_real_file(path: Path, label: str) -> Path:
     return path.resolve()
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def require_exact_review_dir(review_dir: Path, expected: set[str]) -> None:
     if review_dir.is_symlink() or not review_dir.is_dir():
         raise ValueError("review directory is missing or a symlink")
@@ -313,10 +317,11 @@ def write_create_only(path: Path, value: dict[str, Any]) -> None:
 def require_safe_parent(path: Path) -> None:
     if path.is_symlink():
         raise ValueError("report_manifest.json already exists")
-    if path.parent.is_symlink():
-        raise ValueError("output path may not be a symlink")
-    if path.parent.exists() and not path.parent.is_dir():
-        raise NotADirectoryError(path.parent)
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"output path may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -335,8 +340,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.model_catalog_receipt,
             "model catalog receipt",
         )
-        if args.output.is_symlink() or args.output.parent.is_symlink():
-            raise ValueError("output path may not be a symlink")
+        require_safe_parent(args.output)
         requested_output = args.output.parent.resolve() / args.output.name
         output = review_dir / "report_manifest.json"
         if requested_output != output:

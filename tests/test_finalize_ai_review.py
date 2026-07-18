@@ -17,6 +17,7 @@ for path in (SCRIPT_DIR, TEST_DIR):
 
 import finalize_ai_review as FINALIZE  # noqa: E402
 import publish_private_report as PUBLISH_PRIVATE  # noqa: E402
+
 from tests.test_build_ai_review_bundle import write_json  # noqa: E402
 from tests.test_validate_ai_review import ValidateReviewFixture  # noqa: E402
 
@@ -138,6 +139,27 @@ class FinalizeAiReviewTests(unittest.TestCase):
                 )
 
             self.assertFalse((real_parent / "report_manifest.json").exists())
+
+    def test_final_manifest_refuses_existing_dir_below_symlinked_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "review-real"
+            (real_parent / "existing").mkdir(parents=True)
+            linked_parent = root / "review-link"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            output = linked_parent / "existing" / "report_manifest.json"
+
+            with self.assertRaisesRegex(ValueError, "output path may not be a symlink"):
+                FINALIZE.write_create_only(
+                    output,
+                    {"status": "passed"},
+                )
+
+            self.assertFalse(
+                (real_parent / "existing" / "report_manifest.json").exists()
+            )
 
     def test_wraps_passed_ai_review_for_private_publication(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -841,6 +841,26 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "missing" / "receipt.json").exists())
 
+    def test_receipt_output_rejects_existing_dir_below_symlinked_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-receipts"
+            (real_parent / "existing").mkdir(parents=True)
+            linked_parent = root / "linked-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            receipt = linked_parent / "existing" / "receipt.json"
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.write_private_atomic(
+                    receipt,
+                    {"status": "redirected"},
+                    create=True,
+                )
+
+            self.assertFalse((real_parent / "existing" / "receipt.json").exists())
+
     def test_create_receipt_removes_partial_output_after_fsync_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             receipt = Path(temporary) / "receipt.json"

@@ -248,6 +248,25 @@ class ValidateAiReviewTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "validation.json").exists())
 
+    def test_validation_receipt_refuses_existing_dir_below_symlinked_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "review-real"
+            (real_parent / "existing").mkdir(parents=True)
+            linked_parent = root / "review-link"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            output = linked_parent / "existing" / "validation.json"
+
+            with self.assertRaisesRegex(ValueError, "review directory.*symlink"):
+                VALIDATE.write_validation_create_only(
+                    output,
+                    {"status": "passed"},
+                )
+
+            self.assertFalse((real_parent / "existing" / "validation.json").exists())
+
     def test_validates_independent_review_against_schema_2_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))

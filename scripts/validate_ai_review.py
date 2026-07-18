@@ -142,6 +142,10 @@ def resolve_real_file(path: Path, label: str) -> Path:
     return path.resolve()
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
 def parse_time(value: Any, label: str) -> datetime:
     try:
         parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
@@ -920,10 +924,11 @@ def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None
 def require_safe_validation_parent(path: Path) -> None:
     if path.is_symlink():
         raise ValueError("validation.json already exists")
-    if path.parent.is_symlink():
-        raise ValueError("review directory is missing or a symlink")
-    if path.parent.exists() and not path.parent.is_dir():
-        raise NotADirectoryError(path.parent)
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"review directory is missing or a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
