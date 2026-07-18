@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -46,3 +47,25 @@ class RunbookIoTests(unittest.TestCase):
             "NEXT_RUNBOOK='/repo/.codex-tmp/hrd reports/ai-review/"
             "terminal.post-reports-runbook.'$(date -u +%Y%m%dT%H%M%SZ).md",
         )
+
+    def test_required_and_create_only_path_filters(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            regular = root / "regular.txt"
+            directory = root / "directory"
+            missing = root / "missing.txt"
+            broken_symlink = root / "broken"
+            regular.write_text("ok\n", encoding="utf-8")
+            directory.mkdir()
+            broken_symlink.symlink_to(root / "absent")
+
+            paths = (regular, directory, missing, broken_symlink)
+
+            self.assertEqual(
+                MODULE.missing_required_files(paths),
+                (directory, missing, broken_symlink),
+            )
+            self.assertEqual(
+                MODULE.preexisting_create_only_paths(paths),
+                (regular, directory, broken_symlink),
+            )

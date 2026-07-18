@@ -29,6 +29,8 @@ from runbook_io import (
     Raw,
     bash_block,
     block,
+    missing_required_files,
+    preexisting_create_only_paths,
     shell_join,
     timestamped_runbook_assignment,
     unique_paths,
@@ -858,15 +860,13 @@ def main() -> int:
     args = parser.parse_args()
 
     root = args.root.resolve()
-    missing = [path for path in required_existing(root) if not path.is_file()]
+    missing = missing_required_files(required_existing(root))
     if missing:
         raise SystemExit(
             "Fail-closed: missing post-success runbook prerequisites: "
             + ", ".join(str(path) for path in missing)
         )
-    preexisting = [
-        path for path in required_absent(root) if path.exists() or path.is_symlink()
-    ]
+    preexisting = preexisting_create_only_paths(required_absent(root))
     if preexisting:
         raise SystemExit(
             "Fail-closed: post-success create-only outputs already exist: "

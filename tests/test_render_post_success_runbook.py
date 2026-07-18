@@ -13,6 +13,8 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+import runbook_io as RUNBOOK_IO  # noqa: E402
+
 SPEC = importlib.util.spec_from_file_location(
     "render_post_success_runbook", SCRIPT_DIR / "render_post_success_runbook.py"
 )
@@ -274,13 +276,11 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             stale.parent.mkdir(parents=True)
             stale.symlink_to(root / "missing")
 
-            preexisting = [
-                path
-                for path in MODULE.required_absent(root)
-                if path.exists() or path.is_symlink()
-            ]
+            preexisting = RUNBOOK_IO.preexisting_create_only_paths(
+                MODULE.required_absent(root)
+            )
 
-            self.assertEqual(preexisting, [stale])
+            self.assertEqual(preexisting, (stale,))
 
     def test_main_rejects_preexisting_create_only_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

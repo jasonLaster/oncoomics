@@ -22,6 +22,8 @@ from runbook_io import (
     Raw,
     bash_block,
     block,
+    missing_required_files,
+    preexisting_create_only_paths,
     shell_join,
     source_private_receipt_path,
     timestamped_runbook_assignment,
@@ -258,7 +260,7 @@ def main() -> int:
     args = parser.parse_args()
 
     root = args.root.resolve()
-    missing = [path for path in required_existing(root) if not path.is_file()]
+    missing = missing_required_files(required_existing(root))
     if missing:
         raise SystemExit(
             "Fail-closed: missing source freeze runbook prerequisites: "
@@ -274,11 +276,9 @@ def main() -> int:
         )
     except ValueError as error:
         raise SystemExit(f"Fail-closed: {error}") from error
-    preexisting = [
-        path
-        for path in required_absent(root, args.receipt_stem)
-        if path.exists() or path.is_symlink()
-    ]
+    preexisting = preexisting_create_only_paths(
+        required_absent(root, args.receipt_stem)
+    )
     if preexisting:
         raise SystemExit(
             "Fail-closed: source private-freeze create-only outputs already exist: "

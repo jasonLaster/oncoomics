@@ -20,7 +20,12 @@ from publish_reviewed_public_report import (
     SUBJECT_ALIAS,
     validate_private_receipt,
 )
-from runbook_io import block, write_once
+from runbook_io import (
+    block,
+    missing_required_files,
+    preexisting_create_only_paths,
+    write_once,
+)
 
 
 STALE_TOKENS = (
@@ -273,7 +278,7 @@ def main() -> int:
     args = parser.parse_args()
 
     root = args.root.resolve()
-    missing = [path for path in required_existing(root) if not path.is_file()]
+    missing = missing_required_files(required_existing(root))
     if missing:
         raise SystemExit(
             "Fail-closed: missing reviewed-public runbook prerequisites: "
@@ -281,11 +286,9 @@ def main() -> int:
         )
     if args.output.exists() or args.output.is_symlink():
         raise SystemExit(f"Fail-closed: output already exists: {args.output}")
-    preexisting = [
-        path
-        for path in required_absent(root, args.receipt_stem)
-        if path.exists() or path.is_symlink()
-    ]
+    preexisting = preexisting_create_only_paths(
+        required_absent(root, args.receipt_stem)
+    )
     if preexisting:
         raise SystemExit(
             "Fail-closed: reviewed-public create-only outputs already exist: "

@@ -38,6 +38,18 @@ def unique_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
     return tuple(dict.fromkeys(paths))
 
 
+def missing_required_files(paths: Iterable[Path]) -> tuple[Path, ...]:
+    """Return prerequisite paths that are absent or not regular files."""
+
+    return tuple(path for path in paths if not path.is_file())
+
+
+def preexisting_create_only_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
+    """Return create-only outputs that already exist, including broken symlinks."""
+
+    return tuple(path for path in paths if path.exists() or path.is_symlink())
+
+
 def source_private_receipt_path(
     root: Path, receipt_stem: str, method_id: str
 ) -> Path:
