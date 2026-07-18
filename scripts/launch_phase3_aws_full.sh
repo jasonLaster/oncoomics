@@ -31,6 +31,21 @@ PHASE3_PREREQ_MODE="${PHASE3_PREREQ_MODE:-minimal}"
 PHASE3_WORKFLOW="${PHASE3_WORKFLOW:-phase3_wgs}"
 PHASE3_ALIGNMENT_CACHE_WORKERS="${PHASE3_ALIGNMENT_CACHE_WORKERS:-2}"
 PHASE3_OUTDIR="${PHASE3_OUTDIR:-}"
+ALLOW_LEGACY_PHASE3_AWS_FULL="${ALLOW_LEGACY_PHASE3_AWS_FULL:-}"
+
+if [[ "$PHASE3_WORKFLOW" == "phase3_wgs" || "$PHASE3_WORKFLOW" == "phase3_wgs_monolith" ]]; then
+  if [[ "$ALLOW_LEGACY_PHASE3_AWS_FULL" != "YES" ]]; then
+    cat >&2 <<'EOF'
+Refusing to launch a legacy full-source Phase 3 WGS AWS CPU workflow.
+
+The stopped Diana WGS evidence run should resume through phase3_wgs_fast on the
+GPU/distributed architecture, not another monolithic CPU retry. Set
+ALLOW_LEGACY_PHASE3_AWS_FULL=YES only for an explicitly approved legacy public
+SEQC2/HCC1395 run.
+EOF
+    exit 64
+  fi
+fi
 
 mkdir -p "$RUN_DIR"
 
@@ -48,56 +63,58 @@ PY
 )"
 fi
 
-outdir_args=()
+nextflow_args=(
+  -log "$RUN_DIR/nextflow.log"
+  run main.nf
+  -profile "$AWS_PROFILE"
+  -params-file infra/aws/nextflow.aws.json
+  -name "$RUN_NAME"
+  --container "$CONTAINER"
+)
 if [[ -n "$PHASE3_OUTDIR" ]]; then
-  outdir_args=(--outdir "$PHASE3_OUTDIR")
+  nextflow_args+=(--outdir "$PHASE3_OUTDIR")
 fi
+nextflow_args+=(
+  --aws_max_retries "$AWS_MAX_RETRIES"
+  --workflow "$PHASE3_WORKFLOW"
+  --phase3_reads full
+  --phase3_source_mode aws_sra
+  --phase3_fetch_cpus "$PHASE3_FETCH_CPUS"
+  --phase3_fetch_memory "$PHASE3_FETCH_MEMORY"
+  --phase3_ref_cpus "$PHASE3_REF_CPUS"
+  --phase3_ref_memory "$PHASE3_REF_MEMORY"
+  --phase3_align_cpus "$PHASE3_ALIGN_CPUS"
+  --phase3_align_memory "$PHASE3_ALIGN_MEMORY"
+  --phase3_downstream_cpus "$PHASE3_DOWNSTREAM_CPUS"
+  --phase3_downstream_memory "$PHASE3_DOWNSTREAM_MEMORY"
+  --phase3_aligner "$PHASE3_ALIGNER"
+  --phase3_bwa_threads "$PHASE3_BWA_THREADS"
+  --phase3_sort_threads "$PHASE3_SORT_THREADS"
+  --phase3_align_input_mode "$PHASE3_ALIGN_INPUT_MODE"
+  --phase3_align_profile_mode "$PHASE3_ALIGN_PROFILE_MODE"
+  --phase3_scatter_output_mode "$PHASE3_SCATTER_OUTPUT_MODE"
+  --phase3_shard_input_mode "$PHASE3_SHARD_INPUT_MODE"
+  --phase3_force "$PHASE3_FORCE"
+  --phase3_force_shard_alignment "$PHASE3_FORCE_SHARD_ALIGNMENT"
+  --phase3_scatter_role "$PHASE3_SCATTER_ROLE"
+  --phase3_shard_count "$PHASE3_SHARD_COUNT"
+  --phase3_bam_validation_mode "$PHASE3_BAM_VALIDATION_MODE"
+  --phase3_coverage_cnv_mode "$PHASE3_COVERAGE_CNV_MODE"
+  --phase3_fetch_concurrency 8
+  --phase3_s3_range_concurrency 8
+  --phase3_sra_run_concurrency 2
+  --phase3_cache_upload_workers 4
+  --phase3_alignment_cache_workers "$PHASE3_ALIGNMENT_CACHE_WORKERS"
+  --phase3_fastq_stats_mode metadata
+  --phase3_include_wes false
+  --phase3_prereq_mode "$PHASE3_PREREQ_MODE"
+  -with-trace "$RUN_DIR/trace.tsv"
+  -with-report "$RUN_DIR/report.html"
+  -with-timeline "$RUN_DIR/timeline.html"
+)
 
 set +e
-nextflow \
-  -log "$RUN_DIR/nextflow.log" \
-  run main.nf \
-  -profile "$AWS_PROFILE" \
-  -params-file infra/aws/nextflow.aws.json \
-  -name "$RUN_NAME" \
-  --container "$CONTAINER" \
-  "${outdir_args[@]}" \
-  --aws_max_retries "$AWS_MAX_RETRIES" \
-  --workflow "$PHASE3_WORKFLOW" \
-  --phase3_reads full \
-  --phase3_source_mode aws_sra \
-  --phase3_fetch_cpus "$PHASE3_FETCH_CPUS" \
-  --phase3_fetch_memory "$PHASE3_FETCH_MEMORY" \
-  --phase3_ref_cpus "$PHASE3_REF_CPUS" \
-  --phase3_ref_memory "$PHASE3_REF_MEMORY" \
-  --phase3_align_cpus "$PHASE3_ALIGN_CPUS" \
-  --phase3_align_memory "$PHASE3_ALIGN_MEMORY" \
-  --phase3_downstream_cpus "$PHASE3_DOWNSTREAM_CPUS" \
-  --phase3_downstream_memory "$PHASE3_DOWNSTREAM_MEMORY" \
-  --phase3_aligner "$PHASE3_ALIGNER" \
-  --phase3_bwa_threads "$PHASE3_BWA_THREADS" \
-  --phase3_sort_threads "$PHASE3_SORT_THREADS" \
-  --phase3_align_input_mode "$PHASE3_ALIGN_INPUT_MODE" \
-  --phase3_align_profile_mode "$PHASE3_ALIGN_PROFILE_MODE" \
-  --phase3_scatter_output_mode "$PHASE3_SCATTER_OUTPUT_MODE" \
-  --phase3_shard_input_mode "$PHASE3_SHARD_INPUT_MODE" \
-  --phase3_force "$PHASE3_FORCE" \
-  --phase3_force_shard_alignment "$PHASE3_FORCE_SHARD_ALIGNMENT" \
-  --phase3_scatter_role "$PHASE3_SCATTER_ROLE" \
-  --phase3_shard_count "$PHASE3_SHARD_COUNT" \
-  --phase3_bam_validation_mode "$PHASE3_BAM_VALIDATION_MODE" \
-  --phase3_coverage_cnv_mode "$PHASE3_COVERAGE_CNV_MODE" \
-  --phase3_fetch_concurrency 8 \
-  --phase3_s3_range_concurrency 8 \
-  --phase3_sra_run_concurrency 2 \
-  --phase3_cache_upload_workers 4 \
-  --phase3_alignment_cache_workers "$PHASE3_ALIGNMENT_CACHE_WORKERS" \
-  --phase3_fastq_stats_mode metadata \
-  --phase3_include_wes false \
-  --phase3_prereq_mode "$PHASE3_PREREQ_MODE" \
-  -with-trace "$RUN_DIR/trace.tsv" \
-  -with-report "$RUN_DIR/report.html" \
-  -with-timeline "$RUN_DIR/timeline.html"
+nextflow "${nextflow_args[@]}"
 code=$?
 set -e
 

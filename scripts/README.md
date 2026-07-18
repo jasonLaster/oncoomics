@@ -42,7 +42,8 @@ Current shell utilities:
 - `hrd_report_inventory.py`: pin the canonical seven-method Diana WGS report
   inventory shared by deterministic, Rosalind, cross-check, and AI-review
   reporting.
-- `launch_phase3_aws_full.sh`: launch a full Phase 3 WGS AWS run with repo-specific defaults.
+- `launch_phase3_aws_full.sh`: legacy full Phase 3 WGS AWS wrapper with an
+  explicit interlock for pre-fast-path CPU workflows.
 - `materialize_frozen_artifacts.py`: download a passed final-artifact private
   freeze by exact S3 VersionId into a local tree for deterministic reporting.
 - `materialize_crosscheck_inputs.py`: rewrite exact frozen deterministic
