@@ -202,6 +202,14 @@ def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
 
+def require_real_input_file(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
 def require_safe_receipt_output_parent(path: Path) -> None:
     if path.is_symlink():
         raise ValueError("receipt output may not be a symlink")
@@ -404,6 +412,7 @@ def private_report_prefix(method_id: str, value: str) -> tuple[str, str]:
 def validate_private_receipt(
     path: Path, method_id: str
 ) -> tuple[dict[str, Any], tuple[str, ...], list[dict[str, Any]]]:
+    require_real_input_file(path, "private publication receipt")
     if path.is_symlink() or not path.is_file():
         raise ValueError("private publication receipt must be a real file")
     receipt = load_json(path, "private publication receipt")
@@ -716,6 +725,7 @@ def source_preflight_object(row: dict[str, Any]) -> dict[str, Any]:
 def validate_dry_run_receipt(
     path: Path, receipt: dict[str, Any], source_rows: list[dict[str, Any]]
 ) -> dict[str, str]:
+    require_real_input_file(path, "reviewed-public report dry-run receipt")
     if path.is_symlink() or not path.is_file():
         raise ValueError("reviewed-public report dry-run receipt must be a real file")
     dry_run = load_json(path, "reviewed-public report dry-run receipt")
@@ -790,6 +800,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         )
     if not re.fullmatch(r"[0-9a-f]{64}", args.private_publication_receipt_sha256):
         raise ValueError("expected private publication receipt SHA-256 is malformed")
+    require_real_input_file(
+        args.private_publication_receipt,
+        "private publication receipt",
+    )
     actual_receipt_sha256 = sha256(args.private_publication_receipt)
     if actual_receipt_sha256 != args.private_publication_receipt_sha256:
         raise ValueError("private publication receipt SHA-256 does not match expected")

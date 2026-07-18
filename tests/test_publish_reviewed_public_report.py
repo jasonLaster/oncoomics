@@ -465,6 +465,35 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertFalse(fixture.output_path.exists())
 
+    def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_s3(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            dry_receipt = fixture.write_dry_run_receipt()
+            real_parent = fixture.root / "real-dry-run-receipts"
+            real_parent.mkdir()
+            moved_dry_receipt = real_parent / "public-publication.dry.json"
+            dry_receipt.rename(moved_dry_receipt)
+            linked_parent = fixture.root / "linked-dry-run-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with (
+                mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ),
+                self.assertRaisesRegex(ValueError, "parent may not be a symlink"),
+            ):
+                MODULE.run(
+                    fixture.args(
+                        apply=True,
+                        dry_run_receipt=linked_parent
+                        / "public-publication.dry.json",
+                    )
+                )
+
+            self.assertFalse(fixture.output_path.exists())
+
     def test_apply_uses_create_only_sse_s3_sha256_and_exact_final_history(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
@@ -954,6 +983,22 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             linked.symlink_to(target)
             with self.assertRaisesRegex(ValueError, "must be a real file"):
                 MODULE.validate_private_receipt(linked, fixture.method_id)
+
+    def test_private_receipt_below_symlinked_parent_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            real_parent = fixture.root / "real-private-receipts"
+            real_parent.mkdir()
+            moved_receipt = real_parent / "private-publication.json"
+            fixture.receipt_path.rename(moved_receipt)
+            linked_parent = fixture.root / "linked-private-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.validate_private_receipt(
+                    linked_parent / "private-publication.json",
+                    fixture.method_id,
+                )
 
     def test_rejects_private_receipt_with_unbound_packet_revision(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
