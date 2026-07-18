@@ -774,7 +774,19 @@ def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
         )
 
 
+def require_safe_new_packet(path: Path) -> Path:
+    require_no_symlinked_ancestors(path, "synthesis output packet")
+    if path.is_symlink():
+        raise ValueError("synthesis output packet may not be a symlink: " + path.name)
+    if path.exists():
+        raise ValueError("synthesis output packet already exists: " + path.name)
+    return path.resolve()
+
+
 def copy_create_only(source: Path, destination: Path) -> None:
+    source = require_real_nonempty_file(source, "staged synthesis packet")
+    expected_sha256 = sha256(source)
+    destination = require_safe_new_packet(destination)
     with source.open("rb") as source_handle:
         try:
             file_descriptor = os.open(
@@ -801,6 +813,12 @@ def copy_create_only(source: Path, destination: Path) -> None:
                 destination_handle.flush()
                 os.fsync(destination_handle.fileno())
             fsync_directory(destination.parent)
+            require_real_nonempty_file(destination, "synthesis output packet")
+            if (
+                sha256(source) != expected_sha256
+                or sha256(destination) != expected_sha256
+            ):
+                raise ValueError("staged synthesis packet changed during copy: " + source.name)
         except Exception:
             destination.unlink(missing_ok=True)
             raise

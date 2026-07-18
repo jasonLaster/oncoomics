@@ -364,6 +364,64 @@ class GenerateSynthesisTests(unittest.TestCase):
 
             self.assertEqual(destination.read_bytes(), b"one\n")
 
+    def test_synthesis_packet_copy_rejects_symlinked_source(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.txt"
+            source = root / "source.txt"
+            destination = root / "report.md"
+            real_source.write_bytes(b"one\n")
+            source.symlink_to(real_source)
+
+            with self.assertRaisesRegex(ValueError, "staged synthesis packet"):
+                GENERATE.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_synthesis_packet_copy_rejects_symlinked_destination_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            real_parent = root / "attacker"
+            linked_parent = root / "linked-parent"
+            source.write_bytes(b"one\n")
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                GENERATE.copy_create_only(
+                    source,
+                    linked_parent / "synthesis" / "report.md",
+                )
+
+            self.assertFalse((real_parent / "synthesis" / "report.md").exists())
+
+    def test_synthesis_packet_copy_revalidates_copied_bytes(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+            real_fsync_directory = GENERATE.fsync_directory
+
+            def tamper_after_directory_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                destination.write_bytes(b"tampered\n")
+
+            with (
+                mock.patch.object(
+                    GENERATE,
+                    "fsync_directory",
+                    side_effect=tamper_after_directory_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "changed during copy"),
+            ):
+                GENERATE.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
     def test_synthesis_install_failure_removes_only_installed_packet_files(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
             root = Path(temporary)
