@@ -8,6 +8,25 @@ from pathlib import Path
 from typing import Iterable
 
 
+class Raw(str):
+    """Shell token that should be emitted without shell quoting."""
+
+
+def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
+    return " ".join(
+        str(value) if isinstance(value, Raw) else shlex.quote(os.fspath(value))
+        for value in values
+    )
+
+
+def block(command: Iterable[str | os.PathLike[str]]) -> str:
+    return "```bash\n" + shell_join(command) + "\n```\n"
+
+
+def bash_block(lines: Iterable[str]) -> str:
+    return "```bash\n" + "\n".join(lines) + "\n```\n"
+
+
 def timestamped_runbook_assignment(variable: str, directory: Path, stem: str) -> str:
     prefix = shlex.quote(str(directory / f"{stem}."))
     return f"{variable}={prefix}$(date -u +%Y%m%dT%H%M%SZ).md"

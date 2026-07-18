@@ -5,8 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import shlex
 from pathlib import Path
 from typing import Iterable
 
@@ -21,15 +19,15 @@ from render_ai_synthesis_runbook import (
     required_existing as ai_required_existing,
 )
 from runbook_io import (
+    Raw,
+    bash_block,
+    block,
+    shell_join,
     source_private_receipt_path,
     timestamped_runbook_assignment,
     unique_paths,
     write_once,
 )
-
-
-class Raw(str):
-    """Shell token that should be emitted without shell quoting."""
 
 
 STALE_TOKENS = (
@@ -40,21 +38,6 @@ STALE_TOKENS = (
     "--source-dir",
     "--expected-file",
 )
-
-
-def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
-    return " ".join(
-        str(value) if isinstance(value, Raw) else shlex.quote(os.fspath(value))
-        for value in values
-    )
-
-
-def block(command: Iterable[str | os.PathLike[str]]) -> str:
-    return "```bash\n" + shell_join(command) + "\n```\n"
-
-
-def bash_block(lines: Iterable[str]) -> str:
-    return "```bash\n" + "\n".join(lines) + "\n```\n"
 
 
 def forbidden_flags() -> list[str]:

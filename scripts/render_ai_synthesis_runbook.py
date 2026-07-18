@@ -6,8 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
-import shlex
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -36,6 +34,10 @@ from render_reviewed_publication_runbook import (
     required_existing as reviewed_public_required_existing,
 )
 from runbook_io import (
+    Raw,
+    bash_block,
+    block,
+    shell_join,
     source_private_receipt_paths,
     timestamped_runbook_assignment,
     unique_paths,
@@ -48,25 +50,6 @@ AI_PRIVATE_RECEIPT_STEMS = (
     (AI_REVIEW_METHOD_IDS[1], "ai-reviewer-b"),
     (COMPARATIVE_METHOD_IDS[0], "comparative-synthesis"),
 )
-
-
-class Raw(str):
-    """Shell token that should be emitted without shell quoting."""
-
-
-def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
-    return " ".join(
-        str(value) if isinstance(value, Raw) else shlex.quote(os.fspath(value))
-        for value in values
-    )
-
-
-def block(command: Iterable[str | os.PathLike[str]]) -> str:
-    return "```bash\n" + shell_join(command) + "\n```\n"
-
-
-def bash_block(lines: Iterable[str]) -> str:
-    return "```bash\n" + "\n".join(lines) + "\n```\n"
 
 
 def sha256_path(path: Path) -> str:

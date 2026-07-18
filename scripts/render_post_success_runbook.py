@@ -5,10 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shlex
 from pathlib import Path
-from typing import Iterable
 
 from hrd_report_inventory import (
     BLOCKED_CROSSCHECK_REPORT_DIRS,
@@ -27,7 +25,15 @@ from render_source_report_freeze_runbook import (
     required_absent as source_required_absent,
     required_existing as source_required_existing,
 )
-from runbook_io import timestamped_runbook_assignment, unique_paths, write_once
+from runbook_io import (
+    Raw,
+    bash_block,
+    block,
+    shell_join,
+    timestamped_runbook_assignment,
+    unique_paths,
+    write_once,
+)
 
 
 JOB_ID = "6f827d44-d19b-4a6c-9126-d65189aa66cf"
@@ -64,25 +70,6 @@ STALE_TOKENS = (
     "--expected-file",
     "execution.running.json",
 )
-
-
-class Raw(str):
-    """Shell token that should be emitted without shell quoting."""
-
-
-def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
-    return " ".join(
-        str(value) if isinstance(value, Raw) else shlex.quote(os.fspath(value))
-        for value in values
-    )
-
-
-def block(command: Iterable[str | os.PathLike[str]]) -> str:
-    return "```bash\n" + shell_join(command) + "\n```\n"
-
-
-def bash_block(lines: Iterable[str]) -> str:
-    return "```bash\n" + "\n".join(lines) + "\n```\n"
 
 
 def forbidden_flags() -> list[str]:

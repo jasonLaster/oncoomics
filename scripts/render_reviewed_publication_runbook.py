@@ -5,8 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import shlex
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -22,7 +20,7 @@ from publish_reviewed_public_report import (
     SUBJECT_ALIAS,
     validate_private_receipt,
 )
-from runbook_io import write_once
+from runbook_io import block, write_once
 
 
 STALE_TOKENS = (
@@ -33,14 +31,6 @@ STALE_TOKENS = (
     "--source-dir",
     "--expected-file",
 )
-
-
-def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
-    return " ".join(shlex.quote(os.fspath(value)) for value in values)
-
-
-def block(command: Iterable[str | os.PathLike[str]]) -> str:
-    return "```bash\n" + shell_join(command) + "\n```\n"
 
 
 def load_object(path: Path) -> dict[str, Any]:
