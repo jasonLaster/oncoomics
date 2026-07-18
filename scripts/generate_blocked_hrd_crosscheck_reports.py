@@ -317,6 +317,8 @@ def load_source_report_manifest(path: Path, method_id: str) -> None:
         raise ValueError(f"source report manifest must preserve no_call: {method_id}")
     if manifest.get("classification_authorized") is not False:
         raise ValueError(f"source report manifest must not authorize classification: {method_id}")
+    if manifest.get("classification_qc_status") != "not_applicable":
+        raise ValueError(f"source report manifest classification QC must remain not_applicable: {method_id}")
     if SHA256_HEX.fullmatch(str(manifest.get("report_sha256", ""))) is None:
         raise ValueError(f"source report manifest report_sha256 is malformed: {method_id}")
     review_summary = manifest.get("review_summary")

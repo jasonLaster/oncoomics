@@ -43,6 +43,7 @@ def write_source_report_manifest(path: Path, **updates: object) -> None:
         "evidence_status": "partial_evidence",
         "authorized_hrd_state": "no_call",
         "classification_authorized": False,
+        "classification_qc_status": "not_applicable",
         "report_sha256": "a" * 64,
         "review_summary": {
             "overall": {
@@ -322,6 +323,34 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                         str(output),
                         "--source-report-manifest",
                         f"rosalind_diana_wgs={classifying}",
+                    ]
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_cli_rejects_no_call_source_report_with_applicable_classification_qc(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            classified_qc = root / "classified-qc.json"
+            write_source_report_manifest(
+                classified_qc,
+                classification_qc_status="passed",
+            )
+            output = root / "blocked"
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "source report manifest classification QC must remain "
+                "not_applicable: rosalind_diana_wgs",
+            ):
+                GENERATOR.main(
+                    [
+                        "--output-dir",
+                        str(output),
+                        "--source-report-manifest",
+                        f"rosalind_diana_wgs={classified_qc}",
                     ]
                 )
 
