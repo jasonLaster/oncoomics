@@ -66,6 +66,12 @@ def _sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _read_final_evidence(path: Path) -> Mapping[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ManifestError(f"final evidence manifest must be a real file: {path}")
+    return _require_mapping(read_json(path), "final_evidence")
+
+
 def _source_blob(value: Any, label: str) -> dict[str, Any]:
     source = _require_mapping(value, label)
     return {
@@ -219,7 +225,7 @@ def load_plan_from_environment() -> tuple[dict[str, Any], Path]:
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST", DEFAULT_FINAL_EVIDENCE))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN", DEFAULT_OUTPUT))
     plan = build_phase3_fast_crosscheck_materialization_plan(
-        read_json(input_path),
+        _read_final_evidence(input_path),
         final_evidence_sha256=_sha256_path(input_path),
     )
     return plan, output_path

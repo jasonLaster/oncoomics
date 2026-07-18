@@ -7,12 +7,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_evidence_join import SHA_4
-from tests.test_phase3_fast_final_evidence import _join_manifest
-
 from diana_omics.commands.phase3_wgs import plan_phase3_fast_crosscheck_inputs as crosscheck_plan
 from diana_omics.commands.phase3_wgs import publish_phase3_fast_final_evidence as final_evidence
 from diana_omics.utils import write_json
+from tests.test_phase3_fast_evidence_join import SHA_4
+from tests.test_phase3_fast_final_evidence import _join_manifest
 
 
 def _sha256_path(path: Path) -> str:
@@ -181,6 +180,30 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
         self.assertEqual(output_path, output)
         self.assertEqual(expected_manifest_sha256, plan["source"]["final_evidence_manifest_sha256"])
         self.assertIn('"manifest_type": "phase3_wgs_fast_crosscheck_materialization_plan"', output_text)
+
+    def test_environment_command_rejects_missing_directory_or_symlinked_final_evidence(self) -> None:
+        cases = ("missing", "directory", "symlink")
+        for bad_kind in cases:
+            with self.subTest(bad_kind=bad_kind), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                real_input = root / "real-final-evidence.json"
+                bad_input = root / f"final-evidence-{bad_kind}.json"
+                write_json(real_input, _final_evidence(root))
+                if bad_kind == "directory":
+                    bad_input.mkdir()
+                elif bad_kind == "symlink":
+                    bad_input.symlink_to(real_input)
+
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST": str(bad_input),
+                        "PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN": str(root / "plan.json"),
+                    },
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(crosscheck_plan.ManifestError, "final evidence"):
+                        crosscheck_plan.load_plan_from_environment()
 
     def test_plan_output_rejects_symlinked_parent(self) -> None:
         with TemporaryDirectory() as tmp:

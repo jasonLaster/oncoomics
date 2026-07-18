@@ -97,6 +97,12 @@ def _sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _read_manifest_file(path: Path, label: str) -> Mapping[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ManifestError(f"{label} must be a real file: {path}")
+    return _require_mapping(read_json(path), label)
+
+
 def _require_unsymlinked_path(path: Path, label: str) -> None:
     if path.is_symlink():
         raise ManifestError(f"{label} may not be a symlink: {path}")
@@ -1017,8 +1023,8 @@ def load_report_from_environment() -> tuple[dict[str, Any], Path]:
     output = path_from_root(os.environ.get("PHASE3_WGS_FAST_DETERMINISTIC_REPORT_OUTPUT", DEFAULT_OUTPUT_ROOT))
 
     manifest = stage_phase3_fast_deterministic_report(
-        _require_mapping(read_json(manifest_path), "final_evidence_manifest"),
-        _require_mapping(read_json(crosscheck_plan_path), "crosscheck_materialization_plan"),
+        _read_manifest_file(manifest_path, "final_evidence_manifest"),
+        _read_manifest_file(crosscheck_plan_path, "crosscheck_materialization_plan"),
         final_manifest_sha256=_sha256_path(manifest_path),
         final_manifest_bytes=manifest_path.stat().st_size,
         final_root=final_root,

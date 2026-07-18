@@ -8,12 +8,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tests.test_phase3_fast_final_evidence import _join_manifest
-
 from diana_omics.commands.phase3_wgs import plan_phase3_fast_crosscheck_inputs as crosscheck_plan
 from diana_omics.commands.phase3_wgs import publish_phase3_fast_final_evidence as final_evidence
 from diana_omics.commands.phase3_wgs import stage_phase3_fast_deterministic_report as stage_report
 from diana_omics.utils import read_json, write_json
+from tests.test_phase3_fast_final_evidence import _join_manifest
 
 
 def _sha256_path(path: Path) -> str:
@@ -212,6 +211,47 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         self.assertEqual(output, report_output)
         self.assertEqual("deterministic_full_wgs", report_manifest["method_id"])
         self.assertEqual("phase3_fast_deterministic_evidence", report_kind)
+
+    def test_environment_command_rejects_redirected_input_manifests(self) -> None:
+        cases = (
+            ("PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST", "final_evidence_manifest", "missing"),
+            ("PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST", "final_evidence_manifest", "directory"),
+            ("PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST", "final_evidence_manifest", "symlink"),
+            ("PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN", "crosscheck_materialization_plan", "missing"),
+            ("PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN", "crosscheck_materialization_plan", "directory"),
+            ("PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN", "crosscheck_materialization_plan", "symlink"),
+        )
+        for env_key, label, bad_kind in cases:
+            with self.subTest(env_key=env_key, bad_kind=bad_kind), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                manifest_path, final_root, final_manifest = _write_final_manifest(root)
+                plan_path = root / "crosscheck_materialization_plan.json"
+                write_json(
+                    plan_path,
+                    _crosscheck_materialization_plan(
+                        final_manifest,
+                        manifest_path,
+                    ),
+                )
+                bad_path = root / f"{label}-{bad_kind}.json"
+                if bad_kind == "directory":
+                    bad_path.mkdir()
+                elif bad_kind == "symlink":
+                    bad_path.symlink_to(manifest_path if env_key == "PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST" else plan_path)
+
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST": str(manifest_path),
+                        "PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN": str(plan_path),
+                        "PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT": str(final_root),
+                        "PHASE3_WGS_FAST_DETERMINISTIC_REPORT_OUTPUT": str(root / "deterministic"),
+                        env_key: str(bad_path),
+                    },
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(stage_report.ManifestError, label):
+                        stage_report.load_report_from_environment()
 
     def test_rejects_promoted_hrd_boundary(self) -> None:
         with TemporaryDirectory() as tmp:
