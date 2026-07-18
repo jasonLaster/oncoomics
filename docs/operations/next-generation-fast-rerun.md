@@ -290,7 +290,9 @@ argument vectors in order on the same staged GPU worker, and write a completed
 receipt that copies the plan inputs and outputs plus the plan SHA-256 and
 verifies the non-empty raw VCF, raw `.stats`, F1R2 tarball, and PoN-annotated
 VCF with SHA-256 before any CPU tail treats the Parabricks VCFs as
-materialized.
+materialized. The runner clears those declared materialized outputs before
+execution so a stale `/scratch` file cannot satisfy the receipt if a command
+fails to recreate it.
 `FAST_FILTER_MUTECT_PLAN` consumes the same staged-input manifest plus the
 Parabricks Mutect plan and emits the exact CPU tail for matched-normal pileups,
 contamination, read-orientation priors, `FilterMutectCalls`, and VCF indexing.
@@ -298,6 +300,8 @@ contamination, read-orientation priors, `FilterMutectCalls`, and VCF indexing.
 the raw VCF, raw `.stats`, F1R2 tarball, and PoN-annotated VCF against that
 receipt, run only the planned GATK/bcftools commands, and write a completed
 receipt with bytes and SHA-256 for every tail artifact it materializes.
+It also clears those declared tail artifacts before execution and hashes only
+post-run files.
 The first execution-mode Nextflow seam keeps Parabricks and the short
 FilterMutect CPU tail fused in one `gpu_parabricks` process so the raw VCF,
 raw `.stats`, F1R2 tarball, and PoN-annotated VCF never cross a worker-local

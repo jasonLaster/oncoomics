@@ -86,6 +86,26 @@ def _materialized_outputs(plan: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     return materialized
 
 
+def _prepare_materialized_outputs(plan: Mapping[str, Any]) -> None:
+    outputs = _require_mapping(plan.get("outputs"), "outputs")
+    paths = {
+        key: _require_absolute_path(outputs.get(key), key)
+        for key in MATERIALIZED_OUTPUTS
+    }
+    path_values = list(paths.values())
+    if len(set(path_values)) != len(path_values):
+        raise ManifestError("materialized output paths must be unique")
+
+    for key, path in paths.items():
+        if path.exists() and not path.is_file():
+            raise ManifestError(f"{key} materialized output path already exists and is not a file: {path}")
+        ensure_parent(path)
+        path.unlink(missing_ok=True)
+
+    for key in ("logs_dir", "tmp_dir"):
+        Path(_require_absolute_path(outputs.get(key), key)).mkdir(parents=True, exist_ok=True)
+
+
 def _planned_commands(plan: Mapping[str, Any]) -> list[tuple[str, list[str]]]:
     commands = _require_mapping(plan.get("commands"), "commands")
     command_names = tuple(commands)
@@ -120,6 +140,7 @@ def run_phase3_fast_parabricks_mutect(
 ) -> dict[str, Any]:
     mutect_plan_sha = _require_hex(parabricks_mutect_plan_sha256, "parabricks_mutect_plan_sha256")
     commands = _validate_plan(plan)
+    _prepare_materialized_outputs(plan)
     for _, argv in commands:
         runner.run(argv)
     materialized_outputs = _materialized_outputs(plan)

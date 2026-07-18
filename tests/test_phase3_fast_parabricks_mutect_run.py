@@ -22,6 +22,32 @@ class RecordingRunner:
         self.commands.append(list(argv))
 
 
+class MaterializingParabricksRunner(RecordingRunner):
+    def __init__(self, plan: dict, *, skip: set[str] | None = None, empty: set[str] | None = None) -> None:
+        super().__init__()
+        self.plan = plan
+        self.skip = skip or set()
+        self.empty = empty or set()
+        self.payloads: dict[str, bytes] = {}
+
+    def run(self, argv: list[str]) -> None:
+        super().run(argv)
+        if argv[:2] == ["pbrun", "mutectcaller"]:
+            for key in ("raw_vcf", "raw_vcf_stats", "f1r2_tar_gz"):
+                self._write_output(key)
+        elif argv[:2] == ["pbrun", "postpon"]:
+            self._write_output("pon_annotated_vcf")
+
+    def _write_output(self, key: str) -> None:
+        if key in self.skip:
+            return
+        path = Path(self.plan["outputs"][key])
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = b"" if key in self.empty else f"fresh {key}\n".encode()
+        path.write_bytes(payload)
+        self.payloads[key] = payload
+
+
 def _sha256_json(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -51,9 +77,7 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
     def test_runs_prepon_mutectcaller_and_postpon_then_writes_completed_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = parabricks_plan(Path(tmp))
-            payloads = write_materialized_outputs(plan)
-
-            runner = RecordingRunner()
+            runner = MaterializingParabricksRunner(plan)
             receipt = run_mutect.run_phase3_fast_parabricks_mutect(
                 plan,
                 runner=runner,
@@ -79,11 +103,11 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
         self.assertEqual(plan["outputs"], receipt["outputs"])
         self.assertEqual(set(run_mutect.MATERIALIZED_OUTPUTS), set(receipt["materialized_outputs"]))
         self.assertEqual(
-            hashlib.sha256(payloads["raw_vcf"]).hexdigest(),
+            hashlib.sha256(runner.payloads["raw_vcf"]).hexdigest(),
             receipt["materialized_outputs"]["raw_vcf"]["sha256"],
         )
         self.assertEqual(
-            len(payloads["pon_annotated_vcf"]),
+            len(runner.payloads["pon_annotated_vcf"]),
             receipt["materialized_outputs"]["pon_annotated_vcf"]["bytes"],
         )
         self.assertEqual(
@@ -98,10 +122,9 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
             plan_path = root / "parabricks-plan.json"
             receipt_path = root / "parabricks-receipt.json"
             plan = parabricks_plan(root)
-            write_materialized_outputs(plan)
             write_json(plan_path, plan)
 
-            runner = RecordingRunner()
+            runner = MaterializingParabricksRunner(plan)
             with patch.dict(
                 "os.environ",
                 {
@@ -123,26 +146,36 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
     def test_rejects_missing_materialized_output(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = parabricks_plan(Path(tmp))
-            write_materialized_outputs(plan)
-            Path(plan["outputs"]["f1r2_tar_gz"]).unlink()
+            runner = MaterializingParabricksRunner(plan, skip={"f1r2_tar_gz"})
 
             with self.assertRaisesRegex(run_mutect.ManifestError, "f1r2_tar_gz"):
                 run_mutect.run_phase3_fast_parabricks_mutect(
                     plan,
-                    runner=RecordingRunner(),
+                    runner=runner,
                     parabricks_mutect_plan_sha256=SHA_1,
                 )
 
     def test_rejects_empty_materialized_output(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = parabricks_plan(Path(tmp))
-            write_materialized_outputs(plan)
-            Path(plan["outputs"]["raw_vcf_stats"]).write_bytes(b"")
+            runner = MaterializingParabricksRunner(plan, empty={"raw_vcf_stats"})
 
             with self.assertRaisesRegex(run_mutect.ManifestError, "raw_vcf_stats"):
                 run_mutect.run_phase3_fast_parabricks_mutect(
                     plan,
-                    runner=RecordingRunner(),
+                    runner=runner,
+                    parabricks_mutect_plan_sha256=SHA_1,
+                )
+
+    def test_removes_stale_outputs_before_running_planned_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = parabricks_plan(Path(tmp))
+            write_materialized_outputs(plan)
+
+            with self.assertRaisesRegex(run_mutect.ManifestError, "f1r2_tar_gz"):
+                run_mutect.run_phase3_fast_parabricks_mutect(
+                    plan,
+                    runner=MaterializingParabricksRunner(plan, skip={"f1r2_tar_gz"}),
                     parabricks_mutect_plan_sha256=SHA_1,
                 )
 

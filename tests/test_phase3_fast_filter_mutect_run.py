@@ -8,8 +8,7 @@ from unittest.mock import patch
 
 from test_phase3_fast_input_manifest import SHA_1
 from test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
-from test_phase3_fast_parabricks_mutect_run import RecordingRunner
-from test_phase3_fast_parabricks_mutect_run import write_materialized_outputs as write_parabricks_outputs
+from test_phase3_fast_parabricks_mutect_run import MaterializingParabricksRunner, RecordingRunner
 
 from diana_omics.commands.phase3_wgs import render_phase3_fast_filter_mutect_plan as filter_mutect
 from diana_omics.commands.phase3_wgs import render_phase3_fast_parabricks_mutect_plan as parabricks
@@ -45,6 +44,18 @@ class FilterMutectRunner:
         path.write_bytes(f"{path.name}\n".encode())
 
 
+class IncompleteFilterMutectRunner(FilterMutectRunner):
+    def run(self, argv: list[str]) -> None:
+        self.commands.append(list(argv))
+        if "GetPileupSummaries" in argv or "LearnReadOrientationModel" in argv:
+            self._write_option_output(argv, "-O")
+        elif "CalculateContamination" in argv:
+            self._write_option_output(argv, "-O")
+            self._write_option_output(argv, "--tumor-segmentation")
+        elif "FilterMutectCalls" in argv:
+            self._write_option_output(argv, "-O")
+
+
 def _sha256_json(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -57,10 +68,9 @@ def filter_plan_and_parabricks_receipt(root: Path) -> tuple[dict, dict]:
         output_root=root / "parabricks",
         num_gpus=8,
     )
-    write_parabricks_outputs(mutect_plan)
     parabricks_receipt = run_parabricks.run_phase3_fast_parabricks_mutect(
         mutect_plan,
-        runner=RecordingRunner(),
+        runner=MaterializingParabricksRunner(mutect_plan),
         parabricks_mutect_plan_sha256=SHA_2,
     )
     filter_plan = filter_mutect.build_phase3_fast_filter_mutect_plan(
@@ -225,6 +235,22 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
                     plan,
                     parabricks_receipt,
                     runner=RecordingRunner(),
+                    filter_mutect_plan_sha256=SHA_1,
+                    parabricks_mutect_receipt_sha256=SHA_3,
+                )
+
+    def test_removes_stale_outputs_before_running_planned_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
+            runner = FilterMutectRunner()
+            for command in plan["commands"].values():
+                runner.run(command["argv"])
+
+            with self.assertRaisesRegex(run_filter.ManifestError, "pon_annotated_vcf_index"):
+                run_filter.run_phase3_fast_filter_mutect(
+                    plan,
+                    parabricks_receipt,
+                    runner=IncompleteFilterMutectRunner(),
                     filter_mutect_plan_sha256=SHA_1,
                     parabricks_mutect_receipt_sha256=SHA_3,
                 )
