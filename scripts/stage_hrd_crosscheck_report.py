@@ -87,6 +87,13 @@ def require_source_file(root: Path, relative: str) -> Path:
     return path
 
 
+def require_real_file(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
+        raise ValueError(f"{label} must be a real non-empty file")
+    return path.resolve(strict=True)
+
+
 def require_download_verification(
     verification_path: Path, source_dir: Path, route: str
 ) -> dict[str, str | int]:
@@ -191,29 +198,45 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
 
 
 def copy_create_only(source: Path, destination: Path) -> None:
-    try:
-        file_descriptor = os.open(
-            destination,
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-            0o644,
-        )
-    except FileExistsError as error:
-        raise ValueError(
-            "staged cross-check packet already exists: " + destination.name
-        ) from error
+    source = require_real_file(source, "staged cross-check packet")
+    expected_sha256 = sha256(source)
+    destination = require_safe_new_packet(destination)
+    with source.open("rb") as source_handle:
+        try:
+            file_descriptor = os.open(
+                destination,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o644,
+            )
+        except FileExistsError as error:
+            raise ValueError(
+                "staged cross-check packet already exists: " + destination.name
+            ) from error
 
-    try:
-        with source.open("rb") as source_handle, os.fdopen(
-            file_descriptor, "wb"
-        ) as destination_handle:
-            for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
-                destination_handle.write(chunk)
-            destination_handle.flush()
-            os.fsync(destination_handle.fileno())
-        fsync_directory(destination.parent)
-    except Exception:
-        destination.unlink(missing_ok=True)
-        raise
+        try:
+            destination_handle = os.fdopen(file_descriptor, "wb")
+        except Exception:
+            os.close(file_descriptor)
+            destination.unlink(missing_ok=True)
+            raise
+
+        try:
+            with destination_handle:
+                for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
+                    destination_handle.write(chunk)
+                destination_handle.flush()
+                os.fsync(destination_handle.fileno())
+            fsync_directory(destination.parent)
+            if (
+                sha256(source) != expected_sha256
+                or sha256(destination) != expected_sha256
+            ):
+                raise ValueError(
+                    "staged cross-check packet changed during copy: " + source.name
+                )
+        except Exception:
+            destination.unlink(missing_ok=True)
+            raise
 
 
 def fsync_directory(path: Path) -> None:
@@ -298,6 +321,15 @@ def resolve_new_output_dir(output_dir: Path) -> Path:
     if output_dir.exists():
         raise ValueError(f"output already exists: {output_dir}")
     return output_dir
+
+
+def require_safe_new_packet(path: Path) -> Path:
+    require_no_symlinked_ancestors(path, "staged cross-check packet")
+    if path.is_symlink():
+        raise ValueError("staged cross-check packet may not be a symlink: " + path.name)
+    if path.exists():
+        raise ValueError("staged cross-check packet already exists: " + path.name)
+    return path.resolve()
 
 
 def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: str) -> None:

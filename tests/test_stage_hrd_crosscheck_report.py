@@ -174,6 +174,65 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
+    def test_packet_file_install_rejects_symlinked_staged_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "source.txt"
+            symlink_source = root / "source-link.txt"
+            destination = root / "report.md"
+            real_source.write_bytes(b"one\n")
+            symlink_source.symlink_to(real_source)
+
+            with self.assertRaisesRegex(ValueError, "staged cross-check packet"):
+                STAGE.copy_create_only(symlink_source, destination)
+
+            self.assertFalse(destination.exists())
+
+    def test_packet_file_install_rejects_symlinked_destination_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            real_output = root / "real-output"
+            linked_output = root / "linked-output"
+            source.write_bytes(b"one\n")
+            real_output.mkdir()
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged cross-check packet parent may not be a symlink",
+            ):
+                STAGE.copy_create_only(source, linked_output / "report.md")
+
+            self.assertFalse((real_output / "report.md").exists())
+
+    def test_packet_file_install_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+            real_fsync_directory = STAGE.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                destination.write_bytes(b"tampered packet\n")
+
+            with (
+                mock.patch.object(
+                    STAGE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged cross-check packet changed during copy",
+                ),
+            ):
+                STAGE.copy_create_only(source, destination)
+
+            self.assertFalse(destination.exists())
+
     def test_stage_compacts_route_tree_and_remains_publishable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
