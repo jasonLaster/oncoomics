@@ -11,7 +11,7 @@ from typing import Any, Mapping, Sequence
 
 from ...paths import path_from_root
 from ...utils import read_json, write_csv, write_json
-from .crosscheck_contracts import sequenza_alias_input_contract
+from .crosscheck_contracts import EXPECTED_CROSSCHECK_BLOCKED_ROUTES, sequenza_alias_input_contract
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 
 DEFAULT_FINAL_EVIDENCE_MANIFEST = "manifests/phase3_wgs_fast/final_evidence_manifest.json"
@@ -347,6 +347,8 @@ def _validate_crosscheck_materialization_plan(
         )
     if crosscheck_materialization_plan.get("status") != "awaiting_private_results_freeze":
         raise ManifestError("cross-check materialization plan must await the private results freeze")
+    if crosscheck_materialization_plan.get("blocked_routes") != EXPECTED_CROSSCHECK_BLOCKED_ROUTES:
+        raise ManifestError("cross-check materialization plan blocked routes are not exact")
 
     source = _require_mapping(crosscheck_materialization_plan.get("source"), "crosscheck_materialization_plan.source")
     if _require_hex(source.get("final_evidence_manifest_sha256"), "source.final_evidence_manifest_sha256") != final_manifest_sha256:

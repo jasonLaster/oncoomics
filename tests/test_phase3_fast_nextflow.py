@@ -183,6 +183,10 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("params.parabricks_container?.toString()?.contains('@')", text)
         self.assertIn("params.parabricks_container.toString().split('@', 2)[1]", text)
         self.assertIn('export PHASE3_WGS_FAST_PARABRICKS_CONTAINER="${params.parabricks_container}"', text)
+        self.assertIn(
+            "'parabricks_container',\n        'phase3_fast_parabricks_container_digest'",
+            text,
+        )
 
     def test_replication_plan_consumes_input_manifest_output(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")

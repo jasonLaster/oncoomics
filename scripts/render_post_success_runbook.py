@@ -12,6 +12,7 @@ from pathlib import Path
 from hrd_report_inventory import (
     BLOCKED_CROSSCHECK_REPORT_DIRS,
     EXECUTABLE_CROSSCHECK_METHOD_IDS,
+    source_report_manifest_paths,
 )
 from publish_reviewed_public_report import (
     ACCOUNT_ID,
@@ -59,6 +60,11 @@ ROUTE_SUBMISSION_PREFIX = {
     "sequenza_scarhrd": "seq",
     "sigprofiler_sbs3": "sig",
 }
+BLOCKED_SOURCE_METHOD_IDS = (
+    "deterministic_full_wgs",
+    "rosalind_diana_wgs",
+    *EXECUTABLE_CROSSCHECK_METHOD_IDS,
+)
 STALE_TOKENS = (
     ".codex-tmp/hrd-reports/deterministic-full/capture_batch_provenance.py",
     ".codex-tmp/hrd-reports/deterministic-full/freeze_final_artifacts.py",
@@ -91,6 +97,18 @@ def forbidden_flags() -> list[str]:
         token
         for value in FORBIDDEN_TOKENS
         for token in ("--forbidden-token", value)
+    ]
+
+
+def blocked_source_report_manifest_flags(root: Path) -> list[str | Path]:
+    manifests = source_report_manifest_paths(root, RUN_ID)
+    return [
+        token
+        for method_id in BLOCKED_SOURCE_METHOD_IDS
+        for token in (
+            "--source-report-manifest",
+            f"{method_id}={manifests[method_id]}",
+        )
     ]
 
 
@@ -897,6 +915,9 @@ def render(root: Path, terminal_job_id: str) -> str:
                     scripts / "generate_blocked_hrd_crosscheck_reports.py",
                     "--output-dir",
                     reports / "blocked-crosschecks",
+                    "--run-id",
+                    RUN_ID,
+                    *blocked_source_report_manifest_flags(root),
                     "--generated-at",
                     RUN_GENERATED_AT,
                 ]

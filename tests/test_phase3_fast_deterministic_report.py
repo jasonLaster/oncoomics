@@ -269,6 +269,26 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                     output_dir=root / "deterministic",
                 )
 
+    def test_rejects_crosscheck_plan_that_unblocks_blocked_model_routes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            materialization_plan = _crosscheck_materialization_plan(
+                final_manifest,
+                manifest_path,
+            )
+            materialization_plan["blocked_routes"]["hrdetect"] = "ready"
+
+            with self.assertRaisesRegex(stage_report.ManifestError, "blocked routes"):
+                stage_report.stage_phase3_fast_deterministic_report(
+                    final_manifest,
+                    materialization_plan,
+                    final_manifest_sha256=_sha256_path(manifest_path),
+                    final_manifest_bytes=manifest_path.stat().st_size,
+                    final_root=final_root,
+                    output_dir=root / "deterministic",
+                )
+
     def test_rejects_tampered_final_artifact(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

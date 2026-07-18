@@ -5,6 +5,14 @@ from typing import Any, Mapping
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 
 
+EXPECTED_CROSSCHECK_BLOCKED_ROUTES = {
+    "sequenza_scarhrd": "awaiting_final_bam_contract_and_validated_runtime",
+    "facets_scarhrd": "awaiting_allele_specific_cnv_loh_segments",
+    "oncoanalyser_chord": "awaiting_validated_production_sv_caller_vcf",
+    "hrdetect": "awaiting_validated_structural_variant_features",
+}
+
+
 def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
     if not isinstance(value, dict):
         raise ManifestError(f"{label} must be a JSON object")

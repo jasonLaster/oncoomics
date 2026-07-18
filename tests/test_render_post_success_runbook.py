@@ -226,6 +226,52 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertIn('--output "$SOURCE_FREEZE_RUNBOOK" --root /repo', text)
         self.assertNotIn("source-freeze-runbook.md\n", text)
 
+    def test_blocked_reports_bind_canonical_upstream_report_manifests(self) -> None:
+        text = render()
+        command_start = text.index("generate_blocked_hrd_crosscheck_reports.py")
+        command_end = text.index("## 7. Render", command_start)
+        command = text[command_start:command_end]
+
+        self.assertIn(
+            "--run-id diana-wgs-hrd-20260716T033101Z",
+            command,
+        )
+        self.assertEqual(command.count("--source-report-manifest"), 4)
+
+        previous = -1
+        for method_id, path in [
+            (
+                "deterministic_full_wgs",
+                "/repo/.codex-tmp/hrd-reports/deterministic-full/report/"
+                "report_manifest.json",
+            ),
+            (
+                "rosalind_diana_wgs",
+                "/repo/results/rosalind_hrd/diana_wgs/"
+                "diana-wgs-hrd-20260716T033101Z/report_manifest.json",
+            ),
+            (
+                "sequenza_scarhrd",
+                "/repo/.codex-tmp/hrd-reports/crosschecks/sequenza_scarhrd/"
+                "report_manifest.json",
+            ),
+            (
+                "sigprofiler_sbs3",
+                "/repo/.codex-tmp/hrd-reports/crosschecks/sigprofiler_sbs3/"
+                "report_manifest.json",
+            ),
+        ]:
+            index = command.find(
+                f"--source-report-manifest {method_id}={path}",
+                previous + 1,
+            )
+            self.assertGreater(index, previous)
+            previous = index
+
+        self.assertNotIn("facets_scarhrd_blocked=", command)
+        self.assertNotIn("oncoanalyser_chord_blocked=", command)
+        self.assertNotIn("hrdetect_blocked=", command)
+
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
         prerequisites = {
             path.as_posix() for path in MODULE.required_existing(Path("/repo"))

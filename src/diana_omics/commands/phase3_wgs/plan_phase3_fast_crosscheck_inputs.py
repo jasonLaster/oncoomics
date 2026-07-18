@@ -8,7 +8,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent, read_json
-from .crosscheck_contracts import sequenza_alias_input_contract
+from .crosscheck_contracts import EXPECTED_CROSSCHECK_BLOCKED_ROUTES, sequenza_alias_input_contract
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 from .safe_json_output import require_safe_output_path
 
@@ -204,12 +204,7 @@ def build_phase3_fast_crosscheck_materialization_plan(
                 "awaiting_validated_sequenza_scarhrd_runtime",
             ],
         },
-        "blocked_routes": {
-            "sequenza_scarhrd": "awaiting_final_bam_contract_and_validated_runtime",
-            "facets_scarhrd": "awaiting_allele_specific_cnv_loh_segments",
-            "oncoanalyser_chord": "awaiting_validated_production_sv_caller_vcf",
-            "hrdetect": "awaiting_validated_structural_variant_features",
-        },
+        "blocked_routes": dict(EXPECTED_CROSSCHECK_BLOCKED_ROUTES),
         "interpretation": dict(_require_mapping(final_evidence.get("interpretation"), "interpretation")),
     }
 

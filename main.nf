@@ -1816,6 +1816,7 @@ workflow PHASE3_WGS_FAST {
         'phase3_fast_contig_compatibility_receipt',
         'phase3_fast_caller_resource_receipt',
         'phase3_fast_parameter_sha256',
+        'parabricks_container',
         'phase3_fast_parabricks_container_digest',
         'phase3_fast_parabricks_version',
         'phase3_fast_sequenza_female',
