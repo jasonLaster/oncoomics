@@ -60,6 +60,11 @@ BUNDLE_FILENAMES = (
     "reviewer-b.prompt.md",
     "bundle_manifest.json",
 )
+BUNDLE_MANIFEST_BOUND_FILES = {
+    "review_bundle.json": "review_bundle_sha256",
+    "reviewer-a.prompt.md": ("prompt_sha256", "A"),
+    "reviewer-b.prompt.md": ("prompt_sha256", "B"),
+}
 
 
 def sha256(path: Path) -> str:
@@ -428,28 +433,42 @@ def write_staged_bytes(path: Path, payload: bytes) -> None:
             os.close(descriptor)
 
 
-def require_staged_bundle_manifest(staging: Path) -> None:
-    manifest = load_object(staging / "bundle_manifest.json")
+def require_bundle_manifest(bundle_dir: Path) -> None:
+    manifest = load_object(
+        require_real_input_file(
+            bundle_dir / "bundle_manifest.json",
+            "AI review bundle manifest",
+        )
+    )
     prompt_sha256 = manifest.get("prompt_sha256")
-    if not isinstance(prompt_sha256, dict):
+    if not isinstance(prompt_sha256, dict) or set(prompt_sha256) != {"A", "B"}:
         raise ValueError("AI review bundle manifest lacks prompt hashes")
 
-    expected = {
-        "review_bundle.json": str(manifest.get("review_bundle_sha256", "")),
-        "reviewer-a.prompt.md": str(prompt_sha256.get("A", "")),
-        "reviewer-b.prompt.md": str(prompt_sha256.get("B", "")),
-    }
-    for filename, expected_sha256 in expected.items():
+    for filename, field in BUNDLE_MANIFEST_BOUND_FILES.items():
+        if isinstance(field, tuple):
+            expected_sha256 = prompt_sha256.get(field[1])
+        else:
+            expected_sha256 = manifest.get(field)
+        if not isinstance(expected_sha256, str) or not HEX64.fullmatch(
+            expected_sha256
+        ):
+            raise ValueError(
+                "AI review bundle manifest has malformed SHA-256 for " + filename
+            )
         observed_sha256 = sha256(
             require_real_input_file(
-                staging / filename,
-                "staged AI review bundle file",
+                bundle_dir / filename,
+                "AI review bundle file",
             )
         )
         if observed_sha256 != expected_sha256:
             raise ValueError(
                 "AI review bundle manifest is stale for " + filename
             )
+
+
+def require_staged_bundle_manifest(staging: Path) -> None:
+    require_bundle_manifest(staging)
 
 
 def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
@@ -561,6 +580,7 @@ def install_bundle_create_only(staged_paths: Sequence[Path], output: Path) -> No
                 raise
             installed.append(destination)
         fsync_directory(output)
+        require_bundle_manifest(output)
     except Exception:
         for path in reversed(installed):
             path.unlink(missing_ok=True)

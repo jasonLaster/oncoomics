@@ -29,6 +29,26 @@ def write_json(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def write_staged_bundle(root: Path) -> list[Path]:
+    root.mkdir(parents=True, exist_ok=True)
+    BUILD.write_staged_bytes(root / "review_bundle.json", b"{}\n")
+    BUILD.write_staged_bytes(root / "reviewer-a.prompt.md", b"prompt a\n")
+    BUILD.write_staged_bytes(root / "reviewer-b.prompt.md", b"prompt b\n")
+    BUILD.write_staged_bytes(
+        root / "bundle_manifest.json",
+        BUILD.json_bytes(
+            {
+                "review_bundle_sha256": BUILD.sha256(root / "review_bundle.json"),
+                "prompt_sha256": {
+                    "A": BUILD.sha256(root / "reviewer-a.prompt.md"),
+                    "B": BUILD.sha256(root / "reviewer-b.prompt.md"),
+                },
+            }
+        ),
+    )
+    return [root / name for name in BUILD.BUNDLE_FILENAMES]
+
+
 class AiReviewBundleFixture:
     def __init__(self, root: Path):
         self.root = root
@@ -428,29 +448,61 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             root = Path(temporary)
             staging = root / "staging"
             output = root / "ai-review"
-            staging.mkdir()
             output.mkdir()
-            staged_paths = []
-            for name in BUILD.BUNDLE_FILENAMES:
-                path = staging / name
-                path.write_text(f"{name}\n", encoding="utf-8")
-                staged_paths.append(path)
+            staged_paths = write_staged_bundle(staging)
 
             with (
                 mock.patch.object(
                     BUILD,
                     "fsync_directory",
                     side_effect=(
-                        None,
-                        None,
-                        None,
-                        None,
-                        OSError("synthetic bundle directory fsync failure"),
+                        *(None for _ in BUILD.BUNDLE_FILENAMES),
+                        OSError(
+                            "synthetic bundle directory fsync failure"
+                        ),
                     ),
                 ),
                 self.assertRaisesRegex(
                     OSError,
                     "synthetic bundle directory fsync failure",
+                ),
+            ):
+                BUILD.install_bundle_create_only(staged_paths, output)
+
+            self.assertTrue(output.is_dir())
+            self.assertEqual([], list(output.iterdir()))
+
+    def test_bundle_install_removes_installed_files_after_stale_final_manifest(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            output.mkdir()
+            staged_paths = write_staged_bundle(staging)
+            real_fsync_directory = BUILD.fsync_directory
+            fsyncs = 0
+
+            def tamper_after_final_directory_fsync(path: Path) -> None:
+                nonlocal fsyncs
+                real_fsync_directory(path)
+                fsyncs += 1
+                if fsyncs == len(BUILD.BUNDLE_FILENAMES) + 1:
+                    (output / "reviewer-b.prompt.md").write_text(
+                        "stale final prompt\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    BUILD,
+                    "fsync_directory",
+                    side_effect=tamper_after_final_directory_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "AI review bundle manifest is stale for reviewer-b.prompt.md",
                 ),
             ):
                 BUILD.install_bundle_create_only(staged_paths, output)
