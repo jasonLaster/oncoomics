@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from diana_omics.commands import (
@@ -60,7 +61,11 @@ class AuditAndProductionHelpersTest(unittest.TestCase):
 
         def fake_run(args, **kwargs):
             calls.append(args[0])
-            return type("Result", (), {"returncode": 0, "stdout": "", "stderr": 'openjdk version "17.0.15"\n'})()
+            return type(
+                "Result",
+                (),
+                {"returncode": 0, "stdout": b"", "stderr": b'openjdk version "17.0.15"\n'},
+            )()
 
         with (
             patch.object(audit_raw_tools, "command_path", lambda tool: "/usr/bin/java" if tool == "java" else ""),
@@ -83,11 +88,61 @@ class AuditAndProductionHelpersTest(unittest.TestCase):
 
         run.assert_not_called()
 
+    def test_java17_path_decodes_invalid_native_version_bytes_with_replacement(self):
+        with (
+            patch.object(audit_raw_tools, "command_path", lambda tool: "/usr/bin/java" if tool == "java" else ""),
+            patch.object(audit_raw_tools.os.path, "exists", lambda path: path == "/usr/bin/java"),
+            patch.object(
+                audit_raw_tools.subprocess,
+                "run",
+                return_value=SimpleNamespace(
+                    returncode=0,
+                    stdout=b"\xff",
+                    stderr=b'openjdk version "17.0.15"\n',
+                ),
+            ) as run,
+            patch.dict(audit_raw_tools.os.environ, {}, clear=True),
+        ):
+            self.assertEqual(audit_raw_tools.java17_path(), "/usr/bin/java")
+
+        run.assert_called_once_with(
+            ["/usr/bin/java", "-version"],
+            stdout=audit_raw_tools.subprocess.PIPE,
+            stderr=audit_raw_tools.subprocess.PIPE,
+            check=False,
+        )
+
     def test_reference_dict_path(self):
         self.assertEqual(fetch_production_somatic_assets.reference_dict_path("ref.fa"), "ref.dict")
         self.assertEqual(fetch_production_somatic_assets.reference_dict_path("ref.fasta"), "ref.dict")
         self.assertEqual(fetch_full_wes_benchmark_assets.reference_dict_path("ref.fa"), "ref.dict")
         self.assertEqual(fetch_full_wes_benchmark_assets.reference_dict_path("ref.fasta"), "ref.dict")
+
+    def test_production_java_probe_decodes_invalid_native_version_bytes_with_replacement(self):
+        with (
+            patch.object(
+                fetch_production_somatic_assets.os.path,
+                "exists",
+                return_value=True,
+            ),
+            patch.object(
+                fetch_production_somatic_assets.subprocess,
+                "run",
+                return_value=SimpleNamespace(
+                    returncode=0,
+                    stdout=b"\xff",
+                    stderr=b'openjdk version "17.0.15"\n',
+                ),
+            ) as run,
+        ):
+            self.assertTrue(fetch_production_somatic_assets.java_works("/bin/java"))
+
+        run.assert_called_once_with(
+            ["/bin/java", "-version"],
+            stdout=fetch_production_somatic_assets.subprocess.PIPE,
+            stderr=fetch_production_somatic_assets.subprocess.PIPE,
+            check=False,
+        )
 
     def test_production_asset_download_resumes_and_retries_all_errors(self):
         command = fetch_production_somatic_assets.download_command(

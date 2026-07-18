@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -119,11 +120,17 @@ def reference_dict_path(fasta_path: str) -> str:
 def java_works(candidate: str) -> bool:
     if not candidate or not Path(candidate).exists():
         return False
-    import subprocess
 
-    result = subprocess.run([candidate, "-version"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-    output = f"{result.stdout}{result.stderr}"
-    import re
+    result = subprocess.run(
+        [candidate, "-version"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    output = (
+        result.stdout.decode("utf-8", errors="replace")
+        + result.stderr.decode("utf-8", errors="replace")
+    )
 
     match = re.search(r'version "(\d+)', output)
     return result.returncode == 0 and int(match.group(1) if match else "0") >= 17

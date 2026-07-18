@@ -79,6 +79,17 @@ def validate_private_report_receipt(
         raise ValueError(f"{method_id} private receipt omits report_manifest.json")
     if report_manifest_path.is_symlink() or not report_manifest_path.is_file():
         raise ValueError(f"{method_id} local report_manifest.json is missing")
+    report_path = report_manifest_path.parent / "report.md"
+    if report_path.is_symlink() or not report_path.is_file() or report_path.stat().st_size <= 0:
+        raise ValueError(f"{method_id} local report.md is missing")
+    manifest = load_json_object(
+        report_manifest_path,
+        f"{method_id} local report manifest",
+    )
+    if manifest.get("method_id") != method_id:
+        raise ValueError(f"{method_id} local report_manifest.json has the wrong method")
+    if manifest.get("report_sha256") != sha256_path(report_path):
+        raise ValueError(f"{method_id} local report_manifest.json is not report-bound")
 
     local_manifest_sha256 = sha256_path(report_manifest_path)
     if manifest_row["sha256"] != local_manifest_sha256:
@@ -183,7 +194,11 @@ def publish_command(
     source: Path,
     method_id: str,
     receipt_output: Path,
+    forbidden_tokens_file: Path | None = None,
 ) -> list[str | Path]:
+    forbidden_tokens_file_flags: list[str | Path] = (
+        ["--forbidden-tokens-file", forbidden_tokens_file] if forbidden_tokens_file is not None else []
+    )
     return [
         "python3",
         scripts / "publish_private_report.py",
@@ -196,6 +211,7 @@ def publish_command(
         "--region",
         REGION,
         *forbidden_flags(),
+        *forbidden_tokens_file_flags,
         "--apply",
     ]
 
@@ -319,6 +335,7 @@ def render(
     deterministic_report_dir: Path | None = None,
     rosalind_report_dir: Path | None = None,
     blocked_crosscheck_root: Path | None = None,
+    forbidden_tokens_file: Path | None = None,
 ) -> str:
     receipt_summaries = require_receipt_summaries(receipt_summaries)
     reports = root / ".codex-tmp/hrd-reports"
@@ -412,6 +429,7 @@ def render(
                     REVIEWER_B[0],
                     "--reviewer-b-model-id",
                     REVIEWER_B[1],
+                    *(["--forbidden-tokens-file", forbidden_tokens_file] if forbidden_tokens_file is not None else []),
                     *forbidden_flags(),
                 ]
             ),
@@ -443,6 +461,7 @@ def render(
                     reviewer_a,
                     "--model-catalog-receipt",
                     catalog,
+                    *(["--forbidden-tokens-file", forbidden_tokens_file] if forbidden_tokens_file is not None else []),
                     *forbidden_flags(),
                 ]
             ),
@@ -461,6 +480,7 @@ def render(
                     reviewer_a,
                     "--model-catalog-receipt",
                     catalog,
+                    *(["--forbidden-tokens-file", forbidden_tokens_file] if forbidden_tokens_file is not None else []),
                     *forbidden_flags(),
                 ]
             ),
@@ -519,6 +539,7 @@ def render(
                         ai_private_packet_dirs[method_id],
                         method_id,
                         receipt_output,
+                        forbidden_tokens_file=forbidden_tokens_file,
                     )
                 )
                 for method_id, receipt_output in ai_private_receipt_outputs(root, receipt_stem)
@@ -570,6 +591,7 @@ def main() -> int:
     parser.add_argument("--blocked-crosscheck-root", type=Path)
     parser.add_argument("--sigprofiler-report-dir", type=Path)
     parser.add_argument("--sequenza-report-dir", type=Path)
+    parser.add_argument("--forbidden-tokens-file", type=Path)
     parser.add_argument(
         "--private-publication-receipt",
         action="append",
@@ -616,6 +638,7 @@ def main() -> int:
             deterministic_report_dir=args.deterministic_report_dir,
             rosalind_report_dir=args.rosalind_report_dir,
             blocked_crosscheck_root=args.blocked_crosscheck_root,
+            forbidden_tokens_file=args.forbidden_tokens_file,
         ),
     )
     print(json.dumps({"status": "rendered", "output": str(args.output)}, sort_keys=True))

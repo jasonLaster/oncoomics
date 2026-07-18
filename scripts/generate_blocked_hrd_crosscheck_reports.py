@@ -14,6 +14,7 @@ import json
 import os
 import re
 import shutil
+from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -28,6 +29,9 @@ STATUS = {
     "patient_result": "none",
 }
 
+# Keep formatter noise out of this static prose table so diffs only show
+# substantive route-contract changes.
+# fmt: off
 METHODS: tuple[dict[str, Any], ...] = (
     {
         "method_id": "facets_scarhrd_blocked",
@@ -288,6 +292,7 @@ METHODS: tuple[dict[str, Any], ...] = (
         ],
     },
 )
+# fmt: on
 if tuple(method["method_id"] for method in METHODS) != BLOCKED_CROSSCHECK_METHOD_IDS:
     raise ValueError("blocked method generator drifted from the HRD report inventory")
 
@@ -309,6 +314,9 @@ def sha256_file(path: Path) -> str:
 def load_source_report_manifest(path: Path, method_id: str) -> None:
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
         raise ValueError(f"source report manifest must be a real non-empty file: {method_id}")
+    report_path = path.parent / "report.md"
+    if report_path.is_symlink() or not report_path.is_file() or report_path.stat().st_size <= 0:
+        raise ValueError(f"source report must be a real non-empty sibling file: {method_id}")
     with path.open(encoding="utf-8") as handle:
         manifest = json.load(handle)
     if not isinstance(manifest, dict) or manifest.get("method_id") != method_id:
@@ -321,6 +329,8 @@ def load_source_report_manifest(path: Path, method_id: str) -> None:
         raise ValueError(f"source report manifest classification QC must remain not_applicable: {method_id}")
     if SHA256_HEX.fullmatch(str(manifest.get("report_sha256", ""))) is None:
         raise ValueError(f"source report manifest report_sha256 is malformed: {method_id}")
+    if manifest["report_sha256"] != sha256_file(report_path):
+        raise ValueError(f"source report manifest hash differs from report.md: {method_id}")
     review_summary = manifest.get("review_summary")
     if not isinstance(review_summary, dict) or not review_summary:
         raise ValueError(f"source report manifest review_summary is required: {method_id}")
@@ -381,9 +391,7 @@ def prepare_output_root(output_root: Path) -> Path:
     targets = [output_root / str(method["directory"]) for method in METHODS]
     existing = [str(path) for path in targets if path.exists() or path.is_symlink()]
     if existing:
-        raise FileExistsError(
-            "blocked cross-check output already exists: " + ", ".join(existing)
-        )
+        raise FileExistsError("blocked cross-check output already exists: " + ", ".join(existing))
 
     output_root.mkdir(parents=True, exist_ok=True)
     return output_root.resolve()
@@ -393,18 +401,12 @@ def require_safe_output_parent(output_root: Path) -> None:
     parent = output_root.parent
     while not parent.exists():
         if parent.is_symlink():
-            raise ValueError(
-                f"blocked cross-check output parent may not be a symlink: {parent}"
-            )
+            raise ValueError(f"blocked cross-check output parent may not be a symlink: {parent}")
         if parent == parent.parent:
-            raise ValueError(
-                f"blocked cross-check output has no existing parent: {output_root}"
-            )
+            raise ValueError(f"blocked cross-check output has no existing parent: {output_root}")
         parent = parent.parent
     if parent.is_symlink():
-        raise ValueError(
-            f"blocked cross-check output parent may not be a symlink: {parent}"
-        )
+        raise ValueError(f"blocked cross-check output parent may not be a symlink: {parent}")
     if not parent.is_dir():
         raise NotADirectoryError(parent)
 
@@ -442,10 +444,7 @@ def render_report(
         f"- run_id: `{run_id or 'not_recorded'}`",
     ]
     if source_report_manifests:
-        lines.extend(
-            f"- {method_id} report_manifest_sha256: `{digest}`"
-            for method_id, digest in source_report_manifests.items()
-        )
+        lines.extend(f"- {method_id} report_manifest_sha256: `{digest}`" for method_id, digest in source_report_manifests.items())
     else:
         lines.append("- source_report_manifests: `not_bound`")
     lines.extend(
@@ -461,10 +460,7 @@ def render_report(
     lines.extend(["", "## Current blockers", ""])
     lines.extend(f"- {value}" for value in spec["blockers"])
     lines.extend(["", "## Next gate", "", spec["next_gate"], "", "## Primary sources", ""])
-    lines.extend(
-        f"- [{source['label']}]({source['url']}) — `{source['revision']}`"
-        for source in spec["sources"]
-    )
+    lines.extend(f"- [{source['label']}]({source['url']}) — `{source['revision']}`" for source in spec["sources"])
     lines.extend(
         [
             "",
@@ -504,10 +500,7 @@ def generate(
                 "method_id": method["method_id"],
                 "title": method["title"],
                 **STATUS,
-                "explicit_no_patient_result": (
-                    "The method was not run and no patient result was generated, "
-                    "inferred, or reported."
-                ),
+                "explicit_no_patient_result": ("The method was not run and no patient result was generated, inferred, or reported."),
                 "alias_scope": method["alias_scope"],
                 "intended_computation": method["intended_computation"],
                 "prerequisites": method["prerequisites"],
@@ -538,10 +531,7 @@ def generate(
                 "authorized_hrd_state": "no_call",
                 "classification_authorized": False,
                 "classification_qc_status": "not_applicable",
-                "explicit_no_patient_result": (
-                    "The method was not run and no patient result was generated, "
-                    "inferred, or reported."
-                ),
+                "explicit_no_patient_result": ("The method was not run and no patient result was generated, inferred, or reported."),
                 "alias_scope": method["alias_scope"],
                 "intended_computation": method["intended_computation"],
                 "prerequisites": method["prerequisites"],
@@ -567,10 +557,7 @@ def generate(
                 },
                 "source_sha256": {
                     "generator": generator_hash,
-                    **{
-                        f"{method_id}_report_manifest": digest
-                        for method_id, digest in source_report_manifests.items()
-                    },
+                    **{f"{method_id}_report_manifest": digest for method_id, digest in source_report_manifests.items()},
                 },
                 "support_sha256": {
                     "method_spec.json": sha256_file(spec_path),
@@ -583,10 +570,8 @@ def generate(
     except Exception:
         for target in created_targets:
             shutil.rmtree(target, ignore_errors=True)
-        try:
+        with suppress(OSError):
             output_root.rmdir()
-        except OSError:
-            pass
         raise
     return written
 
@@ -604,18 +589,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="append",
         default=[],
         metavar="METHOD_ID=PATH",
-        help=(
-            "Hash-bind an upstream report manifest into each blocked packet; "
-            "may be passed more than once."
-        ),
+        help=("Hash-bind an upstream report manifest into each blocked packet; may be passed more than once."),
     )
     parser.add_argument(
         "--generated-at",
         default=datetime.now(timezone.utc).isoformat(),
-        help=(
-            "Timestamp recorded in reports and manifests; pass a fixed value "
-            "for reproducible tests."
-        ),
+        help=("Timestamp recorded in reports and manifests; pass a fixed value for reproducible tests."),
     )
     args = parser.parse_args(argv)
     try:

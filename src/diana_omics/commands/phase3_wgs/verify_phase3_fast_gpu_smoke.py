@@ -9,6 +9,7 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import read_json
+from . import verify_parabricks_mirror_receipt as mirror_receipt
 
 DEFAULT_PARAMS = "infra/aws/nextflow.aws.use2.json"
 REQUIRED_AWS_REGION = "us-east-2"
@@ -17,6 +18,7 @@ REQUIRED_INSTANCE_TYPES = ("p5en.48xlarge",)
 P5EN_VCPUS = 192
 EC2_SERVICE_CODE = "ec2"
 ON_DEMAND_P_QUOTA_CODE = "L-417A185B"
+BATCH_GPU_COMPUTE_ENVIRONMENT_SUFFIX = "-ondemand"
 KMS_KEY_ARN = re.compile(r"^arn:aws:kms:([a-z]{2}-[a-z]+-\d):(\d{12}):key/[A-Za-z0-9-]+$")
 ECR_REPOSITORY = re.compile(r"^\d{12}\.dkr\.ecr\.([a-z]{2}-[a-z]+-\d)\.amazonaws\.com/[a-z0-9][a-z0-9._/-]*$")
 PINNED_IMAGE = re.compile(r"^\S+@sha256:[0-9a-fA-F]{64}$")
@@ -153,6 +155,219 @@ def load_params_from_environment() -> tuple[dict[str, Any], Path]:
     return payload, path
 
 
+def load_gpu_batch_job_queue(
+    *,
+    queue: str,
+    region: str,
+    aws_cli: str = "aws",
+) -> dict[str, Any]:
+    try:
+        result = subprocess.run(
+            [
+                aws_cli,
+                "batch",
+                "describe-job-queues",
+                "--region",
+                region,
+                "--job-queues",
+                queue,
+                "--output",
+                "json",
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except FileNotFoundError as error:
+        raise GpuSmokeConfigError(f"{aws_cli} is required to verify the live P5en Batch queue") from error
+    except subprocess.CalledProcessError as error:
+        output = (error.stdout or "").strip()
+        detail = f": {output}" if output else ""
+        raise GpuSmokeConfigError(f"Unable to read the live {region} P5en Batch queue {queue}{detail}") from error
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise GpuSmokeConfigError("AWS Batch did not return JSON") from error
+
+    if not isinstance(payload, dict):
+        raise GpuSmokeConfigError("AWS Batch response must be a JSON object")
+    queues = payload.get("jobQueues")
+    if not isinstance(queues, list):
+        raise GpuSmokeConfigError("AWS Batch response must include a jobQueues array")
+    if len(queues) != 1:
+        raise GpuSmokeConfigError(f"AWS Batch must return exactly one P5en queue for {queue}")
+    observed = queues[0]
+    if not isinstance(observed, dict):
+        raise GpuSmokeConfigError("AWS Batch P5en queue must be a JSON object")
+    return observed
+
+
+def validate_gpu_batch_job_queue(
+    payload: Mapping[str, Any],
+    *,
+    expected_queue: str,
+) -> dict[str, str]:
+    errors: list[str] = []
+
+    queue_name = payload.get("jobQueueName")
+    if queue_name != expected_queue:
+        errors.append(f"jobQueueName must be {expected_queue}")
+
+    if payload.get("state") != "ENABLED":
+        errors.append("P5en Batch queue must be ENABLED")
+    if payload.get("status") != "VALID":
+        errors.append("P5en Batch queue must be VALID")
+
+    compute_environments = payload.get("computeEnvironmentOrder")
+    compute_environment = ""
+    if not isinstance(compute_environments, list) or len(compute_environments) != 1:
+        errors.append("P5en Batch queue must route to exactly one compute environment")
+    else:
+        entry = compute_environments[0]
+        if not isinstance(entry, dict):
+            errors.append("P5en Batch compute environment order entry must be a JSON object")
+        else:
+            order = entry.get("order")
+            if type(order) is not int:
+                errors.append("P5en Batch compute environment order must be an integer")
+            elif order != 1:
+                errors.append("P5en Batch compute environment order must be 1")
+
+            value = entry.get("computeEnvironment")
+            if not isinstance(value, str) or not value:
+                errors.append("P5en Batch compute environment ARN must be set")
+            elif not value.endswith(f":compute-environment/{expected_queue}{BATCH_GPU_COMPUTE_ENVIRONMENT_SUFFIX}"):
+                errors.append("P5en Batch queue must route only to its isolated P5en compute environment")
+            else:
+                compute_environment = value
+
+    if errors:
+        raise GpuSmokeConfigError("P5en Batch queue is not ready:\n- " + "\n- ".join(errors))
+
+    return {
+        "compute_environment": compute_environment,
+        "job_queue": expected_queue,
+        "status": "ready",
+    }
+
+
+def load_gpu_batch_compute_environment(
+    *,
+    compute_environment: str,
+    region: str,
+    aws_cli: str = "aws",
+) -> dict[str, Any]:
+    try:
+        result = subprocess.run(
+            [
+                aws_cli,
+                "batch",
+                "describe-compute-environments",
+                "--region",
+                region,
+                "--compute-environments",
+                compute_environment,
+                "--output",
+                "json",
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except FileNotFoundError as error:
+        raise GpuSmokeConfigError(f"{aws_cli} is required to verify the live P5en compute environment") from error
+    except subprocess.CalledProcessError as error:
+        output = (error.stdout or "").strip()
+        detail = f": {output}" if output else ""
+        raise GpuSmokeConfigError(f"Unable to read the live {region} P5en compute environment {compute_environment}{detail}") from error
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise GpuSmokeConfigError("AWS Batch did not return compute-environment JSON") from error
+
+    if not isinstance(payload, dict):
+        raise GpuSmokeConfigError("AWS Batch compute-environment response must be a JSON object")
+    compute_environments = payload.get("computeEnvironments")
+    if not isinstance(compute_environments, list):
+        raise GpuSmokeConfigError("AWS Batch response must include a computeEnvironments array")
+    if len(compute_environments) != 1:
+        raise GpuSmokeConfigError(f"AWS Batch must return exactly one P5en compute environment for {compute_environment}")
+    observed = compute_environments[0]
+    if not isinstance(observed, dict):
+        raise GpuSmokeConfigError("AWS Batch P5en compute environment must be a JSON object")
+    return observed
+
+
+def validate_gpu_batch_compute_environment(
+    payload: Mapping[str, Any],
+    *,
+    expected_compute_environment: str,
+) -> dict[str, Any]:
+    errors: list[str] = []
+
+    if payload.get("computeEnvironmentArn") != expected_compute_environment:
+        errors.append("P5en compute environment ARN must match the GPU queue")
+    if payload.get("type") != "MANAGED":
+        errors.append("P5en compute environment must be MANAGED")
+    if payload.get("state") != "ENABLED":
+        errors.append("P5en compute environment must be ENABLED")
+    if payload.get("status") != "VALID":
+        errors.append("P5en compute environment must be VALID")
+
+    resources = payload.get("computeResources")
+    max_vcpus = 0
+    instance_types: list[str] = []
+    if not isinstance(resources, dict):
+        errors.append("P5en computeResources must be a JSON object")
+    else:
+        if resources.get("type") != "EC2":
+            errors.append("P5en computeResources type must be EC2")
+
+        observed_min_vcpus = resources.get("minvCpus")
+        if type(observed_min_vcpus) is not int:
+            errors.append("P5en computeResources minvCpus must be an integer")
+        elif observed_min_vcpus != 0:
+            errors.append("P5en computeResources minvCpus must be 0")
+
+        observed_instance_types = resources.get("instanceTypes")
+        if observed_instance_types != list(REQUIRED_INSTANCE_TYPES):
+            errors.append("P5en computeResources instanceTypes must be exactly ['p5en.48xlarge']")
+        else:
+            instance_types = observed_instance_types
+
+        observed_max_vcpus = resources.get("maxvCpus")
+        if type(observed_max_vcpus) is not int:
+            errors.append("P5en computeResources maxvCpus must be an integer")
+        elif observed_max_vcpus < P5EN_VCPUS:
+            errors.append(f"P5en computeResources maxvCpus must be at least {P5EN_VCPUS}")
+        elif observed_max_vcpus % P5EN_VCPUS:
+            errors.append(f"P5en computeResources maxvCpus must be a multiple of {P5EN_VCPUS}")
+        else:
+            max_vcpus = observed_max_vcpus
+
+        ec2_configuration = resources.get("ec2Configuration")
+        if ec2_configuration != [{"imageType": "ECS_AL2023_NVIDIA"}]:
+            errors.append("P5en computeResources ec2Configuration must be exactly ECS_AL2023_NVIDIA")
+
+        allocation_strategy = resources.get("allocationStrategy")
+        if allocation_strategy != "BEST_FIT_PROGRESSIVE":
+            errors.append("P5en computeResources allocationStrategy must be BEST_FIT_PROGRESSIVE")
+
+    if errors:
+        raise GpuSmokeConfigError("P5en compute environment is not ready:\n- " + "\n- ".join(errors))
+
+    return {
+        "compute_environment": expected_compute_environment,
+        "instance_types": instance_types,
+        "max_vcpus": max_vcpus,
+        "status": "ready",
+    }
+
+
 def load_running_on_demand_p_vcpus(region: str, *, aws_cli: str = "aws") -> float:
     try:
         result = subprocess.run(
@@ -200,8 +415,7 @@ def load_running_on_demand_p_vcpus(region: str, *, aws_cli: str = "aws") -> floa
 def validate_running_on_demand_p_quota(value: float, *, minimum: int = P5EN_VCPUS) -> None:
     if value < minimum:
         raise GpuSmokeConfigError(
-            f"Running On-Demand P instances quota is {value:g} vCPUs; "
-            f"phase3_wgs_fast needs at least {minimum} vCPUs for one p5en.48xlarge"
+            f"Running On-Demand P instances quota is {value:g} vCPUs; phase3_wgs_fast needs at least {minimum} vCPUs for one p5en.48xlarge"
         )
 
 
@@ -246,22 +460,30 @@ def load_parabricks_mirror_image_digest(
     except json.JSONDecodeError as error:
         raise GpuSmokeConfigError("ECR did not return JSON") from error
 
-    if not isinstance(payload, dict):
-        raise GpuSmokeConfigError("ECR response must be a JSON object")
-    image_details = payload.get("imageDetails")
-    if not isinstance(image_details, list) or not image_details:
-        raise GpuSmokeConfigError(f"ECR did not return imageDetails for {parabricks_container}")
-
-    image_digest = image_details[0].get("imageDigest")
-    if image_digest != digest:
-        raise GpuSmokeConfigError(f"ECR imageDigest must match {digest}")
-    return digest
+    try:
+        return mirror_receipt.validate_ecr_image_details(
+            payload,
+            parabricks_container=parabricks_container,
+            expected_digest=digest,
+        )
+    except mirror_receipt.MirrorReceiptError as error:
+        raise GpuSmokeConfigError(str(error)) from error
 
 
 def main() -> None:
     try:
         params, path = load_params_from_environment()
         summary = validate_gpu_smoke_params(params)
+        queue = load_gpu_batch_job_queue(queue=summary["aws_gpu_queue"], region=summary["aws_region"])
+        queue_summary = validate_gpu_batch_job_queue(queue, expected_queue=summary["aws_gpu_queue"])
+        compute_environment = load_gpu_batch_compute_environment(
+            compute_environment=queue_summary["compute_environment"],
+            region=summary["aws_region"],
+        )
+        compute_environment_summary = validate_gpu_batch_compute_environment(
+            compute_environment,
+            expected_compute_environment=queue_summary["compute_environment"],
+        )
         running_on_demand_p_vcpus = load_running_on_demand_p_vcpus(summary["aws_region"])
         validate_running_on_demand_p_quota(running_on_demand_p_vcpus)
         image_digest = load_parabricks_mirror_image_digest(
@@ -273,6 +495,8 @@ def main() -> None:
     print(
         f"Phase 3 WGS fast GPU smoke config passed: {path} "
         f"queue={summary['aws_gpu_queue']} "
+        f"compute_environment={queue_summary['compute_environment']} "
+        f"compute_max_vcpus={compute_environment_summary['max_vcpus']} "
         f"max_vcpus={summary['gpu_p5en_max_vcpus']} "
         f"running_on_demand_p_vcpus={running_on_demand_p_vcpus:g} "
         f"parabricks_image_digest={image_digest}"

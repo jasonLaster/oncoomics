@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 import unittest
 from pathlib import Path
 
@@ -47,6 +49,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_CNV_EVIDENCE_PLAN", text)
         self.assertIn("process FAST_SV_EVIDENCE_PLAN", text)
         self.assertIn("process FAST_FILTER_MUTECT_PLAN", text)
+        self.assertIn("process FAST_VALIDATE_FORBIDDEN_TOKENS", text)
         self.assertIn("process FAST_BAM_CNV_SV_EVIDENCE", text)
         self.assertIn("process FAST_EVIDENCE_JOIN", text)
         self.assertIn("process FAST_VERIFY_AND_PUBLISH", text)
@@ -54,6 +57,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("process FAST_STAGE_DETERMINISTIC_REPORT", text)
         self.assertIn("process FAST_STAGE_ROSALIND_PACKET", text)
         self.assertIn("process FAST_STAGE_BLOCKED_CROSSCHECKS", text)
+        self.assertIn("process FAST_VALIDATE_REPORT_PACKETS", text)
         self.assertNotIn("process FAST_STAGE_INPUTS", text)
         self.assertIn("workflow PHASE3_WGS_FAST", text)
         self.assertIn("'phase3_wgs_fast'", text)
@@ -69,6 +73,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("build:phase3-fast-cnv-evidence-plan", text)
         self.assertIn("build:phase3-fast-sv-evidence-plan", text)
         self.assertIn("build:phase3-fast-filter-mutect-plan", text)
+        self.assertIn("validate:phase3-fast-forbidden-tokens", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/input_manifest.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/replication_plan.json", text)
         self.assertIn("workspace/manifests/phase3_wgs_fast/replication_receipt.json", text)
@@ -94,6 +99,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_fast_deterministic_evidence", text)
         self.assertIn("rosalind_hrd_reviewer_packet", text)
         self.assertIn("blocked_method", text)
+        self.assertIn("validate_phase3_fast_report_packets.py", text)
         self.assertIn("facets_scarhrd_blocked", text)
         self.assertIn("oncoanalyser_chord_blocked", text)
         self.assertIn("hrdetect_blocked", text)
@@ -166,12 +172,24 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("`FAST_REPLICATION_PLAN`", text)
         self.assertIn("`FAST_REPLICATE_INPUTS`", text)
         self.assertIn("FAST_GPU_SMOKE                     bounded P5en/Parabricks placement gate", text)
+        self.assertIn(
+            "FAST_VALIDATE_FORBIDDEN_TOKENS     pre-expense alias-only private-token JSON validation",
+            text,
+        )
         self.assertIn("FAST_MUTECT_PARABRICKS_FILTER      worker-local Parabricks", text)
         self.assertIn("FAST_BAM_CNV_SV_EVIDENCE           worker-local BAM QC", text)
         self.assertIn("FAST_STAGE_DETERMINISTIC_REPORT     six-file deterministic method report", text)
         self.assertIn("`crosscheck_input_plans.json`", text)
         self.assertIn("`run:phase3-fast-parabricks-mutect` must consume that plan", text)
         self.assertIn("`run:phase3-fast-filter-mutect` must require", text)
+        self.assertIn("live Batch queue", text)
+        self.assertIn("live P5en compute-environment", text)
+        self.assertIn("misrouted", text)
+        self.assertIn(
+            "--phase3_fast_cache_prefix s3://<regional-private-results-bucket>/phase3-fast-cache/wgs-v2",
+            text,
+        )
+        self.assertNotIn("--phase3_fast_cache_prefix s3://<regional-private-cache>/wgs-v2", text)
         self.assertNotIn("five-file deterministic method report", text)
         self.assertNotIn("FAST_FQ2BAM_TUMOR", text)
         self.assertNotIn("FAST_MUTECT_PARABRICKS             selected GPU caller", text)
@@ -199,14 +217,29 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("--phase3_fast_parabricks_memory '1 GB'", script)
         self.assertIn("--phase3_fast_generated_at 2026-07-16T03:31:01+00:00", script)
         self.assertIn("--phase3_fast_forbidden_tokens_json", script)
+        self.assertIn("FORBIDDEN_TOKENS_JSON=", script)
+        self.assertIn('--phase3_fast_forbidden_tokens_json "${FORBIDDEN_TOKENS_JSON}"', script)
         self.assertIn("-stub-run", script)
-        self.assertIn('.codex-tmp/phase3-fast-stub.XXXXXX', script)
+        self.assertIn(".codex-tmp/phase3-fast-stub.XXXXXX", script)
         self.assertIn('nextflow -log "${LOG_DIR}/nextflow.log"', script)
         self.assertIn('-work-dir "${WORK_DIR}"', script)
         self.assertIn('--outdir "${OUT_DIR}"', script)
         self.assertNotIn("logs/nextflow.log", script)
         self.assertNotIn("rm -rf", script)
         self.assertIn("--parabricks_container", script)
+        self.assertIn("Validating Phase 3 fast stub private report packets", script)
+        self.assertIn("scripts/validate_phase3_fast_report_packets.py", script)
+        self.assertIn("--deterministic-report-dir", script)
+        self.assertIn("--rosalind-report-dir", script)
+        self.assertIn("--facets-scarhrd-report-dir", script)
+        self.assertIn("--oncoanalyser-chord-report-dir", script)
+        self.assertIn("--hrdetect-report-dir", script)
+        self.assertIn('--forbidden-tokens-json "${FORBIDDEN_TOKENS_JSON}"', script)
+        self.assertIn("--output", script)
+        self.assertIn("report_packet_validation.json", script)
+        self.assertIn("facets_scarhrd_blocked", script)
+        self.assertIn("oncoanalyser_chord_blocked", script)
+        self.assertIn("hrdetect_blocked", script)
 
     def test_input_manifest_derives_parabricks_digest_from_runtime_container(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")
@@ -231,7 +264,18 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("FAST_CNV_EVIDENCE_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
         self.assertIn("FAST_SV_EVIDENCE_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
         self.assertIn("FAST_FILTER_MUTECT_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)", text)
-        self.assertIn("FAST_STAGE_BLOCKED_CROSSCHECKS(FAST_STAGE_ROSALIND_PACKET.out)", text)
+        self.assertIn(
+            "FAST_VALIDATE_FORBIDDEN_TOKENS(Channel.value(params.phase3_fast_forbidden_tokens_json.toString().getBytes('UTF-8').encodeBase64().toString()))",
+            text,
+        )
+        self.assertIn(
+            "validated_fast_staging_plan = FAST_STAGING_PLAN.out.combine(FAST_VALIDATE_FORBIDDEN_TOKENS.out)",
+            text,
+        )
+        self.assertIn("FAST_MUTECT_PARABRICKS_FILTER(validated_fast_staging_plan)", text)
+        self.assertIn("FAST_BAM_CNV_SV_EVIDENCE(validated_fast_staging_plan)", text)
+        self.assertIn("FAST_STAGE_BLOCKED_CROSSCHECKS(FAST_STAGE_ROSALIND_PACKET.out, FAST_STAGE_DETERMINISTIC_REPORT.out)", text)
+        self.assertIn("FAST_VALIDATE_REPORT_PACKETS(", text)
         self.assertIn("phase3_fast_replication_mode.toString().replace('-', '_') == 'apply'", text)
         self.assertIn('export PHASE3_WGS_FAST_INPUT_MANIFEST="\\$PWD/${input_manifest}"', text)
         self.assertIn('export PHASE3_WGS_FAST_CACHE_PREFIX="${params.phase3_fast_cache_prefix}"', text)
@@ -401,6 +445,25 @@ class Phase3FastNextflowTests(unittest.TestCase):
             '--source-report-manifest "rosalind_diana_wgs=${rosalind_report_manifest}"',
             process,
         )
+        self.assertIn(
+            "path(deterministic_report_manifest, name: 'deterministic_full_wgs/report_manifest.json')",
+            process,
+        )
+        self.assertIn('test -s "${deterministic_report}"', process)
+        self.assertIn('test -s "${deterministic_report_manifest}"', process)
+        self.assertIn('deterministic_manifest_sha="\\$(shasum -a 256 "${deterministic_report_manifest}"', process)
+        self.assertIn('rosalind_manifest_sha="\\$(shasum -a 256 "${rosalind_report_manifest}"', process)
+        self.assertIn("awk '{print \\$1}'", process)
+        self.assertIn(
+            '--source-report-manifest "deterministic_full_wgs=${deterministic_report_manifest}"',
+            process,
+        )
+        self.assertIn('"source_report_manifests"', process)
+        self.assertIn('"deterministic_full_wgs_report_manifest"', process)
+        self.assertIn('"rosalind_diana_wgs_report_manifest"', process)
+        self.assertIn('"classification_qc_status":"not_applicable"', process)
+        self.assertIn('"support_sha256":{"method_spec.json"', process)
+        self.assertIn('"report_sha256":"\\$report_sha"', process)
         self.assertIn("workspace/results/phase3_wgs_fast/blocked_crosschecks", process)
         for method_id in (
             "facets_scarhrd_blocked",
@@ -426,6 +489,9 @@ class Phase3FastNextflowTests(unittest.TestCase):
         process = text[text.index("process FAST_MUTECT_PARABRICKS_FILTER") :]
         process = process[: process.index("process FAST_BAM_CNV_SV_EVIDENCE")]
         self.assertIn("label 'gpu_parabricks'", process)
+        self.assertIn("tuple path(staging_plan)", process)
+        self.assertIn("path(forbidden_tokens_json)", process)
+        self.assertIn('test -s "${forbidden_tokens_json}"', process)
         self.assertIn("run:phase3-fast-parabricks-mutect", process)
         self.assertIn("run:phase3-fast-filter-mutect", process)
         self.assertIn("export:phase3-fast-small-variants", process)
@@ -468,7 +534,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
 
         self.assertIn("smallVariantMode = params.phase3_fast_small_variant_mode.toString()", text)
         self.assertIn("smallVariantMode == 'execute'", text)
-        self.assertIn("FAST_MUTECT_PARABRICKS_FILTER(FAST_STAGING_PLAN.out)", text)
+        self.assertIn("FAST_MUTECT_PARABRICKS_FILTER(validated_fast_staging_plan)", text)
         self.assertIn("allowedSmallVariantModes = ['plan', 'execute']", text)
         self.assertIn("Unknown phase3_fast_small_variant_mode", text)
 
@@ -478,6 +544,9 @@ class Phase3FastNextflowTests(unittest.TestCase):
         process = text[text.index("process FAST_BAM_CNV_SV_EVIDENCE") :]
         process = process[: process.index("process FAST_EVIDENCE_JOIN")]
         self.assertIn("label 'cpu_io'", process)
+        self.assertIn("tuple path(staging_plan)", process)
+        self.assertIn("path(forbidden_tokens_json)", process)
+        self.assertIn('test -s "${forbidden_tokens_json}"', process)
         self.assertIn("stage:phase3-fast-inputs", process)
         self.assertIn("build:phase3-fast-bam-qc-plan", process)
         self.assertIn("run:phase3-fast-bam-qc", process)
@@ -520,7 +589,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("workspace/results/phase3_wgs_fast/bam_qc", process)
         self.assertIn("workspace/results/phase3_wgs_fast/cnv_evidence", process)
         self.assertIn("workspace/results/phase3_wgs_fast/sv_evidence", process)
-        self.assertIn("FAST_BAM_CNV_SV_EVIDENCE(FAST_STAGING_PLAN.out)", text)
+        self.assertIn("FAST_BAM_CNV_SV_EVIDENCE(validated_fast_staging_plan)", text)
 
     def test_evidence_join_consumes_terminal_execute_branch_outputs(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")
@@ -606,11 +675,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             text,
         )
         self.assertNotIn(
-            (
-                "bam_qc_results,\n"
-                "                bam_qc_results,\n"
-                "                cnv_evidence_results"
-            ),
+            ("bam_qc_results,\n                bam_qc_results,\n                cnv_evidence_results"),
             text,
         )
         self.assertIn("FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out", text)
@@ -656,6 +721,14 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/evidence_checks.json", process)
         self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/input_sha256.csv", process)
         self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/crosscheck_input_plans.json", process)
+        self.assertIn('"classification_qc_status":"not_applicable"', process)
+        self.assertIn('"support_sha256"', process)
+        self.assertIn('"crosscheck_input_plans.json"', process)
+        self.assertIn('"evidence_checks.json"', process)
+        self.assertIn('"input_sha256.csv"', process)
+        self.assertIn('"readiness.csv"', process)
+        self.assertIn('"report_sha256":"\\$report_sha"', process)
+        self.assertIn('"review_summary"', process)
         self.assertIn(
             'export PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST="\\$PWD/${final_evidence_manifest}"',
             process,
@@ -683,7 +756,9 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("tuple path(report_md)", process)
         self.assertIn("path(crosscheck_input_plans)", process)
         self.assertIn("path(final_evidence_root)", process)
+        self.assertIn("path forbidden_tokens_json", process)
         self.assertIn('cp "${crosscheck_input_plans}" deterministic_report/crosscheck_input_plans.json', process)
+        self.assertIn('test -s "${forbidden_tokens_json}"', process)
         self.assertIn("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/run_manifest.json", process)
         self.assertIn("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/packet_index.md", process)
         self.assertIn("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/cloud_materialization_plan.md", process)
@@ -692,6 +767,14 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("sample_validation_summary.csv", process)
         self.assertIn("hrd_adapter_status.csv", process)
         self.assertIn("report_manifest.json", process)
+        self.assertIn('"classification_qc_status":"not_applicable"', process)
+        self.assertIn('"support_sha256"', process)
+        self.assertIn('"input_evidence_index.json"', process)
+        self.assertIn('"research_context_sources.json"', process)
+        self.assertIn('"reviewer_packet.md"', process)
+        self.assertIn('"report_sha256":"\\$report_sha"', process)
+        self.assertIn('"source_sha256":{"deterministic_report_manifest"', process)
+        self.assertIn('"review_summary"', process)
         self.assertIn('export DIANA_OMICS_ROOT="\\$PWD/workspace"', process)
         self.assertIn('export ROSALIND_HRD_SAMPLE_SET="diana_wgs"', process)
         self.assertIn('export ROSALIND_HRD_RUN_ID="${params.phase3_fast_run_id}"', process)
@@ -703,11 +786,68 @@ class Phase3FastNextflowTests(unittest.TestCase):
             'export ROSALIND_HRD_DETERMINISTIC_REPORT_DIR="\\$PWD/deterministic_report"',
             process,
         )
-        self.assertIn("export ROSALIND_HRD_FORBIDDEN_TOKENS_JSON='${params.phase3_fast_forbidden_tokens_json}'", process)
+        self.assertIn('export ROSALIND_HRD_FORBIDDEN_TOKENS_JSON="\\$(<"${forbidden_tokens_json}")"', process)
         self.assertIn("phase3_wgs_fast execute mode requires: phase3_fast_forbidden_tokens_json", text)
         self.assertIn("build:rosalind-hrd-packet", process)
+        self.assertIn("FAST_STAGE_ROSALIND_PACKET(", text)
         self.assertIn(
-            "FAST_STAGE_ROSALIND_PACKET(FAST_STAGE_DETERMINISTIC_REPORT.out, FAST_VERIFY_AND_PUBLISH.out)",
+            "FAST_VALIDATE_FORBIDDEN_TOKENS.out",
+            text,
+        )
+        match = re.search(
+            r'cat > "\\\$output/input_evidence_index\.json" <<JSON\n(?P<body>.*?)\n    JSON',
+            process,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(match)
+        assert match is not None
+        self.assertEqual(
+            {"sampleSet": "diana_wgs", "artifacts": []},
+            json.loads(match.group("body")),
+        )
+
+    def test_validate_report_packets_gates_phase3_fast_report_handoff(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_VALIDATE_REPORT_PACKETS") :]
+        process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
+        for method_id in (
+            "deterministic_full_wgs",
+            "rosalind_diana_wgs",
+            "facets_scarhrd_blocked",
+            "oncoanalyser_chord_blocked",
+            "hrdetect_blocked",
+        ):
+            self.assertIn(method_id, process)
+        self.assertIn("workspace/manifests/phase3_wgs_fast/report_packet_validation.json", process)
+        self.assertIn("real_report_packets", process)
+        self.assertIn('cp -L "\\$method_id"/* "\\$packet_root/\\$method_id/"', process)
+        self.assertIn("validate_phase3_fast_report_packets.py", process)
+        self.assertIn("--deterministic-report-dir", process)
+        self.assertIn("--rosalind-report-dir", process)
+        self.assertIn("--facets-scarhrd-report-dir", process)
+        self.assertIn("--oncoanalyser-chord-report-dir", process)
+        self.assertIn("--hrdetect-report-dir", process)
+        self.assertIn('--forbidden-tokens-json "\\$PHASE3_FAST_REPORT_FORBIDDEN_TOKENS_JSON"', process)
+        self.assertIn('export PHASE3_FAST_REPORT_FORBIDDEN_TOKENS_JSON="\\$(<"${forbidden_tokens_json}")"', process)
+        self.assertIn("FAST_VALIDATE_REPORT_PACKETS(", text)
+        self.assertIn(
+            "FAST_STAGE_BLOCKED_CROSSCHECKS.out",
+            text,
+        )
+
+    def test_forbidden_tokens_are_published_for_source_freeze_binding(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        process = text[text.index("process FAST_VALIDATE_FORBIDDEN_TOKENS") :]
+        process = process[: process.index("process ALL_PUBLIC")]
+        self.assertIn(
+            "publishDir \"${params.outdir}/phase3_wgs_fast/forbidden_tokens\", mode: 'copy', overwrite: true",
+            process,
+        )
+        self.assertIn("workspace/manifests/phase3_wgs_fast/forbidden_tokens.json", process)
+        self.assertIn(
+            "FAST_VALIDATE_FORBIDDEN_TOKENS.out",
             text,
         )
 

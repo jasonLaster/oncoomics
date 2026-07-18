@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -14,6 +16,7 @@ MIRROR_PARABRICKS = ROOT / "infra/aws/mirror-parabricks.sh"
 PARABRICKS_DOCKERFILE = ROOT / "infra/aws/Dockerfile.parabricks"
 AWS_README = ROOT / "infra/aws/README.md"
 NEXT_GEN_DOC = ROOT / "docs/operations/next-generation-fast-rerun.md"
+DOCKERIGNORE = ROOT / ".dockerignore"
 
 
 def resource_block(text: str, resource_type: str, resource_name: str) -> str:
@@ -31,6 +34,21 @@ def resource_block(text: str, resource_type: str, resource_name: str) -> str:
             if depth == 0:
                 return text[match.start() : index + 1]
     raise AssertionError(f"Unterminated {resource_type}.{resource_name}")
+
+
+def run_mirror_parabricks_preflight(*, source_image: str, platform: str = "linux/amd64") -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PARABRICKS_SOURCE_IMAGE"] = source_image
+    env["PARABRICKS_PLATFORM"] = platform
+    return subprocess.run(
+        ["bash", str(MIRROR_PARABRICKS)],
+        check=False,
+        cwd=ROOT,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
 
 
 class AwsGpuInfraTests(unittest.TestCase):
@@ -65,7 +83,7 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("nvme-Amazon_EC2_NVMe_Instance_Storage", block)
         self.assertIn("dnf install -y mdadm xfsprogs", block)
         self.assertIn("mdadm --create /dev/md0", block)
-        self.assertIn("--raid-devices=\"$${#instance_store_devices[@]}\"", block)
+        self.assertIn('--raid-devices="$${#instance_store_devices[@]}"', block)
         self.assertIn("mkfs.xfs -f /dev/md0", block)
         self.assertIn("mount -o noatime,nodiratime /dev/md0 /scratch", block)
 
@@ -80,7 +98,7 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertRegex(text, r"batch_gpu_p5en_instance_types\s+=\s+var\.batch_gpu_p5en_instance_types")
         self.assertRegex(text, r"gpu_p5en_max_vcpus\s+=\s+var\.gpu_p5en_max_vcpus")
         self.assertRegex(text, r"parabricks_container\s+=\s+var\.parabricks_container")
-        self.assertIn("parabricks_mirror_repository  = try(aws_ecr_repository.parabricks[0].repository_url, \"\")", text)
+        self.assertIn('parabricks_mirror_repository  = try(aws_ecr_repository.parabricks[0].repository_url, "")', text)
         self.assertIn('output "parabricks_mirror_repository_url"', outputs)
         self.assertRegex(text, r"phase3_fast_cache_kms_key_arn\s+=\s+aws_kms_key\.main\.arn")
         self.assertRegex(text, r"phase3_fast_cache_region\s+=\s+var\.region")
@@ -140,8 +158,10 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn('variable "phase3_fast_source_environment"', variables)
         self.assertIn('default     = "prod-use1"', variables)
         self.assertIn("phase3_fast_source_bucket_names", text)
-        self.assertIn('${var.project}-private-results-${data.aws_caller_identity.current.account_id}-${var.phase3_fast_source_region}', text)
-        self.assertIn('${var.project}-raw-inputs-${data.aws_caller_identity.current.account_id}-${var.phase3_fast_source_region}', text)
+        self.assertIn(
+            "${var.project}-private-results-${data.aws_caller_identity.current.account_id}-${var.phase3_fast_source_region}", text
+        )
+        self.assertIn("${var.project}-raw-inputs-${data.aws_caller_identity.current.account_id}-${var.phase3_fast_source_region}", text)
         self.assertIn('sid    = "ReadPhase3FastVersionedSourceObjects"', text)
         self.assertIn('"s3:GetObjectVersion"', text)
         self.assertIn('sid    = "DecryptPhase3FastSourceKmsKey"', text)
@@ -173,14 +193,21 @@ class AwsGpuInfraTests(unittest.TestCase):
 
         self.assertIn("DIANA_AWS_TERRAFORM_WORKSPACE", script)
         self.assertIn('terraform -chdir="${ROOT_DIR}/infra/aws" workspace select "${TARGET_WORKSPACE}"', script)
-        self.assertIn('trap restore_workspace EXIT', script)
-        self.assertIn('output -raw region', script)
+        self.assertIn("trap restore_workspace EXIT", script)
+        self.assertIn("output -raw region", script)
 
     def test_parabricks_mirror_requires_reviewed_digest_and_writes_pin_receipt(self) -> None:
         script = MIRROR_PARABRICKS.read_text(encoding="utf-8")
 
-        self.assertIn('PARABRICKS_SOURCE_IMAGE must be pinned as <registry>/<image>@sha256:<64 hex>', script)
-        self.assertIn('target_tag="sha256-${source_digest_hex}"', script)
+        self.assertIn("PARABRICKS_SOURCE_IMAGE must be pinned as <registry>/<image>@sha256:<64 hex>", script)
+        self.assertNotIn(",,}", script)
+        self.assertIn("tr 'A-F' 'a-f'", script)
+        self.assertIn('git -C "${ROOT_DIR}" status --porcelain --untracked-files=all', script)
+        self.assertIn("results/full_wes_benchmark/full_wes_benchmark_summary.json", script)
+        self.assertIn('diana_revision="$(git -C "${ROOT_DIR}" rev-parse --verify HEAD)"', script)
+        self.assertIn("for-each-ref", script)
+        self.assertIn("push ${diana_revision} to a remote", script)
+        self.assertIn('target_tag="sha256-${source_digest_hex}-diana-${diana_revision_short}"', script)
         self.assertNotIn("PARABRICKS_MIRROR_TAG", script)
         self.assertIn("Reusing immutable", script)
         self.assertIn('docker pull --platform "${PLATFORM}" "${SOURCE_IMAGE}"', script)
@@ -188,11 +215,34 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("PARABRICKS_BASE_IMAGE", script)
         self.assertIn("docker build", script)
         self.assertNotIn('docker tag "${SOURCE_IMAGE}" "${target_image}"', script)
-        self.assertIn('output -raw parabricks_mirror_repository_url', script)
-        self.assertIn('aws ecr describe-images', script)
+        self.assertIn("output -raw parabricks_mirror_repository_url", script)
+        self.assertIn("aws ecr describe-images", script)
         self.assertIn('"parabricks_mirror_receipt"', script)
         self.assertIn("verify:parabricks-mirror-receipt", script)
-        self.assertIn('TF_VAR_parabricks_container', script)
+        self.assertIn("TF_VAR_parabricks_container", script)
+
+    def test_parabricks_mirror_rejects_malformed_source_image_before_git_aws_or_docker(self) -> None:
+        for source_image in (
+            "nvcr.io/nvidia/clara/parabricks:latest",
+            "bad mirror@sha256:" + "a" * 64,
+        ):
+            with self.subTest(source_image=source_image):
+                result = run_mirror_parabricks_preflight(source_image=source_image)
+
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(
+                    "PARABRICKS_SOURCE_IMAGE must be pinned as <registry>/<image>@sha256:<64 hex>",
+                    result.stderr,
+                )
+
+    def test_parabricks_mirror_rejects_non_amd64_platform_before_git_aws_or_docker(self) -> None:
+        result = run_mirror_parabricks_preflight(
+            source_image="nvcr.io/nvidia/clara/parabricks@sha256:" + "a" * 64,
+            platform="linux/arm64",
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("PARABRICKS_PLATFORM must be linux/amd64", result.stderr)
 
     def test_parabricks_mirror_image_extends_base_with_diana_runtime(self) -> None:
         dockerfile = PARABRICKS_DOCKERFILE.read_text(encoding="utf-8")
@@ -205,6 +255,45 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("COPY . /opt/diana-omics", dockerfile)
         self.assertIn("command -v pbrun", dockerfile)
         self.assertIn("python3 -m diana_omics --help", dockerfile)
+
+    def test_parabricks_mirror_context_excludes_local_scratch_and_generated_secrets(self) -> None:
+        dockerignore = DOCKERIGNORE.read_text(encoding="utf-8")
+
+        for pattern in (
+            ".DS_Store",
+            ".claude/",
+            ".codex-tmp/",
+            ".next/",
+            ".nextflow/",
+            ".nextflow.log*",
+            ".ipynb_checkpoints/",
+            ".venv/",
+            ".mypy_cache/",
+            ".pytest_cache/",
+            ".ruff_cache/",
+            "node_modules/",
+            "apps/data/dist/",
+            ".vercel/",
+            "tmp/",
+            ".env",
+            ".env.*",
+            "**/.env",
+            "**/.env.*",
+            "!**/.env.example",
+            "data/raw/**",
+            "data/processed/**",
+            "results/**",
+            "!results/full_wes_benchmark/",
+            "!results/full_wes_benchmark/full_wes_benchmark_summary.json",
+            "infra/aws/.terraform/**",
+            "infra/aws/terraform.tfstate.d/**",
+            "infra/aws/*.tfstate",
+            "infra/aws/*.tfstate.*",
+            "infra/aws/*.tfplan",
+            "infra/aws/nextflow.aws.json",
+            "infra/aws/nextflow.aws.*.json",
+        ):
+            self.assertIn(pattern, dockerignore)
 
     def test_gpu_smoke_is_documented_as_placement_only(self) -> None:
         readme = AWS_README.read_text(encoding="utf-8")

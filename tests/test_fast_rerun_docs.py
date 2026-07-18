@@ -26,6 +26,8 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("FAST_STAGE_DETERMINISTIC_REPORT", text)
         self.assertIn("FAST_STAGE_ROSALIND_PACKET", text)
         self.assertIn("FAST_STAGE_BLOCKED_CROSSCHECKS", text)
+        self.assertIn("FAST_VALIDATE_REPORT_PACKETS", text)
+        self.assertIn("report_packet_validation.json", text)
         self.assertIn("five of the seven source packets", text)
         self.assertIn("scripts/render_source_report_freeze_runbook.py", text)
         self.assertIn("sequenza_scarhrd", text)
@@ -45,6 +47,17 @@ class FastRerunDocsTests(unittest.TestCase):
             "$FAST_ROOT/blocked_crosschecks/workspace/results/phase3_wgs_fast/blocked_crosschecks",
             text,
         )
+        self.assertIn("--phase3-fast-report-packet-validation", text)
+        self.assertIn("--phase3-fast-forbidden-tokens-file", text)
+        self.assertIn(
+            "$FAST_ROOT/report_packet_validation/workspace/manifests/phase3_wgs_fast/report_packet_validation.json",
+            text,
+        )
+        self.assertIn(
+            "$FAST_ROOT/forbidden_tokens/workspace/manifests/phase3_wgs_fast/forbidden_tokens.json",
+            text,
+        )
+        self.assertIn("static-plus-run scan set without inlining private identifiers", text)
         self.assertIn("published, versioned,\nalias-only cross-check input contract", text)
         self.assertIn("evidence_join_manifest.json", text)
         self.assertIn("final_evidence_manifest.json", text)
@@ -96,7 +109,9 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("PARABRICKS_MIRROR_RECEIPT", text)
         self.assertIn("PHASE3_FAST_GPU_SMOKE_RESULT", text)
         self.assertIn("alias-only forbidden-token inventory after `--`", text)
-        self.assertIn("mirror-receipt, cache, ECR-image, live\nP-instance quota", text)
+        self.assertIn("live Batch queue, isolated P5en compute\nenvironment", text)
+        self.assertIn("mirror-receipt, cache, ECR-image, live P-instance quota", text)
+        self.assertIn("misrouted compute environment", text)
 
     def test_legacy_full_wgs_launcher_is_not_current_diana_rerun_path(self) -> None:
         text = AWS_README.read_text(encoding="utf-8")

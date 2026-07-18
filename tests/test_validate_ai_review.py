@@ -10,7 +10,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 TEST_DIR = Path(__file__).resolve().parent
 for path in (SCRIPT_DIR, TEST_DIR):
@@ -19,6 +18,7 @@ for path in (SCRIPT_DIR, TEST_DIR):
 
 import hrd_report_inventory as INVENTORY  # noqa: E402
 import validate_ai_review as VALIDATE  # noqa: E402
+
 from tests.test_build_ai_review_bundle import (  # noqa: E402
     AiReviewBundleFixture,
     write_json,
@@ -33,10 +33,7 @@ def write_claims(
     path: Path,
     *,
     proposed_state: str = "no_call",
-    claim: str = (
-        "The coverage signal is a descriptive proxy and not allele-specific "
-        "copy number."
-    ),
+    claim: str = ("The coverage signal is a descriptive proxy and not allele-specific copy number."),
     quantitative_fact_ids: str = "none",
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -51,13 +48,9 @@ def write_claims(
                     "claim": claim
                     if index == 1
                     else (
-                        f"The {method_id} evidence remains descriptive and "
-                        "does not authorize a categorical result."
+                        f"The {method_id} evidence remains descriptive and does not authorize a categorical result."
                         if not blocked
-                        else (
-                            f"The {method_id} route is blocked and cannot "
-                            "support a categorical result."
-                        )
+                        else (f"The {method_id} route is blocked and cannot support a categorical result.")
                     ),
                     "evidence_ids": f"E{index:03d}",
                     "source_methods": method_id,
@@ -68,16 +61,10 @@ def write_claims(
                     else "Purity, ploidy, and allele-specific LOH may be unavailable.",
                     "disposition": "cannot_assess" if blocked else "supported",
                     "proposed_hrd_state": proposed_state,
-                    "quantitative_fact_ids": quantitative_fact_ids
-                    if index == 1
-                    else "none",
+                    "quantitative_fact_ids": quantitative_fact_ids if index == 1 else "none",
                     "disagreement_status": "missing_evidence" if blocked else "none",
-                    "disagreement_evidence_ids": f"E{index:03d}"
-                    if blocked
-                    else "none",
-                    "resolution_needed": "Complete and validate the blocked route."
-                    if blocked
-                    else "not_applicable",
+                    "disagreement_evidence_ids": f"E{index:03d}" if blocked else "none",
+                    "resolution_needed": "Complete and validate the blocked route." if blocked else "not_applicable",
                 }
             )
 
@@ -104,14 +91,8 @@ class ValidateReviewFixture(AiReviewBundleFixture):
         *,
         proposed_state: str = "no_call",
         reviewer: str = "A",
-        body: str = (
-            "The coverage evidence is descriptive and not allele-specific "
-            "[C001|E001]."
-        ),
-        claim: str = (
-            "The coverage signal is a descriptive proxy and not "
-            "allele-specific copy number."
-        ),
+        body: str = ("The coverage evidence is descriptive and not allele-specific [C001|E001]."),
+        claim: str = ("The coverage signal is a descriptive proxy and not allele-specific copy number."),
         quantitative_fact_ids: str = "none",
         invocation_id: str | None = None,
     ) -> None:
@@ -123,9 +104,7 @@ class ValidateReviewFixture(AiReviewBundleFixture):
             "Subject alias: `subject01`\n\n"
             "## Methods and evidence\n\n"
             + "\n\n".join(
-                f"The {method_id} route remains "
-                f"{'blocked' if index >= 5 else 'partial_evidence'} "
-                f"[C{index:03d}|E{index:03d}]."
+                f"The {method_id} route remains {'blocked' if index >= 5 else 'partial_evidence'} [C{index:03d}|E{index:03d}]."
                 for index, method_id in enumerate(INVENTORY.REQUIRED_METHOD_IDS, 1)
             )
             + "\n\n"
@@ -149,9 +128,7 @@ class ValidateReviewFixture(AiReviewBundleFixture):
             claim=claim,
             quantitative_fact_ids=quantitative_fact_ids,
         )
-        bundle_manifest = json.loads(
-            (self.bundle_dir / "bundle_manifest.json").read_text(encoding="utf-8")
-        )
+        bundle_manifest = json.loads((self.bundle_dir / "bundle_manifest.json").read_text(encoding="utf-8"))
         write_json(
             directory / "review_manifest.json",
             {
@@ -160,8 +137,7 @@ class ValidateReviewFixture(AiReviewBundleFixture):
                 "subject_alias": "subject01",
                 "model": bundle_manifest["model_execution_contracts"][reviewer],
                 "invocation": {
-                    "invocation_id": invocation_id
-                    or f"synthetic-invocation-{reviewer.lower()}-001",
+                    "invocation_id": invocation_id or f"synthetic-invocation-{reviewer.lower()}-001",
                     "interface": "offline-test-fixture",
                     "started_at": "2026-07-17T00:00:00+00:00",
                     "completed_at": "2026-07-17T00:00:01+00:00",
@@ -171,9 +147,7 @@ class ValidateReviewFixture(AiReviewBundleFixture):
                 "method_inventory_sha256": INVENTORY.inventory_sha256(),
                 "input_artifact_sha256": {
                     "review_bundle.json": bundle_manifest["review_bundle_sha256"],
-                    f"reviewer-{reviewer.lower()}.prompt.md": bundle_manifest[
-                        "prompt_sha256"
-                    ][reviewer],
+                    f"reviewer-{reviewer.lower()}.prompt.md": bundle_manifest["prompt_sha256"][reviewer],
                 },
                 "independence_attestation": {
                     "other_reviewer_outputs_received": False,
@@ -196,6 +170,8 @@ class ValidateReviewFixture(AiReviewBundleFixture):
         *,
         reviewer: str = "A",
         other_review_dir: Path | None = None,
+        forbidden_token: str | None = "DirectIdentifier",
+        forbidden_tokens_file: Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
         command = [
             sys.executable,
@@ -213,10 +189,12 @@ class ValidateReviewFixture(AiReviewBundleFixture):
                 str(review_dir),
                 "--model-catalog-receipt",
                 str(self.catalog_receipt),
-                "--forbidden-token",
-                "DirectIdentifier",
             ]
         )
+        if forbidden_token is not None:
+            command.extend(["--forbidden-token", forbidden_token])
+        if forbidden_tokens_file is not None:
+            command.extend(["--forbidden-tokens-file", str(forbidden_tokens_file)])
         if other_review_dir is not None:
             command.extend(["--other-review-dir", str(other_review_dir)])
         return subprocess.run(command, text=True, capture_output=True)
@@ -291,6 +269,24 @@ class ValidateAiReviewTests(unittest.TestCase):
                 [f"E{index:03d}" for index in range(1, 8)],
             )
 
+    def test_validates_forbidden_tokens_file_without_raw_token_argument(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review = Path(temporary) / "review-a"
+            forbidden_tokens = Path(temporary) / "forbidden_tokens.json"
+            forbidden_tokens.write_text('["DirectIdentifier"]\n', encoding="utf-8")
+            fixture.write_review(review)
+
+            validated = fixture.validate(
+                review,
+                forbidden_token=None,
+                forbidden_tokens_file=forbidden_tokens,
+            )
+
+            self.assertEqual(validated.returncode, 0, validated.stdout + validated.stderr)
+            self.assertTrue((review / "validation.json").exists())
+
     def test_rejects_existing_validation_create_only_and_preserves_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))
@@ -335,9 +331,7 @@ class ValidateAiReviewTests(unittest.TestCase):
             write_json(bundle_path, bundle)
 
             bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
-            bundle_manifest = json.loads(
-                bundle_manifest_path.read_text(encoding="utf-8")
-            )
+            bundle_manifest = json.loads(bundle_manifest_path.read_text(encoding="utf-8"))
             bundle_manifest["input_manifest_sha256"]["E001"] = sha256(source_path)
             bundle_manifest["review_bundle_sha256"] = sha256(bundle_path)
             write_json(bundle_manifest_path, bundle_manifest)
@@ -367,9 +361,7 @@ class ValidateAiReviewTests(unittest.TestCase):
             write_json(bundle_path, bundle)
 
             bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
-            bundle_manifest = json.loads(
-                bundle_manifest_path.read_text(encoding="utf-8")
-            )
+            bundle_manifest = json.loads(bundle_manifest_path.read_text(encoding="utf-8"))
             bundle_manifest["input_manifest_sha256"]["E001"] = sha256(source_path)
             bundle_manifest["review_bundle_sha256"] = sha256(bundle_path)
             write_json(bundle_manifest_path, bundle_manifest)
@@ -408,9 +400,7 @@ class ValidateAiReviewTests(unittest.TestCase):
             )
             mutate_claims(
                 review / "claims.csv",
-                lambda rows: rows[0].update(
-                    {"claim": "The safe summary reports 4 coverage bins."}
-                ),
+                lambda rows: rows[0].update({"claim": "The safe summary reports 4 coverage bins."}),
             )
             fixture.refresh_output_hashes(review)
             changed = fixture.validate(review)
@@ -431,8 +421,7 @@ class ValidateAiReviewTests(unittest.TestCase):
             (review / "validation.json").unlink(missing_ok=True)
             fixture.write_review(
                 review,
-                body="The summary values must not be combined as 3 / 1.5% "
-                "[C001|E001].",
+                body="The summary values must not be combined as 3 / 1.5% [C001|E001].",
                 claim="The summary values must not be combined as 3 / 1.5%.",
                 quantitative_fact_ids="Q0001;Q0002",
             )
@@ -496,8 +485,7 @@ class ValidateAiReviewTests(unittest.TestCase):
             review = Path(temporary) / "review-a"
             fixture.write_review(
                 review,
-                body="The evidence was copied from /private/results/sample.bam "
-                "[C001|E001].",
+                body="The evidence was copied from /private/results/sample.bam [C001|E001].",
             )
 
             leaked = fixture.validate(review)
@@ -508,9 +496,7 @@ class ValidateAiReviewTests(unittest.TestCase):
     def test_rejects_symlinked_custody_inputs(self) -> None:
         cases = (
             (
-                lambda fixture, review, root: (
-                    root / "source-manifest-link.json"
-                ).symlink_to(fixture.manifests[0]),
+                lambda fixture, review, root: (root / "source-manifest-link.json").symlink_to(fixture.manifests[0]),
                 lambda fixture, root: fixture.manifests.__setitem__(
                     0,
                     root / "source-manifest-link.json",
@@ -518,9 +504,7 @@ class ValidateAiReviewTests(unittest.TestCase):
                 "source manifest",
             ),
             (
-                lambda fixture, review, root: (
-                    root / "bundle-link"
-                ).symlink_to(fixture.bundle_dir, target_is_directory=True),
+                lambda fixture, review, root: (root / "bundle-link").symlink_to(fixture.bundle_dir, target_is_directory=True),
                 lambda fixture, root: setattr(
                     fixture,
                     "bundle_dir",
@@ -529,9 +513,7 @@ class ValidateAiReviewTests(unittest.TestCase):
                 "bundle directory",
             ),
             (
-                lambda fixture, review, root: (
-                    root / "catalog-link.json"
-                ).symlink_to(fixture.catalog_receipt),
+                lambda fixture, review, root: (root / "catalog-link.json").symlink_to(fixture.catalog_receipt),
                 lambda fixture, root: setattr(
                     fixture,
                     "catalog_receipt",
@@ -540,9 +522,7 @@ class ValidateAiReviewTests(unittest.TestCase):
                 "model catalog receipt",
             ),
             (
-                lambda fixture, review, root: (
-                    root / "review-link"
-                ).symlink_to(review, target_is_directory=True),
+                lambda fixture, review, root: (root / "review-link").symlink_to(review, target_is_directory=True),
                 lambda fixture, root: None,
                 "review directory",
             ),
@@ -557,9 +537,7 @@ class ValidateAiReviewTests(unittest.TestCase):
                 link(fixture, review, root)
                 mutate(fixture, root)
 
-                failed = fixture.validate(
-                    root / "review-link" if message == "review directory" else review
-                )
+                failed = fixture.validate(root / "review-link" if message == "review directory" else review)
 
                 self.assertNotEqual(failed.returncode, 0)
                 self.assertIn(message, failed.stderr)
@@ -593,8 +571,7 @@ class ValidateAiReviewTests(unittest.TestCase):
             fixture.write_review(
                 review_b,
                 reviewer="B",
-                body="The missing allele-specific copy-number gate remains "
-                "unresolved [C001|E001].",
+                body="The missing allele-specific copy-number gate remains unresolved [C001|E001].",
                 claim="The missing allele-specific copy number prevents a categorical conclusion.",
             )
             missing_other = fixture.validate(review_b, reviewer="B")
@@ -640,14 +617,8 @@ class ValidateAiReviewTests(unittest.TestCase):
             fixture.write_review(
                 review_b,
                 reviewer="B",
-                body=(
-                    "The missing allele-specific copy-number gate remains "
-                    "unresolved [C001|E001]."
-                ),
-                claim=(
-                    "The missing allele-specific copy number prevents a "
-                    "categorical conclusion."
-                ),
+                body=("The missing allele-specific copy-number gate remains unresolved [C001|E001]."),
+                claim=("The missing allele-specific copy number prevents a categorical conclusion."),
             )
 
             symlinked = fixture.validate(
@@ -661,6 +632,7 @@ class ValidateAiReviewTests(unittest.TestCase):
                 "complete validated reviewer A output",
                 symlinked.stderr,
             )
+
 
 if __name__ == "__main__":
     unittest.main()

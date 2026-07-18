@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import unittest
 from pathlib import Path
@@ -12,10 +13,11 @@ from diana_omics.utils import write_json
 SOURCE_DIGEST = "sha256:" + "a" * 64
 DESTINATION_DIGEST = "sha256:" + "b" * 64
 REPOSITORY = "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks"
+DIANA_GIT_COMMIT = "c" * 40
+EXPECTED_TAG = "sha256-" + "a" * 64 + "-diana-" + "c" * 12
 
 
 def receipt() -> dict:
-    source_hex = SOURCE_DIGEST.removeprefix("sha256:")
     return {
         "schema_version": 1,
         "manifest_type": "parabricks_mirror_receipt",
@@ -28,11 +30,19 @@ def receipt() -> dict:
         "destination": {
             "region": "us-east-2",
             "repository": REPOSITORY,
-            "tag": f"sha256-{source_hex}",
+            "tag": EXPECTED_TAG,
             "digest": DESTINATION_DIGEST,
             "parabricks_container": f"{REPOSITORY}@{DESTINATION_DIGEST}",
         },
+        "diana_omics": {
+            "git_commit": DIANA_GIT_COMMIT,
+            "dockerfile_sha256": "sha256:" + "d" * 64,
+        },
     }
+
+
+def ecr_response(*image_details: dict | str) -> str:
+    return json.dumps({"imageDetails": list(image_details)})
 
 
 class ParabricksMirrorReceiptTests(unittest.TestCase):
@@ -41,7 +51,7 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
 
         self.assertEqual(DESTINATION_DIGEST, summary["destination_digest"])
         self.assertEqual(f"{REPOSITORY}@{DESTINATION_DIGEST}", summary["parabricks_container"])
-        self.assertEqual("sha256-" + "a" * 64, summary["tag"])
+        self.assertEqual(EXPECTED_TAG, summary["tag"])
 
     def test_rejects_unpinned_source_image(self) -> None:
         malformed = receipt()
@@ -54,7 +64,21 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
         malformed = receipt()
         malformed["destination"]["tag"] = "sha256-" + "a" * 16
 
-        with self.assertRaisesRegex(verify.MirrorReceiptError, "full source digest tag"):
+        with self.assertRaisesRegex(verify.MirrorReceiptError, "Diana git revision"):
+            verify.validate_mirror_receipt(malformed)
+
+    def test_rejects_destination_tag_without_diana_revision(self) -> None:
+        malformed = receipt()
+        malformed["destination"]["tag"] = "sha256-" + "a" * 64
+
+        with self.assertRaisesRegex(verify.MirrorReceiptError, "Diana git revision"):
+            verify.validate_mirror_receipt(malformed)
+
+    def test_rejects_malformed_diana_git_commit(self) -> None:
+        malformed = receipt()
+        malformed["diana_omics"]["git_commit"] = "c" * 12
+
+        with self.assertRaisesRegex(verify.MirrorReceiptError, "40-character Git SHA"):
             verify.validate_mirror_receipt(malformed)
 
     def test_rejects_destination_container_mismatch(self) -> None:
@@ -80,12 +104,18 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
         run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,
-            stdout='{"imageDetails":[{"imageDigest":"' + DESTINATION_DIGEST + '"}]}',
+            stdout=ecr_response(
+                {
+                    "imageDigest": DESTINATION_DIGEST,
+                    "imageTags": [EXPECTED_TAG],
+                }
+            ),
         )
 
         observed = verify.load_mirror_digest(
             parabricks_container=f"{REPOSITORY}@{DESTINATION_DIGEST}",
             region="us-east-2",
+            expected_tag=EXPECTED_TAG,
         )
 
         self.assertEqual(DESTINATION_DIGEST, observed)
@@ -107,6 +137,65 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
         )
 
     @patch("diana_omics.commands.phase3_wgs.verify_parabricks_mirror_receipt.subprocess.run")
+    def test_load_mirror_digest_rejects_destination_without_source_tag(self, run) -> None:
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=ecr_response(
+                {
+                    "imageDigest": DESTINATION_DIGEST,
+                    "imageTags": ["sha256-" + "c" * 64],
+                }
+            ),
+        )
+
+        with self.assertRaisesRegex(verify.MirrorReceiptError, "imageTags"):
+            verify.load_mirror_digest(
+                parabricks_container=f"{REPOSITORY}@{DESTINATION_DIGEST}",
+                region="us-east-2",
+                expected_tag=EXPECTED_TAG,
+            )
+
+    @patch("diana_omics.commands.phase3_wgs.verify_parabricks_mirror_receipt.subprocess.run")
+    def test_load_mirror_digest_rejects_duplicate_ecr_rows(self, run) -> None:
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=ecr_response(
+                {
+                    "imageDigest": DESTINATION_DIGEST,
+                    "imageTags": [EXPECTED_TAG],
+                },
+                {
+                    "imageDigest": "sha256:" + "c" * 64,
+                    "imageTags": [EXPECTED_TAG],
+                },
+            ),
+        )
+
+        with self.assertRaisesRegex(verify.MirrorReceiptError, "exactly one imageDetails"):
+            verify.load_mirror_digest(
+                parabricks_container=f"{REPOSITORY}@{DESTINATION_DIGEST}",
+                region="us-east-2",
+                expected_tag=EXPECTED_TAG,
+            )
+
+    @patch("diana_omics.commands.phase3_wgs.verify_parabricks_mirror_receipt.subprocess.run")
+    def test_load_mirror_digest_rejects_malformed_ecr_row(self, run) -> None:
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=ecr_response("not-an-image-detail"),
+        )
+
+        with self.assertRaisesRegex(verify.MirrorReceiptError, "imageDetails\\[0\\]"):
+            verify.load_mirror_digest(
+                parabricks_container=f"{REPOSITORY}@{DESTINATION_DIGEST}",
+                region="us-east-2",
+                expected_tag=EXPECTED_TAG,
+            )
+
+    @patch("diana_omics.commands.phase3_wgs.verify_parabricks_mirror_receipt.subprocess.run")
     def test_missing_destination_image_is_reported(self, run) -> None:
         run.side_effect = subprocess.CalledProcessError(
             returncode=254,
@@ -118,6 +207,7 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
             verify.load_mirror_digest(
                 parabricks_container=f"{REPOSITORY}@{DESTINATION_DIGEST}",
                 region="us-east-2",
+                expected_tag=EXPECTED_TAG,
             )
 
 

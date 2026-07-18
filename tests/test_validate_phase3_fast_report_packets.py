@@ -1,0 +1,253 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import importlib.util
+import json
+import re
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_DIR = ROOT / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+VALIDATOR_SCRIPT = SCRIPT_DIR / "validate_phase3_fast_report_packets.py"
+VALIDATOR_SPEC = importlib.util.spec_from_file_location("validate_phase3_fast_report_packets", VALIDATOR_SCRIPT)
+assert VALIDATOR_SPEC and VALIDATOR_SPEC.loader
+VALIDATOR = importlib.util.module_from_spec(VALIDATOR_SPEC)
+VALIDATOR_SPEC.loader.exec_module(VALIDATOR)
+
+PUBLISH_SCRIPT = SCRIPT_DIR / "publish_reviewed_public_report.py"
+PUBLISH_SPEC = importlib.util.spec_from_file_location("publish_reviewed_public_report", PUBLISH_SCRIPT)
+assert PUBLISH_SPEC and PUBLISH_SPEC.loader
+PUBLISH = importlib.util.module_from_spec(PUBLISH_SPEC)
+PUBLISH_SPEC.loader.exec_module(PUBLISH)
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def write_packet(directory: Path, method_id: str) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    for name in PUBLISH.METHOD_CONTRACTS[method_id]["files"]:
+        if name == "report_manifest.json":
+            continue
+        suffix = Path(name).suffix
+        if suffix == ".json":
+            payload = {"schema_version": 1, "method_id": method_id, "file": name}
+            directory.joinpath(name).write_text(
+                json.dumps(payload, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+        else:
+            directory.joinpath(name).write_text(
+                f"{method_id},{name},no_call\n",
+                encoding="utf-8",
+            )
+
+    support_names = set(PUBLISH.METHOD_CONTRACTS[method_id]["files"]) - {
+        "report.md",
+        "report_manifest.json",
+    }
+    manifest = {
+        "schema_version": 1,
+        "method_id": method_id,
+        "report_kind": "unit_test_packet",
+        "evidence_status": "blocked" if method_id.endswith("_blocked") else "partial_evidence",
+        "authorized_hrd_state": "no_call",
+        "classification_authorized": False,
+        "classification_qc_status": "not_applicable",
+        "source_sha256": {"unit_source": "a" * 64},
+        "support_sha256": {name: sha256(directory / name) for name in sorted(support_names)},
+        "report_sha256": sha256(directory / "report.md"),
+        "review_summary": {
+            "overall": {
+                "authorized_hrd_state": "no_call",
+            }
+        },
+    }
+    directory.joinpath("report_manifest.json").write_text(
+        json.dumps(manifest, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
+    def write_phase3_fast_packets(self, root: Path) -> dict[str, Path]:
+        packet_dirs = {
+            "deterministic_full_wgs": root / "deterministic_full_wgs",
+            "rosalind_diana_wgs": root / "rosalind_diana_wgs",
+            "facets_scarhrd_blocked": root / "facets_scarhrd_blocked",
+            "oncoanalyser_chord_blocked": root / "oncoanalyser_chord_blocked",
+            "hrdetect_blocked": root / "hrdetect_blocked",
+        }
+        for method_id, directory in packet_dirs.items():
+            write_packet(directory, method_id)
+        return packet_dirs
+
+    def test_validates_all_five_phase3_fast_report_packets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "manifests" / "report_packet_validation.json"
+            self.write_phase3_fast_packets(root)
+
+            receipt = VALIDATOR.run(
+                argparse.Namespace(
+                    **{
+                        "deterministic_report_dir": root / "deterministic_full_wgs",
+                        "rosalind_report_dir": root / "rosalind_diana_wgs",
+                        "facets_scarhrd_report_dir": root / "facets_scarhrd_blocked",
+                        "oncoanalyser_chord_report_dir": root / "oncoanalyser_chord_blocked",
+                        "hrdetect_report_dir": root / "hrdetect_blocked",
+                        "forbidden_tokens_json": json.dumps(["Run-Private-Token"]),
+                        "output": output,
+                    }
+                )
+            )
+
+            written = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(receipt, written)
+            self.assertEqual(written["status"], "passed")
+            self.assertEqual(written["validated_packet_count"], 5)
+            self.assertEqual(written["run_forbidden_token_count"], 1)
+            self.assertGreaterEqual(written["static_forbidden_token_count"], 4)
+            self.assertEqual(
+                [
+                    "deterministic_full_wgs",
+                    "rosalind_diana_wgs",
+                    "facets_scarhrd_blocked",
+                    "oncoanalyser_chord_blocked",
+                    "hrdetect_blocked",
+                ],
+                [packet["method_id"] for packet in written["packets"]],
+            )
+            self.assertGreaterEqual(written["forbidden_token_count"], 5)
+            self.assertRegex(written["forbidden_tokens_sha256"], re.compile(r"^[0-9a-f]{64}$"))
+            self.assertEqual(
+                VALIDATOR.expected_forbidden_tokens_sha256(json.dumps(["Run-Private-Token"])),
+                written["forbidden_tokens_sha256"],
+            )
+            self.assertNotIn("Run-Private-Token", json.dumps(written))
+            self.assertEqual(
+                {"relative_path", "bytes", "sha256", "checksum_sha256"},
+                set(written["packets"][0]["files"][0]),
+            )
+            self.assertNotIn("path", written["packets"][0]["files"][0])
+
+    def test_rejects_run_supplied_forbidden_token_leak(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            (packet_dirs["rosalind_diana_wgs"] / "report.md").write_text(
+                "No-call report still containing Run-Private-Token.\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "forbidden identifier token"):
+                VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
+
+    def test_writes_validation_receipt_create_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "report_packet_validation.json"
+            self.write_phase3_fast_packets(root)
+
+            args = argparse.Namespace(
+                deterministic_report_dir=root / "deterministic_full_wgs",
+                rosalind_report_dir=root / "rosalind_diana_wgs",
+                facets_scarhrd_report_dir=root / "facets_scarhrd_blocked",
+                oncoanalyser_chord_report_dir=root / "oncoanalyser_chord_blocked",
+                hrdetect_report_dir=root / "hrdetect_blocked",
+                forbidden_tokens_json=json.dumps(["Run-Private-Token"]),
+                output=output,
+            )
+            VALIDATOR.run(args)
+
+            with self.assertRaises(FileExistsError):
+                VALIDATOR.run(args)
+
+    def test_rejects_malformed_receipt_token_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            receipt = VALIDATOR.validate_packets(packet_dirs, json.dumps(["Run-Private-Token"]))
+
+            for field, value in (
+                ("static_forbidden_token_count", 0),
+                ("run_forbidden_token_count", 0),
+                ("forbidden_token_count", 999),
+            ):
+                with self.subTest(field=field):
+                    malformed = dict(receipt)
+                    malformed[field] = value
+
+                    with self.assertRaisesRegex(ValueError, "forbidden-token"):
+                        VALIDATOR.require_validation_receipt_packet_sha256s(malformed)
+
+    def test_rejects_malformed_receipt_packet_file_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            receipt = VALIDATOR.validate_packets(packet_dirs, json.dumps(["Run-Private-Token"]))
+
+            malformed = json.loads(json.dumps(receipt))
+            malformed["packets"][0]["files"][0]["bytes"] = 0
+
+            with self.assertRaisesRegex(ValueError, "file rows"):
+                VALIDATOR.require_validation_receipt_packet_sha256s(malformed)
+
+            malformed = json.loads(json.dumps(receipt))
+            malformed["packets"][0]["total_bytes"] += 1
+
+            with self.assertRaisesRegex(ValueError, "byte summary"):
+                VALIDATOR.require_validation_receipt_packet_sha256s(malformed)
+
+            malformed = json.loads(json.dumps(receipt))
+            malformed["packets"][0]["files"][0]["relative_path"] = "renamed.md"
+
+            with self.assertRaisesRegex(ValueError, "digest summary"):
+                VALIDATOR.require_validation_receipt_packet_sha256s(malformed)
+
+            malformed = json.loads(json.dumps(receipt))
+            malformed["packets"][0]["files"][0]["checksum_sha256"] = "A" * 43 + "="
+
+            with self.assertRaisesRegex(ValueError, "file rows"):
+                VALIDATOR.require_validation_receipt_packet_sha256s(malformed)
+
+    def test_rejects_receipt_from_different_run_forbidden_tokens(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            receipt_path = root / "report_packet_validation.json"
+            receipt_path.write_text(
+                json.dumps(
+                    VALIDATOR.validate_packets(
+                        packet_dirs,
+                        json.dumps(["Run-Private-Token"]),
+                    ),
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "forbidden-token digest"):
+                VALIDATOR.validate_validation_receipt_matches_packets(
+                    receipt_path,
+                    packet_dirs,
+                    tuple(VALIDATOR.FORBIDDEN_TOKENS),
+                    VALIDATOR.expected_forbidden_tokens_sha256(json.dumps(["Other-Private-Token"])),
+                )
+
+
+if __name__ == "__main__":
+    unittest.main()

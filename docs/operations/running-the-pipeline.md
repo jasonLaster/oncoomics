@@ -119,9 +119,11 @@ alias-only forbidden-token inventory after `--`, and intentionally requires
 `PARABRICKS_MIRROR_RECEIPT` to point at the reviewed ECR mirror receipt and
 `PHASE3_FAST_GPU_SMOKE_RESULT` to point at the reviewed `gpu_smoke.json` from
 the bounded placement gate. Before it can submit the full P5en/Parabricks
-workflow, it repeats the GPU params, mirror-receipt, cache, ECR-image, live
-P-instance quota, and GPU-smoke checks locally so a stale image, missing mirror,
-deleted digest, wrong queue, or skipped placement gate fails before Nextflow.
+workflow, it repeats the GPU params, live Batch queue, isolated P5en compute
+environment, mirror-receipt, cache, ECR-image, live P-instance quota, and
+GPU-smoke checks locally so a stale image, missing mirror, deleted digest, wrong
+queue, misrouted compute environment, under-quota region, or skipped placement
+gate fails before Nextflow.
 
 Do not use the legacy full-source AWS CPU aliases for the current Diana tumor/matched-normal evidence rerun. They are blocked behind
 `ALLOW_LEGACY_PHASE3_AWS_FULL=YES` and kept only for explicitly approved legacy public-WGS regression runs.

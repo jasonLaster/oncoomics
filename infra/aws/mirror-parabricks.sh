@@ -19,13 +19,49 @@ restore_workspace() {
 }
 
 [[ -n "${SOURCE_IMAGE}" ]] || die "set PARABRICKS_SOURCE_IMAGE or pass a digest-pinned source image"
-[[ "${SOURCE_IMAGE}" =~ @sha256:[0-9a-fA-F]{64}$ ]] || die "PARABRICKS_SOURCE_IMAGE must be pinned as <registry>/<image>@sha256:<64 hex>"
+[[ "${SOURCE_IMAGE}" =~ ^[^[:space:]]+@sha256:[0-9a-fA-F]{64}$ ]] || die "PARABRICKS_SOURCE_IMAGE must be pinned as <registry>/<image>@sha256:<64 hex>"
+[[ "${PLATFORM}" == "linux/amd64" ]] || die "PARABRICKS_PLATFORM must be linux/amd64"
 
 source_digest="${SOURCE_IMAGE##*@}"
 source_digest_hex="${source_digest#sha256:}"
-source_digest_hex="${source_digest_hex,,}"
+source_digest_hex="$(printf '%s' "${source_digest_hex}" | tr 'A-F' 'a-f')"
 source_digest="sha256:${source_digest_hex}"
-target_tag="sha256-${source_digest_hex}"
+
+dirty_source="$(git -C "${ROOT_DIR}" status --porcelain --untracked-files=all -- . \
+  ':(exclude)artifacts/**' \
+  ':(exclude)bam/**' \
+  ':(exclude)data/processed/**' \
+  ':(exclude)data/raw/**' \
+  ':(exclude)logs/**' \
+  ':(exclude)nextflow-out/**' \
+  ':(exclude)results/**' \
+  ':(exclude)tmp/**' \
+  ':(exclude)work/**' \
+  ':(exclude)infra/aws/terraform.tfstate.d/**' \
+  ':(exclude)infra/aws/*.tfplan' \
+  ':(exclude)infra/aws/*.tfstate' \
+  ':(exclude)infra/aws/*.tfstate.*' \
+  ':(exclude)infra/aws/nextflow.aws*.json')"
+dirty_included_results="$(git -C "${ROOT_DIR}" status --porcelain --untracked-files=all -- \
+  results/full_wes_benchmark/full_wes_benchmark_summary.json)"
+if [[ -n "${dirty_source}" && -n "${dirty_included_results}" ]]; then
+  dirty_source="${dirty_source}"$'\n'"${dirty_included_results}"
+elif [[ -n "${dirty_included_results}" ]]; then
+  dirty_source="${dirty_included_results}"
+fi
+[[ -z "${dirty_source}" ]] || die "commit or revert source changes before mirroring the Diana Parabricks runtime:
+${dirty_source}"
+
+diana_revision="$(git -C "${ROOT_DIR}" rev-parse --verify HEAD)"
+remote_refs="$(git -C "${ROOT_DIR}" for-each-ref \
+  --format='%(refname:short)' \
+  --contains "${diana_revision}" \
+  refs/remotes)"
+[[ -n "${remote_refs}" ]] || die "push ${diana_revision} to a remote before mirroring the Diana Parabricks runtime"
+
+diana_revision_short="${diana_revision:0:12}"
+dockerfile_sha256="sha256:$(shasum -a 256 "${ROOT_DIR}/infra/aws/Dockerfile.parabricks" | awk '{print $1}')"
+target_tag="sha256-${source_digest_hex}-diana-${diana_revision_short}"
 [[ "${target_tag}" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]] || die "internal Parabricks mirror tag is not a valid ECR image tag"
 
 if [[ -n "${TARGET_WORKSPACE}" ]]; then
@@ -82,7 +118,7 @@ fi
 
 mkdir -p "$(dirname "${RECEIPT_PATH}")"
 python3 - "${RECEIPT_PATH}" "${SOURCE_IMAGE}" "${source_digest}" "${PLATFORM}" "${REGION}" \
-  "${repository_url}" "${target_tag}" "${target_digest}" <<'PY'
+  "${repository_url}" "${target_tag}" "${target_digest}" "${diana_revision}" "${dockerfile_sha256}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -90,7 +126,18 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-receipt_path, source_image, source_digest, platform, region, repository_url, target_tag, target_digest = sys.argv[1:]
+(
+    receipt_path,
+    source_image,
+    source_digest,
+    platform,
+    region,
+    repository_url,
+    target_tag,
+    target_digest,
+    diana_revision,
+    dockerfile_sha256,
+) = sys.argv[1:]
 payload = {
     "schema_version": 1,
     "manifest_type": "parabricks_mirror_receipt",
@@ -106,6 +153,10 @@ payload = {
         "tag": target_tag,
         "digest": target_digest,
         "parabricks_container": f"{repository_url}@{target_digest}",
+    },
+    "diana_omics": {
+        "git_commit": diana_revision,
+        "dockerfile_sha256": dockerfile_sha256,
     },
 }
 Path(receipt_path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")

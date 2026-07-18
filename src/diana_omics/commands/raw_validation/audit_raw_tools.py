@@ -67,8 +67,13 @@ def java17_path() -> str:
     for candidate in [candidate for candidate in candidates if candidate]:
         if not os.path.exists(candidate):
             continue
-        result = subprocess.run([candidate, "-version"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-        output = f"{result.stdout}{result.stderr}"
+        result = subprocess.run(
+            [candidate, "-version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        output = result.stdout.decode("utf-8", errors="replace") + result.stderr.decode("utf-8", errors="replace")
         match = re.search(r'version "(\d+)', output)
         if result.returncode == 0 and match and int(match.group(1)) >= 17:
             return candidate

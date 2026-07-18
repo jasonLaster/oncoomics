@@ -198,6 +198,7 @@ FAST_CNV_EVIDENCE_PLAN             exact full-depth bedcov coverage-bin plan
 FAST_FILTER_MUTECT_PLAN            exact contamination/orientation/filter plan
 FAST_SV_EVIDENCE_PLAN              exact split/discordant read evidence plan
 FAST_GPU_SMOKE                     bounded P5en/Parabricks placement gate
+FAST_VALIDATE_FORBIDDEN_TOKENS     pre-expense alias-only private-token JSON validation
 FAST_MUTECT_PARABRICKS_FILTER      worker-local Parabricks, FilterMutect, and small-variant export
 FAST_BAM_CNV_SV_EVIDENCE           worker-local BAM QC, coverage-CNV, and split/discordant export
 FAST_EVIDENCE_JOIN
@@ -206,6 +207,7 @@ FAST_CROSSCHECK_MATERIALIZATION_PLAN post-freeze SigProfiler/SBS3 alias material
 FAST_STAGE_DETERMINISTIC_REPORT     six-file deterministic method report
 FAST_STAGE_ROSALIND_PACKET          Diana WGS Rosalind reviewer packet
 FAST_STAGE_BLOCKED_CROSSCHECKS      FACETS/CHORD/HRDetect blocked no-call packets
+FAST_VALIDATE_REPORT_PACKETS        in-DAG private packet contract and identifier scan
 ```
 
 Implementation rules:
@@ -406,6 +408,10 @@ allele-specific CNV/LOH, or production SV sidecars that the fast evidence tree
 does not contain. Execute mode also requires
 `phase3_fast_forbidden_tokens_json`, a non-empty JSON array of private source
 names and sample identifiers to scan out of the generated public packet.
+`FAST_VALIDATE_FORBIDDEN_TOKENS` canonicalizes that private inventory into an
+internal, privately published `forbidden_tokens.json` work artifact before the Parabricks and
+BAM/CNV/SV evidence jobs can start; `FAST_STAGE_ROSALIND_PACKET` then consumes
+the canonicalized file rather than the raw Nextflow parameter.
 `FAST_STAGE_BLOCKED_CROSSCHECKS` consumes the Rosalind packet as an ordering
 barrier and runs `scripts/generate_blocked_hrd_crosscheck_reports.py` to emit
 the final three canonical no-call method packets: FACETS→scarHRD,
@@ -413,9 +419,22 @@ Oncoanalyser→CHORD, and HRDetect. These tiny reports contain no patient-derive
 result; they only document the exact route prerequisites, current blockers,
 source revisions, and next validation gates required before those methods can
 be executed or compared against the deterministic and Rosalind reports. Each
-blocked report also records the fast run ID and the upstream Rosalind
-`report_manifest.json` SHA-256, so the seven-method bundle can prove the blocked
-methods were staged for the same deterministic/Rosalind evidence handoff.
+blocked report also records the fast run ID plus the upstream deterministic and
+Rosalind `report_manifest.json` SHA-256 values, so the seven-method bundle can
+prove the blocked methods were staged for the same deterministic/Rosalind
+evidence handoff.
+`FAST_VALIDATE_REPORT_PACKETS` is the final cheap execute-mode gate: it runs
+`scripts/validate_phase3_fast_report_packets.py` against the deterministic
+packet, the Diana WGS Rosalind packet, and the three blocked cross-check
+packets while scanning with both the static Diana forbidden-token set and the
+same canonical `forbidden_tokens.json` produced before Parabricks. The process
+writes `report_packet_validation.json` only after all five packet inventories
+are exact, every `report_manifest.json` remains `no_call`, and no run-specific
+source identifier remains in Markdown, CSV, or JSON report material. The
+source-freeze runbook then passes that `forbidden_tokens.json` path into every
+`publish_private_report.py` command so the upload-time packet validation uses
+the same static-plus-run scan set without inlining private identifiers into the
+runbook text.
 At that point the fast DAG has staged five of the seven source packets required
 by `scripts/render_source_report_freeze_runbook.py`. It must still withhold the
 private-freeze, independent AI-review, comparative-synthesis, and
@@ -438,6 +457,10 @@ python3 scripts/render_source_report_freeze_runbook.py \
     "$FAST_ROOT/rosalind_hrd/workspace/results/rosalind_hrd/diana_wgs/${RUN_ID}" \
   --blocked-crosscheck-root \
     "$FAST_ROOT/blocked_crosschecks/workspace/results/phase3_wgs_fast/blocked_crosschecks" \
+  --phase3-fast-report-packet-validation \
+    "$FAST_ROOT/report_packet_validation/workspace/manifests/phase3_wgs_fast/report_packet_validation.json" \
+  --phase3-fast-forbidden-tokens-file \
+    "$FAST_ROOT/forbidden_tokens/workspace/manifests/phase3_wgs_fast/forbidden_tokens.json" \
   --sequenza-report-dir /path/to/sequenza_scarhrd \
   --sigprofiler-report-dir /path/to/sigprofiler_sbs3
 ```
@@ -455,7 +478,12 @@ The alias runs `verify:phase3-fast-gpu-smoke` first to fail locally unless the
 generated `infra/aws/nextflow.aws.use2.json` is bound to `us-east-2`, the
 isolated P5en queue, exactly `p5en.48xlarge`, at least one P5en worth of
 capacity, a Parabricks image pinned by SHA-256 digest, and a `us-east-2`
-destination KMS key for the regional cache. It also queries the live EC2
+destination KMS key for the regional cache. It also reads the live Batch queue
+and its only compute environment before submission: the queue must be
+`ENABLED`, `VALID`, and routed only to the isolated P5en environment; the
+compute environment must be managed, enabled, valid, scale-to-zero On-Demand EC2
+capacity, backed only by `p5en.48xlarge`, sized to at least one full P5en, and
+using only the NVIDIA Amazon Linux 2023 ECS image. It then queries the live EC2
 `Running On-Demand P instances` quota and requires at least 192 applied P vCPUs
 before Nextflow can submit the H200 placement job.
 The smoke itself records `nvidia-smi`, `pbrun version`, `aws --version`, and
@@ -471,9 +499,10 @@ reviewed smoke output as `PHASE3_FAST_GPU_SMOKE_RESULT`, and pass the reviewed
 Parabricks mirror receipt as `PARABRICKS_MIRROR_RECEIPT`, then pass the reviewed
 Gate 0 receipt paths and alias-only forbidden-token inventory as Nextflow
 arguments after `--`. The full execute alias intentionally repeats the GPU
-params, mirror-receipt, mirrored-image, cache, and live-quota checks before
-starting Nextflow, then rejects missing, stubbed, malformed, or non-H200 smoke
-output. A stale non-`us-east-2`, non-P5en, unpinned, unmirrored, under-quota,
+params, live Batch queue, live P5en compute-environment, mirror-receipt,
+mirrored-image, cache, and live-quota checks before starting Nextflow, then
+rejects missing, stubbed, malformed, or non-H200 smoke output. A stale
+non-`us-east-2`, non-P5en, misrouted, unpinned, unmirrored, under-quota,
 wrong-KMS, or smoke-skipping launch therefore still fails locally even when
 `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES` is present:
 
@@ -492,7 +521,7 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:execute --
   --phase3_fast_parameter_sha256 <sha256> \
   --phase3_fast_parabricks_version <version> \
   --phase3_fast_sequenza_female true \
-  --phase3_fast_cache_prefix s3://<regional-private-cache>/wgs-v2/ \
+  --phase3_fast_cache_prefix s3://<regional-private-results-bucket>/phase3-fast-cache/wgs-v2 \
   --phase3_fast_cache_kms_key_arn <us-east-2-kms-key-arn> \
   --phase3_fast_generated_at <run-start-iso8601> \
   --phase3_fast_forbidden_tokens_json '["<private-token>"]'
@@ -573,10 +602,13 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
 5. Build the Diana Parabricks runtime from a reviewed digest-pinned Parabricks
    base image and mirror it with `aws:ecr:mirror-parabricks:use2`, review the
    emitted `parabricks_mirror_receipt.json`, and apply the verified
-   `TF_VAR_parabricks_container`. The mirrored runtime must contain `pbrun`, the
-   AWS CLI, and the `diana_omics` Python CLI because GPU workers stage S3 inputs,
-   render exact command plans, and run Parabricks inside one container-local
-   `/scratch` boundary.
+   `TF_VAR_parabricks_container`. The receipt verifier requires the live ECR
+   digest to carry the exact immutable source-digest/Diana-Git tag emitted by
+   the mirror helper, and the helper refuses to mirror from a dirty or unpushed
+   source tree.
+   The mirrored runtime must contain `pbrun`, the AWS CLI, and the `diana_omics`
+   Python CLI because GPU workers stage S3 inputs, render exact command plans,
+   and run Parabricks inside one container-local `/scratch` boundary.
 6. Track the 384 On-Demand P vCPU request in `us-east-2`; the same approved
    quota should cover one immediate P5en caller job and the later two-P5en
    parallel `fq2bam` gate.

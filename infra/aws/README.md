@@ -7,7 +7,9 @@ This Terraform stack provisions the AWS Batch, S3, ECR, IAM, and network resourc
 Do not upload raw data or generated analysis data from a developer workstation or the normal analysis workflow.
 
 - Do not upload `data/raw`, local FASTQ/BAM/CRAM/VCF files, local `data/processed`, or local `results` artifacts.
-- The Docker image is built with `.dockerignore` rules that exclude raw/generated data.
+- The Docker image is built with `.dockerignore` rules that exclude raw/generated
+  data, local scratch, local virtualenv/cache directories, generated Nextflow
+  AWS params, Terraform state/plans, and local `.env` files.
 - Cloud runs must fetch public/reference inputs fresh inside AWS Batch task workspaces.
 - S3 `results` objects should be produced by the cloud job that writes them.
 - An approved external raw delivery is a separate custody workflow: it must use
@@ -178,11 +180,15 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:ecr:mirror-parabricks:use2
 The helper pulls only digest-pinned source images, logs into the `us-east-2`
 ECR registry from the `phase3-fast-use2` Terraform workspace, builds
 `infra/aws/Dockerfile.parabricks` with `pbrun`, the AWS CLI, and the checked-out
-`diana_omics` CLI under `/opt/diana-omics`, pushes a
-`sha256-<full-source-digest>` tag into `parabricks_mirror_repository`, writes
-and verifies `results/phase3_wgs_fast/parabricks_mirror_receipt.json`, and
-prints the exact `TF_VAR_parabricks_container=<repository>@sha256:<digest>`
-value to review and apply. Re-running the helper for the same source digest
+`diana_omics` CLI under `/opt/diana-omics`, refuses to run unless the checked-in
+Docker context is clean and the selected Git commit is present on a remote, pushes a
+`sha256-<full-source-digest>-diana-<git-prefix>` tag into
+`parabricks_mirror_repository`, writes and verifies
+`results/phase3_wgs_fast/parabricks_mirror_receipt.json` against the live ECR
+digest, the exact source-digest/Git tag, and the Diana Git commit in the
+receipt, and prints the exact
+`TF_VAR_parabricks_container=<repository>@sha256:<digest>` value to review and
+apply. Re-running the helper for the same source digest and Diana Git revision
 reuses the immutable ECR tag. Leave `parabricks_container` empty until that
 mirror receipt has passed `verify:parabricks-mirror-receipt`.
 
@@ -205,11 +211,16 @@ bounded placement/visibility smoke first. The alias starts with a local
 `verify:phase3-fast-gpu-smoke` preflight so a missing `nextflow.aws.use2.json`,
 tagged/empty/missing Parabricks image, non-P5en queue, or too-small P5en
 capacity fails before Nextflow can submit to AWS Batch. The same preflight
-reads the live EC2 `Running On-Demand P instances` quota and requires at least
-192 vCPUs, the size of one `p5en.48xlarge`, so a submitted but still-open
-Service Quotas case cannot leak into an expensive doomed smoke job. It also
-verifies that the pinned Parabricks ECR digest exists in the mirror repository
-before Batch tries to pull it:
+reads the live Batch queue and requires it to be `ENABLED`, `VALID`, and still
+routed only to the isolated P5en compute environment. It also reads that
+compute environment and requires it to be managed, enabled, valid,
+scale-to-zero, On-Demand EC2 capacity backed only by `p5en.48xlarge`, sized to
+at least one full P5en, and configured with only the NVIDIA Amazon Linux 2023
+ECS image. It then reads the live EC2 `Running On-Demand P instances` quota and
+requires at least 192 vCPUs, the size of one `p5en.48xlarge`, so a submitted
+but still-open Service Quotas case cannot leak into an expensive doomed smoke
+job. It also verifies that the pinned Parabricks ECR digest exists in the
+mirror repository before Batch tries to pull it:
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke

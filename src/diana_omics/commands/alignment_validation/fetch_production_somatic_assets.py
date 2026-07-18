@@ -56,8 +56,17 @@ TRUTH_ASSETS = [
 def java_works(candidate: str) -> bool:
     if not candidate or not os.path.exists(candidate):
         return False
-    result = subprocess.run([candidate, "-version"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-    match = re.search(r'version "(\d+)', f"{result.stdout}{result.stderr}")
+    result = subprocess.run(
+        [candidate, "-version"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    output = (
+        result.stdout.decode("utf-8", errors="replace")
+        + result.stderr.decode("utf-8", errors="replace")
+    )
+    match = re.search(r'version "(\d+)', output)
     return result.returncode == 0 and match is not None and int(match.group(1)) >= 17
 
 

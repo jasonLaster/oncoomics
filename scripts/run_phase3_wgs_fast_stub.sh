@@ -8,6 +8,7 @@ RECEIPTS_DIR="${RUN_ROOT}/receipts"
 LOG_DIR="${RUN_ROOT}/logs"
 WORK_DIR="${RUN_ROOT}/work"
 OUT_DIR="${RUN_ROOT}/out"
+FORBIDDEN_TOKENS_JSON='["stubbed-private-token"]'
 mkdir -p "${RECEIPTS_DIR}" "${LOG_DIR}" "${WORK_DIR}" "${OUT_DIR}"
 
 for receipt in \
@@ -47,5 +48,21 @@ nextflow -log "${LOG_DIR}/nextflow.log" run main.nf -profile local \
   --phase3_fast_parabricks_cpus 1 \
   --phase3_fast_parabricks_memory '1 GB' \
   --phase3_fast_generated_at 2026-07-16T03:31:01+00:00 \
-  --phase3_fast_forbidden_tokens_json '["stubbed-private-token"]' \
+  --phase3_fast_forbidden_tokens_json "${FORBIDDEN_TOKENS_JSON}" \
   -stub-run
+
+echo "Validating Phase 3 fast stub private report packets"
+PYTHONPATH="${ROOT}/src:${ROOT}/scripts" \
+  python3 "${ROOT}/scripts/validate_phase3_fast_report_packets.py" \
+    --deterministic-report-dir \
+      "${OUT_DIR}/phase3_wgs_fast/deterministic_report/workspace/results/phase3_wgs_fast/deterministic_report" \
+    --rosalind-report-dir \
+      "${OUT_DIR}/phase3_wgs_fast/rosalind_hrd/workspace/results/rosalind_hrd/diana_wgs/diana-wgs-hrd-20260716T033101Z" \
+    --facets-scarhrd-report-dir \
+      "${OUT_DIR}/phase3_wgs_fast/blocked_crosschecks/workspace/results/phase3_wgs_fast/blocked_crosschecks/facets_scarhrd_blocked" \
+    --oncoanalyser-chord-report-dir \
+      "${OUT_DIR}/phase3_wgs_fast/blocked_crosschecks/workspace/results/phase3_wgs_fast/blocked_crosschecks/oncoanalyser_chord_blocked" \
+    --hrdetect-report-dir \
+      "${OUT_DIR}/phase3_wgs_fast/blocked_crosschecks/workspace/results/phase3_wgs_fast/blocked_crosschecks/hrdetect_blocked" \
+    --forbidden-tokens-json "${FORBIDDEN_TOKENS_JSON}" \
+    --output "${OUT_DIR}/phase3_wgs_fast/report_packet_validation.json"

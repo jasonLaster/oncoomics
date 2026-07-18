@@ -74,9 +74,7 @@ class Fixture:
                 }
             },
         }
-        (self.packet / "report_manifest.json").write_text(
-            json.dumps(manifest, indent=2, sort_keys=True) + "\n"
-        )
+        (self.packet / "report_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     def mutate_manifest(self, **updates: object) -> None:
         path = self.packet / "report_manifest.json"
@@ -91,6 +89,7 @@ class Fixture:
             destination_prefix="",
             receipt_output=self.receipt_path,
             forbidden_token=[],
+            forbidden_tokens_file=[],
             region=MODULE.REGION,
             apply=apply,
         )
@@ -190,12 +189,10 @@ class FakeAws:
 
 class PublishPrivateReportTests(unittest.TestCase):
     def execute(self, fixture: Fixture, fake: FakeAws, *, apply: bool = False) -> dict[str, object]:
-        with mock.patch.object(
-            MODULE, "aws_json", side_effect=fake.aws_json
-        ), mock.patch.object(
-            MODULE, "head_object", side_effect=fake.head_object
-        ), mock.patch.object(
-            MODULE, "version_history", side_effect=fake.version_history
+        with (
+            mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
+            mock.patch.object(MODULE, "head_object", side_effect=fake.head_object),
+            mock.patch.object(MODULE, "version_history", side_effect=fake.version_history),
         ):
             return MODULE.run(fixture.args(apply=apply))
 
@@ -233,9 +230,7 @@ class PublishPrivateReportTests(unittest.TestCase):
             assert reviewed_public and reviewed_public.loader
             public_module = importlib.util.module_from_spec(reviewed_public)
             reviewed_public.loader.exec_module(public_module)
-            _, expected, rows = public_module.validate_private_receipt(
-                fixture.receipt_path, fixture.method_id
-            )
+            _, expected, rows = public_module.validate_private_receipt(fixture.receipt_path, fixture.method_id)
             self.assertEqual(tuple(receipt["expected_files"]), expected)
             self.assertEqual(len(rows), 8)
 
@@ -268,8 +263,9 @@ class PublishPrivateReportTests(unittest.TestCase):
             with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
                 fixture = Fixture(Path(temporary))
                 mutate(fixture)
-                with self.assertRaisesRegex(ValueError, message), mock.patch.object(
-                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                with (
+                    self.assertRaisesRegex(ValueError, message),
+                    mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
                 ):
                     MODULE.run(fixture.args())
 
@@ -280,31 +276,43 @@ class PublishPrivateReportTests(unittest.TestCase):
             report.write_text("This profile is HRD-positive.\n", encoding="utf-8")
             fixture.mutate_manifest(report_sha256=digest(report.read_bytes()))
 
-            with self.assertRaisesRegex(
-                ValueError, "unauthorized HRD classification"
-            ), mock.patch.object(
-                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            with (
+                self.assertRaisesRegex(ValueError, "unauthorized HRD classification"),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
             ):
                 MODULE.run(fixture.args())
+
+    def test_rejects_forbidden_token_from_file_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = Fixture(root)
+            tokens = root / "forbidden_tokens.json"
+            tokens.write_text('["Unit-Run-Private-Token"]\n')
+            report = fixture.packet / "report.md"
+            report.write_text("No-call report with Unit-Run-Private-Token.\n")
+            fixture.mutate_manifest(report_sha256=digest(report.read_bytes()))
+            args = fixture.args()
+            args.forbidden_tokens_file = [tokens]
+
+            with (
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+                self.assertRaisesRegex(ValueError, "forbidden identifier token"),
+            ):
+                MODULE.run(args)
 
     def test_rejects_unauthorized_manifest_classification_before_aws(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
-            manifest = json.loads(
-                (fixture.packet / "report_manifest.json").read_text(encoding="utf-8")
-            )
-            manifest["review_summary"]["overall"]["statement"] = (
-                "This profile is HRD-positive."
-            )
+            manifest = json.loads((fixture.packet / "report_manifest.json").read_text(encoding="utf-8"))
+            manifest["review_summary"]["overall"]["statement"] = "This profile is HRD-positive."
             (fixture.packet / "report_manifest.json").write_text(
                 json.dumps(manifest, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
             )
 
-            with self.assertRaisesRegex(
-                ValueError, "unauthorized HRD classification"
-            ), mock.patch.object(
-                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            with (
+                self.assertRaisesRegex(ValueError, "unauthorized HRD classification"),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
             ):
                 MODULE.run(fixture.args())
 
@@ -318,10 +326,9 @@ class PublishPrivateReportTests(unittest.TestCase):
                 fixture = Fixture(Path(temporary))
                 (fixture.packet / "report.md").write_text(encoded)
 
-                with self.assertRaisesRegex(
-                    ValueError, "forbidden identifier"
-                ), mock.patch.object(
-                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                with (
+                    self.assertRaisesRegex(ValueError, "forbidden identifier"),
+                    mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
                 ):
                     MODULE.run(fixture.args())
 
@@ -332,8 +339,9 @@ class PublishPrivateReportTests(unittest.TestCase):
                 authorized_hrd_state="positive",
                 classification_authorized=True,
             )
-            with self.assertRaisesRegex(ValueError, "no-call contract"), mock.patch.object(
-                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            with (
+                self.assertRaisesRegex(ValueError, "no-call contract"),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
             ):
                 MODULE.run(fixture.args())
 
@@ -342,8 +350,9 @@ class PublishPrivateReportTests(unittest.TestCase):
             fixture = Fixture(Path(temporary))
             fixture.mutate_manifest(classification_qc_status="passed")
 
-            with self.assertRaisesRegex(ValueError, "no-call contract"), mock.patch.object(
-                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            with (
+                self.assertRaisesRegex(ValueError, "no-call contract"),
+                mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
             ):
                 MODULE.run(fixture.args())
 
@@ -351,9 +360,7 @@ class PublishPrivateReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
             fake = FakeAws()
-            fake.preexisting_history = [
-                {"Key": "old", "VersionId": "old", "IsLatest": True, "Size": 1}
-            ]
+            fake.preexisting_history = [{"Key": "old", "VersionId": "old", "IsLatest": True, "Size": 1}]
 
             with self.assertRaisesRegex(ValueError, "prior history"):
                 self.execute(fixture, fake, apply=True)

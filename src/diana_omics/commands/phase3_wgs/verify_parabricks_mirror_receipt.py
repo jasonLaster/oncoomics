@@ -15,6 +15,7 @@ REQUIRED_AWS_REGION = "us-east-2"
 REQUIRED_PLATFORM = "linux/amd64"
 
 DIGEST = re.compile(r"^sha256:([0-9a-fA-F]{64})$")
+GIT_COMMIT = re.compile(r"^[0-9a-fA-F]{40}$")
 PINNED_IMAGE = re.compile(r"^\S+@(sha256:[0-9a-fA-F]{64})$")
 ECR_REPOSITORY = re.compile(r"^\d{12}\.dkr\.ecr\.([a-z]{2}-[a-z]+-\d)\.amazonaws\.com/[a-z0-9][a-z0-9._/-]*$")
 
@@ -58,6 +59,7 @@ def validate_mirror_receipt(receipt: Mapping[str, Any]) -> dict[str, str]:
 
     source = _require_mapping(receipt.get("source"), "source")
     destination = _require_mapping(receipt.get("destination"), "destination")
+    diana_omics = _require_mapping(receipt.get("diana_omics"), "diana_omics")
 
     source_image, image_digest = _require_pinned_image(source.get("image"), "source.image")
     source_digest = _require_digest(source.get("digest"), "source.digest")
@@ -82,11 +84,18 @@ def validate_mirror_receipt(receipt: Mapping[str, Any]) -> dict[str, str]:
     if destination.get("parabricks_container") != expected_container:
         raise MirrorReceiptError("destination.parabricks_container must match destination repository and digest")
 
-    expected_tag = f"sha256-{source_digest.removeprefix('sha256:')}"
+    git_commit = _require_string(diana_omics.get("git_commit"), "diana_omics.git_commit").lower()
+    if GIT_COMMIT.fullmatch(git_commit) is None:
+        raise MirrorReceiptError("diana_omics.git_commit must be a 40-character Git SHA")
+
+    _require_digest(diana_omics.get("dockerfile_sha256"), "diana_omics.dockerfile_sha256")
+
+    expected_tag = f"sha256-{source_digest.removeprefix('sha256:')}-diana-{git_commit[:12]}"
     if destination.get("tag") != expected_tag:
-        raise MirrorReceiptError("destination.tag must be the full source digest tag")
+        raise MirrorReceiptError("destination.tag must include the full source digest and Diana git revision")
 
     return {
+        "diana_omics_git_commit": git_commit,
         "destination_digest": destination_digest,
         "parabricks_container": expected_container,
         "region": region,
@@ -97,7 +106,41 @@ def validate_mirror_receipt(receipt: Mapping[str, Any]) -> dict[str, str]:
     }
 
 
-def load_mirror_digest(*, parabricks_container: str, region: str, aws_cli: str = "aws") -> str:
+def validate_ecr_image_details(
+    payload: Mapping[str, Any],
+    *,
+    parabricks_container: str,
+    expected_digest: str,
+    expected_tag: str | None = None,
+) -> str:
+    if not isinstance(payload, dict):
+        raise MirrorReceiptError("ECR response must be a JSON object")
+
+    image_details = payload.get("imageDetails")
+    if not isinstance(image_details, list) or len(image_details) != 1:
+        raise MirrorReceiptError(f"ECR must return exactly one imageDetails entry for {parabricks_container}")
+
+    image_detail = _require_mapping(image_details[0], "ECR imageDetails[0]")
+    if image_detail.get("imageDigest") != expected_digest:
+        raise MirrorReceiptError(f"ECR imageDigest must match {expected_digest}")
+
+    if expected_tag is not None:
+        image_tags = image_detail.get("imageTags")
+        if not isinstance(image_tags, list) or not all(isinstance(tag, str) for tag in image_tags):
+            raise MirrorReceiptError("ECR imageTags must be a JSON string array")
+        if expected_tag not in image_tags:
+            raise MirrorReceiptError(f"ECR imageTags must include {expected_tag}")
+
+    return expected_digest
+
+
+def load_mirror_digest(
+    *,
+    parabricks_container: str,
+    region: str,
+    expected_tag: str,
+    aws_cli: str = "aws",
+) -> str:
     repository, digest = parabricks_container.split("@", 1)
     repository_name = repository.split("/", 1)[1]
     try:
@@ -132,14 +175,12 @@ def load_mirror_digest(*, parabricks_container: str, region: str, aws_cli: str =
     except json.JSONDecodeError as error:
         raise MirrorReceiptError("ECR did not return JSON") from error
 
-    if not isinstance(payload, dict):
-        raise MirrorReceiptError("ECR response must be a JSON object")
-    image_details = payload.get("imageDetails")
-    if not isinstance(image_details, list) or not image_details:
-        raise MirrorReceiptError(f"ECR did not return imageDetails for {parabricks_container}")
-    if image_details[0].get("imageDigest") != digest:
-        raise MirrorReceiptError(f"ECR imageDigest must match {digest}")
-    return digest
+    return validate_ecr_image_details(
+        payload,
+        parabricks_container=parabricks_container,
+        expected_digest=digest,
+        expected_tag=expected_tag,
+    )
 
 
 def load_receipt_from_environment() -> tuple[dict[str, Any], Path]:
@@ -159,6 +200,7 @@ def main() -> None:
         observed_digest = load_mirror_digest(
             parabricks_container=summary["parabricks_container"],
             region=summary["region"],
+            expected_tag=summary["tag"],
         )
     except MirrorReceiptError as error:
         raise SystemExit(str(error)) from error

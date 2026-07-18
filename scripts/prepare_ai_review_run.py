@@ -15,13 +15,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from forbidden_text import merge_forbidden_tokens
 from hrd_report_inventory import (
     REQUIRED_METHOD_IDS,
     inventory_payload,
     inventory_sha256,
     require_inventory_binding,
 )
-
 
 METHOD_ARGUMENTS = (
     ("deterministic_full_wgs", "deterministic_manifest"),
@@ -90,10 +90,7 @@ def require_manifest(path: Path, expected_method: str) -> dict[str, Any]:
 
 
 def method_manifest_paths(args: argparse.Namespace) -> dict[str, Path]:
-    return {
-        method_id: Path(getattr(args, argument))
-        for method_id, argument in METHOD_ARGUMENTS
-    }
+    return {method_id: Path(getattr(args, argument)) for method_id, argument in METHOD_ARGUMENTS}
 
 
 def parse_expected_source_manifest_sha256(values: Sequence[str]) -> dict[str, str]:
@@ -101,24 +98,17 @@ def parse_expected_source_manifest_sha256(values: Sequence[str]) -> dict[str, st
     for value in values:
         method_id, separator, digest = value.partition("=")
         if not separator:
-            raise ValueError(
-                "expected source manifest SHA-256 values must use method_id=sha256"
-            )
+            raise ValueError("expected source manifest SHA-256 values must use method_id=sha256")
         if method_id not in REQUIRED_METHOD_IDS:
             raise ValueError(f"unexpected source manifest method: {method_id}")
         if method_id in result:
             raise ValueError(f"duplicate source manifest SHA-256 for {method_id}")
         if SHA256_PATTERN.fullmatch(digest) is None:
-            raise ValueError(
-                f"source manifest SHA-256 for {method_id} is not lowercase hex"
-            )
+            raise ValueError(f"source manifest SHA-256 for {method_id} is not lowercase hex")
         result[method_id] = digest
 
     if set(result) != set(REQUIRED_METHOD_IDS):
-        raise ValueError(
-            "expected source manifest SHA-256 values must cover exactly the "
-            "seven required methods"
-        )
+        raise ValueError("expected source manifest SHA-256 values must cover exactly the seven required methods")
     return {method_id: result[method_id] for method_id in REQUIRED_METHOD_IDS}
 
 
@@ -142,9 +132,7 @@ def validate_sources(
         require_manifest(path, method_id)
         actual_sha256 = sha256(path)
         if actual_sha256 != expected_sha256.get(method_id):
-            raise ValueError(
-                f"{method_id} source manifest SHA-256 is not receipt-bound"
-            )
+            raise ValueError(f"{method_id} source manifest SHA-256 is not receipt-bound")
         source_manifests[method_id] = {
             "path": str(path),
             "sha256": actual_sha256,
@@ -161,11 +149,7 @@ def script_path(name: str) -> Path:
 def run_checked(command: list[str]) -> None:
     result = subprocess.run(command, text=True, capture_output=True)
     if result.returncode != 0:
-        detail = "\n".join(
-            item
-            for item in (result.stdout.strip(), result.stderr.strip())
-            if item
-        )
+        detail = "\n".join(item for item in (result.stdout.strip(), result.stderr.strip()) if item)
         raise RuntimeError(detail or f"command failed: {command[0]}")
 
 
@@ -203,7 +187,10 @@ def build_bundle(
             "--attest-models-latest",
         ]
     )
-    for token in args.forbidden_token:
+    for token in merge_forbidden_tokens(
+        args.forbidden_token,
+        files=args.forbidden_tokens_file,
+    ):
         command.extend(["--forbidden-token", token])
     run_checked(command)
 
@@ -223,9 +210,7 @@ def stage_inputs(bundle_dir: Path, output_root: Path, receipt_output: Path) -> N
     )
 
 
-def rebase_stage_receipt(
-    stage_receipt: Path, staging_root: Path, final_root: Path
-) -> dict[str, Any]:
+def rebase_stage_receipt(stage_receipt: Path, staging_root: Path, final_root: Path) -> dict[str, Any]:
     payload = load_object(stage_receipt)
 
     def rebase(value: str) -> str:
@@ -261,42 +246,24 @@ def validate_postconditions(
         bundle_manifest.get("method_inventory_sha256"),
         "AI review bundle",
     )
-    expected_inputs = {
-        f"E{index:03d}": source_manifests[method]["sha256"]
-        for index, method in enumerate(REQUIRED_METHOD_IDS, 1)
-    }
+    expected_inputs = {f"E{index:03d}": source_manifests[method]["sha256"] for index, method in enumerate(REQUIRED_METHOD_IDS, 1)}
     checks = {
-        "pinned_seven_method_inventory": bundle_manifest.get("required_method_ids")
-        == list(REQUIRED_METHOD_IDS),
-        "source_report_hashes_match": bundle_manifest.get("input_manifest_sha256")
-        == expected_inputs,
-        "bundle_manifest_bound": bundle_manifest.get("review_bundle_sha256")
-        == sha256(bundle_dir / "review_bundle.json"),
-        "reviewer_a_two_file_inventory": sorted(
-            path.name for path in (reviewer_root / "reviewer-a-input").iterdir()
-        )
+        "pinned_seven_method_inventory": bundle_manifest.get("required_method_ids") == list(REQUIRED_METHOD_IDS),
+        "source_report_hashes_match": bundle_manifest.get("input_manifest_sha256") == expected_inputs,
+        "bundle_manifest_bound": bundle_manifest.get("review_bundle_sha256") == sha256(bundle_dir / "review_bundle.json"),
+        "reviewer_a_two_file_inventory": sorted(path.name for path in (reviewer_root / "reviewer-a-input").iterdir())
         == ["review_bundle.json", "reviewer-a.prompt.md"],
-        "reviewer_b_two_file_inventory": sorted(
-            path.name for path in (reviewer_root / "reviewer-b-input").iterdir()
-        )
+        "reviewer_b_two_file_inventory": sorted(path.name for path in (reviewer_root / "reviewer-b-input").iterdir())
         == ["review_bundle.json", "reviewer-b.prompt.md"],
-        "no_cross_prompt": not (
-            reviewer_root / "reviewer-a-input" / "reviewer-b.prompt.md"
-        ).exists()
-        and not (
-            reviewer_root / "reviewer-b-input" / "reviewer-a.prompt.md"
-        ).exists(),
+        "no_cross_prompt": not (reviewer_root / "reviewer-a-input" / "reviewer-b.prompt.md").exists()
+        and not (reviewer_root / "reviewer-b-input" / "reviewer-a.prompt.md").exists(),
         "stage_receipt_passed": stage_receipt.get("status") == "passed",
         "no_model_invoked": True,
     }
     expected_prompt_hashes = bundle_manifest.get("prompt_sha256", {})
     if isinstance(expected_prompt_hashes, dict):
-        checks["reviewer_a_prompt_bound"] = expected_prompt_hashes.get("A") == sha256(
-            bundle_dir / "reviewer-a.prompt.md"
-        )
-        checks["reviewer_b_prompt_bound"] = expected_prompt_hashes.get("B") == sha256(
-            bundle_dir / "reviewer-b.prompt.md"
-        )
+        checks["reviewer_a_prompt_bound"] = expected_prompt_hashes.get("A") == sha256(bundle_dir / "reviewer-a.prompt.md")
+        checks["reviewer_b_prompt_bound"] = expected_prompt_hashes.get("B") == sha256(bundle_dir / "reviewer-b.prompt.md")
     if not all(checks.values()):
         failed = ", ".join(key for key, value in checks.items() if not value)
         raise ValueError(f"AI review prep postcondition failed: {failed}")
@@ -345,18 +312,14 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
 
     output.parent.mkdir(parents=True, exist_ok=True)
     manifest_paths = method_manifest_paths(args)
-    expected_source_sha256 = parse_expected_source_manifest_sha256(
-        args.expected_source_manifest_sha256
-    )
+    expected_source_sha256 = parse_expected_source_manifest_sha256(args.expected_source_manifest_sha256)
     source_manifests = validate_sources(
         output,
         manifest_paths,
         expected_source_sha256,
     )
 
-    staging = Path(
-        tempfile.mkdtemp(prefix=f".{output.name}.", dir=str(output.parent))
-    )
+    staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=str(output.parent)))
     keep_staging = False
     try:
         bundle_dir = staging / "bundle"
@@ -382,11 +345,7 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
             "method_inventory": inventory_payload(),
             "method_inventory_sha256": inventory_sha256(),
             "source_manifests": source_manifests,
-            "model_catalog_receipt_sha256": sha256(
-                require_real_file(
-                    args.model_catalog_receipt, "model catalog receipt"
-                )
-            ),
+            "model_catalog_receipt_sha256": sha256(require_real_file(args.model_catalog_receipt, "model catalog receipt")),
             "bundle_dir": str(output / "bundle"),
             "bundle_manifest_sha256": sha256(bundle_dir / "bundle_manifest.json"),
             "review_bundle_sha256": bundle_manifest["review_bundle_sha256"],
@@ -395,13 +354,9 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
             "reviewer_inputs": {
                 role: {
                     "directory": details["directory"],
-                    "exact_two_file_inventory": details[
-                        "exact_two_file_inventory"
-                    ],
+                    "exact_two_file_inventory": details["exact_two_file_inventory"],
                 }
-                for role, details in sorted(
-                    stage_receipt_payload["reviewers"].items()
-                )
+                for role, details in sorted(stage_receipt_payload["reviewers"].items())
             },
             "checks": postconditions["checks"],
         }
@@ -431,15 +386,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--reviewer-a-model-id", required=True)
     parser.add_argument("--reviewer-b-provider", required=True)
     parser.add_argument("--reviewer-b-model-id", required=True)
-    parser.add_argument("--forbidden-token", required=True, action="append")
+    parser.add_argument("--forbidden-token", action="append", default=[])
+    parser.add_argument("--forbidden-tokens-file", action="append", default=[], type=Path)
     parser.add_argument(
         "--expected-source-manifest-sha256",
         required=True,
         action="append",
-        help=(
-            "repeat as method_id=sha256 once for each source manifest in the "
-            "canonical seven-method order"
-        ),
+        help=("repeat as method_id=sha256 once for each source manifest in the canonical seven-method order"),
     )
     args = parser.parse_args(argv)
 
@@ -459,12 +412,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             {
                 "status": receipt["status"],
                 "bundle_dir": receipt["bundle_dir"],
-                "reviewer_a_input": receipt["reviewer_inputs"]["A"][
-                    "directory"
-                ],
-                "reviewer_b_input": receipt["reviewer_inputs"]["B"][
-                    "directory"
-                ],
+                "reviewer_a_input": receipt["reviewer_inputs"]["A"]["directory"],
+                "reviewer_b_input": receipt["reviewer_inputs"]["B"]["directory"],
             },
             sort_keys=True,
         )

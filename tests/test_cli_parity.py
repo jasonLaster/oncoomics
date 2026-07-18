@@ -73,6 +73,7 @@ class CliParityTest(unittest.TestCase):
             "stage:phase3-fast-deterministic-report",
             "stage:phase3-fast-inputs",
             "triage:rosalind-hrd-readiness",
+            "validate:phase3-fast-forbidden-tokens",
             "validate:phase3-wgs",
             "verify:clinical-assay-boundaries",
             "verify:clinical-change-control",

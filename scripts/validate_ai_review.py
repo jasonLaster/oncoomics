@@ -16,6 +16,7 @@ from typing import Any, Sequence
 from forbidden_text import (
     forbidden_token_fingerprints,
     has_unauthorized_hrd_classification,
+    merge_forbidden_tokens,
     normalized_scan_text,
 )
 from hrd_report_inventory import (
@@ -24,7 +25,6 @@ from hrd_report_inventory import (
     require_inventory_binding,
     require_pinned_methods,
 )
-
 
 CLAIMS_FIELDS = [
     "claim_id",
@@ -79,9 +79,7 @@ REQUIRED_REPORT_HEADINGS = (
 REVIEW_OUTPUT_FILES = {"claims.csv", "report.md", "review_manifest.json"}
 
 CLAIM_ID = re.compile(r"^C[0-9]{3,}$")
-CITATION = re.compile(
-    r"(?<!!)\[(C[0-9]{3,})\|((?:E[0-9]{3,})(?:;E[0-9]{3,})*)\](?!\()"
-)
+CITATION = re.compile(r"(?<!!)\[(C[0-9]{3,})\|((?:E[0-9]{3,})(?:;E[0-9]{3,})*)\](?!\()")
 EVIDENCE_ID = re.compile(r"^E[0-9]{3,}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 METHOD_ID = re.compile(r"^[a-z0-9][a-z0-9_.-]{1,79}$")
@@ -160,53 +158,32 @@ def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str
     receipt = load_object(path)
     if receipt.get("schema_version") != 1:
         raise ValueError("model catalog receipt schema is unsupported")
-    if not str(receipt.get("provider_catalog", "")).strip() or not str(
-        receipt.get("catalog_source", "")
-    ).strip():
+    if not str(receipt.get("provider_catalog", "")).strip() or not str(receipt.get("catalog_source", "")).strip():
         raise ValueError("model catalog receipt lacks provider catalog provenance")
 
     receipt_time = parse_time(
         receipt.get("catalog_verified_at"),
         "catalog receipt",
     ).isoformat()
-    contract_times = {
-        parse_time(row.get("catalog_verified_at"), "catalog contract").isoformat()
-        for row in model_contracts.values()
-    }
+    contract_times = {parse_time(row.get("catalog_verified_at"), "catalog contract").isoformat() for row in model_contracts.values()}
     if contract_times != {receipt_time}:
-        raise ValueError(
-            "model catalog receipt timestamp differs from the pinned contracts"
-        )
+        raise ValueError("model catalog receipt timestamp differs from the pinned contracts")
 
     rows = receipt.get("models")
     if not isinstance(rows, list) or len(rows) != 2:
-        raise ValueError(
-            "model catalog receipt must contain exactly the two reviewer models"
-        )
+        raise ValueError("model catalog receipt must contain exactly the two reviewer models")
     observed: set[tuple[str, str]] = set()
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError("model catalog receipt contains a malformed model row")
         pair = (str(row.get("provider", "")), str(row.get("model_id", "")))
-        if (
-            pair in observed
-            or row.get("available") is not True
-            or row.get("latest_available") is not True
-        ):
-            raise ValueError(
-                "model catalog receipt contains duplicate, unavailable, or "
-                "non-latest models"
-            )
+        if pair in observed or row.get("available") is not True or row.get("latest_available") is not True:
+            raise ValueError("model catalog receipt contains duplicate, unavailable, or non-latest models")
         observed.add(pair)
 
-    expected = {
-        (str(row.get("provider", "")), str(row.get("model_id", "")))
-        for row in model_contracts.values()
-    }
+    expected = {(str(row.get("provider", "")), str(row.get("model_id", ""))) for row in model_contracts.values()}
     if observed != expected:
-        raise ValueError(
-            "model catalog receipt does not match the pinned reviewer models"
-        )
+        raise ValueError("model catalog receipt does not match the pinned reviewer models")
     return sha256(path)
 
 
@@ -275,14 +252,8 @@ def derived_authorized_state(rows: list[dict[str, Any]]) -> str:
             if row.get("evidence_status") != "ready":
                 raise ValueError("classified evidence is not ready")
             classified.add(str(state))
-        elif (
-            row.get("classification_authorized") is not False
-            or row.get("classification_qc_status") != "not_applicable"
-        ):
-            raise ValueError(
-                "no_call evidence cannot authorize classification "
-                "or mark classification QC as applicable"
-            )
+        elif row.get("classification_authorized") is not False or row.get("classification_qc_status") != "not_applicable":
+            raise ValueError("no_call evidence cannot authorize classification or mark classification QC as applicable")
     if len(classified) > 1:
         raise ValueError("evidence sources contain conflicting authorized classifications")
     return next(iter(classified), "no_call")
@@ -312,12 +283,7 @@ def validate_source_manifests(
         report_hash = str(source.get("report_sha256", "")).lower()
         report_path = path.parent / "report.md"
         source_hashes = source.get("source_sha256")
-        if (
-            report_path.is_symlink()
-            or not report_path.is_file()
-            or not HEX64.fullmatch(report_hash)
-            or sha256(report_path) != report_hash
-        ):
+        if report_path.is_symlink() or not report_path.is_file() or not HEX64.fullmatch(report_hash) or sha256(report_path) != report_hash:
             raise ValueError(f"source report hash mismatch for {evidence_id}")
         if not isinstance(source_hashes, dict) or not source_hashes:
             raise ValueError(f"source artifact hashes are missing for {evidence_id}")
@@ -326,27 +292,16 @@ def validate_source_manifests(
             "method_id": str(source.get("method_id") or source.get("route") or ""),
             "report_kind": str(source.get("report_kind", "method")),
             "evidence_status": str(source.get("evidence_status", "")),
-            "authorized_hrd_state": str(
-                source.get("authorized_hrd_state")
-                or source.get("interpretation_status")
-                or ""
-            ),
-            "classification_authorized": source.get("classification_authorized")
-            is True,
-            "classification_qc_status": str(
-                source.get("classification_qc_status", "not_applicable")
-            ),
+            "authorized_hrd_state": str(source.get("authorized_hrd_state") or source.get("interpretation_status") or ""),
+            "classification_authorized": source.get("classification_authorized") is True,
+            "classification_qc_status": str(source.get("classification_qc_status", "not_applicable")),
             "report_sha256": report_hash,
-            "source_artifact_sha256": sorted(
-                str(value).lower() for value in source_hashes.values()
-            ),
+            "source_artifact_sha256": sorted(str(value).lower() for value in source_hashes.values()),
             "review_summary": source.get("review_summary"),
         }
         observed_evidence = {key: evidence.get(key) for key in expected_evidence}
         if observed_evidence != expected_evidence:
-            raise ValueError(
-                f"bundle evidence does not match source manifest for {evidence_id}"
-            )
+            raise ValueError(f"bundle evidence does not match source manifest for {evidence_id}")
 
 
 def visible_report_text(report: str) -> str:
@@ -357,11 +312,7 @@ def visible_report_text(report: str) -> str:
     for line in without_comments.splitlines():
         fence = re.match(r"^\s*(`{3,}|~{3,})", line)
         if fence_character:
-            if (
-                fence
-                and fence.group(1)[0] == fence_character
-                and len(fence.group(1)) >= fence_length
-            ):
+            if fence and fence.group(1)[0] == fence_character and len(fence.group(1)) >= fence_length:
                 fence_character = ""
                 fence_length = 0
             visible.append("")
@@ -414,8 +365,7 @@ def validate_prompt(
         raise ValueError("reviewer prompt is not bound to the current bundle hash")
     if (
         f"Subject alias: `{subject_alias}`." not in prompt_text
-        or f"Pinned model: `{model['provider']}/{model['model_id']}`."
-        not in prompt_text
+        or f"Pinned model: `{model['provider']}/{model['model_id']}`." not in prompt_text
     ):
         raise ValueError("reviewer prompt is not bound to alias and pinned model")
 
@@ -437,10 +387,7 @@ def validate_other_reviewer(
         "report": other_dir / "report.md",
         "claims": other_dir / "claims.csv",
     }
-    if any(
-        path.is_symlink() or not path.is_file() or path.stat().st_size == 0
-        for path in paths.values()
-    ):
+    if any(path.is_symlink() or not path.is_file() or path.stat().st_size == 0 for path in paths.values()):
         raise ValueError("reviewer B requires a complete validated reviewer A output")
 
     other_validation = load_object(paths["validation"])
@@ -468,8 +415,7 @@ def validate_other_reviewer(
     if (
         other_validation.get("report_sha256") != other_outputs["report.md"]
         or other_validation.get("claims_sha256") != other_outputs["claims.csv"]
-        or other_validation.get("review_manifest_sha256")
-        != sha256(paths["manifest"])
+        or other_validation.get("review_manifest_sha256") != sha256(paths["manifest"])
     ):
         raise ValueError("reviewer A artifacts changed after validation")
     if other_manifest.get("reviewer_id") != "A":
@@ -484,14 +430,9 @@ def validate_other_reviewer(
 
     current_invocation = current_manifest.get("invocation", {})
     other_invocation = other_manifest.get("invocation", {})
-    if str(current_invocation.get("invocation_id", "")) == str(
-        other_invocation.get("invocation_id", "")
-    ):
+    if str(current_invocation.get("invocation_id", "")) == str(other_invocation.get("invocation_id", "")):
         raise ValueError("reviewer A and B share an invocation ID")
-    if (
-        current_outputs["report.md"] == other_outputs["report.md"]
-        or current_outputs["claims.csv"] == other_outputs["claims.csv"]
-    ):
+    if current_outputs["report.md"] == other_outputs["report.md"] or current_outputs["claims.csv"] == other_outputs["claims.csv"]:
         raise ValueError("reviewer B duplicates a reviewer A output")
 
 
@@ -513,10 +454,7 @@ def validate_bundle(
 ]:
     if bundle.get("schema_version") != 2 or bundle_manifest.get("schema_version") != 2:
         raise ValueError("unsupported bundle or bundle-manifest schema")
-    if (
-        bundle_manifest.get("forbidden_token_sha256")
-        != forbidden_token_fingerprints(forbidden_tokens)
-    ):
+    if bundle_manifest.get("forbidden_token_sha256") != forbidden_token_fingerprints(forbidden_tokens):
         raise ValueError("forbidden-token inventory differs from bundle construction")
     if bundle.get("purpose") != "deidentified_independent_narrative_crosscheck":
         raise ValueError("review bundle purpose is missing or altered")
@@ -544,9 +482,7 @@ def validate_bundle(
             "latest_available_attested",
         }:
             raise ValueError(f"pinned model contract is malformed for reviewer {role}")
-        if not str(contract["provider"]).strip() or not str(
-            contract["model_id"]
-        ).strip():
+        if not str(contract["provider"]).strip() or not str(contract["model_id"]).strip():
             raise ValueError(f"pinned model identity is empty for reviewer {role}")
         if contract["latest_available_attested"] is not True:
             raise ValueError(f"latest-model attestation is absent for reviewer {role}")
@@ -584,10 +520,7 @@ def validate_bundle(
         raise ValueError("prompt hash differs from bundle_manifest.json")
 
     required_methods = bundle.get("required_method_ids")
-    if (
-        not isinstance(required_methods, list)
-        or bundle_manifest.get("required_method_ids") != required_methods
-    ):
+    if not isinstance(required_methods, list) or bundle_manifest.get("required_method_ids") != required_methods:
         raise ValueError("required method inventory is missing or altered")
     require_pinned_methods(required_methods, "review bundle method inventory")
     require_inventory_binding(
@@ -600,9 +533,7 @@ def validate_bundle(
         bundle_manifest.get("method_inventory_sha256"),
         "bundle manifest method inventory binding",
     )
-    if bundle.get("method_inventory_sha256") != bundle_manifest.get(
-        "method_inventory_sha256"
-    ):
+    if bundle.get("method_inventory_sha256") != bundle_manifest.get("method_inventory_sha256"):
         raise ValueError("bundle method inventory hashes disagree")
 
     evidence_rows = bundle.get("evidence_sources")
@@ -619,10 +550,7 @@ def validate_bundle(
             raise ValueError("malformed or duplicate evidence source")
         if not METHOD_ID.fullmatch(str(row.get("method_id", ""))):
             raise ValueError("invalid method ID in evidence source")
-        if (
-            row.get("evidence_status") not in EVIDENCE_STATES
-            or row.get("authorized_hrd_state") not in HRD_STATES
-        ):
+        if row.get("evidence_status") not in EVIDENCE_STATES or row.get("authorized_hrd_state") not in HRD_STATES:
             raise ValueError("invalid evidence or authorization state")
         if (
             not isinstance(row.get("classification_authorized"), bool)
@@ -631,17 +559,13 @@ def validate_bundle(
             raise ValueError("malformed classification authorization metadata")
         if not HEX64.fullmatch(str(row.get("report_sha256", ""))):
             raise ValueError("malformed source-report hash")
-        if not isinstance(source_hashes, list) or not source_hashes or not all(
-            HEX64.fullmatch(str(value)) for value in source_hashes
-        ):
+        if not isinstance(source_hashes, list) or not source_hashes or not all(HEX64.fullmatch(str(value)) for value in source_hashes):
             raise ValueError("malformed source-artifact hashes")
         if not isinstance(review_summary, dict) or not review_summary:
             raise ValueError("evidence source lacks a review summary")
         evidence[evidence_id] = row
     if [str(row.get("method_id", "")) for row in evidence_rows] != required_methods:
-        raise ValueError(
-            "evidence sources do not match the ordered required method inventory"
-        )
+        raise ValueError("evidence sources do not match the ordered required method inventory")
 
     quantitative_facts = bundle.get("quantitative_facts")
     if not isinstance(quantitative_facts, list):
@@ -716,9 +640,7 @@ def validate_report_and_claims(
     report_lines = visible_report.splitlines()
     heading_positions: list[int] = []
     for heading in REQUIRED_REPORT_HEADINGS:
-        positions = [
-            index for index, line in enumerate(report_lines) if line.strip() == heading
-        ]
+        positions = [index for index, line in enumerate(report_lines) if line.strip() == heading]
         if len(positions) != 1:
             raise ValueError(f"report heading is missing or duplicated: {heading}")
         heading_positions.append(positions[0])
@@ -734,11 +656,7 @@ def validate_report_and_claims(
 
     expected_header = f"Authorized HRD state: `{authorized}`"
     expected_alias = f"Subject alias: `{subject_alias}`"
-    substantive = [
-        (index, line.strip())
-        for index, line in enumerate(report_lines)
-        if line.strip() and not line.lstrip().startswith("#")
-    ]
+    substantive = [(index, line.strip()) for index, line in enumerate(report_lines) if line.strip() and not line.lstrip().startswith("#")]
     if len(substantive) < 2 or substantive[0][1] != expected_header:
         raise ValueError("authorization line must precede substantive review text")
     if substantive[1][1] != expected_alias:
@@ -747,29 +665,20 @@ def validate_report_and_claims(
         raise ValueError("authorization and alias must precede report sections")
 
     for section_index, start in enumerate(heading_positions[1:], 1):
-        end = (
-            heading_positions[section_index + 1]
-            if section_index + 1 < len(heading_positions)
-            else len(report_lines)
-        )
+        end = heading_positions[section_index + 1] if section_index + 1 < len(heading_positions) else len(report_lines)
         section_text = re.sub(
             r"`+[^`\n]*`+",
             "",
             "\n".join(report_lines[start + 1 : end]),
         )
         if not CITATION.search(section_text):
-            raise ValueError(
-                "report section has no evidence-cited content: "
-                + REQUIRED_REPORT_HEADINGS[section_index]
-            )
+            raise ValueError("report section has no evidence-cited content: " + REQUIRED_REPORT_HEADINGS[section_index])
 
     report_citations: dict[str, tuple[str, ...]] = {}
     report_blocks: list[tuple[str, set[str]]] = []
     for block in re.split(r"\n\s*\n", visible_report):
         stripped = block.strip()
-        if not stripped or all(
-            line.lstrip().startswith("#") for line in stripped.splitlines()
-        ):
+        if not stripped or all(line.lstrip().startswith("#") for line in stripped.splitlines()):
             continue
         if stripped in {expected_header, expected_alias}:
             continue
@@ -793,9 +702,7 @@ def validate_report_and_claims(
     claim_fact_ids: dict[str, set[str]] = {}
     claim_numeric_text: dict[str, str] = {}
     for row_number, row in enumerate(claims, 2):
-        if None in row or any(
-            not isinstance(row.get(field), str) for field in CLAIMS_FIELDS
-        ):
+        if None in row or any(not isinstance(row.get(field), str) for field in CLAIMS_FIELDS):
             raise ValueError(f"claims.csv row does not match schema at row {row_number}")
 
         claim_id = row["claim_id"].strip()
@@ -803,28 +710,18 @@ def validate_report_and_claims(
             raise ValueError(f"invalid or duplicate claim_id at row {row_number}")
         claim_ids.add(claim_id)
 
-        evidence_ids = tuple(
-            item.strip() for item in row["evidence_ids"].split(";") if item.strip()
-        )
-        source_methods = tuple(
-            item.strip() for item in row["source_methods"].split(";") if item.strip()
-        )
-        evidence_states = tuple(
-            item.strip() for item in row["evidence_states"].split(";") if item.strip()
-        )
+        evidence_ids = tuple(item.strip() for item in row["evidence_ids"].split(";") if item.strip())
+        source_methods = tuple(item.strip() for item in row["source_methods"].split(";") if item.strip())
+        evidence_states = tuple(item.strip() for item in row["evidence_states"].split(";") if item.strip())
         if not evidence_ids or len(set(evidence_ids)) != len(evidence_ids):
             raise ValueError(f"empty or duplicate evidence_ids at row {row_number}")
         if any(evidence_id not in evidence for evidence_id in evidence_ids):
             raise ValueError(f"unknown evidence_id at row {row_number}")
 
         expected_methods = tuple(str(evidence[item]["method_id"]) for item in evidence_ids)
-        expected_states = tuple(
-            str(evidence[item]["evidence_status"]) for item in evidence_ids
-        )
+        expected_states = tuple(str(evidence[item]["evidence_status"]) for item in evidence_ids)
         if source_methods != expected_methods or evidence_states != expected_states:
-            raise ValueError(
-                f"method or evidence state does not match evidence_ids at row {row_number}"
-            )
+            raise ValueError(f"method or evidence state does not match evidence_ids at row {row_number}")
         if report_citations.get(claim_id) != evidence_ids:
             raise ValueError(f"report evidence citation does not match {claim_id}")
         covered_evidence.update(evidence_ids)
@@ -838,9 +735,7 @@ def validate_report_and_claims(
         if disposition == "supported" and support != "direct":
             raise ValueError(f"supported claim lacks direct support at row {row_number}")
         if disposition == "unsupported" and support not in {"absent", "conflicting"}:
-            raise ValueError(
-                f"unsupported claim has inconsistent support level at row {row_number}"
-            )
+            raise ValueError(f"unsupported claim has inconsistent support level at row {row_number}")
         if proposed not in HRD_STATES:
             raise ValueError(f"invalid proposed_hrd_state at row {row_number}")
         if proposed != "no_call" and proposed != authorized:
@@ -853,56 +748,32 @@ def validate_report_and_claims(
         raw_fact_ids = row["quantitative_fact_ids"].strip()
         fact_id_list = [] if raw_fact_ids == "none" else raw_fact_ids.split(";")
         fact_ids = set(fact_id_list)
-        if (
-            any(not QUANTITATIVE_FACT_ID.fullmatch(item) for item in fact_ids)
-            or len(fact_ids) != len(fact_id_list)
-        ):
+        if any(not QUANTITATIVE_FACT_ID.fullmatch(item) for item in fact_ids) or len(fact_ids) != len(fact_id_list):
             raise ValueError(f"malformed quantitative_fact_ids at row {row_number}")
         for fact_id in fact_ids:
             fact = quantitative_facts.get(fact_id)
             if fact is None or fact["evidence_id"] not in evidence_ids:
-                raise ValueError(
-                    f"quantitative fact is not bound to cited evidence at row {row_number}"
-                )
+                raise ValueError(f"quantitative fact is not bound to cited evidence at row {row_number}")
         claim_fact_ids[claim_id] = fact_ids
 
         raw_disagreement_ids = row["disagreement_evidence_ids"].strip()
-        disagreement_ids = (
-            ()
-            if raw_disagreement_ids == "none"
-            else tuple(raw_disagreement_ids.split(";"))
-        )
+        disagreement_ids = () if raw_disagreement_ids == "none" else tuple(raw_disagreement_ids.split(";"))
         if disagreement not in DISAGREEMENT_STATUSES:
             raise ValueError(f"invalid disagreement status at row {row_number}")
-        if any(item not in evidence_ids for item in disagreement_ids) or len(
-            set(disagreement_ids)
-        ) != len(disagreement_ids):
-            raise ValueError(
-                f"disagreement evidence is not bound to claim at row {row_number}"
-            )
+        if any(item not in evidence_ids for item in disagreement_ids) or len(set(disagreement_ids)) != len(disagreement_ids):
+            raise ValueError(f"disagreement evidence is not bound to claim at row {row_number}")
         resolution = row["resolution_needed"].strip()
         if disagreement == "none":
             if disagreement_ids or resolution != "not_applicable" or support == "conflicting":
-                raise ValueError(
-                    f"disagreement fields are inconsistent at row {row_number}"
-                )
+                raise ValueError(f"disagreement fields are inconsistent at row {row_number}")
         else:
             if not disagreement_ids or not resolution or resolution == "not_applicable":
-                raise ValueError(
-                    f"unresolved disagreement lacks evidence or resolution at row {row_number}"
-                )
-            if (
-                disagreement == "method_conflict"
-                and (support != "conflicting" or len(disagreement_ids) < 2)
-            ):
-                raise ValueError(
-                    f"method conflict lacks conflicting support at row {row_number}"
-                )
+                raise ValueError(f"unresolved disagreement lacks evidence or resolution at row {row_number}")
+            if disagreement == "method_conflict" and (support != "conflicting" or len(disagreement_ids) < 2):
+                raise ValueError(f"method conflict lacks conflicting support at row {row_number}")
 
         narrative = "\n".join((row["claim"], row["caveat"], resolution))
-        allowed_numbers = {
-            str(quantitative_facts[fact_id]["exact_text"]) for fact_id in fact_ids
-        }
+        allowed_numbers = {str(quantitative_facts[fact_id]["exact_text"]) for fact_id in fact_ids}
         try:
             validate_numeric_rendering(narrative, allowed_numbers, "claim")
         except ValueError as error:
@@ -914,37 +785,22 @@ def validate_report_and_claims(
     if covered_evidence != set(evidence):
         raise ValueError("claims do not preserve every evidence source and state")
 
-    report_text_by_claim: dict[str, list[str]] = {
-        claim_id: [] for claim_id in claim_ids
-    }
+    report_text_by_claim: dict[str, list[str]] = {claim_id: [] for claim_id in claim_ids}
     for block_text, block_claim_ids in report_blocks:
-        allowed_fact_ids = set().union(
-            *(claim_fact_ids[item] for item in block_claim_ids)
-        )
-        allowed_numbers = {
-            str(quantitative_facts[fact_id]["exact_text"])
-            for fact_id in allowed_fact_ids
-        }
+        allowed_fact_ids = set().union(*(claim_fact_ids[item] for item in block_claim_ids))
+        allowed_numbers = {str(quantitative_facts[fact_id]["exact_text"]) for fact_id in allowed_fact_ids}
         validate_numeric_rendering(block_text, allowed_numbers, "report")
         for claim_id in block_claim_ids:
             report_text_by_claim[claim_id].append(block_text)
 
     for claim_id, fact_ids in claim_fact_ids.items():
-        combined = (
-            claim_numeric_text[claim_id]
-            + "\n"
-            + "\n".join(report_text_by_claim[claim_id])
-        )
+        combined = claim_numeric_text[claim_id] + "\n" + "\n".join(report_text_by_claim[claim_id])
         observed = set(NUMBER_TOKEN.findall(normalized_scan_text(combined)))
-        required = {
-            str(quantitative_facts[fact_id]["exact_text"]) for fact_id in fact_ids
-        }
+        required = {str(quantitative_facts[fact_id]["exact_text"]) for fact_id in fact_ids}
         if not required.issubset(observed):
             raise ValueError(f"{claim_id} cites an unused quantitative fact")
 
-    review_narrative = normalized_scan_text(
-        visible_report + "\n" + claims_path.read_text(encoding="utf-8")
-    )
+    review_narrative = normalized_scan_text(visible_report + "\n" + claims_path.read_text(encoding="utf-8"))
     other_role = "B" if reviewer == "A" else "A"
     other_context = re.compile(
         rf"\breviewer\s*{other_role}\b|\bother reviewer(?:'s)?\b|"
@@ -969,10 +825,7 @@ def validate_review_manifest(
     report_path: Path,
     claims_path: Path,
 ) -> tuple[dict[str, str], dict[str, Any]]:
-    if (
-        review_manifest.get("schema_version") != 2
-        or review_manifest.get("reviewer_id") != reviewer
-    ):
+    if review_manifest.get("schema_version") != 2 or review_manifest.get("reviewer_id") != reviewer:
         raise ValueError("review manifest schema or reviewer ID mismatch")
 
     invocation = review_manifest.get("invocation", {})
@@ -981,8 +834,7 @@ def validate_review_manifest(
     if review_manifest.get("subject_alias") != subject_alias:
         raise ValueError("review manifest subject alias mismatch")
     if not isinstance(invocation, dict) or not all(
-        str(invocation.get(key, "")).strip()
-        for key in ("invocation_id", "interface", "started_at", "completed_at")
+        str(invocation.get(key, "")).strip() for key in ("invocation_id", "interface", "started_at", "completed_at")
     ):
         raise ValueError("complete invocation metadata is required")
 
@@ -1030,28 +882,17 @@ def require_exact_review_output_dir(review_dir: Path) -> None:
         if unexpected:
             details.append("unexpected " + ",".join(unexpected))
         raise ValueError(
-            "review directory must contain exactly report.md, claims.csv, "
-            "and review_manifest.json before validation: "
-            + "; ".join(details)
+            "review directory must contain exactly report.md, claims.csv, and review_manifest.json before validation: " + "; ".join(details)
         )
 
-    invalid = sorted(
-        path.name
-        for path in review_dir.iterdir()
-        if path.is_symlink() or not path.is_file()
-    )
+    invalid = sorted(path.name for path in review_dir.iterdir() if path.is_symlink() or not path.is_file())
     if invalid:
-        raise ValueError(
-            "review directory contains invalid output paths: "
-            + ",".join(invalid)
-        )
+        raise ValueError("review directory contains invalid output paths: " + ",".join(invalid))
 
 
 def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None:
     require_safe_validation_parent(path)
-    payload = (
-        json.dumps(validation, indent=2, sort_keys=True) + "\n"
-    ).encode("utf-8")
+    payload = (json.dumps(validation, indent=2, sort_keys=True) + "\n").encode("utf-8")
     file_descriptor = -1
     try:
         file_descriptor = os.open(
@@ -1094,6 +935,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--other-review-dir", type=Path)
     parser.add_argument("--model-catalog-receipt", required=True, type=Path)
     parser.add_argument("--forbidden-token", action="append", default=[])
+    parser.add_argument("--forbidden-tokens-file", action="append", default=[], type=Path)
     args = parser.parse_args(argv)
 
     try:
@@ -1102,17 +944,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         if validation_path.exists() or validation_path.is_symlink():
             raise ValueError("validation.json already exists")
         if args.reviewer == "B" and args.other_review_dir is None:
-            raise ValueError(
-                "reviewer B requires --other-review-dir for validated reviewer A"
-            )
+            raise ValueError("reviewer B requires --other-review-dir for validated reviewer A")
         if args.reviewer == "A" and args.other_review_dir is not None:
             raise ValueError("reviewer A must not consume another reviewer output")
 
-        forbidden = [
-            token.strip() for token in args.forbidden_token if token.strip()
-        ]
+        forbidden = merge_forbidden_tokens(
+            args.forbidden_token,
+            files=args.forbidden_tokens_file,
+        )
         if not forbidden:
-            raise ValueError("at least one --forbidden-token is required")
+            raise ValueError("at least one forbidden token is required")
 
         bundle_dir = resolve_real_dir(args.bundle_dir, "bundle directory")
         bundle_path = bundle_dir / "review_bundle.json"
@@ -1130,11 +971,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             claims_path,
             review_manifest_path,
         )
-        missing = [
-            path.name
-            for path in required_paths
-            if path.is_symlink() or not path.is_file() or path.stat().st_size == 0
-        ]
+        missing = [path.name for path in required_paths if path.is_symlink() or not path.is_file() or path.stat().st_size == 0]
         if missing:
             raise ValueError("missing review artifacts: " + ",".join(missing))
 
@@ -1234,9 +1071,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "model_catalog_receipt_sha256": catalog_receipt_hash,
         "claim_count": len(claims),
         "covered_evidence_ids": sorted(covered_evidence),
-        "disagreement_claim_count": sum(
-            row["disagreement_status"].strip() != "none" for row in claims
-        ),
+        "disagreement_claim_count": sum(row["disagreement_status"].strip() != "none" for row in claims),
         "review_bundle_sha256": bundle_hash,
         "prompt_sha256": prompt_hash,
         "report_sha256": expected_outputs["report.md"],
@@ -1249,10 +1084,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         write_validation_create_only(validation_path, validation)
     except ValueError as error:
         raise SystemExit(f"Fail-closed: {error}") from error
-    print(
-        f"Validated independent reviewer {args.reviewer}: "
-        f"{len(claims)} claims; authorized state {authorized}"
-    )
+    print(f"Validated independent reviewer {args.reviewer}: {len(claims)} claims; authorized state {authorized}")
     return 0
 
 

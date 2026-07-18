@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Sequence
 
+from forbidden_text import merge_forbidden_tokens
 from publish_reviewed_public_report import (
     DEFAULT_FORBIDDEN_TOKENS,
     MAX_FILE_BYTES,
@@ -38,9 +39,14 @@ from publish_reviewed_public_report import (
 CLASSIFICATION = "private-reviewed-hrd-report"
 
 
-def validate_packet_dir(
-    packet_dir: Path, method_id: str, tokens: tuple[str, ...]
-) -> list[dict[str, Any]]:
+def forbidden_tokens(args: argparse.Namespace) -> tuple[str, ...]:
+    return merge_forbidden_tokens(
+        (*DEFAULT_FORBIDDEN_TOKENS, *args.forbidden_token),
+        files=args.forbidden_tokens_file,
+    )
+
+
+def validate_packet_dir(packet_dir: Path, method_id: str, tokens: tuple[str, ...]) -> list[dict[str, Any]]:
     if packet_dir.is_symlink() or not packet_dir.is_dir():
         raise ValueError("packet directory must be a real directory")
     expected = tuple(sorted(METHOD_CONTRACTS[method_id]["files"]))
@@ -79,10 +85,7 @@ def validate_packet_dir(
 
 
 def default_destination_prefix(method_id: str, revision: str) -> str:
-    return (
-        f"s3://{PRIVATE_BUCKET}/runs/{SUBJECT_ALIAS}/{RUN_ID}/reports/"
-        f"{method_id}/revisions/{revision}/"
-    )
+    return f"s3://{PRIVATE_BUCKET}/runs/{SUBJECT_ALIAS}/{RUN_ID}/reports/{method_id}/revisions/{revision}/"
 
 
 def upload_private(
@@ -127,29 +130,15 @@ def upload_private(
     current = head_object(bucket, destination_key, region)
     checks = {
         "version_id": exact.get("VersionId") == current.get("VersionId") == version_id,
-        "bytes": int(exact.get("ContentLength", -1))
-        == int(current.get("ContentLength", -2))
-        == row["bytes"],
-        "checksum_type": exact.get("ChecksumType")
-        == current.get("ChecksumType")
-        == "FULL_OBJECT",
-        "checksum_sha256": exact.get("ChecksumSHA256")
-        == current.get("ChecksumSHA256")
-        == row["checksum_sha256"],
-        "sse": exact.get("ServerSideEncryption")
-        == current.get("ServerSideEncryption")
-        == "aws:kms",
-        "kms": exact.get("SSEKMSKeyId")
-        == current.get("SSEKMSKeyId")
-        == PRIVATE_KMS_KEY_ARN,
-        "metadata_sha256": exact.get("Metadata")
-        == current.get("Metadata")
-        == {"classification": CLASSIFICATION, "sha256": row["sha256"]},
+        "bytes": int(exact.get("ContentLength", -1)) == int(current.get("ContentLength", -2)) == row["bytes"],
+        "checksum_type": exact.get("ChecksumType") == current.get("ChecksumType") == "FULL_OBJECT",
+        "checksum_sha256": exact.get("ChecksumSHA256") == current.get("ChecksumSHA256") == row["checksum_sha256"],
+        "sse": exact.get("ServerSideEncryption") == current.get("ServerSideEncryption") == "aws:kms",
+        "kms": exact.get("SSEKMSKeyId") == current.get("SSEKMSKeyId") == PRIVATE_KMS_KEY_ARN,
+        "metadata_sha256": exact.get("Metadata") == current.get("Metadata") == {"classification": CLASSIFICATION, "sha256": row["sha256"]},
     }
     if not all(checks.values()):
-        raise ValueError(
-            f"private destination verification failed for {row['relative_path']}: {checks}"
-        )
+        raise ValueError(f"private destination verification failed for {row['relative_path']}: {checks}")
     return {
         "relative_path": row["relative_path"],
         "bucket": bucket,
@@ -170,24 +159,13 @@ def upload_private(
 def run(args: argparse.Namespace) -> dict[str, Any]:
     method_id = args.method_id
     expected = tuple(sorted(METHOD_CONTRACTS[method_id]["files"]))
-    tokens = tuple(
-        sorted(
-            {
-                token.strip()
-                for token in (*DEFAULT_FORBIDDEN_TOKENS, *args.forbidden_token)
-                if token.strip()
-            },
-            key=str.casefold,
-        )
-    )
+    tokens = forbidden_tokens(args)
     if not tokens:
         raise ValueError("at least one forbidden token is required")
 
     rows = validate_packet_dir(args.packet_dir, method_id, tokens)
     revision = canonical_packet_digest(rows)
-    destination_prefix = args.destination_prefix or default_destination_prefix(
-        method_id, revision
-    )
+    destination_prefix = args.destination_prefix or default_destination_prefix(method_id, revision)
     bucket, prefix = private_report_prefix(method_id, destination_prefix)
     receipt: dict[str, Any] = {
         "schema_version": 1,
@@ -241,9 +219,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
             final_history = version_history(bucket, prefix, args.region)
             if not exact_final_history(final_history, prefix, receipt["objects"]):
-                raise ValueError(
-                    "private destination does not have exactly one expected version per file and no delete markers"
-                )
+                raise ValueError("private destination does not have exactly one expected version per file and no delete markers")
             receipt["checks"].update(
                 {
                     "destination_sse_kms": True,
@@ -268,14 +244,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Freeze one allowlisted HRD report packet in the private results bucket."
-    )
+    parser = argparse.ArgumentParser(description="Freeze one allowlisted HRD report packet in the private results bucket.")
     parser.add_argument("--packet-dir", required=True, type=Path)
     parser.add_argument("--method-id", required=True, choices=tuple(METHOD_CONTRACTS))
     parser.add_argument("--destination-prefix")
     parser.add_argument("--receipt-output", required=True, type=Path)
     parser.add_argument("--forbidden-token", action="append", default=[])
+    parser.add_argument("--forbidden-tokens-file", action="append", default=[], type=Path)
     parser.add_argument("--region", default=REGION, choices=(REGION,))
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)

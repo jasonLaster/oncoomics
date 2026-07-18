@@ -9,7 +9,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -19,15 +18,13 @@ if str(TEST_DIR) not in sys.path:
 
 import hrd_report_inventory as INVENTORY  # noqa: E402
 import prepare_ai_review_run as PREPARE  # noqa: E402
+
 from tests.test_build_ai_review_bundle import AiReviewBundleFixture, write_json  # noqa: E402
 
 
 def namespace(fixture: AiReviewBundleFixture, output_dir: Path) -> SimpleNamespace:
     by_method = dict(zip(INVENTORY.REQUIRED_METHOD_IDS, fixture.manifests))
-    args = {
-        argument: by_method[method_id]
-        for method_id, argument in PREPARE.METHOD_ARGUMENTS
-    }
+    args = {argument: by_method[method_id] for method_id, argument in PREPARE.METHOD_ARGUMENTS}
     args.update(
         {
             "output_dir": output_dir,
@@ -39,9 +36,9 @@ def namespace(fixture: AiReviewBundleFixture, output_dir: Path) -> SimpleNamespa
             "reviewer_b_provider": "synthetic-provider-b",
             "reviewer_b_model_id": "synthetic-model-b-current",
             "forbidden_token": ["DirectIdentifier"],
+            "forbidden_tokens_file": [],
             "expected_source_manifest_sha256": [
-                f"{method_id}={PREPARE.sha256(by_method[method_id])}"
-                for method_id in INVENTORY.REQUIRED_METHOD_IDS
+                f"{method_id}={PREPARE.sha256(by_method[method_id])}" for method_id in INVENTORY.REQUIRED_METHOD_IDS
             ],
         }
     )
@@ -96,6 +93,18 @@ def command(fixture: AiReviewBundleFixture, output_dir: Path) -> list[str]:
     ]
 
 
+def command_with_forbidden_tokens_file(
+    fixture: AiReviewBundleFixture,
+    output_dir: Path,
+    forbidden_tokens_file: Path,
+) -> list[str]:
+    cmd = command(fixture, output_dir)
+    index = cmd.index("--forbidden-token")
+    del cmd[index : index + 2]
+    cmd.extend(["--forbidden-tokens-file", str(forbidden_tokens_file)])
+    return cmd
+
+
 class PrepareAiReviewRunTests(unittest.TestCase):
     def test_prepares_bundle_and_isolated_reviewer_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -118,16 +127,8 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                     "stage_ai_review_inputs_receipt.json",
                 ],
             )
-            bundle = json.loads(
-                (output / "bundle/review_bundle.json").read_text(
-                    encoding="utf-8"
-                )
-            )
-            receipt = json.loads(
-                (output / "prepare_ai_review_run_receipt.json").read_text(
-                    encoding="utf-8"
-                )
-            )
+            bundle = json.loads((output / "bundle/review_bundle.json").read_text(encoding="utf-8"))
+            receipt = json.loads((output / "prepare_ai_review_run_receipt.json").read_text(encoding="utf-8"))
             self.assertEqual(len(bundle["evidence_sources"]), 7)
             self.assertEqual(receipt["status"], "passed")
             self.assertEqual(
@@ -135,23 +136,30 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 list(INVENTORY.REQUIRED_METHOD_IDS),
             )
             self.assertEqual(
-                sorted(
-                    path.name
-                    for path in (
-                        output / "reviewer-inputs/reviewer-a-input"
-                    ).iterdir()
-                ),
+                sorted(path.name for path in (output / "reviewer-inputs/reviewer-a-input").iterdir()),
                 ["review_bundle.json", "reviewer-a.prompt.md"],
             )
             self.assertEqual(
-                sorted(
-                    path.name
-                    for path in (
-                        output / "reviewer-inputs/reviewer-b-input"
-                    ).iterdir()
-                ),
+                sorted(path.name for path in (output / "reviewer-inputs/reviewer-b-input").iterdir()),
                 ["review_bundle.json", "reviewer-b.prompt.md"],
             )
+
+    def test_prepares_bundle_with_forbidden_tokens_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            output = Path(temporary) / "ai-review"
+            forbidden_tokens = Path(temporary) / "forbidden_tokens.json"
+            forbidden_tokens.write_text('["DirectIdentifier"]\n', encoding="utf-8")
+
+            result = subprocess.run(
+                command_with_forbidden_tokens_file(fixture, output, forbidden_tokens),
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            bundle_manifest = json.loads((output / "bundle/bundle_manifest.json").read_text(encoding="utf-8"))
+            self.assertTrue(bundle_manifest["forbidden_token_sha256"])
 
     def test_receipt_binds_manifest_and_bundle_hashes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -164,11 +172,7 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-            receipt = json.loads(
-                (output / "prepare_ai_review_run_receipt.json").read_text(
-                    encoding="utf-8"
-                )
-            )
+            receipt = json.loads((output / "prepare_ai_review_run_receipt.json").read_text(encoding="utf-8"))
             bundle_manifest = output / "bundle/bundle_manifest.json"
             stage_receipt = output / "stage_ai_review_inputs_receipt.json"
             self.assertEqual(
@@ -183,21 +187,12 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 receipt["stage_receipt_sha256"],
                 PREPARE.sha256(stage_receipt),
             )
-            for method_id, manifest in zip(
-                INVENTORY.REQUIRED_METHOD_IDS, fixture.manifests
-            ):
+            for method_id, manifest in zip(INVENTORY.REQUIRED_METHOD_IDS, fixture.manifests):
                 self.assertEqual(
                     receipt["source_manifests"][method_id]["sha256"],
                     PREPARE.sha256(manifest),
                 )
-            self.assertFalse(
-                (
-                    output
-                    / "reviewer-inputs"
-                    / "reviewer-a-input"
-                    / "prepare_ai_review_run_receipt.json"
-                ).exists()
-            )
+            self.assertFalse((output / "reviewer-inputs" / "reviewer-a-input" / "prepare_ai_review_run_receipt.json").exists())
 
     def test_refuses_wrong_explicit_mapping_without_final_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -6,8 +6,8 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import read_json
-from . import verify_phase3_fast_gpu_smoke as gpu_smoke
 from . import verify_parabricks_mirror_receipt as mirror_receipt
+from . import verify_phase3_fast_gpu_smoke as gpu_smoke
 
 GPU_SMOKE_RESULT_ENV = "PHASE3_FAST_GPU_SMOKE_RESULT"
 MIRROR_RECEIPT_ENV = "PARABRICKS_MIRROR_RECEIPT"
@@ -37,6 +37,14 @@ def _require_existing_file(path: Path, label: str) -> None:
         raise Phase3FastExecuteError(f"{label} may not be a symlink: {path}")
     if not path.is_file():
         raise Phase3FastExecuteError(f"{label} must be an existing file: {path}")
+
+
+def _require_nonempty_text_file(path: Path, label: str) -> str:
+    _require_existing_file(path, label)
+    text = path.read_bytes().decode("utf-8", errors="replace")
+    if not text.strip():
+        raise Phase3FastExecuteError(f"{label} must be non-empty")
+    return text
 
 
 def _require_csv_basename(value: Any) -> str:
@@ -76,9 +84,8 @@ def _require_matching_string(value: Any, label: str, expected: Any) -> str:
 
 
 def _parse_nvidia_smi_csv(path: Path) -> list[dict[str, str]]:
-    _require_existing_file(path, "nvidia-smi CSV")
     rows = []
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for line_number, line in enumerate(_require_nonempty_text_file(path, "nvidia-smi CSV").splitlines(), start=1):
         line = line.strip()
         if not line:
             continue
@@ -107,9 +114,7 @@ def validate_gpu_smoke_result(
         raise Phase3FastExecuteError("GPU smoke result status must be passed")
 
     aws_region = _require_matching_string(payload.get("awsRegion"), "awsRegion", expected_params.get("aws_region"))
-    aws_gpu_queue = _require_matching_string(
-        payload.get("awsGpuQueue"), "awsGpuQueue", expected_params.get("aws_gpu_queue")
-    )
+    aws_gpu_queue = _require_matching_string(payload.get("awsGpuQueue"), "awsGpuQueue", expected_params.get("aws_gpu_queue"))
     parabricks_container = _require_matching_string(
         payload.get("parabricksContainer"),
         "parabricksContainer",
@@ -144,25 +149,28 @@ def validate_gpu_smoke_result(
         if required_name not in row["name"]:
             raise Phase3FastExecuteError(f"nvidia-smi GPU {row['index']} was not an {required_name}: {row['name']}")
     if sorted(observed_indexes) != list(range(REQUIRED_GPU_COUNT)):
-        raise Phase3FastExecuteError(
-            f"nvidia-smi CSV must prove distinct GPU indexes 0-{REQUIRED_GPU_COUNT - 1}"
-        )
+        raise Phase3FastExecuteError(f"nvidia-smi CSV must prove distinct GPU indexes 0-{REQUIRED_GPU_COUNT - 1}")
     if len(observed_uuids) != observed_count:
         raise Phase3FastExecuteError("nvidia-smi CSV must prove unique GPU UUIDs")
 
     parabricks_version_path = csv_root / _require_parabricks_version_basename(payload.get("parabricksVersionTxt"))
-    _require_existing_file(parabricks_version_path, "Parabricks version output")
-    if parabricks_version_path.stat().st_size <= 0:
-        raise Phase3FastExecuteError("Parabricks version output must be non-empty")
+    parabricks_version = _require_nonempty_text_file(
+        parabricks_version_path,
+        "Parabricks version output",
+    ).casefold()
+    if "parabricks" not in parabricks_version and "pbrun" not in parabricks_version:
+        raise Phase3FastExecuteError("Parabricks version output must identify Parabricks or pbrun")
 
     aws_cli_version_path = csv_root / _require_aws_cli_version_basename(payload.get("awsCliVersionTxt"))
-    _require_existing_file(aws_cli_version_path, "AWS CLI version output")
-    if aws_cli_version_path.stat().st_size <= 0:
-        raise Phase3FastExecuteError("AWS CLI version output must be non-empty")
+    aws_cli_version = _require_nonempty_text_file(
+        aws_cli_version_path,
+        "AWS CLI version output",
+    ).casefold()
+    if "aws-cli/" not in aws_cli_version:
+        raise Phase3FastExecuteError("AWS CLI version output must identify aws-cli")
 
     diana_omics_cli_path = csv_root / _require_diana_omics_cli_basename(payload.get("dianaOmicsCliTxt"))
-    _require_existing_file(diana_omics_cli_path, "Diana omics CLI output")
-    diana_omics_cli = diana_omics_cli_path.read_text(encoding="utf-8")
+    diana_omics_cli = _require_nonempty_text_file(diana_omics_cli_path, "Diana omics CLI output")
     if "verify:phase3-fast-gpu-smoke" not in diana_omics_cli:
         raise Phase3FastExecuteError("Diana omics CLI output must include verify:phase3-fast-gpu-smoke")
 
@@ -206,9 +214,7 @@ def load_mirror_receipt_from_environment(*, expected_params: Mapping[str, Any]) 
 
     expected_container = _require_string(expected_params.get("parabricks_container"), "expected parabricks_container")
     if summary["parabricks_container"] != expected_container:
-        raise Phase3FastExecuteError(
-            "Parabricks mirror receipt parabricks_container must match the current Nextflow params"
-        )
+        raise Phase3FastExecuteError("Parabricks mirror receipt parabricks_container must match the current Nextflow params")
     return summary, path
 
 
@@ -216,6 +222,22 @@ def main() -> None:
     try:
         params, params_path = gpu_smoke.load_params_from_environment()
         params_summary = gpu_smoke.validate_gpu_smoke_params(params)
+        queue = gpu_smoke.load_gpu_batch_job_queue(
+            queue=params_summary["aws_gpu_queue"],
+            region=params_summary["aws_region"],
+        )
+        queue_summary = gpu_smoke.validate_gpu_batch_job_queue(
+            queue,
+            expected_queue=params_summary["aws_gpu_queue"],
+        )
+        compute_environment = gpu_smoke.load_gpu_batch_compute_environment(
+            compute_environment=queue_summary["compute_environment"],
+            region=params_summary["aws_region"],
+        )
+        compute_environment_summary = gpu_smoke.validate_gpu_batch_compute_environment(
+            compute_environment,
+            expected_compute_environment=queue_summary["compute_environment"],
+        )
         mirror_summary, mirror_path = load_mirror_receipt_from_environment(expected_params=params_summary)
         running_on_demand_p_vcpus = gpu_smoke.load_running_on_demand_p_vcpus(params_summary["aws_region"])
         gpu_smoke.validate_running_on_demand_p_quota(running_on_demand_p_vcpus)
@@ -230,6 +252,8 @@ def main() -> None:
     print(
         f"Phase 3 WGS fast AWS execute preflight passed: {params_path} "
         f"queue={params_summary['aws_gpu_queue']} "
+        f"compute_environment={queue_summary['compute_environment']} "
+        f"compute_max_vcpus={compute_environment_summary['max_vcpus']} "
         f"running_on_demand_p_vcpus={running_on_demand_p_vcpus:g} "
         f"parabricks_mirror_receipt={mirror_path} "
         f"parabricks_image_digest={image_digest} "

@@ -12,6 +12,7 @@ from hrd_report_inventory import (
     REQUIRED_METHOD_IDS,
     source_report_packet_dirs,
 )
+from publish_private_report import validate_packet_dir as validate_private_packet_dir
 from publish_reviewed_public_report import METHOD_CONTRACTS, REGION, RUN_ID
 from render_ai_synthesis_runbook import (
     FORBIDDEN_TOKENS,
@@ -33,6 +34,11 @@ from runbook_io import (
     timestamped_runbook_assignment,
     unique_paths,
     write_once,
+)
+from validate_phase3_fast_report_packets import (
+    canonical_forbidden_tokens,
+    sha256_forbidden_tokens,
+    validate_validation_receipt_matches_packets,
 )
 
 STALE_TOKENS = (
@@ -69,7 +75,14 @@ def source_packet_dirs(
     )
 
 
-def validate_packet_dirs(paths: dict[str, Path]) -> None:
+def validate_packet_dirs(
+    paths: dict[str, Path],
+    phase3_fast_report_packet_validation: Path | None = None,
+    phase3_fast_forbidden_tokens_file: Path | None = None,
+) -> None:
+    if (phase3_fast_report_packet_validation is None) != (phase3_fast_forbidden_tokens_file is None):
+        raise ValueError("Phase 3 fast report validation requires both the report receipt and forbidden-token file")
+
     if tuple(paths) != REQUIRED_METHOD_IDS:
         raise ValueError("source packet directories must follow the pinned seven-method order")
     missing = [f"{method_id}={path}" for method_id, path in paths.items() if path.is_symlink() or not path.is_dir()]
@@ -92,6 +105,23 @@ def validate_packet_dirs(paths: dict[str, Path]) -> None:
         invalid = sorted(child.name for child in path.iterdir() if child.is_symlink() or not child.is_file())
         if invalid:
             raise ValueError(f"{method_id} packet directory contains invalid paths: " + ",".join(invalid))
+        try:
+            validate_private_packet_dir(path, method_id, FORBIDDEN_TOKENS)
+        except ValueError as error:
+            raise ValueError(f"{method_id} packet directory is invalid: {error}") from error
+    if phase3_fast_report_packet_validation is not None:
+        assert phase3_fast_forbidden_tokens_file is not None
+        if phase3_fast_forbidden_tokens_file.is_symlink() or not phase3_fast_forbidden_tokens_file.is_file():
+            raise ValueError("Phase 3 fast forbidden-token file must be a real file")
+        phase3_fast_forbidden_tokens = canonical_forbidden_tokens(
+            phase3_fast_forbidden_tokens_file.read_text(encoding="utf-8"),
+        )
+        validate_validation_receipt_matches_packets(
+            phase3_fast_report_packet_validation,
+            paths,
+            phase3_fast_forbidden_tokens,
+            sha256_forbidden_tokens(phase3_fast_forbidden_tokens),
+        )
 
 
 def receipt_path(root: Path, receipt_stem: str, method_id: str) -> Path:
@@ -103,7 +133,11 @@ def publish_command(
     packet_dir: Path,
     method_id: str,
     receipt_output: Path,
+    forbidden_tokens_file: Path | None = None,
 ) -> list[str | Path]:
+    forbidden_tokens_file_flags: list[str | Path] = (
+        ["--forbidden-tokens-file", forbidden_tokens_file] if forbidden_tokens_file is not None else []
+    )
     return [
         "python3",
         scripts / "publish_private_report.py",
@@ -116,6 +150,7 @@ def publish_command(
         "--region",
         REGION,
         *forbidden_flags(),
+        *forbidden_tokens_file_flags,
         "--apply",
     ]
 
@@ -132,6 +167,7 @@ def ai_runbook_command(
     blocked_crosscheck_root: Path | None = None,
     sigprofiler_report_dir: Path | None = None,
     sequenza_report_dir: Path | None = None,
+    forbidden_tokens_file: Path | None = None,
 ) -> list[str | Path]:
     return [
         "python3",
@@ -150,6 +186,7 @@ def ai_runbook_command(
                 ("--blocked-crosscheck-root", blocked_crosscheck_root),
                 ("--sigprofiler-report-dir", sigprofiler_report_dir),
                 ("--sequenza-report-dir", sequenza_report_dir),
+                ("--forbidden-tokens-file", forbidden_tokens_file),
             )
             if path is not None
             for token in (flag, path)
@@ -165,6 +202,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
             scripts / "hrd_report_inventory.py",
             scripts / "forbidden_text.py",
             scripts / "publish_private_report.py",
+            scripts / "validate_phase3_fast_report_packets.py",
             scripts / "render_ai_synthesis_runbook.py",
             *ai_required_existing(root),
         )
@@ -187,6 +225,7 @@ def render(
     deterministic_report_dir: Path | None = None,
     rosalind_report_dir: Path | None = None,
     blocked_crosscheck_root: Path | None = None,
+    phase3_fast_forbidden_tokens_file: Path | None = None,
 ) -> str:
     scripts = root / "scripts"
     packet_dirs = source_packet_dirs(
@@ -222,6 +261,7 @@ def render(
                         packet_dir,
                         method_id,
                         receipt_path(root, receipt_stem, method_id),
+                        forbidden_tokens_file=phase3_fast_forbidden_tokens_file,
                     )
                 ),
             ]
@@ -250,6 +290,7 @@ def render(
                             blocked_crosscheck_root=blocked_crosscheck_root,
                             sigprofiler_report_dir=sigprofiler_report_dir,
                             sequenza_report_dir=sequenza_report_dir,
+                            forbidden_tokens_file=phase3_fast_forbidden_tokens_file,
                         )
                     ),
                 ]
@@ -274,6 +315,8 @@ def main() -> int:
     parser.add_argument("--blocked-crosscheck-root", type=Path)
     parser.add_argument("--sigprofiler-report-dir", type=Path)
     parser.add_argument("--sequenza-report-dir", type=Path)
+    parser.add_argument("--phase3-fast-report-packet-validation", type=Path)
+    parser.add_argument("--phase3-fast-forbidden-tokens-file", type=Path)
     args = parser.parse_args()
 
     root = args.root.resolve()
@@ -289,7 +332,9 @@ def main() -> int:
                 deterministic_report_dir=args.deterministic_report_dir,
                 rosalind_report_dir=args.rosalind_report_dir,
                 blocked_crosscheck_root=args.blocked_crosscheck_root,
-            )
+            ),
+            args.phase3_fast_report_packet_validation,
+            args.phase3_fast_forbidden_tokens_file,
         )
     except ValueError as error:
         raise SystemExit(f"Fail-closed: {error}") from error
@@ -311,6 +356,7 @@ def main() -> int:
             deterministic_report_dir=args.deterministic_report_dir,
             rosalind_report_dir=args.rosalind_report_dir,
             blocked_crosscheck_root=args.blocked_crosscheck_root,
+            phase3_fast_forbidden_tokens_file=args.phase3_fast_forbidden_tokens_file,
         ),
     )
     print(json.dumps({"status": "rendered", "output": str(args.output)}, sort_keys=True))

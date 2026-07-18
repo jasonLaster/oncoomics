@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
+import json
 import shutil
 import stat
 import sys
@@ -13,6 +15,7 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 import generate_blocked_hrd_crosscheck_reports as BLOCKED_GENERATOR  # noqa: E402
+import validate_phase3_fast_report_packets as PHASE3_FAST_VALIDATOR  # noqa: E402
 
 SPEC = importlib.util.spec_from_file_location(
     "render_source_report_freeze_runbook",
@@ -27,7 +30,67 @@ def write_packet_dirs(paths: dict[str, Path]) -> None:
     for method_id, path in paths.items():
         path.mkdir(parents=True)
         for relative in MODULE.METHOD_CONTRACTS[method_id]["files"]:
-            (path / relative).write_text("packet file\n", encoding="utf-8")
+            if relative == "report_manifest.json":
+                continue
+            if relative.endswith(".json"):
+                (path / relative).write_text('{"status":"partial_evidence"}\n', encoding="utf-8")
+            elif relative.endswith(".csv"):
+                (path / relative).write_text("field,value\nstate,no_call\n", encoding="utf-8")
+            else:
+                (path / relative).write_text(f"# {method_id}\n\nNo-call support packet.\n", encoding="utf-8")
+
+        support = {
+            relative: hashlib.sha256((path / relative).read_bytes()).hexdigest()
+            for relative in MODULE.METHOD_CONTRACTS[method_id]["files"]
+            if relative not in {"report.md", "report_manifest.json"}
+        }
+        report = path / "report.md"
+        manifest = {
+            "schema_version": 1,
+            "method_id": method_id,
+            "evidence_status": "blocked" if method_id.endswith("_blocked") else "partial_evidence",
+            "authorized_hrd_state": "no_call",
+            "classification_authorized": False,
+            "classification_qc_status": "not_applicable",
+            "report_sha256": hashlib.sha256(report.read_bytes()).hexdigest(),
+            "support_sha256": support,
+            "source_sha256": {"fixture": "a" * 64},
+            "review_summary": {
+                "overall": {
+                    "authorized_hrd_state": "no_call",
+                    "evidence_status": "partial_evidence",
+                }
+            },
+        }
+        (path / "report_manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+
+def write_phase3_fast_validation_receipt(
+    paths: dict[str, Path],
+    output: Path,
+    forbidden_tokens: list[str] | None = None,
+) -> None:
+    packet_dirs = {method_id: paths[method_id] for method_id in PHASE3_FAST_VALIDATOR.PHASE3_FAST_VALIDATED_METHOD_IDS}
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(
+            PHASE3_FAST_VALIDATOR.validate_packets(
+                packet_dirs,
+                json.dumps(forbidden_tokens or ["Unit-Run-Private-Token"]),
+            ),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def write_phase3_fast_forbidden_tokens(output: Path) -> None:
+    output.write_text('["Unit-Run-Private-Token"]\n', encoding="utf-8")
 
 
 class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
@@ -126,6 +189,28 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             ],
         )
 
+    def test_publish_command_reads_forbidden_tokens_file_by_path(self) -> None:
+        command = MODULE.publish_command(
+            Path("/repo/scripts"),
+            Path("/packets/deterministic"),
+            "deterministic_full_wgs",
+            Path("/receipts/deterministic.json"),
+            forbidden_tokens_file=Path("/run/forbidden_tokens.json"),
+        )
+
+        self.assertIn("--forbidden-tokens-file", command)
+        self.assertIn(Path("/run/forbidden_tokens.json"), command)
+        self.assertNotIn("Unit-Run-Private-Token", " ".join(str(part) for part in command))
+
+    def test_renderer_hands_forbidden_tokens_file_to_source_publishers_and_ai_runbook(self) -> None:
+        text = MODULE.render(
+            Path("/repo"),
+            "terminal",
+            phase3_fast_forbidden_tokens_file=Path("/fast/forbidden_tokens.json"),
+        )
+
+        self.assertEqual(text.count("--forbidden-tokens-file /fast/forbidden_tokens.json"), 8)
+
     def test_source_packet_dirs_match_required_methods(self) -> None:
         paths = MODULE.source_packet_dirs(Path("/repo"))
 
@@ -196,6 +281,136 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "inventory is not exact"):
                 MODULE.validate_packet_dirs(paths)
 
+    def test_validate_packet_dirs_rejects_stale_report_manifest_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+
+            (paths["deterministic_full_wgs"] / "report.md").write_text(
+                "# Mutated deterministic report\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "deterministic_full_wgs packet directory is invalid: report manifest does not preserve the reviewed no-call contract",
+            ):
+                MODULE.validate_packet_dirs(paths)
+
+    def test_validate_packet_dirs_accepts_matching_phase3_fast_validation_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+            validation = root / "report_packet_validation.json"
+            forbidden_tokens = root / "forbidden_tokens.json"
+            write_phase3_fast_validation_receipt(paths, validation)
+            write_phase3_fast_forbidden_tokens(forbidden_tokens)
+
+            MODULE.validate_packet_dirs(
+                paths,
+                phase3_fast_report_packet_validation=validation,
+                phase3_fast_forbidden_tokens_file=forbidden_tokens,
+            )
+
+    def test_validate_packet_dirs_requires_forbidden_tokens_file_with_phase3_fast_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+            validation = root / "report_packet_validation.json"
+            write_phase3_fast_validation_receipt(paths, validation)
+
+            with self.assertRaisesRegex(ValueError, "requires both"):
+                MODULE.validate_packet_dirs(
+                    paths,
+                    phase3_fast_report_packet_validation=validation,
+                )
+
+    def test_validate_packet_dirs_rejects_phase3_fast_receipt_with_stale_forbidden_tokens(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+            validation = root / "report_packet_validation.json"
+            write_phase3_fast_validation_receipt(paths, validation)
+            forbidden_tokens = root / "forbidden_tokens.json"
+            forbidden_tokens.write_text('["Other-Private-Token"]\n', encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "forbidden-token digest"):
+                MODULE.validate_packet_dirs(
+                    paths,
+                    phase3_fast_report_packet_validation=validation,
+                    phase3_fast_forbidden_tokens_file=forbidden_tokens,
+                )
+
+    def test_validate_packet_dirs_rescans_phase3_fast_packets_with_run_forbidden_tokens(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+            (paths["deterministic_full_wgs"] / "report.md").write_text(
+                "No-call report with Unit-Run-Private-Token.\n",
+                encoding="utf-8",
+            )
+            manifest_path = paths["deterministic_full_wgs"] / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = hashlib.sha256((paths["deterministic_full_wgs"] / "report.md").read_bytes()).hexdigest()
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            validation = root / "report_packet_validation.json"
+            forbidden_tokens = root / "forbidden_tokens.json"
+            write_phase3_fast_forbidden_tokens(forbidden_tokens)
+            wrong_token_receipt = PHASE3_FAST_VALIDATOR.validate_packets(
+                {method_id: paths[method_id] for method_id in PHASE3_FAST_VALIDATOR.PHASE3_FAST_VALIDATED_METHOD_IDS},
+                json.dumps(["Other-Private-Token"]),
+            )
+            wrong_token_receipt["forbidden_tokens_sha256"] = PHASE3_FAST_VALIDATOR.expected_forbidden_tokens_sha256(
+                forbidden_tokens.read_text(encoding="utf-8"),
+            )
+            validation.write_text(
+                json.dumps(wrong_token_receipt, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "forbidden identifier token"):
+                MODULE.validate_packet_dirs(
+                    paths,
+                    phase3_fast_report_packet_validation=validation,
+                    phase3_fast_forbidden_tokens_file=forbidden_tokens,
+                )
+
+    def test_validate_packet_dirs_rejects_stale_phase3_fast_validation_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+            validation = root / "report_packet_validation.json"
+            forbidden_tokens = root / "forbidden_tokens.json"
+            write_phase3_fast_validation_receipt(paths, validation)
+            write_phase3_fast_forbidden_tokens(forbidden_tokens)
+            (paths["deterministic_full_wgs"] / "report.md").write_text(
+                "# Mutated after Phase 3 fast validation\n",
+                encoding="utf-8",
+            )
+            manifest_path = paths["deterministic_full_wgs"] / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = hashlib.sha256((paths["deterministic_full_wgs"] / "report.md").read_bytes()).hexdigest()
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "does not match current packets"):
+                MODULE.validate_packet_dirs(
+                    paths,
+                    phase3_fast_report_packet_validation=validation,
+                    phase3_fast_forbidden_tokens_file=forbidden_tokens,
+                )
+
     def test_current_blocked_generator_satisfies_renderer_packet_dirs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -230,6 +445,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                 "/repo/scripts/ai_model_catalog.py",
                 "/repo/scripts/forbidden_text.py",
                 "/repo/scripts/publish_private_report.py",
+                "/repo/scripts/validate_phase3_fast_report_packets.py",
                 "/repo/scripts/render_ai_synthesis_runbook.py",
                 "/repo/scripts/prepare_ai_review_run.py",
                 "/repo/scripts/build_ai_review_bundle.py",

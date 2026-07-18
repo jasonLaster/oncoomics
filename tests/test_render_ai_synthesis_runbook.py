@@ -35,11 +35,24 @@ def checksum_from_digest(value: str) -> str:
     return base64.b64encode(bytes.fromhex(value)).decode("ascii")
 
 
-def write_manifest_files(root: Path, payload: bytes = b"{}\n") -> dict[str, Path]:
+def write_manifest_files(root: Path) -> dict[str, Path]:
     paths = MODULE.report_manifest_paths(root)
-    for path in paths.values():
+    for method_id, path in paths.items():
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(payload)
+        report = path.parent / "report.md"
+        report.write_text(f"# {method_id}\n\nAuthorized HRD state: `no_call`\n")
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "method_id": method_id,
+                    "report_sha256": digest(report.read_bytes()),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
     return paths
 
 
@@ -198,6 +211,38 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             self.assertIn(f"--private-publication-receipt {receipt_path}", text)
             self.assertNotIn(f"{receipt_path}.private.json", text)
 
+    def test_renderer_hands_forbidden_tokens_file_to_ai_chain(self) -> None:
+        text = MODULE.render(
+            Path("/repo"),
+            "terminal",
+            receipt_summaries=receipt_summaries(),
+            forbidden_tokens_file=Path("/fast/forbidden_tokens.json"),
+        )
+        commands = rendered_commands(text)
+        prepare_commands = [command for command in commands if command[:2] == ["python3", "/repo/scripts/prepare_ai_review_run.py"]]
+        validate_commands = [command for command in commands if command[:2] == ["python3", "/repo/scripts/validate_ai_review.py"]]
+        publish_commands = [
+            command
+            for command in commands
+            if command[:2] == ["python3", "/repo/scripts/publish_private_report.py"]
+            and command[command.index("--method-id") + 1] in (*MODULE.AI_REVIEW_METHOD_IDS, *MODULE.COMPARATIVE_METHOD_IDS)
+        ]
+
+        self.assertEqual(len(prepare_commands), 1)
+        self.assertEqual(len(validate_commands), 2)
+        self.assertEqual(len(publish_commands), 3)
+        self.assertEqual(
+            text.count("--forbidden-tokens-file /fast/forbidden_tokens.json"),
+            6,
+        )
+        for command in (*prepare_commands, *validate_commands, *publish_commands):
+            self.assertEqual(command.count("--forbidden-tokens-file"), 1)
+            self.assertEqual(
+                command[command.index("--forbidden-tokens-file") + 1],
+                "/fast/forbidden_tokens.json",
+            )
+        self.assertNotIn("Unit-Run-Private-Token", text)
+
     def test_reviewed_publication_receipts_reuse_source_and_ai_helpers(self) -> None:
         root = Path("/repo")
 
@@ -299,7 +344,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
     def test_private_freeze_gate_accepts_current_checked_in_receipts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            manifests = write_manifest_files(root, b"manifest\n")
+            manifests = write_manifest_files(root)
             receipts = write_receipts(root, manifests)
 
             summaries = MODULE.validate_private_report_receipts(receipts, manifests)
@@ -318,8 +363,28 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "exactly seven"):
                 MODULE.validate_private_report_receipts(receipts[:-1], manifests)
 
-            manifests[MODULE.REQUIRED_METHOD_IDS[0]].write_bytes(b"stale\n")
+            method_id = MODULE.REQUIRED_METHOD_IDS[0]
+            stale_report = manifests[method_id].parent / "report.md"
+            stale_report.write_text("# stale but still locally report-bound\n")
+            manifests[method_id].write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "method_id": method_id,
+                        "report_sha256": digest(stale_report.read_bytes()),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n"
+            )
             with self.assertRaisesRegex(ValueError, "receipt-bound"):
+                MODULE.validate_private_report_receipts(receipts, manifests)
+
+            write_manifest_files(root)
+            receipts = write_receipts(root, manifests)
+            (manifests[MODULE.REQUIRED_METHOD_IDS[0]].parent / "report.md").write_text("# stale\n")
+            with self.assertRaisesRegex(ValueError, "report-bound"):
                 MODULE.validate_private_report_receipts(receipts, manifests)
 
     def test_private_freeze_gate_rejects_non_exact_private_receipts(self) -> None:
@@ -335,7 +400,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         for name, mutate in cases.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
-                manifests = write_manifest_files(root, b"manifest\n")
+                manifests = write_manifest_files(root)
                 receipts = write_receipts(root, manifests)
                 receipt = json.loads(receipts[0].read_text())
                 mutate(receipt)

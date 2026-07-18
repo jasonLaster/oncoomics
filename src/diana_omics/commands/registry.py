@@ -88,6 +88,9 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "benchmark:full-wes": CommandSpec("diana_omics.commands.alignment_validation.run_full_wes_benchmark"),
     "smoke:human-reference": CommandSpec("diana_omics.commands.alignment_validation.run_human_reference_smoke"),
     "validate:phase3-wgs": CommandSpec("diana_omics.commands.phase3_wgs.run_phase3_wgs_smoke"),
+    "validate:phase3-fast-forbidden-tokens": CommandSpec(
+        "diana_omics.commands.phase3_wgs.validate_phase3_fast_forbidden_tokens"
+    ),
     "verify:parabricks-mirror-receipt": CommandSpec(
         "diana_omics.commands.phase3_wgs.verify_parabricks_mirror_receipt"
     ),
@@ -210,6 +213,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "publish:phase3-fast-final-evidence",
             "stage:phase3-fast-inputs",
             "stage:phase3-fast-deterministic-report",
+            "validate:phase3-fast-forbidden-tokens",
             "validate:phase3-wgs",
             "verify:phase3-fast-aws-execute",
             "verify:phase3-fast-gpu-smoke",

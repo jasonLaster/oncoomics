@@ -33,9 +33,13 @@ def parabricks_mirror_receipt() -> dict:
         "destination": {
             "region": "us-east-2",
             "repository": PARABRICKS_REPOSITORY,
-            "tag": "sha256-" + "b" * 64,
+            "tag": "sha256-" + "b" * 64 + "-diana-" + "c" * 12,
             "digest": "sha256:" + "a" * 64,
             "parabricks_container": PARABRICKS_CONTAINER,
+        },
+        "diana_omics": {
+            "git_commit": "c" * 40,
+            "dockerfile_sha256": "sha256:" + "d" * 64,
         },
     }
 
@@ -70,9 +74,7 @@ def write_smoke_result(
     path = root / "gpu_smoke.json"
     write_json(path, payload or passed_smoke_result())
     (root / "nvidia-smi-gpus.csv").write_text(
-        csv
-        or "\n".join(f"{index}, NVIDIA H200, GPU-00000000-0000-0000-0000-{index:012d}" for index in range(8))
-        + "\n",
+        csv or "\n".join(f"{index}, NVIDIA H200, GPU-00000000-0000-0000-0000-{index:012d}" for index in range(8)) + "\n",
         encoding="utf-8",
     )
     if parabricks_version is not None:
@@ -90,15 +92,17 @@ def write_smoke_result(
     return path
 
 
+def write_bytes(path: Path, payload: bytes) -> None:
+    path.write_bytes(payload)
+
+
 class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
     def test_validates_passed_eight_h200_smoke_result(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_smoke_result(root)
 
-            summary = verify.validate_gpu_smoke_result(
-                passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
-            )
+            summary = verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
         self.assertEqual(
             {
@@ -137,28 +141,22 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             root = Path(tmp)
             write_smoke_result(
                 root,
-                csv="\n".join(f"{index}, NVIDIA A100, GPU-00000000-0000-0000-0000-{index:012d}" for index in range(8))
-                + "\n",
+                csv="\n".join(f"{index}, NVIDIA A100, GPU-00000000-0000-0000-0000-{index:012d}" for index in range(8)) + "\n",
             )
 
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "not an H200"):
-                verify.validate_gpu_smoke_result(
-                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
     def test_rejects_smoke_result_without_distinct_gpu_csv_evidence(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_smoke_result(
                 root,
-                csv="\n".join("0, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000000" for _ in range(8))
-                + "\n",
+                csv="\n".join("0, NVIDIA H200, GPU-00000000-0000-0000-0000-000000000000" for _ in range(8)) + "\n",
             )
 
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "distinct GPU indexes"):
-                verify.validate_gpu_smoke_result(
-                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
             write_smoke_result(
                 root,
@@ -166,9 +164,7 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "unique GPU UUIDs"):
-                verify.validate_gpu_smoke_result(
-                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
     def test_rejects_unbound_or_stale_queue_and_image_smoke_result(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -186,9 +182,7 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
                 verify.validate_gpu_smoke_result(stale_queue, csv_root=root, expected_params=expected_gpu_params())
 
             stale_image = passed_smoke_result()
-            stale_image["parabricksContainer"] = (
-                "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + "b" * 64
-            )
+            stale_image["parabricksContainer"] = "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + "b" * 64
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "parabricksContainer"):
                 verify.validate_gpu_smoke_result(stale_image, csv_root=root, expected_params=expected_gpu_params())
 
@@ -197,15 +191,15 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             root = Path(tmp)
             write_smoke_result(root, parabricks_version=None)
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "Parabricks version"):
-                verify.validate_gpu_smoke_result(
-                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
             write_smoke_result(root, parabricks_version="")
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "non-empty"):
-                verify.validate_gpu_smoke_result(
-                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
+            write_smoke_result(root, parabricks_version="tool v1.0\n")
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "Parabricks or pbrun"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
             path_traversal = passed_smoke_result()
             path_traversal["parabricksVersionTxt"] = "../parabricks-version.txt"
@@ -222,41 +216,33 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             root = Path(tmp)
             write_smoke_result(root, aws_version=None)
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "AWS CLI version"):
-                verify.validate_gpu_smoke_result(
-                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
             write_smoke_result(root, aws_version="")
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "AWS CLI version output must be non-empty"):
-                verify.validate_gpu_smoke_result(
-                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
+            write_smoke_result(root, aws_version="python/3.11\n")
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "identify aws-cli"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
             aws_path_traversal = passed_smoke_result()
             aws_path_traversal["awsCliVersionTxt"] = "../aws-cli-version.txt"
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "awsCliVersionTxt"):
-                verify.validate_gpu_smoke_result(
-                    aws_path_traversal, csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(aws_path_traversal, csv_root=root, expected_params=expected_gpu_params())
 
             write_smoke_result(root, diana_omics_cli=None)
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "Diana omics CLI"):
-                verify.validate_gpu_smoke_result(
-                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
             write_smoke_result(root, diana_omics_cli="usage only\n")
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "verify:phase3-fast-gpu-smoke"):
-                verify.validate_gpu_smoke_result(
-                    passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
             diana_path_traversal = passed_smoke_result()
             diana_path_traversal["dianaOmicsCliTxt"] = "../diana-omics-cli.txt"
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "dianaOmicsCliTxt"):
-                verify.validate_gpu_smoke_result(
-                    diana_path_traversal, csv_root=root, expected_params=expected_gpu_params()
-                )
+                verify.validate_gpu_smoke_result(diana_path_traversal, csv_root=root, expected_params=expected_gpu_params())
 
     def test_rejects_csv_path_traversal(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -268,6 +254,26 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "sibling basename"):
                 verify.validate_gpu_smoke_result(payload, csv_root=root, expected_params=expected_gpu_params())
 
+    def test_decodes_smoke_text_artifacts_with_replacement(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_smoke_result(root)
+            write_bytes(root / "nvidia-smi-gpus.csv", b"0, NVIDIA H200, GPU-0\xab\n")
+
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "GPU count"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
+            write_smoke_result(root)
+            write_bytes(root / "diana-omics-cli.txt", b"verify:phase3-fast-gpu-smoke\xab\n")
+
+            summary = verify.validate_gpu_smoke_result(
+                passed_smoke_result(),
+                csv_root=root,
+                expected_params=expected_gpu_params(),
+            )
+
+        self.assertEqual("diana-omics-cli.txt", summary["diana_omics_cli_txt"])
+
     def test_environment_loader_requires_reviewed_gpu_smoke_result(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "PHASE3_FAST_GPU_SMOKE_RESULT"):
@@ -278,9 +284,7 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             path = write_smoke_result(Path(tmp))
 
             with patch.dict("os.environ", {"PHASE3_FAST_GPU_SMOKE_RESULT": str(path)}, clear=False):
-                summary, loaded_path = verify.load_gpu_smoke_result_from_environment(
-                    expected_params=expected_gpu_params()
-                )
+                summary, loaded_path = verify.load_gpu_smoke_result_from_environment(expected_params=expected_gpu_params())
 
         self.assertEqual(path, loaded_path)
         self.assertEqual(8, summary["observed_gpu_count"])
@@ -302,9 +306,7 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             write_json(path, parabricks_mirror_receipt())
 
             with patch.dict("os.environ", {"PARABRICKS_MIRROR_RECEIPT": str(path)}, clear=False):
-                summary, loaded_path = verify.load_mirror_receipt_from_environment(
-                    expected_params=expected_gpu_params()
-                )
+                summary, loaded_path = verify.load_mirror_receipt_from_environment(expected_params=expected_gpu_params())
 
         self.assertEqual(path, loaded_path)
         self.assertEqual(PARABRICKS_CONTAINER, summary["parabricks_container"])
@@ -318,13 +320,48 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         load_receipt.assert_not_called()
 
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_mirror_receipt_from_environment")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_compute_environment")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_gpu_batch_job_queue")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_job_queue")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_gpu_smoke_params")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_params_from_environment")
+    def test_execute_main_stops_before_mirror_when_p5en_queue_is_not_ready(
+        self,
+        load_params,
+        validate_params,
+        load_queue,
+        validate_queue,
+        load_compute_environment,
+        load_mirror,
+    ) -> None:
+        load_params.return_value = ({}, Path("infra/aws/nextflow.aws.use2.json"))
+        validate_params.return_value = expected_gpu_params()
+        load_queue.return_value = {"jobQueueName": "diana-omics-prod-use2-gpu-p5en"}
+        validate_queue.side_effect = verify.gpu_smoke.GpuSmokeConfigError("P5en Batch queue is not ready")
+
+        with self.assertRaisesRegex(SystemExit, "P5en Batch queue is not ready"):
+            verify.main()
+
+        load_queue.assert_called_once_with(queue="diana-omics-prod-use2-gpu-p5en", region="us-east-2")
+        load_compute_environment.assert_not_called()
+        load_mirror.assert_not_called()
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_mirror_receipt_from_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_gpu_smoke_result_from_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_parabricks_mirror_image_digest")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_running_on_demand_p_vcpus")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_gpu_batch_compute_environment")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_compute_environment")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_gpu_batch_job_queue")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_job_queue")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_params_from_environment")
     def test_execute_main_rechecks_mirrored_parabricks_digest(
         self,
         load_params,
+        load_queue,
+        validate_queue,
+        load_compute_environment,
+        validate_compute_environment,
         load_quota,
         load_image,
         load_smoke,
@@ -340,22 +377,29 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
                 "aws_workdir": "s3://diana-omics-work-172630973301-us-east-2/work",
                 "batch_gpu_p5en_instance_types": ["p5en.48xlarge"],
                 "gpu_p5en_max_vcpus": 384,
-                "parabricks_container": (
-                    "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + "a" * 64
-                ),
-                "parabricks_mirror_repository": (
-                    "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks"
-                ),
-                "phase3_fast_cache_kms_key_arn": (
-                    "arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc"
-                ),
-                "phase3_fast_cache_prefix": (
-                    "s3://diana-omics-private-results-172630973301-us-east-2/phase3-fast-cache/wgs-v2"
-                ),
+                "parabricks_container": ("172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + "a" * 64),
+                "parabricks_mirror_repository": ("172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks"),
+                "phase3_fast_cache_kms_key_arn": ("arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc"),
+                "phase3_fast_cache_prefix": ("s3://diana-omics-private-results-172630973301-us-east-2/phase3-fast-cache/wgs-v2"),
                 "phase3_fast_cache_region": "us-east-2",
             },
             Path("infra/aws/nextflow.aws.use2.json"),
         )
+        load_queue.return_value = {"jobQueueName": "diana-omics-prod-use2-gpu-p5en"}
+        validate_queue.return_value = {
+            "compute_environment": ("arn:aws:batch:us-east-2:172630973301:compute-environment/diana-omics-prod-use2-gpu-p5en-ondemand"),
+            "job_queue": "diana-omics-prod-use2-gpu-p5en",
+            "status": "ready",
+        }
+        load_compute_environment.return_value = {
+            "computeEnvironmentArn": ("arn:aws:batch:us-east-2:172630973301:compute-environment/diana-omics-prod-use2-gpu-p5en-ondemand")
+        }
+        validate_compute_environment.return_value = {
+            "compute_environment": ("arn:aws:batch:us-east-2:172630973301:compute-environment/diana-omics-prod-use2-gpu-p5en-ondemand"),
+            "instance_types": ["p5en.48xlarge"],
+            "max_vcpus": 384,
+            "status": "ready",
+        }
         load_quota.return_value = 384.0
         load_image.return_value = "sha256:" + "a" * 64
         load_smoke.return_value = ({"observed_gpu_count": 8}, Path("gpu_smoke.json"))
@@ -366,6 +410,21 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
 
         verify.main()
 
+        load_queue.assert_called_once_with(queue="diana-omics-prod-use2-gpu-p5en", region="us-east-2")
+        validate_queue.assert_called_once_with(
+            {"jobQueueName": "diana-omics-prod-use2-gpu-p5en"},
+            expected_queue="diana-omics-prod-use2-gpu-p5en",
+        )
+        load_compute_environment.assert_called_once_with(
+            compute_environment=("arn:aws:batch:us-east-2:172630973301:compute-environment/diana-omics-prod-use2-gpu-p5en-ondemand"),
+            region="us-east-2",
+        )
+        validate_compute_environment.assert_called_once_with(
+            {"computeEnvironmentArn": ("arn:aws:batch:us-east-2:172630973301:compute-environment/diana-omics-prod-use2-gpu-p5en-ondemand")},
+            expected_compute_environment=(
+                "arn:aws:batch:us-east-2:172630973301:compute-environment/diana-omics-prod-use2-gpu-p5en-ondemand"
+            ),
+        )
         load_mirror.assert_called_once()
         load_image.assert_called_once_with(parabricks_container=PARABRICKS_CONTAINER, region="us-east-2")
         load_smoke.assert_called_once()

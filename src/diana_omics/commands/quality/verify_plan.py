@@ -14,12 +14,17 @@ from ...paths import ROOT, WIKI_ROOT
 
 def command_version(command: str, args: list[str]) -> Optional[str]:
     try:
-        result = subprocess.run([command] + args, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        result = subprocess.run(
+            [command] + args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
     except FileNotFoundError:
         return None
     if result.returncode != 0:
         return None
-    output = f"{result.stdout}{result.stderr}".strip().splitlines()
+    output = (result.stdout.decode("utf-8", errors="replace") + result.stderr.decode("utf-8", errors="replace")).strip().splitlines()
     return output[0] if output else ""
 
 

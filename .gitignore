@@ -31,6 +31,7 @@ nextflow-out/
 
 # Terraform runtime state.
 infra/aws/.terraform/
+infra/aws/terraform.tfstate.d/
 infra/aws/*.tfstate
 infra/aws/*.tfstate.*
 infra/aws/*.tfplan

@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from io import StringIO
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from diana_omics import utils
@@ -109,6 +110,29 @@ class Phase3WgsHelpersTest(unittest.TestCase):
         self.assertEqual({row["sample"] for row in rows}, {"HCC1395"})
         self.assertIn("A[C>A]A", {row["trinucleotide"] for row in rows})
         self.assertIn("T[T>G]T", {row["trinucleotide"] for row in rows})
+
+    def test_java_probe_decodes_invalid_native_version_bytes_with_replacement(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            java = Path(temporary) / "java"
+            java.write_text("#!/bin/sh\n", encoding="utf-8")
+
+            with patch.object(
+                fetch_phase3.subprocess,
+                "run",
+                return_value=SimpleNamespace(
+                    returncode=0,
+                    stdout=b"\xff",
+                    stderr=b'openjdk version "17.0.15"\n',
+                ),
+            ) as run:
+                self.assertTrue(fetch_phase3.java_works(str(java)))
+
+        run.assert_called_once_with(
+            [str(java), "-version"],
+            stdout=fetch_phase3.subprocess.PIPE,
+            stderr=fetch_phase3.subprocess.PIPE,
+            check=False,
+        )
 
     def test_normalized_context_keeps_pyrimidine_orientation(self):
         self.assertEqual(

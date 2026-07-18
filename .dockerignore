@@ -1,13 +1,31 @@
 .git/
+.DS_Store
+.claude/
+.codex-tmp/
+.next/
 .nextflow/
+.nextflow.log*
+.ipynb_checkpoints/
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+apps/data/dist/
+.vercel/
 work/
 nextflow-out/
 logs/
 bam/
 artifacts/
-.pytest_cache/
+tmp/
 **/__pycache__/
 *.pyc
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
 
 data/raw/**
 !data/raw/.gitkeep
@@ -17,7 +35,9 @@ results/**
 !results/full_wes_benchmark/full_wes_benchmark_summary.json
 
 infra/aws/.terraform/**
+infra/aws/terraform.tfstate.d/**
 infra/aws/*.tfstate
 infra/aws/*.tfstate.*
 infra/aws/*.tfplan
 infra/aws/nextflow.aws.json
+infra/aws/nextflow.aws.*.json

@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from diana_omics import utils
@@ -10,6 +11,28 @@ from diana_omics.commands import verify_outputs, verify_plan
 class VerifyPlanAndOutputsTest(unittest.TestCase):
     def test_command_version_treats_missing_command_as_none(self):
         self.assertIsNone(verify_plan.command_version("definitely-not-a-real-command", ["--version"]))
+
+    def test_command_version_decodes_invalid_native_version_bytes_with_replacement(self):
+        with patch.object(
+            verify_plan.subprocess,
+            "run",
+            return_value=SimpleNamespace(
+                returncode=0,
+                stdout=b"samtools\xff\n",
+                stderr=b"",
+            ),
+        ) as run:
+            self.assertEqual(
+                verify_plan.command_version("samtools", ["--version"]),
+                "samtools�",
+            )
+
+        run.assert_called_once_with(
+            ["samtools", "--version"],
+            stdout=verify_plan.subprocess.PIPE,
+            stderr=verify_plan.subprocess.PIPE,
+            check=False,
+        )
 
     def test_require_columns_reports_missing_column(self):
         errors: list[str] = []

@@ -15,17 +15,13 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 GENERATOR_SCRIPT = SCRIPT_DIR / "generate_blocked_hrd_crosscheck_reports.py"
-GENERATOR_SPEC = importlib.util.spec_from_file_location(
-    "generate_blocked_hrd_crosscheck_reports", GENERATOR_SCRIPT
-)
+GENERATOR_SPEC = importlib.util.spec_from_file_location("generate_blocked_hrd_crosscheck_reports", GENERATOR_SCRIPT)
 assert GENERATOR_SPEC and GENERATOR_SPEC.loader
 GENERATOR = importlib.util.module_from_spec(GENERATOR_SPEC)
 GENERATOR_SPEC.loader.exec_module(GENERATOR)
 
 PUBLISH_SCRIPT = SCRIPT_DIR / "publish_private_report.py"
-PUBLISH_SPEC = importlib.util.spec_from_file_location(
-    "publish_private_report", PUBLISH_SCRIPT
-)
+PUBLISH_SPEC = importlib.util.spec_from_file_location("publish_private_report", PUBLISH_SCRIPT)
 assert PUBLISH_SPEC and PUBLISH_SPEC.loader
 PUBLISH = importlib.util.module_from_spec(PUBLISH_SPEC)
 PUBLISH_SPEC.loader.exec_module(PUBLISH)
@@ -36,6 +32,8 @@ def sha256(path: Path) -> str:
 
 
 def write_source_report_manifest(path: Path, **updates: object) -> None:
+    report = path.parent / "report.md"
+    report.write_text("# Source report\n\nNo-call source packet.\n", encoding="utf-8")
     payload = {
         "schema_version": 1,
         "method_id": "rosalind_diana_wgs",
@@ -44,7 +42,7 @@ def write_source_report_manifest(path: Path, **updates: object) -> None:
         "authorized_hrd_state": "no_call",
         "classification_authorized": False,
         "classification_qc_status": "not_applicable",
-        "report_sha256": "a" * 64,
+        "report_sha256": sha256(report),
         "review_summary": {
             "overall": {
                 "evidence_status": "partial_evidence",
@@ -89,12 +87,8 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 )
 
                 report = (directory / "report.md").read_text(encoding="utf-8")
-                manifest = json.loads(
-                    (directory / "report_manifest.json").read_text(encoding="utf-8")
-                )
-                spec = json.loads(
-                    (directory / "method_spec.json").read_text(encoding="utf-8")
-                )
+                manifest = json.loads((directory / "report_manifest.json").read_text(encoding="utf-8"))
+                spec = json.loads((directory / "method_spec.json").read_text(encoding="utf-8"))
 
                 self.assertIn("## Intended computation — not executed", report)
                 self.assertIn("## Exact prerequisites", report)
@@ -116,57 +110,55 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                     {"method_spec.json": sha256(directory / "method_spec.json")},
                 )
 
-            serialized = "\n".join(
-                path.read_text(encoding="utf-8") for path in output.rglob("*.*")
-            )
+            serialized = "\n".join(path.read_text(encoding="utf-8") for path in output.rglob("*.*"))
             for forbidden in ("E019", "DRF-", "Personalis", "Echo"):
                 self.assertNotIn(forbidden.casefold(), serialized.casefold())
 
     def test_reports_bind_upstream_report_manifests_without_exposing_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            rosalind = root / "rosalind-report-manifest.json"
-            write_source_report_manifest(rosalind)
+            deterministic = root / "deterministic" / "report_manifest.json"
+            rosalind = root / "rosalind" / "report_manifest.json"
+            deterministic.parent.mkdir()
+            rosalind.parent.mkdir()
+            write_source_report_manifest(deterministic, method_id="deterministic_full_wgs")
+            write_source_report_manifest(rosalind, method_id="rosalind_diana_wgs")
             output = root / "blocked"
+            source_manifests = {
+                "deterministic_full_wgs": sha256(deterministic),
+                "rosalind_diana_wgs": sha256(rosalind),
+            }
 
             GENERATOR.generate(
                 output,
                 "2026-07-17T00:00:00+00:00",
                 run_id="diana-wgs-hrd-unit",
                 source_report_manifests=GENERATOR.load_source_report_manifests(
-                    [f"rosalind_diana_wgs={rosalind}"]
+                    [
+                        f"deterministic_full_wgs={deterministic}",
+                        f"rosalind_diana_wgs={rosalind}",
+                    ]
                 ),
             )
 
             for method in GENERATOR.METHODS:
                 directory = output / method["directory"]
                 report = (directory / "report.md").read_text(encoding="utf-8")
-                manifest = json.loads(
-                    (directory / "report_manifest.json").read_text(encoding="utf-8")
-                )
-                spec = json.loads(
-                    (directory / "method_spec.json").read_text(encoding="utf-8")
-                )
+                manifest = json.loads((directory / "report_manifest.json").read_text(encoding="utf-8"))
+                spec = json.loads((directory / "method_spec.json").read_text(encoding="utf-8"))
 
                 self.assertIn("diana-wgs-hrd-unit", report)
+                self.assertIn("deterministic_full_wgs report_manifest_sha256", report)
                 self.assertIn("rosalind_diana_wgs report_manifest_sha256", report)
                 self.assertEqual("diana-wgs-hrd-unit", manifest["run_id"])
+                self.assertEqual(source_manifests, spec["source_report_manifests"])
                 self.assertEqual(
-                    {"rosalind_diana_wgs": sha256(rosalind)},
-                    spec["source_report_manifests"],
+                    {f"{method_id}_report_manifest": digest for method_id, digest in source_manifests.items()},
+                    {key: digest for key, digest in manifest["source_sha256"].items() if key.endswith("_report_manifest")},
                 )
-                self.assertEqual(
-                    sha256(rosalind),
-                    manifest["source_sha256"]["rosalind_diana_wgs_report_manifest"],
-                )
-                self.assertEqual(
-                    {"rosalind_diana_wgs": sha256(rosalind)},
-                    manifest["review_summary"]["source_report_manifests"],
-                )
+                self.assertEqual(source_manifests, manifest["review_summary"]["source_report_manifests"])
 
-            serialized = "\n".join(
-                path.read_text(encoding="utf-8") for path in output.rglob("*.*")
-            )
+            serialized = "\n".join(path.read_text(encoding="utf-8") for path in output.rglob("*.*"))
             self.assertNotIn(str(root), serialized)
 
     def test_generation_is_reproducible_with_fixed_timestamp(self) -> None:
@@ -342,8 +334,7 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 SystemExit,
-                "source report manifest classification QC must remain "
-                "not_applicable: rosalind_diana_wgs",
+                "source report manifest classification QC must remain not_applicable: rosalind_diana_wgs",
             ):
                 GENERATOR.main(
                     [
@@ -373,6 +364,29 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                         str(output),
                         "--source-report-manifest",
                         f"rosalind_diana_wgs={unbound}",
+                    ]
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_cli_rejects_source_report_manifest_with_stale_report_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            stale = root / "report_manifest.json"
+            write_source_report_manifest(stale)
+            (root / "report.md").write_text("# Mutated report\n", encoding="utf-8")
+            output = root / "blocked"
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "source report manifest hash differs from report.md: rosalind_diana_wgs",
+            ):
+                GENERATOR.main(
+                    [
+                        "--output-dir",
+                        str(output),
+                        "--source-report-manifest",
+                        f"rosalind_diana_wgs={stale}",
                     ]
                 )
 

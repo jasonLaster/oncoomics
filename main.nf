@@ -698,6 +698,29 @@ process FAST_GPU_SMOKE {
     """
 }
 
+process FAST_VALIDATE_FORBIDDEN_TOKENS {
+    tag "fast_validate_forbidden_tokens_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '1 GB'
+    time '10m'
+    publishDir "${params.outdir}/phase3_wgs_fast/forbidden_tokens", mode: 'copy', overwrite: true
+
+    input:
+    env 'PHASE3_WGS_FAST_FORBIDDEN_TOKENS_JSON_B64'
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/forbidden_tokens.json'
+
+    script:
+    """
+    set -euo pipefail
+    export PHASE3_WGS_FAST_FORBIDDEN_TOKENS_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/forbidden_tokens.json"
+
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics validate:phase3-fast-forbidden-tokens
+    """
+}
+
 process ALL_PUBLIC {
     tag "all_public_phase3_${params.phase3_reads ?: '500000'}"
     cpus 16
@@ -1190,7 +1213,8 @@ process FAST_MUTECT_PARABRICKS_FILTER {
     publishDir "${params.outdir}/phase3_wgs_fast/small_variant_execution", mode: 'copy', overwrite: true
 
     input:
-    path staging_plan
+    tuple path(staging_plan),
+          path(forbidden_tokens_json)
 
     output:
     tuple path('workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json'),
@@ -1204,6 +1228,7 @@ process FAST_MUTECT_PARABRICKS_FILTER {
     script:
     """
     set -euo pipefail
+    test -s "${forbidden_tokens_json}"
     export PHASE3_WGS_FAST_STAGING_PLAN="\$PWD/${staging_plan}"
     export PHASE3_WGS_FAST_STAGED_INPUTS_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"
     export PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST="\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"
@@ -1308,7 +1333,8 @@ process FAST_BAM_CNV_SV_EVIDENCE {
     publishDir "${params.outdir}/phase3_wgs_fast/bam_cnv_sv_evidence_execution", mode: 'copy', overwrite: true
 
     input:
-    path staging_plan
+    tuple path(staging_plan),
+          path(forbidden_tokens_json)
 
     output:
     tuple path('workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json'),
@@ -1325,6 +1351,7 @@ process FAST_BAM_CNV_SV_EVIDENCE {
     script:
     """
     set -euo pipefail
+    test -s "${forbidden_tokens_json}"
     export PHASE3_WGS_FAST_STAGING_PLAN="\$PWD/${staging_plan}"
     export PHASE3_WGS_FAST_STAGED_INPUTS_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"
     export PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST="\$PWD/workspace/manifests/phase3_wgs_fast/staged_inputs_manifest.json"
@@ -1578,27 +1605,36 @@ process FAST_STAGE_DETERMINISTIC_REPORT {
     stub:
     """
     set -euo pipefail
-    mkdir -p workspace/results/phase3_wgs_fast/deterministic_report
-    cat > workspace/results/phase3_wgs_fast/deterministic_report/report.md <<'MD'
+    output="workspace/results/phase3_wgs_fast/deterministic_report"
+    mkdir -p "\$output"
+    cat > "\$output/report.md" <<'MD'
     # Phase 3 fast deterministic WGS evidence report
 
     Stubbed `no_call` report.
     MD
-    cat > workspace/results/phase3_wgs_fast/deterministic_report/readiness.csv <<'CSV'
+    cat > "\$output/readiness.csv" <<'CSV'
     evidence_surface,state,reason
     overall_hrd,no_call,stubbed
     CSV
-    cat > workspace/results/phase3_wgs_fast/deterministic_report/input_sha256.csv <<'CSV'
+    cat > "\$output/input_sha256.csv" <<'CSV'
     input_id,path,bytes,sha256
     CSV
-    cat > workspace/results/phase3_wgs_fast/deterministic_report/evidence_checks.json <<JSON
+    cat > "\$output/evidence_checks.json" <<JSON
     {"schema_version":1,"status":"stubbed","report_status":"partial_evidence","overall_hrd_status":"no_call","checks":[],"input_sha256":[]}
     JSON
-    cat > workspace/results/phase3_wgs_fast/deterministic_report/crosscheck_input_plans.json <<JSON
+    cat > "\$output/crosscheck_input_plans.json" <<JSON
     {"schema_version":1,"plan_type":"phase3_fast_crosscheck_input_materialization_plan","status":"stubbed","authorized_hrd_state":"no_call","classification_authorized":false,"routes":{}}
     JSON
-    cat > workspace/results/phase3_wgs_fast/deterministic_report/report_manifest.json <<JSON
-    {"schema_version":1,"method_id":"deterministic_full_wgs","report_kind":"phase3_fast_deterministic_evidence","evidence_status":"partial_evidence","authorized_hrd_state":"no_call","classification_authorized":false}
+
+    report_sha="\$(shasum -a 256 "\$output/report.md" | awk '{print \$1}')"
+    readiness_sha="\$(shasum -a 256 "\$output/readiness.csv" | awk '{print \$1}')"
+    evidence_checks_sha="\$(shasum -a 256 "\$output/evidence_checks.json" | awk '{print \$1}')"
+    input_sha256_sha="\$(shasum -a 256 "\$output/input_sha256.csv" | awk '{print \$1}')"
+    crosscheck_input_plans_sha="\$(shasum -a 256 "\$output/crosscheck_input_plans.json" | awk '{print \$1}')"
+    final_evidence_manifest_sha="\$(shasum -a 256 "${final_evidence_manifest}" | awk '{print \$1}')"
+    crosscheck_materialization_plan_sha="\$(shasum -a 256 "${crosscheck_materialization_plan}" | awk '{print \$1}')"
+    cat > "\$output/report_manifest.json" <<JSON
+    {"schema_version":1,"method_id":"deterministic_full_wgs","report_kind":"phase3_fast_deterministic_evidence","evidence_status":"partial_evidence","authorized_hrd_state":"no_call","classification_authorized":false,"classification_qc_status":"not_applicable","source_sha256":{"crosscheck_materialization_plan":"\$crosscheck_materialization_plan_sha","final_evidence_manifest":"\$final_evidence_manifest_sha"},"support_sha256":{"crosscheck_input_plans.json":"\$crosscheck_input_plans_sha","evidence_checks.json":"\$evidence_checks_sha","input_sha256.csv":"\$input_sha256_sha","readiness.csv":"\$readiness_sha"},"report_sha256":"\$report_sha","review_summary":{"status":"stubbed","overall":{"authorized_hrd_state":"no_call"}}}
     JSON
     """
 }
@@ -1662,6 +1698,7 @@ process FAST_STAGE_ROSALIND_PACKET {
           path(crosscheck_input_plans)
     tuple path(final_evidence_manifest),
           path(final_evidence_root)
+    path forbidden_tokens_json
 
     output:
     tuple path("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/run_manifest.json"),
@@ -1686,13 +1723,14 @@ process FAST_STAGE_ROSALIND_PACKET {
     cp "${evidence_checks}" deterministic_report/evidence_checks.json
     cp "${input_sha256}" deterministic_report/input_sha256.csv
     cp "${crosscheck_input_plans}" deterministic_report/crosscheck_input_plans.json
+    test -s "${forbidden_tokens_json}"
 
     export DIANA_OMICS_ROOT="\$PWD/workspace"
     export ROSALIND_HRD_SAMPLE_SET="diana_wgs"
     export ROSALIND_HRD_RUN_ID="${params.phase3_fast_run_id}"
     export ROSALIND_HRD_ARTIFACT_ROOT="\$PWD/${final_evidence_root}"
     export ROSALIND_HRD_DETERMINISTIC_REPORT_DIR="\$PWD/deterministic_report"
-    export ROSALIND_HRD_FORBIDDEN_TOKENS_JSON='${params.phase3_fast_forbidden_tokens_json}'
+    export ROSALIND_HRD_FORBIDDEN_TOKENS_JSON="\$(<"${forbidden_tokens_json}")"
 
     PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:rosalind-hrd-packet
     """
@@ -1736,8 +1774,17 @@ process FAST_STAGE_ROSALIND_PACKET {
     Stubbed Phase 3 fast no_call packet.
     MD
     cp "\$output/reviewer_packet.md" "\$output/report.md"
+
+    input_evidence_index_sha="\$(shasum -a 256 "\$output/input_evidence_index.json" | awk '{print \$1}')"
+    sample_validation_summary_sha="\$(shasum -a 256 "\$output/sample_validation_summary.csv" | awk '{print \$1}')"
+    hrd_adapter_status_sha="\$(shasum -a 256 "\$output/hrd_adapter_status.csv" | awk '{print \$1}')"
+    research_context_sources_sha="\$(shasum -a 256 "\$output/research_context_sources.json" | awk '{print \$1}')"
+    next_actions_sha="\$(shasum -a 256 "\$output/next_actions.md" | awk '{print \$1}')"
+    reviewer_packet_sha="\$(shasum -a 256 "\$output/reviewer_packet.md" | awk '{print \$1}')"
+    report_sha="\$(shasum -a 256 "\$output/report.md" | awk '{print \$1}')"
+    deterministic_manifest_sha="\$(shasum -a 256 "${report_manifest}" | awk '{print \$1}')"
     cat > "\$output/report_manifest.json" <<JSON
-    {"schema_version":1,"method_id":"rosalind_diana_wgs","report_kind":"rosalind_hrd_reviewer_packet","evidence_status":"partial_evidence","authorized_hrd_state":"no_call","classification_authorized":false}
+    {"schema_version":1,"method_id":"rosalind_diana_wgs","report_kind":"rosalind_hrd_reviewer_packet","evidence_status":"partial_evidence","authorized_hrd_state":"no_call","classification_authorized":false,"classification_qc_status":"not_applicable","source_sha256":{"deterministic_report_manifest":"\$deterministic_manifest_sha"},"support_sha256":{"hrd_adapter_status.csv":"\$hrd_adapter_status_sha","input_evidence_index.json":"\$input_evidence_index_sha","next_actions.md":"\$next_actions_sha","research_context_sources.json":"\$research_context_sources_sha","reviewer_packet.md":"\$reviewer_packet_sha","sample_validation_summary.csv":"\$sample_validation_summary_sha"},"report_sha256":"\$report_sha","review_summary":{"status":"stubbed","overall":{"authorized_hrd_state":"no_call"}}}
     JSON
     """
 }
@@ -1762,6 +1809,12 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
           path(rosalind_reviewer_packet),
           path(rosalind_report),
           path(rosalind_report_manifest)
+    tuple path(deterministic_report, name: 'deterministic_full_wgs/report.md'),
+          path(deterministic_report_manifest, name: 'deterministic_full_wgs/report_manifest.json'),
+          path(deterministic_readiness),
+          path(deterministic_evidence_checks),
+          path(deterministic_input_sha256),
+          path(deterministic_crosscheck_input_plans)
 
     output:
     tuple path('workspace/results/phase3_wgs_fast/blocked_crosschecks/facets_scarhrd_blocked/method_spec.json'),
@@ -1788,10 +1841,13 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
     test -s "${rosalind_next_actions}"
     test -s "${rosalind_reviewer_packet}"
     test -s "${rosalind_report}"
+    test -s "${deterministic_report}"
+    test -s "${deterministic_report_manifest}"
 
     "${params.python_bin}" "${params.repo_dir}/scripts/generate_blocked_hrd_crosscheck_reports.py" \
         --output-dir "\$PWD/workspace/results/phase3_wgs_fast/blocked_crosschecks" \
         --run-id "${params.phase3_fast_run_id}" \
+        --source-report-manifest "deterministic_full_wgs=${deterministic_report_manifest}" \
         --source-report-manifest "rosalind_diana_wgs=${rosalind_report_manifest}" \
         --generated-at "${params.phase3_fast_generated_at}"
     """
@@ -1799,22 +1855,130 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
     stub:
     """
     set -euo pipefail
+    test -s "${deterministic_report_manifest}"
+    test -s "${rosalind_report_manifest}"
     output="workspace/results/phase3_wgs_fast/blocked_crosschecks"
+    deterministic_manifest_sha="\$(shasum -a 256 "${deterministic_report_manifest}" | awk '{print \$1}')"
+    rosalind_manifest_sha="\$(shasum -a 256 "${rosalind_report_manifest}" | awk '{print \$1}')"
     mkdir -p "\$output"
     for method_id in facets_scarhrd_blocked oncoanalyser_chord_blocked hrdetect_blocked; do
       mkdir -p "\$output/\$method_id"
-      cat > "\$output/\$method_id/method_spec.json" <<JSON
-    {"schema_version":1,"method_id":"\$method_id","execution_status":"not_run","evidence_status":"blocked","interpretation_status":"no_call","patient_result":"none"}
+      method_spec="\$output/\$method_id/method_spec.json"
+      report="\$output/\$method_id/report.md"
+      report_manifest="\$output/\$method_id/report_manifest.json"
+      cat > "\$method_spec" <<JSON
+    {"schema_version":1,"method_id":"\$method_id","execution_status":"not_run","evidence_status":"blocked","interpretation_status":"no_call","patient_result":"none","source_report_manifests":{"deterministic_full_wgs":"\$deterministic_manifest_sha","rosalind_diana_wgs":"\$rosalind_manifest_sha"}}
     JSON
-      cat > "\$output/\$method_id/report.md" <<'MD'
+      cat > "\$report" <<'MD'
     # Blocked HRD cross-check report
 
     Stubbed blocked `no_call` report.
     MD
-      cat > "\$output/\$method_id/report_manifest.json" <<JSON
-    {"schema_version":1,"method_id":"\$method_id","report_kind":"blocked_method","evidence_status":"blocked","authorized_hrd_state":"no_call","classification_authorized":false}
+      method_spec_sha="\$(shasum -a 256 "\$method_spec" | awk '{print \$1}')"
+      report_sha="\$(shasum -a 256 "\$report" | awk '{print \$1}')"
+      cat > "\$report_manifest" <<JSON
+    {"schema_version":1,"method_id":"\$method_id","report_kind":"blocked_method","evidence_status":"blocked","authorized_hrd_state":"no_call","classification_authorized":false,"classification_qc_status":"not_applicable","source_sha256":{"deterministic_full_wgs_report_manifest":"\$deterministic_manifest_sha","rosalind_diana_wgs_report_manifest":"\$rosalind_manifest_sha"},"support_sha256":{"method_spec.json":"\$method_spec_sha"},"report_sha256":"\$report_sha","review_summary":{"source_report_manifests":{"deterministic_full_wgs":"\$deterministic_manifest_sha","rosalind_diana_wgs":"\$rosalind_manifest_sha"}}}
     JSON
     done
+    """
+}
+
+process FAST_VALIDATE_REPORT_PACKETS {
+    tag "fast_validate_report_packets_${params.phase3_fast_run_id}"
+    label 'cpu_io'
+    cpus 1
+    memory '1 GB'
+    time '10m'
+    publishDir "${params.outdir}/phase3_wgs_fast/report_packet_validation", mode: 'copy', overwrite: true
+
+    input:
+    tuple path(deterministic_report, name: 'deterministic_full_wgs/report.md'),
+          path(deterministic_report_manifest, name: 'deterministic_full_wgs/report_manifest.json'),
+          path(deterministic_readiness, name: 'deterministic_full_wgs/readiness.csv'),
+          path(deterministic_evidence_checks, name: 'deterministic_full_wgs/evidence_checks.json'),
+          path(deterministic_input_sha256, name: 'deterministic_full_wgs/input_sha256.csv'),
+          path(deterministic_crosscheck_input_plans, name: 'deterministic_full_wgs/crosscheck_input_plans.json')
+    tuple path(rosalind_run_manifest, name: 'rosalind_root/run_manifest.json'),
+          path(rosalind_packet_index, name: 'rosalind_root/packet_index.md'),
+          path(rosalind_cloud_materialization_plan, name: 'rosalind_root/cloud_materialization_plan.md'),
+          path(rosalind_input_evidence_index, name: 'rosalind_diana_wgs/input_evidence_index.json'),
+          path(rosalind_sample_validation_summary, name: 'rosalind_diana_wgs/sample_validation_summary.csv'),
+          path(rosalind_hrd_adapter_status, name: 'rosalind_diana_wgs/hrd_adapter_status.csv'),
+          path(rosalind_research_context_sources, name: 'rosalind_diana_wgs/research_context_sources.json'),
+          path(rosalind_next_actions, name: 'rosalind_diana_wgs/next_actions.md'),
+          path(rosalind_reviewer_packet, name: 'rosalind_diana_wgs/reviewer_packet.md'),
+          path(rosalind_report, name: 'rosalind_diana_wgs/report.md'),
+          path(rosalind_report_manifest, name: 'rosalind_diana_wgs/report_manifest.json')
+    tuple path(facets_method_spec, name: 'facets_scarhrd_blocked/method_spec.json'),
+          path(facets_report, name: 'facets_scarhrd_blocked/report.md'),
+          path(facets_report_manifest, name: 'facets_scarhrd_blocked/report_manifest.json'),
+          path(oncoanalyser_method_spec, name: 'oncoanalyser_chord_blocked/method_spec.json'),
+          path(oncoanalyser_report, name: 'oncoanalyser_chord_blocked/report.md'),
+          path(oncoanalyser_report_manifest, name: 'oncoanalyser_chord_blocked/report_manifest.json'),
+          path(hrdetect_method_spec, name: 'hrdetect_blocked/method_spec.json'),
+          path(hrdetect_report, name: 'hrdetect_blocked/report.md'),
+          path(hrdetect_report_manifest, name: 'hrdetect_blocked/report_manifest.json')
+    path forbidden_tokens_json
+
+    output:
+    path 'workspace/manifests/phase3_wgs_fast/report_packet_validation.json'
+
+    script:
+    """
+    set -euo pipefail
+    test -s "${rosalind_run_manifest}"
+    test -s "${rosalind_packet_index}"
+    test -s "${rosalind_cloud_materialization_plan}"
+    export PHASE3_FAST_REPORT_FORBIDDEN_TOKENS_JSON="\$(<"${forbidden_tokens_json}")"
+    packet_root="\$PWD/real_report_packets"
+    for method_id in \
+        deterministic_full_wgs \
+        rosalind_diana_wgs \
+        facets_scarhrd_blocked \
+        oncoanalyser_chord_blocked \
+        hrdetect_blocked; do
+      mkdir -p "\$packet_root/\$method_id"
+      cp -L "\$method_id"/* "\$packet_root/\$method_id/"
+    done
+
+    PYTHONPATH="${params.repo_dir}/src:${params.repo_dir}/scripts" "${params.python_bin}" \
+        "${params.repo_dir}/scripts/validate_phase3_fast_report_packets.py" \
+        --deterministic-report-dir "\$packet_root/deterministic_full_wgs" \
+        --rosalind-report-dir "\$packet_root/rosalind_diana_wgs" \
+        --facets-scarhrd-report-dir "\$packet_root/facets_scarhrd_blocked" \
+        --oncoanalyser-chord-report-dir "\$packet_root/oncoanalyser_chord_blocked" \
+        --hrdetect-report-dir "\$packet_root/hrdetect_blocked" \
+        --forbidden-tokens-json "\$PHASE3_FAST_REPORT_FORBIDDEN_TOKENS_JSON" \
+        --output "\$PWD/workspace/manifests/phase3_wgs_fast/report_packet_validation.json"
+    """
+
+    stub:
+    """
+    set -euo pipefail
+    test -s "${rosalind_run_manifest}"
+    test -s "${rosalind_packet_index}"
+    test -s "${rosalind_cloud_materialization_plan}"
+    export PHASE3_FAST_REPORT_FORBIDDEN_TOKENS_JSON="\$(<"${forbidden_tokens_json}")"
+    packet_root="\$PWD/real_report_packets"
+    for method_id in \
+        deterministic_full_wgs \
+        rosalind_diana_wgs \
+        facets_scarhrd_blocked \
+        oncoanalyser_chord_blocked \
+        hrdetect_blocked; do
+      mkdir -p "\$packet_root/\$method_id"
+      cp -L "\$method_id"/* "\$packet_root/\$method_id/"
+    done
+
+    PYTHONPATH="${params.repo_dir}/src:${params.repo_dir}/scripts" "${params.python_bin}" \
+        "${params.repo_dir}/scripts/validate_phase3_fast_report_packets.py" \
+        --deterministic-report-dir "\$packet_root/deterministic_full_wgs" \
+        --rosalind-report-dir "\$packet_root/rosalind_diana_wgs" \
+        --facets-scarhrd-report-dir "\$packet_root/facets_scarhrd_blocked" \
+        --oncoanalyser-chord-report-dir "\$packet_root/oncoanalyser_chord_blocked" \
+        --hrdetect-report-dir "\$packet_root/hrdetect_blocked" \
+        --forbidden-tokens-json "\$PHASE3_FAST_REPORT_FORBIDDEN_TOKENS_JSON" \
+        --output "\$PWD/workspace/manifests/phase3_wgs_fast/report_packet_validation.json"
     """
 }
 
@@ -1871,8 +2035,10 @@ workflow PHASE3_WGS_FAST {
             if (params.phase3_fast_forbidden_tokens_json == null || params.phase3_fast_forbidden_tokens_json.toString().trim() == '') {
                 error "phase3_wgs_fast execute mode requires: phase3_fast_forbidden_tokens_json"
             }
-            FAST_MUTECT_PARABRICKS_FILTER(FAST_STAGING_PLAN.out)
-            FAST_BAM_CNV_SV_EVIDENCE(FAST_STAGING_PLAN.out)
+            FAST_VALIDATE_FORBIDDEN_TOKENS(Channel.value(params.phase3_fast_forbidden_tokens_json.toString().getBytes('UTF-8').encodeBase64().toString()))
+            validated_fast_staging_plan = FAST_STAGING_PLAN.out.combine(FAST_VALIDATE_FORBIDDEN_TOKENS.out)
+            FAST_MUTECT_PARABRICKS_FILTER(validated_fast_staging_plan)
+            FAST_BAM_CNV_SV_EVIDENCE(validated_fast_staging_plan)
             small_variant_export_for_join = FAST_MUTECT_PARABRICKS_FILTER.out.map {
                 small_staged_inputs_manifest,
                 parabricks_mutect_plan,
@@ -1919,8 +2085,18 @@ workflow PHASE3_WGS_FAST {
             FAST_VERIFY_AND_PUBLISH(FAST_EVIDENCE_JOIN.out, small_variant_artifacts_for_publish, aux_artifacts_for_publish)
             FAST_CROSSCHECK_MATERIALIZATION_PLAN(FAST_VERIFY_AND_PUBLISH.out)
             FAST_STAGE_DETERMINISTIC_REPORT(FAST_CROSSCHECK_MATERIALIZATION_PLAN.out, FAST_VERIFY_AND_PUBLISH.out)
-            FAST_STAGE_ROSALIND_PACKET(FAST_STAGE_DETERMINISTIC_REPORT.out, FAST_VERIFY_AND_PUBLISH.out)
-            FAST_STAGE_BLOCKED_CROSSCHECKS(FAST_STAGE_ROSALIND_PACKET.out)
+            FAST_STAGE_ROSALIND_PACKET(
+                FAST_STAGE_DETERMINISTIC_REPORT.out,
+                FAST_VERIFY_AND_PUBLISH.out,
+                FAST_VALIDATE_FORBIDDEN_TOKENS.out
+            )
+            FAST_STAGE_BLOCKED_CROSSCHECKS(FAST_STAGE_ROSALIND_PACKET.out, FAST_STAGE_DETERMINISTIC_REPORT.out)
+            FAST_VALIDATE_REPORT_PACKETS(
+                FAST_STAGE_DETERMINISTIC_REPORT.out,
+                FAST_STAGE_ROSALIND_PACKET.out,
+                FAST_STAGE_BLOCKED_CROSSCHECKS.out,
+                FAST_VALIDATE_FORBIDDEN_TOKENS.out
+            )
         } else {
             FAST_PARABRICKS_MUTECT_PLAN(FAST_STAGING_PLAN.out)
             FAST_BAM_QC_PLAN(FAST_PARABRICKS_MUTECT_PLAN.out)
