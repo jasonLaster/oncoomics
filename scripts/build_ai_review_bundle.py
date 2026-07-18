@@ -327,6 +327,10 @@ def authorized_state(rows: list[dict[str, Any]]) -> str:
                     "positive/negative manifest state requires ready evidence"
                 )
             classified.add(state)
+        elif row.get("classification_authorized") is not False:
+            raise ValueError(
+                "no_call manifest state must not authorize classification"
+            )
     if len(classified) > 1:
         raise ValueError(
             "deterministic manifests contain conflicting authorized HRD classifications"

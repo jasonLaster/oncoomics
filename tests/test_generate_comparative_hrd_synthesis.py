@@ -702,6 +702,53 @@ class GenerateSynthesisTests(unittest.TestCase):
                 self.assertIn("authorized ceiling", result.stdout + result.stderr)
                 self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
 
+    def test_no_call_classification_authorization_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="hrd-synthesis-authorization-"
+        ) as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            source_path = fixture.source_manifests[0]
+            source = json.loads(source_path.read_text(encoding="utf-8"))
+            source["classification_authorized"] = True
+            write_json(source_path, source)
+
+            bundle_path = fixture.bundle_dir / "review_bundle.json"
+            bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+            bundle["evidence_sources"][0]["classification_authorized"] = True
+            write_json(bundle_path, bundle)
+            bundle_hash = sha256(bundle_path)
+
+            bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+            bundle_manifest = json.loads(
+                bundle_manifest_path.read_text(encoding="utf-8")
+            )
+            bundle_manifest["input_manifest_sha256"]["E001"] = sha256(source_path)
+            bundle_manifest["review_bundle_sha256"] = bundle_hash
+            write_json(bundle_manifest_path, bundle_manifest)
+
+            for review_dir in (fixture.review_a, fixture.review_b):
+                review_manifest_path = review_dir / "review_manifest.json"
+                review_manifest = json.loads(
+                    review_manifest_path.read_text(encoding="utf-8")
+                )
+                review_manifest["input_bundle_sha256"] = bundle_hash
+                review_manifest["input_artifact_sha256"][
+                    "review_bundle.json"
+                ] = bundle_hash
+                write_json(review_manifest_path, review_manifest)
+
+                validation_path = review_dir / "validation.json"
+                validation = json.loads(validation_path.read_text(encoding="utf-8"))
+                validation["review_bundle_sha256"] = bundle_hash
+                validation["review_manifest_sha256"] = sha256(review_manifest_path)
+                write_json(validation_path, validation)
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("no_call deterministic evidence", result.stdout + result.stderr)
+            self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

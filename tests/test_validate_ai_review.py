@@ -319,6 +319,38 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertNotEqual(failed.returncode, 0)
             self.assertIn("classification promotion", failed.stderr)
 
+    def test_rejects_no_call_bundle_that_authorizes_classification(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+
+            source_path = fixture.manifests[0]
+            source = json.loads(source_path.read_text(encoding="utf-8"))
+            source["classification_authorized"] = True
+            write_json(source_path, source)
+
+            bundle_path = fixture.bundle_dir / "review_bundle.json"
+            bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+            bundle["evidence_sources"][0]["classification_authorized"] = True
+            write_json(bundle_path, bundle)
+
+            bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+            bundle_manifest = json.loads(
+                bundle_manifest_path.read_text(encoding="utf-8")
+            )
+            bundle_manifest["input_manifest_sha256"]["E001"] = sha256(source_path)
+            bundle_manifest["review_bundle_sha256"] = sha256(bundle_path)
+            write_json(bundle_manifest_path, bundle_manifest)
+
+            review = Path(temporary) / "review-a"
+            fixture.write_review(review)
+
+            failed = fixture.validate(review)
+
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertIn("no_call evidence", failed.stderr)
+            self.assertFalse((review / "validation.json").exists())
+
     def test_rejects_changed_spelled_or_derived_numbers(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))
@@ -559,6 +591,44 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertNotEqual(copied.returncode, 0)
             self.assertIn("share an invocation ID", copied.stderr)
 
+    def test_reviewer_b_rejects_symlinked_reviewer_a_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = ValidateReviewFixture(root)
+            fixture.build()
+            review_a = root / "review-a"
+            fixture.write_review(review_a, reviewer="A")
+            self.assertEqual(fixture.validate(review_a).returncode, 0)
+
+            real_report = root / "reviewer-a-report.real.md"
+            (review_a / "report.md").replace(real_report)
+            (review_a / "report.md").symlink_to(real_report)
+
+            review_b = root / "review-b"
+            fixture.write_review(
+                review_b,
+                reviewer="B",
+                body=(
+                    "The missing allele-specific copy-number gate remains "
+                    "unresolved [C001|E001]."
+                ),
+                claim=(
+                    "The missing allele-specific copy number prevents a "
+                    "categorical conclusion."
+                ),
+            )
+
+            symlinked = fixture.validate(
+                review_b,
+                reviewer="B",
+                other_review_dir=review_a,
+            )
+
+            self.assertNotEqual(symlinked.returncode, 0)
+            self.assertIn(
+                "complete validated reviewer A output",
+                symlinked.stderr,
+            )
 
 if __name__ == "__main__":
     unittest.main()

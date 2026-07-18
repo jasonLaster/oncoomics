@@ -275,6 +275,8 @@ def derived_authorized_state(rows: list[dict[str, Any]]) -> str:
             if row.get("evidence_status") != "ready":
                 raise ValueError("classified evidence is not ready")
             classified.add(str(state))
+        elif row.get("classification_authorized") is not False:
+            raise ValueError("no_call evidence cannot authorize classification")
     if len(classified) > 1:
         raise ValueError("evidence sources contain conflicting authorized classifications")
     return next(iter(classified), "no_call")
@@ -429,7 +431,10 @@ def validate_other_reviewer(
         "report": other_dir / "report.md",
         "claims": other_dir / "claims.csv",
     }
-    if any(not path.is_file() or path.stat().st_size == 0 for path in paths.values()):
+    if any(
+        path.is_symlink() or not path.is_file() or path.stat().st_size == 0
+        for path in paths.values()
+    ):
         raise ValueError("reviewer B requires a complete validated reviewer A output")
 
     other_validation = load_object(paths["validation"])

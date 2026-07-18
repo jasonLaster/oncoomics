@@ -471,6 +471,17 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertNotEqual(built.returncode, 0)
             self.assertIn("positive/negative manifest state lacks", built.stderr)
 
+    def test_rejects_no_call_manifest_with_classification_authorized(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            fixture.update_manifest(0, {"classification_authorized": True})
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn("no_call manifest state", built.stderr)
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
     def test_existing_bundle_files_fail_create_only_and_remain_unchanged(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))
