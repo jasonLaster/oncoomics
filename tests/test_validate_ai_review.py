@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import shutil
 import stat
 import subprocess
 import sys
@@ -598,6 +599,74 @@ class ValidateAiReviewTests(unittest.TestCase):
 
                 self.assertNotEqual(failed.returncode, 0)
                 self.assertIn(message, failed.stderr)
+
+    def test_rejects_custody_inputs_below_symlinked_parent(self) -> None:
+        cases = (
+            (
+                "source manifest",
+                "source manifest for E001",
+                lambda fixture, review, root, linked_parent: (
+                    shutil.copytree(fixture.manifests[0].parent, root / "real-source" / "existing"),
+                    fixture.manifests.__setitem__(
+                        0,
+                        linked_parent / "existing" / "report_manifest.json",
+                    ),
+                    review,
+                )[-1],
+            ),
+            (
+                "bundle directory",
+                "bundle directory",
+                lambda fixture, review, root, linked_parent: (
+                    shutil.copytree(fixture.bundle_dir, root / "real-source" / "existing"),
+                    setattr(fixture, "bundle_dir", linked_parent / "existing"),
+                    review,
+                )[-1],
+            ),
+            (
+                "model catalog receipt",
+                "model catalog receipt",
+                lambda fixture, review, root, linked_parent: (
+                    (root / "real-source" / "existing").mkdir(),
+                    shutil.copy2(
+                        fixture.catalog_receipt,
+                        root / "real-source" / "existing" / "model-catalog.json",
+                    ),
+                    setattr(
+                        fixture,
+                        "catalog_receipt",
+                        linked_parent / "existing" / "model-catalog.json",
+                    ),
+                    review,
+                )[-1],
+            ),
+            (
+                "review directory",
+                "review directory",
+                lambda fixture, review, root, linked_parent: (
+                    shutil.copytree(review, root / "real-source" / "existing"),
+                    linked_parent / "existing",
+                )[-1],
+            ),
+        )
+        for name, message, mutate in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = ValidateReviewFixture(root)
+                fixture.build()
+                review = root / "review-a"
+                fixture.write_review(review)
+                real_parent = root / "real-source"
+                real_parent.mkdir(exist_ok=True)
+                linked_parent = root / "linked-source"
+                linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+                review_dir = mutate(fixture, review, root, linked_parent)
+                failed = fixture.validate(review_dir)
+
+                self.assertNotEqual(failed.returncode, 0)
+                self.assertIn(f"{message} parent may not be a symlink", failed.stderr)
+                self.assertFalse((review_dir / "validation.json").exists())
 
     def test_rejects_extra_review_output_before_validation_publication(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

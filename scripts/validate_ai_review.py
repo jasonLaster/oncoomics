@@ -131,12 +131,14 @@ def load_object(path: Path) -> dict[str, Any]:
 
 
 def resolve_real_dir(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_dir():
         raise ValueError(f"{label} is missing or a symlink")
     return path.resolve()
 
 
 def resolve_real_file(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
         raise ValueError(f"{label} is missing or a symlink")
     return path.resolve()
@@ -144,6 +146,12 @@ def resolve_real_file(path: Path, label: str) -> Path:
 
 def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
 
 
 def parse_time(value: Any, label: str) -> datetime:
