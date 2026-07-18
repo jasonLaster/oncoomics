@@ -577,6 +577,20 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 with self.subTest(label=label), self.assertRaises(ValueError):
                     self.run_capture(self.args(Path(temporary) / label), aws=aws, get=get)
 
+    def test_rejects_symlinked_exact_receipt_download_before_capture(self) -> None:
+        def get(region, bucket, key, version_id, destination):
+            real_receipt = destination.with_name("real-materialization-receipt.json")
+            real_receipt.write_bytes(self.receipt_bytes)
+            destination.symlink_to(real_receipt)
+            return copy.deepcopy(self.metadata)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(
+                ValueError,
+                "downloaded materialization receipt must be a real file",
+            ):
+                self.run_capture(self.args(Path(temporary)), get=get)
+
     def test_exact_get_cli_includes_logged_version_and_checksum_mode(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             destination = Path(temporary) / "receipt.json"
@@ -607,6 +621,7 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                     kwargs,
                     {"text": True, "stderr": subprocess.STDOUT},
                 )
+                destination.write_bytes(self.receipt_bytes)
                 return json.dumps(self.metadata)
 
             with mock.patch.object(subprocess, "check_output", side_effect=command):

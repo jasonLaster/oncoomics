@@ -177,6 +177,7 @@ def get_exact_object(
     version_id: str,
     destination: Path,
 ) -> dict[str, Any]:
+    require_safe_download_destination(destination, "downloaded route receipt")
     command = [
         "aws",
         "s3api",
@@ -198,6 +199,7 @@ def get_exact_object(
     payload = json.loads(subprocess.check_output(command, text=True, stderr=subprocess.STDOUT))
     if not isinstance(payload, dict):
         raise ValueError("S3 get-object did not return an object")
+    require_real_downloaded_file(destination, "downloaded route receipt")
     return payload
 
 
@@ -277,6 +279,26 @@ def require_safe_private_output_parent(path: Path) -> None:
             )
         if parent.exists() and not parent.is_dir():
             raise NotADirectoryError(parent)
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
+
+
+def require_safe_download_destination(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink: {path}")
+    require_no_symlinked_ancestors(path, label)
+
+
+def require_real_downloaded_file(path: Path, label: str) -> None:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
 
 
 def validate_arguments(args: argparse.Namespace) -> dict[str, str]:
@@ -941,6 +963,7 @@ def capture(args: argparse.Namespace) -> dict[str, Any]:
             location["version_id"],
             temporary_path,
         )
+        require_real_downloaded_file(temporary_path, "downloaded route receipt")
         downloaded = temporary_path.read_bytes()
     receipt, receipt_checks = validate_exact_receipt(
         downloaded,

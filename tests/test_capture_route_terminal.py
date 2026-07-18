@@ -878,6 +878,23 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                         get=get,
                     )
 
+    def test_rejects_symlinked_exact_receipt_download_before_capture(self):
+        fixture = self.fixture()
+
+        def get(region, bucket, key, version_id, destination):
+            real_receipt = destination.with_name("real-publication-receipt.json")
+            real_receipt.write_bytes(fixture["receipt_bytes"])
+            destination.symlink_to(real_receipt)
+            return copy.deepcopy(fixture["metadata"])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(ValueError, "downloaded route receipt must be a real file"):
+                self.run_capture(
+                    self.args(Path(temporary), fixture),
+                    fixture,
+                    get=get,
+                )
+
     def test_exact_get_cli_includes_logged_version_and_checksum_mode(self):
         fixture = self.fixture()
         with tempfile.TemporaryDirectory() as temporary:
@@ -909,6 +926,7 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                     kwargs,
                     {"text": True, "stderr": subprocess.STDOUT},
                 )
+                destination.write_bytes(fixture["receipt_bytes"])
                 return json.dumps(fixture["metadata"])
 
             with mock.patch.object(subprocess, "check_output", side_effect=command):

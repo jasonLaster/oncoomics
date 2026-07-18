@@ -129,6 +129,16 @@ def require_new_output(path: Path, label: str) -> None:
         )
 
 
+def require_safe_download_destination(path: Path, label: str) -> None:
+    require_safe_output_parent(path, label)
+
+
+def require_real_downloaded_file(path: Path, label: str) -> None:
+    require_safe_download_destination(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
 def aws_json(arguments: list[str], region: str) -> dict[str, Any]:
     command = ["aws", *arguments, "--region", region, "--output", "json"]
     value = json.loads(subprocess.check_output(command, text=True))
@@ -249,6 +259,7 @@ def require_bucket_versioning(bucket: str, region: str) -> None:
 def get_exact_object(
     bucket: str, key: str, version_id: str, destination: Path, region: str
 ) -> dict[str, Any]:
+    require_safe_download_destination(destination, "downloaded final-freeze receipt")
     command = [
         "aws",
         "s3api",
@@ -270,6 +281,7 @@ def get_exact_object(
     value = json.loads(subprocess.check_output(command, text=True))
     if not isinstance(value, dict):
         raise RuntimeError("S3 get-object did not return an object")
+    require_real_downloaded_file(destination, "downloaded final-freeze receipt")
     return value
 
 
@@ -948,6 +960,10 @@ def main() -> int:
                     version_id,
                     downloaded,
                     args.region,
+                )
+                require_real_downloaded_file(
+                    downloaded,
+                    "downloaded final-freeze receipt",
                 )
                 downloaded_sha = sha256(downloaded)
                 downloaded_bytes = downloaded.stat().st_size

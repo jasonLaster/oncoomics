@@ -826,6 +826,75 @@ class CustodyHandoffTests(unittest.TestCase):
             self.assertEqual(value["receipt_version_id"], version)
             self.assertTrue(value["recovered_existing_version"])
 
+    def test_contract_publication_rejects_symlinked_exact_download(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            contract_sha = publisher.sha256(contract)
+            version = "contract-version"
+            prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
+            key = f"{prefix}{contract_sha}.json"
+            checksum = base64.b64encode(bytes.fromhex(contract_sha)).decode("ascii")
+            metadata = {
+                "VersionId": version,
+                "ContentLength": contract.stat().st_size,
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": checksum,
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": KMS,
+                "Metadata": {"sha256": contract_sha},
+            }
+            history = [
+                {
+                    "history_kind": "version",
+                    "Key": key,
+                    "VersionId": version,
+                    "IsLatest": True,
+                }
+            ]
+
+            def fake_get(bucket, object_key, version_id, destination, region):
+                real_contract = destination.with_name("real-contract.json")
+                real_contract.write_bytes(contract.read_bytes())
+                destination.symlink_to(real_contract)
+                return dict(metadata)
+
+            anchor_path = root / "anchor.json"
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/{prefix}",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor_path),
+                "--apply",
+            ]
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                patch.object(publisher, "version_history", side_effect=[[], history]),
+                patch.object(
+                    publisher,
+                    "put_create_only",
+                    return_value={"VersionId": version},
+                ),
+                patch.object(publisher, "head", return_value=metadata),
+                patch.object(publisher, "get_exact", side_effect=fake_get),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "downloaded input contract must be a real file",
+                ),
+            ):
+                publisher.main()
+
+            value = json.loads(anchor_path.read_text(encoding="utf-8"))
+            self.assertEqual(value["status"], "failed")
+            self.assertIn("downloaded input contract", value["error"])
+
     def test_contract_publication_reservation_fsyncs_parent_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
             anchor_path = Path(temporary) / "anchor.json"

@@ -253,6 +253,31 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 )
             )
 
+    def test_download_object_rejects_symlinked_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            destination = Path(value) / "downloaded.json"
+
+            def aws_json(arguments, region):
+                real_download = destination.with_name("real-downloaded.json")
+                real_download.write_text('{"status":"passed"}\n', encoding="utf-8")
+                destination.symlink_to(real_download)
+                return {"VersionId": "exact-version"}
+
+            with (
+                patch.object(MODULE, "aws_json", side_effect=aws_json),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "downloaded provenance object must not be a symlink",
+                ),
+            ):
+                MODULE.download_object(
+                    DESTINATION_BUCKET,
+                    "receipt.json",
+                    destination,
+                    REGION,
+                    version_id="exact-version",
+                )
+
     def test_copy_and_receipt_put_are_conditional_and_kms_bound(self) -> None:
         with patch.object(
             MODULE, "aws_json", return_value={"VersionId": "destination-version"}

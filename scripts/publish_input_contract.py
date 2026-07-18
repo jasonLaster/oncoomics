@@ -102,6 +102,7 @@ def head(bucket: str, key: str, version_id: str, region: str) -> dict[str, Any]:
 def get_exact(
     bucket: str, key: str, version_id: str, destination: Path, region: str
 ) -> dict[str, Any]:
+    require_safe_download_destination(destination, "downloaded input contract")
     return aws_json(
         [
             "s3api", "get-object", "--bucket", bucket, "--key", key,
@@ -203,6 +204,18 @@ def require_anchor_output(path: Path) -> None:
             raise NotADirectoryError(parent)
 
 
+def require_safe_download_destination(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink: {path}")
+    require_no_symlinked_ancestors(path, label)
+
+
+def require_real_downloaded_file(path: Path, label: str) -> None:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
 def publication_identity_matches(
     observed: dict[str, Any], expected: dict[str, Any]
 ) -> bool:
@@ -233,6 +246,7 @@ def verify_publication(
     with tempfile.TemporaryDirectory(prefix="diana-contract-verify-") as temporary:
         downloaded = Path(temporary) / "contract.json"
         fetched = get_exact(bucket, key, version_id, downloaded, region)
+        require_real_downloaded_file(downloaded, "downloaded input contract")
         expected_checksum = base64.b64encode(
             bytes.fromhex(contract_sha)
         ).decode("ascii")

@@ -94,6 +94,16 @@ def require_safe_new_output(path: Path, label: str) -> None:
         raise ValueError(f"{label} already exists: {path}")
 
 
+def require_safe_download_destination(path: Path, label: str) -> None:
+    require_safe_output_parent(path, label)
+
+
+def require_real_downloaded_file(path: Path, label: str) -> None:
+    require_safe_download_destination(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
 def write_bytes_once(path: Path, payload: bytes) -> None:
     """Atomically create a local receipt without replacing prior evidence."""
     require_safe_output_parent(path, "local evidence output")
@@ -187,6 +197,7 @@ def download_object(
     etag: str = "",
     version_id: str = "",
 ) -> dict[str, Any]:
+    require_safe_download_destination(destination, "downloaded provenance object")
     arguments = [
         "s3api",
         "get-object",
@@ -202,7 +213,9 @@ def download_object(
     if version_id:
         arguments.extend(["--version-id", version_id])
     arguments.append(str(destination))
-    return aws_json(arguments, region)
+    response = aws_json(arguments, region)
+    require_real_downloaded_file(destination, "downloaded provenance object")
+    return response
 
 
 def copy_object(
@@ -655,6 +668,10 @@ def main() -> int:
                     args.region,
                     etag=str(before.get("ETag", "")),
                 )
+                require_real_downloaded_file(
+                    source_local,
+                    f"downloaded source {name}",
+                )
                 if not response_matches_head(
                     downloaded_source,
                     before,
@@ -731,6 +748,10 @@ def main() -> int:
                         destination_local,
                         args.region,
                         version_id=version_id,
+                    )
+                    require_real_downloaded_file(
+                        destination_local,
+                        f"downloaded destination {name}",
                     )
                     destination_sha = sha256(destination_local)
                     row["destination"].update(
@@ -872,6 +893,10 @@ def main() -> int:
                     anchored_local,
                     args.region,
                     version_id=version_id,
+                )
+                require_real_downloaded_file(
+                    anchored_local,
+                    "downloaded freeze receipt anchor",
                 )
                 expected_checksum = base64.b64encode(
                     bytes.fromhex(receipt_sha)

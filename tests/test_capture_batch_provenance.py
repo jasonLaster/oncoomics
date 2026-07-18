@@ -201,6 +201,46 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_load_object_rejects_input_below_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-receipts"
+            real_parent.mkdir()
+            (real_parent / "receipt.json").write_text('{"status":"passed"}\n')
+            linked_parent = root / "linked-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.load_object(
+                    linked_parent / "receipt.json",
+                    "executed-worker freeze receipt",
+                )
+
+    def test_get_exact_object_rejects_symlinked_worker_download(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "worker.py"
+
+            def command(command, **kwargs):
+                real_worker = destination.with_name("real-worker.py")
+                real_worker.write_text("# frozen worker\n", encoding="utf-8")
+                destination.symlink_to(real_worker)
+                return "{}"
+
+            with (
+                patch.object(MODULE.subprocess, "check_output", side_effect=command),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "downloaded worker source may not be a symlink",
+                ),
+            ):
+                MODULE.get_exact_object(
+                    "us-east-1",
+                    "diana-omics-private-results-unit",
+                    "worker.py",
+                    "worker-version",
+                    destination,
+                )
+
     def _command(
         self,
         command_id: str,

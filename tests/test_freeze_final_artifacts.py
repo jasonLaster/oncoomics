@@ -523,6 +523,31 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             ],
         )
 
+    def test_get_exact_object_rejects_symlinked_receipt_download(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            destination = Path(value) / "receipt.json"
+
+            def command(arguments, text):
+                real_receipt = destination.with_name("real-receipt.json")
+                real_receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+                destination.symlink_to(real_receipt)
+                return "{}"
+
+            with (
+                patch.object(MODULE.subprocess, "check_output", side_effect=command),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "downloaded final-freeze receipt must not be a symlink",
+                ),
+            ):
+                MODULE.get_exact_object(
+                    "bucket",
+                    "receipt.json",
+                    "receipt-version",
+                    destination,
+                    "us-east-1",
+                )
+
     def test_main_persists_copy_version_and_history_when_post_copy_head_fails(self) -> None:
         run_id = "run-id"
         job_id = "job-id"
