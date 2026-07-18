@@ -144,9 +144,9 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
 
 def load_params_from_environment() -> tuple[dict[str, Any], Path]:
     path = path_from_root(os.environ.get("PHASE3_FAST_GPU_NEXTFLOW_PARAMS", DEFAULT_PARAMS))
-    if not path.exists():
+    if path.is_symlink() or not path.is_file():
         raise GpuSmokeConfigError(
-            f"Missing generated {REQUIRED_AWS_REGION} GPU params file: {path}. "
+            f"Generated {REQUIRED_AWS_REGION} GPU params file must be a real file: {path}. "
             "Run infra:aws:apply:use2 after the P5en quota and pinned Parabricks image are ready."
         )
     payload = read_json(path)

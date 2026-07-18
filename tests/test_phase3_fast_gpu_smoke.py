@@ -156,12 +156,27 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                 )
             )
 
-    def test_environment_loader_requires_generated_use2_params(self) -> None:
+    def test_environment_loader_requires_real_generated_use2_params(self) -> None:
         with TemporaryDirectory() as tmp:
-            missing = Path(tmp) / "nextflow.aws.use2.json"
-            with patch.dict("os.environ", {"PHASE3_FAST_GPU_NEXTFLOW_PARAMS": str(missing)}, clear=False):
-                with self.assertRaisesRegex(verify.GpuSmokeConfigError, "Missing generated us-east-2 GPU params"):
-                    verify.load_params_from_environment()
+            root = Path(tmp)
+            real_params = root / "real-nextflow.aws.use2.json"
+            write_json(real_params, p5en_params())
+            cases = {
+                "directory": root / "nextflow-dir",
+                "missing": root / "missing-nextflow.aws.use2.json",
+                "symlink": root / "nextflow.aws.use2.json",
+            }
+            cases["directory"].mkdir()
+            cases["symlink"].symlink_to(real_params)
+
+            for label, path in cases.items():
+                with self.subTest(label=label), patch.dict(
+                    "os.environ",
+                    {"PHASE3_FAST_GPU_NEXTFLOW_PARAMS": str(path)},
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(verify.GpuSmokeConfigError, "real file"):
+                        verify.load_params_from_environment()
 
     def test_environment_loader_reads_override_path(self) -> None:
         with TemporaryDirectory() as tmp:
