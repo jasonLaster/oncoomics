@@ -12,13 +12,9 @@ from typing import Iterable
 from hrd_report_inventory import REPORT_METHOD_IDS
 from publish_reviewed_public_report import (
     METHOD_CONTRACTS,
-    PRIVATE_BUCKET,
-    PRIVATE_KMS_KEY_ARN,
     PUBLIC_BUCKET,
     PUBLIC_ROOT,
     REGION,
-    RUN_ID,
-    SUBJECT_ALIAS,
     validate_private_receipt,
 )
 from runbook_io import (
@@ -28,7 +24,6 @@ from runbook_io import (
     preexisting_create_only_paths,
     write_once,
 )
-
 
 STALE_TOKENS = (
     ".codex-tmp/hrd-reports/publish_private_report.py",
@@ -129,12 +124,21 @@ def index_commands(root: Path, receipt_stem: str = "terminal") -> list[list[str 
     scripts = root / "scripts"
     index = root / ".codex-tmp/public-index/objects.json"
     dry_receipt, apply_receipt = public_index_receipt_paths(root, receipt_stem)
+    reviewed_public_receipts = [
+        receipt_output(root, receipt_stem, method_id, "")
+        for method_id in REPORT_METHOD_IDS
+    ]
     return [
         [
             "python3",
             scripts / "build_public_results_index.py",
             "--output",
             index,
+            *[
+                token
+                for receipt in reviewed_public_receipts
+                for token in ("--reviewed-public-receipt", receipt)
+            ],
         ],
         [
             "python3",

@@ -28,6 +28,58 @@ PUBLISH = importlib.util.module_from_spec(PUBLISH_SPEC)
 PUBLISH_SPEC.loader.exec_module(PUBLISH)
 
 
+def write_public_receipts(root: Path) -> list[Path]:
+    receipt_root = root / "receipts"
+    receipt_root.mkdir()
+    receipts = []
+    required_checks = {
+        "private_receipt_exact_and_passed": True,
+        "source_exact_versions": True,
+        "source_sha256_and_bytes": True,
+        "second_forbidden_token_scan": True,
+        "all_destination_writes_create_only": True,
+        "destination_sse_s3": True,
+        "destination_full_object_sha256": True,
+        "destination_non_null_versions": True,
+        "destination_exact_one_version_no_delete_history": True,
+    }
+    for method_id in MODULE.REPORT_METHOD_IDS:
+        contract = MODULE.METHOD_CONTRACTS[method_id]
+        expected_files = tuple(sorted(contract["files"]))
+        receipt = {
+            "schema_version": 1,
+            "status": "passed",
+            "apply": True,
+            "method_id": method_id,
+            "subject_alias": PUBLISH.SUBJECT_ALIAS,
+            "run_id": PUBLISH.RUN_ID,
+            "classification": PUBLISH.CLASSIFICATION,
+            "destination_prefix": (
+                f"s3://{MODULE.BUCKET}/"
+                f"{PUBLISH.PUBLIC_ROOT}{contract['destination']}"
+            ),
+            "expected_files": list(expected_files),
+            "checks": required_checks,
+            "destination_objects": [
+                {
+                    "relative_path": relative,
+                    "bucket": MODULE.BUCKET,
+                    "key": f"{PUBLISH.PUBLIC_ROOT}{contract['destination']}{relative}",
+                    "uri": (
+                        f"s3://{MODULE.BUCKET}/"
+                        f"{PUBLISH.PUBLIC_ROOT}{contract['destination']}{relative}"
+                    ),
+                    "status": "passed",
+                }
+                for relative in expected_files
+            ],
+        }
+        path = receipt_root / f"{method_id}.json"
+        path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
+        receipts.append(path)
+    return receipts
+
+
 class PublicIndexTests(unittest.TestCase):
     def test_diana_public_prefixes_are_exact_reviewed_report_destinations(self) -> None:
         expected = tuple(
@@ -232,6 +284,41 @@ class PublicIndexTests(unittest.TestCase):
                 MODULE.write_index(symlink, {"objects": []})
 
             self.assertEqual(stale.read_text(encoding="utf-8"), "do not overwrite\n")
+
+    def test_reviewed_public_receipts_must_be_passed_in_canonical_order(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipts = write_public_receipts(Path(temporary))
+            MODULE.validate_reviewed_public_receipts(receipts)
+
+            with self.assertRaisesRegex(RuntimeError, "deterministic_full_wgs"):
+                MODULE.validate_reviewed_public_receipts(list(reversed(receipts)))
+
+            failed = json.loads(receipts[0].read_text(encoding="utf-8"))
+            failed["status"] = "dry_run"
+            receipts[0].write_text(json.dumps(failed), encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "not exact"):
+                MODULE.validate_reviewed_public_receipts(receipts)
+
+    def test_main_can_bind_index_build_to_reviewed_public_receipts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipts = write_public_receipts(root)
+            output = root / "objects.json"
+
+            with mock.patch.object(
+                MODULE,
+                "list_prefix",
+                side_effect=[[] for _ in MODULE.PUBLIC_PREFIXES],
+            ) as list_prefix:
+                argv = ["--output", str(output)]
+                for receipt in receipts:
+                    argv.extend(["--reviewed-public-receipt", str(receipt)])
+                MODULE.main(argv)
+
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(payload["object_count"], 0)
+            self.assertEqual(list_prefix.call_count, len(MODULE.PUBLIC_PREFIXES))
 
     def test_write_index_rejects_symlinked_parent_without_writing_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -10,7 +10,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -51,31 +50,31 @@ def write_receipts(root: Path) -> list[Path]:
                     "checksum_sha256": checksum_from_digest(sha256),
                     "checksum_type": "FULL_OBJECT",
                     "server_side_encryption": "aws:kms",
-                    "kms_key_id": MODULE.PRIVATE_KMS_KEY_ARN,
+                    "kms_key_id": PUBLISH.PRIVATE_KMS_KEY_ARN,
                     "status": "passed",
                     "checks": {"version_id": True, "kms": True},
                 }
             )
         revision = PUBLISH.canonical_packet_digest(rows)
         prefix = (
-            f"s3://{MODULE.PRIVATE_BUCKET}/runs/{MODULE.SUBJECT_ALIAS}/"
-            f"{MODULE.RUN_ID}/reports/{method_id}/revisions/{revision}/"
+            f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{PUBLISH.SUBJECT_ALIAS}/"
+            f"{PUBLISH.RUN_ID}/reports/{method_id}/revisions/{revision}/"
         )
-        key_prefix = prefix.removeprefix(f"s3://{MODULE.PRIVATE_BUCKET}/")
+        key_prefix = prefix.removeprefix(f"s3://{PUBLISH.PRIVATE_BUCKET}/")
         for row in rows:
             key = key_prefix + row["relative_path"]
-            row["bucket"] = MODULE.PRIVATE_BUCKET
+            row["bucket"] = PUBLISH.PRIVATE_BUCKET
             row["key"] = key
-            row["uri"] = f"s3://{MODULE.PRIVATE_BUCKET}/{key}"
+            row["uri"] = f"s3://{PUBLISH.PRIVATE_BUCKET}/{key}"
         receipt = {
             "schema_version": 1,
             "status": "passed",
-            "subject_alias": MODULE.SUBJECT_ALIAS,
-            "run_id": MODULE.RUN_ID,
+            "subject_alias": PUBLISH.SUBJECT_ALIAS,
+            "run_id": PUBLISH.RUN_ID,
             "method_id": method_id,
             "packet_revision": revision,
             "destination_prefix": prefix,
-            "kms_key_arn": MODULE.PRIVATE_KMS_KEY_ARN,
+            "kms_key_arn": PUBLISH.PRIVATE_KMS_KEY_ARN,
             "expected_files": list(expected),
             "object_count": len(expected),
             "passed_count": len(expected),
@@ -167,7 +166,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                 "--receipt-output",
                 output,
                 "--region",
-                MODULE.REGION,
+                PUBLISH.REGION,
                 "--private-publication-receipt-sha256",
                 "a" * 64,
             ],
@@ -200,6 +199,17 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                     Path("/repo/scripts/build_public_results_index.py"),
                     "--output",
                     index,
+                    *[
+                        token
+                        for method_id in MODULE.REPORT_METHOD_IDS
+                        for token in (
+                            "--reviewed-public-receipt",
+                            Path(
+                                "/repo/.codex-tmp/hrd-reports/publication/"
+                                f"unit.{method_id}.public.json"
+                            ),
+                        )
+                    ],
                 ],
                 [
                     "python3",

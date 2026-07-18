@@ -12,10 +12,20 @@ import subprocess
 import tempfile
 from typing import Any, Sequence
 
-from publish_reviewed_public_report import METHOD_CONTRACTS, PUBLIC_ROOT
+from hrd_report_inventory import REPORT_METHOD_IDS
+from publish_reviewed_public_report import (
+    CLASSIFICATION as REVIEWED_PUBLIC_CLASSIFICATION,
+)
+from publish_reviewed_public_report import (
+    METHOD_CONTRACTS,
+    PUBLIC_BUCKET,
+    PUBLIC_ROOT,
+    RUN_ID,
+    SUBJECT_ALIAS,
+)
 
 REGION = "us-east-1"
-BUCKET = "diana-omics-results-172630973301-us-east-1"
+BUCKET = PUBLIC_BUCKET
 DIANA_HRD_PUBLIC_PREFIXES = tuple(
     PUBLIC_ROOT + str(contract["destination"])
     for contract in METHOD_CONTRACTS.values()
@@ -120,6 +130,81 @@ def write_index(path: pathlib.Path, payload: dict[str, Any]) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
+        raise RuntimeError(f"{label} must be a real non-empty file: {path}")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise RuntimeError(f"{label} must be a JSON object: {path}")
+    return value
+
+
+def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> None:
+    if len(paths) != len(REPORT_METHOD_IDS):
+        raise RuntimeError(
+            "reviewed-public index build requires exactly ten public publication receipts"
+        )
+
+    for method_id, path in zip(REPORT_METHOD_IDS, paths):
+        receipt = load_json_object(path, f"{method_id} reviewed-public receipt")
+        contract = METHOD_CONTRACTS[method_id]
+        expected_files = tuple(sorted(contract["files"]))
+        expected_prefix = f"s3://{BUCKET}/{PUBLIC_ROOT}{contract['destination']}"
+        if (
+            receipt.get("schema_version") != 1
+            or receipt.get("status") != "passed"
+            or receipt.get("apply") is not True
+            or receipt.get("method_id") != method_id
+            or receipt.get("subject_alias") != SUBJECT_ALIAS
+            or receipt.get("run_id") != RUN_ID
+            or receipt.get("classification") != REVIEWED_PUBLIC_CLASSIFICATION
+            or receipt.get("destination_prefix") != expected_prefix
+            or tuple(receipt.get("expected_files", ())) != expected_files
+        ):
+            raise RuntimeError(f"{method_id} reviewed-public receipt is not exact")
+
+        checks = receipt.get("checks")
+        destination_objects = receipt.get("destination_objects")
+        if not isinstance(checks, dict) or not isinstance(destination_objects, list):
+            raise RuntimeError(f"{method_id} reviewed-public receipt is incomplete")
+        required_checks = (
+            "private_receipt_exact_and_passed",
+            "source_exact_versions",
+            "source_sha256_and_bytes",
+            "second_forbidden_token_scan",
+            "all_destination_writes_create_only",
+            "destination_sse_s3",
+            "destination_full_object_sha256",
+            "destination_non_null_versions",
+            "destination_exact_one_version_no_delete_history",
+        )
+        if any(checks.get(check_id) is not True for check_id in required_checks):
+            raise RuntimeError(f"{method_id} reviewed-public receipt failed required checks")
+        if len(destination_objects) != len(expected_files):
+            raise RuntimeError(f"{method_id} reviewed-public receipt has the wrong object count")
+
+        expected_keys = {
+            f"{PUBLIC_ROOT}{contract['destination']}{relative}"
+            for relative in expected_files
+        }
+        observed_keys = set()
+        for row in destination_objects:
+            if not isinstance(row, dict) or row.get("status") != "passed":
+                raise RuntimeError(f"{method_id} reviewed-public destination object is incomplete")
+            key = str(row.get("key", ""))
+            observed_keys.add(key)
+            if (
+                row.get("bucket") != BUCKET
+                or row.get("uri") != f"s3://{BUCKET}/{key}"
+                or key not in expected_keys
+            ):
+                raise RuntimeError(
+                    f"{method_id} reviewed-public destination object is outside the public contract"
+                )
+        if observed_keys != expected_keys:
+            raise RuntimeError(f"{method_id} reviewed-public receipt objects do not match the public contract")
+
+
 def require_safe_index_parent(path: pathlib.Path) -> None:
     parent = path.parent
     while not parent.exists():
@@ -141,7 +226,20 @@ def require_safe_index_parent(path: pathlib.Path) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=pathlib.Path, required=True)
+    parser.add_argument(
+        "--reviewed-public-receipt",
+        action="append",
+        default=[],
+        type=pathlib.Path,
+        help=(
+            "repeat once for each passed reviewed-public publication receipt, "
+            "in canonical report-method order"
+        ),
+    )
     args = parser.parse_args(argv)
+
+    if args.reviewed_public_receipt:
+        validate_reviewed_public_receipts(args.reviewed_public_receipt)
 
     objects: list[dict[str, Any]] = []
     for prefix in PUBLIC_PREFIXES:

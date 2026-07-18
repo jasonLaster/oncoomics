@@ -131,7 +131,8 @@ the two AI reviewer packets plus the synthesis packet privately.
 Its final step renders `scripts/render_reviewed_publication_runbook.py` with ten
 private receipts: the seven source methods, the two AI reviewer packets, and
 `comparative_hrd_synthesis`. The reviewed-publication runbook then emits one
-dry-run and one apply command per report method, rebuilds
+dry-run and one apply command per report method, binds the index rebuild to the
+ten passed reviewed-public publication receipts, rebuilds
 `public-index/objects.json`, and publishes that index so new reviewed reports
 appear at `data.diana-tnbc.com`.
 
