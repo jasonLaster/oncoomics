@@ -905,6 +905,7 @@ def require_exact_review_output_dir(review_dir: Path) -> None:
 def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None:
     require_safe_validation_parent(path)
     payload = (json.dumps(validation, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    expected_sha256 = hashlib.sha256(payload).hexdigest()
     file_descriptor = -1
     try:
         file_descriptor = os.open(
@@ -922,12 +923,21 @@ def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None
             handle.flush()
             os.fsync(handle.fileno())
         fsync_directory(path.parent)
+        require_installed_validation(path, expected_sha256)
     except Exception:
         path.unlink(missing_ok=True)
         raise
     finally:
         if file_descriptor >= 0:
             os.close(file_descriptor)
+
+
+def require_installed_validation(path: Path, expected_sha256: str) -> None:
+    require_no_symlinked_ancestors(path, "validation.json")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("validation.json changed during write")
+    if sha256(path) != expected_sha256:
+        raise ValueError("validation.json changed during write")
 
 
 def fsync_directory(path: Path) -> None:

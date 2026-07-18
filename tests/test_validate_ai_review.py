@@ -271,6 +271,30 @@ class ValidateAiReviewTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_validation_receipt_rehashes_after_directory_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "validation.json"
+            real_fsync_directory = VALIDATE.fsync_directory
+
+            def tamper_after_directory_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    VALIDATE,
+                    "fsync_directory",
+                    side_effect=tamper_after_directory_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "validation.json changed during write",
+                ),
+            ):
+                VALIDATE.write_validation_create_only(output, {"status": "passed"})
+
+            self.assertFalse(output.exists())
+
     def test_validation_receipt_refuses_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
