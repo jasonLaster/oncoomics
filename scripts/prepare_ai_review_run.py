@@ -61,10 +61,23 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
 
 
 def require_real_file(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink():
+        raise ValueError(f"{label} must be a real non-empty file")
     resolved = path.resolve()
-    if path.is_symlink() or not resolved.is_file() or resolved.stat().st_size <= 0:
+    if not resolved.is_file() or resolved.stat().st_size <= 0:
         raise ValueError(f"{label} must be a real non-empty file")
     return resolved
+
+
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
 
 
 def require_manifest(path: Path, expected_method: str) -> dict[str, Any]:
@@ -291,9 +304,8 @@ def resolve_new_output(path: Path) -> Path:
         raise ValueError(f"output may not be a symlink: {path}")
     if path.exists():
         raise FileExistsError(f"output already exists: {path}")
+    require_no_symlinked_ancestors(path, "output")
     for parent in path.parents:
-        if parent.is_symlink():
-            raise ValueError(f"output parent may not be a symlink: {parent}")
         if parent.exists():
             if not parent.is_dir():
                 raise ValueError(f"output parent is not a directory: {parent}")

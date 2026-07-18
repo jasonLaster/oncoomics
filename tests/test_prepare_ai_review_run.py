@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -247,6 +248,33 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             )
             self.assertFalse(output.exists())
 
+    def test_refuses_source_manifest_below_symlinked_parent_without_final_output(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            real_parent = root / "real-source-parent"
+            real_packet = real_parent / "existing"
+            shutil.copytree(fixture.manifests[0].parent, real_packet)
+            linked_parent = root / "linked-source-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            fixture.manifests[0] = linked_parent / "existing" / "report_manifest.json"
+            output = root / "ai-review"
+
+            result = subprocess.run(
+                command(fixture, output),
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "deterministic_full_wgs manifest parent may not be a symlink",
+                result.stderr,
+            )
+            self.assertFalse(output.exists())
+
     def test_refuses_symlinked_output_without_final_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -285,6 +313,29 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("output parent may not be a symlink", result.stderr)
             self.assertFalse((real_parent / "missing").exists())
+
+    def test_refuses_output_below_existing_dir_under_symlinked_parent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            real_parent = root / "real-parent"
+            real_output_parent = real_parent / "existing"
+            real_output_parent.mkdir(parents=True)
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            output = linked_parent / "existing" / "ai-review"
+
+            result = subprocess.run(
+                command(fixture, output),
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("output parent may not be a symlink", result.stderr)
+            self.assertFalse((real_output_parent / "ai-review").exists())
 
     def test_propagates_builder_fail_closed_behavior(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
