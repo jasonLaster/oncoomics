@@ -123,7 +123,13 @@ s3://<regional-private-cache>/wgs-v2/
   outputs/<tool>/<image-digest>/<input-digest>/<parameter-digest>/...
 ```
 
-Replicate the encrypted bundle from `us-east-1` to a private versioned cache in `us-east-2`. Use a region-local KMS key and verify checksums after replication. The result prefix should store the regional object versions and hashes; it should not recopy BAMs into each run directory.
+Replicate the encrypted bundle from `us-east-1` to a private versioned cache in
+`us-east-2`. The `us-east-2` CPU replication process needs only versioned
+object reads on the `us-east-1` source buckets, decrypt on the source KMS key,
+and write/encrypt permissions on the regional private cache. Use the
+region-local destination KMS key and verify checksums after replication. The
+result prefix should store the regional object versions and hashes; it should
+not recopy BAMs into each run directory.
 
 ### 3. Selected GPU environment
 

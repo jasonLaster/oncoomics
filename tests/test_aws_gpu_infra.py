@@ -78,6 +78,24 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn('variable "parabricks_container"', text)
         self.assertIn('default     = ""', text)
 
+    def test_batch_job_role_can_replicate_versioned_phase3_fast_sources(self) -> None:
+        text = MAIN_TF.read_text(encoding="utf-8")
+        variables = VARIABLES_TF.read_text(encoding="utf-8")
+
+        self.assertIn('variable "phase3_fast_source_region"', variables)
+        self.assertIn('default     = "us-east-1"', variables)
+        self.assertIn('variable "phase3_fast_source_environment"', variables)
+        self.assertIn('default     = "prod-use1"', variables)
+        self.assertIn("phase3_fast_source_bucket_names", text)
+        self.assertIn('${var.project}-private-results-${data.aws_caller_identity.current.account_id}-${var.phase3_fast_source_region}', text)
+        self.assertIn('${var.project}-raw-inputs-${data.aws_caller_identity.current.account_id}-${var.phase3_fast_source_region}', text)
+        self.assertIn('sid    = "ReadPhase3FastVersionedSourceObjects"', text)
+        self.assertIn('"s3:GetObjectVersion"', text)
+        self.assertIn('sid    = "DecryptPhase3FastSourceKmsKey"', text)
+        self.assertIn('"arn:aws:kms:${var.phase3_fast_source_region}:${data.aws_caller_identity.current.account_id}:key/*"', text)
+        self.assertIn('variable = "kms:ResourceAliases"', text)
+        self.assertIn('"alias/${var.project}-${var.phase3_fast_source_environment}"', text)
+
     def test_outputs_and_nextflow_profile_expose_gpu_queue(self) -> None:
         outputs = OUTPUTS_TF.read_text(encoding="utf-8")
         nextflow = NEXTFLOW_CONFIG.read_text(encoding="utf-8")

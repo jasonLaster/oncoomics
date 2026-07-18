@@ -23,6 +23,16 @@ locals {
   }
 
   diana_raw_inbox_prefix = "diana/inbox"
+  phase3_fast_source_bucket_names = toset([
+    "${var.project}-private-results-${data.aws_caller_identity.current.account_id}-${var.phase3_fast_source_region}",
+    "${var.project}-raw-inputs-${data.aws_caller_identity.current.account_id}-${var.phase3_fast_source_region}",
+  ])
+  phase3_fast_source_bucket_arns = [
+    for bucket in local.phase3_fast_source_bucket_names : "arn:aws:s3:::${bucket}"
+  ]
+  phase3_fast_source_kms_aliases = [
+    "alias/${var.project}-${var.phase3_fast_source_environment}"
+  ]
 
   # Public access is opt-in per reviewed validation or alias-only analysis run.
   # Never grant bucket listing, version listing, historical-version reads, or a
@@ -691,12 +701,52 @@ data "aws_iam_policy_document" "batch_job" {
     effect = "Allow"
     actions = [
       "s3:GetObject",
+      "s3:GetObjectVersion",
       "s3:PutObject",
       "s3:DeleteObject",
       "s3:AbortMultipartUpload",
       "s3:ListMultipartUploadParts"
     ]
     resources = [for bucket in aws_s3_bucket.this : "${bucket.arn}/*"]
+  }
+
+  statement {
+    sid    = "ReadPhase3FastSourceBuckets"
+    effect = "Allow"
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation"
+    ]
+    resources = local.phase3_fast_source_bucket_arns
+  }
+
+  statement {
+    sid    = "ReadPhase3FastVersionedSourceObjects"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion"
+    ]
+    resources = [
+      for arn in local.phase3_fast_source_bucket_arns : "${arn}/*"
+    ]
+  }
+
+  statement {
+    sid    = "DecryptPhase3FastSourceKmsKey"
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt",
+      "kms:DescribeKey"
+    ]
+    resources = [
+      "arn:aws:kms:${var.phase3_fast_source_region}:${data.aws_caller_identity.current.account_id}:key/*"
+    ]
+    condition {
+      test     = "ForAnyValue:StringEquals"
+      variable = "kms:ResourceAliases"
+      values   = local.phase3_fast_source_kms_aliases
+    }
   }
 
   statement {

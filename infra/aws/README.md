@@ -151,6 +151,13 @@ uses the regional private-results bucket under `phase3-fast-cache/wgs-v2`; keep
 `parabricks_container` empty until the Parabricks image has been selected and
 pinned by immutable digest.
 
+The `us-east-2` Batch job role also receives versioned read permission on the
+`us-east-1` raw-inputs and private-results source buckets and KMS decrypt
+permission constrained to the `alias/diana-omics-prod-use1` source key. Those
+grants are what let `FAST_REPLICATE_INPUTS` promote the reviewed dry-run plan
+into the regional private cache without giving the GPU stack broad cross-region
+S3 or KMS access.
+
 After P5en quota is approved and the pinned image is supplied, run only the
 bounded placement/visibility smoke first. The alias starts with a local
 `verify:phase3-fast-gpu-smoke` preflight so a missing `nextflow.aws.use2.json`,

@@ -88,6 +88,18 @@ variable "parabricks_container" {
   default     = ""
 }
 
+variable "phase3_fast_source_region" {
+  description = "AWS region that holds immutable source objects for phase3_wgs_fast regional cache replication."
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "phase3_fast_source_environment" {
+  description = "Environment name whose KMS alias can decrypt KMS-encrypted source objects for phase3_wgs_fast cache replication."
+  type        = string
+  default     = "prod-use1"
+}
+
 variable "nextflow_params_filename" {
   description = "Local generated Nextflow params filename under infra/aws."
   type        = string
