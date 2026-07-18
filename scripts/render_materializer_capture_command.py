@@ -108,6 +108,19 @@ def write_once(path: Path, text: str) -> None:
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+    try:
+        fsync_directory(path.parent)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def is_platform_root_alias(path: Path) -> bool:

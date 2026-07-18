@@ -203,6 +203,16 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             MODULE.write_once(self.output, "two\n")
 
+    def test_write_once_fsyncs_parent_directory(self) -> None:
+        with mock.patch.object(
+            MODULE,
+            "fsync_directory",
+            wraps=MODULE.fsync_directory,
+        ) as fsync_directory:
+            MODULE.write_once(self.output, "one\n")
+
+        fsync_directory.assert_called_once_with(self.output.parent)
+
     def test_write_once_removes_partial_output_after_fsync_failure(self) -> None:
         with (
             mock.patch.object(
@@ -211,6 +221,19 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
                 side_effect=OSError("synthetic fsync failure"),
             ),
             self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+        ):
+            MODULE.write_once(self.output, "partial\n")
+
+        self.assertFalse(self.output.exists())
+
+    def test_write_once_removes_output_after_parent_fsync_failure(self) -> None:
+        with (
+            mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                side_effect=OSError("synthetic parent fsync failure"),
+            ),
+            self.assertRaisesRegex(OSError, "synthetic parent fsync failure"),
         ):
             MODULE.write_once(self.output, "partial\n")
 
