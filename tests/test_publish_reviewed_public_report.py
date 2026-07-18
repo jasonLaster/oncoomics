@@ -301,6 +301,33 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 key = FakeAws.value(call, "--key")
                 self.assertTrue(key.startswith(MODULE.PUBLIC_ROOT + "rosalind/"))
 
+    def test_second_scan_rejects_unauthorized_hrd_classification(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            (fixture.packet / "report.md").write_text(
+                "This profile is HRD-positive.\n",
+                encoding="utf-8",
+            )
+            manifest_path = fixture.packet / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = digest(
+                (fixture.packet / "report.md").read_bytes()
+            )
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            fixture.rebuild_receipt()
+            fake = FakeAws(fixture)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "unauthorized HRD classification",
+            ):
+                self.execute(fixture, fake, apply=True)
+
+            self.assertEqual(fake.put_calls, [])
+
     def test_version_history_consumes_key_and_version_markers(self) -> None:
         pages = [
             {

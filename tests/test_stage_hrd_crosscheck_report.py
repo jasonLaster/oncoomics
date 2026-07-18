@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -233,6 +234,51 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             refresh_download_verification(source, verification)
 
             with self.assertRaisesRegex(ValueError, "support hash differs"):
+                STAGE.stage(
+                    source,
+                    verification,
+                    root / "staged",
+                    "sigprofiler_sbs3",
+                )
+
+    def test_stage_rejects_support_file_behind_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            support = root / "outside/route_result.json"
+            support.parent.mkdir()
+            shutil.move(str(source / "route_result.json"), support)
+            (source / "support").symlink_to(support.parent, target_is_directory=True)
+
+            manifest_path = source / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            support_hash = STAGE.sha256(support)
+            manifest["support_sha256"] = {"support/route_result.json": support_hash}
+            manifest["source_sha256"] = {"support/route_result.json": support_hash}
+            write_json(manifest_path, manifest)
+            write_json(
+                verification,
+                {
+                    "schema_version": 1,
+                    "status": "passed",
+                    "object_count": 3,
+                    "objects": [
+                        {
+                            "relative_path": relative,
+                            "bytes": (source / relative).stat().st_size,
+                            "sha256": STAGE.sha256(source / relative),
+                        }
+                        for relative in (
+                            "report.md",
+                            "report_manifest.json",
+                            "support/route_result.json",
+                        )
+                    ],
+                },
+            )
+
+            with self.assertRaisesRegex(ValueError, "symlink"):
                 STAGE.stage(
                     source,
                     verification,

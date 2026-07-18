@@ -668,6 +668,49 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "one passed tumor and one passed normal"):
                     packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
 
+    def test_diana_wgs_packet_rejects_stale_artifact_index(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(
+                output_root / "deterministic",
+                artifact_root,
+            )
+            original_artifact_index = packet.artifact_index
+
+            def stale_artifact_index(*args, **kwargs):
+                rows = original_artifact_index(*args, **kwargs)
+                return [
+                    {
+                        **row,
+                        "sha256": "0" * 64
+                        if row["path"] == "diana_hrd_summary.json"
+                        else row["sha256"],
+                    }
+                    for row in rows
+                ]
+
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.object(packet, "artifact_index", side_effect=stale_artifact_index),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "artifact index differs from deterministic input summary",
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertEqual(list(output_dir.glob("*")), [])
+
     def test_diana_wgs_packet_rejects_existing_packet_files_create_only(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)

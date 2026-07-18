@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from forbidden_text import normalized_scan_text
+from forbidden_text import has_unauthorized_hrd_classification, normalized_scan_text
 from hrd_report_inventory import require_report_methods
 
 REGION = "us-east-1"
@@ -461,6 +461,25 @@ def scan_text(path: Path, tokens: tuple[str, ...]) -> None:
         raise ValueError(f"forbidden identifier token remains in {path.name}")
 
 
+def scan_no_call_language(path: Path) -> None:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError(f"report packet contains a non-UTF-8 file: {path.name}") from error
+
+    haystacks = [text]
+    if path.suffix == ".json":
+        try:
+            decoded = json.loads(text)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"report packet contains malformed JSON: {path.name}") from error
+        haystacks.append(
+            json.dumps(decoded, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        )
+    if any(has_unauthorized_hrd_classification(haystack) for haystack in haystacks):
+        raise ValueError(f"unauthorized HRD classification remains in {path.name}")
+
+
 def validate_report_packet(
     paths: dict[str, Path], method_id: str, expected: tuple[str, ...]
 ) -> dict[str, Any]:
@@ -499,6 +518,8 @@ def validate_report_packet(
     for name in sorted(set(sources) & expected_support):
         if sources[name] != sha256(paths[name]):
             raise ValueError(f"report manifest source hash differs for {name}")
+    for name in sorted(set(expected) - {"report_manifest.json"}):
+        scan_no_call_language(paths[name])
     return manifest
 
 

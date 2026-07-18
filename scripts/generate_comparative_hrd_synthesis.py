@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
+from forbidden_text import has_unauthorized_hrd_classification
 from hrd_report_inventory import (
     inventory_payload,
     inventory_sha256,
@@ -93,13 +94,6 @@ REQUIRED_ATTESTATION = {
 }
 REVIEW_FILES = {"validation.json", "review_manifest.json", "report.md", "claims.csv"}
 OUTPUT_FILES = {"report.md", "agreement_disagreement.csv", "report_manifest.json"}
-UNAUTHORIZED_CLASSIFICATION = re.compile(
-    r"\bHRD\s*[+-](?![A-Za-z0-9])|"
-    r"\bHRD[-_ ]*(?:status|classification|call)?\s*(?:is|:|=)?\s*(?:positive|negative)\b|"
-    r"\b(?:positive|negative)\s+(?:for\s+)?HRD\b|"
-    r"\b(?:HR|homologous[-_ ]recombination)(?:[-_ ]repair)?[-_ ]*(?:deficient|proficient)\b",
-    re.IGNORECASE,
-)
 
 
 def sha256(path: Path) -> str:
@@ -444,7 +438,7 @@ def verify_review(
     if validation.get("covered_evidence_ids") != sorted(evidence_by_id):
         raise ValueError("reviewer " + reviewer + " validation omits source evidence")
     narrative = report_path.read_text(encoding="utf-8") + "\n" + claims_path.read_text(encoding="utf-8")
-    if bundle["authorized_hrd_state"] == "no_call" and UNAUTHORIZED_CLASSIFICATION.search(narrative):
+    if bundle["authorized_hrd_state"] == "no_call" and has_unauthorized_hrd_classification(narrative):
         raise ValueError("reviewer " + reviewer + " contains an unauthorized categorical conclusion")
     return {
         "reviewer_id": reviewer,

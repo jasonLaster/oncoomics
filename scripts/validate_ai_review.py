@@ -13,7 +13,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Sequence
 
-from forbidden_text import forbidden_token_fingerprints, normalized_scan_text
+from forbidden_text import (
+    forbidden_token_fingerprints,
+    has_unauthorized_hrd_classification,
+    normalized_scan_text,
+)
 from hrd_report_inventory import (
     inventory_payload,
     inventory_sha256,
@@ -110,20 +114,6 @@ PROHIBITED_INPUT = re.compile(
     r"(?:\.(?:gz|bgz))?(?=$|[\s'\"?#,;:)>\]}])|"
     r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
     re.IGNORECASE | re.MULTILINE,
-)
-UNAUTHORIZED_CLASSIFICATION = re.compile(
-    r"\bHRD\s*[+-](?![A-Za-z0-9])|"
-    r"\bHRD[-_ ]*(?:status|classification|call)?\s*(?:is|:|=)?\s*"
-    r"(?:positive|negative)\b|"
-    r"\bHRD(?:[-_ ]*(?:status|classification|call))?\s+(?:is\s+)?"
-    r"(?:present|absent|detected|established|confirmed|high|low)\b|"
-    r"\b(?:sample|tumou?r|case|profile|it)\s+(?:is|has)\s+(?:an?\s+)?HRD\b|"
-    r"\b(?:positive|negative)\s+(?:for\s+)?HRD\b|"
-    r"\b(?:HR|homologous[-_ ]recombination)(?:[-_ ]repair)?[-_ ]*"
-    r"(?:deficient|proficient)\b|"
-    r"\bhomologous\s+recombination\s+(?:deficiency|proficiency)\s+"
-    r"(?:is\s+)?(?:present|absent|detected|established|confirmed)\b",
-    re.IGNORECASE,
 )
 
 
@@ -939,7 +929,7 @@ def validate_report_and_claims(
     )
     if other_context.search(review_narrative):
         raise ValueError("review refers to prohibited other-reviewer context")
-    if authorized == "no_call" and UNAUTHORIZED_CLASSIFICATION.search(review_narrative):
+    if authorized == "no_call" and has_unauthorized_hrd_classification(review_narrative):
         raise ValueError("review text contains unauthorized positive/negative HRD language")
 
     return claims, covered_evidence

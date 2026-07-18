@@ -992,6 +992,39 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     }
 
 
+def require_diana_wgs_artifact_index_binding(
+    artifacts: Sequence[Mapping[str, Any]],
+    deterministic_binding: Mapping[str, Any],
+) -> None:
+    indexed = {}
+    for row in artifacts:
+        path = str(row.get("path", ""))
+        if path in indexed:
+            raise ValueError(f"Diana WGS artifact index repeats {path}")
+        indexed[path] = row
+
+    if set(indexed) != set(DIANA_WGS_DETERMINISTIC_INPUTS):
+        raise ValueError("Diana WGS artifact index is not exact")
+
+    artifact_sha256 = deterministic_binding.get("artifact_sha256")
+    if not isinstance(artifact_sha256, Mapping):
+        raise ValueError("Diana WGS deterministic artifact SHA-256 map is missing")
+
+    for relative, input_id in DIANA_WGS_DETERMINISTIC_INPUTS.items():
+        row = indexed[relative]
+        if (
+            row.get("exists") != "yes"
+            or require_sha256(row.get("sha256"), f"Diana WGS indexed {relative}")
+            != require_sha256(
+                artifact_sha256.get(input_id),
+                f"Diana WGS deterministic {input_id}",
+            )
+        ):
+            raise ValueError(
+                f"Diana WGS artifact index differs from deterministic input {input_id}"
+            )
+
+
 def diana_wgs_readiness_rows(summary: Mapping[str, Any], blockers: list[str]) -> list[dict[str, Any]]:
     csv_rows: list[dict[str, Any]] = read_csv_or_empty("hrd_readiness.csv")
     embedded = summary.get("hrd_readiness", [])
@@ -1430,6 +1463,8 @@ def write_packet_to_dir(
     artifacts = artifact_index(
         spec.artifacts, logical_paths_only=spec.sample_set == "diana_wgs"
     )
+    if spec.sample_set == "diana_wgs" and deterministic_binding is not None:
+        require_diana_wgs_artifact_index_binding(artifacts, deterministic_binding)
     missing_artifacts = [row["path"] for row in artifacts if row["exists"] != "yes"]
     if missing_artifacts:
         blockers.extend(f"Missing artifact: {path}" for path in missing_artifacts)

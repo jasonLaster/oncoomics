@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import tempfile
 from pathlib import Path
 from typing import Any, Sequence
@@ -53,8 +54,33 @@ def require_safe_relative_path(relative: str, label: str) -> Path:
 
 
 def require_source_file(root: Path, relative: str) -> Path:
-    path = root / require_safe_relative_path(relative, "route support path")
-    if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
+    relative_path = require_safe_relative_path(relative, "route support path")
+    root = root.resolve(strict=True)
+    parent = root
+    for part in relative_path.parts[:-1]:
+        parent = parent / part
+        try:
+            value = os.lstat(parent)
+        except FileNotFoundError as error:
+            raise ValueError(
+                f"exact route replay lacks a real non-empty {relative}"
+            ) from error
+        if stat.S_ISLNK(value.st_mode):
+            raise ValueError(f"exact route replay contains a symlink in {relative}")
+        if not stat.S_ISDIR(value.st_mode):
+            raise ValueError(f"exact route replay lacks a real non-empty {relative}")
+
+    path = parent / relative_path.name
+    try:
+        value = os.lstat(path)
+    except FileNotFoundError as error:
+        raise ValueError(f"exact route replay lacks a real non-empty {relative}") from error
+    if (
+        stat.S_ISLNK(value.st_mode)
+        or not stat.S_ISREG(value.st_mode)
+        or path.stat().st_size <= 0
+        or not path.resolve(strict=True).is_relative_to(root)
+    ):
         raise ValueError(f"exact route replay lacks a real non-empty {relative}")
     return path
 

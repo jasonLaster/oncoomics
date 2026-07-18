@@ -272,6 +272,20 @@ class PublishPrivateReportTests(unittest.TestCase):
                 ):
                     MODULE.run(fixture.args())
 
+    def test_rejects_unauthorized_hrd_classification_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            report = fixture.packet / "report.md"
+            report.write_text("This profile is HRD-positive.\n", encoding="utf-8")
+            fixture.mutate_manifest(report_sha256=digest(report.read_bytes()))
+
+            with self.assertRaisesRegex(
+                ValueError, "unauthorized HRD classification"
+            ), mock.patch.object(
+                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            ):
+                MODULE.run(fixture.args())
+
     def test_rejects_encoded_forbidden_token_before_aws(self) -> None:
         for encoded in (
             "p&#101;rsonalis\n",

@@ -49,6 +49,22 @@ class ForbiddenTextTests(unittest.TestCase):
             ),
         )
 
+    def test_unauthorized_hrd_classification_scans_normalized_text(self) -> None:
+        for value in (
+            "This profile is HRD-positive.",
+            "This profile is H&#82;D-positive.",
+            "This profile is H%52D-positive.",
+            "The case is homologous recombination deficient.",
+        ):
+            with self.subTest(value=value):
+                self.assertTrue(MODULE.has_unauthorized_hrd_classification(value))
+
+        self.assertFalse(
+            MODULE.has_unauthorized_hrd_classification(
+                "Authorized HRD state: `no_call`."
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
