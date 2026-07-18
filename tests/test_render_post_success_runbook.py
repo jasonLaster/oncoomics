@@ -50,6 +50,7 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             "/repo/scripts/download_exact_report_tree.py",
             "/repo/scripts/stage_hrd_crosscheck_report.py",
             "/repo/scripts/generate_blocked_hrd_crosscheck_reports.py",
+            "/repo/scripts/validate_phase3_fast_report_packets.py",
             "/repo/scripts/render_source_report_freeze_runbook.py",
         ):
             self.assertIn(script, text)
@@ -109,7 +110,14 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         )
         self.assertIn("--expected-crosscheck-materializer-sha256", text)
         self.assertIn("ROSALIND_HRD_SAMPLE_SET=diana_wgs", text)
-        self.assertIn("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON=", text)
+        self.assertIn(
+            'ROSALIND_HRD_FORBIDDEN_TOKENS_JSON="$(cat '
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/materialized-final/"
+            "phase3_wgs_fast/forbidden_tokens/workspace/manifests/"
+            'phase3_wgs_fast/forbidden_tokens.json)"',
+            text,
+        )
+        self.assertNotIn("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON=[", text)
         self.assertIn("build:rosalind-hrd-packet", text)
         self.assertNotIn(f"{MODULE.REGION} {MODULE.REGION}", text)
         self.assertNotIn(
@@ -214,9 +222,33 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         )
         self.assertLess(
             text.index("generate_blocked_hrd_crosscheck_reports.py"),
+            text.index("validate_phase3_fast_report_packets.py"),
+        )
+        self.assertLess(
+            text.index("validate_phase3_fast_report_packets.py"),
             text.rindex("render_source_report_freeze_runbook.py"),
         )
         self.assertIn("--generated-at 2026-07-16T03:31:01+00:00", text)
+        self.assertIn(
+            "--forbidden-tokens-json "
+            '"$(cat /repo/.codex-tmp/hrd-reports/deterministic-full/'
+            "materialized-final/phase3_wgs_fast/forbidden_tokens/workspace/"
+            'manifests/phase3_wgs_fast/forbidden_tokens.json)"',
+            text,
+        )
+        self.assertIn(
+            "--phase3-fast-report-packet-validation "
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.report-packet-validation.json",
+            text,
+        )
+        self.assertIn(
+            "--phase3-fast-forbidden-tokens-file "
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "materialized-final/phase3_wgs_fast/forbidden_tokens/workspace/"
+            "manifests/phase3_wgs_fast/forbidden_tokens.json",
+            text,
+        )
         self.assertIn(
             "SOURCE_FREEZE_RUNBOOK=/repo/.codex-tmp/hrd-reports/"
             "deterministic-full/source-freeze-runbook."
@@ -346,6 +378,8 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             "terminal.sequenza_scarhrd.request.dry.json",
             "/repo/.codex-tmp/hrd-reports/deterministic-full/"
             "terminal.sigprofiler_sbs3.exact-report.json",
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.report-packet-validation.json",
             "/repo/.codex-tmp/hrd-reports/deterministic-full/"
             "materialized-final",
             "/repo/.codex-tmp/hrd-reports/deterministic-full/report",

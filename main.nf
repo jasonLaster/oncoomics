@@ -608,6 +608,34 @@ process FAST_GPU_SMOKE {
     set -euo pipefail
     mkdir -p workspace/results/phase3_wgs_fast_gpu_smoke
 
+    PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" - <<'PY'
+    import json
+    from pathlib import Path
+
+    receipt = Path("/scratch/.diana-p5en-nvme-ready.json")
+    output = Path("workspace/results/phase3_wgs_fast_gpu_smoke/scratch-readiness.json")
+    probe = Path("/scratch/diana/phase3_wgs_fast/gpu_smoke/scratch-probe.txt")
+    payload = json.loads(receipt.read_text(encoding="utf-8"))
+    errors = []
+    if payload.get("schema") != "diana_p5en_nvme_scratch.v1":
+        errors.append("schema must be diana_p5en_nvme_scratch.v1")
+    if payload.get("mountPoint") != "/scratch":
+        errors.append("mountPoint must be /scratch")
+    if payload.get("fileSystem") != "xfs":
+        errors.append("fileSystem must be xfs")
+    if payload.get("instanceStoreDeviceCount") != 8:
+        errors.append("instanceStoreDeviceCount must be 8")
+    probe.parent.mkdir(parents=True, exist_ok=True)
+    probe.write_text("phase3_wgs_fast_gpu_smoke\\n", encoding="utf-8")
+    if probe.read_text(encoding="utf-8") != "phase3_wgs_fast_gpu_smoke\\n":
+        errors.append("scratch probe roundtrip failed")
+    if errors:
+        raise SystemExit("; ".join(errors))
+    payload["probePath"] = str(probe)
+    payload["probeStatus"] = "passed"
+    output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+    PY
+
     nvidia-smi --query-gpu=index,name,uuid --format=csv,noheader \\
       | tee workspace/results/phase3_wgs_fast_gpu_smoke/nvidia-smi-gpus.csv
 
@@ -629,6 +657,30 @@ process FAST_GPU_SMOKE {
 
     pbrun version > workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt 2>&1
     test -s workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-version.txt
+
+    scratch_smoke_root="/scratch/diana/phase3_wgs_fast/gpu_smoke"
+    mkdir -p "\${scratch_smoke_root}/prepon"
+    {
+      printf '%s\\n' '##fileformat=VCFv4.2'
+      printf '%s\\n' '##contig=<ID=chrSmoke,length=1000>'
+      printf '#CHROM\\tPOS\\tID\\tREF\\tALT\\tQUAL\\tFILTER\\tINFO\\n'
+    } > "\${scratch_smoke_root}/prepon/smoke.pon.vcf"
+    bcftools view -Oz \\
+      -o "\${scratch_smoke_root}/prepon/smoke.pon.vcf.gz" \\
+      "\${scratch_smoke_root}/prepon/smoke.pon.vcf"
+    bcftools index -t "\${scratch_smoke_root}/prepon/smoke.pon.vcf.gz"
+    printf 'command: pbrun prepon\\n' > workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-prepon-smoke.txt
+    pbrun prepon \\
+      --in-pon-file "\${scratch_smoke_root}/prepon/smoke.pon.vcf.gz" \\
+      --tmp-dir "\${scratch_smoke_root}/prepon/tmp" \\
+      --logfile "\${scratch_smoke_root}/prepon/pbrun-prepon-smoke.log" \\
+      --num-gpus 1 \\
+      >> workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-prepon-smoke.txt 2>&1
+    test -s workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-prepon-smoke.txt
+    if [[ -f "\${scratch_smoke_root}/prepon/pbrun-prepon-smoke.log" ]]; then
+      cp "\${scratch_smoke_root}/prepon/pbrun-prepon-smoke.log" \\
+        workspace/results/phase3_wgs_fast_gpu_smoke/pbrun-prepon-smoke.log
+    fi
 
     java -version > workspace/results/phase3_wgs_fast_gpu_smoke/java-version.txt 2>&1
     test -s workspace/results/phase3_wgs_fast_gpu_smoke/java-version.txt
@@ -659,6 +711,9 @@ process FAST_GPU_SMOKE {
       "dianaOmicsCliTxt": "diana-omics-cli.txt",
       "javaVersionCommand": "java -version",
       "javaVersionTxt": "java-version.txt",
+      "scratchReadinessJson": "scratch-readiness.json",
+      "parabricksPreponSmokeCommand": "pbrun prepon",
+      "parabricksPreponSmokeTxt": "parabricks-prepon-smoke.txt",
       "parabricksVersionCommand": "pbrun version",
       "parabricksVersionTxt": "parabricks-version.txt"
     }
@@ -694,6 +749,20 @@ process FAST_GPU_SMOKE {
     cat > workspace/results/phase3_wgs_fast_gpu_smoke/diana-omics-cli.txt <<TXT
     verify:phase3-fast-gpu-smoke
     TXT
+    cat > workspace/results/phase3_wgs_fast_gpu_smoke/scratch-readiness.json <<JSON
+    {
+      "schema": "diana_p5en_nvme_scratch.v1",
+      "mountPoint": "/scratch",
+      "mountedSource": "/dev/md0",
+      "fileSystem": "xfs",
+      "instanceStoreDeviceCount": 8,
+      "probePath": "/scratch/diana/phase3_wgs_fast/gpu_smoke/scratch-probe.txt",
+      "probeStatus": "passed"
+    }
+    JSON
+    cat > workspace/results/phase3_wgs_fast_gpu_smoke/parabricks-prepon-smoke.txt <<TXT
+    command: pbrun prepon
+    TXT
     cat > workspace/results/phase3_wgs_fast_gpu_smoke/gpu_smoke.json <<JSON
     {
       "schema": "phase3_wgs_fast_gpu_smoke.v1",
@@ -711,6 +780,9 @@ process FAST_GPU_SMOKE {
       "dianaOmicsCliTxt": "diana-omics-cli.txt",
       "javaVersionCommand": "java -version",
       "javaVersionTxt": "java-version.txt",
+      "scratchReadinessJson": "scratch-readiness.json",
+      "parabricksPreponSmokeCommand": "pbrun prepon",
+      "parabricksPreponSmokeTxt": "parabricks-prepon-smoke.txt",
       "parabricksVersionCommand": "pbrun version",
       "parabricksVersionTxt": "parabricks-version.txt"
     }

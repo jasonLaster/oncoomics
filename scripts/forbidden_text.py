@@ -8,10 +8,11 @@ import json
 import re
 import unicodedata
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 from urllib.parse import unquote
 
 FORBIDDEN_TOKEN_FINGERPRINT_DOMAIN = "diana-ai-review-forbidden-v1\0"
+MIN_TOKEN_LENGTH = 3
 UNAUTHORIZED_HRD_CLASSIFICATION = re.compile(
     r"\bHRD\s*[+-](?![A-Za-z0-9])|"
     r"\bHRD[-_ ]*(?:status|classification|call)?\s*(?:is|:|=)?\s*"
@@ -44,6 +45,38 @@ def has_unauthorized_hrd_classification(value: str) -> bool:
     """Return whether text makes a categorical HRD-positive/negative claim."""
 
     return UNAUTHORIZED_HRD_CLASSIFICATION.search(normalized_scan_text(value)) is not None
+
+
+def contains_control_character(value: str) -> bool:
+    return any(ord(character) < 32 or ord(character) == 127 for character in value)
+
+
+def normalize_forbidden_tokens_json(raw: Any) -> list[str]:
+    """Load a Phase 3 fast forbidden-token JSON string into a stable list."""
+
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError("forbidden-token JSON must be a non-empty JSON string array")
+
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise ValueError("forbidden-token JSON must be valid JSON") from error
+
+    if not isinstance(payload, list) or not payload:
+        raise ValueError("forbidden-token JSON must be a non-empty JSON string array")
+
+    tokens: list[str] = []
+    for index, value in enumerate(payload):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"forbidden-token JSON[{index}] must be a non-empty string")
+        token = value.strip()
+        if len(token) < MIN_TOKEN_LENGTH:
+            raise ValueError(f"forbidden-token JSON[{index}] must be at least {MIN_TOKEN_LENGTH} characters")
+        if contains_control_character(token):
+            raise ValueError(f"forbidden-token JSON[{index}] must not contain control characters")
+        tokens.append(token)
+
+    return sorted(set(tokens), key=str.casefold)
 
 
 def forbidden_token_fingerprints(tokens: Iterable[str]) -> list[str]:

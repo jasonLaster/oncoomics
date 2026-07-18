@@ -65,6 +65,10 @@ BLOCKED_SOURCE_METHOD_IDS = (
     "rosalind_diana_wgs",
     *EXECUTABLE_CROSSCHECK_METHOD_IDS,
 )
+MATERIALIZED_FORBIDDEN_TOKENS = Path(
+    "phase3_wgs_fast/forbidden_tokens/workspace/manifests/"
+    "phase3_wgs_fast/forbidden_tokens.json"
+)
 STALE_TOKENS = (
     ".codex-tmp/hrd-reports/deterministic-full/capture_batch_provenance.py",
     ".codex-tmp/hrd-reports/deterministic-full/freeze_final_artifacts.py",
@@ -264,20 +268,62 @@ def stage_deterministic_command(
     ]
 
 
-def rosalind_command(root: Path, deterministic: Path) -> list[str | Path]:
+def materialized_forbidden_tokens_file(deterministic: Path) -> Path:
+    return deterministic / "materialized-final" / MATERIALIZED_FORBIDDEN_TOKENS
+
+
+def run_forbidden_tokens_env(path: Path) -> Raw:
+    return Raw(f'ROSALIND_HRD_FORBIDDEN_TOKENS_JSON="$(cat {shlex.quote(str(path))})"')
+
+
+def forbidden_tokens_json_arg(path: Path) -> Raw:
+    return Raw(f'"$(cat {shlex.quote(str(path))})"')
+
+
+def rosalind_command(
+    root: Path,
+    deterministic: Path,
+    forbidden_tokens_file: Path,
+) -> list[str | Path]:
     return [
         "env",
         "ROSALIND_HRD_SAMPLE_SET=diana_wgs",
         f"ROSALIND_HRD_RUN_ID={RUN_ID}",
         f"ROSALIND_HRD_ARTIFACT_ROOT={deterministic / 'materialized-final'}",
         f"ROSALIND_HRD_DETERMINISTIC_REPORT_DIR={deterministic / 'report'}",
-        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON="
-        + json.dumps(list(FORBIDDEN_TOKENS), separators=(",", ":")),
+        run_forbidden_tokens_env(forbidden_tokens_file),
         f"PYTHONPATH={root / 'src'}",
         "/usr/bin/python3",
         "-m",
         "diana_omics",
         "build:rosalind-hrd-packet",
+    ]
+
+
+def report_packet_validation_command(
+    scripts: Path,
+    root: Path,
+    deterministic: Path,
+    forbidden_tokens_file: Path,
+) -> list[str | Path]:
+    blocked = root / ".codex-tmp/hrd-reports/blocked-crosschecks"
+    return [
+        "python3",
+        scripts / "validate_phase3_fast_report_packets.py",
+        "--deterministic-report-dir",
+        deterministic / "report",
+        "--rosalind-report-dir",
+        root / "results/rosalind_hrd/diana_wgs" / RUN_ID,
+        "--facets-scarhrd-report-dir",
+        blocked / BLOCKED_CROSSCHECK_REPORT_DIRS["facets_scarhrd_blocked"],
+        "--oncoanalyser-chord-report-dir",
+        blocked / BLOCKED_CROSSCHECK_REPORT_DIRS["oncoanalyser_chord_blocked"],
+        "--hrdetect-report-dir",
+        blocked / BLOCKED_CROSSCHECK_REPORT_DIRS["hrdetect_blocked"],
+        "--forbidden-tokens-json",
+        forbidden_tokens_json_arg(forbidden_tokens_file),
+        "--output",
+        deterministic / "terminal.report-packet-validation.json",
     ]
 
 
@@ -474,6 +520,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
             scripts / "download_exact_report_tree.py",
             scripts / "stage_hrd_crosscheck_report.py",
             scripts / "generate_blocked_hrd_crosscheck_reports.py",
+            scripts / "validate_phase3_fast_report_packets.py",
             scripts / "render_source_report_freeze_runbook.py",
             *source_required_existing(root),
             *required_local_inputs(root),
@@ -513,6 +560,7 @@ def required_absent(root: Path) -> tuple[Path, ...]:
         "input-contract.readiness.json",
         "terminal.input-contract.publication.dry.json",
         "terminal.input-contract.publication.json",
+        "terminal.report-packet-validation.json",
     ]
 
     route_outputs: list[Path] = []
@@ -555,6 +603,7 @@ def render(root: Path, terminal_job_id: str) -> str:
     deterministic = reports / "deterministic-full"
     early_look = root / EARLY_LOOK_ARTIFACT_ROOT
     pending_contract = root / ".codex-tmp/hrd-crosschecks/input-contract.pending.json"
+    forbidden_tokens_file = materialized_forbidden_tokens_file(deterministic)
 
     lines = [
         "# Post-success Diana WGS HRD handoff",
@@ -846,7 +895,7 @@ def render(root: Path, terminal_job_id: str) -> str:
         "## 4. Stage deterministic and Rosalind packets",
         "",
         block(stage_deterministic_command(scripts, deterministic, early_look)),
-        block(rosalind_command(root, deterministic)),
+        block(rosalind_command(root, deterministic, forbidden_tokens_file)),
         "## 5. Execute and stage supported cross-check routes",
         "",
         bash_block(
@@ -922,6 +971,14 @@ def render(root: Path, terminal_job_id: str) -> str:
                     RUN_GENERATED_AT,
                 ]
             ),
+            block(
+                report_packet_validation_command(
+                    scripts,
+                    root,
+                    deterministic,
+                    forbidden_tokens_file,
+                )
+            ),
             "## 7. Render the seven-source private-freeze and AI-review handoff",
             "",
             bash_block(
@@ -939,6 +996,10 @@ def render(root: Path, terminal_job_id: str) -> str:
                             Raw('"$SOURCE_FREEZE_RUNBOOK"'),
                             "--root",
                             root,
+                            "--phase3-fast-report-packet-validation",
+                            deterministic / "terminal.report-packet-validation.json",
+                            "--phase3-fast-forbidden-tokens-file",
+                            forbidden_tokens_file,
                         ]
                     ),
                 ]

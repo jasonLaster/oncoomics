@@ -246,18 +246,44 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
                 output_root="scratch/diana/phase3_wgs_fast/parabricks",
             )
 
-    def test_rejects_non_positive_gpu_count(self) -> None:
-        with TemporaryDirectory() as tmp:
-            manifest = staged_inputs_manifest(Path(tmp))
+    def test_requires_exact_p5en_gpu_count(self) -> None:
+        for num_gpus in (0, 4):
+            with self.subTest(num_gpus=num_gpus), TemporaryDirectory() as tmp:
+                manifest = staged_inputs_manifest(Path(tmp))
 
-        with self.assertRaisesRegex(parabricks.ManifestError, "num_gpus"):
-            parabricks.build_phase3_fast_parabricks_mutect_plan(
-                manifest,
-                staged_inputs_manifest_sha256=SHA_1,
-                num_gpus=0,
-            )
+                with self.assertRaisesRegex(parabricks.ManifestError, "num_gpus"):
+                    parabricks.build_phase3_fast_parabricks_mutect_plan(
+                        manifest,
+                        staged_inputs_manifest_sha256=SHA_1,
+                        num_gpus=num_gpus,
+                    )
 
     def test_environment_command_writes_plan(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            input_path = root / "staged-inputs.json"
+            output_path = root / "parabricks-plan.json"
+            write_json(input_path, staged_inputs_manifest(root))
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST": str(input_path),
+                    "PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN_OUTPUT": str(output_path),
+                    "PHASE3_WGS_FAST_PARABRICKS_OUTPUT_ROOT": "/scratch/diana/test/parabricks",
+                    "PHASE3_WGS_FAST_PARABRICKS_NUM_GPUS": "8",
+                },
+                clear=False,
+            ):
+                plan, plan_path = parabricks.load_plan_from_environment()
+                parabricks.write_plan(plan_path, plan)
+
+            self.assertEqual(output_path, plan_path)
+            self.assertEqual("planned", plan["status"])
+            self.assertEqual(8, plan["runtime"]["num_gpus"])
+            self.assertIn('"manifest_type": "phase3_wgs_fast_parabricks_mutect_plan"', output_path.read_text(encoding="utf-8"))
+
+    def test_environment_command_rejects_non_p5en_gpu_count(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             input_path = root / "staged-inputs.json"
@@ -274,13 +300,8 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
                 },
                 clear=False,
             ):
-                plan, plan_path = parabricks.load_plan_from_environment()
-                parabricks.write_plan(plan_path, plan)
-
-            self.assertEqual(output_path, plan_path)
-            self.assertEqual("planned", plan["status"])
-            self.assertEqual(4, plan["runtime"]["num_gpus"])
-            self.assertIn('"manifest_type": "phase3_wgs_fast_parabricks_mutect_plan"', output_path.read_text(encoding="utf-8"))
+                with self.assertRaisesRegex(parabricks.ManifestError, "exactly 8"):
+                    parabricks.load_plan_from_environment()
 
 
 if __name__ == "__main__":

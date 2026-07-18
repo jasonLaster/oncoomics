@@ -90,6 +90,24 @@ def require_real_input_file(path: Path, label: str) -> None:
         raise ValueError(f"{label} is missing or a symlink: {path}")
 
 
+def require_safe_output_path(
+    path: Path,
+    label: str,
+    error_type: type[Exception],
+) -> None:
+    """Reject output files that would overwrite a directory or follow symlinks."""
+
+    if path.is_symlink():
+        raise error_type(f"{label} may not be a symlink: {path}")
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise error_type(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise error_type(f"{label} parent is not a directory: {parent}")
+    if path.exists() and not path.is_file():
+        raise error_type(f"{label} already exists and is not a file: {path}")
+
+
 def source_private_receipt_path(
     root: Path, receipt_stem: str, method_id: str
 ) -> Path:

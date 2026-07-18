@@ -10,6 +10,7 @@ from typing import Any, Mapping, Protocol, Sequence
 from ...paths import path_from_root
 from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
+from .render_phase3_fast_parabricks_mutect_plan import REQUIRED_NUM_GPUS
 from .safe_json_output import read_real_json, require_no_symlinked_ancestors, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
@@ -68,6 +69,13 @@ def _require_positive_int(value: Any, label: str) -> int:
     return value
 
 
+def _require_p5en_num_gpus(value: Any, label: str) -> int:
+    gpu_count = _require_positive_int(value, label)
+    if gpu_count != REQUIRED_NUM_GPUS:
+        raise ManifestError(f"{label} must be exactly {REQUIRED_NUM_GPUS} for the selected P5en/H200 route")
+    return gpu_count
+
+
 def _require_input_path(inputs: Mapping[str, Any], key: str) -> str:
     return str(
         _require_absolute_path(
@@ -94,7 +102,7 @@ def _runtime_flags(plan: Mapping[str, Any], name: str) -> dict[str, str]:
     return {
         "--tmp-dir": str(_require_absolute_path(outputs.get("tmp_dir"), "outputs.tmp_dir") / name),
         "--logfile": str(_require_absolute_path(outputs.get("logs_dir"), "outputs.logs_dir") / f"{name}.log"),
-        "--num-gpus": str(_require_positive_int(runtime.get("num_gpus"), "runtime.num_gpus")),
+        "--num-gpus": str(_require_p5en_num_gpus(runtime.get("num_gpus"), "runtime.num_gpus")),
     }
 
 

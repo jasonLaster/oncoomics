@@ -120,6 +120,11 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn('--raid-devices="$${#instance_store_devices[@]}"', block)
         self.assertIn("mkfs.xfs -f /dev/md0", block)
         self.assertIn("mount -o noatime,nodiratime /dev/md0 /scratch", block)
+        self.assertIn(".diana-p5en-nvme-ready.json", block)
+        self.assertIn("printf '%s\\n' \\", block)
+        self.assertIn('"schema": "diana_p5en_nvme_scratch.v1"', block)
+        self.assertIn('\\"instanceStoreDeviceCount\\": $${#instance_store_devices[@]}', block)
+        self.assertNotIn("<<JSON", block)
 
     def test_nextflow_params_export_gpu_queue_and_unselected_parabricks_image(self) -> None:
         text = MAIN_TF.read_text(encoding="utf-8")

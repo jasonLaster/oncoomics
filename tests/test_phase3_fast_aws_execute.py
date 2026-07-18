@@ -68,6 +68,9 @@ def passed_smoke_result() -> dict:
         "dianaOmicsCliTxt": "diana-omics-cli.txt",
         "javaVersionCommand": "java -version",
         "javaVersionTxt": "java-version.txt",
+        "scratchReadinessJson": "scratch-readiness.json",
+        "parabricksPreponSmokeCommand": "pbrun prepon",
+        "parabricksPreponSmokeTxt": "parabricks-prepon-smoke.txt",
         "parabricksVersionCommand": "pbrun version",
         "parabricksVersionTxt": "parabricks-version.txt",
     }
@@ -82,7 +85,9 @@ def write_smoke_result(
     bcftools_version: str | None = "bcftools 1.17\n",
     diana_omics_cli: str | None = "verify:phase3-fast-gpu-smoke\n",
     java_version: str | None = 'openjdk version "17.0.15"\n',
+    parabricks_prepon_smoke: str | None = "command: pbrun prepon\n",
     parabricks_version: str | None = "Parabricks v4.5.1-1\n",
+    scratch_readiness: dict | None = None,
 ) -> Path:
     path = root / "gpu_smoke.json"
     write_json(path, payload or passed_smoke_result())
@@ -110,6 +115,23 @@ def write_smoke_result(
         (root / "diana-omics-cli.txt").write_text(diana_omics_cli, encoding="utf-8")
     else:
         (root / "diana-omics-cli.txt").unlink(missing_ok=True)
+    if parabricks_prepon_smoke is not None:
+        (root / "parabricks-prepon-smoke.txt").write_text(parabricks_prepon_smoke, encoding="utf-8")
+    else:
+        (root / "parabricks-prepon-smoke.txt").unlink(missing_ok=True)
+    write_json(
+        root / "scratch-readiness.json",
+        scratch_readiness
+        or {
+            "schema": "diana_p5en_nvme_scratch.v1",
+            "mountPoint": "/scratch",
+            "mountedSource": "/dev/md0",
+            "fileSystem": "xfs",
+            "instanceStoreDeviceCount": 8,
+            "probePath": "/scratch/diana/phase3_wgs_fast/gpu_smoke/scratch-probe.txt",
+            "probeStatus": "passed",
+        },
+    )
     return path
 
 
@@ -138,9 +160,13 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
                 "java_version_txt": "java-version.txt",
                 "observed_gpu_count": 8,
                 "parabricks_container": PARABRICKS_CONTAINER,
+                "parabricks_prepon_smoke_command": "pbrun prepon",
+                "parabricks_prepon_smoke_txt": "parabricks-prepon-smoke.txt",
                 "parabricks_version_command": "pbrun version",
                 "parabricks_version_txt": "parabricks-version.txt",
                 "required_gpu_name": "H200",
+                "scratch_instance_store_device_count": 8,
+                "scratch_readiness_json": "scratch-readiness.json",
                 "status": "passed",
             },
             summary,
@@ -235,6 +261,62 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             wrong_command["parabricksVersionCommand"] = "pbrun mutectcaller"
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "pbrun version"):
                 verify.validate_gpu_smoke_result(wrong_command, csv_root=root, expected_params=expected_gpu_params())
+
+            write_smoke_result(root, parabricks_prepon_smoke=None)
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "Parabricks prepon smoke"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
+            prepon_path_traversal = passed_smoke_result()
+            prepon_path_traversal["parabricksPreponSmokeTxt"] = "../parabricks-prepon-smoke.txt"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "parabricksPreponSmokeTxt"):
+                verify.validate_gpu_smoke_result(prepon_path_traversal, csv_root=root, expected_params=expected_gpu_params())
+
+            wrong_prepon_command = passed_smoke_result()
+            wrong_prepon_command["parabricksPreponSmokeCommand"] = "pbrun version"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "pbrun prepon"):
+                verify.validate_gpu_smoke_result(wrong_prepon_command, csv_root=root, expected_params=expected_gpu_params())
+
+    def test_rejects_smoke_result_without_p5en_scratch_evidence(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_smoke_result(root)
+
+            invalid = passed_smoke_result()
+            invalid["scratchReadinessJson"] = "../scratch-readiness.json"
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "scratchReadinessJson"):
+                verify.validate_gpu_smoke_result(invalid, csv_root=root, expected_params=expected_gpu_params())
+
+            write_smoke_result(root, scratch_readiness={"schema": "diana_p5en_nvme_scratch.v1"})
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "/scratch"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
+            write_smoke_result(
+                root,
+                scratch_readiness={
+                    "schema": "diana_p5en_nvme_scratch.v1",
+                    "mountPoint": "/scratch",
+                    "mountedSource": "/dev/xvda",
+                    "fileSystem": "xfs",
+                    "instanceStoreDeviceCount": 8,
+                    "probeStatus": "passed",
+                },
+            )
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "NVMe instance storage"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
+            write_smoke_result(
+                root,
+                scratch_readiness={
+                    "schema": "diana_p5en_nvme_scratch.v1",
+                    "mountPoint": "/scratch",
+                    "mountedSource": "/dev/md0",
+                    "fileSystem": "xfs",
+                    "instanceStoreDeviceCount": 4,
+                    "probeStatus": "passed",
+                },
+            )
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "exactly 8"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
     def test_rejects_smoke_result_without_filter_mutect_runtime_evidence(self) -> None:
         with TemporaryDirectory() as tmp:

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import os
 import re
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -164,6 +166,27 @@ class RunbookPreflightDependencyTests(unittest.TestCase):
 
         self.assertIn(Path("aws/submit_route.py"), local_paths)
         self.assertIn(Path("scripts/check_contract.py"), local_paths)
+
+    def test_handoff_entrypoints_parse_without_pythonpath(self) -> None:
+        env = os.environ.copy()
+        env.pop("PYTHONPATH", None)
+
+        for script in (
+            "render_post_success_runbook.py",
+            "render_source_report_freeze_runbook.py",
+            "validate_phase3_fast_report_packets.py",
+        ):
+            with self.subTest(script=script):
+                result = subprocess.run(
+                    [sys.executable, str(SCRIPT_DIR / script), "--help"],
+                    cwd=REPO_ROOT,
+                    env=env,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+
+                self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":

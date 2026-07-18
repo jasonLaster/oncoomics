@@ -59,6 +59,23 @@ PHASE3_FAST_AWS_EXECUTE_DESCRIPTION = (
     "Parabricks image, the PARABRICKS_MIRROR_RECEIPT receipt, the PHASE3_FAST_GPU_SMOKE_RESULT "
     "gpu_smoke.json, and the forbidden-token scan inventory have been reviewed."
 )
+PHASE3_FAST_AWS_EXECUTE_ALLOWED_EXTRA_ARGS = frozenset(
+    {
+        "--phase3_fast_bam_validation_receipt",
+        "--phase3_fast_caller_resource_receipt",
+        "--phase3_fast_contig_compatibility_receipt",
+        "--phase3_fast_forbidden_tokens_json",
+        "--phase3_fast_generated_at",
+        "--phase3_fast_parameter_sha256",
+        "--phase3_fast_parabricks_version",
+        "--phase3_fast_private_freeze_receipt",
+        "--phase3_fast_private_sha256_receipt",
+        "--phase3_fast_reference_freeze_receipt",
+        "--phase3_fast_reference_sha256_receipt",
+        "--phase3_fast_sequenza_female",
+        "--phase3_fast_source_commit",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -73,6 +90,7 @@ class TaskStep:
 class Task:
     steps: tuple[TaskStep, ...]
     accepts_args: bool = False
+    allowed_extra_args: Optional[frozenset[str]] = None
     description: str = ""
     required_env: Optional[Mapping[str, str]] = None
 
@@ -134,10 +152,17 @@ def _tf_image_env(extra: Optional[Mapping[str, str]] = None) -> dict[str, str]:
 def _task(
     *steps: TaskStep,
     accepts_args: bool = False,
+    allowed_extra_args: Optional[frozenset[str]] = None,
     description: str = "",
     required_env: Optional[Mapping[str, str]] = None,
 ) -> Task:
-    return Task(tuple(steps), accepts_args=accepts_args, description=description, required_env=required_env)
+    return Task(
+        tuple(steps),
+        accepts_args=accepts_args,
+        allowed_extra_args=allowed_extra_args,
+        description=description,
+        required_env=required_env,
+    )
 
 
 def _legacy_phase3_aws_full_task(*steps: TaskStep) -> Task:
@@ -163,6 +188,7 @@ def _phase3_fast_aws_execute_task(*steps: TaskStep) -> Task:
     return _task(
         *steps,
         accepts_args=True,
+        allowed_extra_args=PHASE3_FAST_AWS_EXECUTE_ALLOWED_EXTRA_ARGS,
         description=PHASE3_FAST_AWS_EXECUTE_DESCRIPTION,
         required_env=PHASE3_FAST_AWS_EXECUTE_ENV,
     )
@@ -780,6 +806,8 @@ def run_task(name: str, extra_args: Sequence[str] = ()) -> None:
     passthrough = tuple(arg for arg in extra_args if arg != "--")
     if passthrough and not task.accepts_args:
         raise SystemExit(f"{name} does not accept extra arguments: {' '.join(passthrough)}")
+    if passthrough and task.allowed_extra_args is not None:
+        _validate_extra_args(name, passthrough, task.allowed_extra_args)
     if task.required_env:
         missing = [
             f"{key}={expected_value}"
@@ -801,3 +829,21 @@ def run_task(name: str, extra_args: Sequence[str] = ()) -> None:
             log_path.parent.mkdir(parents=True, exist_ok=True)
         print("+ " + " ".join(argv), flush=True)
         subprocess.run(argv, cwd=step.cwd, env=env, check=True)
+
+
+def _validate_extra_args(name: str, args: Sequence[str], allowed: frozenset[str]) -> None:
+    seen: set[str] = set()
+    index = 0
+    while index < len(args):
+        flag = args[index]
+        if not flag.startswith("--"):
+            raise SystemExit(f"{name} only accepts --flag value extra arguments; found {flag}")
+        if flag not in allowed:
+            allowed_text = ", ".join(sorted(allowed))
+            raise SystemExit(f"{name} does not accept extra argument {flag}. Allowed extra arguments: {allowed_text}")
+        if flag in seen:
+            raise SystemExit(f"{name} received duplicate extra argument {flag}")
+        if index + 1 >= len(args) or args[index + 1].startswith("--"):
+            raise SystemExit(f"{name} requires a value after extra argument {flag}")
+        seen.add(flag)
+        index += 2

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
@@ -15,6 +16,11 @@ MIRROR_RECEIPT_ENV = "PARABRICKS_MIRROR_RECEIPT"
 REQUIRED_GPU_COUNT = 8
 REQUIRED_GPU_NAME = "H200"
 REQUIRED_PARABRICKS_VERSION_COMMAND = "pbrun version"
+REQUIRED_PARABRICKS_PREPON_SMOKE_COMMAND = "pbrun prepon"
+REQUIRED_SCRATCH_SCHEMA = "diana_p5en_nvme_scratch.v1"
+REQUIRED_SCRATCH_MOUNT = "/scratch"
+REQUIRED_SCRATCH_FS = "xfs"
+REQUIRED_SCRATCH_DEVICE_COUNT = 8
 REQUIRED_JAVA_VERSION_COMMAND = "java -version"
 REQUIRED_BCFTOOLS_VERSION_COMMAND = "bcftools --version"
 
@@ -93,6 +99,20 @@ def _require_java_version_basename(value: Any) -> str:
     return name
 
 
+def _require_scratch_readiness_basename(value: Any) -> str:
+    name = _require_string(value, "scratchReadinessJson")
+    if Path(name).name != name:
+        raise Phase3FastExecuteError("scratchReadinessJson must be a sibling basename")
+    return name
+
+
+def _require_parabricks_prepon_smoke_basename(value: Any) -> str:
+    name = _require_string(value, "parabricksPreponSmokeTxt")
+    if Path(name).name != name:
+        raise Phase3FastExecuteError("parabricksPreponSmokeTxt must be a sibling basename")
+    return name
+
+
 def _require_matching_string(value: Any, label: str, expected: Any) -> str:
     observed = _require_string(value, label)
     expected_value = _require_string(expected, f"expected {label}")
@@ -118,6 +138,33 @@ def _parse_nvidia_smi_csv(path: Path) -> list[dict[str, str]]:
             }
         )
     return rows
+
+
+def _parse_scratch_readiness(path: Path) -> dict[str, Any]:
+    _require_existing_file(path, "P5en scratch readiness JSON")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise Phase3FastExecuteError("P5en scratch readiness JSON must be valid JSON") from error
+    if not isinstance(payload, dict):
+        raise Phase3FastExecuteError("P5en scratch readiness JSON must be an object")
+    if payload.get("schema") != REQUIRED_SCRATCH_SCHEMA:
+        raise Phase3FastExecuteError(f"P5en scratch readiness schema must be {REQUIRED_SCRATCH_SCHEMA}")
+    if payload.get("mountPoint") != REQUIRED_SCRATCH_MOUNT:
+        raise Phase3FastExecuteError(f"P5en scratch readiness mountPoint must be {REQUIRED_SCRATCH_MOUNT}")
+    if payload.get("fileSystem") != REQUIRED_SCRATCH_FS:
+        raise Phase3FastExecuteError(f"P5en scratch readiness fileSystem must be {REQUIRED_SCRATCH_FS}")
+    if payload.get("mountedSource") not in {"/dev/md0", "dev/md0"} and not str(
+        payload.get("mountedSource", "")
+    ).startswith("/dev/disk/by-id/nvme-Amazon_EC2_NVMe_Instance_Storage"):
+        raise Phase3FastExecuteError("P5en scratch readiness must be mounted from NVMe instance storage")
+    if payload.get("instanceStoreDeviceCount") != REQUIRED_SCRATCH_DEVICE_COUNT:
+        raise Phase3FastExecuteError(
+            f"P5en scratch readiness must prove exactly {REQUIRED_SCRATCH_DEVICE_COUNT} instance-store devices"
+        )
+    if payload.get("probeStatus") != "passed":
+        raise Phase3FastExecuteError("P5en scratch readiness must include a passed write probe")
+    return payload
 
 
 def validate_gpu_smoke_result(
@@ -183,6 +230,23 @@ def validate_gpu_smoke_result(
     if "parabricks" not in parabricks_version and "pbrun" not in parabricks_version:
         raise Phase3FastExecuteError("Parabricks version output must identify Parabricks or pbrun")
 
+    if payload.get("parabricksPreponSmokeCommand") != REQUIRED_PARABRICKS_PREPON_SMOKE_COMMAND:
+        raise Phase3FastExecuteError(
+            f"GPU smoke result must include {REQUIRED_PARABRICKS_PREPON_SMOKE_COMMAND}"
+        )
+    parabricks_prepon_smoke_path = csv_root / _require_parabricks_prepon_smoke_basename(
+        payload.get("parabricksPreponSmokeTxt")
+    )
+    parabricks_prepon_smoke = _require_nonempty_text_file(
+        parabricks_prepon_smoke_path,
+        "Parabricks prepon smoke output",
+    ).casefold()
+    if REQUIRED_PARABRICKS_PREPON_SMOKE_COMMAND not in parabricks_prepon_smoke:
+        raise Phase3FastExecuteError("Parabricks prepon smoke output must identify pbrun prepon")
+
+    scratch_readiness_path = csv_root / _require_scratch_readiness_basename(payload.get("scratchReadinessJson"))
+    scratch_readiness = _parse_scratch_readiness(scratch_readiness_path)
+
     java_version_path = csv_root / _require_java_version_basename(payload.get("javaVersionTxt"))
     java_version = _require_nonempty_text_file(java_version_path, "Java version output")
     match = re.search(r'version "(\d+)', java_version)
@@ -222,9 +286,13 @@ def validate_gpu_smoke_result(
         "java_version_txt": java_version_path.name,
         "observed_gpu_count": observed_count,
         "parabricks_container": parabricks_container,
+        "parabricks_prepon_smoke_command": REQUIRED_PARABRICKS_PREPON_SMOKE_COMMAND,
+        "parabricks_prepon_smoke_txt": parabricks_prepon_smoke_path.name,
         "parabricks_version_command": REQUIRED_PARABRICKS_VERSION_COMMAND,
         "parabricks_version_txt": parabricks_version_path.name,
         "required_gpu_name": required_name,
+        "scratch_instance_store_device_count": scratch_readiness["instanceStoreDeviceCount"],
+        "scratch_readiness_json": scratch_readiness_path.name,
         "status": "passed",
     }
 

@@ -237,13 +237,14 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
 ```
 
 The smoke workflow verifies that the Batch job lands on the isolated GPU queue
-with the pinned Diana Parabricks image and that `nvidia-smi` reports the
-expected eight H200 GPUs. It also captures `pbrun version`, `java -version`,
-`bcftools --version`, `aws --version`, and `python3 -m diana_omics --help` from
-inside the selected container. Those Java and bcftools checks are required
-because the same GPU process runs FilterMutectCalls and VCF indexing after
-Parabricks emits its caller checkpoint. The smoke is a placement/startup gate
-only; it does not run Parabricks MutectCaller or Diana WGS evidence.
+with the pinned Diana Parabricks image, that the host `/scratch` mount was built
+from all eight P5en NVMe instance-store devices, and that `nvidia-smi` reports
+the expected eight H200 GPUs. It also captures `pbrun version`, a tiny
+`pbrun prepon` execution, `java -version`, `bcftools --version`,
+`aws --version`, and `python3 -m diana_omics --help` from inside the selected
+container. Those Java and bcftools checks are required because the same GPU
+process runs FilterMutectCalls and VCF indexing after Parabricks emits its
+caller checkpoint. The smoke is a placement/startup gate only; it does not run Parabricks MutectCaller or Diana WGS evidence.
 
 Use `nf:aws:phase3-wgs-fast:execute` only after Gate 0 inputs, the pinned image,
 and the smoke output have been reviewed. That alias runs the full

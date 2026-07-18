@@ -185,10 +185,8 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("live Batch queue", text)
         self.assertIn("live P5en compute-environment", text)
         self.assertIn("misrouted", text)
-        self.assertIn(
-            "--phase3_fast_cache_prefix s3://<regional-private-results-bucket>/phase3-fast-cache/wgs-v2",
-            text,
-        )
+        self.assertNotIn("--phase3_fast_cache_prefix s3://", text)
+        self.assertNotIn("--phase3_fast_cache_kms_key_arn <", text)
         self.assertNotIn("--phase3_fast_cache_prefix s3://<regional-private-cache>/wgs-v2", text)
         self.assertNotIn("five-file deterministic method report", text)
         self.assertNotIn("FAST_FQ2BAM_TUMOR", text)

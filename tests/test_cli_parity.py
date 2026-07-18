@@ -9,6 +9,7 @@ from diana_omics.workflow_tasks import (
     AWS_USE2_ECR_PUSH_ENV,
     AWS_USE2_TERRAFORM_WORKSPACE,
     LEGACY_PHASE3_AWS_FULL_ENV,
+    PHASE3_FAST_AWS_EXECUTE_ALLOWED_EXTRA_ARGS,
     PHASE3_FAST_AWS_EXECUTE_DESCRIPTION,
     PHASE3_FAST_AWS_EXECUTE_ENV,
     TASKS,
@@ -238,6 +239,15 @@ class CliParityTest(unittest.TestCase):
         self.assertFalse(task.steps[0].append_args)
         self.assertTrue(task.steps[1].append_args)
         self.assertEqual(PHASE3_FAST_AWS_EXECUTE_ENV, task.required_env)
+        self.assertEqual(PHASE3_FAST_AWS_EXECUTE_ALLOWED_EXTRA_ARGS, task.allowed_extra_args)
+        self.assertIn("--phase3_fast_private_freeze_receipt", task.allowed_extra_args)
+        self.assertIn("--phase3_fast_forbidden_tokens_json", task.allowed_extra_args)
+        self.assertNotIn("--phase3_fast_small_variant_mode", task.allowed_extra_args)
+        self.assertNotIn("--phase3_fast_cache_prefix", task.allowed_extra_args)
+        self.assertNotIn("--phase3_fast_cache_kms_key_arn", task.allowed_extra_args)
+        self.assertNotIn("--parabricks_container", task.allowed_extra_args)
+        self.assertNotIn("--aws_gpu_queue", task.allowed_extra_args)
+        self.assertNotIn("--aws_max_retries", task.allowed_extra_args)
 
         argv = task.steps[1].argv
         self.assertIn("awsbatch_gpu", argv)
@@ -305,6 +315,49 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("private-freeze.json", argv[argv.index("--phase3_fast_private_freeze_receipt") + 1])
         self.assertEqual('["E019"]', argv[argv.index("--phase3_fast_forbidden_tokens_json") + 1])
         self.assertEqual("YES", env["ALLOW_PHASE3_FAST_AWS_EXECUTE"])
+
+    @patch("diana_omics.workflow_tasks.subprocess.run")
+    def test_phase3_fast_aws_execute_rejects_drifted_nextflow_overrides(self, run):
+        guarded_args = (
+            "--aws_gpu_queue",
+            "--aws_max_retries",
+            "--parabricks_container",
+            "--phase3_fast_cache_kms_key_arn",
+            "--phase3_fast_cache_prefix",
+            "--phase3_fast_parabricks_num_gpus",
+            "--phase3_fast_replication_mode",
+            "--phase3_fast_small_variant_mode",
+            "--workflow",
+        )
+
+        for arg in guarded_args:
+            with self.subTest(arg=arg), patch.dict("os.environ", {"ALLOW_PHASE3_FAST_AWS_EXECUTE": "YES"}, clear=True):
+                with self.assertRaises(SystemExit) as error:
+                    run_task("nf:aws:phase3-wgs-fast:execute", ("--", arg, "drifted"))
+
+            self.assertIn(f"does not accept extra argument {arg}", str(error.exception))
+
+        run.assert_not_called()
+
+    @patch("diana_omics.workflow_tasks.subprocess.run")
+    def test_phase3_fast_aws_execute_rejects_malformed_passthrough(self, run):
+        cases = (
+            ("--phase3_fast_private_freeze_receipt",),
+            ("--phase3_fast_private_freeze_receipt", "--phase3_fast_forbidden_tokens_json", "[]"),
+            ("unexpected", "value"),
+            ("--phase3_fast_private_freeze_receipt", "one.json", "--phase3_fast_private_freeze_receipt", "two.json"),
+        )
+
+        for extra_args in cases:
+            with self.subTest(extra_args=extra_args), patch.dict(
+                "os.environ",
+                {"ALLOW_PHASE3_FAST_AWS_EXECUTE": "YES"},
+                clear=True,
+            ):
+                with self.assertRaises(SystemExit):
+                    run_task("nf:aws:phase3-wgs-fast:execute", ("--", *extra_args))
+
+        run.assert_not_called()
 
     def test_p5en_gpu_smoke_task_uses_isolated_gpu_profile(self):
         task = TASKS["nf:aws:phase3-wgs-fast:gpu-smoke"]

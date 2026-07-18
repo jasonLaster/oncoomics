@@ -896,9 +896,11 @@ resource "aws_launch_template" "batch" {
       dnf install -y mdadm xfsprogs
       umount /scratch || true
 
+      local mounted_source
       if (( $${#instance_store_devices[@]} == 1 )); then
         mkfs.xfs -f "$${instance_store_devices[0]}"
         mount -o noatime,nodiratime "$${instance_store_devices[0]}" /scratch
+        mounted_source="$${instance_store_devices[0]}"
       else
         mdadm --create /dev/md0 \
           --level=0 \
@@ -907,9 +909,20 @@ resource "aws_launch_template" "batch" {
           "$${instance_store_devices[@]}"
         mkfs.xfs -f /dev/md0
         mount -o noatime,nodiratime /dev/md0 /scratch
+        mounted_source="/dev/md0"
       fi
 
       chmod 1777 /scratch
+      printf '%s\n' \
+        '{' \
+        '  "schema": "diana_p5en_nvme_scratch.v1",' \
+        '  "mountPoint": "/scratch",' \
+        "  \"mountedSource\": \"$${mounted_source}\"," \
+        '  "fileSystem": "xfs",' \
+        "  \"instanceStoreDeviceCount\": $${#instance_store_devices[@]}" \
+        '}' > /scratch/.diana-p5en-nvme-ready.json.tmp
+      mv /scratch/.diana-p5en-nvme-ready.json.tmp /scratch/.diana-p5en-nvme-ready.json
+      chmod 0644 /scratch/.diana-p5en-nvme-ready.json
     }
 
     prepare_scratch

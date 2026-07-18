@@ -496,13 +496,17 @@ enabled, valid, scale-to-zero On-Demand EC2 capacity, backed only by
 Amazon Linux 2023 ECS image. It then queries the live EC2
 `Running On-Demand P instances` quota and requires at least 192 applied P vCPUs
 before Nextflow can submit the H200 placement job.
-The smoke itself records `nvidia-smi`, `pbrun version`, `java -version`,
-`bcftools --version`, `aws --version`, and `python3 -m diana_omics --help`
-output from inside the pinned Diana Parabricks runtime image. That proves the
-selected image starts on the selected GPU host and carries the exact
-Parabricks, Java/GATK, bcftools, AWS CLI, and Diana CLI tools needed by the
-worker-local MutectCaller plus FilterMutectCalls route before the full route can
-reference the smoke artifact.
+The smoke itself verifies the host `/scratch` mount was built from all eight
+P5en NVMe instance-store devices, performs a write/read probe on that scratch
+mount, then records `nvidia-smi`, `pbrun version`, a tiny `pbrun prepon`
+execution, `java -version`, `bcftools --version`, `aws --version`, and
+`python3 -m diana_omics --help` output from inside the pinned Diana Parabricks
+runtime image. That proves the selected image starts on the selected GPU host,
+can use the local scratch device that the full caller will use, can run a
+bounded Parabricks subcommand, and carries the exact Parabricks, Java/GATK,
+bcftools, AWS CLI, and Diana CLI tools needed by the worker-local MutectCaller
+plus FilterMutectCalls route before the full route can reference the smoke
+artifact.
 
 After Gate 0 receipts have been reviewed and the GPU smoke has passed, launch
 the full BAM-to-evidence route through the guarded execute alias. Pass the
@@ -534,8 +538,6 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:execute --
   --phase3_fast_parameter_sha256 <sha256> \
   --phase3_fast_parabricks_version <version> \
   --phase3_fast_sequenza_female true \
-  --phase3_fast_cache_prefix s3://<regional-private-results-bucket>/phase3-fast-cache/wgs-v2 \
-  --phase3_fast_cache_kms_key_arn <us-east-2-kms-key-arn> \
   --phase3_fast_generated_at <run-start-iso8601> \
   --phase3_fast_forbidden_tokens_json '["<private-token>"]'
 ```

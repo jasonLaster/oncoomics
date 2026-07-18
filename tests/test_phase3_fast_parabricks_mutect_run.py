@@ -266,6 +266,21 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
 
         self.assertEqual([], runner.commands)
 
+    def test_rejects_non_p5en_runtime_gpu_count_before_running_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = parabricks_plan(Path(tmp))
+        plan["runtime"]["num_gpus"] = 4
+
+        runner = RecordingRunner()
+        with self.assertRaisesRegex(run_mutect.ManifestError, "runtime.num_gpus"):
+            run_mutect.run_phase3_fast_parabricks_mutect(
+                plan,
+                runner=runner,
+                parabricks_mutect_plan_sha256=SHA_1,
+            )
+
+        self.assertEqual([], runner.commands)
+
     def test_rejects_command_that_would_skip_pbrun(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = parabricks_plan(Path(tmp))

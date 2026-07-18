@@ -14,7 +14,8 @@ from .safe_json_output import read_real_json, require_safe_output_path
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
 DEFAULT_OUTPUT_ROOT = "/scratch/diana/phase3_wgs_fast/parabricks_mutect"
-DEFAULT_NUM_GPUS = 8
+REQUIRED_NUM_GPUS = 8
+DEFAULT_NUM_GPUS = REQUIRED_NUM_GPUS
 
 
 def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
@@ -62,7 +63,14 @@ def _require_num_gpus(value: str | int | None) -> int:
         parsed = int(value)
     except ValueError as error:
         raise ManifestError("PHASE3_WGS_FAST_PARABRICKS_NUM_GPUS must be an integer") from error
-    return _require_positive_int(parsed, "num_gpus")
+    return _require_p5en_num_gpus(parsed, "PHASE3_WGS_FAST_PARABRICKS_NUM_GPUS")
+
+
+def _require_p5en_num_gpus(value: Any, label: str) -> int:
+    gpu_count = _require_positive_int(value, label)
+    if gpu_count != REQUIRED_NUM_GPUS:
+        raise ManifestError(f"{label} must be exactly {REQUIRED_NUM_GPUS} for the selected P5en/H200 route")
+    return gpu_count
 
 
 def _entry(container: Mapping[str, Any], key: str) -> Mapping[str, Any]:
@@ -135,7 +143,7 @@ def build_phase3_fast_parabricks_mutect_plan(
         raise ManifestError("runtime caller must be parabricks_mutectcaller")
 
     root = _require_output_root(output_root)
-    gpu_count = _require_positive_int(num_gpus, "num_gpus")
+    gpu_count = _require_p5en_num_gpus(num_gpus, "num_gpus")
     logs = root / "logs"
     tmp = root / "tmp"
     variants = root / "variants"

@@ -12,14 +12,10 @@ import re
 from pathlib import Path
 from typing import Any, Mapping
 
+from forbidden_text import normalize_forbidden_tokens_json
 from publish_private_report import canonical_packet_digest, validate_packet_dir
 from render_ai_synthesis_runbook import FORBIDDEN_TOKENS
-from runbook_io import require_real_input_file
-
-from diana_omics.commands.phase3_wgs.safe_json_output import require_safe_output_path
-from diana_omics.commands.phase3_wgs.validate_phase3_fast_forbidden_tokens import (
-    normalize_forbidden_tokens,
-)
+from runbook_io import require_real_input_file, require_safe_output_path
 
 PACKET_ARG_TO_METHOD = (
     ("deterministic_report_dir", "deterministic_full_wgs"),
@@ -73,7 +69,7 @@ def require_int(value: Any, label: str) -> int:
 
 
 def canonical_forbidden_tokens(forbidden_tokens_json: str) -> tuple[str, ...]:
-    run_tokens = tuple(normalize_forbidden_tokens(forbidden_tokens_json))
+    run_tokens = tuple(normalize_forbidden_tokens_json(forbidden_tokens_json))
     return tuple(sorted({*FORBIDDEN_TOKENS, *run_tokens}, key=str.casefold))
 
 
@@ -204,7 +200,7 @@ def validate_packets(
     if missing:
         raise ValueError(f"missing required packet dirs: {', '.join(missing)}")
 
-    run_tokens = tuple(normalize_forbidden_tokens(forbidden_tokens_json))
+    run_tokens = tuple(normalize_forbidden_tokens_json(forbidden_tokens_json))
     forbidden_tokens = canonical_forbidden_tokens(forbidden_tokens_json)
 
     packets = []

@@ -356,6 +356,20 @@ def validate_gpu_batch_compute_environment(
         if allocation_strategy != "BEST_FIT_PROGRESSIVE":
             errors.append("P5en computeResources allocationStrategy must be BEST_FIT_PROGRESSIVE")
 
+        launch_template = resources.get("launchTemplate")
+        if not isinstance(launch_template, dict):
+            errors.append("P5en computeResources launchTemplate must be configured")
+        else:
+            launch_template_identity = (
+                launch_template.get("launchTemplateId"),
+                launch_template.get("launchTemplateName"),
+            )
+            if not any(isinstance(value, str) and value for value in launch_template_identity):
+                errors.append("P5en computeResources launchTemplate must include an id or name")
+            version = launch_template.get("version")
+            if not isinstance(version, str) or not version:
+                errors.append("P5en computeResources launchTemplate version must be pinned")
+
     if errors:
         raise GpuSmokeConfigError("P5en compute environment is not ready:\n- " + "\n- ".join(errors))
 

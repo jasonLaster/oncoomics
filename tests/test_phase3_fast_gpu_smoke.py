@@ -321,6 +321,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                 "instanceTypes": ["p5en.48xlarge"],
                 "maxvCpus": 384,
                 "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
+                "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "42"},
             },
         }
         environment.update(overrides)
@@ -404,6 +405,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "instanceTypes": ["g5.48xlarge"],
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
+                    "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "42"},
                 }
             ),
             self.p5en_compute_environment(
@@ -414,6 +416,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "instanceTypes": ["p5en.48xlarge"],
                     "maxvCpus": 8,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
+                    "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "42"},
                 }
             ),
             self.p5en_compute_environment(
@@ -424,6 +427,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "instanceTypes": ["p5en.48xlarge"],
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023"}],
+                    "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "42"},
                 }
             ),
             self.p5en_compute_environment(
@@ -447,6 +451,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                         {"imageType": "ECS_AL2023"},
                         {"imageType": "ECS_AL2023_NVIDIA"},
                     ],
+                    "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "42"},
                 }
             ),
             self.p5en_compute_environment(
@@ -457,6 +462,39 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "instanceTypes": ["p5en.48xlarge"],
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
+                    "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "42"},
+                }
+            ),
+            self.p5en_compute_environment(
+                computeResources={
+                    "allocationStrategy": "BEST_FIT_PROGRESSIVE",
+                    "type": "EC2",
+                    "minvCpus": 0,
+                    "instanceTypes": ["p5en.48xlarge"],
+                    "maxvCpus": 384,
+                    "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
+                }
+            ),
+            self.p5en_compute_environment(
+                computeResources={
+                    "allocationStrategy": "BEST_FIT_PROGRESSIVE",
+                    "type": "EC2",
+                    "minvCpus": 0,
+                    "instanceTypes": ["p5en.48xlarge"],
+                    "maxvCpus": 384,
+                    "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
+                    "launchTemplate": {"version": "42"},
+                }
+            ),
+            self.p5en_compute_environment(
+                computeResources={
+                    "allocationStrategy": "BEST_FIT_PROGRESSIVE",
+                    "type": "EC2",
+                    "minvCpus": 0,
+                    "instanceTypes": ["p5en.48xlarge"],
+                    "maxvCpus": 384,
+                    "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
+                    "launchTemplate": {"launchTemplateId": "lt-p5en"},
                 }
             ),
         ):
