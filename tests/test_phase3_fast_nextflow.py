@@ -528,6 +528,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/report_manifest.json", process)
         self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/evidence_checks.json", process)
         self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/input_sha256.csv", process)
+        self.assertIn("workspace/results/phase3_wgs_fast/deterministic_report/crosscheck_input_plans.json", process)
         self.assertIn(
             'export PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST="\\$PWD/${final_evidence_manifest}"',
             process,
@@ -546,7 +547,9 @@ class Phase3FastNextflowTests(unittest.TestCase):
         process = process[: process.index("workflow PHASE3_WGS_FAST_GPU_SMOKE")]
         self.assertIn("label 'cpu_io'", process)
         self.assertIn("tuple path(report_md)", process)
+        self.assertIn("path(crosscheck_input_plans)", process)
         self.assertIn("path(final_evidence_root)", process)
+        self.assertIn('cp "${crosscheck_input_plans}" deterministic_report/crosscheck_input_plans.json', process)
         self.assertIn("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/run_manifest.json", process)
         self.assertIn("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/packet_index.md", process)
         self.assertIn("workspace/results/rosalind_hrd/${params.phase3_fast_run_id}/cloud_materialization_plan.md", process)

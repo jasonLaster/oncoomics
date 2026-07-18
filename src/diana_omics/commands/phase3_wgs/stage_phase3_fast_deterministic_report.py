@@ -23,9 +23,10 @@ OUTPUT_NAMES = frozenset(
         "readiness.csv",
         "evidence_checks.json",
         "input_sha256.csv",
+        "crosscheck_input_plans.json",
     }
 )
-SUPPORT_NAMES = frozenset({"readiness.csv", "evidence_checks.json", "input_sha256.csv"})
+SUPPORT_NAMES = frozenset({"readiness.csv", "evidence_checks.json", "input_sha256.csv", "crosscheck_input_plans.json"})
 EXPECTED_ARTIFACT_GROUPS = frozenset({"small_variants", "bam_qc", "cnv_evidence", "sv_evidence"})
 EMPTY_SHA256 = hashlib.sha256(b"").hexdigest()
 
@@ -55,6 +56,25 @@ def _require_non_negative_int(value: Any, label: str) -> int:
     if not isinstance(value, int) or value < 0:
         raise ManifestError(f"{label} must be a non-negative integer")
     return value
+
+
+def _require_positive_int(value: Any, label: str) -> int:
+    if not isinstance(value, int) or value <= 0:
+        raise ManifestError(f"{label} must be a positive integer")
+    return value
+
+
+def _require_string(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ManifestError(f"{label} is required")
+    return value
+
+
+def _require_s3_uri(value: Any, label: str) -> str:
+    uri = _require_string(value, label)
+    if not uri.startswith("s3://") or uri == "s3://":
+        raise ManifestError(f"{label} must be an s3:// URI")
+    return uri
 
 
 def _require_relative_path(value: Any, label: str) -> str:
@@ -182,23 +202,48 @@ def _artifact_counts(artifacts: Sequence[FinalArtifact]) -> dict[str, int]:
 
 
 def _read_json_artifact(final_root: Path, artifact_map: Mapping[str, Any], *path: str) -> Mapping[str, Any]:
-    current: Any = artifact_map
+    row = _artifact_row(artifact_map, *path)
     label = ".".join(path)
-    for part in path:
-        current = _require_mapping(current, label).get(part)
-    row = _require_mapping(current, label)
     relative = _require_relative_path(row.get("relative_path"), f"{label}.relative_path")
     return _require_mapping(read_json(final_root / relative), label)
 
 
 def _read_text_artifact(final_root: Path, artifact_map: Mapping[str, Any], *path: str) -> str:
+    row = _artifact_row(artifact_map, *path)
+    label = ".".join(path)
+    relative = _require_relative_path(row.get("relative_path"), f"{label}.relative_path")
+    return (final_root / relative).read_text(encoding="utf-8", errors="replace")
+
+
+def _artifact_row(artifact_map: Mapping[str, Any], *path: str) -> Mapping[str, Any]:
     current: Any = artifact_map
     label = ".".join(path)
     for part in path:
         current = _require_mapping(current, label).get(part)
-    row = _require_mapping(current, label)
-    relative = _require_relative_path(row.get("relative_path"), f"{label}.relative_path")
-    return (final_root / relative).read_text(encoding="utf-8", errors="replace")
+    return _require_mapping(current, label)
+
+
+def _planned_artifact(artifact_map: Mapping[str, Any], input_id: str, *path: str) -> dict[str, Any]:
+    row = _artifact_row(artifact_map, *path)
+    return {
+        "input_id": input_id,
+        "path": f"final/{_require_relative_path(row.get('relative_path'), f'{input_id}.relative_path')}",
+        "bytes": _require_non_negative_int(row.get("bytes"), f"{input_id}.bytes"),
+        "sha256": _require_hex(row.get("sha256"), f"{input_id}.sha256"),
+    }
+
+
+def _source_identity(input_sources: Mapping[str, Any], label: str, *path: str) -> dict[str, Any]:
+    current: Any = input_sources
+    for part in path:
+        current = _require_mapping(current, label).get(part)
+    source = _require_mapping(current, label)
+    return {
+        "uri": _require_s3_uri(source.get("uri"), f"{label}.uri"),
+        "version_id": _require_string(source.get("version_id"), f"{label}.version_id"),
+        "bytes": _require_positive_int(source.get("bytes"), f"{label}.bytes"),
+        "sha256": _require_hex(source.get("sha256"), f"{label}.sha256"),
+    }
 
 
 def _cnv_metric(cnv_summary: Mapping[str, Any], key: str) -> Any:
@@ -314,6 +359,84 @@ def _readiness_rows(
     ]
 
 
+def _build_crosscheck_input_plans(manifest: Mapping[str, Any], artifact_map: Mapping[str, Any]) -> dict[str, Any]:
+    input_sources = _require_mapping(manifest.get("input_sources"), "input_sources")
+    sigprofiler_sources = {
+        "source_vcf": _planned_artifact(
+            artifact_map,
+            "small_variants.filter_mutect.filtered_vcf",
+            "small_variants",
+            "filter_mutect",
+            "filtered_vcf",
+        ),
+        "source_vcf_index": _planned_artifact(
+            artifact_map,
+            "small_variants.filter_mutect.filtered_vcf_index",
+            "small_variants",
+            "filter_mutect",
+            "filtered_vcf_index",
+        ),
+        "source_sbs96_matrix": _planned_artifact(
+            artifact_map,
+            "small_variants.filter_mutect.sbs96_matrix",
+            "small_variants",
+            "filter_mutect",
+            "sbs96_matrix",
+        ),
+    }
+    return {
+        "schema_version": 1,
+        "plan_type": "phase3_fast_crosscheck_input_materialization_plan",
+        "status": "planned",
+        "authorized_hrd_state": "no_call",
+        "classification_authorized": False,
+        "routes": {
+            "sigprofiler_sbs3": {
+                "status": "plan_ready",
+                "execution_status": "not_run",
+                "interpretation_status": "no_call",
+                "materializer": "scripts/materialize_crosscheck_inputs.py",
+                "source_artifacts": sigprofiler_sources,
+                "reference": {
+                    "fasta": _source_identity(input_sources, "reference.fasta", "reference", "fasta"),
+                    "fai": _source_identity(input_sources, "reference.fai", "reference", "fai"),
+                    "sequence_dictionary": _source_identity(
+                        input_sources,
+                        "reference.sequence_dictionary",
+                        "reference",
+                        "sequence_dictionary",
+                    ),
+                },
+                "planned_alias_outputs": {
+                    "somatic_vcf": "somatic.pass.vcf.gz",
+                    "somatic_vcf_index": "somatic.pass.vcf.gz.tbi",
+                    "sbs96_matrix": "sbs96.csv",
+                    "staged_validation": "staged_input_validation.json",
+                },
+                "blockers": [
+                    "Alias-only cross-check inputs have not been materialized.",
+                    "SBS3 assignment and threshold policy are not validated.",
+                ],
+            },
+            "sequenza_scarhrd": {
+                "status": "blocked",
+                "execution_status": "not_run",
+                "interpretation_status": "no_call",
+                "source_artifacts": {
+                    "tumor_bam": _source_identity(input_sources, "bam_pair.tumor.bam", "bam_pair", "tumor", "bam"),
+                    "tumor_bai": _source_identity(input_sources, "bam_pair.tumor.bai", "bam_pair", "tumor", "bai"),
+                    "normal_bam": _source_identity(input_sources, "bam_pair.normal.bam", "bam_pair", "normal", "bam"),
+                    "normal_bai": _source_identity(input_sources, "bam_pair.normal.bai", "bam_pair", "normal", "bai"),
+                },
+                "blockers": [
+                    "Allele-specific copy-number and LOH route inputs are not in the Phase 3 fast final tree.",
+                    "Purity/ploidy and scarHRD interpretation thresholds are not validated.",
+                ],
+            },
+        },
+    }
+
+
 def _markdown_table(rows: Sequence[Mapping[str, Any]]) -> str:
     if not rows:
         return "_None._"
@@ -331,6 +454,7 @@ def _report_markdown(
     manifest: Mapping[str, Any],
     *,
     artifact_counts: Mapping[str, int],
+    crosscheck_input_plans: Mapping[str, Any],
     readiness_rows: Sequence[Mapping[str, str]],
     cnv_summary: Mapping[str, Any],
     sbs96_summary: Mapping[str, Any],
@@ -338,6 +462,9 @@ def _report_markdown(
 ) -> str:
     run = _require_mapping(manifest.get("run"), "run")
     workflow = _require_mapping(manifest.get("workflow"), "workflow")
+    routes = _require_mapping(crosscheck_input_plans.get("routes"), "crosscheck_input_plans.routes")
+    sigprofiler = _require_mapping(routes.get("sigprofiler_sbs3"), "sigprofiler_sbs3 route")
+    sequenza = _require_mapping(routes.get("sequenza_scarhrd"), "sequenza_scarhrd route")
     total = sum(artifact_counts.values())
     return "\n".join(
         [
@@ -388,9 +515,35 @@ def _report_markdown(
             "## SBS96 input",
             "",
             (
-                "The final tree includes a 96-channel SBS matrix with "
+            "The final tree includes a 96-channel SBS matrix with "
                 f"`{_summary_metric(sbs96_summary, 'usable_snv_records')}` usable PASS SNV alleles. "
                 "This is signature input evidence, not a validated SBS3 assignment."
+            ),
+            "",
+            "## Cross-check materialization plans",
+            "",
+            _markdown_table(
+                [
+                    {
+                        "route": "sigprofiler_sbs3",
+                        "state": sigprofiler.get("status", "missing"),
+                        "execution": sigprofiler.get("execution_status", "missing"),
+                        "boundary": sigprofiler.get("interpretation_status", "missing"),
+                    },
+                    {
+                        "route": "sequenza_scarhrd",
+                        "state": sequenza.get("status", "missing"),
+                        "execution": sequenza.get("execution_status", "missing"),
+                        "boundary": sequenza.get("interpretation_status", "missing"),
+                    },
+                ]
+            ),
+            "",
+            (
+                "The SigProfiler/SBS3 route has a plan-ready alias materialization recipe for the filtered "
+                "PASS VCF, VCF index, SBS96 matrix, and exact reference FASTA/FAI identities, but the "
+                "materializer has not run and no SBS3 assignment or threshold policy is authorized. "
+                "Sequenza/scarHRD stays blocked until allele-specific CNV/LOH and purity/ploidy inputs exist."
             ),
             "",
             "## Blocked model routes",
@@ -427,10 +580,12 @@ def _write_support_files(
     staging: Path,
     *,
     report: str,
+    crosscheck_input_plans: Mapping[str, Any],
     readiness_rows: Sequence[Mapping[str, str]],
     checks: Mapping[str, Any],
     input_rows: Sequence[Mapping[str, Any]],
 ) -> None:
+    write_json(staging / "crosscheck_input_plans.json", crosscheck_input_plans)
     write_csv(staging / "readiness.csv", readiness_rows, ["evidence_surface", "state", "reason"])
     write_json(staging / "evidence_checks.json", checks)
     write_csv(staging / "input_sha256.csv", input_rows, ["input_id", "path", "bytes", "sha256"])
@@ -520,6 +675,7 @@ def stage_phase3_fast_deterministic_report(
         sbs96_summary=sbs96_summary,
         sv_supplementary_total=sv_supplementary_total,
     )
+    crosscheck_input_plans = _build_crosscheck_input_plans(final_manifest, artifact_map)
     checks = {
         "schema_version": 1,
         "status": "passed",
@@ -541,12 +697,18 @@ def stage_phase3_fast_deterministic_report(
                 "status": "passed",
                 "detail": "scarHRD, CHORD, HRDetect-style, SBS3, and scalar HRD states remain no_call or blocked.",
             },
+            {
+                "check_id": "crosscheck_input_materialization_plan",
+                "status": "passed",
+                "detail": "SigProfiler/SBS3 input materialization is plan-ready; Sequenza/scarHRD remains blocked.",
+            },
         ],
         "input_sha256": input_rows,
     }
     report = _report_markdown(
         final_manifest,
         artifact_counts=artifact_counts,
+        crosscheck_input_plans=crosscheck_input_plans,
         readiness_rows=readiness_rows,
         cnv_summary=cnv_summary,
         sbs96_summary=sbs96_summary,
@@ -558,6 +720,7 @@ def stage_phase3_fast_deterministic_report(
         _write_support_files(
             staging,
             report=report,
+            crosscheck_input_plans=crosscheck_input_plans,
             readiness_rows=readiness_rows,
             checks=checks,
             input_rows=input_rows,
@@ -592,6 +755,10 @@ def stage_phase3_fast_deterministic_report(
                     "scarHRD": "no_call_requires_allele_specific_cnv_loh_segments",
                     "CHORD": "no_call_requires_validated_production_sv_caller_vcf",
                     "HRDetect": "no_call_requires_validated_structural_variant_features",
+                },
+                "crosscheck_input_plans": {
+                    "sigprofiler_sbs3": "plan_ready",
+                    "sequenza_scarhrd": "blocked",
                 },
             },
         }

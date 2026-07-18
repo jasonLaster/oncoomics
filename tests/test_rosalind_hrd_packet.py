@@ -578,6 +578,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     "wgs_bam_qc",
                     "coverage_cnv",
                     "sbs96_input",
+                    "sigprofiler_sbs3_input_plan",
                     "bam_derived_sv_evidence",
                 },
             )
@@ -593,9 +594,14 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 next(row for row in adapter_rows if row["adapter"] == "SBS96 input matrix")["state"],
                 "partial_evidence",
             )
+            self.assertEqual(
+                next(row for row in adapter_rows if row["adapter"] == "SigProfiler/SBS3 input materializer")["state"],
+                "ready_to_materialize",
+            )
 
             reviewer = utils.read_text(output_dir / "reviewer_packet.md")
             self.assertIn("Phase 3 fast final evidence", reviewer)
+            self.assertIn("SigProfiler/SBS3 input materialization: `plan_ready`", reviewer)
             self.assertIn("SBS96", reviewer)
             manifest = utils.read_json(output_dir / "report_manifest.json")
             self.assertEqual(manifest["method_id"], "rosalind_diana_wgs")
@@ -605,6 +611,12 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertEqual(
                 manifest["review_summary"]["provenance"]["binding_kind"],
                 "phase3_fast_final",
+            )
+            self.assertEqual(
+                "plan_ready",
+                manifest["review_summary"]["provenance"]["phase3_fast"]["crosscheck_input_plans"][
+                    "sigprofiler_sbs3"
+                ],
             )
             self.assertIn("small_variants.filter_mutect.filtered_vcf", manifest["source_sha256"])
             evidence_index = utils.read_json(output_dir / "input_evidence_index.json")

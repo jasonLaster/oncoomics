@@ -66,6 +66,7 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             output_names = {path.name for path in output.iterdir()}
             report = (output / "report.md").read_text(encoding="utf-8")
             input_rows = _read_csv(output / "input_sha256.csv")
+            crosscheck_input_plans = read_json(output / "crosscheck_input_plans.json")
             artifact_paths = [
                 final_root / row["path"].removeprefix("final/")
                 for row in input_rows[1:]
@@ -81,10 +82,31 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
         self.assertEqual("no_call", report_manifest["authorized_hrd_state"])
         self.assertIs(report_manifest["classification_authorized"], False)
         self.assertIn("overall HRD remains `no_call`", report)
+        self.assertIn("SigProfiler/SBS3 route has a plan-ready alias materialization recipe", report)
         self.assertIn("`4` depth bins", report)
         self.assertIn("no production SV VCF/BEDPE", report)
         self.assertNotIn(str(root), json.dumps(report_manifest))
         self.assertNotIn(str(root), report)
+        self.assertEqual(
+            "plan_ready",
+            crosscheck_input_plans["routes"]["sigprofiler_sbs3"]["status"],
+        )
+        self.assertEqual(
+            "copy-version-5",
+            crosscheck_input_plans["routes"]["sigprofiler_sbs3"]["reference"]["fasta"]["version_id"],
+        )
+        self.assertEqual(
+            "final/artifacts/small_variants/filter_mutect/filtered_vcf/diana.wgs.mutect2.parabricks.filtered.vcf.gz",
+            crosscheck_input_plans["routes"]["sigprofiler_sbs3"]["source_artifacts"]["source_vcf"]["path"],
+        )
+        self.assertEqual(
+            "blocked",
+            crosscheck_input_plans["routes"]["sequenza_scarhrd"]["status"],
+        )
+        self.assertEqual(
+            "plan_ready",
+            report_manifest["review_summary"]["crosscheck_input_plans"]["sigprofiler_sbs3"],
+        )
 
         artifacts = _flatten_artifacts(final_manifest["artifacts"])
         self.assertEqual(final_manifest["artifact_count"] + 1, len(input_rows))

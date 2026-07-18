@@ -47,21 +47,23 @@ def _require_hex(value: Any, label: str) -> str:
     return value.lower()
 
 
-def _require_source(entry: Mapping[str, Any], label: str) -> dict[str, str]:
+def _require_source(entry: Mapping[str, Any], label: str) -> dict[str, Any]:
     source = _require_mapping(entry.get("source"), f"{label} source")
     return {
         "uri": _require_s3_uri(source.get("uri"), f"{label} source uri"),
         "version_id": _require_string(source.get("version_id"), f"{label} source version_id"),
+        "bytes": _require_positive_int(source.get("bytes"), f"{label} source bytes"),
+        "sha256": _require_hex(source.get("sha256"), f"{label} source sha256"),
     }
 
 
-def _input_source(receipt: Mapping[str, Any], receipt_label: str, key: str) -> dict[str, str]:
+def _input_source(receipt: Mapping[str, Any], receipt_label: str, key: str) -> dict[str, Any]:
     inputs = _require_mapping(receipt.get("inputs"), f"{receipt_label} inputs")
     entry = _require_mapping(inputs.get(key), f"{receipt_label} inputs.{key}")
     return _require_source(entry, f"{receipt_label} inputs.{key}")
 
 
-def _sample_input_source(receipt: Mapping[str, Any], receipt_label: str, key: str) -> dict[str, str]:
+def _sample_input_source(receipt: Mapping[str, Any], receipt_label: str, key: str) -> dict[str, Any]:
     inputs = _require_mapping(receipt.get("inputs"), f"{receipt_label} inputs")
     entry = _require_mapping(inputs.get(key), f"{receipt_label} inputs.{key}")
     return {

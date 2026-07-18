@@ -1522,7 +1522,8 @@ process FAST_STAGE_DETERMINISTIC_REPORT {
           path('workspace/results/phase3_wgs_fast/deterministic_report/report_manifest.json'),
           path('workspace/results/phase3_wgs_fast/deterministic_report/readiness.csv'),
           path('workspace/results/phase3_wgs_fast/deterministic_report/evidence_checks.json'),
-          path('workspace/results/phase3_wgs_fast/deterministic_report/input_sha256.csv')
+          path('workspace/results/phase3_wgs_fast/deterministic_report/input_sha256.csv'),
+          path('workspace/results/phase3_wgs_fast/deterministic_report/crosscheck_input_plans.json')
 
     script:
     """
@@ -1553,6 +1554,9 @@ process FAST_STAGE_DETERMINISTIC_REPORT {
     cat > workspace/results/phase3_wgs_fast/deterministic_report/evidence_checks.json <<JSON
     {"schema_version":1,"status":"stubbed","report_status":"partial_evidence","overall_hrd_status":"no_call","checks":[],"input_sha256":[]}
     JSON
+    cat > workspace/results/phase3_wgs_fast/deterministic_report/crosscheck_input_plans.json <<JSON
+    {"schema_version":1,"plan_type":"phase3_fast_crosscheck_input_materialization_plan","status":"stubbed","authorized_hrd_state":"no_call","classification_authorized":false,"routes":{}}
+    JSON
     cat > workspace/results/phase3_wgs_fast/deterministic_report/report_manifest.json <<JSON
     {"schema_version":1,"method_id":"deterministic_full_wgs","report_kind":"phase3_fast_deterministic_evidence","evidence_status":"partial_evidence","authorized_hrd_state":"no_call","classification_authorized":false}
     JSON
@@ -1572,7 +1576,8 @@ process FAST_STAGE_ROSALIND_PACKET {
           path(report_manifest),
           path(readiness),
           path(evidence_checks),
-          path(input_sha256)
+          path(input_sha256),
+          path(crosscheck_input_plans)
     tuple path(final_evidence_manifest),
           path(final_evidence_root)
 
@@ -1598,6 +1603,7 @@ process FAST_STAGE_ROSALIND_PACKET {
     cp "${readiness}" deterministic_report/readiness.csv
     cp "${evidence_checks}" deterministic_report/evidence_checks.json
     cp "${input_sha256}" deterministic_report/input_sha256.csv
+    cp "${crosscheck_input_plans}" deterministic_report/crosscheck_input_plans.json
 
     export DIANA_OMICS_ROOT="\$PWD/workspace"
     export ROSALIND_HRD_SAMPLE_SET="diana_wgs"

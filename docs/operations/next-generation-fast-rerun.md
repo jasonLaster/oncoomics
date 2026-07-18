@@ -374,9 +374,13 @@ final artifact tree, and writes a path-redacted `final_evidence_manifest.json`
 whose artifact entries use relative paths only.
 `FAST_STAGE_DETERMINISTIC_REPORT` consumes that final manifest and portable
 artifact tree without rerunning BAM, VCF, or SBS96 work, rehashes the manifest-bound
-files, and writes the five-file deterministic report packet
+files, and writes the six-file deterministic report packet
 (`report.md`, `report_manifest.json`, `readiness.csv`,
-`evidence_checks.json`, and `input_sha256.csv`). That report is deliberately
+`evidence_checks.json`, `input_sha256.csv`, and `crosscheck_input_plans.json`).
+The cross-check plan maps the final FilterMutect VCF, its TBI, the SBS96 matrix,
+and exact versioned reference/BAM source identities into the pending
+SigProfiler/SBS3 and Sequenza/scarHRD materialization contracts without mining
+worker-local scratch paths. That report is deliberately
 descriptive: Parabricks/FilterMutect, BAM QC, coverage-CNV, and BAM-derived SV
 evidence plus the SBS96 input matrix are bound by SHA-256, while SBS3,
 scarHRD, CHORD, HRDetect-style scoring, and the overall HRD state remain

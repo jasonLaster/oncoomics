@@ -34,6 +34,12 @@ def _require_hex(value: Any, label: str) -> str:
     return value.lower()
 
 
+def _require_positive_int(value: Any, label: str) -> int:
+    if not isinstance(value, int) or value <= 0:
+        raise ManifestError(f"{label} must be a positive integer")
+    return value
+
+
 def _require_absolute_path(value: Any, label: str) -> str:
     path = Path(_require_string(value, label))
     if not path.is_absolute():
@@ -51,11 +57,13 @@ def _artifact_path(entry: Mapping[str, Any], artifact: str) -> str:
     return _require_absolute_path(entry.get("local_path"), f"{artifact} local_path")
 
 
-def _require_source(entry: Mapping[str, Any], artifact: str) -> dict[str, str]:
+def _require_source(entry: Mapping[str, Any], artifact: str) -> dict[str, Any]:
     source = _require_mapping(entry.get("source"), f"{artifact} source")
     return {
         "uri": _require_s3_uri(source.get("uri"), f"{artifact} source uri"),
         "version_id": _require_string(source.get("version_id"), f"{artifact} source version_id"),
+        "bytes": _require_positive_int(entry.get("bytes"), f"{artifact} bytes"),
+        "sha256": _require_hex(entry.get("sha256"), f"{artifact} sha256"),
     }
 
 

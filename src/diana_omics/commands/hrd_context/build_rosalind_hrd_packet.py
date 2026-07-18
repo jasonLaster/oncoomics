@@ -749,6 +749,10 @@ DETERMINISTIC_SUPPORT_FILES = {
     "evidence_checks.json",
     "input_sha256.csv",
 }
+PHASE3_FAST_DETERMINISTIC_SUPPORT_FILES = {
+    *DETERMINISTIC_SUPPORT_FILES,
+    "crosscheck_input_plans.json",
+}
 PACKET_REPORT_FILES = {
     "input_evidence_index.json",
     "sample_validation_summary.csv",
@@ -926,12 +930,19 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     for key, expected in expected_contract.items():
         if manifest.get(key) != expected:
             raise ValueError(f"deterministic report manifest {key} is not exact")
+    support_files = (
+        PHASE3_FAST_DETERMINISTIC_SUPPORT_FILES
+        if manifest.get("report_kind") == PHASE3_FAST_REPORT_KIND
+        else DETERMINISTIC_SUPPORT_FILES
+    )
+    for name in sorted(support_files - set(paths)):
+        paths[name] = require_real_nonempty_file(report_root / name, f"deterministic {name}")
     if manifest.get("report_sha256") != sha256_file(paths["report.md"]):
         raise ValueError("deterministic report hash differs from its manifest")
     support = manifest.get("support_sha256")
-    if not isinstance(support, dict) or set(support) != DETERMINISTIC_SUPPORT_FILES:
+    if not isinstance(support, dict) or set(support) != support_files:
         raise ValueError("deterministic support SHA-256 inventory is not exact")
-    for name in DETERMINISTIC_SUPPORT_FILES:
+    for name in support_files:
         if require_sha256(support.get(name), f"deterministic support {name}") != sha256_file(paths[name]):
             raise ValueError(f"deterministic support hash differs for {name}")
 
@@ -1069,6 +1080,32 @@ def diana_wgs_phase3_fast_deterministic_binding(
         raise ValueError("Phase 3 fast deterministic artifact_count differs from input_sha256.csv")
     if set(source) != {str(row["input_id"]) for row in input_rows}:
         raise ValueError("Phase 3 fast deterministic source SHA-256 inventory differs from input_sha256.csv")
+    crosscheck_input_plans = read_json(paths["crosscheck_input_plans.json"])
+    if (
+        not isinstance(crosscheck_input_plans, dict)
+        or crosscheck_input_plans.get("schema_version") != 1
+        or crosscheck_input_plans.get("plan_type") != "phase3_fast_crosscheck_input_materialization_plan"
+        or crosscheck_input_plans.get("status") != "planned"
+        or crosscheck_input_plans.get("authorized_hrd_state") != "no_call"
+        or crosscheck_input_plans.get("classification_authorized") is not False
+    ):
+        raise ValueError("Phase 3 fast cross-check input plan contract is not exact")
+    crosscheck_routes = crosscheck_input_plans.get("routes")
+    if not isinstance(crosscheck_routes, dict):
+        raise ValueError("Phase 3 fast cross-check input plan lacks exact routes")
+    crosscheck_route_states = {
+        "sigprofiler_sbs3": "plan_ready",
+        "sequenza_scarhrd": "blocked",
+    }
+    for route, expected_status in crosscheck_route_states.items():
+        route_plan = crosscheck_routes.get(route)
+        if (
+            not isinstance(route_plan, dict)
+            or route_plan.get("status") != expected_status
+            or route_plan.get("execution_status") != "not_run"
+            or route_plan.get("interpretation_status") != "no_call"
+        ):
+            raise ValueError(f"Phase 3 fast {route} materialization plan is not exact")
 
     checks = read_json(paths["evidence_checks.json"])
     check_rows = checks.get("checks", []) if isinstance(checks, dict) else []
@@ -1143,6 +1180,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
                 if isinstance(review_summary.get("workflow"), dict)
                 else {}
             ),
+            "crosscheck_input_plans": crosscheck_route_states,
         },
         "tool_versions": {},
     }
@@ -1268,6 +1306,19 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
     groups = review_summary.get("artifact_groups")
     if not isinstance(groups, dict):
         groups = {}
+    crosscheck_input_plans = read_json(report_root / "crosscheck_input_plans.json")
+    crosscheck_routes = (
+        crosscheck_input_plans.get("routes", {})
+        if isinstance(crosscheck_input_plans, dict)
+        else {}
+    )
+    sigprofiler_route = (
+        crosscheck_routes.get("sigprofiler_sbs3", {})
+        if isinstance(crosscheck_routes, dict)
+        else {}
+    )
+    if not isinstance(sigprofiler_route, dict):
+        sigprofiler_route = {}
     readiness_rows = parse_csv(read_text(report_root / "readiness.csv"))
     surfaces = [str(row.get("evidence_surface", "")) for row in readiness_rows if row.get("evidence_surface")]
     blockers: list[str] = []
@@ -1339,6 +1390,17 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
             "SBS96 is an input matrix, not a validated SBS3 assignment.",
         ),
         evidence_row(
+            "sigprofiler_sbs3_input_plan",
+            "partial_evidence",
+            (
+                "Alias-only SigProfiler/SBS3 materialization is "
+                f"{sigprofiler_route.get('status', 'missing')}; "
+                f"execution is {sigprofiler_route.get('execution_status', 'missing')}."
+            ),
+            "crosscheck_input_plans.json",
+            "This is an executable input plan only; SBS3 assignment and threshold policy remain no_call.",
+        ),
+        evidence_row(
             "bam_derived_sv_evidence",
             "partial_evidence",
             reason("sv"),
@@ -1396,6 +1458,12 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
                 "no_call",
                 "No validated signature assignment or SBS3 threshold policy is present.",
                 "Run validated signature assignment and known-answer calibration before interpreting SBS3.",
+            ),
+            adapter_row(
+                "SigProfiler/SBS3 input materializer",
+                "ready_to_materialize",
+                "Alias-only inputs are planned but have not been materialized by the exact-version route.",
+                "Run the materializer on exact final inputs, then stage a no-call SigProfiler/SBS3 cross-check report.",
             ),
         ]
     )
@@ -1783,6 +1851,9 @@ def diana_wgs_deterministic_process_lines(deterministic_binding: Mapping[str, An
         workflow = phase3_fast.get("workflow", {})
         if not isinstance(workflow, Mapping):
             workflow = {}
+        crosscheck_input_plans = phase3_fast.get("crosscheck_input_plans", {})
+        if not isinstance(crosscheck_input_plans, Mapping):
+            crosscheck_input_plans = {}
         return [
             "## Deterministic custody and process",
             "",
@@ -1790,6 +1861,7 @@ def diana_wgs_deterministic_process_lines(deterministic_binding: Mapping[str, An
             f"Deterministic manifest SHA-256: `{deterministic_binding['deterministic_manifest_sha256']}`.",
             f"Phase 3 fast workflow: `{workflow.get('name', 'phase3_wgs_fast')}`.",
             f"Final artifact binding: {deterministic_binding['artifact_count']} Phase 3 fast final artifacts matched the deterministic input inventory.",
+            f"SigProfiler/SBS3 input materialization: `{crosscheck_input_plans.get('sigprofiler_sbs3', 'missing')}`.",
             "",
         ]
 
