@@ -286,6 +286,10 @@ TASKS: dict[str, Task] = {
     "aws:ecr:push": _task(_tool("bash", "infra/aws/push-image.sh")),
     "aws:ecr:push:use1": _task(_tool("bash", "infra/aws/push-image.sh", env=AWS_USE1_ECR_PUSH_ENV)),
     "aws:ecr:push:use2": _task(_tool("bash", "infra/aws/push-image.sh", env=AWS_USE2_ECR_PUSH_ENV)),
+    "aws:ecr:mirror-parabricks:use2": _task(
+        _tool("bash", "infra/aws/mirror-parabricks.sh", env=AWS_USE2_ECR_PUSH_ENV, append_args=True),
+        accepts_args=True,
+    ),
     "aws:hrd-packet:cloud-submit": _task(
         _tool("bash", "infra/aws/submit-hrd-packet-cloud.sh", append_args=True),
         accepts_args=True,

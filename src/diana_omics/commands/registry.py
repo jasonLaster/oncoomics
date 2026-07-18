@@ -325,6 +325,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "aws:ecr:push",
             "aws:ecr:push:use1",
             "aws:ecr:push:use2",
+            "aws:ecr:mirror-parabricks:use2",
             "aws:hrd-packet:cloud-submit",
             "deploy:aws",
             "nf:aws:monitor",

@@ -165,6 +165,22 @@ and sets the Nextflow `accelerator` request to
 `phase3_fast_parabricks_num_gpus`, so Batch receives an explicit eight-GPU
 request for the P5en jobs.
 
+After the selected NVIDIA Parabricks `linux/amd64` image digest has been
+reviewed, mirror that exact digest into the regional immutable ECR repository:
+
+```sh
+PARABRICKS_SOURCE_IMAGE='nvcr.io/.../parabricks@sha256:<reviewed-digest>' \
+PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:ecr:mirror-parabricks:use2
+```
+
+The helper pulls only digest-pinned source images, logs into the `us-east-2`
+ECR registry from the `phase3-fast-use2` Terraform workspace, pushes a
+`sha256-<prefix>` tag into `parabricks_mirror_repository`, writes
+`results/phase3_wgs_fast/parabricks_mirror_receipt.json`, and prints the exact
+`TF_VAR_parabricks_container=<repository>@sha256:<digest>` value to review and
+apply. Leave `parabricks_container` empty until that mirror receipt has been
+checked.
+
 The `us-east-2` Batch job role also receives versioned read permission on the
 `us-east-1` raw-inputs and private-results source buckets and KMS decrypt
 permission constrained to the `alias/diana-omics-prod-use1` source key. The

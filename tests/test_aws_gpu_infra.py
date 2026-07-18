@@ -10,6 +10,7 @@ VARIABLES_TF = ROOT / "infra/aws/variables.tf"
 OUTPUTS_TF = ROOT / "infra/aws/outputs.tf"
 NEXTFLOW_CONFIG = ROOT / "nextflow.config"
 PUSH_IMAGE = ROOT / "infra/aws/push-image.sh"
+MIRROR_PARABRICKS = ROOT / "infra/aws/mirror-parabricks.sh"
 AWS_README = ROOT / "infra/aws/README.md"
 NEXT_GEN_DOC = ROOT / "docs/operations/next-generation-fast-rerun.md"
 
@@ -157,6 +158,16 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn('terraform -chdir="${ROOT_DIR}/infra/aws" workspace select "${TARGET_WORKSPACE}"', script)
         self.assertIn('trap restore_workspace EXIT', script)
         self.assertIn('output -raw region', script)
+
+    def test_parabricks_mirror_requires_reviewed_digest_and_writes_pin_receipt(self) -> None:
+        script = MIRROR_PARABRICKS.read_text(encoding="utf-8")
+
+        self.assertIn('PARABRICKS_SOURCE_IMAGE must be pinned as <registry>/<image>@sha256:<64 hex>', script)
+        self.assertIn('docker pull --platform "${PLATFORM}" "${SOURCE_IMAGE}"', script)
+        self.assertIn('output -raw parabricks_mirror_repository_url', script)
+        self.assertIn('aws ecr describe-images', script)
+        self.assertIn('"parabricks_mirror_receipt"', script)
+        self.assertIn('TF_VAR_parabricks_container', script)
 
     def test_gpu_smoke_is_documented_as_placement_only(self) -> None:
         readme = AWS_README.read_text(encoding="utf-8")

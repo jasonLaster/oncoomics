@@ -335,6 +335,13 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual(("bash", "infra/aws/push-image.sh"), task.steps[0].argv)
         self.assertEqual(AWS_USE2_ECR_PUSH_ENV, task.steps[0].env)
 
+    def test_use2_parabricks_mirror_selects_gpu_workspace_and_region(self):
+        task = TASKS["aws:ecr:mirror-parabricks:use2"]
+
+        self.assertEqual(("bash", "infra/aws/mirror-parabricks.sh"), task.steps[0].argv)
+        self.assertEqual(AWS_USE2_ECR_PUSH_ENV, task.steps[0].env)
+        self.assertTrue(task.accepts_args)
+
     def test_deploy_aws_pushes_to_use1_before_applying_use1(self):
         task = TASKS["deploy:aws"]
 
