@@ -496,6 +496,9 @@ def validate_report_packet(
         )
     ):
         raise ValueError("report manifest source SHA-256 inventory is malformed")
+    for name in sorted(set(sources) & expected_support):
+        if sources[name] != sha256(paths[name]):
+            raise ValueError(f"report manifest source hash differs for {name}")
     return manifest
 
 

@@ -220,6 +220,26 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     "sigprofiler_sbs3",
                 )
 
+    def test_stage_rejects_route_manifest_that_does_not_bind_support(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+
+            write_json(
+                source / "route_result.json",
+                {"route": "sigprofiler_sbs3", "sbs3": {"activity": 99}},
+            )
+            refresh_download_verification(source, verification)
+
+            with self.assertRaisesRegex(ValueError, "support hash differs"):
+                STAGE.stage(
+                    source,
+                    verification,
+                    root / "staged",
+                    "sigprofiler_sbs3",
+                )
+
     def test_stage_rejects_wrong_route_and_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

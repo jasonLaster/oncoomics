@@ -16,6 +16,7 @@ from hrd_report_inventory import EXECUTABLE_CROSSCHECK_METHOD_IDS
 
 SUPPORTED_ROUTES = set(EXECUTABLE_CROSSCHECK_METHOD_IDS)
 SHA256_HEX = set("0123456789abcdef")
+CORE_REPORT_FILES = {"report.md", "report_manifest.json"}
 
 
 def sha256(path: Path) -> str:
@@ -42,8 +43,17 @@ def require_sha(value: Any, label: str) -> str:
     return digest
 
 
+def require_safe_relative_path(relative: str, label: str) -> Path:
+    path = Path(relative)
+    if not path.parts or path.is_absolute() or any(
+        part in {"", ".", ".."} for part in path.parts
+    ):
+        raise ValueError(f"{label} must be a safe relative file path")
+    return path
+
+
 def require_source_file(root: Path, relative: str) -> Path:
-    path = root / relative
+    path = root / require_safe_relative_path(relative, "route support path")
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
         raise ValueError(f"exact route replay lacks a real non-empty {relative}")
     return path
@@ -74,11 +84,9 @@ def require_download_verification(
 
     for relative in ("report.md", "report_manifest.json"):
         row = expected.get(relative)
-        local = source_dir / relative
+        local = require_source_file(source_dir, relative)
         if (
             row is None
-            or not local.is_file()
-            or local.is_symlink()
             or int(row.get("bytes", -1)) != local.stat().st_size
             or str(row.get("sha256", "")) != sha256(local)
         ):
@@ -119,6 +127,20 @@ def require_download_verification(
             if not isinstance(key, str) or not key:
                 raise ValueError(f"route report manifest has a malformed {field} key")
             require_sha(digest, f"{field}.{key}")
+    for relative, expected_sha256 in support.items():
+        local = require_source_file(source_dir, relative)
+        row = expected.get(relative)
+        observed_sha256 = sha256(local)
+        if (
+            row is None
+            or int(row.get("bytes", -1)) != local.stat().st_size
+            or str(row.get("sha256", "")) != observed_sha256
+        ):
+            raise ValueError(f"download verification is stale for support {relative}")
+        if expected_sha256 != observed_sha256:
+            raise ValueError(
+                f"route report manifest support hash differs for {relative}"
+            )
 
     return {
         "route": route,
@@ -157,6 +179,26 @@ def copy_create_only(source: Path, destination: Path) -> None:
     except Exception:
         destination.unlink(missing_ok=True)
         raise
+
+
+def copy_route_support_files(source_dir: Path, staging: Path) -> None:
+    manifest = load_json(staging / "report_manifest.json", "route report manifest")
+    support = manifest.get("support_sha256")
+    if not isinstance(support, dict):
+        return
+
+    for relative in sorted(support):
+        if not isinstance(relative, str) or not relative:
+            continue
+        if relative in CORE_REPORT_FILES:
+            raise ValueError(f"route support overlaps a core report file: {relative}")
+        source = require_source_file(source_dir, relative)
+        destination = staging / require_safe_relative_path(
+            relative,
+            "route support path",
+        )
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
 
 
 def install_staged_packet(staging: Path, output_dir: Path) -> None:
@@ -208,6 +250,7 @@ def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: st
             require_source_file(source_dir, "report_manifest.json"),
             staging / "report_manifest.json",
         )
+        copy_route_support_files(source_dir, staging)
         summary = require_download_verification(verification_path, staging, route)
         source_manifest = load_json(
             staging / "report_manifest.json", "route report manifest"

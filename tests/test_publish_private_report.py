@@ -238,6 +238,24 @@ class PublishPrivateReportTests(unittest.TestCase):
             self.assertEqual(tuple(receipt["expected_files"]), expected)
             self.assertEqual(len(rows), 8)
 
+    def test_rejects_source_hash_for_packet_local_support_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary), "comparative_hrd_synthesis")
+            manifest_path = fixture.packet / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["source_sha256"] = {"agreement_disagreement.csv": "a" * 64}
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "source hash differs"):
+                MODULE.validate_packet_dir(
+                    fixture.packet,
+                    "comparative_hrd_synthesis",
+                    ("E019", "DRF-", "Personalis", "Echo"),
+                )
+
     def test_rejects_extra_file_or_forbidden_token_before_aws(self) -> None:
         for mutate, message in (
             (lambda fixture: (fixture.packet / "raw.fastq.gz").write_text("raw\n"), "inventory"),
