@@ -1016,6 +1016,47 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertEqual(copied, ["input_evidence_index.json"])
             self.assertEqual(list(output_dir.glob("*")), [])
 
+    def test_diana_wgs_packet_removes_unexpected_child_after_install_failure(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(
+                output_root / "deterministic",
+                artifact_root,
+            )
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+            original_copy = packet.copy_diana_wgs_packet_file
+
+            def fail_with_unexpected_child(source: Path, destination: Path) -> None:
+                original_copy(source, destination)
+                if destination.name == "sample_validation_summary.csv":
+                    (destination.parent / "unexpected.tmp").write_text(
+                        "stray partial packet file\n",
+                        encoding="utf-8",
+                    )
+                    raise ValueError("synthetic unexpected packet child")
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "copy_diana_wgs_packet_file",
+                    side_effect=fail_with_unexpected_child,
+                ),
+            ):
+                with self.assertRaisesRegex(ValueError, "synthetic unexpected packet child"):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertFalse(output_dir.exists())
+
     def test_diana_wgs_packet_rejects_stale_extra_output(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)

@@ -6,6 +6,7 @@ import io
 import json
 import os
 import re
+import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -2044,8 +2045,7 @@ def install_diana_wgs_packet(staged_paths: Sequence[Path], output: Path) -> None
             copy_diana_wgs_packet_file(path, destination)
             installed.append(destination)
     except Exception:
-        for path in installed:
-            path.unlink(missing_ok=True)
+        shutil.rmtree(output, ignore_errors=True)
         raise
 
 
