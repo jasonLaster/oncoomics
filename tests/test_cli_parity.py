@@ -20,6 +20,7 @@ class CliParityTest(unittest.TestCase):
             "build:diana-samplesheet-from-delivery",
             "build:diana-template",
             "build:packet",
+            "build:phase3-fast-input-manifest",
             "build:panel",
             "build:raw-samplesheets",
             "build:rosalind-hrd-packet",
@@ -171,12 +172,25 @@ class CliParityTest(unittest.TestCase):
     def test_p5en_gpu_smoke_task_uses_isolated_gpu_profile(self):
         argv = TASKS["nf:aws:phase3-wgs-fast:gpu-smoke"].steps[0].argv
         self.assertIn("awsbatch_gpu", argv)
-        self.assertIn("infra/aws/nextflow.aws.json", argv)
+        self.assertIn("infra/aws/nextflow.aws.use2.json", argv)
         self.assertEqual("phase3_wgs_fast_gpu_smoke", argv[argv.index("--workflow") + 1])
         self.assertEqual("8", argv[argv.index("--phase3_fast_gpu_smoke_expected_gpus") + 1])
         self.assertEqual("H200", argv[argv.index("--phase3_fast_gpu_smoke_gpu_name") + 1])
         self.assertIn("--aws_max_retries", argv)
         self.assertEqual("0", argv[argv.index("--aws_max_retries") + 1])
+
+    def test_use2_terraform_tasks_write_dedicated_gpu_params(self):
+        plan_steps = TASKS["infra:aws:plan:use2"].steps
+        self.assertEqual(
+            ("terraform", "-chdir=infra/aws", "workspace", "select", "-or-create", "phase3-fast-use2"),
+            plan_steps[0].argv,
+        )
+        self.assertEqual("us-east-2", plan_steps[1].env["TF_VAR_region"])
+        self.assertEqual("prod-use2", plan_steps[1].env["TF_VAR_environment"])
+        self.assertEqual("nextflow.aws.use2.json", plan_steps[1].env["TF_VAR_nextflow_params_filename"])
+
+        use1_steps = TASKS["infra:aws:plan:use1"].steps
+        self.assertEqual("nextflow.aws.json", use1_steps[1].env["TF_VAR_nextflow_params_filename"])
 
 
 if __name__ == "__main__":

@@ -11,6 +11,18 @@ from typing import Optional
 from .paths import ROOT
 
 NEXTFLOW_LOG_PATH = Path("logs") / "nextflow.log"
+AWS_USE1_NEXTFLOW_PARAMS = "infra/aws/nextflow.aws.json"
+AWS_USE2_NEXTFLOW_PARAMS = "infra/aws/nextflow.aws.use2.json"
+AWS_USE1_TERRAFORM_ENV = {
+    "TF_VAR_region": "us-east-1",
+    "TF_VAR_environment": "prod-use1",
+    "TF_VAR_nextflow_params_filename": "nextflow.aws.json",
+}
+AWS_USE2_TERRAFORM_ENV = {
+    "TF_VAR_region": "us-east-2",
+    "TF_VAR_environment": "prod-use2",
+    "TF_VAR_nextflow_params_filename": "nextflow.aws.use2.json",
+}
 SRA_BENCH_RANGE_MATRIX = ",".join(
     (
         "aws_s3api_range:4:268435456:4:aws-range-c4",
@@ -204,15 +216,24 @@ TASKS: dict[str, Task] = {
     "infra:aws:fmt:check": _task(_terraform("fmt", "-check")),
     "infra:aws:validate": _task(_terraform("validate")),
     "infra:aws:use1": _task(_terraform("workspace", "select", "sra-use1")),
+    "infra:aws:use2": _task(_terraform("workspace", "select", "-or-create", "phase3-fast-use2")),
     "infra:aws:plan": _task(_terraform("plan", env=_tf_image_env())),
     "infra:aws:apply": _task(_terraform("apply", env=_tf_image_env())),
     "infra:aws:plan:use1": _task(
         _terraform("workspace", "select", "sra-use1"),
-        _terraform("plan", env=_tf_image_env({"TF_VAR_region": "us-east-1", "TF_VAR_environment": "prod-use1"})),
+        _terraform("plan", env=_tf_image_env(AWS_USE1_TERRAFORM_ENV)),
     ),
     "infra:aws:apply:use1": _task(
         _terraform("workspace", "select", "sra-use1"),
-        _terraform("apply", env=_tf_image_env({"TF_VAR_region": "us-east-1", "TF_VAR_environment": "prod-use1"})),
+        _terraform("apply", env=_tf_image_env(AWS_USE1_TERRAFORM_ENV)),
+    ),
+    "infra:aws:plan:use2": _task(
+        _terraform("workspace", "select", "-or-create", "phase3-fast-use2"),
+        _terraform("plan", env=_tf_image_env(AWS_USE2_TERRAFORM_ENV)),
+    ),
+    "infra:aws:apply:use2": _task(
+        _terraform("workspace", "select", "-or-create", "phase3-fast-use2"),
+        _terraform("apply", env=_tf_image_env(AWS_USE2_TERRAFORM_ENV)),
     ),
     "aws:ecr:push": _task(_tool("bash", "infra/aws/push-image.sh")),
     "aws:hrd-packet:cloud-submit": _task(
@@ -222,7 +243,7 @@ TASKS: dict[str, Task] = {
     "deploy:aws": _task(
         _tool("bash", "infra/aws/push-image.sh"),
         _terraform("workspace", "select", "sra-use1"),
-        _terraform("apply", "-auto-approve", env=_tf_image_env({"TF_VAR_region": "us-east-1", "TF_VAR_environment": "prod-use1"})),
+        _terraform("apply", "-auto-approve", env=_tf_image_env(AWS_USE1_TERRAFORM_ENV)),
     ),
     "nf:aws:monitor": _task(_tool("bash", "infra/aws/monitor-batch-job.sh", append_args=True), accepts_args=True),
     "nf:aws:quick:stub": _task(
@@ -233,7 +254,7 @@ TASKS: dict[str, Task] = {
             "-profile",
             "awsbatch_spot",
             "-params-file",
-            "infra/aws/nextflow.aws.json",
+            AWS_USE1_NEXTFLOW_PARAMS,
             "--workflow",
             "phase3_fetch",
             "--phase3_reads",
@@ -611,7 +632,7 @@ TASKS: dict[str, Task] = {
             "-profile",
             "awsbatch_gpu",
             "-params-file",
-            "infra/aws/nextflow.aws.json",
+            AWS_USE2_NEXTFLOW_PARAMS,
             "--workflow",
             "phase3_wgs_fast_gpu_smoke",
             "--phase3_fast_gpu_smoke_expected_gpus",

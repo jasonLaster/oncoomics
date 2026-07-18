@@ -88,6 +88,17 @@ variable "parabricks_container" {
   default     = ""
 }
 
+variable "nextflow_params_filename" {
+  description = "Local generated Nextflow params filename under infra/aws."
+  type        = string
+  default     = "nextflow.aws.json"
+
+  validation {
+    condition     = basename(var.nextflow_params_filename) == var.nextflow_params_filename && endswith(var.nextflow_params_filename, ".json")
+    error_message = "nextflow_params_filename must be a JSON filename without path separators."
+  }
+}
+
 variable "work_bucket_lifecycle_days" {
   description = "Days before expiring disposable Nextflow work objects."
   type        = number

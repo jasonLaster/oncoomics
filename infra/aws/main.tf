@@ -1005,7 +1005,7 @@ resource "aws_batch_job_queue" "gpu_p5en" {
 }
 
 resource "local_file" "nextflow_params" {
-  filename        = "${path.module}/nextflow.aws.json"
+  filename        = "${path.module}/${var.nextflow_params_filename}"
   file_permission = "0600"
   content = jsonencode({
     aws_region              = var.region

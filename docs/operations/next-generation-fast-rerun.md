@@ -219,6 +219,26 @@ Required before any caller benchmark:
 - Reference and resource SHA-256 values match between the `us-east-1` source and `us-east-2` cache.
 - Existing no-call and interpretation boundaries are loaded into the run manifest.
 
+The checked-in Gate 0 renderer fails closed unless every large BAM, BAI,
+reference, and caller-resource object is bound to a SHA-256, non-null S3
+VersionId, byte count, encryption state, and the BAM validation receipt that
+proved `samtools quickcheck`, BAM/BAI pairing, sample names, and reference
+contig compatibility:
+
+```sh
+PHASE3_WGS_FAST_PRIVATE_FREEZE_RECEIPT=/path/to/private-freeze.json \
+PHASE3_WGS_FAST_PRIVATE_SHA256_RECEIPT=/path/to/private-sha256.json \
+PHASE3_WGS_FAST_REFERENCE_FREEZE_RECEIPT=/path/to/reference-freeze.json \
+PHASE3_WGS_FAST_REFERENCE_SHA256_RECEIPT=/path/to/reference-sha256.json \
+PHASE3_WGS_FAST_BAM_VALIDATION_RECEIPT=/path/to/bam-validation.json \
+PHASE3_WGS_FAST_CONTIG_COMPATIBILITY_RECEIPT=/path/to/contig-compatibility.json \
+PHASE3_WGS_FAST_CALLER_RESOURCE_RECEIPT=/path/to/caller-resources.json \
+PHASE3_WGS_FAST_PARAMETER_SHA256=... \
+PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST=... \
+PHASE3_WGS_FAST_PARABRICKS_VERSION=... \
+PYTHONPATH=src /usr/bin/python3 -m diana_omics build:phase3-fast-input-manifest
+```
+
 ### Gate 1: P5en and Parabricks smoke
 
 Run the checked-in placement smoke after quota approval and a pinned Parabricks
@@ -294,7 +314,7 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
 1. Preserve the stopped v4 Batch and CloudWatch logs; treat the run as non-terminal and do not restart the monolithic single-node CPU worker.
 2. Freeze the validated BAM pair, indices, reference, PoN, germline, and common-sites resources into an immutable input manifest with SHA-256 values.
 3. Implement the checked-in Parabricks evidence DAG and pointer-only result publication.
-4. Create the `us-east-2` private cache, KMS key, ECR mirrors, Batch compute environments, queues, job definitions, and CloudWatch dashboard.
+4. Create the `us-east-2` private cache, KMS key, ECR mirrors, Batch compute environments, queues, job definitions, and CloudWatch dashboard with `PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use2` and `infra:aws:apply:use2`. This writes `infra/aws/nextflow.aws.use2.json` and leaves the existing `sra-use1` / `infra/aws/nextflow.aws.json` CPU stack pointed at `us-east-1`.
 5. Track the 384 On-Demand P vCPU request in `us-east-2`; the same approved quota should cover one immediate P5en caller job and the later two-P5en parallel `fq2bam` gate.
 
 ### After quota approval

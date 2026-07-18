@@ -4,7 +4,6 @@ import re
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MAIN_TF = ROOT / "infra/aws/main.tf"
 VARIABLES_TF = ROOT / "infra/aws/variables.tf"
@@ -55,7 +54,10 @@ class AwsGpuInfraTests(unittest.TestCase):
 
     def test_nextflow_params_export_gpu_queue_and_unselected_parabricks_image(self) -> None:
         text = MAIN_TF.read_text(encoding="utf-8")
+        variables = VARIABLES_TF.read_text(encoding="utf-8")
 
+        self.assertIn('filename        = "${path.module}/${var.nextflow_params_filename}"', text)
+        self.assertIn('variable "nextflow_params_filename"', variables)
         self.assertIn("aws_gpu_queue           = aws_batch_job_queue.gpu_p5en.name", text)
         self.assertIn("parabricks_container    = var.parabricks_container", text)
 

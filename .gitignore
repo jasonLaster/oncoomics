@@ -35,6 +35,7 @@ infra/aws/*.tfstate
 infra/aws/*.tfstate.*
 infra/aws/*.tfplan
 infra/aws/nextflow.aws.json
+infra/aws/nextflow.aws.*.json
 
 logs
 bam/
