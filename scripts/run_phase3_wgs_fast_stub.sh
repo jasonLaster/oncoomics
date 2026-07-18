@@ -21,6 +21,7 @@ for receipt in \
 done
 
 cd "${ROOT}"
+mkdir -p logs
 nextflow -log logs/nextflow.log run main.nf -profile local \
   --workflow phase3_wgs_fast \
   --phase3_fast_private_freeze_receipt "${RECEIPTS_DIR}/private-freeze.json" \

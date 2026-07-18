@@ -169,6 +169,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("--phase3_fast_parabricks_memory '1 GB'", script)
         self.assertIn("--phase3_fast_forbidden_tokens_json", script)
         self.assertIn("-stub-run", script)
+        self.assertLess(script.index("mkdir -p logs"), script.index("nextflow -log logs/nextflow.log"))
 
     def test_replication_plan_consumes_input_manifest_output(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")
