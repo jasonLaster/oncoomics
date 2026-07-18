@@ -54,7 +54,9 @@ params.phase3_fast_bam_validation_receipt = params.phase3_fast_bam_validation_re
 params.phase3_fast_contig_compatibility_receipt = params.phase3_fast_contig_compatibility_receipt ?: null
 params.phase3_fast_caller_resource_receipt = params.phase3_fast_caller_resource_receipt ?: null
 params.phase3_fast_parameter_sha256 = params.phase3_fast_parameter_sha256 ?: null
-params.phase3_fast_parabricks_container_digest = params.phase3_fast_parabricks_container_digest ?: null
+params.phase3_fast_parabricks_container_digest = params.phase3_fast_parabricks_container_digest ?: (
+    params.parabricks_container?.toString()?.contains('@') ? params.parabricks_container.toString().split('@', 2)[1] : null
+)
 params.phase3_fast_parabricks_version = params.phase3_fast_parabricks_version ?: null
 params.phase3_fast_sequenza_female = params.phase3_fast_sequenza_female ?: null
 params.phase3_fast_cache_prefix = params.phase3_fast_cache_prefix ?: null
@@ -554,6 +556,7 @@ process FAST_INPUT_MANIFEST {
     export PHASE3_WGS_FAST_CALLER_RESOURCE_RECEIPT="\$PWD/${caller_resource_receipt}"
     export PHASE3_WGS_FAST_OUTPUT="\$PWD/workspace/manifests/phase3_wgs_fast/input_manifest.json"
     export PHASE3_WGS_FAST_PARAMETER_SHA256="${params.phase3_fast_parameter_sha256}"
+    export PHASE3_WGS_FAST_PARABRICKS_CONTAINER="${params.parabricks_container}"
     export PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST="${params.phase3_fast_parabricks_container_digest}"
     export PHASE3_WGS_FAST_PARABRICKS_VERSION="${params.phase3_fast_parabricks_version}"
     export PHASE3_WGS_FAST_SEQUENZA_FEMALE="${params.phase3_fast_sequenza_female}"

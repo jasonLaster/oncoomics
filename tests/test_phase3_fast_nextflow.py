@@ -175,6 +175,14 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("--phase3_fast_forbidden_tokens_json", script)
         self.assertIn("-stub-run", script)
         self.assertLess(script.index("mkdir -p logs"), script.index("nextflow -log logs/nextflow.log"))
+        self.assertIn("--parabricks_container", script)
+
+    def test_input_manifest_derives_parabricks_digest_from_runtime_container(self) -> None:
+        text = MAIN_NF.read_text(encoding="utf-8")
+
+        self.assertIn("params.parabricks_container?.toString()?.contains('@')", text)
+        self.assertIn("params.parabricks_container.toString().split('@', 2)[1]", text)
+        self.assertIn('export PHASE3_WGS_FAST_PARABRICKS_CONTAINER="${params.parabricks_container}"', text)
 
     def test_replication_plan_consumes_input_manifest_output(self) -> None:
         text = MAIN_NF.read_text(encoding="utf-8")

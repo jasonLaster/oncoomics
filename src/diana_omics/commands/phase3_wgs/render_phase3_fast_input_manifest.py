@@ -104,6 +104,18 @@ def _require_image_digest(value: Any, label: str) -> str:
     return value
 
 
+def _image_digest(value: Any, label: str) -> str:
+    return _require_image_digest(value, label).rsplit("@", 1)[-1].lower()
+
+
+def _require_matching_image_digest(metadata: Mapping[str, str]) -> str:
+    digest = _image_digest(_metadata_value(metadata, "parabricks_container_digest"), "parabricks_container_digest")
+    container = metadata.get("parabricks_container")
+    if container and container not in {"null", "None"} and _image_digest(container, "parabricks_container") != digest:
+        raise ManifestError("parabricks_container_digest must match parabricks_container")
+    return digest
+
+
 def _require_version(value: Any, label: str) -> str:
     if not isinstance(value, str) or value in {"", "null", "None"} or VERSION_ID.fullmatch(value) is None:
         raise ManifestError(f"{label} version_id must be a non-null S3 VersionId")
@@ -446,9 +458,7 @@ def build_phase3_wgs_fast_input_manifest(
         "caller_resources": caller_resources,
         "runtime": {
             "caller": "parabricks_mutectcaller",
-            "parabricks_container_digest": _require_image_digest(
-                _metadata_value(metadata, "parabricks_container_digest"), "parabricks_container_digest"
-            ),
+            "parabricks_container_digest": _require_matching_image_digest(metadata),
             "parabricks_version": _metadata_value(metadata, "parabricks_version"),
             "gatk_version": _metadata_value(metadata, "gatk_version", "4.6.2.0"),
         },
@@ -495,6 +505,7 @@ def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
         "gatk_version": os.environ.get("PHASE3_WGS_FAST_GATK_VERSION", "4.6.2.0"),
         "normal_sample_id": os.environ.get("PHASE3_WGS_FAST_NORMAL_SAMPLE_ID", "subject01_normal"),
         "pair_id": os.environ.get("PHASE3_WGS_FAST_PAIR_ID", "subject01_tumor_normal"),
+        "parabricks_container": os.environ.get("PHASE3_WGS_FAST_PARABRICKS_CONTAINER", ""),
         "parabricks_container_digest": os.environ.get("PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST", ""),
         "parabricks_version": os.environ.get("PHASE3_WGS_FAST_PARABRICKS_VERSION", ""),
         "parameter_sha256": os.environ.get("PHASE3_WGS_FAST_PARAMETER_SHA256", ""),

@@ -207,6 +207,9 @@ def metadata() -> dict[str, str]:
     return {
         "source_commit": "abcd1234",
         "parameter_sha256": SHA_2,
+        "parabricks_container": (
+            "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + SHA_3
+        ),
         "parabricks_container_digest": "sha256:" + SHA_3,
         "parabricks_version": "4.5.1-1",
         "sequenza_female": "true",
@@ -359,6 +362,28 @@ class Phase3FastInputManifestTests(unittest.TestCase):
                 metadata=incomplete_metadata,
             )
 
+    def test_parabricks_container_digest_must_match_container(self) -> None:
+        private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
+        mismatched_metadata = {
+            **metadata(),
+            "parabricks_container": (
+                "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:"
+                + "9" * 64
+            ),
+        }
+
+        with self.assertRaisesRegex(render.ManifestError, "parabricks_container_digest must match parabricks_container"):
+            render.build_phase3_wgs_fast_input_manifest(
+                private_freeze_receipt=private_freeze,
+                private_sha256_receipt=private_sha,
+                reference_freeze_receipt=reference_freeze,
+                reference_sha256_receipt=reference_sha,
+                bam_validation_receipt=validation,
+                contig_compatibility_receipt=contigs,
+                caller_resource_receipt=resources,
+                metadata=mismatched_metadata,
+            )
+
     def test_sequenza_sex_model_must_be_boolean(self) -> None:
         private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
         malformed_metadata = {**metadata(), "sequenza_female": "unknown"}
@@ -450,6 +475,9 @@ class Phase3FastInputManifestTests(unittest.TestCase):
                     **{key: str(path) for key, path in receipt_paths.items()},
                     "PHASE3_WGS_FAST_OUTPUT": str(output),
                     "PHASE3_WGS_FAST_PARAMETER_SHA256": SHA_2,
+                    "PHASE3_WGS_FAST_PARABRICKS_CONTAINER": (
+                        "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + SHA_3
+                    ),
                     "PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST": "sha256:" + SHA_3,
                     "PHASE3_WGS_FAST_PARABRICKS_VERSION": "4.5.1-1",
                     "PHASE3_WGS_FAST_SEQUENZA_FEMALE": "true",

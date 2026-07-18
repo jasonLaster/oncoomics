@@ -250,6 +250,7 @@ PHASE3_WGS_FAST_BAM_VALIDATION_RECEIPT=/path/to/bam-validation.json \
 PHASE3_WGS_FAST_CONTIG_COMPATIBILITY_RECEIPT=/path/to/contig-compatibility.json \
 PHASE3_WGS_FAST_CALLER_RESOURCE_RECEIPT=/path/to/caller-resources.json \
 PHASE3_WGS_FAST_PARAMETER_SHA256=... \
+PHASE3_WGS_FAST_PARABRICKS_CONTAINER=<mirror>@sha256:<digest> \
 PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST=... \
 PHASE3_WGS_FAST_PARABRICKS_VERSION=... \
 PHASE3_WGS_FAST_SEQUENZA_FEMALE=true \
@@ -263,6 +264,9 @@ The Gate 0 manifest also requires `method_parameters.sequenza.female` up front,
 so the eventual Sequenza/scarHRD route receives an explicit sex-model parameter
 from the same immutable input contract as the BAM, BAI, reference, and caller
 resources.
+Nextflow derives `PHASE3_WGS_FAST_PARABRICKS_CONTAINER_DIGEST` from the pinned
+`--parabricks_container`; if a caller still passes both values, the renderer
+rejects a digest that does not exactly match the image Batch will run.
 It then renders a dry `FAST_REPLICATION_PLAN` with deterministic,
 content-addressed source-version to `us-east-2` cache-key rows and the exact
 destination KMS key. `FAST_REPLICATE_INPUTS` consumes that plan and defaults to
@@ -463,7 +467,6 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:execute --
   --phase3_fast_contig_compatibility_receipt /path/to/contig-compatibility.json \
   --phase3_fast_caller_resource_receipt /path/to/caller-resources.json \
   --phase3_fast_parameter_sha256 <sha256> \
-  --phase3_fast_parabricks_container_digest <sha256:digest> \
   --phase3_fast_parabricks_version <version> \
   --phase3_fast_sequenza_female true \
   --phase3_fast_cache_prefix s3://<regional-private-cache>/wgs-v2/ \

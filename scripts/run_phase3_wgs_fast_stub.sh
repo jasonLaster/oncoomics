@@ -32,6 +32,8 @@ nextflow -log logs/nextflow.log run main.nf -profile local \
   --phase3_fast_contig_compatibility_receipt "${RECEIPTS_DIR}/contig-compatibility.json" \
   --phase3_fast_caller_resource_receipt "${RECEIPTS_DIR}/caller-resources.json" \
   --phase3_fast_parameter_sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+  --parabricks_container \
+    172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb \
   --phase3_fast_parabricks_container_digest sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb \
   --phase3_fast_parabricks_version stub-parabricks \
   --phase3_fast_sequenza_female true \
