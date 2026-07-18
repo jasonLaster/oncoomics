@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import unittest
@@ -262,6 +263,8 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("Parabricks mirror receipt output may not be a symlink", script)
         self.assertIn("Parabricks mirror receipt parent may not be a symlink", script)
         self.assertIn("Temporary Parabricks mirror receipt already exists", script)
+        self.assertIn("os.O_EXCL", script)
+        self.assertIn("0o600", script)
         self.assertIn("temporary_path.replace(receipt_path)", script)
         self.assertIn("verify:parabricks-mirror-receipt", script)
         self.assertIn("TF_VAR_parabricks_container", script)
@@ -338,14 +341,19 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("parent may not be a symlink", result.stderr)
 
     def test_parabricks_mirror_receipt_writer_uses_single_use_temporary_file(self) -> None:
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp).resolve()
-            (root / ".receipt.json.tmp").write_text("stale\n", encoding="utf-8")
+        for label in ("regular", "symlink"):
+            with self.subTest(label=label), TemporaryDirectory() as tmp:
+                root = Path(tmp).resolve()
+                temporary_path = root / ".receipt.json.tmp"
+                if label == "regular":
+                    temporary_path.write_text("stale\n", encoding="utf-8")
+                else:
+                    temporary_path.symlink_to(root / "target.json")
 
-            result = run_mirror_parabricks_receipt_writer(root / "receipt.json")
+                result = run_mirror_parabricks_receipt_writer(root / "receipt.json")
 
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("Temporary Parabricks mirror receipt already exists", result.stderr)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("Temporary Parabricks mirror receipt already exists", result.stderr)
 
     def test_parabricks_mirror_receipt_writer_writes_real_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -354,8 +362,10 @@ class AwsGpuInfraTests(unittest.TestCase):
             result = run_mirror_parabricks_receipt_writer(path)
 
             payload = json.loads(path.read_text(encoding="utf-8"))
+            receipt_mode = stat.S_IMODE(path.stat().st_mode)
 
         self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(0o600, receipt_mode)
         self.assertEqual("parabricks_mirror_receipt", payload["manifest_type"])
         self.assertEqual("linux/amd64", payload["source"]["platform"])
         self.assertEqual("b" * 40, payload["diana_omics"]["git_commit"])

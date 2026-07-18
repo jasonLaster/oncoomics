@@ -124,6 +124,7 @@ python3 - "${RECEIPT_PATH}" "${SOURCE_IMAGE}" "${source_digest}" "${PLATFORM}" "
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -185,7 +186,14 @@ receipt_path.parent.mkdir(parents=True, exist_ok=True)
 temporary_path = receipt_path.with_name(f".{receipt_path.name}.tmp")
 if temporary_path.exists() or temporary_path.is_symlink():
     raise SystemExit(f"Temporary Parabricks mirror receipt already exists: {temporary_path}")
-temporary_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+serialized = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+try:
+    fd = os.open(temporary_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+except FileExistsError as error:
+    raise SystemExit(f"Temporary Parabricks mirror receipt already exists: {temporary_path}") from error
+
+with os.fdopen(fd, "w", encoding="utf-8") as handle:
+    handle.write(serialized)
 require_safe_receipt_path(receipt_path)
 temporary_path.replace(receipt_path)
 PY
