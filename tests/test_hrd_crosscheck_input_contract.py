@@ -131,7 +131,7 @@ class CustodyFixture:
         self.exact_rows = []
         self.cross_sources = {}
         for index, (role, relative) in enumerate(paths.items(), 1):
-            uri = f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/artifacts/{relative}"
+            uri = f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/final/{relative}"
             key = uri.split(f"s3://{BUCKET}/", 1)[1]
             version = f"frozen-version-{index}"
             digest = f"{index:064x}"
