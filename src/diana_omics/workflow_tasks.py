@@ -53,8 +53,9 @@ LEGACY_PHASE3_AWS_FULL_DESCRIPTION = (
 PHASE3_FAST_AWS_EXECUTE_ENV = {"ALLOW_PHASE3_FAST_AWS_EXECUTE": "YES"}
 PHASE3_FAST_AWS_EXECUTE_DESCRIPTION = (
     "Phase 3 fast AWS execute mode runs the full Diana BAM-to-evidence P5en/Parabricks path. "
-    "Set ALLOW_PHASE3_FAST_AWS_EXECUTE=YES only after Gate 0 receipts, P5en quota, a pinned image, "
-    "the PHASE3_FAST_GPU_SMOKE_RESULT gpu_smoke.json, and the forbidden-token scan inventory have been reviewed."
+    "Set ALLOW_PHASE3_FAST_AWS_EXECUTE=YES only after Gate 0 receipts, P5en quota, a pinned mirrored "
+    "Parabricks image, the PARABRICKS_MIRROR_RECEIPT receipt, the PHASE3_FAST_GPU_SMOKE_RESULT "
+    "gpu_smoke.json, and the forbidden-token scan inventory have been reviewed."
 )
 
 

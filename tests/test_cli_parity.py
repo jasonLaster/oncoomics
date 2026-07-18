@@ -9,6 +9,7 @@ from diana_omics.workflow_tasks import (
     AWS_USE2_ECR_PUSH_ENV,
     AWS_USE2_TERRAFORM_WORKSPACE,
     LEGACY_PHASE3_AWS_FULL_ENV,
+    PHASE3_FAST_AWS_EXECUTE_DESCRIPTION,
     PHASE3_FAST_AWS_EXECUTE_ENV,
     TASKS,
     run_task,
@@ -243,6 +244,8 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("execute", argv[argv.index("--phase3_fast_small_variant_mode") + 1])
         self.assertIn("--aws_max_retries", argv)
         self.assertEqual("0", argv[argv.index("--aws_max_retries") + 1])
+        self.assertIn("PARABRICKS_MIRROR_RECEIPT", PHASE3_FAST_AWS_EXECUTE_DESCRIPTION)
+        self.assertIn("PHASE3_FAST_GPU_SMOKE_RESULT", PHASE3_FAST_AWS_EXECUTE_DESCRIPTION)
 
     @patch("diana_omics.workflow_tasks.subprocess.run")
     def test_legacy_phase3_aws_full_task_fails_before_nextflow_without_override(self, run):

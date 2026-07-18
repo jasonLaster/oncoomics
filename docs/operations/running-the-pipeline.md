@@ -111,10 +111,15 @@ The expanded known-answer cohort fetches small public assets in the Batch task a
 placement gate for the isolated `phase3_wgs_fast` P5en/Parabricks queue; it does not run the full WGS caller.
 
 The full `phase3_wgs_fast` execute alias is available as
-`nf:aws:phase3-wgs-fast:execute`, accepts reviewed Gate 0 receipt paths after
-`--`, intentionally requires `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES`, and repeats
-the local `verify:phase3-fast-gpu-smoke` preflight before it can submit the
-full P5en/Parabricks workflow.
+`nf:aws:phase3-wgs-fast:execute`, accepts reviewed Gate 0 receipt paths and the
+alias-only forbidden-token inventory after `--`, and intentionally requires
+`ALLOW_PHASE3_FAST_AWS_EXECUTE=YES`. It also requires
+`PARABRICKS_MIRROR_RECEIPT` to point at the reviewed ECR mirror receipt and
+`PHASE3_FAST_GPU_SMOKE_RESULT` to point at the reviewed `gpu_smoke.json` from
+the bounded placement gate. Before it can submit the full P5en/Parabricks
+workflow, it repeats the GPU params, mirror-receipt, cache, ECR-image, live
+P-instance quota, and GPU-smoke checks locally so a stale image, missing mirror,
+deleted digest, wrong queue, or skipped placement gate fails before Nextflow.
 
 Do not use the legacy full-source AWS CPU aliases for the current Diana tumor/matched-normal evidence rerun. They are blocked behind
 `ALLOW_LEGACY_PHASE3_AWS_FULL=YES` and kept only for explicitly approved legacy public-WGS regression runs.

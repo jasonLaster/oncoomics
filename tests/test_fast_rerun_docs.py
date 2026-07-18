@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 NEXT_GEN = ROOT / "docs/operations/next-generation-fast-rerun.md"
 SUMMARY = ROOT / "docs/operations/fast-rerun-performance-cost-summary.md"
+RUNNING_PIPELINE = ROOT / "docs/operations/running-the-pipeline.md"
 AWS_README = ROOT / "infra/aws/README.md"
 SCRIPTS_README = ROOT / "scripts/README.md"
 
@@ -71,6 +72,16 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("Do not restart\nthat same monolithic single-node CPU topology", text)
         self.assertIn("checked-in resumable DAG", text)
         self.assertNotIn("keep the CPU job alive", text)
+
+    def test_running_pipeline_documents_guarded_phase3_fast_execute(self) -> None:
+        text = RUNNING_PIPELINE.read_text(encoding="utf-8")
+
+        self.assertIn("nf:aws:phase3-wgs-fast:execute", text)
+        self.assertIn("ALLOW_PHASE3_FAST_AWS_EXECUTE=YES", text)
+        self.assertIn("PARABRICKS_MIRROR_RECEIPT", text)
+        self.assertIn("PHASE3_FAST_GPU_SMOKE_RESULT", text)
+        self.assertIn("alias-only forbidden-token inventory after `--`", text)
+        self.assertIn("mirror-receipt, cache, ECR-image, live\nP-instance quota", text)
 
     def test_legacy_full_wgs_launcher_is_not_current_diana_rerun_path(self) -> None:
         text = AWS_README.read_text(encoding="utf-8")
