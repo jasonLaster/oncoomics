@@ -59,8 +59,62 @@ def load_object(path: Path) -> dict[str, Any]:
     return value
 
 
-def write_json(path: Path, value: dict[str, Any]) -> None:
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+def canonical_json_bytes(value: dict[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def require_installed_json(path: Path, expected_sha256: str) -> None:
+    require_real_file(path, "staged AI review JSON")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"staged AI review JSON mode is not 0600: {path}")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"staged AI review JSON changed during write: {path}")
+
+
+def write_json(path: Path, value: dict[str, Any], *, create: bool = False) -> None:
+    require_no_symlinked_ancestors(path, "staged AI review JSON")
+    if path.is_symlink():
+        raise ValueError(f"staged AI review JSON may not be a symlink: {path}")
+    if create and path.exists():
+        raise FileExistsError(f"staged AI review JSON already exists: {path}")
+    if not create:
+        require_real_file(path, "staged AI review JSON")
+
+    data = canonical_json_bytes(value)
+    expected_sha256 = sha256_bytes(data)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+    )
+    temporary = Path(temporary_name)
+    linked = False
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if create:
+            os.link(temporary, path)
+            linked = True
+        else:
+            os.replace(temporary, path)
+        fsync_directory(path.parent)
+        require_installed_json(path, expected_sha256)
+    except Exception:
+        if create and linked:
+            path.unlink(missing_ok=True)
+        raise
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        temporary.unlink(missing_ok=True)
 
 
 def require_real_file(path: Path, label: str) -> Path:
@@ -470,7 +524,7 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
             },
             "checks": postconditions["checks"],
         }
-        write_json(staging / "prepare_ai_review_run_receipt.json", receipt)
+        write_json(staging / "prepare_ai_review_run_receipt.json", receipt, create=True)
 
         install_staged_run(staging, output)
         keep_staging = True

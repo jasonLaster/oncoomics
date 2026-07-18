@@ -371,6 +371,80 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("output already exists", result.stderr)
 
+    def test_rebase_stage_receipt_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            final = root / "ai-review"
+            staging.mkdir()
+            stage_receipt = staging / "stage_ai_review_inputs_receipt.json"
+            stage_receipt.write_text(
+                json.dumps(
+                    {
+                        "status": "passed",
+                        "bundle_dir": str(staging / "bundle"),
+                        "output_root": str(staging),
+                        "reviewers": {
+                            "A": {
+                                "directory": str(staging / "reviewer-inputs" / "reviewer-a-input"),
+                            },
+                        },
+                    },
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            real_fsync_directory = PREPARE.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                stage_receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged AI review JSON changed during write",
+                ),
+            ):
+                PREPARE.rebase_stage_receipt(stage_receipt, staging, final)
+
+            self.assertFalse(any(staging.glob(".stage_ai_review_inputs_receipt.json.*.tmp")))
+
+    def test_prepare_receipt_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+            real_fsync_directory = PREPARE.fsync_directory
+
+            def tamper_after_prepare_receipt_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                receipt = path / "prepare_ai_review_run_receipt.json"
+                if receipt.exists():
+                    receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "fsync_directory",
+                    side_effect=tamper_after_prepare_receipt_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged AI review JSON changed during write",
+                ),
+            ):
+                PREPARE.prepare(namespace(fixture, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".ai-review.*")))
+
     def test_cleans_current_attempt_after_install_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))
