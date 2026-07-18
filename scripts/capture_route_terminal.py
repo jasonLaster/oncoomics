@@ -249,18 +249,32 @@ def expected_submission_environment(args: argparse.Namespace) -> dict[str, str]:
     return values
 
 
+def require_new_private_output_paths(paths: Iterable[Path]) -> None:
+    rows = list(paths)
+    if not rows:
+        raise ValueError("private output paths must be distinct and nonempty")
+    for path in rows:
+        if path.is_symlink():
+            raise FileExistsError(f"private output may not be a symlink: {path}")
+        if path.parent.is_symlink():
+            raise FileExistsError(
+                f"private output parent may not be a symlink: {path.parent}"
+            )
+    resolved = {path.resolve(strict=False) for path in rows}
+    if len(resolved) != len(rows):
+        raise ValueError("private output paths must be distinct and nonempty")
+    for path in rows:
+        if path.exists():
+            raise FileExistsError(f"refusing to overwrite private output: {path}")
+
+
 def validate_arguments(args: argparse.Namespace) -> dict[str, str]:
     output_paths = (
         args.capture_output,
         args.receipt_output,
         args.anchor_output,
     )
-    normalized_paths = {os.path.abspath(path) for path in output_paths}
-    if len(normalized_paths) != len(output_paths):
-        raise ValueError("capture, receipt, and anchor outputs must be distinct")
-    for path in output_paths:
-        if path.exists() or path.is_symlink():
-            raise FileExistsError(f"refusing to overwrite private output: {path}")
+    require_new_private_output_paths(output_paths)
     if args.route not in ROUTES:
         raise ValueError("unsupported route")
     if not re.fullmatch(r"[0-9a-f]{64}", args.expected_contract_sha256):
@@ -792,12 +806,7 @@ def validate_exact_receipt(
 
 def create_private_outputs(outputs: Iterable[tuple[Path, bytes]]) -> None:
     rows = list(outputs)
-    normalized_paths = {os.path.abspath(path) for path, _ in rows}
-    if not rows or len(normalized_paths) != len(rows):
-        raise ValueError("private output paths must be nonempty and distinct")
-    for path, _ in rows:
-        if path.exists() or path.is_symlink():
-            raise FileExistsError(f"refusing to overwrite private output: {path}")
+    require_new_private_output_paths(path for path, _ in rows)
     descriptors: dict[Path, int] = {}
     created: list[Path] = []
     try:

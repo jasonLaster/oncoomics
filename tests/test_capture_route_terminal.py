@@ -539,10 +539,26 @@ class CaptureRouteTerminalTests(unittest.TestCase):
             symlink_args.anchor_output.parent.mkdir(parents=True)
             symlink_args.anchor_output.symlink_to(base / "absent-target.json")
             with mock.patch.object(MODULE, "aws_json") as mocked:
-                with self.assertRaisesRegex(FileExistsError, "refusing to overwrite"):
+                with self.assertRaisesRegex(FileExistsError, "may not be a symlink"):
                     MODULE.capture(symlink_args)
             mocked.assert_not_called()
             self.assertTrue(symlink_args.anchor_output.is_symlink())
+
+            symlink_parent = base / "real-parent"
+            symlink_parent.mkdir()
+            symlink_parent_args = self.args(base / "linked-parent", fixture)
+            symlink_parent_args.capture_output.parent.symlink_to(
+                symlink_parent,
+                target_is_directory=True,
+            )
+            with mock.patch.object(MODULE, "aws_json") as mocked:
+                with self.assertRaisesRegex(
+                    FileExistsError,
+                    "parent may not be a symlink",
+                ):
+                    MODULE.capture(symlink_parent_args)
+            mocked.assert_not_called()
+            self.assertFalse((symlink_parent / "capture.json").exists())
 
     def test_three_output_atomic_reservation_rolls_back_on_racing_collision(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -570,6 +586,21 @@ class CaptureRouteTerminalTests(unittest.TestCase):
             self.assertFalse(first.exists())
             self.assertEqual(collision.read_bytes(), b"racer-owned")
             self.assertFalse(third.exists())
+
+    def test_three_output_create_rejects_symlinked_parents(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(FileExistsError, "parent may not be a symlink"):
+                MODULE.create_private_outputs(
+                    [(linked_parent / "capture.json", b"capture")]
+                )
+
+            self.assertFalse((real_parent / "capture.json").exists())
 
     def test_three_output_atomic_write_failure_removes_all_reserved_outputs(self):
         with tempfile.TemporaryDirectory() as temporary:
