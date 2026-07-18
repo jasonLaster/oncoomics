@@ -229,6 +229,7 @@ class FakeAws:
         self.wrong_source_version = False
         self.wrong_source_kms = False
         self.corrupt_download = False
+        self.symlink_download = False
 
     def source_metadata(self, row: dict[str, object]) -> dict[str, object]:
         return {
@@ -322,6 +323,11 @@ class FakeAws:
             raise AssertionError("publisher did not request the receipt VersionId")
         destination.parent.mkdir(parents=True, exist_ok=True)
         payload = self.fixture.payloads[str(row["relative_path"])]
+        if self.symlink_download:
+            redirected = destination.parent / f"{destination.name}.redirected"
+            redirected.write_bytes(payload)
+            destination.symlink_to(redirected)
+            return self.source_metadata(row)
         destination.write_bytes(payload + (b"corrupt" if self.corrupt_download else b""))
         return self.source_metadata(row)
 
@@ -732,6 +738,21 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "exact-version GET failed"):
                 self.execute(fixture, fake, apply=True)
             self.assertEqual(fake.put_calls, [])
+
+    def test_rejects_symlinked_exact_version_download_before_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            fake.symlink_download = True
+
+            with self.assertRaisesRegex(ValueError, "must be a real file"):
+                self.execute(fixture, fake, apply=True)
+
+            self.assertEqual(fake.put_calls, [])
+            self.assertEqual(
+                json.loads(fixture.output_path.read_text(encoding="utf-8"))["status"],
+                "failed",
+            )
 
     def test_second_scan_rejects_forbidden_identifier_before_upload(self) -> None:
         for body in (

@@ -208,6 +208,8 @@ def require_real_input_file(path: Path, label: str) -> None:
             raise ValueError(f"{label} parent may not be a symlink: {parent}")
         if parent.exists() and not parent.is_dir():
             raise ValueError(f"{label} parent is not a directory: {parent}")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file")
 
 
 def require_safe_receipt_output_parent(path: Path) -> None:
@@ -892,6 +894,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     row["version_id"],
                     local,
                     args.region,
+                )
+                require_real_input_file(
+                    local,
+                    f"downloaded reviewed-public report file {relative}",
                 )
                 get_checks = exact_source_checks(downloaded, row)
                 local_checks = {
