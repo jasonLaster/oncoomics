@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -101,6 +102,22 @@ class RunbookIoTests(unittest.TestCase):
             self.assertEqual(output.stat().st_mode & 0o777, 0o600)
             with self.assertRaises(FileExistsError):
                 MODULE.write_once(output, "two\n")
+
+    def test_write_once_removes_partial_output_after_fsync_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runbook.md"
+
+            with (
+                mock.patch.object(
+                    MODULE.os,
+                    "fsync",
+                    side_effect=OSError("synthetic fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic fsync failure"),
+            ):
+                MODULE.write_once(output, "partial\n")
+
+            self.assertFalse(output.exists())
 
     def test_write_once_rejects_symlinked_parent_without_writing_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
