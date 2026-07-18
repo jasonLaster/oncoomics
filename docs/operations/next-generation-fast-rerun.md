@@ -467,8 +467,8 @@ python3 scripts/render_source_report_freeze_runbook.py \
 
 ### Gate 1: P5en and Parabricks smoke
 
-Run the checked-in placement smoke after quota approval and a pinned Parabricks
-image:
+Run the checked-in placement smoke after quota approval, a pinned Parabricks
+image, and a reviewed mirror receipt bound to the current Diana source:
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
@@ -478,12 +478,17 @@ The alias runs `verify:phase3-fast-gpu-smoke` first to fail locally unless the
 generated `infra/aws/nextflow.aws.use2.json` is bound to `us-east-2`, the
 isolated P5en queue, exactly `p5en.48xlarge`, at least one P5en worth of
 capacity, a Parabricks image pinned by SHA-256 digest, and a `us-east-2`
-destination KMS key for the regional cache. It also reads the live Batch queue
-and its only compute environment before submission: the queue must be
-`ENABLED`, `VALID`, and routed only to the isolated P5en environment; the
-compute environment must be managed, enabled, valid, scale-to-zero On-Demand EC2
-capacity, backed only by `p5en.48xlarge`, sized to at least one full P5en, and
-using only the NVIDIA Amazon Linux 2023 ECS image. It then queries the live EC2
+destination KMS key for the regional cache. It also requires
+`PARABRICKS_MIRROR_RECEIPT` or the default
+`results/phase3_wgs_fast/parabricks_mirror_receipt.json` to name a reviewed
+receipt whose Parabricks container matches those generated params and whose
+Diana Git commit and `infra/aws/Dockerfile.parabricks` SHA-256 match the
+current checkout. It also reads the live Batch queue and its only compute
+environment before submission: the queue must be `ENABLED`, `VALID`, and routed
+only to the isolated P5en environment; the compute environment must be managed,
+enabled, valid, scale-to-zero On-Demand EC2 capacity, backed only by
+`p5en.48xlarge`, sized to at least one full P5en, and using only the NVIDIA
+Amazon Linux 2023 ECS image. It then queries the live EC2
 `Running On-Demand P instances` quota and requires at least 192 applied P vCPUs
 before Nextflow can submit the H200 placement job.
 The smoke itself records `nvidia-smi`, `pbrun version`, `aws --version`, and
@@ -500,7 +505,7 @@ Parabricks mirror receipt as `PARABRICKS_MIRROR_RECEIPT`, then pass the reviewed
 Gate 0 receipt paths and alias-only forbidden-token inventory as Nextflow
 arguments after `--`. The full execute alias intentionally repeats the GPU
 params, live Batch queue, live P5en compute-environment, mirror-receipt,
-mirrored-image, cache, and live-quota checks before starting Nextflow. It also
+source-bound ECR tag, mirrored-image, cache, and live-quota checks before starting Nextflow. It also
 requires the reviewed mirror receipt to match the current Diana Git commit and
 `infra/aws/Dockerfile.parabricks` SHA-256, then rejects missing, stubbed,
 malformed, or non-H200 smoke output. A stale non-`us-east-2`, non-P5en,

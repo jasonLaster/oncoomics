@@ -194,6 +194,13 @@ mirror receipt has passed `verify:parabricks-mirror-receipt`; the verifier also
 checks that the receipt's Diana Git commit and `Dockerfile.parabricks` SHA-256
 match the checkout that is about to pin or execute the image.
 
+Keep the reviewed receipt in
+`results/phase3_wgs_fast/parabricks_mirror_receipt.json` or export
+`PARABRICKS_MIRROR_RECEIPT=/path/to/parabricks_mirror_receipt.json` before any
+P5en smoke or full execution attempt. Both launch preflights reject receipts
+whose pinned ECR image, immutable source-digest/Git tag, Diana Git commit, or
+`Dockerfile.parabricks` SHA-256 no longer match the current launcher source.
+
 The `us-east-2` Batch job role also receives versioned read permission on the
 `us-east-1` raw-inputs and private-results source buckets and KMS decrypt
 permission constrained to the `alias/diana-omics-prod-use1` source key. The
@@ -211,18 +218,19 @@ version.
 After P5en quota is approved and the pinned image is supplied, run only the
 bounded placement/visibility smoke first. The alias starts with a local
 `verify:phase3-fast-gpu-smoke` preflight so a missing `nextflow.aws.use2.json`,
-tagged/empty/missing Parabricks image, non-P5en queue, or too-small P5en
-capacity fails before Nextflow can submit to AWS Batch. The same preflight
-reads the live Batch queue and requires it to be `ENABLED`, `VALID`, and still
-routed only to the isolated P5en compute environment. It also reads that
-compute environment and requires it to be managed, enabled, valid,
-scale-to-zero, On-Demand EC2 capacity backed only by `p5en.48xlarge`, sized to
-at least one full P5en, and configured with only the NVIDIA Amazon Linux 2023
-ECS image. It then reads the live EC2 `Running On-Demand P instances` quota and
-requires at least 192 vCPUs, the size of one `p5en.48xlarge`, so a submitted
-but still-open Service Quotas case cannot leak into an expensive doomed smoke
-job. It also verifies that the pinned Parabricks ECR digest exists in the
-mirror repository before Batch tries to pull it:
+tagged/empty/missing Parabricks image, source-mismatched mirror receipt,
+non-P5en queue, or too-small P5en capacity fails before Nextflow can submit to
+AWS Batch. The same preflight reads the live Batch queue and requires it to be
+`ENABLED`, `VALID`, and still routed only to the isolated P5en compute
+environment. It also reads that compute environment and requires it to be
+managed, enabled, valid, scale-to-zero, On-Demand EC2 capacity backed only by
+`p5en.48xlarge`, sized to at least one full P5en, and configured with only the
+NVIDIA Amazon Linux 2023 ECS image. It then reads the live EC2
+`Running On-Demand P instances` quota and requires at least 192 vCPUs, the size
+of one `p5en.48xlarge`, so a submitted but still-open Service Quotas case
+cannot leak into an expensive doomed smoke job. It also verifies that the
+receipt's pinned Parabricks ECR digest exists in the mirror repository with its
+exact source-bound immutable tag before Batch tries to pull it:
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke

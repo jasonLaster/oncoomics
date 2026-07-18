@@ -110,7 +110,9 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
 ```
 
 The expanded known-answer cohort fetches small public assets in the Batch task and publishes clinicalization reports to S3. The GPU smoke alias is the bounded
-placement gate for the isolated `phase3_wgs_fast` P5en/Parabricks queue; it does not run the full WGS caller.
+placement gate for the isolated `phase3_wgs_fast` P5en/Parabricks queue; it
+requires the reviewed `PARABRICKS_MIRROR_RECEIPT` source binding and does not run
+the full WGS caller.
 
 The full `phase3_wgs_fast` execute alias is available as
 `nf:aws:phase3-wgs-fast:execute`, accepts reviewed Gate 0 receipt paths and the

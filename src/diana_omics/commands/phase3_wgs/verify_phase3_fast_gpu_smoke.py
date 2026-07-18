@@ -423,6 +423,7 @@ def load_parabricks_mirror_image_digest(
     *,
     parabricks_container: str,
     region: str,
+    expected_tag: str | None = None,
     aws_cli: str = "aws",
 ) -> str:
     repository, digest = parabricks_container.split("@", 1)
@@ -465,9 +466,23 @@ def load_parabricks_mirror_image_digest(
             payload,
             parabricks_container=parabricks_container,
             expected_digest=digest,
+            expected_tag=expected_tag,
         )
     except mirror_receipt.MirrorReceiptError as error:
         raise GpuSmokeConfigError(str(error)) from error
+
+
+def load_mirror_receipt_for_smoke(*, expected_params: Mapping[str, Any]) -> tuple[dict[str, str], Path]:
+    try:
+        receipt, path = mirror_receipt.load_receipt_from_environment()
+        summary = mirror_receipt.validate_mirror_receipt(receipt)
+        mirror_receipt.validate_current_diana_source_binding(summary)
+    except mirror_receipt.MirrorReceiptError as error:
+        raise GpuSmokeConfigError(f"Parabricks mirror receipt is not safe: {error}") from error
+
+    if summary["parabricks_container"] != expected_params.get("parabricks_container"):
+        raise GpuSmokeConfigError("Parabricks mirror receipt parabricks_container must match the current Nextflow params")
+    return summary, path
 
 
 def main() -> None:
@@ -484,11 +499,13 @@ def main() -> None:
             compute_environment,
             expected_compute_environment=queue_summary["compute_environment"],
         )
+        mirror_summary, mirror_path = load_mirror_receipt_for_smoke(expected_params=summary)
         running_on_demand_p_vcpus = load_running_on_demand_p_vcpus(summary["aws_region"])
         validate_running_on_demand_p_quota(running_on_demand_p_vcpus)
         image_digest = load_parabricks_mirror_image_digest(
-            parabricks_container=summary["parabricks_container"],
+            parabricks_container=mirror_summary["parabricks_container"],
             region=summary["aws_region"],
+            expected_tag=mirror_summary["tag"],
         )
     except GpuSmokeConfigError as error:
         raise SystemExit(str(error)) from error
@@ -499,6 +516,7 @@ def main() -> None:
         f"compute_max_vcpus={compute_environment_summary['max_vcpus']} "
         f"max_vcpus={summary['gpu_p5en_max_vcpus']} "
         f"running_on_demand_p_vcpus={running_on_demand_p_vcpus:g} "
+        f"parabricks_mirror_receipt={mirror_path} "
         f"parabricks_image_digest={image_digest}"
     )
 

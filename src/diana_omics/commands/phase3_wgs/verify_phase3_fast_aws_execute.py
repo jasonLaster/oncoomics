@@ -245,6 +245,7 @@ def main() -> None:
         image_digest = gpu_smoke.load_parabricks_mirror_image_digest(
             parabricks_container=mirror_summary["parabricks_container"],
             region=params_summary["aws_region"],
+            expected_tag=mirror_summary["tag"],
         )
         smoke_summary, smoke_path = load_gpu_smoke_result_from_environment(expected_params=params_summary)
     except (gpu_smoke.GpuSmokeConfigError, Phase3FastExecuteError) as error:

@@ -440,7 +440,10 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         load_image.return_value = "sha256:" + "a" * 64
         load_smoke.return_value = ({"observed_gpu_count": 8}, Path("gpu_smoke.json"))
         load_mirror.return_value = (
-            {"parabricks_container": PARABRICKS_CONTAINER},
+            {
+                "parabricks_container": PARABRICKS_CONTAINER,
+                "tag": "sha256-" + "b" * 64 + "-diana-" + "c" * 12,
+            },
             Path("parabricks_mirror_receipt.json"),
         )
 
@@ -462,7 +465,11 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             ),
         )
         load_mirror.assert_called_once()
-        load_image.assert_called_once_with(parabricks_container=PARABRICKS_CONTAINER, region="us-east-2")
+        load_image.assert_called_once_with(
+            parabricks_container=PARABRICKS_CONTAINER,
+            region="us-east-2",
+            expected_tag="sha256-" + "b" * 64 + "-diana-" + "c" * 12,
+        )
         load_smoke.assert_called_once()
 
 

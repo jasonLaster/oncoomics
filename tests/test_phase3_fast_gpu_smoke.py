@@ -9,9 +9,14 @@ from unittest.mock import patch
 from diana_omics.commands.phase3_wgs import verify_phase3_fast_gpu_smoke as verify
 from diana_omics.utils import write_json
 
+PARABRICKS_REPOSITORY = "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks"
+SOURCE_DIGEST = "sha256:" + "b" * 64
+DESTINATION_DIGEST = "sha256:" + "a" * 64
+DIANA_GIT_COMMIT = "c" * 40
+EXPECTED_TAG = "sha256-" + "b" * 64 + "-diana-" + "c" * 12
+
 
 def p5en_params(**overrides):
-    mirror = "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks"
     params = {
         "aws_gpu_queue": "diana-omics-prod-use2-gpu-p5en",
         "aws_job_role": "arn:aws:iam::172630973301:role/diana-omics-prod-use2-batch-job",
@@ -21,14 +26,45 @@ def p5en_params(**overrides):
         "aws_workdir": "s3://diana-omics-work-172630973301-us-east-2/work",
         "batch_gpu_p5en_instance_types": ["p5en.48xlarge"],
         "gpu_p5en_max_vcpus": 384,
-        "parabricks_container": mirror + "@sha256:" + "a" * 64,
-        "parabricks_mirror_repository": mirror,
+        "parabricks_container": f"{PARABRICKS_REPOSITORY}@{DESTINATION_DIGEST}",
+        "parabricks_mirror_repository": PARABRICKS_REPOSITORY,
         "phase3_fast_cache_kms_key_arn": ("arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc"),
         "phase3_fast_cache_prefix": ("s3://diana-omics-private-results-172630973301-us-east-2/phase3-fast-cache/wgs-v2"),
         "phase3_fast_cache_region": "us-east-2",
     }
     params.update(overrides)
     return params
+
+
+def parabricks_mirror_receipt() -> dict:
+    return {
+        "schema_version": 1,
+        "manifest_type": "parabricks_mirror_receipt",
+        "generated_at": "2026-07-18T00:00:00+00:00",
+        "source": {
+            "image": f"nvcr.io/nvidia/clara/parabricks@{SOURCE_DIGEST}",
+            "digest": SOURCE_DIGEST,
+            "platform": "linux/amd64",
+        },
+        "destination": {
+            "region": "us-east-2",
+            "repository": PARABRICKS_REPOSITORY,
+            "tag": EXPECTED_TAG,
+            "digest": DESTINATION_DIGEST,
+            "parabricks_container": f"{PARABRICKS_REPOSITORY}@{DESTINATION_DIGEST}",
+        },
+        "diana_omics": {
+            "git_commit": DIANA_GIT_COMMIT,
+            "dockerfile_sha256": "sha256:" + "d" * 64,
+        },
+    }
+
+
+def current_diana_source() -> dict:
+    return {
+        "dockerfile_sha256": "sha256:" + "d" * 64,
+        "git_commit": DIANA_GIT_COMMIT,
+    }
 
 
 class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
@@ -447,18 +483,60 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
 
         verify.validate_running_on_demand_p_quota(192.0)
 
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.mirror_receipt.current_diana_source")
+    def test_loads_source_bound_parabricks_mirror_receipt(self, current_source) -> None:
+        current_source.return_value = current_diana_source()
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parabricks_mirror_receipt.json"
+            write_json(path, parabricks_mirror_receipt())
+
+            with patch.dict("os.environ", {"PARABRICKS_MIRROR_RECEIPT": str(path)}, clear=False):
+                summary, loaded_path = verify.load_mirror_receipt_for_smoke(expected_params=verify.validate_gpu_smoke_params(p5en_params()))
+
+        self.assertEqual(path, loaded_path)
+        self.assertEqual(EXPECTED_TAG, summary["tag"])
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.mirror_receipt.current_diana_source")
+    def test_rejects_source_mismatched_parabricks_mirror_receipt(self, current_source) -> None:
+        current_source.return_value = current_diana_source()
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parabricks_mirror_receipt.json"
+            stale = parabricks_mirror_receipt()
+            stale["diana_omics"]["git_commit"] = "e" * 40
+            stale["destination"]["tag"] = "sha256-" + "b" * 64 + "-diana-" + "e" * 12
+            write_json(path, stale)
+
+            with patch.dict("os.environ", {"PARABRICKS_MIRROR_RECEIPT": str(path)}, clear=False):
+                with self.assertRaisesRegex(verify.GpuSmokeConfigError, "current Diana Git HEAD"):
+                    verify.load_mirror_receipt_for_smoke(expected_params=verify.validate_gpu_smoke_params(p5en_params()))
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.mirror_receipt.current_diana_source")
+    def test_rejects_wrong_image_parabricks_mirror_receipt(self, current_source) -> None:
+        current_source.return_value = current_diana_source()
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parabricks_mirror_receipt.json"
+            wrong_image = parabricks_mirror_receipt()
+            wrong_image["destination"]["digest"] = "sha256:" + "e" * 64
+            wrong_image["destination"]["parabricks_container"] = f"{PARABRICKS_REPOSITORY}@sha256:" + "e" * 64
+            write_json(path, wrong_image)
+
+            with patch.dict("os.environ", {"PARABRICKS_MIRROR_RECEIPT": str(path)}, clear=False):
+                with self.assertRaisesRegex(verify.GpuSmokeConfigError, "current Nextflow params"):
+                    verify.load_mirror_receipt_for_smoke(expected_params=verify.validate_gpu_smoke_params(p5en_params()))
+
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
     def test_loads_mirrored_parabricks_image_digest_from_ecr(self, run) -> None:
         digest = "sha256:" + "a" * 64
         run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,
-            stdout='{"imageDetails":[{"imageDigest":"' + digest + '"}]}',
+            stdout='{"imageDetails":[{"imageDigest":"' + digest + '","imageTags":["' + EXPECTED_TAG + '"]}]}',
         )
 
         observed = verify.load_parabricks_mirror_image_digest(
             parabricks_container=("172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@" + digest),
             region="us-east-2",
+            expected_tag=EXPECTED_TAG,
         )
 
         self.assertEqual(digest, observed)
@@ -485,18 +563,29 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
         run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,
-            stdout=(
-                '{"imageDetails":['
-                '{"imageDigest":"' + digest + '"},'
-                '{"imageDigest":"sha256:' + "b" * 64 + '"}'
-                "]}"
-            ),
+            stdout=('{"imageDetails":[{"imageDigest":"' + digest + '"},{"imageDigest":"sha256:' + "b" * 64 + '"}]}'),
         )
 
         with self.assertRaisesRegex(verify.GpuSmokeConfigError, "exactly one imageDetails"):
             verify.load_parabricks_mirror_image_digest(
                 parabricks_container=("172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@" + digest),
                 region="us-east-2",
+            )
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
+    def test_rejects_mirrored_parabricks_digest_without_source_tag(self, run) -> None:
+        digest = "sha256:" + "a" * 64
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout='{"imageDetails":[{"imageDigest":"' + digest + '","imageTags":["other"]}]}',
+        )
+
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "imageTags"):
+            verify.load_parabricks_mirror_image_digest(
+                parabricks_container=("172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@" + digest),
+                region="us-east-2",
+                expected_tag=EXPECTED_TAG,
             )
 
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
