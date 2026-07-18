@@ -256,6 +256,7 @@ class StageAiReviewInputsTests(unittest.TestCase):
 
         cases = (
             "bundle",
+            "bundle-parent",
             "output-root",
             "output-root-parent",
             "output-root-existing-parent",
@@ -278,6 +279,18 @@ class StageAiReviewInputsTests(unittest.TestCase):
                     bundle.rename(real_bundle)
                     bundle.symlink_to(real_bundle, target_is_directory=True)
                     message = "bundle directory"
+                elif target == "bundle-parent":
+                    real_parent = root / "real-bundle-parent"
+                    real_bundle = real_parent / "bundle"
+                    real_bundle.mkdir(parents=True)
+                    bundle.rename(real_bundle / "stale")
+                    linked_parent = root / "linked-bundle-parent"
+                    linked_parent.symlink_to(
+                        real_parent,
+                        target_is_directory=True,
+                    )
+                    bundle = linked_parent / "bundle" / "stale"
+                    message = "bundle directory parent"
                 elif target == "output-root":
                     output_root.symlink_to(
                         root / "inputs-real",

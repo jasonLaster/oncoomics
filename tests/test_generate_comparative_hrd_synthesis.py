@@ -4,25 +4,25 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
-from unittest import mock
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
+from unittest import mock
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+import generate_comparative_hrd_synthesis as GENERATE  # noqa: E402
+import publish_private_report as PUBLISH_PRIVATE  # noqa: E402
 from hrd_report_inventory import (  # noqa: E402
     REQUIRED_METHOD_IDS,
     inventory_payload,
     inventory_sha256,
 )
-import generate_comparative_hrd_synthesis as GENERATE  # noqa: E402
-import publish_private_report as PUBLISH_PRIVATE  # noqa: E402
 
 GENERATOR = SCRIPT_DIR / "generate_comparative_hrd_synthesis.py"
 CLAIMS_FIELDS = [
@@ -735,6 +735,70 @@ class GenerateSynthesisTests(unittest.TestCase):
                 fixture = SynthesisFixture(root)
 
                 result = fixture.run(**build_kwargs(fixture, root))
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stdout + result.stderr)
+                self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
+    def test_rejects_cli_inputs_below_symlinked_parent_without_final_output(self) -> None:
+        cases = (
+            (
+                lambda fixture, linked_parent: {
+                    "review_bundle": linked_parent / "review_bundle.json",
+                },
+                lambda fixture, real_parent: shutil.copy2(
+                    fixture.bundle_dir / "review_bundle.json",
+                    real_parent / "review_bundle.json",
+                ),
+                "review_bundle.json parent may not be a symlink",
+            ),
+            (
+                lambda fixture, linked_parent: {
+                    "bundle_manifest": linked_parent / "bundle_manifest.json",
+                },
+                lambda fixture, real_parent: shutil.copy2(
+                    fixture.bundle_dir / "bundle_manifest.json",
+                    real_parent / "bundle_manifest.json",
+                ),
+                "bundle_manifest.json parent may not be a symlink",
+            ),
+            (
+                lambda fixture, linked_parent: {
+                    "source_manifests": [
+                        linked_parent / "report_manifest.json",
+                        *fixture.source_manifests[1:],
+                    ],
+                },
+                lambda fixture, real_parent: shutil.copy2(
+                    fixture.source_manifests[0],
+                    real_parent / "report_manifest.json",
+                ),
+                "E001 report_manifest.json parent may not be a symlink",
+            ),
+            (
+                lambda fixture, linked_parent: {
+                    "reviewer_a_dir": linked_parent / "review-a",
+                },
+                lambda fixture, real_parent: shutil.copytree(
+                    fixture.review_a,
+                    real_parent / "review-a",
+                ),
+                "reviewer A parent may not be a symlink",
+            ),
+        )
+        for build_kwargs, prepare_real, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-parent-symlink-"
+            ) as temporary:
+                root = Path(temporary)
+                fixture = SynthesisFixture(root)
+                real_parent = root / "real-parent"
+                linked_parent = root / "linked-parent"
+                real_parent.mkdir()
+                prepare_real(fixture, real_parent)
+                linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+                result = fixture.run(**build_kwargs(fixture, linked_parent))
 
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(message, result.stdout + result.stderr)

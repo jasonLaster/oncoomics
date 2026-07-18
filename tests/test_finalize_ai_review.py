@@ -300,8 +300,15 @@ class FinalizeAiReviewTests(unittest.TestCase):
     def test_rejects_symlinked_custody_inputs(self) -> None:
         cases = (
             ("bundle directory", "bundle directory", "bundle"),
+            ("bundle directory parent", "bundle directory parent", "bundle-parent"),
             ("review directory", "review directory", "review"),
+            ("review directory parent", "review directory parent", "review-parent"),
             ("model catalog receipt", "model catalog receipt", "catalog"),
+            (
+                "model catalog receipt parent",
+                "model catalog receipt parent",
+                "catalog-parent",
+            ),
         )
 
         for label, message, target in cases:
@@ -315,10 +322,45 @@ class FinalizeAiReviewTests(unittest.TestCase):
                         real_bundle,
                         target_is_directory=True,
                     )
+                elif target == "bundle-parent":
+                    real_parent = root / "bundle-real-parent"
+                    real_parent.mkdir()
+                    real_bundle = real_parent / "bundle"
+                    fixture.bundle_dir.rename(real_bundle)
+                    linked_parent = root / "bundle-linked-parent"
+                    linked_parent.symlink_to(
+                        real_parent,
+                        target_is_directory=True,
+                    )
+                    fixture.bundle_dir = linked_parent / "bundle"
                 elif target == "review":
                     real_review = root / "review-a-real"
                     review.rename(real_review)
                     review.symlink_to(real_review, target_is_directory=True)
+                elif target == "review-parent":
+                    real_parent = root / "review-real-parent"
+                    real_parent.mkdir()
+                    real_review = real_parent / "review-a"
+                    review.rename(real_review)
+                    linked_parent = root / "review-linked-parent"
+                    linked_parent.symlink_to(
+                        real_parent,
+                        target_is_directory=True,
+                    )
+                    review = linked_parent / "review-a"
+                elif target == "catalog-parent":
+                    real_parent = root / "catalog-real-parent"
+                    real_parent.mkdir()
+                    real_receipt = real_parent / "model-catalog-receipt.json"
+                    fixture.catalog_receipt.rename(real_receipt)
+                    linked_parent = root / "catalog-linked-parent"
+                    linked_parent.symlink_to(
+                        real_parent,
+                        target_is_directory=True,
+                    )
+                    fixture.catalog_receipt = (
+                        linked_parent / "model-catalog-receipt.json"
+                    )
                 else:
                     real_receipt = root / "model-catalog-receipt-real.json"
                     fixture.catalog_receipt.rename(real_receipt)

@@ -109,6 +109,7 @@ def write_json_once(path: Path, value: dict[str, Any]) -> None:
 
 
 def require_file(path: Path, expected_sha256: str, label: str) -> None:
+    require_no_symlink_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
         raise ValueError(f"{label} is not a non-empty real file")
     observed = sha256(path)
@@ -117,11 +118,13 @@ def require_file(path: Path, expected_sha256: str, label: str) -> None:
 
 
 def require_real_file(path: Path, label: str) -> None:
+    require_no_symlink_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
         raise ValueError(f"{label} is not a non-empty real file")
 
 
 def resolve_real_bundle_dir(path: Path) -> Path:
+    require_no_symlink_ancestors(path, "bundle directory")
     if path.is_symlink() or not path.is_dir():
         raise ValueError("bundle directory is missing or a symlink")
     return path.resolve()

@@ -28,7 +28,6 @@ from hrd_report_inventory import (
     require_pinned_methods,
 )
 
-
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 METHOD_ID = re.compile(r"^[a-z0-9][a-z0-9_.-]{1,79}$")
 EVIDENCE_ID = re.compile(r"^E[0-9]{3,}$")
@@ -106,8 +105,7 @@ def sha256(path: Path) -> str:
 
 
 def load_object(path: Path, label: str) -> Dict[str, Any]:
-    if not path.is_file() or path.is_symlink() or path.stat().st_size == 0:
-        raise ValueError("missing or unsafe " + label)
+    require_real_nonempty_file(path, label)
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
@@ -115,6 +113,32 @@ def load_object(path: Path, label: str) -> Dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(label + " must be a JSON object")
     return value
+
+
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
+def require_real_nonempty_file(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
+    if not path.is_file() or path.is_symlink() or path.stat().st_size == 0:
+        raise ValueError("missing or unsafe " + label)
+    return path
+
+
+def require_real_directory(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
+    if not path.is_dir() or path.is_symlink():
+        raise ValueError(label + " directory is missing or unsafe")
+    return path
 
 
 def checked_hash(value: Any, label: str) -> str:
@@ -279,8 +303,11 @@ def verify_sources(
         if sha256(source_path) != checked_hash(input_hashes[evidence_id], evidence_id + " source manifest"):
             raise ValueError("source manifest changed after AI bundle construction at " + evidence_id)
         report_hash = checked_hash(source.get("report_sha256"), method + " report")
-        report_path = source_path.parent / "report.md"
-        if not report_path.is_file() or report_path.is_symlink() or sha256(report_path) != report_hash:
+        report_path = require_real_nonempty_file(
+            source_path.parent / "report.md",
+            method + " report.md",
+        )
+        if sha256(report_path) != report_hash:
             raise ValueError("source report hash mismatch for " + method)
         evidence_status = str(source.get("evidence_status", ""))
         authorized_state = str(source.get("authorized_hrd_state") or source.get("interpretation_status") or "")
@@ -373,8 +400,7 @@ def verify_review(
     bundle_manifest: Dict[str, Any],
     bundle_hash: str,
 ) -> Dict[str, Any]:
-    if not directory.is_dir() or directory.is_symlink():
-        raise ValueError("reviewer " + reviewer + " directory is missing or unsafe")
+    directory = require_real_directory(directory, "reviewer " + reviewer)
     observed = {path.name for path in directory.iterdir()}
     if observed != REVIEW_FILES or any(path.is_symlink() or not path.is_file() for path in directory.iterdir()):
         raise ValueError("reviewer " + reviewer + " directory must contain exactly the four validated artifacts")
@@ -708,10 +734,6 @@ def write_agreement(path: Path, rows: Sequence[Dict[str, str]]) -> None:
         writer = csv.DictWriter(handle, fieldnames=AGREEMENT_FIELDS, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
-
-
-def is_platform_root_alias(path: Path) -> bool:
-    return path.is_absolute() and path.parent == path.parent.parent
 
 
 def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:

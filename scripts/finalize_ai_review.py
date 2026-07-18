@@ -55,17 +55,20 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
 
 
 def require_file(path: Path, label: str) -> None:
+    require_no_symlinked_ancestors(path, label)
     if not path.is_file() or path.is_symlink() or path.stat().st_size <= 0:
         raise ValueError(f"{label} must be a non-empty real file")
 
 
 def resolve_real_dir(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_dir():
         raise ValueError(f"{label} is missing or a symlink")
     return path.resolve()
 
 
 def resolve_real_file(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
         raise ValueError(f"{label} must be a non-empty real file")
     return path.resolve()
@@ -75,7 +78,16 @@ def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
 
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
 def require_exact_review_dir(review_dir: Path, expected: set[str]) -> None:
+    require_no_symlinked_ancestors(review_dir, "review directory")
     if review_dir.is_symlink() or not review_dir.is_dir():
         raise ValueError("review directory is missing or a symlink")
 
