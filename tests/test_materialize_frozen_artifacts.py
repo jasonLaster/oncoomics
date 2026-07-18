@@ -165,6 +165,46 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(receipt.stat().st_mode), 0o600)
             self.assertFalse((root / ".materialized.staging").exists())
 
+    def test_rejects_symlinked_exact_version_object_before_materializing_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+            redirected = root / "redirected-final.vcf.gz"
+
+            def fake_get(command: list[str], text: bool) -> str:
+                self.assertTrue(text)
+                destination = Path(command[-1])
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                redirected.write_bytes(b"exact")
+                destination.symlink_to(redirected)
+                return json.dumps(
+                    {
+                        "VersionId": "exact-version",
+                        "ContentLength": 5,
+                        "ChecksumCRC64NVME": "checksum",
+                        "ChecksumType": "FULL_OBJECT",
+                        "ServerSideEncryption": "aws:kms",
+                        "SSEKMSKeyId": kms,
+                    }
+                )
+
+            with (
+                patch.object(MODULE.subprocess, "check_output", side_effect=fake_get),
+                self.assertRaisesRegex(SystemExit, "materialized object must be a real file"),
+            ):
+                MODULE.main(self.args(freeze, output, receipt, kms))
+
+            self.assertFalse(output.exists())
+            self.assertFalse((root / ".materialized.staging").exists())
+            self.assertEqual(redirected.read_bytes(), b"exact")
+            self.assertEqual(
+                json.loads(receipt.read_text(encoding="utf-8"))["status"],
+                "failed",
+            )
+
     def test_failure_removes_staging_but_preserves_reserved_receipt(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

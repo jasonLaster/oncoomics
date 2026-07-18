@@ -118,6 +118,16 @@ def require_safe_new_child_path(path: Path, label: str) -> None:
             raise ValueError(f"{label} parent is not a directory: {parent}")
 
 
+def require_real_downloaded_file(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
 def validate_local_tree(root: Path, rows: list[dict[str, Any]]) -> None:
     if root.is_symlink() or not root.is_dir():
         raise ValueError("materialized tree is missing or is a symlink")
@@ -225,12 +235,12 @@ def get_exact_object(
     ]
     try:
         value = json.loads(subprocess.check_output(command, text=True))
+        if not isinstance(value, dict):
+            raise ValueError("S3 get-object response is not a JSON object")
+        require_real_downloaded_file(destination, "materialized object")
     except Exception:
         destination.unlink(missing_ok=True)
         raise
-    if not isinstance(value, dict):
-        destination.unlink(missing_ok=True)
-        raise ValueError("S3 get-object response is not a JSON object")
     return value
 
 
@@ -251,6 +261,7 @@ def validate_materialized(
         raise ValueError("frozen destination lacks an exact S3 checksum")
     if expected.get("checksum_type") != "FULL_OBJECT":
         raise ValueError("frozen destination checksum is not full-object")
+    require_real_downloaded_file(path, "materialized object")
     checks = {
         "version_id": str(response.get("VersionId", "")) == version_id,
         "content_length": int(response.get("ContentLength", -1)) == expected_bytes,

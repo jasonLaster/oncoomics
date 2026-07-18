@@ -198,6 +198,9 @@ def head_object(
 def get_object(
     bucket: str, key: str, version_id: str, destination: Path, region: str
 ) -> dict[str, Any]:
+    if destination.is_symlink():
+        raise ValueError(f"{OUTPUT_NAME} download may not be a symlink")
+    require_safe_new_output_parent(destination, OUTPUT_NAME)
     destination.parent.mkdir(parents=True, exist_ok=True)
     return aws_json(
         [
@@ -273,6 +276,7 @@ def validate_download(
     local_path: Path,
     expected_kms: str,
 ) -> dict[str, bool]:
+    resolve_real_file(local_path, f"downloaded {OUTPUT_NAME}")
     local_sha = sha256_path(local_path)
     expected_checksums = {
         key: str(value)
@@ -349,6 +353,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
     try:
         head = head_object(row["bucket"], row["key"], row["version_id"], args.region)
         get = get_object(row["bucket"], row["key"], row["version_id"], staging, args.region)
+        resolve_real_file(staging, f"downloaded {OUTPUT_NAME}")
         local_sha = sha256_path(staging)
         downloaded = json.loads(staging.read_text(encoding="utf-8"))
         if not isinstance(downloaded, dict) or downloaded.get("schema_version") != 1:

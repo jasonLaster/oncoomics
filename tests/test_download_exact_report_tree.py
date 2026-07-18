@@ -224,6 +224,43 @@ class ExactReportDownloadTests(unittest.TestCase):
             self.assertTrue(all(result["objects"][0]["checks"].values()))
             self.assertEqual(stat.S_IMODE(verification.stat().st_mode), 0o600)
 
+    def test_rejects_symlinked_exact_version_report_before_local_cutover(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, data, row = self.fixture(root)
+            output = root / "report-tree"
+            verification = root / "verification.json"
+            redirected = root / "redirected-report.md"
+
+            def fake_get(_arguments: list[str], _region: str) -> dict:
+                destination = output.with_name(f".{output.name}.staging") / "report.md"
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                redirected.write_bytes(data)
+                destination.symlink_to(redirected)
+                return {
+                    "VersionId": row["version_id"],
+                    "ContentLength": len(data),
+                    "ChecksumSHA256": row["checksum_sha256"],
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                }
+
+            with (
+                patch.object(MODULE, "version_history", return_value=self.history(row)),
+                patch.object(MODULE, "aws_json", side_effect=fake_get),
+                self.assertRaisesRegex(SystemExit, "downloaded report object must be a real file"),
+            ):
+                MODULE.main(self.args(receipt, anchor, output, verification))
+
+            self.assertFalse(output.exists())
+            self.assertFalse((root / ".report-tree.staging").exists())
+            self.assertEqual(redirected.read_bytes(), data)
+            self.assertEqual(
+                json.loads(verification.read_text(encoding="utf-8"))["status"],
+                "failed",
+            )
+
     def test_prepared_verification_recovers_cutover_without_redownload(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

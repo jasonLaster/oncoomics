@@ -273,6 +273,71 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                 "failed",
             )
 
+    def test_rejects_symlinked_download_before_installing_output(self) -> None:
+        payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            output = root / "staged_input_validation.json"
+            verification = root / "verification.json"
+            redirected = root / "redirected-staged-input-validation.json"
+            receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            def get_object(
+                _bucket: str,
+                _key: str,
+                _version_id: str,
+                destination: Path,
+                _region: str,
+            ) -> dict:
+                redirected.write_bytes(payload)
+                destination.symlink_to(redirected)
+                return {
+                    "VersionId": "version-1",
+                    "ContentLength": len(payload),
+                    "ChecksumSHA256": checksum(payload),
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                }
+
+            with (
+                patch.object(
+                    MODULE,
+                    "head_object",
+                    return_value={
+                        "VersionId": "version-1",
+                        "ContentLength": len(payload),
+                        "ChecksumSHA256": checksum(payload),
+                        "ChecksumType": "FULL_OBJECT",
+                        "ServerSideEncryption": "aws:kms",
+                        "SSEKMSKeyId": KMS,
+                    },
+                ),
+                patch.object(MODULE, "get_object", side_effect=get_object),
+                self.assertRaisesRegex(ValueError, "may not be a symlink"),
+            ):
+                MODULE.materialize(
+                    argparse.Namespace(
+                        materializer_receipt=receipt_path,
+                        output=output,
+                        verification_output=verification,
+                        expected_kms_key_arn=KMS,
+                        region="us-east-1",
+                    )
+                )
+
+            self.assertFalse(output.exists())
+            self.assertEqual(redirected.read_bytes(), payload)
+            self.assertEqual(
+                json.loads(verification.read_text(encoding="utf-8"))["status"],
+                "failed",
+            )
+
     def test_late_existing_output_records_failed_receipt_without_replacement(
         self,
     ) -> None:

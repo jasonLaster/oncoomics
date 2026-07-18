@@ -114,6 +114,16 @@ def require_safe_new_output_parent(path: Path, label: str) -> None:
             raise NotADirectoryError(parent)
 
 
+def require_real_downloaded_file(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
 def validate_local_tree(root: Path, rows: list[dict[str, Any]]) -> None:
     if root.is_symlink() or not root.is_dir():
         raise ValueError("downloaded report tree is missing or is a symlink")
@@ -248,9 +258,10 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
 def get_exact(
     bucket: str, key: str, version_id: str, destination: Path, region: str
 ) -> dict[str, Any]:
+    require_safe_new_output_parent(destination, "report object")
     destination.parent.mkdir(parents=True, exist_ok=True)
     try:
-        return aws_json(
+        response = aws_json(
             [
                 "s3api",
                 "get-object",
@@ -266,6 +277,8 @@ def get_exact(
             ],
             region,
         )
+        require_real_downloaded_file(destination, "downloaded report object")
+        return response
     except Exception:
         destination.unlink(missing_ok=True)
         raise
@@ -457,6 +470,7 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
                     response.get("ContentLength")
                     == row["content_length"]
                     == local.stat().st_size
+                    and local.is_file()
                 ),
                 "sha256_exact": sha256(local) == row["sha256"],
                 "checksum_sha256_exact": bool(row.get("checksum_sha256"))
