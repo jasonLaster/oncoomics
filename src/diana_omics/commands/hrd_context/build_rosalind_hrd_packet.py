@@ -1107,6 +1107,9 @@ def diana_wgs_phase3_fast_deterministic_binding(
             or route_plan.get("interpretation_status") != "no_call"
         ):
             raise ValueError(f"Phase 3 fast {route} materialization plan is not exact")
+    sequenza_alias_contract = compact_sequenza_alias_contract(
+        crosscheck_routes["sequenza_scarhrd"]
+    )
 
     checks = read_json(paths["evidence_checks.json"])
     check_rows = checks.get("checks", []) if isinstance(checks, dict) else []
@@ -1182,8 +1185,108 @@ def diana_wgs_phase3_fast_deterministic_binding(
                 else {}
             ),
             "crosscheck_input_plans": crosscheck_route_states,
+            "sequenza_scarhrd_alias_input_contract": sequenza_alias_contract,
         },
         "tool_versions": {},
+    }
+
+
+def phase3_fast_alias_source_summary(value: Any, label: str) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{label} must be an alias source object")
+    bytes_ = require_nonnegative_int(value.get("bytes"), f"{label} bytes")
+    if bytes_ <= 0:
+        raise ValueError(f"{label} bytes must be positive")
+    version_id = str(value.get("version_id", "")).strip()
+    if not version_id:
+        raise ValueError(f"{label} version_id is required")
+    return {
+        "bytes": bytes_,
+        "sha256": require_sha256(value.get("sha256"), f"{label} sha256"),
+        "version_id": version_id,
+    }
+
+
+def compact_sequenza_alias_contract(route_plan: Mapping[str, Any]) -> dict[str, Any]:
+    alias_contract = route_plan.get("alias_input_contract")
+    if not isinstance(alias_contract, Mapping):
+        raise ValueError("Phase 3 fast Sequenza route lacks an alias input contract")
+
+    expected_outputs = {
+        "tumor_bam": "tumor.bam",
+        "tumor_bai": "tumor.bam.bai",
+        "normal_bam": "normal.bam",
+        "normal_bai": "normal.bam.bai",
+        "staged_validation": "staged_input_validation.json",
+    }
+    expected_attestations = {
+        "input_sha256_verified": True,
+        "bam_quickcheck_passed": True,
+        "bam_reference_digest_matched": True,
+        "no_direct_identifiers_in_aliases": True,
+        "final_bam_contract_published": False,
+        "validated_sequenza_scarhrd_runtime": False,
+    }
+
+    run_alias = str(alias_contract.get("run_alias", "")).strip()
+    planned_aliases = alias_contract.get("planned_aliases")
+    planned_alias_outputs = alias_contract.get("planned_alias_outputs")
+    attestations = alias_contract.get("attestations")
+    method_parameters = alias_contract.get("method_parameters")
+    sequenza_parameters = (
+        method_parameters.get("sequenza")
+        if isinstance(method_parameters, Mapping)
+        else None
+    )
+    reference = alias_contract.get("reference")
+    artifacts = alias_contract.get("artifacts")
+
+    if (
+        alias_contract.get("schema_version") != 1
+        or alias_contract.get("route") != "sequenza_scarhrd"
+        or alias_contract.get("status") != "blocked"
+        or not run_alias
+        or planned_aliases
+        != {
+            "tumor_sample": f"{run_alias}_tumor",
+            "normal_sample": f"{run_alias}_normal",
+        }
+        or planned_alias_outputs != expected_outputs
+        or attestations != expected_attestations
+        or not isinstance(sequenza_parameters, Mapping)
+        or not isinstance(sequenza_parameters.get("female"), bool)
+        or not isinstance(reference, Mapping)
+        or set(reference) != {"build", "fasta", "fai", "sequence_dictionary"}
+        or reference.get("build") != "GRCh38"
+        or not isinstance(artifacts, Mapping)
+        or set(artifacts) != {"tumor_bam", "tumor_bai", "normal_bam", "normal_bai"}
+    ):
+        raise ValueError("Phase 3 fast Sequenza alias input contract is not exact")
+
+    return {
+        "schema_version": 1,
+        "route": "sequenza_scarhrd",
+        "status": "blocked",
+        "run_alias": run_alias,
+        "planned_aliases": dict(planned_aliases),
+        "planned_alias_outputs": dict(planned_alias_outputs),
+        "method_parameters": {
+            "sequenza": {
+                "female": sequenza_parameters["female"],
+            },
+        },
+        "reference": {
+            "build": "GRCh38",
+            **{
+                key: phase3_fast_alias_source_summary(reference[key], f"Sequenza {key}")
+                for key in ("fasta", "fai", "sequence_dictionary")
+            },
+        },
+        "artifacts": {
+            key: phase3_fast_alias_source_summary(artifacts[key], f"Sequenza {key}")
+            for key in ("tumor_bam", "tumor_bai", "normal_bam", "normal_bai")
+        },
+        "attestations": dict(attestations),
     }
 
 
@@ -1327,6 +1430,9 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
     )
     if not isinstance(sequenza_route, dict):
         sequenza_route = {}
+    sequenza_alias_contract = compact_sequenza_alias_contract(sequenza_route)
+    sequenza_attestations = sequenza_alias_contract["attestations"]
+    sequenza_aliases = sequenza_alias_contract["planned_aliases"]
     readiness_rows = parse_csv(read_text(report_root / "readiness.csv"))
     surfaces = [str(row.get("evidence_surface", "")) for row in readiness_rows if row.get("evidence_surface")]
     blockers: list[str] = []
@@ -1414,7 +1520,15 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
             (
                 "Alias-only Sequenza/scarHRD materialization is "
                 f"{sequenza_route.get('status', 'missing')}; "
-                f"execution is {sequenza_route.get('execution_status', 'missing')}."
+                f"execution is {sequenza_route.get('execution_status', 'missing')}; "
+                "planned aliases are "
+                f"{sequenza_aliases['tumor_sample']}/{sequenza_aliases['normal_sample']}; "
+                "sequenza.female is "
+                f"{json.dumps(sequenza_alias_contract['method_parameters']['sequenza']['female'])}; "
+                "final BAM contract published is "
+                f"{json.dumps(sequenza_attestations['final_bam_contract_published'])}; "
+                "validated runtime is "
+                f"{json.dumps(sequenza_attestations['validated_sequenza_scarhrd_runtime'])}."
             ),
             "crosscheck_input_plans.json",
             (
@@ -1882,6 +1996,18 @@ def diana_wgs_deterministic_process_lines(deterministic_binding: Mapping[str, An
         crosscheck_input_plans = phase3_fast.get("crosscheck_input_plans", {})
         if not isinstance(crosscheck_input_plans, Mapping):
             crosscheck_input_plans = {}
+        sequenza_alias_contract = phase3_fast.get("sequenza_scarhrd_alias_input_contract", {})
+        if not isinstance(sequenza_alias_contract, Mapping):
+            sequenza_alias_contract = {}
+        sequenza_attestations = sequenza_alias_contract.get("attestations", {})
+        if not isinstance(sequenza_attestations, Mapping):
+            sequenza_attestations = {}
+        sequenza_method_parameters = sequenza_alias_contract.get("method_parameters", {})
+        if not isinstance(sequenza_method_parameters, Mapping):
+            sequenza_method_parameters = {}
+        sequenza_parameters = sequenza_method_parameters.get("sequenza", {})
+        if not isinstance(sequenza_parameters, Mapping):
+            sequenza_parameters = {}
         return [
             "## Deterministic custody and process",
             "",
@@ -1891,6 +2017,12 @@ def diana_wgs_deterministic_process_lines(deterministic_binding: Mapping[str, An
             f"Final artifact binding: {deterministic_binding['artifact_count']} Phase 3 fast final artifacts matched the deterministic input inventory.",
             f"SigProfiler/SBS3 input materialization: `{crosscheck_input_plans.get('sigprofiler_sbs3', 'missing')}`.",
             f"Sequenza/scarHRD input materialization: `{crosscheck_input_plans.get('sequenza_scarhrd', 'missing')}`.",
+            f"Sequenza/scarHRD alias contract: `{sequenza_alias_contract.get('status', 'missing')}` with `sequenza.female={json.dumps(sequenza_parameters.get('female'))}`.",
+            (
+                "Sequenza/scarHRD attestations: "
+                f"final BAM contract published `{json.dumps(sequenza_attestations.get('final_bam_contract_published'))}`; "
+                f"validated runtime `{json.dumps(sequenza_attestations.get('validated_sequenza_scarhrd_runtime'))}`."
+            ),
             "",
         ]
 

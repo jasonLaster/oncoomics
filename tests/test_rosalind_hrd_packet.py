@@ -630,6 +630,15 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertIn("Phase 3 fast final evidence", reviewer)
             self.assertIn("SigProfiler/SBS3 input materialization: `plan_ready`", reviewer)
             self.assertIn("Sequenza/scarHRD input materialization: `blocked`", reviewer)
+            self.assertIn(
+                "Sequenza/scarHRD alias contract: `blocked` with `sequenza.female=true`.",
+                reviewer,
+            )
+            self.assertIn(
+                "Sequenza/scarHRD attestations: final BAM contract published `false`; "
+                "validated runtime `false`.",
+                reviewer,
+            )
             self.assertIn("SBS96", reviewer)
             manifest = utils.read_json(output_dir / "report_manifest.json")
             self.assertEqual(manifest["method_id"], "rosalind_diana_wgs")
@@ -652,12 +661,69 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     "sequenza_scarhrd"
                 ],
             )
+            sequenza_contract = manifest["review_summary"]["provenance"]["phase3_fast"][
+                "sequenza_scarhrd_alias_input_contract"
+            ]
+            self.assertEqual(
+                {"sequenza": {"female": True}},
+                sequenza_contract["method_parameters"],
+            )
+            self.assertEqual(
+                {
+                    "tumor_bam": "tumor.bam",
+                    "tumor_bai": "tumor.bam.bai",
+                    "normal_bam": "normal.bam",
+                    "normal_bai": "normal.bam.bai",
+                    "staged_validation": "staged_input_validation.json",
+                },
+                sequenza_contract["planned_alias_outputs"],
+            )
+            self.assertFalse(
+                sequenza_contract["attestations"]["final_bam_contract_published"]
+            )
+            self.assertFalse(
+                sequenza_contract["attestations"]["validated_sequenza_scarhrd_runtime"]
+            )
+            self.assertEqual("GRCh38", sequenza_contract["reference"]["build"])
+            self.assertIn("tumor_bam", sequenza_contract["artifacts"])
+            self.assertEqual(
+                {"bytes", "sha256", "version_id"},
+                set(sequenza_contract["artifacts"]["tumor_bam"]),
+            )
             self.assertIn("small_variants.filter_mutect.filtered_vcf", manifest["source_sha256"])
             evidence_index = utils.read_json(output_dir / "input_evidence_index.json")
             self.assertEqual(
                 len(evidence_index["artifacts"]),
                 manifest["review_summary"]["provenance"]["artifact_count"] + 1,
             )
+
+    def test_diana_wgs_phase3_fast_packet_requires_sequenza_alias_contract(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(output_root / "phase3_fast")
+            plans_path = deterministic_root / "crosscheck_input_plans.json"
+            plans = utils.read_json(plans_path)
+            plans["routes"]["sequenza_scarhrd"].pop("alias_input_contract")
+            utils.write_json(plans_path, plans)
+            report_manifest_path = deterministic_root / "report_manifest.json"
+            report_manifest = utils.read_json(report_manifest_path)
+            report_manifest["support_sha256"]["crosscheck_input_plans.json"] = hashlib.sha256(
+                plans_path.read_bytes()
+            ).hexdigest()
+            utils.write_json(report_manifest_path, report_manifest)
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+                self.assertRaisesRegex(ValueError, "lacks an alias input contract"),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
 
     def test_diana_wgs_phase3_fast_packet_rejects_final_artifact_tampering(self):
         with tempfile.TemporaryDirectory() as tmp:
