@@ -943,6 +943,7 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
         "evidence_status": "partial_evidence",
         "authorized_hrd_state": "no_call",
         "classification_authorized": False,
+        "classification_qc_status": "not_applicable",
     }
     for key, expected in expected_contract.items():
         if manifest.get(key) != expected:

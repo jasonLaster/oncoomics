@@ -892,6 +892,33 @@ class RosalindHrdPacketTest(unittest.TestCase):
             artifact_root = Path(artifacts)
             write_diana_wgs_worker_artifacts(artifact_root)
             deterministic_root = write_deterministic_report(output_root / "deterministic", artifact_root)
+            manifest_path = deterministic_root / "report_manifest.json"
+            manifest = utils.read_json(manifest_path)
+            manifest["classification_qc_status"] = "passed"
+            utils.write_json(manifest_path, manifest)
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "deterministic report manifest classification_qc_status is not exact",
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+            self.assertFalse((output_dir / "report_manifest.json").exists())
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(output_root / "deterministic", artifact_root)
             (deterministic_root / "evidence_checks.json").write_text("{}\n", encoding="utf-8")
             output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
             with (
