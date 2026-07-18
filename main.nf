@@ -83,6 +83,7 @@ params.phase3_fast_pair_id = params.phase3_fast_pair_id ?: 'subject01_tumor_norm
 params.phase3_fast_tumor_sample_id = params.phase3_fast_tumor_sample_id ?: 'subject01_tumor'
 params.phase3_fast_normal_sample_id = params.phase3_fast_normal_sample_id ?: 'subject01_normal'
 params.phase3_fast_reference_id = params.phase3_fast_reference_id ?: 'ucsc_hg38_analysis_set_full'
+params.phase3_fast_forbidden_tokens_json = params.phase3_fast_forbidden_tokens_json ?: null
 params.phase3_asset_cache_uri = params.phase3_asset_cache_uri ?: null
 params.phase3_asset_cache_mode = params.phase3_asset_cache_mode ?: 'readwrite'
 params.phase3_delete_sra_after_conversion = params.phase3_delete_sra_after_conversion ?: false
@@ -1603,6 +1604,7 @@ process FAST_STAGE_ROSALIND_PACKET {
     export ROSALIND_HRD_RUN_ID="${params.phase3_fast_run_id}"
     export ROSALIND_HRD_ARTIFACT_ROOT="\$PWD/${final_evidence_root}"
     export ROSALIND_HRD_DETERMINISTIC_REPORT_DIR="\$PWD/deterministic_report"
+    export ROSALIND_HRD_FORBIDDEN_TOKENS_JSON='${params.phase3_fast_forbidden_tokens_json}'
 
     PYTHONPATH="${params.repo_dir}/src" "${params.python_bin}" -m diana_omics build:rosalind-hrd-packet
     """
@@ -1765,6 +1767,9 @@ workflow PHASE3_WGS_FAST {
         FAST_CACHE_MANIFEST(FAST_REPLICATE_INPUTS.out)
         FAST_STAGING_PLAN(FAST_CACHE_MANIFEST.out)
         if (smallVariantMode == 'execute') {
+            if (params.phase3_fast_forbidden_tokens_json == null || params.phase3_fast_forbidden_tokens_json.toString().trim() == '') {
+                error "phase3_wgs_fast execute mode requires: phase3_fast_forbidden_tokens_json"
+            }
             FAST_MUTECT_PARABRICKS_FILTER(FAST_STAGING_PLAN.out)
             FAST_BAM_CNV_SV_EVIDENCE(FAST_STAGING_PLAN.out)
             small_variant_export_for_join = FAST_MUTECT_PARABRICKS_FILTER.out.map {

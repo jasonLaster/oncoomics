@@ -385,7 +385,9 @@ portable final artifact tree to `build:rosalind-hrd-packet` as the Diana WGS
 sample set. That reporting-only bridge emits a Rosalind reviewer packet from
 the same Phase 3 fast hashes without inventing a validated SBS3 assignment,
 allele-specific CNV/LOH, or production SV sidecars that the fast evidence tree
-does not contain.
+does not contain. Execute mode also requires
+`phase3_fast_forbidden_tokens_json`, a JSON array of private source names and
+sample identifiers to scan out of the generated public packet.
 `FAST_STAGE_BLOCKED_CROSSCHECKS` consumes the Rosalind packet as an ordering
 barrier and runs `scripts/generate_blocked_hrd_crosscheck_reports.py` to emit
 the final three canonical no-call method packets: FACETS→scarHRD,

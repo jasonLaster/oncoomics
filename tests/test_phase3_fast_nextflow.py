@@ -122,6 +122,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             "phase3_fast_tumor_sample_id",
             "phase3_fast_normal_sample_id",
             "phase3_fast_reference_id",
+            "phase3_fast_forbidden_tokens_json",
         ):
             self.assertIn(name, config)
             self.assertIn(name, main)
@@ -527,6 +528,8 @@ class Phase3FastNextflowTests(unittest.TestCase):
             'export ROSALIND_HRD_DETERMINISTIC_REPORT_DIR="\\$PWD/deterministic_report"',
             process,
         )
+        self.assertIn("export ROSALIND_HRD_FORBIDDEN_TOKENS_JSON='${params.phase3_fast_forbidden_tokens_json}'", process)
+        self.assertIn("phase3_wgs_fast execute mode requires: phase3_fast_forbidden_tokens_json", text)
         self.assertIn("build:rosalind-hrd-packet", process)
         self.assertIn(
             "FAST_STAGE_ROSALIND_PACKET(FAST_STAGE_DETERMINISTIC_REPORT.out, FAST_VERIFY_AND_PUBLISH.out)",
