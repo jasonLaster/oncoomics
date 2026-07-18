@@ -534,6 +534,7 @@ def validate_report_packet(
         or manifest.get("evidence_status") not in {"partial_evidence", "no_call", "blocked"}
         or manifest.get("authorized_hrd_state") != "no_call"
         or manifest.get("classification_authorized") is not False
+        or manifest.get("classification_qc_status") != "not_applicable"
         or manifest.get("report_sha256") != sha256(paths["report.md"])
         or not isinstance(manifest.get("review_summary"), dict)
         or not manifest.get("review_summary")

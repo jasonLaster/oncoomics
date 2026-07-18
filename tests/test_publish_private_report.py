@@ -63,6 +63,7 @@ class Fixture:
             "evidence_status": "partial_evidence",
             "authorized_hrd_state": "no_call",
             "classification_authorized": False,
+            "classification_qc_status": "not_applicable",
             "report_sha256": digest((self.packet / "report.md").read_bytes()),
             "support_sha256": support,
             "source_sha256": {"frozen_input": "a" * 64},
@@ -331,6 +332,16 @@ class PublishPrivateReportTests(unittest.TestCase):
                 authorized_hrd_state="positive",
                 classification_authorized=True,
             )
+            with self.assertRaisesRegex(ValueError, "no-call contract"), mock.patch.object(
+                MODULE, "aws_json", side_effect=AssertionError("AWS called")
+            ):
+                MODULE.run(fixture.args())
+
+    def test_manifest_cannot_mark_no_call_qc_as_passed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fixture.mutate_manifest(classification_qc_status="passed")
+
             with self.assertRaisesRegex(ValueError, "no-call contract"), mock.patch.object(
                 MODULE, "aws_json", side_effect=AssertionError("AWS called")
             ):

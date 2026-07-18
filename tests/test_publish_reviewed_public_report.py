@@ -583,6 +583,17 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 self.execute(fixture, fake, apply=True)
             self.assertEqual(fake.put_calls, [])
 
+    def test_manifest_cannot_mark_no_call_qc_as_passed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fixture.mutate_manifest(classification_qc_status="passed")
+            fake = FakeAws(fixture)
+
+            with self.assertRaisesRegex(ValueError, "no-call contract"):
+                self.execute(fixture, fake, apply=True)
+
+            self.assertEqual(fake.put_calls, [])
+
     def test_apply_rejects_null_destination_version(self) -> None:
         for flag in ("null_put_version", "literal_null_put_version"):
             with self.subTest(flag=flag), tempfile.TemporaryDirectory() as temporary:
