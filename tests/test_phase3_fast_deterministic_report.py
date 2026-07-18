@@ -481,6 +481,30 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
             for name in stage_report.OUTPUT_NAMES:
                 self.assertFalse((output / name).exists())
 
+    def test_cleans_packet_files_after_directory_fsync_failure(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            output = root / "deterministic"
+
+            with patch.object(
+                stage_report,
+                "_fsync_directory",
+                side_effect=OSError("simulated deterministic directory fsync failure"),
+            ):
+                with self.assertRaisesRegex(OSError, "simulated deterministic directory fsync failure"):
+                    stage_report.stage_phase3_fast_deterministic_report(
+                        final_manifest,
+                        _crosscheck_materialization_plan(final_manifest, manifest_path),
+                        final_manifest_sha256=_sha256_path(manifest_path),
+                        final_manifest_bytes=manifest_path.stat().st_size,
+                        final_root=final_root,
+                        output_dir=output,
+                    )
+
+            self.assertTrue(output.is_dir())
+            self.assertEqual([], list(output.iterdir()))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -837,10 +837,19 @@ def _install_packet(
                     installed.append(destination)
                 raise
             installed.append(destination)
+        _fsync_directory(output)
     except Exception:
         for path in reversed(installed):
             path.unlink(missing_ok=True)
         raise
+
+
+def _fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def _parse_csv(path: Path) -> list[dict[str, str]]:
