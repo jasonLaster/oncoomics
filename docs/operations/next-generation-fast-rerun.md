@@ -285,6 +285,10 @@ download into place, hashes every staged object, writes the grouped
 the first GPU short-variant pass without launching Parabricks, with declared
 `raw_vcf`, `raw_vcf_stats`, `f1r2_tar_gz`, and `pon_annotated_vcf` handoff
 outputs.
+`FAST_MUTECT_PARABRICKS` must consume that plan, run only those three pinned
+argument vectors in order on the same staged GPU worker, and write a completed
+receipt that copies the plan inputs and outputs plus the plan SHA-256 before any
+CPU tail treats the Parabricks VCFs as materialized.
 `FAST_FILTER_MUTECT_PLAN` consumes the same staged-input manifest plus the
 Parabricks Mutect plan and emits the exact CPU tail for matched-normal pileups,
 contamination, read-orientation priors, `FilterMutectCalls`, and VCF indexing.

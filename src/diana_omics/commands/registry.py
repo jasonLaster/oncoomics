@@ -54,6 +54,9 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "run:known-answer-bounded-non-dry": CommandSpec("diana_omics.commands.known_answer.run_known_answer_bounded_non_dry"),
     "run:known-answer-expanded-cohort": CommandSpec("diana_omics.commands.known_answer.run_known_answer_expanded_cohort"),
     "run:known-answer-public-findings": CommandSpec("diana_omics.commands.known_answer.run_known_answer_public_findings"),
+    "run:phase3-fast-parabricks-mutect": CommandSpec(
+        "diana_omics.commands.phase3_wgs.run_phase3_fast_parabricks_mutect"
+    ),
     "replicate:phase3-fast-inputs": CommandSpec("diana_omics.commands.phase3_wgs.replicate_phase3_fast_inputs"),
     "stage:phase3-fast-inputs": CommandSpec("diana_omics.commands.phase3_wgs.stage_phase3_fast_inputs"),
     "smoke:alignment": CommandSpec("diana_omics.commands.alignment_validation.run_alignment_smoke"),
@@ -165,6 +168,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
             "build:phase3-fast-replication-plan",
             "build:phase3-fast-staging-plan",
             "replicate:phase3-fast-inputs",
+            "run:phase3-fast-parabricks-mutect",
             "stage:phase3-fast-inputs",
             "validate:phase3-wgs",
             "verify:phase3-fast-gpu-smoke",

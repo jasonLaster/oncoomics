@@ -1,0 +1,154 @@
+from __future__ import annotations
+
+import hashlib
+import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
+
+from test_phase3_fast_input_manifest import SHA_1
+from test_phase3_fast_parabricks_mutect_plan import staged_inputs_manifest
+
+from diana_omics.commands.phase3_wgs import render_phase3_fast_parabricks_mutect_plan as parabricks
+from diana_omics.commands.phase3_wgs import run_phase3_fast_parabricks_mutect as run_mutect
+from diana_omics.utils import write_json
+
+
+class RecordingRunner:
+    def __init__(self) -> None:
+        self.commands: list[list[str]] = []
+
+    def run(self, argv: list[str]) -> None:
+        self.commands.append(list(argv))
+
+
+def _sha256_json(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def parabricks_plan(root: Path) -> dict:
+    return parabricks.build_phase3_fast_parabricks_mutect_plan(
+        staged_inputs_manifest(root),
+        staged_inputs_manifest_sha256=SHA_1,
+        output_root="/scratch/diana/phase3_wgs_fast/parabricks",
+        num_gpus=8,
+    )
+
+
+class Phase3FastParabricksMutectRunTests(unittest.TestCase):
+    def test_runs_prepon_mutectcaller_and_postpon_then_writes_completed_receipt(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = parabricks_plan(Path(tmp))
+
+        runner = RecordingRunner()
+        receipt = run_mutect.run_phase3_fast_parabricks_mutect(
+            plan,
+            runner=runner,
+            parabricks_mutect_plan_sha256=SHA_1,
+        )
+
+        self.assertEqual(
+            [
+                plan["commands"]["prepon"]["argv"],
+                plan["commands"]["mutectcaller"]["argv"],
+                plan["commands"]["postpon"]["argv"],
+            ],
+            runner.commands,
+        )
+        self.assertEqual("phase3_wgs_fast_parabricks_mutect_receipt", receipt["manifest_type"])
+        self.assertEqual("completed", receipt["status"])
+        self.assertEqual("no_call", receipt["interpretation"]["authorized_hrd_state"])
+        self.assertEqual(SHA_1, receipt["source"]["parabricks_mutect_plan_sha256"])
+        self.assertEqual(plan["workflow"], receipt["workflow"])
+        self.assertEqual(plan["run"], receipt["run"])
+        self.assertEqual(plan["runtime"], receipt["runtime"])
+        self.assertEqual(plan["inputs"], receipt["inputs"])
+        self.assertEqual(plan["outputs"], receipt["outputs"])
+        self.assertEqual(
+            ["prepon", "mutectcaller", "postpon"],
+            list(receipt["commands"]),
+        )
+        self.assertEqual("completed", receipt["commands"]["prepon"]["status"])
+
+    def test_environment_command_writes_receipt_after_running_planned_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plan_path = root / "parabricks-plan.json"
+            receipt_path = root / "parabricks-receipt.json"
+            plan = parabricks_plan(root)
+            write_json(plan_path, plan)
+
+            runner = RecordingRunner()
+            with patch.dict(
+                "os.environ",
+                {
+                    "PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN": str(plan_path),
+                    "PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT_OUTPUT": str(receipt_path),
+                },
+                clear=False,
+            ):
+                receipt, output = run_mutect.load_receipt_from_environment(runner=runner)
+                run_mutect.write_receipt(output, receipt)
+            expected_plan_sha256 = _sha256_json(plan_path)
+            receipt_text = receipt_path.read_text(encoding="utf-8")
+
+        self.assertEqual(receipt_path, output)
+        self.assertEqual(expected_plan_sha256, receipt["source"]["parabricks_mutect_plan_sha256"])
+        self.assertEqual(plan["commands"]["prepon"]["argv"], runner.commands[0])
+        self.assertIn('"manifest_type": "phase3_wgs_fast_parabricks_mutect_receipt"', receipt_text)
+
+    def test_rejects_missing_planned_command(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = parabricks_plan(Path(tmp))
+        plan["commands"].pop("postpon")
+
+        with self.assertRaisesRegex(run_mutect.ManifestError, "commands"):
+            run_mutect.run_phase3_fast_parabricks_mutect(
+                plan,
+                runner=RecordingRunner(),
+                parabricks_mutect_plan_sha256=SHA_1,
+            )
+
+    def test_rejects_misordered_planned_command(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = parabricks_plan(Path(tmp))
+        plan["commands"] = {
+            "mutectcaller": plan["commands"]["mutectcaller"],
+            "prepon": plan["commands"]["prepon"],
+            "postpon": plan["commands"]["postpon"],
+        }
+
+        with self.assertRaisesRegex(run_mutect.ManifestError, "execution order"):
+            run_mutect.run_phase3_fast_parabricks_mutect(
+                plan,
+                runner=RecordingRunner(),
+                parabricks_mutect_plan_sha256=SHA_1,
+            )
+
+    def test_rejects_non_no_call_plan(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = parabricks_plan(Path(tmp))
+        plan["interpretation"]["authorized_hrd_state"] = "partial_evidence"
+
+        with self.assertRaisesRegex(run_mutect.ManifestError, "no_call"):
+            run_mutect.run_phase3_fast_parabricks_mutect(
+                plan,
+                runner=RecordingRunner(),
+                parabricks_mutect_plan_sha256=SHA_1,
+            )
+
+    def test_rejects_command_that_would_skip_pbrun(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = parabricks_plan(Path(tmp))
+        plan["commands"]["prepon"]["argv"] = ["true"]
+
+        with self.assertRaisesRegex(run_mutect.ManifestError, "pbrun prepon"):
+            run_mutect.run_phase3_fast_parabricks_mutect(
+                plan,
+                runner=RecordingRunner(),
+                parabricks_mutect_plan_sha256=SHA_1,
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()
