@@ -10,6 +10,7 @@ import os
 import shutil
 import stat
 import tempfile
+from contextlib import suppress
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -252,11 +253,20 @@ def install_staged_packet(staging: Path, output_dir: Path) -> None:
     try:
         for name in ("method_spec.json", "report.md", "report_manifest.json"):
             destination = output_dir / name
-            copy_create_only(staging / name, destination)
+            destination_preexisted = destination.exists() or destination.is_symlink()
+            try:
+                copy_create_only(staging / name, destination)
+            except Exception:
+                if not destination_preexisted:
+                    installed.append(destination)
+                raise
             installed.append(destination)
         fsync_directory(output_dir)
     except Exception:
-        shutil.rmtree(output_dir, ignore_errors=True)
+        for path in reversed(installed):
+            path.unlink(missing_ok=True)
+        with suppress(OSError):
+            output_dir.rmdir()
         raise
 
 

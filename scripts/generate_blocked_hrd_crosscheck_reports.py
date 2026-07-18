@@ -13,7 +13,6 @@ import hashlib
 import json
 import os
 import re
-import shutil
 from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path
@@ -512,6 +511,17 @@ def generate(
     source_report_manifests = validate_source_report_manifests(source_report_manifests)
     written: list[Path] = []
     created_targets: list[Path] = []
+
+    def write_tracked(path: Path, data: bytes) -> None:
+        path_preexisted = path.exists() or path.is_symlink()
+        try:
+            write_file_create_only(path, data)
+        except Exception:
+            if not path_preexisted:
+                written.append(path)
+            raise
+        written.append(path)
+
     try:
         for method in METHODS:
             target = output_root / str(method["directory"])
@@ -533,9 +543,9 @@ def generate(
                 "source_report_manifests": dict(source_report_manifests),
             }
             spec_path = target / "method_spec.json"
-            write_file_create_only(spec_path, json_bytes(spec))
+            write_tracked(spec_path, json_bytes(spec))
             report_path = target / "report.md"
-            write_file_create_only(
+            write_tracked(
                 report_path,
                 render_report(
                     method,
@@ -587,12 +597,14 @@ def generate(
                 "report_sha256": sha256_file(report_path),
             }
             manifest_path = target / "report_manifest.json"
-            write_file_create_only(manifest_path, json_bytes(manifest))
-            written.extend((spec_path, report_path, manifest_path))
+            write_tracked(manifest_path, json_bytes(manifest))
         fsync_directory(output_root)
     except Exception:
-        for target in created_targets:
-            shutil.rmtree(target, ignore_errors=True)
+        for path in reversed(written):
+            path.unlink(missing_ok=True)
+        for target in reversed(created_targets):
+            with suppress(OSError):
+                target.rmdir()
         with suppress(OSError):
             output_root.rmdir()
         raise

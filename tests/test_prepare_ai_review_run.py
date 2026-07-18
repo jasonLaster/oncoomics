@@ -395,6 +395,48 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             self.assertEqual(moved, ["bundle"])
             self.assertFalse(output.exists())
 
+    def test_install_preserves_untracked_child_after_move_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            staging.mkdir()
+            for name in ("bundle", "reviewer-inputs"):
+                directory = staging / name
+                directory.mkdir()
+                (directory / "payload.json").write_text("{}\n", encoding="utf-8")
+
+            real_move = PREPARE.move_staged_entry
+            moved: list[str] = []
+
+            def fail_after_second_move(source: Path, destination: Path) -> None:
+                real_move(source, destination)
+                moved.append(destination.name)
+                if destination.name == "reviewer-inputs":
+                    (destination.parent / "unexpected.tmp").write_text(
+                        "stray staged AI input\n",
+                        encoding="utf-8",
+                    )
+                    raise ValueError("synthetic install failure")
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "move_staged_entry",
+                    side_effect=fail_after_second_move,
+                ),
+                self.assertRaisesRegex(ValueError, "synthetic install failure"),
+            ):
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertEqual(moved, ["bundle", "reviewer-inputs"])
+            self.assertFalse((output / "bundle").exists())
+            self.assertFalse((output / "reviewer-inputs").exists())
+            self.assertEqual(
+                (output / "unexpected.tmp").read_text(encoding="utf-8"),
+                "stray staged AI input\n",
+            )
+
     def test_install_fsyncs_parent_and_output_directories(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

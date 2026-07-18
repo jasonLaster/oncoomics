@@ -182,7 +182,7 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
             self.assertEqual(destination.read_bytes(), b"one\n")
 
-    def test_bundle_install_failure_removes_unexpected_child(self) -> None:
+    def test_bundle_install_failure_removes_only_installed_bundle_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             staging = root / "staging"
@@ -216,7 +216,13 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             ):
                 BUILD.install_bundle_create_only(staged_paths, output)
 
-            self.assertFalse(output.exists())
+            self.assertTrue(output.is_dir())
+            for name in BUILD.BUNDLE_FILENAMES:
+                self.assertFalse((output / name).exists())
+            self.assertEqual(
+                (output / "unexpected.tmp").read_text(encoding="utf-8"),
+                "stray partial file\n",
+            )
 
     def test_bundle_file_install_removes_partial_output_after_file_fsync_failure(
         self,
@@ -260,7 +266,7 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
-    def test_bundle_install_removes_output_after_final_directory_fsync_failure(
+    def test_bundle_install_removes_installed_files_after_final_directory_fsync_failure(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -294,7 +300,8 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             ):
                 BUILD.install_bundle_create_only(staged_paths, output)
 
-            self.assertFalse(output.exists())
+            self.assertTrue(output.is_dir())
+            self.assertEqual([], list(output.iterdir()))
 
     def test_builds_bundle_for_staged_two_file_reviewer_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

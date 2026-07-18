@@ -1152,7 +1152,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertEqual(copied, ["input_evidence_index.json"])
             self.assertEqual(list(output_dir.glob("*")), [])
 
-    def test_diana_wgs_packet_removes_unexpected_child_after_install_failure(self):
+    def test_diana_wgs_packet_preserves_unexpected_child_after_install_failure(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)
             artifact_root = Path(artifacts)
@@ -1191,7 +1191,13 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "synthetic unexpected packet child"):
                     packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
 
-            self.assertFalse(output_dir.exists())
+            self.assertTrue(output_dir.is_dir())
+            for name in packet.PACKET_REPORT_FILES:
+                self.assertFalse((output_dir / name).exists())
+            self.assertEqual(
+                (output_dir / "unexpected.tmp").read_text(encoding="utf-8"),
+                "stray partial packet file\n",
+            )
 
     def test_diana_wgs_packet_rejects_stale_extra_output(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:

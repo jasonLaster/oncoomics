@@ -440,7 +440,7 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             self.assertEqual(copied, ["method_spec.json"])
             self.assertFalse(output.exists())
 
-    def test_stage_cleans_unexpected_child_after_install_failure(self) -> None:
+    def test_stage_preserves_unexpected_child_after_install_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = root / "exact"
@@ -467,7 +467,14 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 ):
                     STAGE.stage(source, verification, output, "sigprofiler_sbs3")
 
-            self.assertFalse(output.exists())
+            self.assertEqual(
+                [path.name for path in output.iterdir()],
+                ["unexpected.tmp"],
+            )
+            self.assertEqual(
+                (output / "unexpected.tmp").read_text(encoding="utf-8"),
+                "partial write\n",
+            )
 
     def test_stage_cleans_output_after_final_directory_fsync_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

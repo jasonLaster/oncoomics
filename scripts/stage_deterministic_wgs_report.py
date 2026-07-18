@@ -1258,11 +1258,18 @@ def install_packet_create_only(staged_paths: Iterable[Path], output: Path) -> No
     try:
         for path in staged_paths:
             destination = output / path.name
-            copy_create_only(path, destination)
+            destination_preexisted = destination.exists() or destination.is_symlink()
+            try:
+                copy_create_only(path, destination)
+            except Exception:
+                if not destination_preexisted:
+                    installed.append(destination)
+                raise
             installed.append(destination)
         fsync_directory(output)
     except Exception:
-        shutil.rmtree(output, ignore_errors=True)
+        for path in reversed(installed):
+            path.unlink(missing_ok=True)
         raise
 
 

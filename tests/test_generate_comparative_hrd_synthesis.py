@@ -364,7 +364,7 @@ class GenerateSynthesisTests(unittest.TestCase):
 
             self.assertEqual(destination.read_bytes(), b"one\n")
 
-    def test_synthesis_install_failure_removes_unexpected_child(self) -> None:
+    def test_synthesis_install_failure_removes_only_installed_packet_files(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
             root = Path(temporary)
             staging = root / "staging"
@@ -402,7 +402,13 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.install_packet_create_only(staged_paths, output)
 
-            self.assertFalse(output.exists())
+            self.assertTrue(output.is_dir())
+            for name in GENERATE.OUTPUT_FILES:
+                self.assertFalse((output / name).exists())
+            self.assertEqual(
+                (output / "unexpected.tmp").read_text(encoding="utf-8"),
+                "stray partial file\n",
+            )
 
     def test_synthesis_packet_install_removes_partial_after_file_fsync_failure(
         self,
@@ -446,7 +452,7 @@ class GenerateSynthesisTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
-    def test_synthesis_install_removes_output_after_final_directory_fsync_failure(
+    def test_synthesis_install_removes_installed_files_after_final_directory_fsync_failure(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
@@ -483,7 +489,8 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.install_packet_create_only(staged_paths, output)
 
-            self.assertFalse(output.exists())
+            self.assertTrue(output.is_dir())
+            self.assertEqual([], list(output.iterdir()))
 
     def test_generates_descriptive_report_table_and_schema_one_manifest(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:

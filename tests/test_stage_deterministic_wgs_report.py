@@ -172,7 +172,7 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
-    def test_failed_packet_install_removes_unexpected_child(self) -> None:
+    def test_failed_packet_install_removes_only_installed_packet_files(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-install-"
         ) as temporary:
@@ -208,9 +208,15 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             ):
                 REPORT_MODULE.install_packet_create_only(staged_paths, output)
 
-            self.assertFalse(output.exists())
+            self.assertTrue(output.is_dir())
+            for name in REPORT_MODULE.OUTPUT_NAMES:
+                self.assertFalse((output / name).exists())
+            self.assertEqual(
+                (output / "unexpected.tmp").read_text(encoding="utf-8"),
+                "stray partial file\n",
+            )
 
-    def test_failed_packet_install_removes_output_after_final_directory_fsync_failure(
+    def test_failed_packet_install_removes_installed_files_after_final_directory_fsync_failure(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory(
@@ -242,7 +248,8 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             ):
                 REPORT_MODULE.install_packet_create_only(staged_paths, output)
 
-            self.assertFalse(output.exists())
+            self.assertTrue(output.is_dir())
+            self.assertEqual([], list(output.iterdir()))
 
 
 def readiness_rows(pass_records: int, bin_count: int, usable_snvs: int) -> list[dict[str, str]]:

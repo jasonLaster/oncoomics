@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
@@ -319,13 +320,28 @@ def install_staged_run(staging: Path, output: Path) -> None:
     except FileExistsError as error:
         raise ValueError(f"output already exists: {output}") from error
 
+    installed: list[Path] = []
     try:
         fsync_directory(output.parent)
         for child in sorted(staging.iterdir(), key=lambda path: path.name):
-            move_staged_entry(child, output / child.name)
+            destination = output / child.name
+            destination_preexisted = destination.exists() or destination.is_symlink()
+            try:
+                move_staged_entry(child, destination)
+            except Exception:
+                if not destination_preexisted and destination.exists():
+                    installed.append(destination)
+                raise
+            installed.append(destination)
         fsync_directory(output)
     except Exception:
-        shutil.rmtree(output, ignore_errors=True)
+        for path in reversed(installed):
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                path.unlink(missing_ok=True)
+        with suppress(OSError):
+            output.rmdir()
         raise
 
 
