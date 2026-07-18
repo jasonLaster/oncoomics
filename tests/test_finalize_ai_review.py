@@ -114,7 +114,7 @@ class FinalizeAiReviewTests(unittest.TestCase):
                 load_json(output),
                 {"status": "passed"},
             )
-            self.assertEqual(fsync.call_count, 1)
+            self.assertEqual(fsync.call_count, 2)
 
             original = output.read_bytes()
             with self.assertRaisesRegex(
@@ -123,6 +123,42 @@ class FinalizeAiReviewTests(unittest.TestCase):
             ):
                 FINALIZE.write_create_only(output, {"status": "failed"})
             self.assertEqual(output.read_bytes(), original)
+
+    def test_final_manifest_removes_partial_output_after_file_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report_manifest.json"
+
+            with (
+                mock.patch.object(
+                    FINALIZE.os,
+                    "fsync",
+                    side_effect=OSError("synthetic file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                FINALIZE.write_create_only(output, {"status": "partial"})
+
+            self.assertFalse(output.exists())
+
+    def test_final_manifest_removes_partial_output_after_directory_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report_manifest.json"
+
+            with (
+                mock.patch.object(
+                    FINALIZE.os,
+                    "fsync",
+                    side_effect=(None, OSError("synthetic directory fsync failure")),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                FINALIZE.write_create_only(output, {"status": "partial"})
+
+            self.assertFalse(output.exists())
 
     def test_final_manifest_refuses_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
