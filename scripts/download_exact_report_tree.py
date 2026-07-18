@@ -107,6 +107,10 @@ def is_platform_root_alias(path: Path) -> bool:
 
 
 def require_safe_new_output_parent(path: Path, label: str) -> None:
+    require_no_symlinked_ancestors(path, label)
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"{label} parent may not be a symlink: {parent}")
@@ -187,6 +191,7 @@ def recover_local_cutover(
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} is missing or a symlink: {path}")
     value = json.loads(path.read_text(encoding="utf-8"))

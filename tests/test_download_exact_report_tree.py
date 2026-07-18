@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import shutil
 import stat
 import sys
 import tempfile
@@ -410,6 +411,53 @@ class ExactReportDownloadTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
             self.assertFalse((real_verification_parent / "missing").exists())
+
+    def test_refuses_receipt_or_anchor_below_symlinked_parent_before_aws(
+        self,
+    ) -> None:
+        cases = (
+            ("publication receipt", "receipt"),
+            ("publication anchor", "anchor"),
+        )
+        for message, moved_name in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                receipt, anchor, _, _row = self.fixture(root)
+                real_parent = root / "real-inputs"
+                real_parent.mkdir()
+                linked_parent = root / "linked-inputs"
+                linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+                moved = real_parent / f"{moved_name}.json"
+                source = receipt if message == "publication receipt" else anchor
+                shutil.copy2(source, moved)
+                if message == "publication receipt":
+                    receipt = linked_parent / moved.name
+                else:
+                    anchor = linked_parent / moved.name
+
+                output = root / "report-tree"
+                verification = root / "verification.json"
+                with (
+                    patch.object(
+                        MODULE,
+                        "version_history",
+                        side_effect=AssertionError("AWS called"),
+                    ),
+                    patch.object(
+                        MODULE,
+                        "get_exact",
+                        side_effect=AssertionError("AWS called"),
+                    ),
+                    self.assertRaisesRegex(
+                        SystemExit,
+                        f"{message} parent may not be a symlink",
+                    ),
+                ):
+                    MODULE.main(self.args(receipt, anchor, output, verification))
+
+                self.assertFalse(output.exists())
+                self.assertFalse(verification.exists())
 
     def test_refuses_output_below_existing_dir_under_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
