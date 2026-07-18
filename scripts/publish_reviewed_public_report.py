@@ -149,6 +149,22 @@ def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
+def canonical_packet_digest(rows: list[dict[str, Any]]) -> str:
+    payload = json.dumps(
+        [
+            {
+                "relative_path": row["relative_path"],
+                "bytes": row["bytes"],
+                "sha256": row["sha256"],
+            }
+            for row in sorted(rows, key=lambda item: str(item["relative_path"]))
+        ],
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def non_null_version_id(value: str) -> bool:
     return value != "null" and VERSION_ID.fullmatch(value) is not None
 
@@ -328,8 +344,6 @@ def private_report_prefix(method_id: str, value: str) -> tuple[str, str]:
     expected = f"runs/{SUBJECT_ALIAS}/{RUN_ID}/reports/{method_id}/"
     if bucket != PRIVATE_BUCKET:
         raise ValueError("private publication receipt uses the wrong bucket")
-    if prefix == expected:
-        return bucket, prefix
     revision_prefix = expected + "revisions/"
     if not prefix.startswith(revision_prefix):
         raise ValueError("private publication receipt uses an unapproved report prefix")
@@ -413,6 +427,16 @@ def validate_private_receipt(
         )
     if tuple(sorted(seen)) != expected or total_bytes > MAX_PACKET_BYTES:
         raise ValueError("private publication receipt inventory is not allowlisted")
+    packet_revision = canonical_packet_digest(normalized)
+    expected_revision_prefix = (
+        f"runs/{SUBJECT_ALIAS}/{RUN_ID}/reports/{method_id}/"
+        f"revisions/{packet_revision}/"
+    )
+    if (
+        receipt.get("packet_revision") != packet_revision
+        or prefix != expected_revision_prefix
+    ):
+        raise ValueError("private publication receipt packet revision is not content addressed")
     return receipt, expected, sorted(normalized, key=lambda row: row["relative_path"])
 
 

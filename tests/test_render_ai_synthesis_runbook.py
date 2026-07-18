@@ -51,11 +51,6 @@ def write_receipts(root: Path, manifest_paths: dict[str, Path]) -> list[Path]:
     receipt_root.mkdir(exist_ok=True)
     for method_id in MODULE.REQUIRED_METHOD_IDS:
         expected = tuple(sorted(PUBLISH.METHOD_CONTRACTS[method_id]["files"]))
-        prefix = (
-            f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{MODULE.SUBJECT_ALIAS}/"
-            f"{MODULE.RUN_ID}/reports/{method_id}/revisions/{'a' * 64}/"
-        )
-        key_prefix = prefix.removeprefix(f"s3://{PUBLISH.PRIVATE_BUCKET}/")
         rows = []
         for index, relative in enumerate(expected, 1):
             sha256 = (
@@ -63,13 +58,9 @@ def write_receipts(root: Path, manifest_paths: dict[str, Path]) -> list[Path]:
                 if relative == "report_manifest.json"
                 else f"{index:064x}"
             )
-            key = key_prefix + relative
             rows.append(
                 {
                     "relative_path": relative,
-                    "bucket": PUBLISH.PRIVATE_BUCKET,
-                    "key": key,
-                    "uri": f"s3://{PUBLISH.PRIVATE_BUCKET}/{key}",
                     "version_id": f"version-{index}",
                     "bytes": index + 100,
                     "sha256": sha256,
@@ -81,12 +72,24 @@ def write_receipts(root: Path, manifest_paths: dict[str, Path]) -> list[Path]:
                     "checks": {"version_id": True, "kms": True},
                 }
             )
+        revision = PUBLISH.canonical_packet_digest(rows)
+        prefix = (
+            f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{MODULE.SUBJECT_ALIAS}/"
+            f"{MODULE.RUN_ID}/reports/{method_id}/revisions/{revision}/"
+        )
+        key_prefix = prefix.removeprefix(f"s3://{PUBLISH.PRIVATE_BUCKET}/")
+        for row in rows:
+            key = key_prefix + row["relative_path"]
+            row["bucket"] = PUBLISH.PRIVATE_BUCKET
+            row["key"] = key
+            row["uri"] = f"s3://{PUBLISH.PRIVATE_BUCKET}/{key}"
         receipt = {
             "schema_version": 1,
             "status": "passed",
             "subject_alias": MODULE.SUBJECT_ALIAS,
             "run_id": MODULE.RUN_ID,
             "method_id": method_id,
+            "packet_revision": revision,
             "destination_prefix": prefix,
             "kms_key_arn": PUBLISH.PRIVATE_KMS_KEY_ARN,
             "expected_files": list(expected),

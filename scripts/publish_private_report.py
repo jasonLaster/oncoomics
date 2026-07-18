@@ -20,6 +20,7 @@ from publish_reviewed_public_report import (
     RUN_ID,
     SUBJECT_ALIAS,
     aws_json,
+    canonical_packet_digest,
     checksum_sha256,
     content_type,
     exact_final_history,
@@ -35,24 +36,6 @@ from publish_reviewed_public_report import (
 )
 
 CLASSIFICATION = "private-reviewed-hrd-report"
-
-
-def canonical_packet_digest(rows: list[dict[str, Any]]) -> str:
-    payload = json.dumps(
-        [
-            {
-                "relative_path": row["relative_path"],
-                "bytes": row["bytes"],
-                "sha256": row["sha256"],
-            }
-            for row in rows
-        ],
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    import hashlib
-
-    return hashlib.sha256(payload).hexdigest()
 
 
 def validate_packet_dir(

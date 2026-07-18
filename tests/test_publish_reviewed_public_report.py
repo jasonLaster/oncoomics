@@ -34,7 +34,7 @@ class Fixture:
         self.root = root
         self.method_id = method_id
         self.files = tuple(sorted(MODULE.METHOD_CONTRACTS[method_id]["files"]))
-        self.private_prefix = (
+        self.private_base_prefix = (
             f"runs/{MODULE.SUBJECT_ALIAS}/{MODULE.RUN_ID}/reports/{method_id}/"
         )
         self.packet = root / "packet"
@@ -91,13 +91,9 @@ class Fixture:
         for index, name in enumerate(self.files, 1):
             payload = self.payloads[name]
             sha = digest(payload)
-            key = self.private_prefix + name
             rows.append(
                 {
                     "relative_path": name,
-                    "bucket": MODULE.PRIVATE_BUCKET,
-                    "key": key,
-                    "uri": f"s3://{MODULE.PRIVATE_BUCKET}/{key}",
                     "version_id": f"private-version-{index}",
                     "bytes": len(payload),
                     "sha256": sha,
@@ -117,12 +113,20 @@ class Fixture:
                     },
                 }
             )
+        revision = MODULE.canonical_packet_digest(rows)
+        self.private_prefix = f"{self.private_base_prefix}revisions/{revision}/"
+        for row in rows:
+            key = self.private_prefix + row["relative_path"]
+            row["bucket"] = MODULE.PRIVATE_BUCKET
+            row["key"] = key
+            row["uri"] = f"s3://{MODULE.PRIVATE_BUCKET}/{key}"
         receipt = {
             "schema_version": 1,
             "status": "passed",
             "subject_alias": MODULE.SUBJECT_ALIAS,
             "run_id": MODULE.RUN_ID,
             "method_id": self.method_id,
+            "packet_revision": revision,
             "destination_prefix": f"s3://{MODULE.PRIVATE_BUCKET}/{self.private_prefix}",
             "kms_key_arn": MODULE.PRIVATE_KMS_KEY_ARN,
             "expected_files": list(self.files),
@@ -609,6 +613,32 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             linked.symlink_to(target)
             with self.assertRaisesRegex(ValueError, "must be a real file"):
                 MODULE.validate_private_receipt(linked, fixture.method_id)
+
+    def test_rejects_private_receipt_with_unbound_packet_revision(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            receipt = json.loads(fixture.receipt_path.read_text())
+
+            receipt["packet_revision"] = "0" * 64
+            fixture.receipt_path.write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(ValueError, "packet revision"):
+                MODULE.validate_private_receipt(fixture.receipt_path, fixture.method_id)
+
+            fixture.rebuild_receipt()
+            receipt = json.loads(fixture.receipt_path.read_text())
+            receipt["destination_prefix"] = str(receipt["destination_prefix"]).replace(
+                str(receipt["packet_revision"]), "1" * 64
+            )
+            for row in receipt["objects"]:
+                row["key"] = str(row["key"]).replace(
+                    str(receipt["packet_revision"]), "1" * 64
+                )
+                row["uri"] = str(row["uri"]).replace(
+                    str(receipt["packet_revision"]), "1" * 64
+                )
+            fixture.receipt_path.write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(ValueError, "packet revision"):
+                MODULE.validate_private_receipt(fixture.receipt_path, fixture.method_id)
 
 
 if __name__ == "__main__":
