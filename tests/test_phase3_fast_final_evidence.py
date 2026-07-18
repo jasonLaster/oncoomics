@@ -130,6 +130,32 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
                     with self.assertRaisesRegex(final_evidence.ManifestError, "evidence_join"):
                         final_evidence.load_manifest_from_environment()
 
+    def test_environment_command_rejects_join_below_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-inputs"
+            linked_parent = root / "linked-inputs"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            join_path = linked_parent / "join.json"
+            write_json(join_path, _join_manifest(root))
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "PHASE3_WGS_FAST_EVIDENCE_JOIN": str(join_path),
+                    "PHASE3_WGS_FAST_SMALL_VARIANT_ARTIFACT_ROOT": str(root / "small_variant_export"),
+                    "PHASE3_WGS_FAST_BAM_QC_ARTIFACT_ROOT": str(root / "bam_qc"),
+                    "PHASE3_WGS_FAST_CNV_EVIDENCE_ARTIFACT_ROOT": str(root / "cnv_evidence"),
+                    "PHASE3_WGS_FAST_SV_EVIDENCE_ARTIFACT_ROOT": str(root / "sv_evidence"),
+                    "PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT": str(root / "final"),
+                    "PHASE3_WGS_FAST_FINAL_EVIDENCE_OUTPUT": str(root / "final-manifest.json"),
+                },
+                clear=False,
+            ):
+                with self.assertRaisesRegex(final_evidence.ManifestError, "evidence_join parent may not be a symlink"):
+                    final_evidence.load_manifest_from_environment()
+
     def test_rejects_non_completed_join(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

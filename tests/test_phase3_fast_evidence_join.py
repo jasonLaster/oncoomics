@@ -177,6 +177,27 @@ class Phase3FastEvidenceJoinTests(unittest.TestCase):
                     with self.assertRaisesRegex(join_evidence.ManifestError, key):
                         join_evidence.load_manifest_from_environment()
 
+    def test_environment_command_rejects_receipt_below_symlinked_parent(self) -> None:
+        for key in ENV_PATHS:
+            with self.subTest(key=key), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                paths = write_phase3_fast_receipt_files(root)
+                real_parent = root / "real-receipts"
+                linked_parent = root / "linked-receipts"
+                real_parent.mkdir()
+                linked_parent.symlink_to(real_parent, target_is_directory=True)
+                bad_path = linked_parent / f"{key}.json"
+                bad_path.write_bytes(paths[key].read_bytes())
+                paths[key] = bad_path
+
+                with patch.dict(
+                    "os.environ",
+                    evidence_join_env(paths, root / "joined.json"),
+                    clear=False,
+                ):
+                    with self.assertRaisesRegex(join_evidence.ManifestError, f"{key} parent may not be a symlink"):
+                        join_evidence.load_manifest_from_environment()
+
     def test_rejects_non_completed_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
             receipts = list(phase3_fast_receipts(Path(tmp)))

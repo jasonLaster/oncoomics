@@ -205,6 +205,27 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
                     with self.assertRaisesRegex(crosscheck_plan.ManifestError, "final evidence"):
                         crosscheck_plan.load_plan_from_environment()
 
+    def test_environment_command_rejects_final_evidence_below_symlinked_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-inputs"
+            linked_parent = root / "linked-inputs"
+            real_parent.mkdir()
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            input_path = linked_parent / "final-evidence.json"
+            write_json(input_path, _final_evidence(root))
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST": str(input_path),
+                    "PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN": str(root / "plan.json"),
+                },
+                clear=False,
+            ):
+                with self.assertRaisesRegex(crosscheck_plan.ManifestError, "final evidence parent may not be a symlink"):
+                    crosscheck_plan.load_plan_from_environment()
+
     def test_plan_output_rejects_symlinked_parent(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

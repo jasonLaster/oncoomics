@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import require_no_symlinked_ancestors, require_safe_output_path
+from .safe_json_output import read_real_json, require_no_symlinked_ancestors, require_safe_output_path
 
 DEFAULT_EVIDENCE_JOIN = "manifests/phase3_wgs_fast/evidence_join_manifest.json"
 DEFAULT_SMALL_VARIANT_ARTIFACT_ROOT = "workspace/results/phase3_wgs_fast/small_variant_execution/artifacts"
@@ -70,9 +70,7 @@ def _sha256_path(path: Path) -> str:
 
 
 def _read_evidence_join(path: Path) -> Mapping[str, Any]:
-    if path.is_symlink() or not path.is_file():
-        raise ManifestError(f"evidence_join must be a real manifest file: {path}")
-    return _require_mapping(read_json(path), "evidence_join")
+    return _require_mapping(read_real_json(path, "evidence_join", ManifestError), "evidence_join")
 
 
 def _require_safe_destination_path(path: Path, label: str) -> None:

@@ -7,10 +7,10 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent
 from .crosscheck_contracts import EXPECTED_CROSSCHECK_BLOCKED_ROUTES, sequenza_alias_input_contract
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path
 
 DEFAULT_FINAL_EVIDENCE = "manifests/phase3_wgs_fast/final_evidence_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/crosscheck_materialization_plan.json"
@@ -67,9 +67,7 @@ def _sha256_path(path: Path) -> str:
 
 
 def _read_final_evidence(path: Path) -> Mapping[str, Any]:
-    if path.is_symlink() or not path.is_file():
-        raise ManifestError(f"final evidence manifest must be a real file: {path}")
-    return _require_mapping(read_json(path), "final_evidence")
+    return _require_mapping(read_real_json(path, "final evidence", ManifestError), "final_evidence")
 
 
 def _source_blob(value: Any, label: str) -> dict[str, Any]:

@@ -7,14 +7,14 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ...paths import path_from_root
-from ...utils import ensure_parent, read_json
+from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 from .run_phase3_fast_bam_qc import EXPECTED_OUTPUTS as BAM_QC_OUTPUTS
 from .run_phase3_fast_cnv_evidence import MATERIALIZED_OUTPUTS as CNV_OUTPUTS
 from .run_phase3_fast_filter_mutect import MATERIALIZED_OUTPUTS as FILTER_MUTECT_OUTPUTS
 from .run_phase3_fast_parabricks_mutect import MATERIALIZED_OUTPUTS as PARABRICKS_MUTECT_OUTPUTS
 from .run_phase3_fast_sv_evidence import EXPECTED_COMMANDS as SV_OUTPUTS
-from .safe_json_output import require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path
 
 DEFAULT_SMALL_VARIANT_EXPORT = "manifests/phase3_wgs_fast/small_variant_artifact_export.json"
 DEFAULT_BAM_QC_RECEIPT = "manifests/phase3_wgs_fast/bam_qc_receipt.json"
@@ -58,9 +58,7 @@ def _sha256_path(path: Path) -> str:
 
 
 def _read_receipt(path: Path, label: str) -> Mapping[str, Any]:
-    if path.is_symlink() or not path.is_file():
-        raise ManifestError(f"{label} must be a real receipt file: {path}")
-    return _require_mapping(read_json(path), label)
+    return _require_mapping(read_real_json(path, label, ManifestError), label)
 
 
 def _require_receipt(
