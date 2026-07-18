@@ -83,6 +83,29 @@ def write_route_report(source: Path, route: str = "sigprofiler_sbs3") -> Path:
     return verification
 
 
+def refresh_download_verification(source: Path, verification: Path) -> None:
+    rows = []
+    for path in sorted(source.iterdir()):
+        if not path.is_file():
+            continue
+        rows.append(
+            {
+                "relative_path": path.name,
+                "bytes": path.stat().st_size,
+                "sha256": STAGE.sha256(path),
+            }
+        )
+    write_json(
+        verification,
+        {
+            "schema_version": 1,
+            "status": "passed",
+            "object_count": len(rows),
+            "objects": rows,
+        },
+    )
+
+
 class StageHrdCrosscheckReportTests(unittest.TestCase):
     def test_packet_file_install_is_create_only_and_fsynced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -177,6 +200,25 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                         root / "staged",
                         "sigprofiler_sbs3",
                     )
+
+    def test_stage_rejects_route_manifest_that_does_not_bind_report(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            manifest_path = source / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = "0" * 64
+            write_json(manifest_path, manifest)
+            refresh_download_verification(source, verification)
+
+            with self.assertRaisesRegex(ValueError, "manifest hash differs"):
+                STAGE.stage(
+                    source,
+                    verification,
+                    root / "staged",
+                    "sigprofiler_sbs3",
+                )
 
     def test_stage_rejects_wrong_route_and_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

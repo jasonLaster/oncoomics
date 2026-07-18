@@ -101,6 +101,13 @@ def require_download_verification(
     if evidence_status not in {"partial_evidence", "no_call", "blocked"}:
         raise ValueError("route report evidence_status is unsupported")
 
+    source_report_sha256 = sha256(source_dir / "report.md")
+    if (
+        require_sha(manifest.get("report_sha256"), "route report_sha256")
+        != source_report_sha256
+    ):
+        raise ValueError("route report manifest hash differs from report.md")
+
     support = manifest.get("support_sha256")
     source = manifest.get("source_sha256")
     if not isinstance(support, dict) or not support:
@@ -119,7 +126,7 @@ def require_download_verification(
         "source_object_count": len(rows),
         "download_verification_sha256": sha256(verification_path),
         "source_report_manifest_sha256": sha256(source_dir / "report_manifest.json"),
-        "source_report_sha256": sha256(source_dir / "report.md"),
+        "source_report_sha256": source_report_sha256,
     }
 
 

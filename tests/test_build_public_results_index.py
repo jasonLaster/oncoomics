@@ -2,20 +2,55 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/build_public_results_index.py"
+SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+SCRIPT = SCRIPT_DIR / "build_public_results_index.py"
 SPEC = importlib.util.spec_from_file_location("build_public_results_index", SCRIPT)
 assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
+PUBLISH_SCRIPT = SCRIPT_DIR / "publish_reviewed_public_report.py"
+PUBLISH_SPEC = importlib.util.spec_from_file_location(
+    "publish_reviewed_public_report", PUBLISH_SCRIPT
+)
+assert PUBLISH_SPEC and PUBLISH_SPEC.loader
+PUBLISH = importlib.util.module_from_spec(PUBLISH_SPEC)
+PUBLISH_SPEC.loader.exec_module(PUBLISH)
+
 
 class PublicIndexTests(unittest.TestCase):
+    def test_diana_public_prefix_covers_reviewed_report_destinations(self) -> None:
+        self.assertIn(PUBLISH.PUBLIC_ROOT, MODULE.PUBLIC_PREFIXES)
+        self.assertTrue(
+            PUBLISH.PUBLIC_ROOT.startswith("runs/diana-hrd-public/subject01/")
+        )
+        self.assertNotIn(f"runs/diana-hrd/{PUBLISH.RUN_ID}/", MODULE.PUBLIC_PREFIXES)
+
+        for method_id, contract in PUBLISH.METHOD_CONTRACTS.items():
+            with self.subTest(method_id=method_id):
+                key = (
+                    PUBLISH.PUBLIC_ROOT
+                    + str(contract["destination"])
+                    + "report.md"
+                )
+
+                self.assertTrue(
+                    any(key.startswith(prefix) for prefix in MODULE.PUBLIC_PREFIXES)
+                )
+                self.assertFalse(
+                    any(key.startswith(blocked) for blocked in MODULE.FORBIDDEN_PREFIXES)
+                )
+
     def test_list_prefix_paginates_and_omits_directory_markers(self) -> None:
         pages = [
             {
