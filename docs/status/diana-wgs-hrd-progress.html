@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local terminal Batch runtime exactness</li>
+          <li class="pill">Latest milestone = local Batch provenance control exactness</li>
+          <li class="pill">Batch controls = exact</li>
           <li class="pill">Terminal Batch runtime = exact</li>
           <li class="pill">Materializer Batch ints = exact</li>
           <li class="pill">Public index import = 3.9-safe</li>
@@ -674,6 +675,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact deterministic terminal bytes</strong>
               <span>No-compute deterministic report staging now rejects non-exact terminal custody bytes from Batch worker, stable input snapshot, final-freeze, exact materialization, cross-check source/output, staged-validation, and intake-audit receipts before the first deterministic report can trust frozen WGS artifacts.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Batch provenance controls</strong>
+              <span>Terminal Batch provenance capture now rejects non-exact effective retry attempts, timeout seconds, and live job-definition revisions before execution provenance receipts can feed deterministic WGS staging.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Batch provenance worker bytes</strong>
@@ -1245,6 +1250,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T04:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact Batch provenance controls:</strong>
+                terminal Batch provenance capture now rejects non-exact
+                effective retry attempts, timeout seconds, and live
+                job-definition revisions before execution provenance receipts
+                can feed deterministic WGS staging. No S3, Batch, route, GPU,
+                quota, replacement compute, or AWS-side verification was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T04:15:00-07:00">Jul 19 · local</time>
               <span>

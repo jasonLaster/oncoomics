@@ -202,6 +202,12 @@ def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def require_positive_exact_int(value: Any, label: str) -> int:
+    if type(value) is not int or value <= 0:
+        raise ValueError(f"{label} must be an exact positive integer")
+    return value
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -500,10 +506,14 @@ def effective_job_controls(job: dict[str, Any]) -> tuple[dict[str, Any], dict[st
     timeout = job.get("timeout")
     if not isinstance(retry_strategy, dict) or not isinstance(timeout, dict):
         raise ValueError("Batch job omits effective retry or timeout controls")
-    if int(retry_strategy.get("attempts", 0)) <= 0:
-        raise ValueError("Batch job effective retry attempts are invalid")
-    if int(timeout.get("attemptDurationSeconds", 0)) <= 0:
-        raise ValueError("Batch job effective attempt timeout is invalid")
+    require_positive_exact_int(
+        retry_strategy.get("attempts"),
+        "Batch job effective retry attempts",
+    )
+    require_positive_exact_int(
+        timeout.get("attemptDurationSeconds"),
+        "Batch job effective attempt timeout",
+    )
     return retry_strategy, timeout
 
 
@@ -1166,7 +1176,10 @@ def main() -> None:
         },
         "job_definition": {
             "name": str(definition.get("jobDefinitionName", "")),
-            "revision": int(definition.get("revision", 0)),
+            "revision": require_positive_exact_int(
+                definition.get("revision"),
+                "Batch job definition revision",
+            ),
             "platform_capabilities": definition.get("platformCapabilities", []),
             "propagate_tags": bool(definition.get("propagateTags", False)),
             "retry_strategy": definition.get("retryStrategy", {}),

@@ -392,13 +392,41 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
         self.assertEqual(timeout, {"attemptDurationSeconds": 129600})
         with self.assertRaisesRegex(ValueError, "omits effective"):
             MODULE.effective_job_controls({})
-        with self.assertRaisesRegex(ValueError, "timeout is invalid"):
+        with self.assertRaisesRegex(ValueError, "exact positive integer"):
             MODULE.effective_job_controls(
                 {
                     "retryStrategy": {"attempts": 1},
                     "timeout": {"attemptDurationSeconds": 0},
                 }
             )
+
+    def test_effective_job_controls_require_exact_positive_integers(self) -> None:
+        cases = (
+            ("retry_bool", {"attempts": True}, {"attemptDurationSeconds": 129600}),
+            ("retry_float", {"attempts": 1.0}, {"attemptDurationSeconds": 129600}),
+            ("retry_string", {"attempts": "1"}, {"attemptDurationSeconds": 129600}),
+            ("timeout_bool", {"attempts": 1}, {"attemptDurationSeconds": True}),
+            ("timeout_float", {"attempts": 1}, {"attemptDurationSeconds": 129600.0}),
+            ("timeout_string", {"attempts": 1}, {"attemptDurationSeconds": "129600"}),
+        )
+        for label, retry_strategy, timeout in cases:
+            with self.subTest(label=label):
+                with self.assertRaisesRegex(ValueError, "exact positive integer"):
+                    MODULE.effective_job_controls(
+                        {
+                            "retryStrategy": retry_strategy,
+                            "timeout": timeout,
+                        }
+                    )
+
+    def test_job_definition_revision_must_be_an_exact_positive_integer(self) -> None:
+        for value in (True, 4.0, "4", 0, None):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "exact positive integer"):
+                    MODULE.require_positive_exact_int(
+                        value,
+                        "Batch job definition revision",
+                    )
 
     def test_ssm_evidence_persists_exact_commands_and_hashes(self) -> None:
         command_id = "command-1"
