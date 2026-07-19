@@ -179,6 +179,17 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "one active materializer revision"):
             self.validate(registration=response)
 
+    def test_registration_revision_must_be_an_exact_positive_integer(self) -> None:
+        registration = json.loads(self.response.read_text(encoding="utf-8"))
+        live = json.loads(self.live.read_text(encoding="utf-8"))
+        registration["revision"] = True
+        registration["jobDefinitionArn"] = module.JOB_DEFINITION_ARN + "True"
+        live["jobDefinitions"][0]["revision"] = True
+        live["jobDefinitions"][0]["jobDefinitionArn"] = registration["jobDefinitionArn"]
+
+        with self.assertRaisesRegex(ValueError, "one active materializer revision"):
+            self.validate(registration=registration, live=live)
+
     def test_live_definition_must_match_local_payload(self) -> None:
         live = json.loads(self.live.read_text(encoding="utf-8"))
         live["jobDefinitions"][0]["containerProperties"]["memory"] += 1

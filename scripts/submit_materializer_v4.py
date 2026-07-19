@@ -173,6 +173,7 @@ EXPECTED_LIVE_JOB_DEFINITION_CHECKS = {
     "active",
     "exact_payload",
     "one_attempt",
+    "exact_runtime",
     "immutable_image",
 }
 EXPECTED_LIVE_IMAGE_CHECKS = {
@@ -286,6 +287,10 @@ def valid_sha(value: Any) -> bool:
 
 def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and value == expected
 
 
 def parse_s3(uri: Any) -> tuple[str, str]:
@@ -729,11 +734,12 @@ def validate_registration(
         "definition_hash": batch.get("definition_sha256") == sha256_path(definition_path),
         "definition_arn": batch.get("job_definition_arn") == JOB_DEFINITION_ARN
         and registration.get("jobDefinitionArn") == JOB_DEFINITION_ARN,
-        "definition_revision": batch.get("revision") == 4 and registration.get("revision") == 4,
-        "definition_runtime": batch.get("retry_attempts") == 1
-        and batch.get("timeout_seconds") == 21600
-        and batch.get("vcpus") == 8
-        and batch.get("memory_mib") == 32000,
+        "definition_revision": exact_int(batch.get("revision"), 4)
+        and exact_int(registration.get("revision"), 4),
+        "definition_runtime": exact_int(batch.get("retry_attempts"), 1)
+        and exact_int(batch.get("timeout_seconds"), 21600)
+        and exact_int(batch.get("vcpus"), 8)
+        and exact_int(batch.get("memory_mib"), 32000),
         "image": batch.get("image") == EXPECTED_IMAGE,
         "substitutions": batch.get("parameter_substitution") == expected_refs,
         "shell_argument_binding": batch.get("shell_argument_binding") == expected_binding,
@@ -784,10 +790,17 @@ def validate_live_definition(local: dict[str, Any], region: str) -> dict[str, An
     )
     checks = {
         "arn": live.get("jobDefinitionArn") == JOB_DEFINITION_ARN,
-        "revision": live.get("revision") == 4,
+        "revision": exact_int(live.get("revision"), 4),
         "active": live.get("status") == "ACTIVE",
         "exact_payload": normalize_definition(live) == local,
-        "one_attempt": (live.get("retryStrategy") or {}).get("attempts") == 1,
+        "one_attempt": exact_int((live.get("retryStrategy") or {}).get("attempts"), 1),
+        "exact_runtime": exact_int(
+            (live.get("containerProperties") or {}).get("vcpus"), 8
+        )
+        and exact_int((live.get("containerProperties") or {}).get("memory"), 32000)
+        and exact_int(
+            (live.get("timeout") or {}).get("attemptDurationSeconds"), 21600
+        ),
         "immutable_image": (live.get("containerProperties") or {}).get("image") == EXPECTED_IMAGE,
     }
     try:

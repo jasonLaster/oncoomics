@@ -884,6 +884,37 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                 MODULE.preflight(self.args())
             aws.assert_not_called()
 
+    def test_registration_batch_runtime_numbers_must_be_exact_integers(self) -> None:
+        cases = (
+            ("batch_revision", ("batch", "revision"), 4.0),
+            ("registration_revision", ("batch", "registration", "revision"), 4.0),
+            ("retry_attempts", ("batch", "retry_attempts"), True),
+            ("timeout_seconds", ("batch", "timeout_seconds"), 21600.0),
+            ("vcpus", ("batch", "vcpus"), 8.0),
+            ("memory_mib", ("batch", "memory_mib"), 32000.0),
+        )
+
+        for label, path, value in cases:
+            with self.subTest(label=label):
+                registration = json.loads(
+                    self.registration.read_text(encoding="utf-8")
+                )
+                cursor = registration
+                for key in path[:-1]:
+                    cursor = cursor[key]
+                cursor[path[-1]] = value
+                self._write(self.registration, registration)
+
+                with mock.patch.object(MODULE, "aws_json") as aws:
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "materializer registration receipt/definition is not exact",
+                    ):
+                        MODULE.preflight(self.args())
+
+                aws.assert_not_called()
+                self._write_registration_receipts()
+
     def test_failed_registration_shell_literal_is_rejected_by_exact_map(self) -> None:
         definition = json.loads(self.job_definition.read_text(encoding="utf-8"))
         shell = definition["containerProperties"]["command"][2]
@@ -981,6 +1012,44 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             self.assertRaisesRegex(ValueError, "failed revision"),
         ):
             MODULE.validate_live_definition(local, MODULE.REGION)
+
+    def test_live_definition_runtime_numbers_must_be_exact_integers(self) -> None:
+        cases = (
+            ("revision", ("revision",), 4.0, "failed revision"),
+            ("retry_attempts", ("retryStrategy", "attempts"), True, "failed one_attempt"),
+            ("vcpus", ("containerProperties", "vcpus"), 8.0, "failed exact_runtime"),
+            (
+                "memory",
+                ("containerProperties", "memory"),
+                32000.0,
+                "failed exact_runtime",
+            ),
+            (
+                "timeout",
+                ("timeout", "attemptDurationSeconds"),
+                21600.0,
+                "failed exact_runtime",
+            ),
+        )
+
+        local = json.loads(self.job_definition.read_text(encoding="utf-8"))
+        for label, path, value, error in cases:
+            with self.subTest(label=label):
+                live = self.live_definition()
+                cursor = live
+                for key in path[:-1]:
+                    cursor = cursor[key]
+                cursor[path[-1]] = value
+
+                with (
+                    mock.patch.object(
+                        MODULE,
+                        "aws_json",
+                        return_value={"jobDefinitions": [live]},
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    MODULE.validate_live_definition(local, MODULE.REGION)
 
     def test_live_image_check_map_must_be_exact(self) -> None:
         cases = (

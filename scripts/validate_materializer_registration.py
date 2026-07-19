@@ -98,6 +98,10 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
 def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
@@ -271,8 +275,7 @@ def validate(
     arn = registration.get("jobDefinitionArn")
     if (
         registration.get("jobDefinitionName") != JOB_DEFINITION_NAME
-        or not isinstance(revision, int)
-        or revision < 1
+        or not is_positive_exact_int(revision)
         or arn != f"{JOB_DEFINITION_ARN}{revision}"
         or live_row.get("jobDefinitionArn") != arn
         or live_row.get("revision") != revision

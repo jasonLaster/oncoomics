@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local public index Python 3.9 import safety</li>
+          <li class="pill">Latest milestone = local materializer Batch integer exactness</li>
+          <li class="pill">Materializer Batch ints = exact</li>
           <li class="pill">Public index import = 3.9-safe</li>
           <li class="pill">HRD method inventory = exact</li>
           <li class="pill">Phase 3 packet rows = exact</li>
@@ -765,6 +766,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer Batch integers</strong>
+              <span>Materializer registration and v4 submit now reject non-exact Batch revision, retry, timeout, vCPU, and memory integers before registered-not-submitted receipts, preflight, or live job-definition checks can trust materializer Batch runtime metadata.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 packet rows</strong>
               <span><code>validate_phase3_fast_report_packets.py</code> now rejects malformed generated packet rows before calculating file_count, total_bytes, packet_sha256, or receipt files for deterministic, Rosalind, and blocked route handoff validation.</span>
@@ -1235,6 +1240,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:55:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact materializer Batch integers:</strong>
+                materializer registration and v4 submit now reject non-exact
+                Batch revision, retry, timeout, vCPU, and memory integers before
+                registered-not-submitted receipts, preflight, or live
+                job-definition checks can trust materializer Batch runtime
+                metadata. No S3, Batch, route, GPU, quota, replacement compute,
+                or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:35:00-07:00">Jul 19 · local</time>
               <span>
