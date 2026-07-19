@@ -417,6 +417,13 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                     1.0,
                 ),
             ),
+            (
+                "numeric worker sha256",
+                lambda execution: execution["worker"].__setitem__(
+                    "sha256",
+                    int("1" * 64),
+                ),
+            ),
         )
         for name, mutate in mutations:
             with self.subTest(name=name), tempfile.TemporaryDirectory(
@@ -472,6 +479,24 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                     "execution_definition.get('revision'",
                     'execution_definition.get("revision"',
                 )
+            )
+        ]
+
+        self.assertEqual(raw_coercions, [])
+
+    def test_batch_execution_provenance_avoids_raw_hash_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and (
+                "execution_worker.get('sha256'" in ast.unparse(node.args[0])
+                or 'execution_worker.get("sha256"' in ast.unparse(node.args[0])
             )
         ]
 
@@ -4170,6 +4195,52 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("batch_worker_custody", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_coerced_executed_worker_hashes_fail_before_report_publication(
+        self,
+    ) -> None:
+        mutations = (
+            (
+                "worker source",
+                "executed-worker-freeze.json",
+                lambda receipt: receipt["source"].__setitem__(
+                    "sha256",
+                    int("1" * 64),
+                ),
+            ),
+            (
+                "worker freeze",
+                "executed-worker-freeze.json",
+                lambda receipt: receipt["freeze"].__setitem__(
+                    "checksum_sha256_hex",
+                    int("1" * 64),
+                ),
+            ),
+            (
+                "execution worker",
+                "execution.json",
+                lambda receipt: receipt["worker"].__setitem__(
+                    "sha256",
+                    int("1" * 64),
+                ),
+            ),
+        )
+
+        for label, filename, mutate in mutations:
+            with self.subTest(label=label), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                receipt_path = fixture.aux / filename
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                mutate(receipt)
+                write_json(receipt_path, receipt)
+
+                result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("batch_worker_custody", result.stdout + result.stderr)
+                self.assertFalse((fixture.output / "report.md").exists())
 
     def test_missing_executed_worker_freeze_check_fails_before_report_publication(
         self,

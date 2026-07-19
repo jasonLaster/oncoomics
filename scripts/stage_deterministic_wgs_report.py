@@ -2005,7 +2005,7 @@ def main() -> None:
     execution_timeout = execution_batch.get("timeout", {}) if isinstance(execution_batch.get("timeout"), dict) else {}
     execution_retry = execution_batch.get("retry_strategy", {}) if isinstance(execution_batch.get("retry_strategy"), dict) else {}
     image_digest = str(execution_container.get("image_digest", ""))
-    worker_sha = str(execution_worker.get("sha256", ""))
+    worker_sha = execution_worker.get("sha256")
     add_check(
         checks,
         "batch_execution_provenance",
@@ -2031,8 +2031,7 @@ def main() -> None:
         and integer_equals(execution_retry.get("attempts"), 1)
         and image_digest.startswith("sha256:")
         and len(image_digest) == 71
-        and len(worker_sha) == 64
-        and all(character in "0123456789abcdef" for character in worker_sha)
+        and valid_sha256(worker_sha)
         and summary.get("run_id") in " ".join(str(value) for value in execution_command)
         and execution_queue.get("status") == "VALID"
         and positive_int(execution_definition.get("revision")),
@@ -2086,8 +2085,10 @@ def main() -> None:
         and worker_freeze_source.get("container_runtime_id")
         in (execution_container.get("runtime_ids") or [])
         and worker_freeze_source.get("bytes") == execution_worker.get("bytes")
+        and valid_sha256(worker_freeze_source.get("sha256"))
         and worker_freeze_source.get("sha256") == execution_worker.get("sha256")
         and worker_freeze_object.get("bytes") == execution_worker.get("bytes")
+        and valid_sha256(worker_freeze_object.get("checksum_sha256_hex"))
         and worker_freeze_object.get("checksum_sha256_hex")
         == execution_worker.get("sha256")
         and worker_freeze_object.get("version_id")
@@ -2115,7 +2116,7 @@ def main() -> None:
         and execution_worker.get("kms_key_id") == args.expected_kms_key_arn
         and worker_freeze_object.get("kms_key_id") == args.expected_kms_key_arn
         and positive_int(execution_worker.get("bytes"))
-        and len(str(execution_worker.get("sha256", ""))) == 64
+        and valid_sha256(execution_worker.get("sha256"))
         and bool(execution_worker.get("etag"))
         and bool(execution_worker.get("last_modified"))
         and execution_worker.get("checksum_type") == "FULL_OBJECT"
