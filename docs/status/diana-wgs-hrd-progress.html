@@ -348,11 +348,12 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local source manifests</li>
+          <li class="pill">Latest milestone = local Phase 3 receipts</li>
+          <li class="pill">Phase 3 validation receipts = exact</li>
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = b353de5</li>
+          <li class="pill">Prior dashboard = 7707f11</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -540,6 +541,10 @@
             <li class="item" style="--tone: var(--queued)">
               <strong>In progress · prepare the no-expensive-compute handoff chain</strong>
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Phase 3 validation receipts</strong>
+              <span>Fast deterministic, Rosalind, and pre-route blocked packet validation now rejects report-packet validation receipts with extra or missing top-level fields, or per-packet rows with legacy fields, before trusting packet SHA-256s for source-freeze and AI handoff.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · validate executable packets at source freeze</strong>
@@ -775,6 +780,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T01:29:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact Phase 3 validation receipts:</strong>
+                Phase 3 fast packet validation now enforces exact
+                validation-receipt top-level keys and per-packet row keys
+                before trusting deterministic, Rosalind, or pre-route blocked
+                packet SHA-256s for source-freeze and AI handoff. No S3,
+                Batch, route, GPU, quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T01:23:00-07:00">Jul 19 · local</time>
               <span>

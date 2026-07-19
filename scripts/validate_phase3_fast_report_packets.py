@@ -33,6 +33,23 @@ PACKET_ARG_TO_METHOD = (
 PHASE3_FAST_VALIDATED_METHOD_IDS = tuple(method_id for _, method_id in PACKET_ARG_TO_METHOD)
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 SHA256_B64 = re.compile(r"^[A-Za-z0-9+/]{43}=$")
+VALIDATION_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "validated_packet_count",
+    "static_forbidden_token_count",
+    "run_forbidden_token_count",
+    "forbidden_token_count",
+    "forbidden_tokens_sha256",
+    "packets",
+}
+VALIDATION_RECEIPT_PACKET_KEYS = {
+    "method_id",
+    "file_count",
+    "total_bytes",
+    "packet_sha256",
+    "files",
+}
 
 
 def serializable_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -146,6 +163,7 @@ def require_validation_receipt_packet_sha256s(
     if (
         payload.get("schema_version") != 1
         or payload.get("status") != "passed"
+        or set(payload) != VALIDATION_RECEIPT_KEYS
         or payload.get("validated_packet_count") != len(PHASE3_FAST_VALIDATED_METHOD_IDS)
         or not isinstance(packets, list)
         or len(packets) != len(PHASE3_FAST_VALIDATED_METHOD_IDS)
@@ -158,7 +176,10 @@ def require_validation_receipt_packet_sha256s(
 
     packet_sha256s: dict[str, str] = {}
     for expected_method_id, packet in zip(PHASE3_FAST_VALIDATED_METHOD_IDS, packets):
-        if not isinstance(packet, dict):
+        if (
+            not isinstance(packet, dict)
+            or set(packet) != VALIDATION_RECEIPT_PACKET_KEYS
+        ):
             raise ValueError("report packet validation receipt packet rows must be objects")
         method_id = packet.get("method_id")
         digest = packet.get("packet_sha256")

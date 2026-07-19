@@ -431,6 +431,30 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "forbidden-token"):
                         VALIDATOR.require_validation_receipt_packet_sha256s(malformed)
 
+    def test_rejects_inexact_validation_receipt_envelopes(self) -> None:
+        cases = (
+            ("top-level", lambda receipt: receipt.update({"legacy_field": True})),
+            ("packet", lambda receipt: receipt["packets"][0].update({"legacy_file_count": 1})),
+        )
+
+        for label, mutate in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                packet_dirs = self.write_phase3_fast_packets(root)
+                receipt = VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
+                mutate(receipt)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "report packet validation receipt is malformed"
+                    if label == "top-level"
+                    else "packet rows",
+                ):
+                    VALIDATOR.require_validation_receipt_packet_sha256s(receipt)
+
     def test_rejects_malformed_receipt_packet_file_summary(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
