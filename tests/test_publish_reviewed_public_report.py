@@ -490,6 +490,47 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertFalse(fixture.output_path.exists())
 
+    def test_apply_rejects_dry_run_receipt_with_stale_extra_metadata_before_s3(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "top-level",
+                lambda payload: payload.update({"stale_private_receipt": "old"}),
+                "contract is malformed",
+            ),
+            (
+                "nested private receipt",
+                lambda payload: payload["private_publication_receipt"].update(
+                    {"stale_path": "/tmp/old-private-receipt.json"}
+                ),
+                "private receipt does not match",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                dry_receipt = fixture.write_dry_run_receipt()
+                payload = json.loads(dry_receipt.read_text(encoding="utf-8"))
+                mutate(payload)
+                dry_receipt.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with (
+                    mock.patch.object(
+                        MODULE,
+                        "aws_json",
+                        side_effect=AssertionError("AWS called"),
+                    ),
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_receipt))
+
+                self.assertFalse(fixture.output_path.exists())
+
     def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_s3(
         self,
     ) -> None:

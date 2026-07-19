@@ -611,6 +611,63 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
 
             self.assertFalse((root / "apply.json").exists())
 
+    def test_apply_rejects_dry_run_receipt_with_stale_extra_metadata_before_aws(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "top-level",
+                lambda payload: payload.update(
+                    {"stale_reviewed_public_receipt_count": 9}
+                ),
+                "contract is malformed",
+            ),
+            (
+                "nested index",
+                lambda payload: payload["index"].update({"old_sha256": "0" * 64}),
+                "does not match the index",
+            ),
+            (
+                "nested destination",
+                lambda payload: payload["destination"].update(
+                    {"old_uri": f"s3://{MODULE.BUCKET}/public-index/old.json"}
+                ),
+                "does not match the destination",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                index, receipts = self.write_receipt_bound_index(root)
+                dry_run_receipt = self.write_dry_run_receipt(root, index, receipts)
+                payload = json.loads(dry_run_receipt.read_text(encoding="utf-8"))
+                mutate(payload)
+                dry_run_receipt.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with (
+                    self.assertRaisesRegex(ValueError, message),
+                    mock.patch.object(
+                        MODULE,
+                        "aws_json",
+                        side_effect=AssertionError("AWS called"),
+                    ),
+                ):
+                    MODULE.run(
+                        self.args(
+                            index,
+                            root / "apply.json",
+                            apply=True,
+                            dry_run_receipt=dry_run_receipt,
+                            reviewed_public_receipts=receipts,
+                        )
+                    )
+
+                self.assertFalse((root / "apply.json").exists())
+
     def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_aws(
         self,
     ) -> None:

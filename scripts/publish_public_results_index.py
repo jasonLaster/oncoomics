@@ -43,6 +43,16 @@ PUBLIC_INDEX_DESTINATION_CHECKS = {
     "cache_control": True,
     "content_type": True,
 }
+PUBLIC_INDEX_DRY_RUN_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "generated_at_utc",
+    "apply",
+    "index",
+    "destination",
+    "checks",
+    "completed_at_utc",
+}
 
 
 def now() -> str:
@@ -221,6 +231,7 @@ def validate_public_index(
         raise ValueError("public index reviewed-public receipt binding is not exact")
     validate_reviewed_public_s3_state(normalized, reviewed_public_objects)
     return {
+        "path": str(path.resolve()),
         "sha256": digest,
         "bytes": path.stat().st_size,
         "object_count": len(normalized),
@@ -345,26 +356,32 @@ def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, A
         receipt.get("schema_version") != 1
         or receipt.get("status") != "dry_run"
         or receipt.get("apply") is not False
+        or set(receipt) != PUBLIC_INDEX_DRY_RUN_RECEIPT_KEYS
+        or not isinstance(receipt.get("generated_at_utc"), str)
+        or not receipt.get("generated_at_utc")
+        or not isinstance(receipt.get("completed_at_utc"), str)
+        or not receipt.get("completed_at_utc")
         or not isinstance(index, dict)
         or not isinstance(destination, dict)
         or not isinstance(checks, dict)
     ):
         raise ValueError("public index dry-run receipt contract is malformed")
     expected_index = {
+        "path": custody["path"],
         "sha256": custody["sha256"],
         "bytes": custody["bytes"],
         "object_count": custody["object_count"],
         "total_size": custody["total_size"],
         "reviewed_public_receipt_count": custody["reviewed_public_receipt_count"],
     }
-    if {field: index.get(field) for field in expected_index} != expected_index:
+    if index != expected_index:
         raise ValueError("public index dry-run receipt does not match the index")
     expected_destination = {
         "bucket": BUCKET,
         "key": INDEX_KEY,
         "uri": f"s3://{BUCKET}/{INDEX_KEY}",
     }
-    if {field: destination.get(field) for field in expected_destination} != expected_destination:
+    if destination != expected_destination:
         raise ValueError("public index dry-run receipt does not match the destination")
     required_checks = {
         "index_allowlisted_prefixes": True,
@@ -414,7 +431,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "generated_at_utc": now(),
         "apply": bool(args.apply),
         "index": {
-            "path": str(args.index.resolve()),
             **custody,
         },
         "destination": {

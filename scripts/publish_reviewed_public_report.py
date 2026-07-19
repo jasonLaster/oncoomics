@@ -187,6 +187,27 @@ REVIEWED_PUBLIC_PREFLIGHT_CHECKS = (
     "destination_initially_empty",
     "packet_size_bounded",
 )
+REVIEWED_PUBLIC_DRY_RUN_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "generated_at_utc",
+    "apply",
+    "method_id",
+    "subject_alias",
+    "run_id",
+    "classification",
+    "script_sha256",
+    "private_publication_receipt",
+    "destination_prefix",
+    "expected_files",
+    "forbidden_token_count",
+    "forbidden_token_sha256",
+    "source_objects",
+    "destination_objects",
+    "destination_initial_history_count",
+    "checks",
+    "completed_at_utc",
+}
 
 
 def now() -> str:
@@ -832,6 +853,11 @@ def validate_dry_run_receipt(
         dry_run.get("schema_version") != 1
         or dry_run.get("status") != "dry_run"
         or dry_run.get("apply") is not False
+        or set(dry_run) != REVIEWED_PUBLIC_DRY_RUN_RECEIPT_KEYS
+        or not isinstance(dry_run.get("generated_at_utc"), str)
+        or not dry_run.get("generated_at_utc")
+        or not isinstance(dry_run.get("completed_at_utc"), str)
+        or not dry_run.get("completed_at_utc")
         or dry_run.get("destination_objects") != []
         or dry_run.get("destination_initial_history_count") != 0
         or not isinstance(source_objects, list)
@@ -856,11 +882,7 @@ def validate_dry_run_receipt(
         raise ValueError("reviewed-public report dry-run receipt does not match this apply")
 
     current_private = receipt["private_publication_receipt"]
-    expected_private_fields = ("sha256", "destination_prefix")
-    if any(
-        private_publication_receipt.get(field) != current_private.get(field)
-        for field in expected_private_fields
-    ):
+    if private_publication_receipt != current_private:
         raise ValueError(
             "reviewed-public report dry-run private receipt does not match this apply"
         )
