@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import stat
 import sys
@@ -285,6 +286,10 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                     ),
                 ),
                 (
+                    "non-exact-schema",
+                    lambda receipt: receipt.__setitem__("schema_version", 1.0),
+                ),
+                (
                     "missing-row-checks",
                     lambda receipt: receipt["objects"][0].pop("checks"),
                 ),
@@ -327,6 +332,97 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                     get_exact.assert_not_called()
                     self.assertFalse(output.exists())
                     self.assertFalse(receipt.exists())
+
+    def test_prepared_receipt_recovery_requires_exact_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+            MODULE.reserve_json(
+                receipt,
+                {
+                    "schema_version": 1.0,
+                    "status": "prepared",
+                    "run_id": "synthetic-run",
+                    "batch_job_id": "synthetic-job",
+                    "script_sha256": MODULE.sha256(
+                        SCRIPT_DIR / "materialize_frozen_artifacts.py"
+                    ),
+                    "freeze_receipt_sha256": MODULE.sha256(freeze),
+                    "expected_kms_key_arn": kms,
+                    "materialization_dir": str(output.resolve()),
+                    "object_count": 1,
+                    "objects": [],
+                },
+            )
+
+            with (
+                patch.object(
+                    MODULE,
+                    "get_exact_object",
+                    side_effect=AssertionError("AWS called"),
+                ) as get_exact,
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "belongs to another operation",
+                ),
+            ):
+                MODULE.main(self.args(freeze, output, receipt, kms))
+
+            get_exact.assert_not_called()
+            self.assertFalse(output.exists())
+
+    def test_schema_version_checks_use_exact_integer_helper(self) -> None:
+        cases = (
+            (1, 1, True),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (2, 1, False),
+            (None, 1, False),
+            (True, 1, False),
+            (False, 0, False),
+        )
+        for value, expected, accepted in cases:
+            with self.subTest(value=value, expected=expected):
+                self.assertIs(
+                    MODULE.exact_schema_version(
+                        {"schema_version": value},
+                        expected,
+                    ),
+                    accepted,
+                )
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "materialize_frozen_artifacts.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        parent_by_child = {
+            child: parent
+            for parent in ast.walk(module)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def in_exact_schema_helper(node: ast.AST) -> bool:
+            parent = parent_by_child.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef):
+                    return parent.name == "exact_schema_version"
+                parent = parent_by_child.get(parent)
+            return False
+
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+            and not in_exact_schema_helper(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
 
     def test_rejects_unexpected_staging_child_before_local_cutover(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

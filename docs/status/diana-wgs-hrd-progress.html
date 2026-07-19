@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local comparative synthesis schema exactness</li>
+          <li class="pill">Latest milestone = local materialized-final schema exactness</li>
+          <li class="pill">Materialized-final schemas = exact</li>
           <li class="pill">Comparative synthesis custody schemas = exact</li>
           <li class="pill">AI validator custody schemas = exact</li>
           <li class="pill">AI run-prep schemas = exact</li>
@@ -554,6 +555,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materialized-final schemas</strong>
+              <span>Exact local materialization now rejects JSON floats or booleans in final-freeze receipts and prepared recovery receipts before downloading frozen private objects or recovering the alias-only <code>materialized-final</code> tree.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact deterministic stager schemas</strong>
               <span>Deterministic WGS staging now routes terminal custody schema checks through shared exact helpers, rejecting JSON floats or booleans across stage provenance, materializer capture/download, final freeze, stable input snapshots, Batch custody, exact-version/cross-check materialization, staged-input validation, and the deterministic <code>report_manifest.json</code> before <code>report.md</code> can be written.</span>
@@ -960,6 +965,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:41:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact materialized-final schemas:</strong>
+                exact local materialization now rejects non-exact
+                <code>schema_version</code> values in final-freeze receipts and
+                prepared recovery receipts before downloading frozen private
+                objects or recovering the alias-only
+                <code>materialized-final</code> tree. No S3, Batch, route, GPU,
+                quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:40:00-07:00">Jul 19 · local</time>
               <span>

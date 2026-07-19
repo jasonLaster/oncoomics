@@ -47,6 +47,10 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -335,7 +339,7 @@ def require_exact_final_freeze(
     rows = freeze.get("objects")
     if (
         set(freeze) != INPUT_CONTRACT.EXPECTED_FINAL_FREEZE_KEYS
-        or freeze.get("schema_version") != 1
+        or not exact_schema_version(freeze, 1)
         or freeze.get("status") != "passed"
         or freeze.get("batch_status") != "SUCCEEDED"
         or freeze.get("kms_key_arn") != expected_kms_key_arn
@@ -412,7 +416,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
     if receipt_output.exists():
         prior = load_object(receipt_output, "materialization receipt")
         identity_matches = (
-            prior.get("schema_version") == 1
+            exact_schema_version(prior, 1)
             and prior.get("run_id") == result["run_id"]
             and prior.get("batch_job_id") == result["batch_job_id"]
             and prior.get("script_sha256") == result["script_sha256"]
