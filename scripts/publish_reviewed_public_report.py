@@ -569,9 +569,12 @@ def validate_private_receipt(
         or receipt.get("method_id") != method_id
         or receipt.get("kms_key_arn") != PRIVATE_KMS_KEY_ARN
         or receipt.get("expected_files") != list(expected)
-        or receipt.get("object_count") != len(expected)
-        or receipt.get("passed_count") != len(expected)
-        or receipt.get("destination_final_history_count") != len(expected)
+        or not exact_int(receipt.get("object_count"), len(expected))
+        or not exact_int(receipt.get("passed_count"), len(expected))
+        or not exact_int(
+            receipt.get("destination_final_history_count"),
+            len(expected),
+        )
         or not isinstance(receipt.get("generated_at_utc"), str)
         or not receipt.get("generated_at_utc")
         or not isinstance(receipt.get("completed_at_utc"), str)

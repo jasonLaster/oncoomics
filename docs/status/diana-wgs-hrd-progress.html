@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local private report dry-run count exactness</li>
+          <li class="pill">Latest milestone = local reviewed-public private receipt count exactness</li>
+          <li class="pill">Reviewed-public private counts = exact</li>
           <li class="pill">Private report dry-run counts = exact</li>
           <li class="pill">Final-freeze receipt-anchor ContentLength = exact</li>
           <li class="pill">Deterministic terminal counts = exact</li>
@@ -1092,6 +1093,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact reviewed-public private receipt counts</strong>
+              <span>Reviewed-public publication now rejects non-exact private publication receipt object, passed, or destination final-history counts before any private deterministic, Rosalind, cross-check, or AI report packet can be accepted for public release.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact public-index S3 bytes</strong>
               <span>Public index build/apply now rejects non-exact list-object Size metadata, reviewed-public Size comparisons, no-overwrite ContentLength proofs, and exact/current post-upload ContentLength checks before public <code>objects.json</code> or public-index receipts can trust public S3 byte metadata.</span>
             </li>
@@ -1185,6 +1190,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:26:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact reviewed-public private receipt counts:</strong>
+                reviewed-public publication now rejects non-exact private
+                publication receipt <code>object_count</code>,
+                <code>passed_count</code>, and
+                <code>destination_final_history_count</code> values before a
+                deterministic, Rosalind, cross-check, or AI packet can be
+                accepted for public release. No S3, Batch, route, GPU, quota,
+                replacement compute, or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:25:00-07:00">Jul 19 · local</time>
               <span>

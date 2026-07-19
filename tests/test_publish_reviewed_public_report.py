@@ -941,6 +941,28 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
     def test_private_receipt_integer_fields_must_be_exact(self) -> None:
         cases = (
             (
+                "object count float",
+                lambda receipt: receipt.__setitem__(
+                    "object_count", float(len(receipt["objects"]))
+                ),
+                "not exact and passed",
+            ),
+            (
+                "passed count float",
+                lambda receipt: receipt.__setitem__(
+                    "passed_count", float(len(receipt["objects"]))
+                ),
+                "not exact and passed",
+            ),
+            (
+                "destination final history count float",
+                lambda receipt: receipt.__setitem__(
+                    "destination_final_history_count",
+                    float(len(receipt["objects"])),
+                ),
+                "not exact and passed",
+            ),
+            (
                 "forbidden token count bool",
                 lambda receipt: receipt.__setitem__("forbidden_token_count", True),
                 "not exact and passed",
