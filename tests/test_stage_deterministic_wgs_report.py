@@ -781,6 +781,24 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
         self.assertEqual(raw_comparisons, [])
 
+    def test_final_freeze_versions_avoid_raw_string_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_version_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and (
+                "destination.get('version_id'" in ast.unparse(node.args[0])
+                or 'destination.get("version_id"' in ast.unparse(node.args[0])
+            )
+        ]
+
+        self.assertEqual(raw_version_coercions, [])
+
     def test_load_json_rejects_input_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-input-"

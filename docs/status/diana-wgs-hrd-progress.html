@@ -730,7 +730,7 @@
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact cross-check input-plan hashes</strong>
-              <span><code>stage_deterministic_wgs_report.py</code> now rejects non-string SHA-256 values for materialized outputs, materializer input hashes, and Sequenza alias artifact hashes before terminal cross-check input plan rendering.</span>
+              <span><code>stage_deterministic_wgs_report.py</code> now rejects non-string SHA-256 values for materialized outputs, materializer input hashes, and Sequenza alias artifact hashes before terminal cross-check input plan rendering, and routes final-freeze destination VersionIds through <code>valid_version_id()</code> instead of stringification plus sentinel checks.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact stage-freeze pagination markers</strong>
@@ -1617,7 +1617,10 @@
                 <code>stage_deterministic_wgs_report.py</code> now rejects
                 non-string SHA-256 values for materialized outputs,
                 materializer input hashes, and Sequenza alias artifact hashes
-                before terminal cross-check input plan rendering.
+                before terminal cross-check input plan rendering, and routes
+                final-freeze destination VersionIds through
+                <code>valid_version_id()</code> instead of stringification plus
+                sentinel checks.
               </span>
             </li>
             <li class="item">

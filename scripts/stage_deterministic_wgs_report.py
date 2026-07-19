@@ -2160,19 +2160,16 @@ def main() -> None:
     }
     freeze_consumed_valid = not duplicate_freeze_keys and bool(consumed_artifacts)
     freeze_all_valid = freeze_consumed_valid and set(consumed_artifacts).issubset(freeze_by_relative)
-    consumed_version_ids: dict[str, str] = {}
     for relative_key, row in freeze_by_relative.items():
         local_path = artifact_root / relative_key
         destination = row.get("destination", {}) if isinstance(row.get("destination"), dict) else {}
         row_checks = row.get("checks", {}) if isinstance(row.get("checks"), dict) else {}
-        version_id = str(destination.get("version_id", ""))
-        if relative_key in consumed_artifacts:
-            consumed_version_ids[relative_key] = version_id
+        version_id = destination.get("version_id")
         if not (
             local_path.is_file()
             and row.get("status") == "passed"
             and integer_equals(destination.get("bytes"), local_path.stat().st_size)
-            and version_id not in {"", "null", "None"}
+            and valid_version_id(version_id)
             and destination.get("server_side_encryption") == "aws:kms"
             and destination.get("kms_key_id") == args.expected_kms_key_arn
             and isinstance(destination.get("checksums"), dict)
