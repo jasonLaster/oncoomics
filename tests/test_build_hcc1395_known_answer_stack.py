@@ -251,6 +251,35 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_sha256_requires_real_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "report_manifest.json"
+            source.write_text("{}\n", encoding="utf-8")
+
+            source_link = root / "report_manifest_link.json"
+            source_link.symlink_to(source)
+            with self.assertRaisesRegex(
+                ValueError,
+                "report_manifest_link\\.json SHA-256 input must be a real file",
+            ):
+                STACK.sha256(source_link)
+
+            real_parent = root / "real-source"
+            real_parent.mkdir()
+            linked_parent = root / "linked-source"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            (real_parent / "report_manifest.json").write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report_manifest\\.json SHA-256 input parent may not be a symlink",
+            ):
+                STACK.sha256(linked_parent / "report_manifest.json")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -116,6 +116,7 @@ if tuple(spec["method_id"] for spec in METHOD_SPECS) != HCC1395_WGS_KNOWN_ANSWER
 
 
 def sha256(path: Path) -> str:
+    require_real_hash_input(path)
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -181,13 +182,24 @@ def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
 
-def require_safe_new_output(path: Path) -> Path:
-    path = path.expanduser().absolute()
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
-            raise ValueError(f"output parent may not be a symlink: {parent}")
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
         if parent.exists() and not parent.is_dir():
-            raise ValueError(f"output parent is not a directory: {parent}")
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
+def require_real_hash_input(path: Path) -> None:
+    label = f"{path.name} SHA-256 input"
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
+def require_safe_new_output(path: Path) -> Path:
+    path = path.expanduser().absolute()
+    require_no_symlinked_ancestors(path, "output")
     if path.exists() or path.is_symlink():
         raise FileExistsError(f"output already exists: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
