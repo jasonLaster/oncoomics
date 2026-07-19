@@ -307,21 +307,23 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>2d1c39495766cc6cb6b38f8e764ab5e4580628ba</strong>.
-          The latest work is deterministic intake-audit hardening:
-          <code>stage_deterministic_wgs_report.py</code> now treats
-          <code>sha-audit.json</code> object rows as an exact typed inventory,
-          rejects malformed non-object rows, and requires passed audit rows,
-          object counts, streamed bytes, and per-row size/SHA-256 matches to
-          agree before the deterministic WGS report can be published. This is
-          still source/test/dashboard work only. No deterministic final artifacts
-          yet; no real Diana WGS Rosalind packet, executable cross-check
-          packets, AI-review inputs, model-review outputs, or comparative
-          synthesis have been produced.
+          <strong>91ab4ec9ddda67a12108a4f880a7c3dc5879f0af</strong>.
+          The latest work is AI-review receipt mode hardening:
+          <code>validate_ai_review.py</code> now rechecks
+          <code>validation.json</code> and <code>finalize_ai_review.py</code>
+          now rechecks <code>report_manifest.json</code> after file plus
+          parent-directory fsync so each create-only receipt must still be mode
+          <code>0600</code> before validation or finalization can continue.
+          The regressions chmod those receipts to <code>0644</code> after
+          directory fsync and prove partial outputs are rejected and unlinked.
+          This is still source/test/dashboard work only. No deterministic final
+          artifacts yet; no real Diana WGS Rosalind packet, executable
+          cross-check packets, AI-review inputs, model-review outputs, or
+          comparative synthesis have been produced.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 2d1c394</li>
+          <li class="pill">Latest hardening = 91ab4ec</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -403,8 +405,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 2d1c394</strong>
-              <span>Deterministic report staging now fails closed when intake SHA-256 audit rows are malformed or no longer match their declared totals.</span>
+              <strong>Preserve 91ab4ec</strong>
+              <span>AI-review validation/finalization now reject receipts whose modes drift after directory fsync and unlink the partial outputs.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -452,6 +454,25 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>91ab4ec Recheck AI review receipt modes:</strong>
+                <code>validate_ai_review.py</code> now rechecks
+                <code>validation.json</code>, and
+                <code>finalize_ai_review.py</code> now rechecks
+                <code>report_manifest.json</code>, after the create-only file
+                write, file fsync, and parent-directory fsync. If either
+                receipt drifts away from mode <code>0600</code>, validation or
+                finalization raises instead of accepting the partial file and
+                unlinks it. The new
+                <code>test_validation_receipt_rechecks_mode_after_directory_fsync</code>
+                and
+                <code>test_final_manifest_rechecks_mode_after_directory_fsync</code>
+                regressions chmod each receipt to <code>0644</code> after
+                directory fsync and prove the partial output is removed.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
