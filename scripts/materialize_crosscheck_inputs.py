@@ -109,6 +109,17 @@ def exact_sha256(value: Any, label: str) -> str:
     return value
 
 
+def exact_s3_etag(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or any(character.isspace() for character in value)
+        or value.lower() in {"none", "null"}
+    ):
+        raise ValueError(f"{label} omitted an exact S3 ETag")
+    return value
+
+
 def exact_nonempty_marker(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{label} must be a non-empty string")
@@ -589,6 +600,7 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
         or metadata.get("ChecksumSHA256") != expected_checksum
     ):
         raise ValueError(f"uploaded object SHA-256 checksum mismatch: {uri}")
+    etag = exact_s3_etag(metadata.get("ETag"), uri)
     history = version_history(bucket, key, region)
     history_exact = (
         len(history) == 1
@@ -597,6 +609,7 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
         and history[0].get("VersionId") == version_id
         and history[0].get("IsLatest") is True
         and exact_int(history[0].get("Size"), metadata_bytes)
+        and exact_s3_etag(history[0].get("ETag"), uri) == etag
     )
     if not history_exact:
         raise ValueError(f"uploaded object lacks exact single-version history: {uri}")
@@ -604,7 +617,7 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
         "uri": uri,
         "version_id": observed_version_id,
         "bytes": metadata_bytes,
-        "etag": str(metadata.get("ETag", "")),
+        "etag": etag,
         "checksums": s3_checksums(metadata),
         "sha256": local_sha256,
         "kms_key_arn": str(metadata.get("SSEKMSKeyId", "")),
@@ -635,6 +648,10 @@ def audit_output_history(
             output.get("version_id"),
             f"cross-check output {filename}",
         )
+        output_etag = exact_s3_etag(
+            output.get("etag"),
+            f"cross-check output {filename}",
+        )
         output_sha256 = exact_sha256(
             output.get("sha256"),
             f"cross-check output {filename}",
@@ -654,7 +671,11 @@ def audit_output_history(
         if (
             not is_positive_exact_int(expected_bytes)
             or not exact_int(history_row.get("Size"), expected_bytes)
+            or exact_s3_etag(history_row.get("ETag"), f"history {filename}")
+            != output_etag
             or not exact_int(metadata.get("ContentLength"), expected_bytes)
+            or exact_s3_etag(metadata.get("ETag"), f"metadata {filename}")
+            != output_etag
             or metadata.get("Metadata", {}).get("sha256") != output_sha256
             or metadata.get("ChecksumType") != "FULL_OBJECT"
             or metadata.get("ChecksumSHA256") != expected_checksum
@@ -821,7 +842,7 @@ def main() -> int:
                 "uri": uri,
                 "version_id": observed_version_id,
                 "bytes": expected_bytes,
-                "etag": str(metadata.get("ETag", "")),
+                "etag": exact_s3_etag(metadata.get("ETag"), f"source {name}"),
                 "checksums": s3_checksums(metadata),
                 "sha256": observed_sha256,
                 "expected_sha256": expected_sha256[name],

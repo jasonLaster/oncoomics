@@ -177,6 +177,14 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 self.assertFalse(module.is_positive_exact_int(value))
                 self.assertFalse(module.exact_int(value, 7))
 
+    def test_s3_etag_guard_requires_exact_strings(self):
+        self.assertEqual(module.exact_s3_etag('"etag"', "object"), '"etag"')
+
+        for value in (True, None, "", "None", "null", "has space"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "exact S3 ETag"):
+                    module.exact_s3_etag(value, "object")
+
     def test_content_length_guards_avoid_raw_int_coercion(self):
         source = (SCRIPT_DIR / "materialize_crosscheck_inputs.py").read_text(
             encoding="utf-8"
@@ -211,6 +219,32 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
             'output.get("sha256"',
             "metadata['VersionId']",
             'metadata["VersionId"]',
+        )
+        raw_calls = [
+            ast.unparse(node)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(field in ast.unparse(node.args[0]) for field in guarded_fields)
+        ]
+        self.assertEqual(raw_calls, [])
+
+    def test_etag_guards_avoid_raw_string_coercion(self):
+        source = (SCRIPT_DIR / "materialize_crosscheck_inputs.py").read_text(
+            encoding="utf-8"
+        )
+        tree = ast.parse(source)
+        guarded_fields = (
+            "metadata.get('ETag'",
+            'metadata.get("ETag"',
+            "history[0].get('ETag'",
+            'history[0].get("ETag"',
+            "history_row.get('ETag'",
+            'history_row.get("ETag"',
+            "output.get('etag'",
+            'output.get("etag"',
         )
         raw_calls = [
             ast.unparse(node)
@@ -301,7 +335,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "584ec78f8e2f7871360611b85c0bbaa4fee30dd86da3a31eb851e28e0738f91c",
+            "2bfef7c7e09b302c803f6f3e44302166aab5633e1fe1eea999bba8ebf794ed42",
         )
 
     def test_json_output_removes_partial_file_after_file_fsync_failure(self):
@@ -396,6 +430,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                     "VersionId": "output-version",
                     "IsLatest": True,
                     "Size": source.stat().st_size,
+                    "ETag": "unit",
                 }],
                 "DeleteMarkers": [],
                 "IsTruncated": False,
@@ -436,6 +471,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
             ],
         )
         self.assertEqual(receipt["version_id"], "output-version")
+        self.assertEqual(receipt["etag"], "unit")
         self.assertEqual(receipt["sha256"], digest)
         self.assertEqual(
             receipt["checksums"]["ChecksumSHA256"],
@@ -466,6 +502,38 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                     "us-east-1",
                 )
 
+    def test_upload_rejects_non_exact_etag(self):
+        uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+
+        for etag in (True, None, "", "None", "null", "has space"):
+            with self.subTest(etag=etag), tempfile.TemporaryDirectory() as tmp:
+                source = Path(tmp) / "output.json"
+                source.write_text("{}\n", encoding="utf-8")
+                digest = module.sha256(source)
+                metadata = {
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": kms,
+                    "VersionId": "output-version",
+                    "ContentLength": source.stat().st_size,
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": module.checksum_sha256(digest),
+                    "ETag": etag,
+                    "Metadata": {"sha256": digest},
+                }
+
+                with (
+                    patch.object(module, "version_history", return_value=[]),
+                    patch.object(
+                        module,
+                        "aws_json",
+                        return_value={"VersionId": "output-version"},
+                    ),
+                    patch.object(module, "head", return_value=metadata),
+                    self.assertRaisesRegex(ValueError, "exact S3 ETag"),
+                ):
+                    module.upload(source, uri, kms, "us-east-1")
+
     def test_upload_rejects_non_exact_content_length(self):
         uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
         kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
@@ -482,6 +550,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                     "ContentLength": content_length,
                     "ChecksumType": "FULL_OBJECT",
                     "ChecksumSHA256": module.checksum_sha256(digest),
+                    "ETag": "output-etag",
                     "Metadata": {"sha256": digest},
                 }
                 calls = iter([
@@ -514,6 +583,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 "ContentLength": source.stat().st_size,
                 "ChecksumType": "FULL_OBJECT",
                 "ChecksumSHA256": module.checksum_sha256(digest),
+                "ETag": "output-etag",
                 "Metadata": {"sha256": digest},
             }
             history = {
@@ -522,6 +592,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                     "VersionId": "output-version",
                     "IsLatest": True,
                     "Size": True,
+                    "ETag": "output-etag",
                 }],
                 "DeleteMarkers": [],
                 "IsTruncated": False,
@@ -541,6 +612,58 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 self.assertRaisesRegex(ValueError, "single-version history"),
             ):
                 module.upload(source, uri, kms, "us-east-1")
+
+    def test_upload_rejects_non_exact_history_etag(self):
+        uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+
+        cases = (
+            ("coerced", True, "exact S3 ETag"),
+            ("mismatched", "other-etag", "single-version history"),
+        )
+        for label, etag, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                source = Path(tmp) / "output.json"
+                source.write_text("{}\n", encoding="utf-8")
+                digest = module.sha256(source)
+                metadata = {
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": kms,
+                    "VersionId": "output-version",
+                    "ContentLength": source.stat().st_size,
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": module.checksum_sha256(digest),
+                    "ETag": "output-etag",
+                    "Metadata": {"sha256": digest},
+                }
+
+                with (
+                    patch.object(
+                        module,
+                        "version_history",
+                        side_effect=[
+                            [],
+                            [
+                                {
+                                    "history_kind": "version",
+                                    "Key": "runs/subject01/output.json",
+                                    "VersionId": "output-version",
+                                    "IsLatest": True,
+                                    "Size": source.stat().st_size,
+                                    "ETag": etag,
+                                }
+                            ],
+                        ],
+                    ),
+                    patch.object(
+                        module,
+                        "aws_json",
+                        return_value={"VersionId": "output-version"},
+                    ),
+                    patch.object(module, "head", return_value=metadata),
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    module.upload(source, uri, kms, "us-east-1")
 
     def test_upload_rejects_s3_checksum_that_differs_from_local_sha256(self):
         uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
@@ -607,6 +730,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 "uri": uri,
                 "version_id": "output-version",
                 "bytes": 10,
+                "etag": "output-etag",
                 "sha256": digest,
                 "checksums": {
                     "ChecksumType": "FULL_OBJECT",
@@ -626,6 +750,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                         "VersionId": "output-version",
                         "IsLatest": True,
                         "Size": 10,
+                        "ETag": "output-etag",
                     }
                 ],
             ),
@@ -637,6 +762,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                     "SSEKMSKeyId": kms,
                     "VersionId": "output-version",
                     "ContentLength": 10,
+                    "ETag": "output-etag",
                     "ChecksumType": "FULL_OBJECT",
                     "ChecksumSHA256": module.checksum_sha256("0" * 64),
                     "Metadata": {"sha256": digest},
@@ -681,6 +807,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                         "uri": uri,
                         "version_id": "output-version",
                         "bytes": 10,
+                        "etag": "output-etag",
                         "sha256": digest,
                         "checksums": {
                             "ChecksumType": "FULL_OBJECT",
@@ -700,6 +827,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                                 "Key": "runs/subject01/materialized/sbs96.csv",
                                 "VersionId": "output-version",
                                 "IsLatest": True,
+                                "ETag": "output-etag",
                                 **history_updates,
                             }
                         ],
@@ -712,6 +840,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                             "SSEKMSKeyId": kms,
                             "VersionId": "output-version",
                             "ContentLength": 10,
+                            "ETag": "output-etag",
                             "ChecksumType": "FULL_OBJECT",
                             "ChecksumSHA256": module.checksum_sha256(digest),
                             "Metadata": {"sha256": digest},
@@ -740,6 +869,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 ),
                 "version_id": "output-version",
                 "bytes": 10,
+                "etag": "output-etag",
                 "sha256": digest,
                 "checksums": {
                     "ChecksumType": "FULL_OBJECT",
@@ -750,6 +880,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         cases = (
             ("coerced_version", {"version_id": True}, "exact VersionId"),
             ("coerced_sha", {"sha256": int("a" * 64, 16)}, "exact SHA-256"),
+            ("coerced_etag", {"etag": True}, "exact S3 ETag"),
         )
         for label, updates, message in cases:
             with (
@@ -764,6 +895,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                             "VersionId": "output-version",
                             "IsLatest": True,
                             "Size": 10,
+                            "ETag": "output-etag",
                         }
                     ],
                 ),
@@ -781,6 +913,76 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                     "us-east-1",
                 )
             head.assert_not_called()
+
+    def test_audit_output_history_rejects_non_exact_etags(self):
+        uri = (
+            "s3://diana-omics-private-results-000000000000-us-east-1/"
+            "runs/subject01/materialized/sbs96.csv"
+        )
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+        digest = "1" * 64
+        outputs = {
+            "sbs96.csv": {
+                "uri": uri,
+                "version_id": "output-version",
+                "bytes": 10,
+                "etag": "output-etag",
+                "sha256": digest,
+                "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": module.checksum_sha256(digest),
+                },
+            }
+        }
+
+        cases = (
+            ("history coerced", True, "output-etag", "exact S3 ETag"),
+            ("history mismatch", "other-etag", "output-etag", "exact-version audit"),
+            ("metadata coerced", "output-etag", True, "exact S3 ETag"),
+            ("metadata mismatch", "output-etag", "other-etag", "exact-version audit"),
+        )
+        for label, history_etag, metadata_etag, message in cases:
+            with (
+                self.subTest(label=label),
+                patch.object(
+                    module,
+                    "version_history",
+                    return_value=[
+                        {
+                            "history_kind": "version",
+                            "Key": "runs/subject01/materialized/sbs96.csv",
+                            "VersionId": "output-version",
+                            "IsLatest": True,
+                            "Size": 10,
+                            "ETag": history_etag,
+                        }
+                    ],
+                ),
+                patch.object(
+                    module,
+                    "head",
+                    return_value={
+                        "ServerSideEncryption": "aws:kms",
+                        "SSEKMSKeyId": kms,
+                        "VersionId": "output-version",
+                        "ContentLength": 10,
+                        "ETag": metadata_etag,
+                        "ChecksumType": "FULL_OBJECT",
+                        "ChecksumSHA256": module.checksum_sha256(digest),
+                        "Metadata": {"sha256": digest},
+                    },
+                ),
+                self.assertRaisesRegex(ValueError, message),
+            ):
+                module.audit_output_history(
+                    (
+                        "s3://diana-omics-private-results-000000000000-us-east-1/"
+                        "runs/subject01/materialized/"
+                    ),
+                    outputs,
+                    kms,
+                    "us-east-1",
+                )
 
     def test_main_rejects_receipt_anchor_below_symlinked_parent_before_aws(self):
         bucket = "diana-omics-private-results-000000000000-us-east-1"
