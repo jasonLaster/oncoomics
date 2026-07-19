@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import contextlib
 import hashlib
 import importlib.util
@@ -225,6 +226,51 @@ class StageAiReviewInputsTests(unittest.TestCase):
 
                 self.assertFalse(output_root.exists())
                 self.assertFalse(receipt.exists())
+
+    def test_rejects_non_exact_bundle_manifest_schema_before_creating_outputs(
+        self,
+    ) -> None:
+        manifest_path = self.bundle / "bundle_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["schema_version"] = 2.0
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "AI review bundle manifest envelope is not exact",
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse(self.output_root.exists())
+        self.assertFalse(self.receipt.exists())
+
+    def test_schema_version_checks_use_exact_integer_helper(self) -> None:
+        cases = (
+            (2, 2, True),
+            (2.0, 2, False),
+            ("2", 2, False),
+            (1, 2, False),
+            (None, 2, False),
+            (True, 1, False),
+            (False, 0, False),
+        )
+        for value, expected, accepted in cases:
+            with self.subTest(value=value, expected=expected):
+                self.assertIs(STAGE.is_exact_int(value, expected), accepted)
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        module = ast.parse(STAGE_SCRIPT.read_text(encoding="utf-8"))
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
 
     def test_write_once_fsyncs_file_and_parent_directory(self) -> None:
         output = self.root / "complete.json"

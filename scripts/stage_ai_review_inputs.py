@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
-from build_ai_review_bundle import require_bundle_manifest
+from build_ai_review_bundle import is_exact_int, require_bundle_manifest
 
 ROLES = ("A", "B")
 ROLE_DIRS = {"A": "reviewer-a-input", "B": "reviewer-b-input"}
@@ -183,7 +183,7 @@ def validate_bundle(bundle_dir: Path) -> dict[str, str]:
         bundle_dir / "bundle_manifest.json",
         "bundle_manifest.json",
     )
-    if bundle_manifest.get("schema_version") != 2:
+    if not is_exact_int(bundle_manifest.get("schema_version"), 2):
         raise ValueError("unsupported bundle_manifest.json schema")
 
     prompt_hashes = bundle_manifest.get("prompt_sha256")
