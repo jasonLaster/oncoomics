@@ -1769,6 +1769,37 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "must be a real file"):
                 MODULE.validate_private_receipt(linked, fixture.method_id)
 
+    def test_private_receipt_symlink_after_file_audit_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = Fixture(root)
+            real_load_json = MODULE.load_json
+            swapped = False
+
+            def swap_receipt_before_parse(path: Path, label: str) -> dict[str, object]:
+                nonlocal swapped
+                if label == "private publication receipt" and not swapped:
+                    moved = root / "private-publication.real.json"
+                    path.rename(moved)
+                    path.symlink_to(moved)
+                    swapped = True
+                return real_load_json(path, label)
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "load_json",
+                    side_effect=swap_receipt_before_parse,
+                ),
+                self.assertRaisesRegex(ValueError, "must be a real file"),
+            ):
+                MODULE.validate_private_receipt(
+                    fixture.receipt_path,
+                    fixture.method_id,
+                )
+
+            self.assertTrue(swapped)
+
     def test_private_receipt_below_symlinked_parent_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))

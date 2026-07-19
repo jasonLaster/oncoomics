@@ -344,6 +344,7 @@ def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
+    require_real_input_file(path, label)
     try:
         value = json.loads(
             path.read_text(encoding="utf-8"),
