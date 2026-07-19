@@ -1033,6 +1033,18 @@ class CustodyHandoffTests(unittest.TestCase):
         ):
             fixture.finalize()
 
+    def test_finalizer_rejects_crosscheck_destination_inventory_key_drift(self):
+        fixture = CustodyFixture()
+        fixture.cross["destination_inventory"][0]["key"] = (
+            "runs/subject01/stale-run/deterministic/final/sbs96.csv"
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "cross-check destination inventory differs",
+        ):
+            fixture.finalize()
+
     def test_finalizer_accepts_exact_materialization_recovery_metadata(self):
         fixture = CustodyFixture()
         fixture.exact.update(

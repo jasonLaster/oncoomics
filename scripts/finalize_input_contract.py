@@ -18,6 +18,7 @@ import os
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 FINAL_OUTPUTS = {
@@ -293,6 +294,14 @@ def require_hex(value: Any, label: str) -> str:
     if not HEX64.fullmatch(text):
         raise ValueError(f"{label} is not an exact SHA-256")
     return text
+
+
+def s3_key(value: Any, label: str) -> str:
+    parsed = urlparse(str(value))
+    key = parsed.path.lstrip("/")
+    if parsed.scheme != "s3" or not parsed.netloc or not key:
+        raise ValueError(f"{label} is not an exact S3 object URI")
+    return key
 
 
 def require_version(value: Any, label: str) -> str:
@@ -634,6 +643,7 @@ def finalize(
             f"{filename} materializer output",
         )
         require_full_object_sha256(row, f"{filename} materializer output")
+        key = s3_key(row.get("uri"), f"{filename} materializer output")
         inventory = inventory_by_name[filename]
         require_exact_keys(
             inventory,
@@ -641,7 +651,8 @@ def finalize(
             "cross-check destination inventory",
         )
         if (
-            row.get("version_id") != inventory.get("version_id")
+            inventory.get("key") != key
+            or row.get("version_id") != inventory.get("version_id")
             or row.get("bytes") != inventory.get("bytes")
             or row.get("sha256") != inventory.get("sha256")
             or row.get("checksums") != inventory.get("checksums")
