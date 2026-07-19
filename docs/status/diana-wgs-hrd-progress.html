@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real freeze hash inputs</li>
+          <li class="pill">Latest milestone = local real materialized-final hash inputs</li>
+          <li class="pill">Materialized-final hash inputs = real</li>
           <li class="pill">Freeze hash inputs = real</li>
           <li class="pill">Staged-validation hash inputs = real</li>
           <li class="pill">Materializer-registration hash inputs = real</li>
@@ -1152,6 +1153,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final-freeze destination inventory</strong>
               <span>Exact local materialization and HRD input-contract finalization now reject final-freeze receipts whose <code>destination_inventory</code> rows are missing, stale, extra, or diverge from the frozen destination rows before the materialized-final tree or alias-only cross-check contract can be trusted.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real materialized-final hash inputs</strong>
+              <span>Exact local materialization now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before the materialized-final tree or materialization receipt can bind frozen files into local custody.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final-freeze receipts before local materialization</strong>
@@ -2035,6 +2040,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:04-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real materialized-final hash inputs:</strong>
+                Exact local materialization now rejects symlinked local SHA-256
+                inputs and hash-input ancestors before frozen files can bind
+                into the materialized-final tree or receipt.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:03-07:00">Jul 19 · local</time>
               <span>

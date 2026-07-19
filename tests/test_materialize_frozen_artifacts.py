@@ -885,6 +885,38 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             ):
                 MODULE.write_json_atomic(receipt, {"status": "passed"})
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_input = root / "real-materialization.json"
+            linked_input = root / "materialization-link.json"
+            real_input.write_text("{}\n", encoding="utf-8")
+            linked_input.symlink_to(real_input)
+
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            (real_parent / "materialization.json").write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            cases = (
+                (
+                    linked_input,
+                    "materialization-link.json SHA-256 input must be a real file",
+                ),
+                (
+                    linked_parent / "materialization.json",
+                    "materialization.json SHA-256 input parent may not be a symlink",
+                ),
+            )
+            for path, message in cases:
+                with self.subTest(path=path):
+                    with self.assertRaisesRegex(ValueError, message):
+                        MODULE.sha256(path)
+
     def test_prepared_receipt_recovers_cutover_without_redownload(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
