@@ -620,6 +620,18 @@ def integer_equals(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def require_nonnegative_exact_int(value: Any, label: str) -> int:
+    if not nonnegative_int(value):
+        raise ValueError(f"{label} is not an exact nonnegative integer")
+    return value
+
+
+def require_exact_bool(value: Any, expected: bool, label: str) -> bool:
+    if value is not expected:
+        raise ValueError(f"{label} is not exactly {expected}")
+    return value
+
+
 def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
@@ -1262,6 +1274,28 @@ def build_crosscheck_input_plans(
         if isinstance(crosscheck_materialization.get("validation"), dict)
         else {}
     )
+    validation_counts = {
+        name: require_nonnegative_exact_int(
+            validation.get(name),
+            f"{name} materialized cross-check validation count",
+        )
+        for name in (
+            "pass_snv_records",
+            "pass_snv_alleles",
+            "sbs96_contexts",
+            "sbs96_burden",
+        )
+    }
+    matrix_matches = require_exact_bool(
+        validation.get("matrix_matches_independent_pass_vcf_derivation"),
+        True,
+        "matrix equivalence validation flag",
+    )
+    source_sample_names_retained = require_exact_bool(
+        validation.get("source_sample_names_retained"),
+        False,
+        "source sample retention validation flag",
+    )
     routes = input_contract.get("routes")
     if not isinstance(routes, list):
         raise ValueError("input contract lacks executable cross-check routes")
@@ -1330,22 +1364,12 @@ def build_crosscheck_input_plans(
                     ).lower(),
                 },
                 "validation": {
-                    "pass_snv_records": int(
-                        validation.get("pass_snv_records", 0)
-                    ),
-                    "pass_snv_alleles": int(
-                        validation.get("pass_snv_alleles", 0)
-                    ),
-                    "sbs96_contexts": int(validation.get("sbs96_contexts", 0)),
-                    "sbs96_burden": int(validation.get("sbs96_burden", 0)),
-                    "matrix_matches_independent_pass_vcf_derivation": bool(
-                        validation.get(
-                            "matrix_matches_independent_pass_vcf_derivation"
-                        )
-                    ),
-                    "source_sample_names_retained": bool(
-                        validation.get("source_sample_names_retained")
-                    ),
+                    "pass_snv_records": validation_counts["pass_snv_records"],
+                    "pass_snv_alleles": validation_counts["pass_snv_alleles"],
+                    "sbs96_contexts": validation_counts["sbs96_contexts"],
+                    "sbs96_burden": validation_counts["sbs96_burden"],
+                    "matrix_matches_independent_pass_vcf_derivation": matrix_matches,
+                    "source_sample_names_retained": source_sample_names_retained,
                 },
                 "blockers": [
                     "SigProfilerAssignment execution and SBS3 thresholds are not validated.",
@@ -2385,14 +2409,22 @@ def main() -> None:
         and crosscheck_validation.get("source_sample_names_retained") is False
         and crosscheck_validation.get("matrix_matches_independent_pass_vcf_derivation")
         is True
-        and int(crosscheck_validation.get("pass_snv_records", -1))
-        == int(staged_vcf.get("pass_snv_records", -2))
-        and int(crosscheck_validation.get("pass_snv_alleles", -1))
-        == int(staged_sbs96.get("usable_pass_snv_alleles", -2))
-        and int(crosscheck_validation.get("sbs96_contexts", -1))
-        == int(staged_sbs96.get("contexts", -2))
-        and int(crosscheck_validation.get("sbs96_burden", -1))
-        == int(staged_sbs96.get("matrix_burden", -2))
+        and integer_equals(
+            crosscheck_validation.get("pass_snv_records"),
+            staged_vcf.get("pass_snv_records"),
+        )
+        and integer_equals(
+            crosscheck_validation.get("pass_snv_alleles"),
+            staged_sbs96.get("usable_pass_snv_alleles"),
+        )
+        and integer_equals(
+            crosscheck_validation.get("sbs96_contexts"),
+            staged_sbs96.get("contexts"),
+        )
+        and integer_equals(
+            crosscheck_validation.get("sbs96_burden"),
+            staged_sbs96.get("matrix_burden"),
+        )
     )
     crosscheck_terminal_evidence = validate_crosscheck_terminal_capture(
         crosscheck_materialization_capture,

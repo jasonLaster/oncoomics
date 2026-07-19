@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local Batch runtime exactness</li>
+          <li class="pill">Latest milestone = local cross-check validation exactness</li>
+          <li class="pill">Cross-check validation = exact</li>
           <li class="pill">Batch runtime = exact</li>
           <li class="pill">Route output bytes = exact</li>
           <li class="pill">CloudWatch timestamps = exact</li>
@@ -665,6 +666,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact cross-check validation counts</strong>
+              <span>Deterministic WGS report staging now exact-checks SigProfiler materializer validation counts and booleans before alias-only SBS96/VCF materialization summaries can feed the first report’s cross-check input plan.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final-freeze receipt-anchor ContentLength</strong>
               <span>Final artifact freezing now exact-checks receipt-anchor HEAD and GET ContentLength values before final-freeze anchors can pass <code>bytes_exact</code>, preventing raw integer coercion from treating non-exact ContentLength metadata as valid anchored receipt bytes.</span>
@@ -1295,6 +1300,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T07:00:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact cross-check validation counts:</strong>
+                deterministic WGS report staging now rejects coerced
+                SigProfiler materializer validation counts and booleans before
+                writing alias-only cross-check plans for Rosalind, AI, or
+                freeform handoffs. No live cloud action, compute action, or
+                replacement run was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T06:45:00-07:00">Jul 19 · local</time>
               <span>

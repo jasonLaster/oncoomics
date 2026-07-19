@@ -151,6 +151,10 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
         self.assertTrue(REPORT_MODULE.positive_int(1))
         self.assertTrue(REPORT_MODULE.nonnegative_int(0))
         self.assertTrue(REPORT_MODULE.integer_equals(7, 7))
+        self.assertEqual(
+            REPORT_MODULE.require_nonnegative_exact_int(0, "synthetic count"),
+            0,
+        )
 
         for value in (True, 1.0, "1", 0, -1, None):
             with self.subTest(helper="positive_int", value=value):
@@ -161,6 +165,127 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
         for value in (True, 7.0, "7", 0, None):
             with self.subTest(helper="integer_equals", value=value):
                 self.assertFalse(REPORT_MODULE.integer_equals(value, 7))
+        for value in (True, 1.0, "1", -1, None):
+            with self.subTest(helper="require_nonnegative_exact_int", value=value):
+                with self.assertRaisesRegex(ValueError, "not an exact"):
+                    REPORT_MODULE.require_nonnegative_exact_int(
+                        value,
+                        "synthetic count",
+                    )
+
+    def test_exact_bool_helper_rejects_coercible_values(self) -> None:
+        self.assertTrue(
+            REPORT_MODULE.require_exact_bool(
+                True,
+                True,
+                "synthetic flag",
+            )
+        )
+        self.assertFalse(
+            REPORT_MODULE.require_exact_bool(
+                False,
+                False,
+                "synthetic flag",
+            )
+        )
+        for value in (1, "true", "false", None):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "not exactly"):
+                    REPORT_MODULE.require_exact_bool(
+                        value,
+                        True,
+                        "synthetic flag",
+                    )
+
+    def test_crosscheck_plan_validation_rejects_coercible_values(self) -> None:
+        def materialization() -> dict[str, Any]:
+            return {
+                "outputs": {
+                    name: {"bytes": 1, "sha256": f"{index}" * 64}
+                    for index, name in enumerate(
+                        (
+                            "somatic.pass.vcf.gz",
+                            "somatic.pass.vcf.gz.tbi",
+                            "sbs96.csv",
+                            "staged_input_validation.json",
+                        ),
+                        1,
+                    )
+                },
+                "input_sha256": {
+                    "filtered_vcf": "a" * 64,
+                    "filtered_vcf_index": "b" * 64,
+                    "source_sbs96_matrix": "c" * 64,
+                    "reference_fasta": "d" * 64,
+                    "reference_fai": "e" * 64,
+                },
+                "validation": {
+                    "pass_snv_records": 1,
+                    "pass_snv_alleles": 1,
+                    "sbs96_contexts": 96,
+                    "sbs96_burden": 1,
+                    "matrix_matches_independent_pass_vcf_derivation": True,
+                    "source_sample_names_retained": False,
+                },
+            }
+
+        input_contract = {
+            "routes": ["sequenza_scarhrd", "sigprofiler_sbs3"],
+            "artifacts": {
+                "tumor_bam": {"sha256": "6" * 64},
+                "tumor_bai": {"sha256": "7" * 64},
+                "normal_bam": {"sha256": "8" * 64},
+                "normal_bai": {"sha256": "9" * 64},
+            },
+            "method_parameters": {"sequenza": {"female": True}},
+        }
+
+        self.assertEqual(
+            REPORT_MODULE.build_crosscheck_input_plans(
+                materialization(),
+                input_contract,
+            )["routes"]["sigprofiler_sbs3"]["validation"][
+                "pass_snv_records"
+            ],
+            1,
+        )
+
+        mutations = (
+            ("count bool", "pass_snv_records", True),
+            ("count float", "sbs96_contexts", 96.0),
+            ("count string", "sbs96_contexts", "96"),
+            (
+                "matrix flag string",
+                "matrix_matches_independent_pass_vcf_derivation",
+                "true",
+            ),
+            ("retained flag int", "source_sample_names_retained", 0),
+        )
+        for name, field, value in mutations:
+            with self.subTest(name=name):
+                payload = materialization()
+                payload["validation"][field] = value
+
+                with self.assertRaisesRegex(ValueError, "not an exact|not exactly"):
+                    REPORT_MODULE.build_crosscheck_input_plans(
+                        payload,
+                        input_contract,
+                    )
+
+    def test_crosscheck_plan_guards_avoid_raw_validation_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in {"bool", "int"}
+            and node.args
+            and "validation.get" in ast.unparse(node.args[0])
+        ]
+
+        self.assertEqual(raw_coercions, [])
 
     def test_terminal_byte_guards_avoid_raw_int_coercion(self) -> None:
         module = ast.parse(GENERATOR.read_text(encoding="utf-8"))
