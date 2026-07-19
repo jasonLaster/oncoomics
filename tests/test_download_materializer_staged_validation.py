@@ -111,6 +111,13 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "lacks exact"):
             MODULE.validate_receipt(composite_checksum, KMS)
 
+        non_string_checksum = receipt(b"{}")
+        non_string_checksum["outputs"]["staged_input_validation.json"]["checksums"][
+            "ChecksumCRC32"
+        ] = True
+        with self.assertRaisesRegex(ValueError, "lacks exact"):
+            MODULE.validate_receipt(non_string_checksum, KMS)
+
     def test_validate_receipt_rejects_non_integer_schema_version(self) -> None:
         payload = receipt(b'{"schema_version":1}\n')
         payload["schema_version"] = 2.0
@@ -720,6 +727,36 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
 
                     self.assertFalse(checks["bytes_exact"])
 
+    def test_validate_download_rejects_non_string_s3_checksums(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            payload = b"1"
+            output = root / "staged_input_validation.json"
+            output.write_bytes(payload)
+            row = {
+                "version_id": "version-1",
+                "bytes": len(payload),
+                "sha256": sha(payload),
+                "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": checksum(payload),
+                },
+            }
+            response = {
+                "VersionId": "version-1",
+                "ContentLength": len(payload),
+                "ChecksumSHA256": checksum(payload),
+                "ChecksumCRC32": True,
+                "ChecksumType": "FULL_OBJECT",
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": KMS,
+            }
+
+            checks = MODULE.validate_download(row, response, response, output, KMS)
+
+            self.assertFalse(checks["get_checksum_present"])
+            self.assertFalse(checks["head_checksum_present"])
+
     def test_rejects_symlinked_download_before_installing_output(self) -> None:
         payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
 
@@ -1218,6 +1255,27 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
         ]
 
         self.assertEqual(raw_schema_version_comparisons, [])
+
+    def test_checksum_guards_avoid_raw_string_coercion(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "download_materializer_staged_validation.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        raw_string_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(
+                token in ast.unparse(node.args[0])
+                for token in ("Checksum", "checksums")
+            )
+        ]
+
+        self.assertEqual(raw_string_coercions, [])
 
 
 if __name__ == "__main__":

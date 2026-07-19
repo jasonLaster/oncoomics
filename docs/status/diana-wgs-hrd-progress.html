@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact S3 checksum maps</li>
+          <li class="pill">Latest milestone = local exact staged-validation checksums</li>
+          <li class="pill">Staged-validation checksum maps = exact</li>
           <li class="pill">S3 checksum maps = exact</li>
           <li class="pill">Stage/final anchor VersionIds = exact</li>
           <li class="pill">Worker metadata SHA-256s = exact</li>
@@ -734,6 +735,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact staged-validation checksum maps</strong>
+              <span><code>download_materializer_staged_validation.py</code> now rejects non-string S3 checksum map values before staged-validation materializer receipts or exact HEAD/GET downloads can feed deterministic report staging.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact S3 checksum maps</strong>
               <span><code>stage_deterministic_wgs_report.py</code> now rejects non-string S3 checksum map values before stage provenance or final-freeze receipts can be trusted by deterministic report staging.</span>
@@ -1640,6 +1645,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T21:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact staged-validation checksum maps:</strong>
+                <code>download_materializer_staged_validation.py</code> now
+                rejects boolean or otherwise non-string S3 checksum map values
+                in both terminal materializer receipts and exact
+                staged-validation HEAD/GET responses. The focused 30-test
+                downloader gate and 21-module, 898-test post-terminal gate
+                both passed.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T21:20:00-07:00">Jul 19 · local</time>
               <span>

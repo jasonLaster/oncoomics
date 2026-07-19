@@ -301,12 +301,18 @@ def get_object(
     return response
 
 
-def checksums(value: dict[str, Any]) -> dict[str, str]:
-    return {
-        key: str(value[key])
-        for key in CHECKSUM_FIELDS
-        if str(value.get(key, "")).strip()
-    }
+def checksums(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, str] = {}
+    for key in CHECKSUM_FIELDS:
+        if key not in value:
+            continue
+        raw = value[key]
+        if not isinstance(raw, str) or not raw.strip():
+            return {}
+        result[key] = raw
+    return result
 
 
 def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, Any]:
@@ -332,6 +338,7 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
     digest = row.get("sha256")
     size = row.get("bytes")
     row_checks = row.get("checks")
+    row_checksums = checksums(row.get("checksums"))
     if (
         not isinstance(uri, str)
         or not uri
@@ -342,8 +349,7 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
         or row.get("kms_key_arn") != expected_kms
         or type(size) is not int
         or size <= 0
-        or not isinstance(row.get("checksums"), dict)
-        or not any(str(row["checksums"].get(key, "")).strip() for key in CHECKSUM_FIELDS)
+        or not row_checksums
         or not isinstance(digest, str)
         or not all(character in "0123456789abcdef" for character in digest)
         or len(digest) != 64
