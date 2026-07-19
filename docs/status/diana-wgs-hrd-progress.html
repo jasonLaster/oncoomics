@@ -343,8 +343,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = f6fda4d</li>
-          <li class="pill">Prior source = 2c2a162</li>
+          <li class="pill">Latest source = 66a737d</li>
+          <li class="pill">Prior dashboard = cd47ffe</li>
+          <li class="pill">Reviewer identities = explicit</li>
           <li class="pill">Public access foundation = ready</li>
           <li class="pill">HCC1395 seven-report stack = passed</li>
           <li class="pill">Forbidden scans = shared</li>
@@ -392,6 +393,11 @@
               <strong>Diana reviewed-public publication</strong>
               <span>55% · handoff guarded</span>
               <div class="bar" aria-hidden="true" style="--pct: 55%"><span></span></div>
+            </li>
+            <li class="track" style="--tone: var(--queued)">
+              <strong>Public / private boundary posture</strong>
+              <span>70% · contracts guarded</span>
+              <div class="bar" aria-hidden="true" style="--pct: 70%"><span></span></div>
             </li>
           </ol>
           <p class="note">
@@ -497,6 +503,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · expose exact reviewer model identities</strong>
+              <span>The source-only AI handoff now prints both reviewer provider/model pairs before model-catalog attestation and bundle preparation; focused ordering tests enforce the placement.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · expose source-frozen inventory hashes</strong>
               <span>The AI/freeform handoff now lists every exact source <code>report_manifest.json</code> path, private VersionId, and SHA-256 before reviewer bundle preparation.</span>
             </li>
@@ -538,6 +548,27 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T22:46:27-07:00">Jul 18 · 10:46 PM</time>
+              <span>
+                <strong>66a737d Surface reviewer model identities in AI handoff:</strong>
+                the AI synthesis runbook now prints the exact reviewer A and B
+                provider/model pairs before model-catalog attestation and
+                reviewer-bundle preparation. Focused tests assert that both
+                identities are visible before those handoff steps. No compute
+                was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T22:43:59-07:00">Jul 18 · 10:43 PM</time>
+              <span>
+                <strong>cd47ffe Refresh HRD dashboard for reviewed handoffs:</strong>
+                published the reviewed-handoff source milestone, exact frozen
+                manifest and receipt bindings, absent terminal artifacts, and
+                stopped legacy CPU boundary in the public tracker. No compute
+                was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T22:43:33-07:00">Jul 18 · 10:43 PM</time>
               <span>
