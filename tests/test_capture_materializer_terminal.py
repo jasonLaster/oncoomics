@@ -44,10 +44,7 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                     "schema_version": 2,
                     "status": "passed",
                     "script_sha256": MODULE.EXPECTED_MATERIALIZER_SHA256,
-                    "checks": {
-                        "all_sources_exact_version_and_sha256": True,
-                        "destination_exact_single_version_history": True,
-                    },
+                    "checks": dict(MODULE.EXPECTED_MATERIALIZER_RECEIPT_CHECKS),
                     "classification_authorization": "none",
                     "authorized_hrd_state": "no_call",
                 },
@@ -79,14 +76,7 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 "checksums": {"ChecksumSHA256": self.checksum},
                 "sha256": self.receipt_sha,
                 "kms_key_arn": self.kms,
-                "checks": {
-                    "create_only_put": True,
-                    "version_exact": True,
-                    "bytes_exact": True,
-                    "metadata_sha256_exact": True,
-                    "exact_kms": True,
-                    "single_version_history": True,
-                },
+                "checks": dict(MODULE.EXPECTED_RECEIPT_UPLOAD_CHECKS),
             },
             "receipt_anchor": {
                 "schema_version": 1,
@@ -95,7 +85,7 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 "receipt_bytes": len(self.receipt_bytes),
                 "receipt_uri": self.receipt_uri,
                 "receipt_version_id": self.version_id,
-                "checks": {name: True for name in MODULE.ANCHOR_CHECKS},
+                "checks": dict(MODULE.EXPECTED_RECEIPT_ANCHOR_CHECKS),
             },
             "outputs": {"somatic.pass.vcf.gz": {"version_id": "output-version"}},
         }
@@ -198,7 +188,9 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
         events=None,
         metadata=None,
         history=None,
+        key=None,
     ):
+        expected_key = self.key if key is None else key
         values = {
             "job": self.job if job is None else job,
             "definition": self.definition if definition is None else definition,
@@ -252,7 +244,7 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                         "--bucket",
                         "diana-omics-private-results-172630973301-us-east-1",
                         "--key",
-                        self.key,
+                        expected_key,
                         "--version-id",
                         self.version_id,
                         "--checksum-mode",
@@ -266,13 +258,14 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
 
         return invoke
 
-    def get_side_effect(self, *, receipt_bytes=None, metadata=None):
+    def get_side_effect(self, *, receipt_bytes=None, metadata=None, key=None):
         content = self.receipt_bytes if receipt_bytes is None else receipt_bytes
         response = self.metadata if metadata is None else metadata
+        expected_key = self.key if key is None else key
 
         def invoke(region, bucket, key, version_id, destination):
             self.assertEqual(region, MODULE.REGION)
-            self.assertEqual(key, self.key)
+            self.assertEqual(key, expected_key)
             self.assertEqual(version_id, self.version_id)
             destination.write_bytes(content)
             return copy.deepcopy(response)
@@ -559,6 +552,68 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                     aws=self.aws_side_effect(events=self.events(terminal)),
                 )
 
+    def test_rejects_logged_anchor_with_missing_unexpected_or_failed_anchor_check(self) -> None:
+        cases = {}
+        for label, mutate in (
+            (
+                "missing",
+                lambda checks: checks.pop("sha256_exact"),
+            ),
+            (
+                "unexpected",
+                lambda checks: checks.__setitem__("forged_extra", True),
+            ),
+            (
+                "failed",
+                lambda checks: checks.__setitem__("exact_kms", False),
+            ),
+        ):
+            terminal = copy.deepcopy(self.terminal)
+            mutate(terminal["receipt_anchor"]["checks"])
+            cases[label] = terminal
+
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, terminal in cases.items():
+                with self.subTest(label=label), self.assertRaisesRegex(
+                    ValueError,
+                    "anchor failed",
+                ):
+                    self.run_capture(
+                        self.args(Path(temporary) / label),
+                        aws=self.aws_side_effect(events=self.events(terminal)),
+                    )
+
+    def test_rejects_logged_anchor_with_missing_unexpected_or_failed_upload_check(self) -> None:
+        cases = {}
+        for label, mutate in (
+            (
+                "missing",
+                lambda checks: checks.pop("sha256_checksum_exact"),
+            ),
+            (
+                "unexpected",
+                lambda checks: checks.__setitem__("forged_extra", True),
+            ),
+            (
+                "failed",
+                lambda checks: checks.__setitem__("single_version_history", False),
+            ),
+        ):
+            terminal = copy.deepcopy(self.terminal)
+            mutate(terminal["receipt"]["checks"])
+            cases[label] = terminal
+
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, terminal in cases.items():
+                with self.subTest(label=label), self.assertRaisesRegex(
+                    ValueError,
+                    "anchor failed",
+                ):
+                    self.run_capture(
+                        self.args(Path(temporary) / label),
+                        aws=self.aws_side_effect(events=self.events(terminal)),
+                    )
+
     def test_rejects_download_sha_bytes_checksum_kms_or_history_tampering(self) -> None:
         bad_checksum = copy.deepcopy(self.metadata)
         bad_checksum["ChecksumSHA256"] = base64.b64encode(b"x" * 32).decode()
@@ -576,6 +631,72 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             for label, aws, get in cases:
                 with self.subTest(label=label), self.assertRaises(ValueError):
                     self.run_capture(self.args(Path(temporary) / label), aws=aws, get=get)
+
+    def test_rejects_materializer_receipt_with_missing_unexpected_or_failed_check(self) -> None:
+        cases = {}
+        for label, mutate in (
+            (
+                "missing",
+                lambda checks: checks.pop("alias_only_pass_snv_vcf"),
+            ),
+            (
+                "unexpected",
+                lambda checks: checks.__setitem__("forged_extra", True),
+            ),
+            (
+                "failed",
+                lambda checks: checks.__setitem__(
+                    "sbs96_matches_independent_pass_vcf_derivation",
+                    False,
+                ),
+            ),
+        ):
+            receipt = json.loads(self.receipt_bytes)
+            mutate(receipt["checks"])
+            cases[label] = (
+                json.dumps(receipt, indent=2, sort_keys=True) + "\n"
+            ).encode("utf-8")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, receipt_bytes in cases.items():
+                receipt_sha = hashlib.sha256(receipt_bytes).hexdigest()
+                checksum = base64.b64encode(bytes.fromhex(receipt_sha)).decode()
+                metadata = {
+                    **self.metadata,
+                    "ContentLength": len(receipt_bytes),
+                    "ChecksumSHA256": checksum,
+                    "Metadata": {"sha256": receipt_sha},
+                }
+                terminal = copy.deepcopy(self.terminal)
+                terminal["receipt"]["bytes"] = len(receipt_bytes)
+                terminal["receipt"]["checksums"]["ChecksumSHA256"] = checksum
+                terminal["receipt"]["sha256"] = receipt_sha
+                terminal["receipt_anchor"]["receipt_bytes"] = len(receipt_bytes)
+                terminal["receipt_anchor"]["receipt_sha256"] = receipt_sha
+                terminal["receipt_anchor"]["receipt_uri"] = f"{self.prefix}/{receipt_sha}.json"
+                terminal["receipt"]["uri"] = terminal["receipt_anchor"]["receipt_uri"]
+                receipt_key = terminal["receipt_anchor"]["receipt_uri"].split("/", 3)[3]
+                history = copy.deepcopy(self.history)
+                history["Versions"][0]["Key"] = receipt_key
+
+                with self.subTest(label=label), self.assertRaisesRegex(
+                    ValueError,
+                    "receipt verification failed",
+                ):
+                    self.run_capture(
+                        self.args(Path(temporary) / label),
+                        aws=self.aws_side_effect(
+                            events=self.events(terminal),
+                            metadata=metadata,
+                            history=history,
+                            key=receipt_key,
+                        ),
+                        get=self.get_side_effect(
+                            receipt_bytes=receipt_bytes,
+                            metadata=metadata,
+                            key=receipt_key,
+                        ),
+                    )
 
     def test_rejects_symlinked_exact_receipt_download_before_capture(self) -> None:
         def get(region, bucket, key, version_id, destination):

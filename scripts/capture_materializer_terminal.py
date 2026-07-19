@@ -48,14 +48,31 @@ SHA_PARAMETER_NAMES = {
     "source_vcf_index_sha256",
     "source_matrix_sha256",
 }
-ANCHOR_CHECKS = {
-    "version_exact",
-    "bytes_exact",
-    "sha256_exact",
-    "sha256_checksum_exact",
-    "metadata_sha256_exact",
-    "exact_kms",
-    "single_create_only_version",
+EXPECTED_RECEIPT_UPLOAD_CHECKS = {
+    "create_only_put": True,
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_version_history": True,
+}
+EXPECTED_MATERIALIZER_RECEIPT_CHECKS = {
+    "all_sources_exact_version_and_sha256": True,
+    "alias_only_pass_snv_vcf": True,
+    "sbs96_matches_independent_pass_vcf_derivation": True,
+    "destination_prefix_initially_empty": True,
+    "all_outputs_create_only": True,
+    "destination_exact_single_version_history": True,
+}
+EXPECTED_RECEIPT_ANCHOR_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_create_only_version": True,
 }
 
 
@@ -385,11 +402,7 @@ def validate_logged_anchor(
     checks = {
         "outer_status": payload.get("status") == "passed",
         "anchor_schema_status": (anchor.get("schema_version") == 1 and anchor.get("status") == "passed"),
-        "anchor_checks_exact": (
-            isinstance(anchor_checks, dict)
-            and set(anchor_checks) == ANCHOR_CHECKS
-            and all(value is True for value in anchor_checks.values())
-        ),
+        "anchor_checks_exact": anchor_checks == EXPECTED_RECEIPT_ANCHOR_CHECKS,
         "receipt_sha256_well_formed": bool(re.fullmatch(r"[0-9a-f]{64}", receipt_sha)),
         "receipt_bytes_positive": (isinstance(receipt_bytes, int) and not isinstance(receipt_bytes, bool) and receipt_bytes > 0),
         "receipt_version_nonempty": (
@@ -403,9 +416,7 @@ def validate_logged_anchor(
             and receipt_upload.get("bytes") == receipt_bytes
             and receipt_upload.get("kms_key_arn") == expected_kms_key_arn
         ),
-        "upload_checks_passed": (
-            isinstance(upload_checks, dict) and bool(upload_checks) and all(value is True for value in upload_checks.values())
-        ),
+        "upload_checks_exact": upload_checks == EXPECTED_RECEIPT_UPLOAD_CHECKS,
         "logged_checksum_sha256": (
             isinstance(receipt_upload.get("checksums"), dict)
             and decode_sha256(
@@ -481,9 +492,7 @@ def validate_exact_receipt(
         "single_version_no_delete_history": exact_history,
         "receipt_schema_status": (receipt.get("schema_version") == 2 and receipt.get("status") == "passed"),
         "receipt_script_exact": receipt.get("script_sha256") == EXPECTED_MATERIALIZER_SHA256,
-        "receipt_checks_passed": (
-            isinstance(receipt_checks, dict) and bool(receipt_checks) and all(value is True for value in receipt_checks.values())
-        ),
+        "receipt_checks_exact": receipt_checks == EXPECTED_MATERIALIZER_RECEIPT_CHECKS,
         "receipt_boundary_no_call": (
             receipt.get("classification_authorization") == "none" and receipt.get("authorized_hrd_state") == "no_call"
         ),
