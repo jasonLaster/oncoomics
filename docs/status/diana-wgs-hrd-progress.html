@@ -307,14 +307,14 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>a77960ba62e5ee57c46acb0ceae1472b657b5831</strong>.
-          The latest work is final public-index dry-run receipt hardening:
-          <code>publish_public_results_index.py</code> now requires the
-          <code>objects.json</code> apply run to consume an exact dry-run check
-          dictionary. A stale public-index dry-run receipt that carries an
-          unexpected failed check is rejected before AWS or S3 access, so the
-          last reviewed-public index upload keeps its dry-run/apply contract
-          exact.
+          <strong>1e92ad0981f785e3f11773365f8e1a32b82cfe17</strong>.
+          The latest work is exact reviewed-public receipt check hardening:
+          <code>publish_reviewed_public_report.py</code> now requires each
+          private publication receipt object to carry the exact seven
+          S3/KMS/SHA-256 checks, and <code>build_public_results_index.py</code>
+          now requires reviewed-public final apply checks plus public
+          destination object checks to be exact before public index generation
+          can trust the receipts.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -322,7 +322,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = a77960b</li>
+          <li class="pill">Latest hardening = 1e92ad0</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -404,8 +404,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve a77960b</strong>
-              <span>The final public-index apply run now rejects dry-run receipts whose check inventories are not exact.</span>
+              <strong>Preserve 1e92ad0</strong>
+              <span>Reviewed-public publishing and index-building now reject private, final-apply, and public destination receipt check maps unless they exactly match the expected S3/KMS/SHA-256 inventories.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -453,6 +453,24 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>1e92ad0 Require exact reviewed-public receipt checks:</strong>
+                <code>publish_reviewed_public_report.py</code> now requires
+                private publication receipt object checks to exactly match the
+                seven <code>PRIVATE_RECEIPT_OBJECT_CHECKS</code> booleans for
+                version, byte count, full-object checksum type, SHA-256
+                checksum, SSE, KMS, and metadata SHA-256. The public index
+                builder now requires reviewed-public final apply checks to
+                exactly match <code>REVIEWED_PUBLIC_APPLY_CHECKS</code> and
+                every public destination object to exactly match the seven
+                <code>PUBLIC_DESTINATION_OBJECT_CHECKS</code> booleans for
+                version, byte count, full-object checksum type, SHA-256
+                checksum, SSE-S3, metadata, and content type before
+                <code>objects.json</code> can trust reviewed-public receipts.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
