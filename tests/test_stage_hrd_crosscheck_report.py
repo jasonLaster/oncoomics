@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import importlib.util
 import json
 import shutil
@@ -124,6 +125,35 @@ def refresh_download_verification(source: Path, verification: Path) -> None:
 
 
 class StageHrdCrosscheckReportTests(unittest.TestCase):
+    def test_schema_versions_are_exact_json_integers(self) -> None:
+        for value in (True, 1.0, "1", 2, None):
+            with self.subTest(value=value):
+                self.assertFalse(
+                    STAGE.exact_schema_version({"schema_version": value})
+                )
+
+        self.assertTrue(STAGE.exact_schema_version({"schema_version": 1}))
+
+    def test_schema_guards_use_exact_integer_helper(self) -> None:
+        source = STAGE_SCRIPT.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(STAGE_SCRIPT))
+
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "schema_version" not in segment:
+                continue
+            if segment in {
+                'type(payload.get("schema_version")) is int',
+                'payload["schema_version"] == expected',
+            }:
+                continue
+            raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_comparisons, [])
+
     def test_packet_file_install_is_create_only_and_fsynced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -433,6 +463,11 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 "download verification envelope is not exact",
             ),
             (
+                "float schema version",
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+                "download verification is not passed and exact",
+            ),
+            (
                 "object",
                 lambda payload: payload["objects"][0].__setitem__(
                     "legacy_note",
@@ -459,6 +494,30 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     )
 
                 self.assertFalse((root / "staged").exists())
+
+    def test_stage_rejects_float_schema_source_report_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            manifest_path = source / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["schema_version"] = 1.0
+            write_json(manifest_path, manifest)
+            refresh_download_verification(source, verification)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "route report manifest is not an approved no-call cross-check",
+            ):
+                STAGE.stage(
+                    source,
+                    verification,
+                    root / "staged",
+                    "sigprofiler_sbs3",
+                )
+
+            self.assertFalse((root / "staged").exists())
 
     def test_stage_rejects_download_verification_row_without_version_id(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -898,6 +957,18 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
         self,
     ) -> None:
         cases = (
+            (
+                "report manifest schema",
+                "report_manifest.json",
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+                "report manifest is not approved",
+            ),
+            (
+                "method spec schema",
+                "method_spec.json",
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+                "method spec differs from the manifest",
+            ),
             (
                 "report manifest",
                 "report_manifest.json",

@@ -163,6 +163,10 @@ def require_exact_check_map(
         raise ValueError(f"{label} check map is not exact")
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def require_real_file(path: Path, label: str) -> Path:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
@@ -193,7 +197,7 @@ def require_download_verification(
     if "prior_error" in verification and not str(verification.get("prior_error", "")):
         raise ValueError("download verification envelope is not exact")
     if (
-        verification.get("schema_version") != 1
+        not exact_schema_version(verification)
         or verification.get("status") != "passed"
         or not require_sha(
             verification.get("publication_receipt_sha256"),
@@ -245,7 +249,7 @@ def require_download_verification(
 
     manifest = load_json(source_dir / "report_manifest.json", "route report manifest")
     if (
-        manifest.get("schema_version") != 1
+        not exact_schema_version(manifest)
         or manifest.get("method_id") != route
         or manifest.get("route") != route
         or manifest.get("authorized_hrd_state") != "no_call"
@@ -453,7 +457,7 @@ def require_staged_report_manifest(packet_dir: Path) -> None:
     if set(method_spec) != METHOD_SPEC_KEYS:
         raise ValueError("staged cross-check method spec envelope is not exact")
     if (
-        manifest.get("schema_version") != 1
+        not exact_schema_version(manifest)
         or manifest.get("method_id") != route
         or manifest.get("report_kind") != "executable_crosscheck_method"
         or route not in SUPPORTED_ROUTES
@@ -468,7 +472,7 @@ def require_staged_report_manifest(packet_dir: Path) -> None:
         raise ValueError("staged cross-check report manifest is not approved")
 
     if (
-        method_spec.get("schema_version") != 1
+        not exact_schema_version(method_spec)
         or method_spec.get("method_id") != route
         or method_spec.get("route") != route
         or method_spec.get("report_kind") != "executable_crosscheck_method"
