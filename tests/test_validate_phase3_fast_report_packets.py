@@ -152,6 +152,65 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
 
         self.assertEqual(raw_comparisons, [])
 
+    def generated_packet_row(self, **updates: object) -> dict[str, object]:
+        digest = "a" * 64
+        row: dict[str, object] = {
+            "relative_path": "report.md",
+            "bytes": 12,
+            "sha256": digest,
+            "checksum_sha256": VALIDATOR.checksum_sha256(digest),
+        }
+        row.update(updates)
+        return row
+
+    def test_serializable_rows_require_exact_generated_file_rows(self) -> None:
+        row = self.generated_packet_row()
+        self.assertEqual(VALIDATOR.serializable_rows([row]), [row])
+
+        cases = (
+            ("absolute path", {"relative_path": "/tmp/report.md"}),
+            ("traversal path", {"relative_path": "../report.md"}),
+            ("boolean bytes", {"bytes": True}),
+            ("float bytes", {"bytes": 12.0}),
+            ("string bytes", {"bytes": "12"}),
+            ("zero bytes", {"bytes": 0}),
+            ("missing bytes", {"bytes": None}),
+            ("numeric sha256", {"sha256": 1}),
+            ("non-hex sha256", {"sha256": "g" * 64}),
+            ("mismatched checksum", {"checksum_sha256": "A" * 43 + "="}),
+        )
+        for label, updates in cases:
+            with (
+                self.subTest(label=label),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "generated report packet file row",
+                ),
+            ):
+                VALIDATOR.serializable_rows([self.generated_packet_row(**updates)])
+
+    def test_validate_packets_rejects_inexact_generated_row_bytes(self) -> None:
+        packet_dirs = {
+            method_id: Path("/unused")
+            for method_id in VALIDATOR.PHASE3_FAST_VALIDATED_METHOD_IDS
+        }
+
+        with (
+            mock.patch.object(
+                VALIDATOR,
+                "validate_packet_dir",
+                return_value=[self.generated_packet_row(bytes=True)],
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "generated report packet file row",
+            ),
+        ):
+            VALIDATOR.validate_packets(
+                packet_dirs,
+                json.dumps(["Run-Private-Token"]),
+            )
+
     def write_phase3_fast_packets(self, root: Path) -> dict[str, Path]:
         packet_dirs = {
             "deterministic_full_wgs": root / "deterministic_full_wgs",

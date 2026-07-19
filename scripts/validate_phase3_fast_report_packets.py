@@ -52,16 +52,35 @@ VALIDATION_RECEIPT_PACKET_KEYS = {
 }
 
 
+def serializable_packet_row(row: Mapping[str, Any]) -> dict[str, Any]:
+    relative_path = row.get("relative_path")
+    size = row.get("bytes")
+    sha256 = row.get("sha256")
+    checksum = row.get("checksum_sha256")
+    if (
+        not isinstance(relative_path, str)
+        or not relative_path.strip()
+        or Path(relative_path).is_absolute()
+        or ".." in Path(relative_path).parts
+        or type(size) is not int
+        or size < 1
+        or not isinstance(sha256, str)
+        or not SHA256_HEX.fullmatch(sha256)
+        or not isinstance(checksum, str)
+        or not SHA256_B64.fullmatch(checksum)
+        or checksum != checksum_sha256(sha256)
+    ):
+        raise ValueError("generated report packet file row is malformed")
+    return {
+        "relative_path": relative_path,
+        "bytes": size,
+        "sha256": sha256,
+        "checksum_sha256": checksum,
+    }
+
+
 def serializable_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [
-        {
-            "relative_path": str(row["relative_path"]),
-            "bytes": int(row["bytes"]),
-            "sha256": str(row["sha256"]),
-            "checksum_sha256": str(row["checksum_sha256"]),
-        }
-        for row in rows
-    ]
+    return [serializable_packet_row(row) for row in rows]
 
 
 def sha256_forbidden_tokens(tokens: tuple[str, ...]) -> str:
@@ -322,15 +341,16 @@ def validate_packets(
     packets = []
     for _, method_id in PACKET_ARG_TO_METHOD:
         rows = validate_packet_dir(packet_dirs[method_id], method_id, forbidden_tokens)
+        serialized_rows = serializable_rows(rows)
         if method_id in BLOCKED_CROSSCHECK_METHOD_IDS:
             validate_pre_route_blocked_packet(packet_dirs[method_id], method_id)
         packets.append(
             {
                 "method_id": method_id,
-                "file_count": len(rows),
-                "total_bytes": sum(int(row["bytes"]) for row in rows),
-                "packet_sha256": canonical_packet_digest(rows),
-                "files": serializable_rows(rows),
+                "file_count": len(serialized_rows),
+                "total_bytes": sum(row["bytes"] for row in serialized_rows),
+                "packet_sha256": canonical_packet_digest(serialized_rows),
+                "files": serialized_rows,
             }
         )
 
