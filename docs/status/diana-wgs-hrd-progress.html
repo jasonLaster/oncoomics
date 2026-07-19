@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact fast-rerun image digests</li>
+          <li class="pill">Latest milestone = local exact Parabricks mirror digests</li>
+          <li class="pill">Parabricks mirror digests = exact</li>
           <li class="pill">Fast-rerun image digests = exact</li>
           <li class="pill">Fast-rerun SHA-256s = exact</li>
           <li class="pill">Fast-rerun VersionIds = exact</li>
@@ -682,6 +683,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Parabricks mirror digests</strong>
+              <span>Parabricks mirror receipt verification now requires exact lowercase <code>sha256:</code> image digests, exact Dockerfile SHA-256s, and exact source revisions before mirror provenance can feed Phase 3 fast smoke or execute preflights.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact fast-rerun image digests</strong>
               <span>Phase 3 fast input manifests now require exact lowercase Parabricks <code>sha256:</code> image digests and preserve accepted digest strings when recording the pinned caller runtime.</span>
@@ -1680,6 +1685,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T22:50:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact Parabricks mirror digests:</strong>
+                Phase 3 fast mirror receipt verification now rejects
+                non-lowercase or otherwise malformed image digests,
+                Dockerfile SHA-256s, and source revisions before carrying
+                mirror provenance into later smoke or execute preflights.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T22:40:00-07:00">Jul 19 · local</time>
               <span>

@@ -168,6 +168,58 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
         with self.assertRaisesRegex(verify.MirrorReceiptError, "dockerfile_sha256"):
             verify.validate_mirror_receipt(malformed)
 
+    def test_rejects_non_exact_uppercase_digests_and_revisions(self) -> None:
+        cases = (
+            (
+                "source.digest",
+                lambda payload: payload["source"].__setitem__(
+                    "digest",
+                    SOURCE_DIGEST.replace("a", "A"),
+                ),
+                "source.digest",
+            ),
+            (
+                "source.image",
+                lambda payload: payload["source"].__setitem__(
+                    "image",
+                    f"nvcr.io/nvidia/clara/parabricks@{SOURCE_DIGEST.replace('a', 'A')}",
+                ),
+                "source.image",
+            ),
+            (
+                "destination.digest",
+                lambda payload: payload["destination"].__setitem__(
+                    "digest",
+                    DESTINATION_DIGEST.replace("b", "B"),
+                ),
+                "destination.digest",
+            ),
+            (
+                "dockerfile_sha256",
+                lambda payload: payload["diana_omics"].__setitem__(
+                    "dockerfile_sha256",
+                    "sha256:" + "D" * 64,
+                ),
+                "dockerfile_sha256",
+            ),
+            (
+                "git_commit",
+                lambda payload: payload["diana_omics"].__setitem__(
+                    "git_commit",
+                    DIANA_GIT_COMMIT.upper(),
+                ),
+                "40-character Git SHA",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label):
+                malformed = receipt()
+                mutate(malformed)
+
+                with self.assertRaisesRegex(verify.MirrorReceiptError, message):
+                    verify.validate_mirror_receipt(malformed)
+
     def test_rejects_destination_container_mismatch(self) -> None:
         malformed = receipt()
         malformed["destination"]["parabricks_container"] = f"{REPOSITORY}@sha256:" + "c" * 64

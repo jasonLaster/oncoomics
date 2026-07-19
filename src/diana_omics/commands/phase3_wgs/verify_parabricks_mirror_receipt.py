@@ -16,9 +16,9 @@ DIANA_PARABRICKS_DOCKERFILE = "infra/aws/Dockerfile.parabricks"
 REQUIRED_AWS_REGION = "us-east-2"
 REQUIRED_PLATFORM = "linux/amd64"
 
-DIGEST = re.compile(r"^sha256:([0-9a-fA-F]{64})$")
-GIT_COMMIT = re.compile(r"^[0-9a-fA-F]{40}$")
-PINNED_IMAGE = re.compile(r"^\S+@(sha256:[0-9a-fA-F]{64})$")
+DIGEST = re.compile(r"^sha256:([0-9a-f]{64})$")
+GIT_COMMIT = re.compile(r"^[0-9a-f]{40}$")
+PINNED_IMAGE = re.compile(r"^\S+@(sha256:[0-9a-f]{64})$")
 ECR_REPOSITORY = re.compile(r"^\d{12}\.dkr\.ecr\.([a-z]{2}-[a-z]+-\d)\.amazonaws\.com/[a-z0-9][a-z0-9._/-]*$")
 
 
@@ -46,7 +46,7 @@ def _require_digest(value: Any, label: str) -> str:
     value = _require_string(value, label)
     if DIGEST.fullmatch(value) is None:
         raise MirrorReceiptError(f"{label} must be sha256:<64 hex>")
-    return value.lower()
+    return value
 
 
 def _require_pinned_image(value: Any, label: str) -> tuple[str, str]:
@@ -54,7 +54,7 @@ def _require_pinned_image(value: Any, label: str) -> tuple[str, str]:
     match = PINNED_IMAGE.fullmatch(image)
     if match is None:
         raise MirrorReceiptError(f"{label} must be pinned as <image>@sha256:<64 hex>")
-    return image, match.group(1).lower()
+    return image, match.group(1)
 
 
 def validate_mirror_receipt(receipt: Mapping[str, Any]) -> dict[str, str]:
@@ -90,7 +90,7 @@ def validate_mirror_receipt(receipt: Mapping[str, Any]) -> dict[str, str]:
     if destination.get("parabricks_container") != expected_container:
         raise MirrorReceiptError("destination.parabricks_container must match destination repository and digest")
 
-    git_commit = _require_string(diana_omics.get("git_commit"), "diana_omics.git_commit").lower()
+    git_commit = _require_string(diana_omics.get("git_commit"), "diana_omics.git_commit")
     if GIT_COMMIT.fullmatch(git_commit) is None:
         raise MirrorReceiptError("diana_omics.git_commit must be a 40-character Git SHA")
 
@@ -141,7 +141,7 @@ def current_git_commit(root: Path | None = None) -> str:
     except (OSError, subprocess.CalledProcessError) as error:
         raise MirrorReceiptError("Unable to read the current Diana Git HEAD") from error
 
-    commit = result.stdout.strip().lower()
+    commit = result.stdout.strip()
     if GIT_COMMIT.fullmatch(commit) is None:
         raise MirrorReceiptError("Current Diana Git HEAD must be a 40-character Git SHA")
     return commit
