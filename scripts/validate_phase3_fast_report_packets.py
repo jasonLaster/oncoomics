@@ -100,6 +100,11 @@ def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
+def sha256_file(path: Path) -> str:
+    require_real_input_file(path, f"{path.name} SHA-256 input")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -270,7 +275,7 @@ def pre_route_source_report_manifests(
             manifest_path,
             f"{method_id} source report manifest",
         )
-        manifests[method_id] = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        manifests[method_id] = sha256_file(manifest_path)
     return manifests
 
 
@@ -307,11 +312,9 @@ def validate_pre_route_blocked_packet(
         else {}
     )
     expected_source_sha256 = {
-        "generator": hashlib.sha256(
-            Path(__file__).with_name(
-                "generate_blocked_hrd_crosscheck_reports.py"
-            ).read_bytes()
-        ).hexdigest(),
+        "generator": sha256_file(
+            Path(__file__).with_name("generate_blocked_hrd_crosscheck_reports.py")
+        ),
         **{
             f"{source_method_id}_report_manifest": digest
             for source_method_id, digest in expected_source_report_manifests.items()
@@ -418,7 +421,7 @@ def require_installed_output(path: Path, expected_sha256: str) -> None:
     require_safe_output_path(path, "packet validation output", ValueError)
     if path.is_symlink() or not path.is_file():
         raise ValueError("report packet validation output changed during write")
-    if hashlib.sha256(path.read_bytes()).hexdigest() != expected_sha256:
+    if sha256_file(path) != expected_sha256:
         raise ValueError("report packet validation output changed during write")
 
 

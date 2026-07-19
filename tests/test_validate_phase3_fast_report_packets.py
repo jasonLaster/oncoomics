@@ -202,6 +202,38 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
             ):
                 VALIDATOR.serializable_rows([self.generated_packet_row(**updates)])
 
+    def test_sha256_file_rejects_symlinked_leaf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.json"
+            source_link = root / "report_manifest.json"
+            real_source.write_text("{}\n", encoding="utf-8")
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report_manifest.json SHA-256 input is missing or a symlink",
+            ):
+                VALIDATOR.sha256_file(source_link)
+
+    def test_sha256_file_rejects_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_sources = root / "real-sources"
+            linked_sources = root / "linked-sources"
+            real_sources.mkdir()
+            (real_sources / "report_manifest.json").write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+            linked_sources.symlink_to(real_sources, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report_manifest.json SHA-256 input parent may not be a symlink",
+            ):
+                VALIDATOR.sha256_file(linked_sources / "report_manifest.json")
+
     def test_validate_packets_rejects_inexact_generated_row_bytes(self) -> None:
         packet_dirs = {
             method_id: Path("/unused")
@@ -381,6 +413,34 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                         packet_dirs,
                         json.dumps(["Run-Private-Token"]),
                     )
+
+    def test_rejects_symlinked_blocked_packet_generator_hash_source(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root / "packets")
+            generator_link = root / "generate_blocked_hrd_crosscheck_reports.py"
+            generator_link.symlink_to(
+                SCRIPT_DIR / "generate_blocked_hrd_crosscheck_reports.py"
+            )
+
+            with (
+                mock.patch.object(
+                    VALIDATOR,
+                    "__file__",
+                    str(root / "validate_phase3_fast_report_packets.py"),
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "generate_blocked_hrd_crosscheck_reports.py SHA-256 input "
+                    "is missing or a symlink",
+                ),
+            ):
+                VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
 
     def test_rejects_pre_route_blocked_packet_duplicate_json_object_names(
         self,
