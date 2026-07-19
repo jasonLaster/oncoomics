@@ -348,9 +348,10 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = ae9fa0d</li>
-          <li class="pill">Prior dashboard = 339171d</li>
+          <li class="pill">Latest milestone = 7fb785d</li>
+          <li class="pill">Prior dashboard = c7130a3</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
+          <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
           <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
@@ -563,6 +564,10 @@
               <span>Blocked FACETS, CHORD, and HRDetect packets now reject stale <code>report_manifest.json</code> envelopes or source SHA-256 maps that differ from the generator plus bound upstream report-manifest hashes.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact executable cross-check manifests</strong>
+              <span>Executable Sequenza and SigProfiler packet staging now rejects stale <code>report_manifest.json</code> envelopes or source SHA-256 maps instead of accepting rebound stale method specifications.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 blocked source hashes</strong>
               <span>Pre-route blocked packets now require exactly the blocked-report generator plus deterministic and Rosalind report-manifest hashes, rejecting unrelated hidden source hashes instead of validating only the projected report-manifest keys.</span>
             </li>
@@ -712,6 +717,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:59:54-07:00">Jul 19 · 12:59 AM</time>
+              <span>
+                <strong>7fb785d Require exact executable crosscheck manifests:</strong>
+                executable Sequenza and SigProfiler packet staging now rejects
+                stale <code>report_manifest.json</code> envelopes or source
+                SHA-256 maps instead of accepting rebound stale method
+                specifications. No S3, Batch, route, GPU, quota, or replacement
+                compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:57:24-07:00">Jul 19 · 12:57 AM</time>
               <span>
