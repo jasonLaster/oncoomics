@@ -290,7 +290,11 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
 
 
 def exact_int(value: Any, expected: int) -> bool:
-    return type(value) is int and value == expected
+    return type(value) is int and type(expected) is int and value == expected
+
+
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
 
 
 def parse_s3(uri: Any) -> tuple[str, str]:
@@ -427,9 +431,7 @@ def validate_final_sources(
             and destination.get("bucket") == f"diana-omics-private-results-{ACCOUNT_ID}-{REGION}"
             and destination.get("key") == expected_key
             and valid_version(destination.get("version_id"))
-            and isinstance(destination.get("bytes"), int)
-            and not isinstance(destination.get("bytes"), bool)
-            and int(destination.get("bytes")) > 0
+            and is_positive_exact_int(destination.get("bytes"))
             and destination.get("checksum_type") == "FULL_OBJECT"
             and isinstance(destination.get("checksums"), dict)
             and bool(destination.get("checksums"))
@@ -495,7 +497,7 @@ def validate_final_sources(
             row.get("bucket") == frozen.get("bucket")
             and row.get("key") == frozen.get("key")
             and row.get("version_id") == frozen.get("version_id")
-            and row.get("bytes") == frozen.get("bytes")
+            and exact_int(row.get("bytes"), frozen.get("bytes"))
             and row.get("checksums") == frozen.get("checksums")
             and row.get("checksum_type") == frozen.get("checksum_type") == "FULL_OBJECT"
             and row.get("server_side_encryption") == "aws:kms"
@@ -568,9 +570,7 @@ def validate_reference_sources(
         if (
             destination.get("version_id") in {"", None, "null"}
             or not valid_version(destination.get("version_id"))
-            or not isinstance(destination.get("bytes"), int)
-            or isinstance(destination.get("bytes"), bool)
-            or int(destination.get("bytes")) <= 0
+            or not is_positive_exact_int(destination.get("bytes"))
             or not str(destination.get("crc64nvme", ""))
             or destination.get("kms_key_id") is None
         ):
@@ -615,7 +615,7 @@ def validate_reference_sources(
         exact = (
             row.get("status") == "passed"
             and row.get("version_id") == frozen.get("version_id")
-            and row.get("bytes") == frozen.get("bytes")
+            and exact_int(row.get("bytes"), frozen.get("bytes"))
             and row.get("crc64nvme") == frozen.get("crc64nvme")
             and row.get("server_side_encryption") == "aws:kms"
             and row.get("kms_key_id") == frozen.get("kms_key_id") == kms

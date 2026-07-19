@@ -698,6 +698,17 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                 MODULE.preflight(self.args())
         aws.assert_not_called()
 
+    def test_exact_materialization_bytes_must_be_exact_before_aws(self) -> None:
+        value = json.loads(self.exact_materialization.read_text(encoding="utf-8"))
+        value["objects"][0]["bytes"] = float(value["objects"][0]["bytes"])
+        self._write(self.exact_materialization, value)
+
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(ValueError, "does not bind frozen row"):
+                MODULE.preflight(self.args())
+
+        aws.assert_not_called()
+
     def test_rejects_final_freeze_below_symlinked_parent_before_aws(self) -> None:
         real_parent = self.root / "real-inputs"
         real_parent.mkdir()
@@ -724,6 +735,17 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         with mock.patch.object(MODULE, "aws_json") as aws:
             with self.assertRaisesRegex(ValueError, "reference SHA-256 receipt"):
                 MODULE.preflight(args)
+        aws.assert_not_called()
+
+    def test_reference_sha_bytes_must_be_exact_before_aws(self) -> None:
+        value = json.loads(self.reference_sha.read_text(encoding="utf-8"))
+        value["objects"][0]["bytes"] = float(value["objects"][0]["bytes"])
+        self._write(self.reference_sha, value)
+
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(ValueError, "reference SHA-256 row"):
+                MODULE.preflight(self.args())
+
         aws.assert_not_called()
 
     def test_registration_hash_must_bind_exact_definition(self) -> None:
