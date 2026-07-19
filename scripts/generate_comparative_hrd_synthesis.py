@@ -20,14 +20,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
-from build_ai_review_bundle import validate_report_manifest_support
+from build_ai_review_bundle import (
+    BUNDLE_MANIFEST_KEYS,
+    BUNDLE_REVIEW_BUNDLE_KEYS,
+    validate_report_manifest_support,
+)
 from forbidden_text import has_unauthorized_hrd_classification
 from hrd_report_inventory import (
     inventory_payload,
     inventory_sha256,
-    required_method_ids,
     require_inventory_binding,
     require_pinned_methods,
+    required_method_ids,
 )
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -296,6 +300,10 @@ def verify_bundle(
 ) -> Tuple[Dict[str, Any], Dict[str, Any], str, str]:
     bundle = load_object(bundle_path, "review_bundle.json")
     manifest = load_object(bundle_manifest_path, "bundle_manifest.json")
+    if set(bundle) != BUNDLE_REVIEW_BUNDLE_KEYS:
+        raise ValueError("AI review bundle envelope is not exact")
+    if set(manifest) != BUNDLE_MANIFEST_KEYS:
+        raise ValueError("AI review bundle manifest envelope is not exact")
     if bundle.get("schema_version") != 2 or manifest.get("schema_version") != 2:
         raise ValueError("unsupported AI bundle schema")
     if bundle.get("purpose") != "deidentified_independent_narrative_crosscheck":

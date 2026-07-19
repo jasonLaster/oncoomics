@@ -486,6 +486,38 @@ class SynthesisFixture:
 
 
 class GenerateSynthesisTests(unittest.TestCase):
+    def test_rejects_inexact_ai_bundle_envelopes_before_rendering(self) -> None:
+        cases = (
+            (
+                "review_bundle.json",
+                lambda fixture: fixture.bundle_dir / "review_bundle.json",
+                lambda fixture: fixture.refresh_bundle_hash(),
+                "AI review bundle envelope is not exact",
+            ),
+            (
+                "bundle_manifest.json",
+                lambda fixture: fixture.bundle_dir / "bundle_manifest.json",
+                lambda fixture: None,
+                "AI review bundle manifest envelope is not exact",
+            ),
+        )
+        for filename, resolve_path, rebind, message in cases:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-exact-bundle-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                path = resolve_path(fixture)
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload["legacy_note"] = "accepted"
+                write_json(path, payload)
+                rebind(fixture)
+
+                result = fixture.run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stdout + result.stderr)
+                self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
     def test_synthesis_packet_install_is_create_only_and_fsynced(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             root = Path(temporary)
