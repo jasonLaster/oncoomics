@@ -181,6 +181,7 @@ def reject_duplicate_json_object_names(
 
 
 def load_object(path: Path) -> dict[str, Any]:
+    path = require_real_input_file(path, f"manifest {path.name}")
     try:
         value = json.loads(
             path.read_text(encoding="utf-8"),

@@ -195,7 +195,19 @@ class AiReviewBundleFixture:
         methods: tuple[str, ...] = INVENTORY.REQUIRED_METHOD_IDS,
         extra_args: list[str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
-        command = [sys.executable, str(SCRIPT_DIR / "build_ai_review_bundle.py")]
+        return subprocess.run(
+            [sys.executable, *self.argv(methods=methods, extra_args=extra_args)],
+            text=True,
+            capture_output=True,
+        )
+
+    def argv(
+        self,
+        *,
+        methods: tuple[str, ...] = INVENTORY.REQUIRED_METHOD_IDS,
+        extra_args: list[str] | None = None,
+    ) -> list[str]:
+        command = [str(SCRIPT_DIR / "build_ai_review_bundle.py")]
         for manifest in self.manifests:
             command.extend(["--manifest", str(manifest)])
         for method_id in methods:
@@ -224,7 +236,7 @@ class AiReviewBundleFixture:
             ]
         )
         command.extend(extra_args or [])
-        return subprocess.run(command, text=True, capture_output=True)
+        return command
 
 
 class BuildAiReviewBundleTests(unittest.TestCase):
@@ -1213,6 +1225,40 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertFalse(
                 (report_fixture.bundle_dir / "review_bundle.json").exists()
             )
+
+    def test_rejects_symlinked_report_manifest_after_file_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            real_require = BUILD.require_real_input_file
+            swapped = False
+
+            def swap_manifest_after_file_audit(path: Path, label: str) -> Path:
+                nonlocal swapped
+                resolved = real_require(path, label)
+                if label == "report manifest" and not swapped:
+                    moved = root / "report_manifest.real.json"
+                    resolved.rename(moved)
+                    resolved.symlink_to(moved)
+                    swapped = True
+                return resolved
+
+            with (
+                mock.patch.object(
+                    BUILD,
+                    "require_real_input_file",
+                    side_effect=swap_manifest_after_file_audit,
+                ),
+                mock.patch.object(sys, "argv", fixture.argv()),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "manifest report_manifest.json is missing, unsafe, or empty",
+                ),
+            ):
+                BUILD.main()
+
+            self.assertTrue(swapped)
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
     def test_rejects_symlinked_model_catalog_receipt(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

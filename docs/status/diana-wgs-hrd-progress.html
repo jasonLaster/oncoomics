@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real reviewed-public JSON files</li>
+          <li class="pill">Latest milestone = local real AI-bundle JSON files</li>
+          <li class="pill">AI-bundle JSON files = real</li>
           <li class="pill">Reviewed-public JSON files = real</li>
           <li class="pill">AI-validation JSON files = real</li>
           <li class="pill">AI-finalizer JSON files = real</li>
@@ -1532,6 +1533,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real AI-bundle JSON files</strong>
+              <span>AI-bundle construction now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before source report manifests, model-catalog receipts, or staged AI bundle manifests can feed a de-identified independent-review bundle.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real AI-validation JSON files</strong>
               <span>AI-review validation now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before source, bundle, peer-review, catalog, or review-manifest JSON can feed an independent validation receipt.</span>
             </li>
@@ -1985,6 +1990,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T04:25:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require real AI-bundle JSON files:</strong>
+                AI-bundle construction now rejects symlinked local JSON
+                leaves before source report manifests, model-catalog receipts,
+                or staged bundle manifests can feed independent-review bundles.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T04:20:00-07:00">Jul 20 · local</time>
               <span>
