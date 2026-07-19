@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real materializer-registration hash inputs</li>
+          <li class="pill">Latest milestone = local real staged-validation hash inputs</li>
+          <li class="pill">Staged-validation hash inputs = real</li>
           <li class="pill">Materializer-registration hash inputs = real</li>
           <li class="pill">Materializer-capture hash inputs = real</li>
           <li class="pill">Publication handoff hash inputs = real</li>
@@ -1296,6 +1297,10 @@
               <span>The exact report-tree downloader now rejects coerced VersionId values in publication contracts, receipt anchors, report object rows, and history-audit rows before replaying private cross-check report packets for AI review.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real staged-validation hash inputs</strong>
+              <span>Materializer staged-validation download now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before materialized staged-input validation or verification receipts can be hashed.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer staged-validation custody</strong>
               <span>The materializer staged-validation downloader now rejects coerced VersionId and SHA-256 values in the exact <code>staged_input_validation.json</code> custody row before exact-version cross-check report replay.</span>
             </li>
@@ -2025,6 +2030,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:02-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real staged-validation hash inputs:</strong>
+                Materializer staged-validation download now rejects symlinked
+                local SHA-256 inputs and hash-input ancestors before staged
+                validation or verification receipts can be hashed.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:01-07:00">Jul 19 · local</time>
               <span>

@@ -406,6 +406,20 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
             self.assertTrue(source.exists())
             self.assertFalse(destination.exists())
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_input = root / "real-staged.json"
+            linked_input = root / "staged_input_validation-link.json"
+            real_input.write_text("{}\n", encoding="utf-8")
+            linked_input.symlink_to(real_input)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged_input_validation-link.json SHA-256 input must be a real file",
+            ):
+                MODULE.sha256_path(linked_input)
+
     def test_reserve_json_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             output = Path(value) / "verification.json"
