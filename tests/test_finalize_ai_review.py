@@ -633,6 +633,73 @@ class FinalizeAiReviewTests(unittest.TestCase):
 
             self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.txt"
+            real_source.write_text("real source\n", encoding="utf-8")
+            source_link = root / "source-link.txt"
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source-link.txt SHA-256 input must be a real file",
+            ):
+                FINALIZE.sha256(source_link)
+
+            real_inputs = root / "real-inputs"
+            real_inputs.mkdir()
+            review_manifest = real_inputs / "review_manifest.json"
+            review_manifest.write_text(
+                '{"reviewer_id": "A"}\n',
+                encoding="utf-8",
+            )
+            linked_inputs = root / "linked-inputs"
+            linked_inputs.symlink_to(real_inputs, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "review_manifest.json SHA-256 input parent may not be a symlink",
+            ):
+                FINALIZE.sha256(linked_inputs / "review_manifest.json")
+
+    def test_rejects_symlinked_hash_inputs_after_file_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            real_require_file = FINALIZE.require_file
+            swapped = False
+
+            def swap_claims_after_file_audit(path: Path, label: str) -> None:
+                nonlocal swapped
+                real_require_file(path, label)
+                if label == "model_catalog_receipt.json" and not swapped:
+                    claims = review / "claims.csv"
+                    relocated = review.parent / "claims.real.csv"
+                    claims.rename(relocated)
+                    claims.symlink_to(relocated)
+                    swapped = True
+
+            with (
+                mock.patch.object(
+                    FINALIZE,
+                    "require_file",
+                    side_effect=swap_claims_after_file_audit,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "claims.csv SHA-256 input must be a real file",
+                ),
+            ):
+                FINALIZE.finalize(
+                    fixture.bundle_dir,
+                    review,
+                    "A",
+                    fixture.catalog_receipt,
+                    review / "report_manifest.json",
+                )
+
+            self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_symlinked_custody_inputs(self) -> None:
         cases = (
             ("bundle directory", "bundle directory", "bundle"),

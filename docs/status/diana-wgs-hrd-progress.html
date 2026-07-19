@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real AI-validation hash inputs</li>
+          <li class="pill">Latest milestone = local real AI-finalizer hash inputs</li>
+          <li class="pill">AI-finalizer hash inputs = real</li>
           <li class="pill">AI-validation hash inputs = real</li>
           <li class="pill">AI-prep hash inputs = real</li>
           <li class="pill">AI-staging hash inputs = real</li>
@@ -1609,6 +1610,10 @@
               <span>AI-review finalization now rejects symlinked local JSON leaves inside its duplicate-key-safe loader after the initial file audit and before wrapping validated independent reviews into report manifests.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real AI-finalizer hash inputs</strong>
+              <span>AI-review finalization now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before validated independent reviewer reports are wrapped into final AI-review report manifests for comparative synthesis.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real AI-prep JSON files</strong>
               <span>AI-review preparation now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before rebasing staged reviewer-input receipts or validating generated bundle and postcondition JSON for preparation receipts.</span>
             </li>
@@ -2070,6 +2075,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:11-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real AI-finalizer hash inputs:</strong>
+                AI-review finalization now rejects symlinked local SHA-256
+                inputs and hash-input ancestors before independent reviewer
+                reports wrap into final manifests for comparative synthesis.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:10-07:00">Jul 19 · local</time>
               <span>
