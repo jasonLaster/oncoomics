@@ -2033,8 +2033,7 @@ def main() -> None:
             and destination.get("kms_key_id") == args.expected_kms_key_arn
             and isinstance(destination.get("checksums"), dict)
             and bool(destination.get("checksums"))
-            and row_checks
-            and all(value is True for value in row_checks.values())
+            and row_checks == EXPECTED_FINAL_FREEZE_ROW_CHECKS
         ):
             freeze_all_valid = False
     freeze_consumed_valid = freeze_all_valid
