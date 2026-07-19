@@ -2632,7 +2632,15 @@ def main() -> None:
     )
 
     cnv_classes = Counter(row.get("coverage_class", "") for row in cnv_rows)
-    add_check(checks, "coverage_cnv", cnv.get("status") == "partial_evidence" and len(cnv_rows) == int(cnv.get("bin_count", -1)) and set(cnv_classes) <= {"relative_gain", "relative_loss", "neutral_or_low_signal"} and cnv_classes["relative_gain"] == int(cnv.get("relative_gain_bins", -1)) and cnv_classes["relative_loss"] == int(cnv.get("relative_loss_bins", -1)) and str(cnv.get("scarhrd_input_status", "")).startswith("no_call"), "CNV rows use only the worker's three coverage classes, row/class counts match the summary, and scarHRD input remains no_call.")
+    coverage_cnv_match = (
+        cnv.get("status") == "partial_evidence"
+        and integer_equals(cnv.get("bin_count"), len(cnv_rows))
+        and set(cnv_classes) <= {"relative_gain", "relative_loss", "neutral_or_low_signal"}
+        and integer_equals(cnv.get("relative_gain_bins"), cnv_classes["relative_gain"])
+        and integer_equals(cnv.get("relative_loss_bins"), cnv_classes["relative_loss"])
+        and str(cnv.get("scarhrd_input_status", "")).startswith("no_call")
+    )
+    add_check(checks, "coverage_cnv", coverage_cnv_match, "CNV rows use only the worker's three coverage classes, row/class counts match the summary, and scarHRD input remains no_call.")
 
     sv_json_rows = sv.get("rows", []) if isinstance(sv.get("rows"), list) else []
     sv_json_by_role = {str(row.get("role", "")): row for row in sv_json_rows if isinstance(row, dict)}
@@ -2669,9 +2677,9 @@ def main() -> None:
         ["Normal total reads", format_int(early["bam_qc"]["normal"]["total_reads"]), format_int(alignment_by_role["normal"]["total_reads"]), format_int(int(alignment_by_role["normal"]["total_reads"]) - int(early["bam_qc"]["normal"]["total_reads"]))],
         ["Contamination fraction", f"{early_contamination:.12g}", f"{contamination:.12g}", f"{contamination - early_contamination:+.12g}"],
         ["BRCA1/BRCA2 region PASS records", str(early_brca), str(len(brca_rows)), str(len(brca_rows) - early_brca)],
-        ["Coverage-CNV bins", str(early_cnv.get("bin_count")), str(cnv.get("bin_count")), str(int(cnv.get("bin_count", 0)) - int(early_cnv.get("bin_count", 0)))],
-        ["Relative-gain bins", str(early_cnv.get("relative_gain_bins")), str(cnv.get("relative_gain_bins")), str(int(cnv.get("relative_gain_bins", 0)) - int(early_cnv.get("relative_gain_bins", 0)))],
-        ["Relative-loss bins", str(early_cnv.get("relative_loss_bins")), str(cnv.get("relative_loss_bins")), str(int(cnv.get("relative_loss_bins", 0)) - int(early_cnv.get("relative_loss_bins", 0)))],
+        ["Coverage-CNV bins", str(early_cnv.get("bin_count")), str(cnv["bin_count"]), str(cnv["bin_count"] - int(early_cnv.get("bin_count", 0)))],
+        ["Relative-gain bins", str(early_cnv.get("relative_gain_bins")), str(cnv["relative_gain_bins"]), str(cnv["relative_gain_bins"] - int(early_cnv.get("relative_gain_bins", 0)))],
+        ["Relative-loss bins", str(early_cnv.get("relative_loss_bins")), str(cnv["relative_loss_bins"]), str(cnv["relative_loss_bins"] - int(early_cnv.get("relative_loss_bins", 0)))],
         ["Median raw log2 tumor/normal", str(early_cnv.get("median_raw_log2_tumor_normal")), str(cnv.get("median_raw_log2_tumor_normal")), f"{safe_float(cnv.get('median_raw_log2_tumor_normal')) - safe_float(early_cnv.get('median_raw_log2_tumor_normal')):+.4f}"],
     ]
     alignment_report_rows = [
@@ -2902,9 +2910,9 @@ def main() -> None:
             "sbs3_state": "no_call",
         },
         "coverage_cnv": {
-            "bin_count": int(cnv["bin_count"]),
-            "relative_gain_bins": int(cnv["relative_gain_bins"]),
-            "relative_loss_bins": int(cnv["relative_loss_bins"]),
+            "bin_count": cnv["bin_count"],
+            "relative_gain_bins": cnv["relative_gain_bins"],
+            "relative_loss_bins": cnv["relative_loss_bins"],
             "neutral_or_low_signal_bins": neutral_bins,
             "boundary": "not_allele_specific",
         },

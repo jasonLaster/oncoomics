@@ -2246,6 +2246,24 @@ def mutate_staged_sbs96_json_count(
     )
 
 
+def mutate_coverage_cnv_json_count(
+    fixture: SyntheticFixture,
+    field: str,
+    value: Any,
+) -> None:
+    def mutate_coverage_cnv(cnv: dict[str, Any]) -> None:
+        cnv[field] = value
+
+    StageDeterministicWgsReportInstallTests._mutate_json(
+        fixture.artifacts / "cnv/coverage_cnv_summary.json",
+        mutate_coverage_cnv,
+    )
+    StageDeterministicWgsReportInstallTests._mutate_json(
+        fixture.artifacts / "diana_hrd_summary.json",
+        lambda summary: mutate_coverage_cnv(summary["coverage_cnv"]),
+    )
+
+
 @unittest.skipUnless(shutil.which("bcftools"), "bcftools is required for the indexed-VCF E2E fixture")
 class StageDeterministicWgsReportTests(unittest.TestCase):
     def test_packet_file_install_is_create_only_and_fsynced(self) -> None:
@@ -2830,6 +2848,75 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                     'staged_sbs96.get("matrix_burden"',
                 )
             )
+        ]
+
+        self.assertEqual(raw_coercions, [])
+
+    def test_coverage_cnv_counts_reject_coercible_json_counts(self) -> None:
+        mutations = (
+            ("bin count float", "bin_count", 3.0),
+            ("bin count string", "bin_count", "3"),
+            ("gain bins string", "relative_gain_bins", "1"),
+            ("loss bins bool", "relative_loss_bins", True),
+        )
+        for name, field, value in mutations:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                mutate_coverage_cnv_json_count(fixture, field, value)
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("coverage_cnv", result.stdout + result.stderr)
+                self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_coverage_cnv_guards_avoid_raw_int_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+
+        def coerces_coverage_cnv_field(node: ast.Call) -> bool:
+            argument = node.args[0]
+            if (
+                isinstance(argument, ast.Call)
+                and isinstance(argument.func, ast.Attribute)
+                and argument.func.attr == "get"
+                and isinstance(argument.func.value, ast.Name)
+                and argument.func.value.id == "cnv"
+                and argument.args
+                and isinstance(argument.args[0], ast.Constant)
+            ):
+                return argument.args[0].value in {
+                    "bin_count",
+                    "relative_gain_bins",
+                    "relative_loss_bins",
+                }
+            if (
+                isinstance(argument, ast.Subscript)
+                and isinstance(argument.value, ast.Name)
+                and argument.value.id == "cnv"
+                and isinstance(argument.slice, ast.Constant)
+            ):
+                return argument.slice.value in {
+                    "bin_count",
+                    "relative_gain_bins",
+                    "relative_loss_bins",
+                }
+            return False
+
+        raw_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and coerces_coverage_cnv_field(node)
         ]
 
         self.assertEqual(raw_coercions, [])
