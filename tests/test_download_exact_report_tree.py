@@ -125,6 +125,12 @@ class ExactReportDownloadTests(unittest.TestCase):
             }
         ]
 
+    def reanchor(self, receipt: Path, anchor: Path) -> None:
+        payload = json.loads(anchor.read_text(encoding="utf-8"))
+        payload["receipt_sha256"] = MODULE.sha256(receipt)
+        payload["receipt_bytes"] = receipt.stat().st_size
+        write_json(anchor, payload)
+
     def test_version_history_consumes_key_and_version_markers(self) -> None:
         pages = [
             {
@@ -521,6 +527,98 @@ class ExactReportDownloadTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "anchor envelope"):
                 MODULE.validate_publication(receipt, anchor, KMS)
+
+    def test_rejects_inexact_publication_receipt_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, _, _ = self.fixture(root)
+            payload = json.loads(anchor.read_text(encoding="utf-8"))
+            payload["receipt_bytes"] = str(receipt.stat().st_size)
+            write_json(anchor, payload)
+
+            with self.assertRaisesRegex(ValueError, "anchor"):
+                MODULE.validate_publication(receipt, anchor, KMS)
+
+            receipt, anchor, _, _ = self.fixture(root)
+            payload = json.loads(receipt.read_text(encoding="utf-8"))
+            payload["objects"][0]["content_length"] = True
+            write_json(receipt, payload)
+            self.reanchor(receipt, anchor)
+
+            with self.assertRaisesRegex(ValueError, "exact custody"):
+                MODULE.validate_publication(receipt, anchor, KMS)
+
+    def test_download_rejects_boolean_content_length_response(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, _, row = self.fixture(root)
+            output = root / "report-tree"
+            verification = root / "verification.json"
+            data = b"1"
+            digest = hashlib.sha256(data).hexdigest()
+            payload = json.loads(receipt.read_text(encoding="utf-8"))
+            payload["objects"][0]["sha256"] = digest
+            payload["objects"][0]["content_length"] = 1
+            payload["objects"][0]["checksum_sha256"] = checksum_sha256(data)
+            payload["history_audit"][0]["sha256"] = digest
+            write_json(receipt, payload)
+            self.reanchor(receipt, anchor)
+
+            def fake_get(
+                _bucket: str,
+                _key: str,
+                version_id: str,
+                destination: Path,
+                _region: str,
+            ) -> dict:
+                destination.write_bytes(data)
+                return {
+                    "VersionId": version_id,
+                    "ContentLength": True,
+                    "ChecksumSHA256": checksum_sha256(data),
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                }
+
+            with (
+                patch.object(MODULE, "version_history", return_value=self.history(row)),
+                patch.object(MODULE, "get_exact", side_effect=fake_get),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "exact report download failed for report.md",
+                ),
+            ):
+                MODULE.main(self.args(receipt, anchor, output, verification))
+
+            self.assertFalse(output.exists())
+            self.assertFalse((root / ".report-tree.staging").exists())
+            self.assertEqual(
+                json.loads(verification.read_text(encoding="utf-8"))["status"],
+                "failed",
+            )
+
+    def test_prepared_verification_rejects_boolean_object_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            report = root / "report-tree" / "report.md"
+            report.parent.mkdir()
+            report.write_bytes(b"1")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "downloaded report differs from its receipt",
+            ):
+                MODULE.validate_local_tree(
+                    report.parent,
+                    [
+                        {
+                            "relative_path": "report.md",
+                            "bytes": True,
+                            "sha256": MODULE.sha256(report),
+                        }
+                    ],
+                )
 
     def test_rejects_non_exact_publication_schema_versions(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

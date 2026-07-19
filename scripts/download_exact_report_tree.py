@@ -133,6 +133,10 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -278,7 +282,7 @@ def validate_local_tree(root: Path, rows: list[dict[str, Any]]) -> None:
         if (
             path.is_symlink()
             or not path.is_file()
-            or path.stat().st_size != int(row.get("bytes", -1))
+            or not exact_int(row.get("bytes"), path.stat().st_size)
             or sha256(path) != row.get("sha256")
         ):
             raise ValueError(f"downloaded report differs from its receipt: {relative}")
@@ -508,7 +512,7 @@ def validate_publication(
         not exact_schema_version(anchor, 1)
         or anchor.get("status") != "passed"
         or anchor.get("receipt_sha256") != receipt_hash
-        or int(anchor.get("receipt_bytes", -1)) != receipt_path.stat().st_size
+        or not exact_int(anchor.get("receipt_bytes"), receipt_path.stat().st_size)
         or anchor.get("route_output_uri") != route_uri
         or not str(anchor.get("receipt_uri", "")).startswith(
             "s3://diana-omics-private-results-"
@@ -549,7 +553,8 @@ def validate_publication(
             not str(row.get("version_id", ""))
             or str(row.get("version_id", "")).lower() in {"none", "null"}
             or not str(row.get("sha256", ""))
-            or int(row.get("content_length", -1)) <= 0
+            or type(row.get("content_length")) is not int
+            or row.get("content_length") <= 0
             or row.get("server_side_encryption") != "aws:kms"
             or row.get("ssekms_key_id") != kms_key_arn
             or row.get("checks") != EXPECTED_PUBLICATION_OBJECT_CHECKS
@@ -675,10 +680,12 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
             checks = {
                 "version_exact": response.get("VersionId") == row["version_id"],
                 "bytes_exact": (
-                    response.get("ContentLength")
-                    == row["content_length"]
-                    == local.stat().st_size
-                    and local.is_file()
+                    local.is_file()
+                    and exact_int(
+                        response.get("ContentLength"),
+                        row["content_length"],
+                    )
+                    and exact_int(row["content_length"], local.stat().st_size)
                 ),
                 "sha256_exact": sha256(local) == row["sha256"],
                 "checksum_sha256_exact": bool(row.get("checksum_sha256"))

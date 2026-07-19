@@ -219,17 +219,50 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "empty"
             path.write_bytes(b"")
-            with self.assertRaisesRegex(ValueError, "positive byte count"):
+            for value in (0, True, "1"):
+                with self.subTest(value=value), self.assertRaisesRegex(
+                    ValueError,
+                    "positive byte count",
+                ):
+                    MODULE.validate_materialized(
+                        {
+                            "version_id": "v",
+                            "bytes": value,
+                            "checksums": {"ChecksumCRC64NVME": "c"},
+                            "checksum_type": "FULL_OBJECT",
+                        },
+                        {},
+                        path,
+                        "kms",
+                    )
+
+    def test_exact_version_download_rejects_boolean_content_length(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "artifact"
+            path.write_bytes(b"1")
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "materialization checks failed",
+            ):
                 MODULE.validate_materialized(
                     {
-                        "version_id": "v",
-                        "bytes": 0,
-                        "checksums": {"ChecksumCRC64NVME": "c"},
+                        "version_id": "frozen-version",
+                        "bytes": 1,
+                        "checksums": {"ChecksumCRC64NVME": "checksum"},
                         "checksum_type": "FULL_OBJECT",
                     },
-                    {},
+                    {
+                        "VersionId": "frozen-version",
+                        "ContentLength": True,
+                        "ChecksumCRC64NVME": "checksum",
+                        "ChecksumType": "FULL_OBJECT",
+                        "ServerSideEncryption": "aws:kms",
+                        "SSEKMSKeyId": kms,
+                    },
                     path,
-                    "kms",
+                    kms,
                 )
 
     def test_stages_then_atomically_publishes_exact_tree(self) -> None:
@@ -723,6 +756,29 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             payload = json.loads(receipt.read_text(encoding="utf-8"))
             self.assertEqual(payload["status"], "passed")
             self.assertTrue(payload["recovered_prepared_cutover"])
+
+    def test_prepared_receipt_recovery_rejects_boolean_object_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / ".materialized.staging"
+            staged_file = staging / "variants/final.vcf.gz"
+            staged_file.parent.mkdir(parents=True)
+            staged_file.write_bytes(b"1")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "materialized tree differs from its receipt",
+            ):
+                MODULE.validate_local_tree(
+                    staging,
+                    [
+                        {
+                            "relative_key": "variants/final.vcf.gz",
+                            "bytes": True,
+                            "sha256": MODULE.sha256(staged_file),
+                        }
+                    ],
+                )
 
     def test_existing_unrelated_receipt_is_never_replaced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

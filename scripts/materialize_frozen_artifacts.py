@@ -184,7 +184,7 @@ def validate_local_tree(root: Path, rows: list[dict[str, Any]]) -> None:
         if (
             path.is_symlink()
             or not path.is_file()
-            or path.stat().st_size != int(row.get("bytes", -1))
+            or not INPUT_CONTRACT.exact_int(row.get("bytes"), path.stat().st_size)
             or sha256(path) != row.get("sha256")
         ):
             raise ValueError(f"materialized tree differs from its receipt: {relative}")
@@ -299,11 +299,11 @@ def validate_materialized(
     expected_kms_key_arn: str,
 ) -> dict[str, Any]:
     version_id = str(expected.get("version_id", ""))
-    expected_bytes = int(expected.get("bytes", -1))
+    expected_bytes = expected.get("bytes")
     expected_checksums = expected.get("checksums")
     if not version_id or version_id in {"null", "None"}:
         raise ValueError("frozen destination lacks an exact VersionId")
-    if expected_bytes <= 0:
+    if type(expected_bytes) is not int or expected_bytes <= 0:
         raise ValueError("frozen destination lacks a positive byte count")
     if not isinstance(expected_checksums, dict) or not exact_checksums(expected_checksums):
         raise ValueError("frozen destination lacks an exact S3 checksum")
@@ -312,7 +312,10 @@ def validate_materialized(
     require_real_downloaded_file(path, "materialized object")
     checks = {
         "version_id": str(response.get("VersionId", "")) == version_id,
-        "content_length": int(response.get("ContentLength", -1)) == expected_bytes,
+        "content_length": INPUT_CONTRACT.exact_int(
+            response.get("ContentLength"),
+            expected_bytes,
+        ),
         "local_bytes": path.is_file() and path.stat().st_size == expected_bytes,
         "checksums": exact_checksums(response) == exact_checksums(expected_checksums),
         "checksum_type": response.get("ChecksumType") == "FULL_OBJECT",
