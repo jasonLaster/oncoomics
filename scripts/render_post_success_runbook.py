@@ -172,6 +172,26 @@ def route_var(route: str, suffix: str) -> str:
     return f"{route.upper()}_{suffix}"
 
 
+def route_review_checklist(deterministic: Path, route: str) -> list[str]:
+    dry_request = deterministic / f"terminal.{route}.request.dry.json"
+    return [
+        f"Review `{dry_request}` before route submission:",
+        "",
+        f"- [ ] `route` is `{route}` and matches the checked-in method contract.",
+        "- [ ] `contract.uri`, `contract.version_id`, and "
+        "`contract.sha256` match the just-published HRD input contract.",
+        "- [ ] `submit_job_request.jobName` is a fresh one-shot submission for "
+        "this route.",
+        "- [ ] `submit_job_request.retryStrategy` is one-attempt and the "
+        "route-output history is empty.",
+        "- [ ] `checks.exact_kms`, `checks.exact_output_destination`, and "
+        "`checks.exact_contract_version_bound` are all true.",
+        "- [ ] Route license review and expected route cost are still accepted.",
+        "- [ ] Running the following `--submit` command is still the intended "
+        "next action.",
+    ]
+
+
 def materializer_command(
     scripts: Path,
     deterministic: Path,
@@ -927,12 +947,7 @@ def render(root: Path, terminal_job_id: str) -> str:
                 "",
                 bash_block([submission_id_assign(submission_id, route)]),
                 block(submit_route_command(aws_dir, deterministic, route)),
-                (
-                    f"Review `{deterministic / f'terminal.{route}.request.dry.json'}` "
-                    "against the checked-in method contract, route license, "
-                    "and expected cost before running the submit command below. "
-                    "Do not submit the route solely because the dry-run request rendered."
-                ),
+                *route_review_checklist(deterministic, route),
                 "",
                 block(
                     submit_route_command(

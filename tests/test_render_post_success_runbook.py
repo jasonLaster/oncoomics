@@ -202,6 +202,32 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             self.assertLess(wait, waiter)
             self.assertLess(waiter, capture)
 
+    def test_route_dry_run_review_checklists_are_concrete(self) -> None:
+        text = render()
+
+        for route in MODULE.EXECUTABLE_CROSSCHECK_METHOD_IDS:
+            dry_request = (
+                "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+                f"terminal.{route}.request.dry.json"
+            )
+            review = text.index(f"Review `{dry_request}` before route submission:")
+            apply = text.index(
+                f"terminal.{route}.request.json --dry-run-receipt", review
+            )
+
+            checklist = text[review:apply]
+            self.assertIn(f"- [ ] `route` is `{route}`", checklist)
+            self.assertIn("`contract.uri`, `contract.version_id`", checklist)
+            self.assertIn("`contract.sha256`", checklist)
+            self.assertIn("`submit_job_request.jobName`", checklist)
+            self.assertIn("`submit_job_request.retryStrategy`", checklist)
+            self.assertIn("route-output history is empty", checklist)
+            self.assertIn("`checks.exact_kms`", checklist)
+            self.assertIn("`checks.exact_output_destination`", checklist)
+            self.assertIn("`checks.exact_contract_version_bound`", checklist)
+            self.assertIn("license review and expected route cost", checklist)
+            self.assertIn("`--submit` command", checklist)
+
     def test_route_submit_command_has_exact_response_output_argv(self) -> None:
         response = Path("/run/terminal.sequenza_scarhrd.response.json")
         dry_receipt = Path("/run/terminal.sequenza_scarhrd.request.dry.json")

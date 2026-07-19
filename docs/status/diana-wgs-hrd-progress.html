@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local executable review stops</li>
+          <li class="pill">Latest milestone = local executable dry-run checklists</li>
+          <li class="pill">Executable dry-run checklists = explicit</li>
           <li class="pill">Executable review stops = explicit</li>
           <li class="pill">Materializer definitions = real</li>
           <li class="pill">Rosalind provenance strings = exact</li>
@@ -1504,6 +1505,10 @@
               <strong>Done · require explicit executable review stops</strong>
               <span>Post-success runbook rendering now inserts an explicit review stop between each executable cross-check dry-run request and submit command, so method-contract, license, and cost acceptance are reviewed before Sequenza/SigProfiler submission.</span>
             </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require executable dry-run checklists</strong>
+              <span>Post-success runbook rendering now expands each executable cross-check review stop into a concrete dry-run checklist, making method identity, HRD input-contract URI/version/SHA review, one-shot retry posture, exact output/encryption checks, and license/cost acceptance explicit before Sequenza/SigProfiler submission.</span>
+            </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>In progress · prepare the no-expensive-compute handoff chain</strong>
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
@@ -2130,6 +2135,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T13:51:21-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Expand executable dry-run checklists:</strong>
+                Post-success runbook rendering now expands each executable
+                cross-check review stop with method identity, input-contract
+                URI/version/SHA, one-shot retry posture, exact output/encryption
+                checks, and license/cost acceptance before submission.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T13:48:20-07:00">Jul 19 · local</time>
               <span>
