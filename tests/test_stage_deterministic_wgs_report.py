@@ -69,6 +69,17 @@ def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    current = f'  "{key}": {json.dumps(payload[key], sort_keys=True)}'
+    description = f"top-level JSON field {key}"
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one {description}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 def write_csv(
     path: Path,
     rows: list[dict[str, Any]],
@@ -873,6 +884,20 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
                 REPORT_MODULE.load_json(linked_parent / "input.json")
 
+    def test_load_json_rejects_duplicate_object_names(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-input-"
+        ) as temporary:
+            path = Path(temporary) / "input.json"
+            write_json(path, {"schema_version": 1, "status": "passed"})
+            write_duplicate_json_field(path, "schema_version", 0)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in JSON input: schema_version",
+            ):
+                REPORT_MODULE.load_json(path)
+
     def test_load_csv_rejects_input_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-input-"
@@ -1137,6 +1162,24 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError,
                 "report manifest is stale for readiness.csv",
+            ):
+                REPORT_MODULE.require_report_manifest(staging)
+
+    def test_staged_report_manifest_rejects_duplicate_object_names(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            staging = Path(temporary)
+            write_minimal_report_packet(staging)
+            write_duplicate_json_field(
+                staging / "report_manifest.json",
+                "schema_version",
+                0,
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in JSON input: schema_version",
             ):
                 REPORT_MODULE.require_report_manifest(staging)
 

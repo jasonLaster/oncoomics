@@ -21,6 +21,10 @@ from typing import Any, Iterable, Optional
 from urllib.parse import urlparse
 
 import finalize_input_contract as INPUT_CONTRACT
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 from capture_materializer_terminal import (
     EXPECTED_DESTINATION_INVENTORY_KEYS as EXPECTED_CROSSCHECK_DESTINATION_INVENTORY_KEYS,
 )
@@ -261,7 +265,13 @@ EXPECTED_STAGED_VALIDATION_DOWNLOAD_CHECKS: dict[str, bool] = {
 
 def load_json(path: Path) -> dict[str, Any]:
     require_real_input_path(path, "JSON input")
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in JSON input: {error}") from error
     if not isinstance(payload, dict):
         raise ValueError(f"Expected a JSON object: {path}")
     return payload
@@ -1613,10 +1623,7 @@ def write_staged_csv(
 
 def require_report_manifest(packet_dir: Path) -> None:
     manifest_path = packet_dir / "report_manifest.json"
-    require_real_input_path(manifest_path, "report packet")
-    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError("report manifest must be a JSON object")
+    payload = load_json(manifest_path)
     if set(payload) != REPORT_MANIFEST_KEYS:
         raise ValueError("report manifest envelope is not exact")
     if (
