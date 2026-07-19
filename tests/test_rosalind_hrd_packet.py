@@ -1016,6 +1016,79 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertNotIn("SENSITIVE-PAIR-ID", serialized_manifest)
             self.assertNotIn("SENSITIVE-DATASET-LABEL", serialized_manifest)
 
+    def test_diana_wgs_packet_carries_verified_terminal_deterministic_hashes(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(
+                output_root / "deterministic",
+                artifact_root,
+            )
+            expected_report_sha256 = packet.sha256_file(
+                deterministic_root / "report.md"
+            )
+            expected_manifest_sha256 = packet.sha256_file(
+                deterministic_root / "report_manifest.json"
+            )
+            real_read_json_file = packet.read_json_file
+            tampered = False
+
+            def tamper_after_report_validation(path: Path, label: str):
+                nonlocal tampered
+                value = real_read_json_file(path, label)
+                if label == "Diana WGS tool versions" and not tampered:
+                    (deterministic_root / "report.md").write_text(
+                        "# Late unverified deterministic report\n",
+                        encoding="utf-8",
+                    )
+                    manifest_path = deterministic_root / "report_manifest.json"
+                    manifest = utils.read_json(manifest_path)
+                    manifest["review_summary"]["custody"][
+                        "freeze_receipt_sha256"
+                    ] = "c" * 64
+                    utils.write_json(manifest_path, manifest)
+                    tampered = True
+                return value
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "read_json_file",
+                    side_effect=tamper_after_report_validation,
+                ),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            manifest = utils.read_json(
+                output_root / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json"
+            )
+            provenance = manifest["review_summary"]["provenance"]
+            self.assertEqual(
+                provenance["deterministic_report_sha256"],
+                expected_report_sha256,
+            )
+            self.assertEqual(
+                provenance["deterministic_manifest_sha256"],
+                expected_manifest_sha256,
+            )
+            self.assertNotEqual(
+                provenance["deterministic_report_sha256"],
+                packet.sha256_file(deterministic_root / "report.md"),
+            )
+            self.assertNotEqual(
+                provenance["deterministic_manifest_sha256"],
+                packet.sha256_file(deterministic_root / "report_manifest.json"),
+            )
+
     def test_diana_wgs_packet_consumes_phase3_fast_deterministic_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp)
@@ -1170,6 +1243,81 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertEqual(
                 len(evidence_index["artifacts"]),
                 manifest["review_summary"]["provenance"]["artifact_count"] + 1,
+            )
+
+    def test_diana_wgs_packet_carries_verified_phase3_fast_deterministic_hashes(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                output_root / "phase3_fast"
+            )
+            expected_report_sha256 = packet.sha256_file(
+                deterministic_root / "report.md"
+            )
+            expected_manifest_sha256 = packet.sha256_file(
+                deterministic_root / "report_manifest.json"
+            )
+            real_compact_summary = packet.phase3_fast_compact_sequenza_summary
+            tampered = False
+
+            def tamper_after_report_validation(value):
+                nonlocal tampered
+                summary = real_compact_summary(value)
+                if not tampered:
+                    (deterministic_root / "report.md").write_text(
+                        "# Late unverified Phase 3 fast report\n",
+                        encoding="utf-8",
+                    )
+                    mutate_phase3_fast_report_manifest(
+                        deterministic_root,
+                        lambda manifest: manifest.__setitem__(
+                            "classification_qc_status",
+                            "passed",
+                        ),
+                    )
+                    tampered = True
+                return summary
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "phase3_fast_compact_sequenza_summary",
+                    side_effect=tamper_after_report_validation,
+                ),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+            manifest = utils.read_json(
+                output_root
+                / "results/rosalind_hrd/diana_wgs/phase3-fast/report_manifest.json"
+            )
+            provenance = manifest["review_summary"]["provenance"]
+            self.assertEqual(
+                provenance["deterministic_report_sha256"],
+                expected_report_sha256,
+            )
+            self.assertEqual(
+                provenance["deterministic_manifest_sha256"],
+                expected_manifest_sha256,
+            )
+            self.assertNotEqual(
+                provenance["deterministic_report_sha256"],
+                packet.sha256_file(deterministic_root / "report.md"),
+            )
+            self.assertNotEqual(
+                provenance["deterministic_manifest_sha256"],
+                packet.sha256_file(deterministic_root / "report_manifest.json"),
             )
 
     def test_diana_wgs_packet_rejects_deterministic_report_below_symlinked_parent(self):

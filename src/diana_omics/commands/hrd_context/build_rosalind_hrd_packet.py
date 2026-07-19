@@ -1151,7 +1151,8 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     )
     for name in sorted(support_files - set(paths)):
         paths[name] = require_real_nonempty_file(report_root / name, f"deterministic {name}")
-    if manifest.get("report_sha256") != sha256_file(paths["report.md"]):
+    deterministic_report_sha256 = sha256_file(paths["report.md"])
+    if manifest.get("report_sha256") != deterministic_report_sha256:
         raise ValueError("deterministic report hash differs from its manifest")
     support = manifest.get("support_sha256")
     if not isinstance(support, dict) or set(support) != support_files:
@@ -1170,12 +1171,15 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     if len(input_by_id) != len(input_rows):
         raise ValueError("deterministic input SHA-256 CSV has duplicate input IDs")
     if manifest.get("report_kind") == PHASE3_FAST_REPORT_KIND:
+        deterministic_manifest_sha256 = sha256_file(paths["report_manifest.json"])
         return diana_wgs_phase3_fast_deterministic_binding(
             paths=paths,
             manifest=manifest,
             support=support,
             source=source,
             input_rows=input_rows,
+            deterministic_report_sha256=deterministic_report_sha256,
+            deterministic_manifest_sha256=deterministic_manifest_sha256,
         )
 
     validate_diana_wgs_worker_schema()
@@ -1240,6 +1244,7 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     }
     if not custody_hashes:
         raise ValueError("deterministic custody lacks hash-bound receipts")
+    deterministic_manifest_sha256 = sha256_file(paths["report_manifest.json"])
     tools = read_json_file(artifact_path_from_root("tool_versions.json"), "Diana WGS tool versions")
     if not isinstance(tools, dict) or set(tools) != {"bwa", "samtools", "bcftools", "gatk"}:
         raise ValueError("Diana WGS tool version inventory is missing or malformed")
@@ -1252,8 +1257,8 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     }
     return {
         "binding_kind": "terminal_worker",
-        "deterministic_report_sha256": sha256_file(paths["report.md"]),
-        "deterministic_manifest_sha256": sha256_file(paths["report_manifest.json"]),
+        "deterministic_report_sha256": deterministic_report_sha256,
+        "deterministic_manifest_sha256": deterministic_manifest_sha256,
         "deterministic_support_sha256": dict(sorted(support.items())),
         "artifact_sha256": artifact_hashes,
         "artifact_count": len(artifact_hashes),
@@ -1274,6 +1279,8 @@ def diana_wgs_phase3_fast_deterministic_binding(
     support: Mapping[str, Any],
     source: Mapping[str, Any],
     input_rows: Sequence[Mapping[str, str]],
+    deterministic_report_sha256: str,
+    deterministic_manifest_sha256: str,
 ) -> dict[str, Any]:
     review_summary = manifest.get("review_summary")
     if not isinstance(review_summary, dict):
@@ -1389,8 +1396,8 @@ def diana_wgs_phase3_fast_deterministic_binding(
 
     return {
         "binding_kind": "phase3_fast_final",
-        "deterministic_report_sha256": sha256_file(paths["report.md"]),
-        "deterministic_manifest_sha256": sha256_file(paths["report_manifest.json"]),
+        "deterministic_report_sha256": deterministic_report_sha256,
+        "deterministic_manifest_sha256": deterministic_manifest_sha256,
         "deterministic_support_sha256": dict(sorted(support.items())),
         "artifact_sha256": artifact_hashes,
         "artifact_count": artifact_count,

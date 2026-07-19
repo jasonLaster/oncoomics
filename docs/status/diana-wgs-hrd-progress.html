@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local carried AI synthesis hashes</li>
+          <li class="pill">Latest milestone = local carried Rosalind deterministic hashes</li>
+          <li class="pill">Rosalind deterministic hashes = carried</li>
           <li class="pill">AI synthesis hashes = carried</li>
           <li class="pill">AI review prep inputs = exact</li>
           <li class="pill">Blocked packet inputs = exact</li>
@@ -376,6 +377,7 @@
           <li class="pill">AI catalog receipt hashes = real</li>
           <li class="pill">Runbook hash inputs = real</li>
           <li class="pill">Rosalind hash inputs = real</li>
+          <li class="pill">Rosalind deterministic hashes = carried</li>
           <li class="pill">Phase 3 packet hash inputs = real</li>
           <li class="pill">Blocked-packet hash inputs = real</li>
           <li class="pill">Public-index build hashes = real</li>
@@ -1262,6 +1264,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · carry Rosalind deterministic hashes</strong>
+              <span>Diana WGS Rosalind packet building now carries verified deterministic <code>report.md</code> and <code>report_manifest.json</code> SHA-256 values through terminal-worker and Phase 3 fast bindings instead of rehashing those files at return time.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact blocked packet inputs</strong>
               <span>Blocked HRD cross-check generation now requires exact upstream source report packet envelopes and support before writing FACETS, CHORD, or HRDetect blocked packets.</span>
@@ -2236,6 +2242,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:53:19-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Carry Rosalind deterministic hashes:</strong>
+                Diana WGS Rosalind packet building now carries verified
+                deterministic <code>report.md</code> and
+                <code>report_manifest.json</code> SHA-256 values through both
+                terminal-worker and Phase 3 fast bindings instead of rehashing
+                those files at return time.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T14:49:22-07:00">Jul 19 · local</time>
               <span>
