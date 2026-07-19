@@ -104,6 +104,10 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def sha256_path(path: Path) -> str:
+    label = f"{path.name} SHA-256 input"
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
     return sha256_bytes(path.read_bytes())
 
 

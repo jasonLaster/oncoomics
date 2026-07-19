@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real publication handoff hash inputs</li>
+          <li class="pill">Latest milestone = local real materializer-capture hash inputs</li>
+          <li class="pill">Materializer-capture hash inputs = real</li>
           <li class="pill">Publication handoff hash inputs = real</li>
           <li class="pill">AI-synthesis hash inputs = real</li>
           <li class="pill">Synthesis hash inputs = real</li>
@@ -1454,6 +1455,10 @@
               <span>Terminal source-freeze now revalidates Sequenza and SigProfiler staged executable route manifests, rejecting stale source hash maps or internally rebound stale method specifications before private freeze or AI review.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real materializer-capture hash inputs</strong>
+              <span>Materializer capture rendering now rejects symlinked local files inside its SHA-256 request-receipt reader before a materializer request receipt can be bound to the submitted-response handoff.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind Batch submits to dry-run requests</strong>
               <span>Materializer and route submits now require an exact matching dry-run request receipt before Batch submission, and reject stale live preflight or job-request drift before submit.</span>
             </li>
@@ -2016,7 +2021,25 @@
           <h2>Changelog</h2>
           <ol class="changelog">
             <li class="item">
-              <time datetime="2026-07-20T04:50:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:49:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI review invocation strings:</strong>
+                AI review validation and comparative synthesis now reject
+                boolean, padded, or incomplete invocation metadata before
+                validating paired reviewer outputs or rendering synthesis.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T12:48:59-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real materializer-capture hash inputs:</strong>
+                Materializer capture rendering now rejects symlinked local
+                files before request receipts can be bound to
+                submitted-response handoffs.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T12:48:58-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real publication handoff hash inputs:</strong>
                 Source-freeze and reviewed-publication runbooks now reject
@@ -2025,7 +2048,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T04:45:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:57-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real AI-synthesis hash inputs:</strong>
                 AI/freeform synthesis runbook rendering now rejects symlinked
@@ -2034,7 +2057,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T04:40:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:56-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real synthesis hash inputs:</strong>
                 Comparative synthesis now rejects symlinked or empty local
@@ -2043,7 +2066,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T04:35:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:55-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real public-index JSON files:</strong>
                 Public-index publication now rejects symlinked local JSON
@@ -2052,7 +2075,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T04:30:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:54-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real materializer-validation JSON files:</strong>
                 Materializer staged-validation download now rejects symlinked
@@ -2061,7 +2084,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T04:25:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:53-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real AI-bundle JSON files:</strong>
                 AI-bundle construction now rejects symlinked local JSON
@@ -2070,7 +2093,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T04:20:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:52-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real reviewed-public JSON files:</strong>
                 Reviewed-public report publication now rejects symlinked local
@@ -2079,7 +2102,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T04:15:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:51-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real AI-validation JSON files:</strong>
                 AI-review validation now rejects symlinked local JSON leaves
@@ -2088,7 +2111,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T04:10:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:50-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real AI-finalizer JSON files:</strong>
                 AI-review finalization now rejects symlinked local JSON leaves
@@ -2097,7 +2120,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T04:05:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:49-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real AI-prep JSON files:</strong>
                 AI-review preparation now rejects symlinked local JSON leaves
@@ -2106,7 +2129,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T04:00:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:48-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real AI-staging manifest files:</strong>
                 AI-review staging now rechecks the bundle manifest leaf before
@@ -2115,7 +2138,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:55:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:47-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require real materializer input files:</strong>
                 Alias-only final-input materializer preflight and submit now
@@ -2124,7 +2147,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:50:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:46-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Rosalind packet JSON:</strong>
                 Diana WGS Rosalind packet assembly now rejects duplicate JSON
@@ -2133,7 +2156,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:45:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:45-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact public-safety inventories:</strong>
                 File-sourced public-safety token inventories now share direct
@@ -2142,7 +2165,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:40:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:44-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact execution failure JSON:</strong>
                 Terminal execution failure handling now preserves ambiguous
@@ -2151,7 +2174,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:35:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:43-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact known-answer stack JSON:</strong>
                 Public known-answer stack assembly now rejects duplicate JSON
@@ -2160,7 +2183,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:30:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:42-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact cross-check readiness JSON:</strong>
                 Alias-only cross-check contract validation now rejects duplicate
@@ -2169,7 +2192,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:25:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:41-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Phase 3 real-file JSON:</strong>
                 Phase 3 fast-rerun readers now reject duplicate JSON object names
@@ -2178,7 +2201,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:20:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:40-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact execution-provenance JSON:</strong>
                 Terminal execution-provenance capture now rejects duplicate
@@ -2187,7 +2210,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:15:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:39-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact terminal-capture JSON:</strong>
                 Terminal materializer and route capture now reject duplicate
@@ -2196,7 +2219,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:10:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:38-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact staged/materializer JSON:</strong>
                 Stage-freeze, materializer-submission, and staged-validation
@@ -2205,7 +2228,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:05:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:37-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact materializer/report-custody JSON:</strong>
                 Local replay, capture-rendering, and registration readers now
@@ -2214,7 +2237,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T03:00:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:36-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact final/materialized receipt JSON:</strong>
                 Final-freeze and materialized-final loaders now reject
@@ -2223,7 +2246,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:55:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:35-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact blocked cross-check manifest JSON:</strong>
                 Blocked cross-check packet generation now rejects duplicate
@@ -2232,7 +2255,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:50:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:34-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Phase 3 fast packet JSON:</strong>
                 Phase 3 fast packet validation now rejects duplicate JSON
@@ -2241,7 +2264,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:45:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:33-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact deterministic staging JSON:</strong>
                 Deterministic WGS staging now rejects duplicate JSON object
@@ -2250,7 +2273,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:40:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:32-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact input-contract JSON:</strong>
                 Input-contract finalization and publication now reject duplicate
@@ -2259,7 +2282,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:35:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:31-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact cross-check staging JSON:</strong>
                 Executable cross-check staging now rejects duplicate JSON
@@ -2268,7 +2291,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:30:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:30-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact private dry-run receipt JSON:</strong>
                 Private report publication now rejects duplicate JSON object
@@ -2277,7 +2300,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:25:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:29-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact reviewed-public publication JSON:</strong>
                 Reviewed-public publication now rejects duplicate JSON object
@@ -2286,7 +2309,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:20:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:28-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact public-index publisher JSON:</strong>
                 Public index publishing now rejects duplicate JSON object
@@ -2294,7 +2317,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:15:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:27-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact public-index receipt loading:</strong>
                 Public index construction now rejects duplicate JSON object
@@ -2302,7 +2325,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:10:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:26-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact runbook JSON loading:</strong>
                 Shared runbook handoff loading now rejects duplicate JSON
@@ -2311,7 +2334,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:05:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:25-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact AI-staging bundle manifests:</strong>
                 AI review input staging now rejects duplicate JSON object
@@ -2320,7 +2343,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T02:00:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:24-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact AI-finalizer invocations:</strong>
                 AI review finalization now rejects duplicate JSON object names
@@ -2329,7 +2352,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:55:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:23-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact AI-prep source-artifact IDs:</strong>
                 AI review prep now rejects malformed or duplicate
@@ -2338,7 +2361,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:50:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:22-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact AI-validation source-artifact IDs:</strong>
                 AI review validation now rejects malformed or duplicate
@@ -2347,7 +2370,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:45:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:21-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact AI-bundle source-artifact IDs:</strong>
                 AI review bundle construction now rejects malformed or
@@ -2356,7 +2379,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:40:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:20-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact synthesis source-artifact IDs:</strong>
                 Comparative HRD synthesis now rejects malformed or duplicate
@@ -2365,7 +2388,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:35:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:19-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Reject Rosalind tool-version pipes:</strong>
                 Diana WGS Rosalind packet building now rejects pipe-bearing
@@ -2374,7 +2397,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:30:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:18-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact public recovery object rows:</strong>
                 Public analysis recovery now rejects malformed object-list keys
@@ -2383,7 +2406,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:25:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:17-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact reviewed-public histories:</strong>
                 Reviewed-public publication now validates version and
@@ -2392,7 +2415,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:20:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:16-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact executed-worker ETags:</strong>
                 Terminal worker capture now binds HEAD/GET ETags through the
@@ -2401,7 +2424,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:15:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:15-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact cross-check materializer ETags:</strong>
                 Alias-only cross-check materialization now binds upload and
@@ -2410,7 +2433,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:10:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:14-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact stage-freeze ETags:</strong>
                 Stage provenance freezing now rejects boolean, nullish, empty,
@@ -2419,7 +2442,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:05:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:13-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact final-freeze ETags:</strong>
                 Final artifact freezing now rejects boolean, nullish, empty,
@@ -2428,7 +2451,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T01:00:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:12-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact final-freeze source-list markers:</strong>
                 Final artifact freezing now rejects missing, boolean, empty, or
@@ -2437,7 +2460,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:55:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:11-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact v4 materializer pagination markers:</strong>
                 Alias-only materializer preflight now rejects missing, boolean,
@@ -2446,7 +2469,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:50:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:10-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact CloudWatch terminal pagination markers:</strong>
                 Terminal materializer and cross-check evidence capture now reject
@@ -2455,7 +2478,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:45:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:09-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact public-index pagination markers:</strong>
                 Public-index page traversal now rejects missing, boolean, or
@@ -2464,7 +2487,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:40:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:08-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact reviewed-public receipt paths:</strong>
                 Final public-index gating now rejects malformed dry-run and
@@ -2474,7 +2497,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:35:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:07-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact AI-synthesis private receipt paths:</strong>
                 AI/freeform synthesis handoff rendering now rejects missing,
@@ -2484,7 +2507,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:30:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:06-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Phase 3 fast Sequenza AI provenance:</strong>
                 AI-facing Diana WGS provenance now rejects loose
@@ -2494,7 +2517,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:25:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:05-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Phase 3 fast Sequenza alias provenance:</strong>
                 Diana WGS Phase 3 fast alias parsing now rejects non-string,
@@ -2504,7 +2527,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:20:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:04-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Phase 3 fast Rosalind process text:</strong>
                 Diana WGS Phase 3 fast process-line rendering now rejects
@@ -2514,7 +2537,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:15:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:03-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Phase 3 fast Rosalind run provenance:</strong>
                 Phase 3 fast Rosalind packet building now rejects extra run
@@ -2524,7 +2547,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:10:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:02-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Phase 3 fast Rosalind workflow provenance:</strong>
                 Phase 3 fast Rosalind packet building now rejects extra
@@ -2535,7 +2558,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:05:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:01-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact terminal-worker Rosalind tool versions:</strong>
                 Diana WGS Rosalind packet building now rejects non-string,
@@ -2545,7 +2568,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-20T00:00:00-07:00">Jul 20 · local</time>
+              <time datetime="2026-07-19T12:48:00-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact terminal-worker Rosalind VersionIds:</strong>
                 Diana WGS Rosalind packet building now rejects boolean or
@@ -2554,16 +2577,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T23:55:00-07:00">Jul 19 · local</time>
-              <span>
-                <strong>Local patch · Require exact AI review invocation strings:</strong>
-                AI review validation and comparative synthesis now reject
-                boolean, padded, or incomplete invocation metadata before
-                validating paired reviewer outputs or rendering synthesis.
-              </span>
-            </li>
-            <li class="item">
-              <time datetime="2026-07-19T23:50:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:59-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact cross-check materialization SHA-256s:</strong>
                 Phase 3 fast cross-check materialization now rejects
@@ -2573,7 +2587,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T23:40:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:58-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact deterministic final SHA-256s:</strong>
                 Phase 3 fast deterministic report staging now rejects
@@ -2583,7 +2597,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T23:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:57-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact AI model-catalog strings:</strong>
                 AI review bundle construction, independent validation, and
@@ -2593,7 +2607,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T23:20:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:56-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact GPU smoke parameter strings:</strong>
                 Phase 3 fast smoke parameter validation now rejects padded
@@ -2603,7 +2617,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T23:10:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:55-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Parabricks mirror strings:</strong>
                 Phase 3 fast mirror receipt verification now rejects padded
@@ -2613,7 +2627,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T23:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:54-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact GPU smoke image digests:</strong>
                 Phase 3 fast smoke parameter validation now rejects
@@ -2623,7 +2637,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T22:50:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:53-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Parabricks mirror digests:</strong>
                 Phase 3 fast mirror receipt verification now rejects
@@ -2633,7 +2647,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T22:40:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:52-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact fast-rerun image digests:</strong>
                 Phase 3 fast input manifests now reject non-lowercase or
@@ -2642,7 +2656,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T22:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:51-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact fast-rerun SHA-256s:</strong>
                 Phase 3 fast input manifests, replication plans, replication
@@ -2652,7 +2666,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T22:20:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:50-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact fast-rerun VersionIds:</strong>
                 Phase 3 fast cache manifests and their input/replication
@@ -2662,7 +2676,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T22:10:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:49-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact fast-rerun cache HEADs:</strong>
                 <code>replicate_phase3_fast_inputs.py</code> now compares
@@ -2672,7 +2686,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T22:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:48-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact materializer output VersionIds:</strong>
                 <code>capture_materializer_terminal.py</code> now uses one
@@ -2683,7 +2697,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T21:50:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:47-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact stage-freeze checksum types:</strong>
                 <code>freeze_stage_provenance.py</code> now requires
@@ -2695,7 +2709,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T21:40:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:46-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact final-freeze checksum maps:</strong>
                 <code>freeze_final_artifacts.py</code> now requires exact
@@ -2706,7 +2720,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T21:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:45-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact staged-validation checksum maps:</strong>
                 <code>download_materializer_staged_validation.py</code> now
@@ -2718,7 +2732,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T21:20:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:44-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact S3 checksum maps:</strong>
                 <code>stage_deterministic_wgs_report.py</code> now rejects
@@ -2730,7 +2744,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T21:10:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:43-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact anchor summary VersionIds:</strong>
                 <code>stage_deterministic_wgs_report.py</code> now refuses to
@@ -2743,7 +2757,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T21:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:42-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact worker metadata hashes:</strong>
                 <code>capture_batch_provenance.py</code> now validates the
@@ -2758,7 +2772,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T20:50:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:41-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact terminal checksum strings:</strong>
                 <code>capture_materializer_terminal.py</code> and
@@ -2771,7 +2785,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T20:40:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:40-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact stager worker hashes:</strong>
                 <code>stage_deterministic_wgs_report.py</code> now validates
@@ -2784,7 +2798,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T20:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:39-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact finalizer VersionIds:</strong>
                 <code>finalize_input_contract.py</code> now rejects coerced,
@@ -2797,7 +2811,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T20:20:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:38-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact cross-check input-plan hashes:</strong>
                 <code>stage_deterministic_wgs_report.py</code> now rejects
@@ -2810,7 +2824,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T20:10:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:37-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact materializer source VersionIds:</strong>
                 <code>submit_materializer_v4.py</code> now requires exact string
@@ -2820,7 +2834,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T20:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:36-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact AI-synthesis receipt VersionIds:</strong>
                 <code>render_ai_synthesis_runbook.py</code> now requires every
@@ -2830,7 +2844,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T19:50:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:35-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact materializer-submit pagination:</strong>
                 <code>submit_materializer_v4.py</code> now requires truncated
@@ -2841,7 +2855,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T19:40:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:34-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact stage-freeze pagination:</strong>
                 <code>freeze_stage_provenance.py</code> now requires truncated
@@ -2852,7 +2866,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T19:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:33-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact capture receipt pagination:</strong>
                 <code>capture_materializer_terminal.py</code> and
@@ -2864,7 +2878,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T19:20:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:32-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact report-tree pagination:</strong>
                 <code>download_exact_report_tree.py</code> now requires truncated
@@ -2875,7 +2889,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T19:10:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:31-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact input-contract pagination:</strong>
                 <code>publish_input_contract.py</code> now requires truncated
@@ -2886,7 +2900,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T19:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:30-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact private PUT VersionIds:</strong>
                 <code>publish_private_report.py</code> now requires exact
@@ -2895,7 +2909,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T18:50:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:29-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact public PUT VersionIds:</strong>
                 <code>publish_reviewed_public_report.py</code> and
@@ -2905,7 +2919,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T18:40:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:28-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact cross-check materializer scalars:</strong>
                 <code>materialize_crosscheck_inputs.py</code> now requires
@@ -2915,7 +2929,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T18:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:27-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact final-freeze scalars:</strong>
                 <code>freeze_final_artifacts.py</code> now requires exact
@@ -2925,7 +2939,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T18:20:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:26-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact stage-freeze scalars:</strong>
                 <code>freeze_stage_provenance.py</code> now requires exact
@@ -2934,7 +2948,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T18:10:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:25-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact executed-worker scalars:</strong>
                 <code>capture_batch_provenance.py</code> now rejects non-string,
@@ -2945,7 +2959,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T18:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:24-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact input-contract VersionIds:</strong>
                 <code>publish_input_contract.py</code> now rejects create-only
@@ -2956,7 +2970,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T17:50:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:23-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact AI-review bundle hashes:</strong>
                 <code>stage_ai_review_inputs.py</code> now requires
@@ -2966,7 +2980,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T17:40:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:22-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact materialized-final scalars:</strong>
                 <code>materialize_frozen_artifacts.py</code> now requires
@@ -2977,7 +2991,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T17:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:21-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Rosalind alias VersionIds:</strong>
                 <code>build_rosalind_hrd_packet.py</code> now rejects empty,
@@ -2987,7 +3001,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T17:20:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:20-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact source-freeze scalars:</strong>
                 <code>stage_hrd_crosscheck_report.py</code> now rejects
@@ -2999,7 +3013,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T17:10:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:19-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Bind AI-synthesis summaries to private receipts:</strong>
                 <code>render_ai_synthesis_runbook.py</code> now carries the
@@ -3010,7 +3024,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T17:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:18-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Rosalind JSON counts:</strong>
                 the Diana WGS Rosalind packet builder now parses CSV count and
@@ -3022,7 +3036,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T16:50:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:17-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact terminal/materializer custody scalars:</strong>
                 staged download validation now rejects boolean
@@ -3033,7 +3047,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T16:40:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:16-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact synthesis AI-review envelopes:</strong>
                 comparative HRD synthesis now rejects non-exact independent
@@ -3043,7 +3057,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T16:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:15-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Bind AI-review final summaries to claims:</strong>
                 independent AI-review finalization now recomputes claim counts,
@@ -3053,7 +3067,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T16:20:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:14-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Bind public index rows to reviewed versions:</strong>
                 the reviewed public object index now projects each reviewed HRD
@@ -3063,7 +3077,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T16:10:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:13-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact synthesis method summaries:</strong>
                 comparative HRD synthesis now derives
@@ -3074,7 +3088,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T16:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:12-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Bind blocked packets to current reports:</strong>
                 the Phase 3 fast report-packet validator now rejects stale but
@@ -3085,7 +3099,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T15:45:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:11-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact materializer-capture anchors:</strong>
                 materializer terminal capture now rejects coerced receipt
@@ -3095,7 +3109,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T15:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:10-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact route-capture hashes:</strong>
                 route terminal capture now rejects coerced SHA-256 and
@@ -3105,7 +3119,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T15:15:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:09-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact report-tree VersionIds:</strong>
                 the exact report-tree downloader now rejects coerced VersionId
@@ -3115,7 +3129,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T15:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:08-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact publication VersionIds:</strong>
                 private report publication and reviewed-public index validation
@@ -3125,7 +3139,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T14:45:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:07-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact materializer staged-validation custody:</strong>
                 the materializer staged-validation downloader now rejects
@@ -3135,7 +3149,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T14:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:06-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact materializer-v4 submit hashes:</strong>
                 the materializer-v4 submit preflight now rejects coerced
@@ -3145,7 +3159,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T14:15:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:05-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact AI-review prep hashes:</strong>
                 the AI-review run preparer now rejects coerced SHA-256 values in
@@ -3155,7 +3169,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T14:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:04-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact publication download hashes:</strong>
                 the exact report-tree download verifier now rejects coerced
@@ -3165,7 +3179,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T13:45:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:03-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact materializer registration hashes:</strong>
                 the reviewed materializer registration validator now rejects
@@ -3176,7 +3190,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T13:30:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:02-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact final contract hashes:</strong>
                 the alias-only HRD cross-check input finalizer now rejects
@@ -3187,7 +3201,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T13:15:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:01-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact runbook receipt hashes:</strong>
                 the AI-synthesis and reviewed-public runbook renderers now
@@ -3197,7 +3211,7 @@
               </span>
             </li>
             <li class="item">
-              <time datetime="2026-07-19T13:00:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T12:47:00-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact deterministic report hashes:</strong>
                 the deterministic WGS report stager now rejects coerced

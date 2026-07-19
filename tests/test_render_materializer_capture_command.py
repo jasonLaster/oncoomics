@@ -308,6 +308,18 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
             MODULE.render_from_files(args)
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        real_input = self.root / "real-request.json"
+        linked_input = self.root / "request-link.json"
+        real_input.write_text("{}\n", encoding="utf-8")
+        linked_input.symlink_to(real_input)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "request-link.json SHA-256 input must be a real file",
+        ):
+            MODULE.sha256_path(linked_input)
+
     def test_rejects_duplicate_receipt_object_names(self) -> None:
         for label, select_path in (
             ("request receipt", lambda args: args.request_receipt),
