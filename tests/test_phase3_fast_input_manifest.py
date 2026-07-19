@@ -491,6 +491,25 @@ class Phase3FastInputManifestTests(unittest.TestCase):
                 metadata=mismatched_metadata,
             )
 
+    def test_parabricks_container_digest_must_be_exact_lowercase(self) -> None:
+        private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
+        malformed_metadata = {
+            **metadata(),
+            "parabricks_container_digest": "sha256:" + SHA_A.upper(),
+        }
+
+        with self.assertRaisesRegex(render.ManifestError, "parabricks_container_digest"):
+            render.build_phase3_wgs_fast_input_manifest(
+                private_freeze_receipt=private_freeze,
+                private_sha256_receipt=private_sha,
+                reference_freeze_receipt=reference_freeze,
+                reference_sha256_receipt=reference_sha,
+                bam_validation_receipt=validation,
+                contig_compatibility_receipt=contigs,
+                caller_resource_receipt=resources,
+                metadata=malformed_metadata,
+            )
+
     def test_sequenza_sex_model_must_be_boolean(self) -> None:
         private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
         malformed_metadata = {**metadata(), "sequenza_female": "unknown"}

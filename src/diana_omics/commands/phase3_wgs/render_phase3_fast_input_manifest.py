@@ -13,7 +13,7 @@ from ...utils import ensure_parent
 from .safe_json_output import read_real_json, require_safe_output_path
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
-IMAGE_DIGEST = re.compile(r"^(?:.+@)?sha256:[0-9a-fA-F]{64}$")
+IMAGE_DIGEST = re.compile(r"^(?:.+@)?sha256:[0-9a-f]{64}$")
 VERSION_ID = re.compile(r"^\S+$")
 
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/input_manifest.json"
@@ -106,7 +106,7 @@ def _require_image_digest(value: Any, label: str) -> str:
 
 
 def _image_digest(value: Any, label: str) -> str:
-    return _require_image_digest(value, label).rsplit("@", 1)[-1].lower()
+    return _require_image_digest(value, label).rsplit("@", 1)[-1]
 
 
 def _require_matching_image_digest(metadata: Mapping[str, str]) -> str:
