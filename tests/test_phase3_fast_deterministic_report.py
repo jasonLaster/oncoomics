@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import csv
 import hashlib
 import json
@@ -73,6 +74,69 @@ def _write_minimal_staged_report(staging: Path) -> None:
 
 
 class Phase3FastDeterministicReportTests(unittest.TestCase):
+    def test_schema_version_checks_use_exact_integer_helper(self) -> None:
+        for value, expected, accepted in (
+            (1, 1, True),
+            (2, 2, True),
+            (True, 1, False),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (None, 1, False),
+        ):
+            with self.subTest(value=value):
+                self.assertIs(stage_report._is_exact_int(value, expected), accepted)
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        source = Path(stage_report.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(stage_report.__file__))
+
+        raw_schema_version_comparisons = [
+            f"{node.lineno}: {ast.get_source_segment(source, node)}"
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in (ast.get_source_segment(source, node) or "")
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
+
+    def test_rejects_non_exact_source_manifest_schemas(self) -> None:
+        cases = (
+            (
+                "final_manifest",
+                lambda final_manifest, _plan: final_manifest.update(
+                    {"schema_version": 1.0}
+                ),
+                "final evidence schema_version must be 1",
+            ),
+            (
+                "crosscheck_materialization_plan",
+                lambda _final_manifest, plan: plan.update({"schema_version": True}),
+                "cross-check materialization plan schema_version must be 1",
+            ),
+        )
+        for label, mutation, error in cases:
+            with self.subTest(label=label), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                manifest_path, final_root, final_manifest = _write_final_manifest(root)
+                materialization_plan = _crosscheck_materialization_plan(
+                    final_manifest,
+                    manifest_path,
+                )
+                mutation(final_manifest, materialization_plan)
+                output = root / "deterministic"
+
+                with self.assertRaisesRegex(stage_report.ManifestError, error):
+                    stage_report.stage_phase3_fast_deterministic_report(
+                        final_manifest,
+                        materialization_plan,
+                        final_manifest_sha256=_sha256_path(manifest_path),
+                        final_manifest_bytes=manifest_path.stat().st_size,
+                        final_root=final_root,
+                        output_dir=output,
+                    )
+
+                self.assertFalse((output / "report_manifest.json").exists())
+
     def test_stages_no_compute_deterministic_report_from_final_evidence(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

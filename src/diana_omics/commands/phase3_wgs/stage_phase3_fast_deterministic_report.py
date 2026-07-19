@@ -68,6 +68,10 @@ def _require_positive_int(value: Any, label: str) -> int:
     return value
 
 
+def _is_exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and value == expected
+
+
 def _require_string(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise ManifestError(f"{label} is required")
@@ -153,7 +157,7 @@ def _flatten_artifacts(
 
 
 def _validate_final_manifest(manifest: Mapping[str, Any]) -> Mapping[str, Any]:
-    if manifest.get("schema_version") != 1:
+    if not _is_exact_int(manifest.get("schema_version"), 1):
         raise ManifestError("final evidence schema_version must be 1")
     if manifest.get("manifest_type") != "phase3_wgs_fast_final_evidence_manifest":
         raise ManifestError("final evidence manifest_type must be phase3_wgs_fast_final_evidence_manifest")
@@ -339,7 +343,7 @@ def _validate_crosscheck_materialization_plan(
     final_manifest_sha256: str,
     final_manifest: Mapping[str, Any],
 ) -> None:
-    if crosscheck_materialization_plan.get("schema_version") != 1:
+    if not _is_exact_int(crosscheck_materialization_plan.get("schema_version"), 1):
         raise ManifestError("cross-check materialization plan schema_version must be 1")
     if (
         crosscheck_materialization_plan.get("manifest_type")
