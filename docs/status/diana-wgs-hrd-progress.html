@@ -343,8 +343,10 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = 0c1c9eb</li>
-          <li class="pill">Prior source = 38dc757</li>
+          <li class="pill">Latest milestone = cef0410</li>
+          <li class="pill">Prior source = 0c1c9eb</li>
+          <li class="pill">Private apply receipts = exact</li>
+          <li class="pill">Public results bucket = intentional</li>
           <li class="pill">Route exactness = source maps + review summaries</li>
           <li class="pill">Reviewed-public versions = build + apply checked</li>
           <li class="pill">Compute decision = quota-only / no race</li>
@@ -397,8 +399,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
-              <span>65% · current versions rechecked</span>
-              <div class="bar" aria-hidden="true" style="--pct: 65%"><span></span></div>
+              <span>70% · private apply receipts exact</span>
+              <div class="bar" aria-hidden="true" style="--pct: 70%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Public / private boundary posture</strong>
@@ -463,7 +465,7 @@
           <ol class="todo">
             <li class="item" style="--tone: var(--blocked)">
               <strong>Blocked · lift the GPU capacity gate</strong>
-              <span>Running On-Demand P quota remains 8 vCPUs; the 384-vCPU P5en request is still open.</span>
+              <span>Running On-Demand P quota remains 8 vCPUs; the 384-vCPU P5en request remains <code>CASE_OPENED</code>.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · choose quota-only, no-race execution</strong>
@@ -578,6 +580,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact private apply receipts publicly</strong>
+              <span>The public-report handoff now accepts only applied private clinical receipts with the exact final check map. This protects private receipts and source artifacts while reviewed outputs still target the intentionally public results bucket.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · recheck current reviewed-public versions</strong>
               <span>Index build verifies current object versions and receipt-bound metadata, and index apply repeats that check immediately before publication.</span>
             </li>
@@ -607,6 +613,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T23:35:51-07:00">Jul 18 · 11:35 PM</time>
+              <span>
+                <strong>cef0410 Require exact private apply receipts publicly:</strong>
+                reviewed-public publication now requires each private clinical
+                receipt to be an apply receipt with the exact final check map
+                before any public report handoff. The guard protects private
+                receipts and source artifacts; the reviewed-results bucket
+                remains intentionally public. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T23:31:46-07:00">Jul 18 · 11:31 PM</time>
               <span>
