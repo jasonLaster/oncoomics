@@ -21,6 +21,23 @@ assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
+LEGACY_BATCH_WORKER_CHECKS = {
+    "receipt_status": True,
+    "receipt_checks": True,
+    "receipt_upload": True,
+    "task_identity": True,
+    "task_host_mapping": True,
+    "hash_command_definition": True,
+    "freeze_command_definition": True,
+    "live_hash_command": True,
+    "live_freeze_command": True,
+    "exact_version": True,
+    "bytes": True,
+    "sha256": True,
+    "full_object_checksum": True,
+    "kms": True,
+}
+
 
 def final_freeze_dry_run_receipt(
     execution: Path,
@@ -1114,7 +1131,8 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 **kwargs,
             )
         for label, mutate in (
-            ("missing", lambda checks: checks.pop("receipt_upload")),
+            ("legacy", lambda checks: checks.clear() or checks.update(LEGACY_BATCH_WORKER_CHECKS)),
+            ("missing", lambda checks: checks.pop("receipt_envelope")),
             ("unexpected", lambda checks: checks.__setitem__("forged_extra", True)),
             ("failed", lambda checks: checks.__setitem__("live_freeze_command", False)),
         ):

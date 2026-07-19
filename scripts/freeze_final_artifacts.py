@@ -22,23 +22,9 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import quote
 
+from capture_batch_provenance import EXPECTED_BATCH_WORKER_CHECKS
+
 S3_URI = re.compile(r"^s3://([^/]+)/(.+)$")
-EXPECTED_BATCH_WORKER_CHECKS = {
-    "receipt_status": True,
-    "receipt_checks": True,
-    "receipt_upload": True,
-    "task_identity": True,
-    "task_host_mapping": True,
-    "hash_command_definition": True,
-    "freeze_command_definition": True,
-    "live_hash_command": True,
-    "live_freeze_command": True,
-    "exact_version": True,
-    "bytes": True,
-    "sha256": True,
-    "full_object_checksum": True,
-    "kms": True,
-}
 CHECKSUM_FIELDS = (
     "ChecksumCRC64NVME",
     "ChecksumSHA256",

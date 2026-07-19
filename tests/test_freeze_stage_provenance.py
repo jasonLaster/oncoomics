@@ -31,6 +31,22 @@ JOB_ID = "job-id"
 KMS = f"arn:aws:kms:{REGION}:{ACCOUNT}:key/45aa290c-d70c-4d86-9c8d-c4a76f1ff97f"
 SOURCE_BUCKET = f"diana-omics-work-{ACCOUNT}-{REGION}"
 DESTINATION_BUCKET = f"diana-omics-private-results-{ACCOUNT}-{REGION}"
+LEGACY_BATCH_WORKER_CHECKS = {
+    "receipt_status": True,
+    "receipt_checks": True,
+    "receipt_upload": True,
+    "task_identity": True,
+    "task_host_mapping": True,
+    "hash_command_definition": True,
+    "freeze_command_definition": True,
+    "live_hash_command": True,
+    "live_freeze_command": True,
+    "exact_version": True,
+    "bytes": True,
+    "sha256": True,
+    "full_object_checksum": True,
+    "kms": True,
+}
 
 
 def execution_fixture() -> tuple[dict, dict]:
@@ -281,8 +297,11 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         wrong_effective_timeout = deepcopy(receipt)
         wrong_effective_timeout["batch"]["timeout"]["attemptDurationSeconds"] = 64800
         tampered.append(wrong_effective_timeout)
+        legacy_worker_checks = deepcopy(receipt)
+        legacy_worker_checks["worker"]["checks"] = dict(LEGACY_BATCH_WORKER_CHECKS)
+        tampered.append(legacy_worker_checks)
         missing_worker_check = deepcopy(receipt)
-        missing_worker_check["worker"]["checks"].pop("receipt_upload")
+        missing_worker_check["worker"]["checks"].pop("receipt_envelope")
         tampered.append(missing_worker_check)
         unexpected_worker_check = deepcopy(receipt)
         unexpected_worker_check["worker"]["checks"]["forged_extra"] = True

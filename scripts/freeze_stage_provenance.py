@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import base64
-from copy import deepcopy
 import hashlib
 import json
 import os
@@ -19,30 +18,17 @@ import re
 import subprocess
 import sys
 import tempfile
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
+from capture_batch_provenance import EXPECTED_BATCH_WORKER_CHECKS
+
 SOURCE_NAMES = ("preflight.json", "gather.json")
 REFERENCE_LABEL = "ucsc_hg38_analysis_set_full"
 PREFLIGHT_REFERENCE_LABEL = "UCSC hg38 analysis set full"
-EXPECTED_BATCH_WORKER_CHECKS = {
-    "receipt_status": True,
-    "receipt_checks": True,
-    "receipt_upload": True,
-    "task_identity": True,
-    "task_host_mapping": True,
-    "hash_command_definition": True,
-    "freeze_command_definition": True,
-    "live_hash_command": True,
-    "live_freeze_command": True,
-    "exact_version": True,
-    "bytes": True,
-    "sha256": True,
-    "full_object_checksum": True,
-    "kms": True,
-}
 CHECKSUM_FIELDS = (
     "ChecksumCRC64NVME",
     "ChecksumSHA256",
@@ -880,6 +866,7 @@ def main() -> int:
 
             for row, before, source_sha in prepared_sources:
                 receipt["objects"].append(row)
+                source_name = str(row["name"])
                 if args.apply:
                     source = row["source"]
                     source_key = str(source["key"])
@@ -901,7 +888,8 @@ def main() -> int:
                     row["status"] = "copy_returned"
                     if not valid_version_id(version_id):
                         raise RuntimeError(
-                            f"copy returned a null destination VersionId: {name}"
+                            "copy returned a null destination VersionId: "
+                            f"{source_name}"
                         )
                     after_source = head_object(source_bucket, source_key, args.region)
                     row["source"]["post_copy_head"] = after_source
@@ -911,7 +899,7 @@ def main() -> int:
                         args.region,
                         version_id,
                     )
-                    destination_local = temp / f"destination-{name}"
+                    destination_local = temp / f"destination-{source_name}"
                     downloaded = download_object(
                         destination_bucket,
                         destination_key,
@@ -921,7 +909,7 @@ def main() -> int:
                     )
                     require_real_downloaded_file(
                         destination_local,
-                        f"downloaded destination {name}",
+                        f"downloaded destination {source_name}",
                     )
                     destination_sha = sha256(destination_local)
                     row["destination"].update(
@@ -962,7 +950,8 @@ def main() -> int:
                     )
                     if row["status"] != "passed":
                         raise RuntimeError(
-                            f"private provenance copy failed validation: {name}"
+                            "private provenance copy failed validation: "
+                            f"{source_name}"
                         )
                     expected_history.append(
                         {
