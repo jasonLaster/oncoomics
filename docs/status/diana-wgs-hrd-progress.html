@@ -348,14 +348,15 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = c9a0aec</li>
-          <li class="pill">Prior dashboard = ad84c40</li>
+          <li class="pill">Latest milestone = 6262a7e</li>
+          <li class="pill">Prior dashboard = a379f78</li>
           <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
           <li class="pill">Private handoff dry-runs = required</li>
           <li class="pill">Stage freeze dry-run = exact</li>
           <li class="pill">Final freeze dry-run = exact</li>
           <li class="pill">Input contract dry-run = exact</li>
+          <li class="pill">AI validation post-write = exact</li>
           <li class="pill">AI validation method inventory = exact</li>
           <li class="pill">Terminal cross-check inputs = absent</li>
           <li class="pill">AI bundle staging = exact</li>
@@ -580,6 +581,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · close AI review validation post-write gap</strong>
+              <span>Reviewer validation now rechecks the final directory for exactly <code>claims.csv</code>, <code>report.md</code>, <code>review_manifest.json</code>, and <code>validation.json</code>, rehashes the installed receipt, and deletes it if a stale extra file or post-write tamper appears.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require the exact AI validation method inventory</strong>
               <span>Finalized reviewer packets and comparative synthesis now require the full ordered <code>validation.json</code> method inventory to match its pinned SHA-256, not only the digest field.</span>
             </li>
@@ -677,6 +682,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:32:48-07:00">Jul 19 · 12:32 AM</time>
+              <span>
+                <strong>6262a7e Close AI review validation post-write gap:</strong>
+                reviewer validation now rechecks the final exact four-file
+                directory after writing its validation receipt, rehashes that
+                receipt, and removes it if a stale extra file or post-write
+                tamper appears. Regression coverage exercises both failure
+                modes. No model invocation or compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:28:30-07:00">Jul 19 · 12:28 AM</time>
               <span>
