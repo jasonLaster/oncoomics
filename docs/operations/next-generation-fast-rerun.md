@@ -493,7 +493,7 @@ python3 scripts/render_source_report_freeze_runbook.py \
     "$FAST_ROOT/rosalind_hrd/workspace/results/rosalind_hrd/diana_wgs/${RUN_ID}" \
   --phase3-fast-report-packet-validation \
     "$FAST_ROOT/report_packet_validation/workspace/manifests/phase3_wgs_fast/report_packet_validation.json" \
-  --phase3-fast-forbidden-tokens-file \
+  --forbidden-tokens-file \
     "$FAST_ROOT/forbidden_tokens/workspace/manifests/phase3_wgs_fast/forbidden_tokens.json" \
   --sequenza-report-dir /path/to/sequenza_scarhrd \
   --sigprofiler-report-dir /path/to/sigprofiler_sbs3 \

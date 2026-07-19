@@ -444,10 +444,47 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             validation = root / "report_packet_validation.json"
             write_phase3_fast_validation_receipt(paths, validation)
 
-            with self.assertRaisesRegex(ValueError, "requires both"):
+            with self.assertRaisesRegex(ValueError, "requires the forbidden-token file"):
                 MODULE.validate_packet_dirs(
                     paths,
                     phase3_fast_report_packet_validation=validation,
+                )
+
+    def test_validate_packet_dirs_accepts_run_forbidden_tokens_without_phase3_fast_receipt(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+            forbidden_tokens = root / "forbidden_tokens.json"
+            write_phase3_fast_forbidden_tokens(forbidden_tokens)
+
+            MODULE.validate_packet_dirs(
+                paths,
+                phase3_fast_forbidden_tokens_file=forbidden_tokens,
+            )
+
+            sequenza = paths["sequenza_scarhrd"]
+            (sequenza / "report.md").write_text(
+                "No-call report with Unit-Run-Private-Token.\n",
+                encoding="utf-8",
+            )
+            manifest_path = sequenza / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = hashlib.sha256(
+                (sequenza / "report.md").read_bytes()
+            ).hexdigest()
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            bind_blocked_reports(paths)
+
+            with self.assertRaisesRegex(ValueError, "forbidden identifier token"):
+                MODULE.validate_packet_dirs(
+                    paths,
+                    phase3_fast_forbidden_tokens_file=forbidden_tokens,
                 )
 
     def test_validate_packet_dirs_rejects_phase3_fast_tokens_below_symlinked_parent(

@@ -101,8 +101,13 @@ def validate_packet_dirs(
     phase3_fast_report_packet_validation: Path | None = None,
     phase3_fast_forbidden_tokens_file: Path | None = None,
 ) -> None:
-    if (phase3_fast_report_packet_validation is None) != (phase3_fast_forbidden_tokens_file is None):
-        raise ValueError("Phase 3 fast report validation requires both the report receipt and forbidden-token file")
+    if (
+        phase3_fast_report_packet_validation is not None
+        and phase3_fast_forbidden_tokens_file is None
+    ):
+        raise ValueError(
+            "Phase 3 fast report validation requires the forbidden-token file"
+        )
 
     forbidden_tokens = tuple(FORBIDDEN_TOKENS)
     expected_forbidden_tokens_sha256 = None
@@ -430,7 +435,12 @@ def main() -> int:
     parser.add_argument("--sigprofiler-report-dir", type=Path)
     parser.add_argument("--sequenza-report-dir", type=Path)
     parser.add_argument("--phase3-fast-report-packet-validation", type=Path)
-    parser.add_argument("--phase3-fast-forbidden-tokens-file", type=Path)
+    parser.add_argument(
+        "--forbidden-tokens-file",
+        "--phase3-fast-forbidden-tokens-file",
+        dest="forbidden_tokens_file",
+        type=Path,
+    )
     args = parser.parse_args()
 
     root = args.root.resolve()
@@ -448,7 +458,7 @@ def main() -> int:
                 blocked_crosscheck_root=args.blocked_crosscheck_root,
             ),
             args.phase3_fast_report_packet_validation,
-            args.phase3_fast_forbidden_tokens_file,
+            args.forbidden_tokens_file,
         )
     except ValueError as error:
         raise SystemExit(f"Fail-closed: {error}") from error
@@ -470,7 +480,7 @@ def main() -> int:
             deterministic_report_dir=args.deterministic_report_dir,
             rosalind_report_dir=args.rosalind_report_dir,
             blocked_crosscheck_root=args.blocked_crosscheck_root,
-            phase3_fast_forbidden_tokens_file=args.phase3_fast_forbidden_tokens_file,
+            phase3_fast_forbidden_tokens_file=args.forbidden_tokens_file,
         ),
     )
     print(json.dumps({"status": "rendered", "output": str(args.output)}, sort_keys=True))

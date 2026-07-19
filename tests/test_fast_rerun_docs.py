@@ -56,7 +56,7 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn('--output-dir "$TERMINAL_BLOCKED_ROOT"', text)
         self.assertIn('--blocked-crosscheck-root "$TERMINAL_BLOCKED_ROOT"', text)
         self.assertIn("--phase3-fast-report-packet-validation", text)
-        self.assertIn("--phase3-fast-forbidden-tokens-file", text)
+        self.assertIn("--forbidden-tokens-file", text)
         self.assertIn(
             "$FAST_ROOT/report_packet_validation/workspace/manifests/phase3_wgs_fast/report_packet_validation.json",
             text,
