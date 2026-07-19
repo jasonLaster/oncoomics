@@ -348,8 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 39dd1ac</li>
-          <li class="pill">Prior dashboard = 9dc2695</li>
+          <li class="pill">Latest milestone = 420a53c</li>
+          <li class="pill">Prior dashboard = a130a3f</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
           <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
@@ -358,6 +358,7 @@
           <li class="pill">Final freeze dry-run = exact</li>
           <li class="pill">Input contract dry-run = exact</li>
           <li class="pill">AI validation post-write = exact</li>
+          <li class="pill">AI synthesis source hashes = exact</li>
           <li class="pill">AI validation method inventory = exact</li>
           <li class="pill">Terminal cross-check inputs = absent</li>
           <li class="pill">AI bundle staging = exact</li>
@@ -586,6 +587,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind AI synthesis source hashes exactly</strong>
+              <span>Reviewer finalization now rehashes <code>review_bundle.json</code>, <code>bundle_manifest.json</code>, the reviewer prompt, and <code>model_catalog_receipt.json</code> after writing <code>report_manifest.json</code>, while comparative synthesis validates its full staged <code>source_sha256</code> map before installation.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · close AI review validation post-write gap</strong>
               <span>Reviewer validation now rechecks the final directory for exactly <code>claims.csv</code>, <code>report.md</code>, <code>review_manifest.json</code>, and <code>validation.json</code>, rehashes the installed receipt, and deletes it if a stale extra file or post-write tamper appears.</span>
             </li>
@@ -687,6 +692,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:44:51-07:00">Jul 19 · 12:44 AM</time>
+              <span>
+                <strong>420a53c Bind AI synthesis source hashes exactly:</strong>
+                finalized reviewer packets now rehash their bundle, prompt, and
+                model-catalog inputs after writing <code>report_manifest.json</code>
+                and delete that manifest if any input drifted. Comparative
+                synthesis now verifies its complete expected source-hash map,
+                rejecting stale bundle, source-manifest, or reviewer-output
+                hashes before installation. No model invocation or compute was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:38:37-07:00">Jul 19 · 12:38 AM</time>
               <span>
