@@ -54,6 +54,16 @@ def write_catalog(path: Path) -> None:
     )
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    current = f'  "{key}": {json.dumps(payload[key], sort_keys=True)}'
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 def args_for(root: Path, output: Path) -> argparse.Namespace:
     catalog = root / "model-catalog.json"
     write_catalog(catalog)
@@ -225,6 +235,21 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
             STACK.build(args)
             with self.assertRaisesRegex(FileExistsError, "output already exists"):
                 STACK.build(args)
+
+    def test_rejects_duplicate_model_catalog_json_without_installing_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            args = args_for(root, output)
+            write_duplicate_json_field(args.model_catalog_receipt, "schema_version", 0)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in model catalog receipt: schema_version",
+            ):
+                STACK.build(args)
+
+            self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":

@@ -149,10 +149,29 @@ def write_text(path: Path, value: str) -> None:
     write_bytes(path, value.encode("utf-8"))
 
 
+class DuplicateJsonObjectName(ValueError):
+    """Raised when a JSON object repeats a name."""
+
+
+def reject_duplicate_json_object_names(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise DuplicateJsonObjectName(key)
+        result[key] = value
+    return result
+
+
 def read_object(path: Path, label: str) -> dict[str, Any]:
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
         raise ValueError(f"{label} must be a real non-empty file: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonObjectName as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value

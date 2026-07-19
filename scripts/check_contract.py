@@ -82,6 +82,19 @@ def exact_schema_version(payload: dict, expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+class DuplicateJsonObjectName(ValueError):
+    """Raised when a JSON object repeats a name."""
+
+
+def reject_duplicate_json_object_names(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise DuplicateJsonObjectName(key)
+        result[key] = value
+    return result
+
+
 def private_output(uri: str) -> bool:
     return bool(
         re.match(
@@ -231,7 +244,13 @@ def load_contract(path: Path) -> dict:
     require_no_symlinked_ancestors(path, "contract")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"contract must be a real JSON file: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonObjectName as error:
+        raise ValueError(f"duplicate JSON object name in contract: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"contract must be a JSON object: {path}")
     return value

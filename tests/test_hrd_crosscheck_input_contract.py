@@ -1730,6 +1730,32 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertFalse(readiness.exists())
 
+    def test_contract_check_rejects_duplicate_contract_without_writing_readiness(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            write_duplicate_json_field(contract, "run_alias", "subject99")
+            readiness = root / "input-contract.readiness.json"
+            argv = [
+                "check_contract.py",
+                "--contract",
+                str(contract),
+                "--json-out",
+                str(readiness),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "duplicate JSON object name in contract: run_alias",
+                ),
+            ):
+                checker.main()
+
+            self.assertFalse(readiness.exists())
+
     def test_contract_publication_is_create_only_content_addressed_and_exact(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
