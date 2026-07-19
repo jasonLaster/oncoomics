@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact input-contract pagination</li>
+          <li class="pill">Latest milestone = local exact report-tree pagination</li>
+          <li class="pill">Report-tree history pagination = exact</li>
           <li class="pill">Input-contract history pagination = exact</li>
           <li class="pill">Private report PUT VersionIds = exact</li>
           <li class="pill">Reviewed-public/index PUT VersionIds = exact</li>
@@ -949,6 +950,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact report-tree pagination markers</strong>
+              <span><code>download_exact_report_tree.py</code> now requires truncated report-tree version-history pages to carry exact string <code>NextKeyMarker</code> and <code>NextVersionIdMarker</code> values before exact report-tree download validation can continue pagination.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Rosalind alias VersionIds</strong>
               <span><code>build_rosalind_hrd_packet.py</code> now rejects empty, sentinel, whitespace, or non-string Sequenza/scarHRD alias input VersionIds before building the Diana WGS Phase 3 fast Rosalind packet.</span>
@@ -1575,6 +1580,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T19:20:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact report-tree pagination:</strong>
+                <code>download_exact_report_tree.py</code> now requires truncated
+                report-tree version-history pages to carry exact string
+                <code>NextKeyMarker</code> and
+                <code>NextVersionIdMarker</code> values before exact report-tree
+                download validation can continue pagination.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T19:10:00-07:00">Jul 19 · local</time>
               <span>

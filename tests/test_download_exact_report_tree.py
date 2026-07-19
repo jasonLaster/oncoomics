@@ -183,19 +183,25 @@ class ExactReportDownloadTests(unittest.TestCase):
             ),
         )
 
-    def test_version_history_rejects_missing_version_marker(self) -> None:
-        with patch.object(
-            MODULE,
-            "aws_json",
-            return_value={
-                "IsTruncated": True,
-                "Versions": [],
-                "DeleteMarkers": [],
-                "NextKeyMarker": f"{PREFIX}report.md",
-            },
-        ):
-            with self.assertRaisesRegex(ValueError, "key/version markers"):
-                MODULE.version_history(BUCKET, PREFIX, "us-east-1")
+    def test_version_history_rejects_malformed_markers(self) -> None:
+        cases = (
+            {"NextKeyMarker": f"{PREFIX}report.md"},
+            {"NextKeyMarker": True, "NextVersionIdMarker": "v1"},
+            {"NextKeyMarker": f"{PREFIX}report.md", "NextVersionIdMarker": True},
+        )
+        for case in cases:
+            with self.subTest(case=case), patch.object(
+                MODULE,
+                "aws_json",
+                return_value={
+                    **case,
+                    "IsTruncated": True,
+                    "Versions": [],
+                    "DeleteMarkers": [],
+                },
+            ):
+                with self.assertRaisesRegex(ValueError, "key/version markers"):
+                    MODULE.version_history(BUCKET, PREFIX, "us-east-1")
 
     def test_version_history_rejects_stalled_pagination(self) -> None:
         page = {
