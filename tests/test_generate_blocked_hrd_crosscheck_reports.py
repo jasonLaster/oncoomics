@@ -33,6 +33,17 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    current = f'  "{key}": {json.dumps(payload[key], sort_keys=True)}'
+    description = f"top-level JSON field {key}"
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one {description}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 def write_source_report_manifest(path: Path, **updates: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     report = path.parent / "report.md"
@@ -414,6 +425,24 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
                 with self.assertRaisesRegex(ValueError, message):
                     GENERATOR.require_blocked_report_manifest(manifest_path.parent)
+
+    def test_packet_manifest_rejects_duplicate_json_object_names(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+            GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+            manifest_path = (
+                output
+                / GENERATOR.METHODS[0]["directory"]
+                / "report_manifest.json"
+            )
+            write_duplicate_json_field(manifest_path, "schema_version", 0)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in "
+                "blocked cross-check packet: schema_version",
+            ):
+                GENERATOR.require_blocked_report_manifest(manifest_path.parent)
 
     def test_packet_manifest_bound_hashes_must_be_exact_strings(self) -> None:
         numeric_digest = int("1" * 64)
@@ -816,6 +845,32 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                         str(output),
                         "--source-report-manifest",
                         f"rosalind_diana_wgs={linked_source / 'report_manifest.json'}",
+                    ]
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_cli_rejects_source_report_manifest_with_duplicate_json_object_names(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = root / "source" / "report_manifest.json"
+            write_source_report_manifest(manifest)
+            write_duplicate_json_field(manifest, "method_id", "legacy")
+            output = root / "blocked"
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "duplicate JSON object name in "
+                "rosalind_diana_wgs source report manifest: method_id",
+            ):
+                GENERATOR.main(
+                    [
+                        "--output-dir",
+                        str(output),
+                        "--source-report-manifest",
+                        f"rosalind_diana_wgs={manifest}",
                     ]
                 )
 

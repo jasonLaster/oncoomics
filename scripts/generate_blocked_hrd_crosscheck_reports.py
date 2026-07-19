@@ -18,6 +18,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 from hrd_report_inventory import (
     BLOCKED_CROSSCHECK_METHOD_IDS,
     EXECUTABLE_CROSSCHECK_METHOD_IDS,
@@ -374,16 +378,30 @@ def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def load_json_object(path: Path, label: str) -> dict[str, Any]:
+    require_real_nonempty_file(path, label)
+    try:
+        manifest = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except json.JSONDecodeError as error:
+        raise ValueError(f"invalid JSON in {label}: {path}") from error
+    if not isinstance(manifest, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return manifest
+
+
 def load_source_report_manifest(path: Path, method_id: str) -> None:
-    require_real_nonempty_file(
+    manifest = load_json_object(
         path,
         f"{method_id} source report manifest",
     )
     report_path = path.parent / "report.md"
     require_real_nonempty_file(report_path, f"{method_id} source report")
-    with path.open(encoding="utf-8") as handle:
-        manifest = json.load(handle)
-    if not isinstance(manifest, dict) or manifest.get("method_id") != method_id:
+    if manifest.get("method_id") != method_id:
         raise ValueError(f"source report manifest method_id does not match {method_id}")
     if manifest.get("authorized_hrd_state") != "no_call":
         raise ValueError(f"source report manifest must preserve no_call: {method_id}")
@@ -527,11 +545,7 @@ def require_bound_packet_file(packet_dir: Path, name: str, digest: Any) -> None:
 
 def require_blocked_report_manifest(packet_dir: Path) -> None:
     manifest_path = packet_dir / "report_manifest.json"
-    require_real_nonempty_file(manifest_path, "blocked cross-check packet")
-    with manifest_path.open(encoding="utf-8") as handle:
-        manifest = json.load(handle)
-    if not isinstance(manifest, dict):
-        raise ValueError("blocked cross-check report manifest must be a JSON object")
+    manifest = load_json_object(manifest_path, "blocked cross-check packet")
     if (
         set(manifest) != BLOCKED_REPORT_MANIFEST_KEYS
         or not exact_schema_version(manifest)
