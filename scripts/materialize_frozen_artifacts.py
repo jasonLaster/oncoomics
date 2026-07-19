@@ -19,6 +19,10 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 import finalize_input_contract as INPUT_CONTRACT
 
 CHECKSUM_FIELDS = (
@@ -240,7 +244,13 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
             raise ValueError(f"{label} parent is not a directory: {parent}")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value

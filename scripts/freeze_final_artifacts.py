@@ -22,6 +22,11 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import quote
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
+
 from capture_batch_provenance import EXPECTED_BATCH_WORKER_CHECKS
 
 S3_URI = re.compile(r"^s3://([^/]+)/(.+)$")
@@ -198,7 +203,13 @@ def load_json(path: Path) -> dict[str, Any]:
             raise ValueError(f"JSON document parent must be a directory: {parent}")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"JSON document must be a real file: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in JSON document: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"JSON document is not an object: {path}")
     return value

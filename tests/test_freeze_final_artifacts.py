@@ -113,6 +113,17 @@ def write_final_freeze_dry_run_receipt(
     return path
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    current = f'  "{key}": {json.dumps(payload[key], sort_keys=True)}'
+    description = f"top-level JSON field {key}"
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one {description}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 class FreezeFinalArtifactsTests(unittest.TestCase):
     def test_receipt_anchor_byte_guard_avoids_raw_int_coercion(self) -> None:
         source = Path(MODULE.__file__).read_text(encoding="utf-8")
@@ -946,6 +957,54 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "parent must not be a symlink"):
                 MODULE.load_json(linked_parent / "input.json")
+
+    def test_load_json_rejects_duplicate_object_names(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt = root / "freeze.dry.json"
+            receipt.write_text(
+                '{"schema_version":0,"schema_version":1}\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in JSON document: schema_version",
+            ):
+                MODULE.load_json(receipt)
+
+    def test_validate_dry_run_receipt_rejects_duplicate_object_names(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            execution = root / "execution.json"
+            execution.write_text("{}\n", encoding="utf-8")
+            source_rows = [
+                {
+                    "relative_key": "variants/final.vcf.gz",
+                    "key": (
+                        "runs/diana-hrd/run-id/private-results/final/artifacts/"
+                        "variants/final.vcf.gz"
+                    ),
+                    "bytes": 10,
+                    "etag": '"etag"',
+                    "version_id": "source-version",
+                    "checksums": {"ChecksumSHA256": "source-checksum"},
+                    "checksum_type": "FULL_OBJECT",
+                }
+            ]
+            receipt = final_freeze_dry_run_receipt(execution, source_rows)
+            path = root / "freeze.dry.json"
+            path.write_text(
+                json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            write_duplicate_json_field(path, "schema_version", 0)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in JSON document: schema_version",
+            ):
+                MODULE.validate_dry_run_receipt(path, receipt)
 
     def test_create_only_receipt_write_preserves_late_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as value:

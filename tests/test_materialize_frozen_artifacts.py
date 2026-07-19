@@ -17,6 +17,17 @@ import materialize_frozen_artifacts as MODULE  # noqa: E402
 import submit_materializer_v4 as SUBMITTER  # noqa: E402
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    current = f'  "{key}": {json.dumps(payload[key], sort_keys=True)}'
+    description = f"top-level JSON field {key}"
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one {description}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 class MaterializeFrozenArtifactsTests(unittest.TestCase):
     def freeze_fixture(self, root: Path, kms: str) -> Path:
         receipt = root / "freeze.json"
@@ -473,6 +484,34 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                     self.assertFalse(output.exists())
                     self.assertFalse(receipt.exists())
 
+    def test_rejects_duplicate_final_freeze_receipt_object_names_before_download(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            write_duplicate_json_field(freeze, "schema_version", 0)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+
+            with (
+                patch.object(
+                    MODULE,
+                    "get_exact_object",
+                    side_effect=AssertionError("AWS called"),
+                ) as get_exact,
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "duplicate JSON object name in freeze receipt: schema_version",
+                ),
+            ):
+                MODULE.main(self.args(freeze, output, receipt, kms))
+
+            get_exact.assert_not_called()
+            self.assertFalse(output.exists())
+            self.assertFalse(receipt.exists())
+
     def test_prepared_receipt_recovery_requires_exact_schema(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -507,6 +546,49 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                 self.assertRaisesRegex(
                     SystemExit,
                     "belongs to another operation",
+                ),
+            ):
+                MODULE.main(self.args(freeze, output, receipt, kms))
+
+            get_exact.assert_not_called()
+            self.assertFalse(output.exists())
+
+    def test_prepared_receipt_recovery_rejects_duplicate_object_names(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+            MODULE.reserve_json(
+                receipt,
+                {
+                    "schema_version": 1,
+                    "status": "prepared",
+                    "run_id": "synthetic-run",
+                    "batch_job_id": "synthetic-job",
+                    "script_sha256": MODULE.sha256(
+                        SCRIPT_DIR / "materialize_frozen_artifacts.py"
+                    ),
+                    "freeze_receipt_sha256": MODULE.sha256(freeze),
+                    "expected_kms_key_arn": kms,
+                    "materialization_dir": str(output.resolve()),
+                    "object_count": 1,
+                    "objects": [],
+                },
+            )
+            write_duplicate_json_field(receipt, "schema_version", 0)
+
+            with (
+                patch.object(
+                    MODULE,
+                    "get_exact_object",
+                    side_effect=AssertionError("AWS called"),
+                ) as get_exact,
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "duplicate JSON object name in "
+                    "materialization receipt: schema_version",
                 ),
             ):
                 MODULE.main(self.args(freeze, output, receipt, kms))
