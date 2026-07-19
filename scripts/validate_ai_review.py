@@ -322,6 +322,12 @@ def derived_authorized_state(rows: list[dict[str, Any]]) -> str:
     return next(iter(classified), "no_call")
 
 
+def checked_sha256(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not HEX64.fullmatch(value):
+        raise ValueError("malformed SHA-256 for " + label)
+    return value
+
+
 def validate_source_manifests(
     paths: list[Path],
     evidence_rows: list[dict[str, Any]],
@@ -343,7 +349,10 @@ def validate_source_manifests(
         if not is_exact_int(source.get("schema_version"), 1):
             raise ValueError(f"unsupported source-manifest schema for {evidence_id}")
 
-        report_hash = str(source.get("report_sha256", "")).lower()
+        report_hash = checked_sha256(
+            source.get("report_sha256"),
+            f"source report {evidence_id}",
+        )
         report_path = path.parent / "report.md"
         source_hashes = source.get("source_sha256")
         if report_path.is_symlink() or not report_path.is_file() or not HEX64.fullmatch(report_hash) or sha256(report_path) != report_hash:
@@ -367,7 +376,10 @@ def validate_source_manifests(
             "classification_authorized": source.get("classification_authorized") is True,
             "classification_qc_status": str(source.get("classification_qc_status", "not_applicable")),
             "report_sha256": report_hash,
-            "source_artifact_sha256": sorted(str(value).lower() for value in source_hashes.values()),
+            "source_artifact_sha256": sorted(
+                checked_sha256(value, f"source artifact {evidence_id}")
+                for value in source_hashes.values()
+            ),
             "review_summary": source.get("review_summary"),
         }
         observed_evidence = {key: evidence.get(key) for key in expected_evidence}
@@ -592,9 +604,13 @@ def validate_bundle(
     if (
         not isinstance(prompt_hashes, dict)
         or set(prompt_hashes) != {"A", "B"}
-        or not all(HEX64.fullmatch(str(value)) for value in prompt_hashes.values())
     ):
         raise ValueError("bundle-manifest prompt inventory is malformed")
+    for role, digest in prompt_hashes.items():
+        try:
+            checked_sha256(digest, "reviewer " + role + " prompt")
+        except ValueError as error:
+            raise ValueError("bundle-manifest prompt inventory is malformed") from error
     if prompt_hashes.get(reviewer) != prompt_hash:
         raise ValueError("prompt hash differs from bundle_manifest.json")
 
@@ -642,9 +658,13 @@ def validate_bundle(
             or row.get("classification_qc_status") not in CLASSIFICATION_QC_STATES
         ):
             raise ValueError("malformed classification authorization metadata")
-        if not HEX64.fullmatch(str(row.get("report_sha256", ""))):
+        if not isinstance(row.get("report_sha256"), str) or not HEX64.fullmatch(
+            row["report_sha256"]
+        ):
             raise ValueError("malformed source-report hash")
-        if not isinstance(source_hashes, list) or not source_hashes or not all(HEX64.fullmatch(str(value)) for value in source_hashes):
+        if not isinstance(source_hashes, list) or not source_hashes or not all(
+            isinstance(value, str) and HEX64.fullmatch(value) for value in source_hashes
+        ):
             raise ValueError("malformed source-artifact hashes")
         if not isinstance(review_summary, dict) or not review_summary:
             raise ValueError("evidence source lacks a review summary")
@@ -686,9 +706,15 @@ def validate_bundle(
     if (
         not isinstance(input_hashes, dict)
         or set(input_hashes) != set(evidence)
-        or not all(HEX64.fullmatch(str(value)) for value in input_hashes.values())
     ):
         raise ValueError("bundle-manifest source hashes do not match evidence sources")
+    for evidence_id, digest in input_hashes.items():
+        try:
+            checked_sha256(digest, "source manifest " + evidence_id)
+        except ValueError as error:
+            raise ValueError(
+                "bundle-manifest source hashes do not match evidence sources"
+            ) from error
 
     return (
         subject_alias,
@@ -1198,7 +1224,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 review_manifest,
                 expected_outputs,
                 bundle_hash,
-                str(bundle_manifest["prompt_sha256"]["A"]),
+                checked_sha256(
+                    bundle_manifest["prompt_sha256"]["A"],
+                    "reviewer A prompt",
+                ),
                 model_contracts["A"],
                 subject_alias,
                 required_methods,

@@ -872,6 +872,98 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertNotEqual(leaked.returncode, 0)
             self.assertIn("raw object, URI, or local path", leaked.stderr)
 
+    def test_source_manifests_reject_non_exact_nested_hashes(self) -> None:
+        digit_hash = "1" * 64
+        letter_hash = "a" * 64
+        cases = (
+            (
+                "numeric report",
+                digit_hash,
+                lambda source: source.__setitem__("report_sha256", int(digit_hash)),
+                "source report E001",
+            ),
+            (
+                "uppercase report",
+                letter_hash,
+                lambda source: source.__setitem__(
+                    "report_sha256",
+                    letter_hash.upper(),
+                ),
+                "source report E001",
+            ),
+            (
+                "numeric source artifact",
+                digit_hash,
+                lambda source: source["source_sha256"].__setitem__(
+                    "source.json",
+                    int(digit_hash),
+                ),
+                "source artifact E001",
+            ),
+            (
+                "uppercase source artifact",
+                letter_hash,
+                lambda source: source["source_sha256"].__setitem__(
+                    "source.json",
+                    letter_hash.upper(),
+                ),
+                "source artifact E001",
+            ),
+        )
+
+        for label, valid_hash, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                report = root / "report.md"
+                report.write_text("# Safe source report\n", encoding="utf-8")
+                source_path = root / "report_manifest.json"
+                source = {
+                    "schema_version": 1,
+                    "method_id": "deterministic_full_wgs",
+                    "report_kind": "deterministic_baseline",
+                    "evidence_status": "partial_evidence",
+                    "authorized_hrd_state": "no_call",
+                    "classification_authorized": False,
+                    "classification_qc_status": "not_applicable",
+                    "report_sha256": valid_hash,
+                    "source_sha256": {"source.json": valid_hash},
+                    "support_sha256": {"support.json": valid_hash},
+                    "review_summary": {"scope": "safe synthetic source"},
+                }
+                mutate(source)
+                write_json(source_path, source)
+                evidence = [
+                    {
+                        "method_id": "deterministic_full_wgs",
+                        "report_kind": "deterministic_baseline",
+                        "evidence_status": "partial_evidence",
+                        "authorized_hrd_state": "no_call",
+                        "classification_authorized": False,
+                        "classification_qc_status": "not_applicable",
+                        "report_sha256": valid_hash,
+                        "source_artifact_sha256": [valid_hash],
+                        "review_summary": {"scope": "safe synthetic source"},
+                    }
+                ]
+
+                with (
+                    mock.patch.object(VALIDATE, "sha256", return_value=valid_hash),
+                    mock.patch.object(
+                        VALIDATE,
+                        "validate_report_manifest_support",
+                        return_value=None,
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "malformed SHA-256 for " + message,
+                    ),
+                ):
+                    VALIDATE.validate_source_manifests(
+                        [source_path],
+                        evidence,
+                        {"E001": valid_hash},
+                    )
+
     def test_rejects_symlinked_custody_inputs(self) -> None:
         cases = (
             (
