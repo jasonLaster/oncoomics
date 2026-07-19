@@ -35,7 +35,7 @@ def _require_string(value: Any, label: str) -> str:
 def _require_hex(value: Any, label: str) -> str:
     if not isinstance(value, str) or HEX64.fullmatch(value) is None:
         raise ManifestError(f"{label} must be 64 hex characters")
-    return value.lower()
+    return value
 
 
 def _require_positive_int(value: Any, label: str) -> int:

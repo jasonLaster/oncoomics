@@ -101,6 +101,19 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
                 input_manifest_sha256=SHA_3,
             )
 
+    def test_copy_plan_source_sha256s_must_be_exact_lowercase(self) -> None:
+        manifest = input_manifest()
+        manifest["bam_pair"]["tumor"]["bam"]["sha256"] = ("c" * 64).upper()
+
+        with self.assertRaisesRegex(render_plan.ManifestError, "64 hex"):
+            render_plan.build_phase3_fast_replication_plan(
+                manifest,
+                cache_prefix="s3://diana-omics-private-cache-us-east-2/wgs-v2",
+                cache_kms_key_arn="arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc",
+                cache_region="us-east-2",
+                input_manifest_sha256=SHA_3,
+            )
+
     def test_copy_plan_source_versions_must_be_exact_non_null_strings(self) -> None:
         for version_id in ("null", "None", "none", "has space"):
             with self.subTest(version_id=version_id):

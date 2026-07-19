@@ -146,6 +146,16 @@ class Phase3FastCacheManifestTests(unittest.TestCase):
                 replication_receipt_sha256=SHA_1,
             )
 
+    def test_receipt_sha256s_must_be_exact_lowercase(self) -> None:
+        receipt = applied_receipt()
+        receipt["copy_results"][0]["sha256"] = str(receipt["copy_results"][0]["sha256"]).upper()
+
+        with self.assertRaisesRegex(cache.ManifestError, "64 hex"):
+            cache.build_phase3_fast_cache_manifest(
+                receipt,
+                replication_receipt_sha256=SHA_1,
+            )
+
     def test_environment_command_writes_cache_manifest(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

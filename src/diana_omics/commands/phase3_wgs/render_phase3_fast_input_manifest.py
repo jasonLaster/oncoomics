@@ -12,7 +12,7 @@ from ...paths import ROOT, path_from_root
 from ...utils import ensure_parent
 from .safe_json_output import read_real_json, require_safe_output_path
 
-HEX64 = re.compile(r"^[0-9a-fA-F]{64}$")
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
 IMAGE_DIGEST = re.compile(r"^(?:.+@)?sha256:[0-9a-fA-F]{64}$")
 VERSION_ID = re.compile(r"^\S+$")
 
@@ -96,7 +96,7 @@ def _index_by_artifact(
 def _require_hex(value: Any, label: str) -> str:
     if not isinstance(value, str) or HEX64.fullmatch(value) is None:
         raise ManifestError(f"{label} sha256 must be 64 hex characters")
-    return value.lower()
+    return value
 
 
 def _require_image_digest(value: Any, label: str) -> str:

@@ -498,6 +498,17 @@ class Phase3FastReplicateInputsTests(unittest.TestCase):
                 replication_plan_sha256=SHA_3,
             )
 
+    def test_plan_sha256s_must_be_exact_lowercase(self) -> None:
+        plan = replication_plan()
+        plan["copy_plan"][0]["sha256"] = str(plan["copy_plan"][0]["sha256"]).upper()
+
+        with self.assertRaisesRegex(replicate.ManifestError, "64 hex"):
+            replicate.build_phase3_fast_replication_receipt(
+                plan,
+                mode="dry_run",
+                replication_plan_sha256=SHA_3,
+            )
+
     def test_environment_command_writes_replication_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
