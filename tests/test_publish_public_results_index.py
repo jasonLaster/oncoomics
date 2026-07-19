@@ -122,6 +122,62 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
 
         self.assertEqual(raw_comparisons, [])
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.txt"
+            real_source.write_text("real source\n", encoding="utf-8")
+            source_link = root / "source-link.txt"
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source-link.txt SHA-256 input must be a real file",
+            ):
+                MODULE.sha256(source_link)
+
+            real_inputs = root / "real-inputs"
+            real_inputs.mkdir()
+            public_index = real_inputs / "objects.json"
+            public_index.write_text(
+                '{"object_count": 0}\n',
+                encoding="utf-8",
+            )
+            linked_inputs = root / "linked-inputs"
+            linked_inputs.symlink_to(real_inputs, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "objects.json SHA-256 input parent may not be a symlink",
+            ):
+                MODULE.sha256(linked_inputs / "objects.json")
+
+    def test_public_index_hash_rejects_symlink_after_receipt_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = self.write_index(root)
+            moved = root / "objects.real.json"
+
+            def swap_index_after_receipt_validation(
+                reviewed_public_receipts: list[Path],
+            ) -> tuple[dict, list]:
+                index.rename(moved)
+                index.symlink_to(moved)
+                return {}, []
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "validate_reviewed_public_receipts",
+                    side_effect=swap_index_after_receipt_validation,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "objects.json SHA-256 input must be a real file",
+                ),
+            ):
+                MODULE.validate_public_index(index, [])
+
     def write_index(self, root: Path, **updates: object) -> Path:
         payload = {
             "schema_version": 1,

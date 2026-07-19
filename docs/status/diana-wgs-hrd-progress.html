@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real reviewed-public hash inputs</li>
+          <li class="pill">Latest milestone = local real public-index hash inputs</li>
+          <li class="pill">Public-index hash inputs = real</li>
           <li class="pill">Reviewed-public hash inputs = real</li>
           <li class="pill">AI-finalizer hash inputs = real</li>
           <li class="pill">AI-validation hash inputs = real</li>
@@ -1867,6 +1868,10 @@
               <span>Public-index publication now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before reviewed-public objects or dry-run receipts can feed reviewed-public index publication.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real public-index hash inputs</strong>
+              <span>Public-index publication now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before the public index, dry-run receipts, or public-index publication receipts can bind file hashes.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real reviewed-public JSON files</strong>
               <span>Reviewed-public report publication now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before private-publication receipts, dry-run receipts, or downloaded report manifests can feed reviewed-public publication.</span>
             </li>
@@ -2080,6 +2085,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:13-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real public-index hash inputs:</strong>
+                Public-index publication now rejects symlinked local SHA-256
+                inputs and hash-input ancestors before the public index,
+                dry-run receipts, or public-index receipts bind file hashes.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:12-07:00">Jul 19 · local</time>
               <span>
