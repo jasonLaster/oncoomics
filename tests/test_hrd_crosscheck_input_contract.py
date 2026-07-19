@@ -736,6 +736,35 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_contract_check_sha256_rejects_symlinked_hash_inputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            output = root / "input-contract.readiness.json"
+            output.write_text("{}\n", encoding="utf-8")
+
+            linked_output = root / "input-contract.link.json"
+            linked_output.symlink_to(output)
+            with self.assertRaisesRegex(
+                ValueError,
+                "input-contract\\.link\\.json SHA-256 input must be a real file",
+            ):
+                checker.sha256(linked_output)
+
+            real_parent = root / "real-readiness"
+            real_parent.mkdir()
+            linked_parent = root / "linked-readiness"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            (real_parent / "input-contract.readiness.json").write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "input-contract\\.readiness\\.json SHA-256 input parent may not be a symlink",
+            ):
+                checker.sha256(linked_parent / "input-contract.readiness.json")
+
     def test_contract_check_rejects_output_below_symlinked_parent(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
