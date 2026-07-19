@@ -506,6 +506,45 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                     )
                 )
 
+    def test_rejects_index_symlinked_after_sha256_before_json_load(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index, receipts = self.write_receipt_bound_index(root)
+            forged = root / "forged-objects.json"
+            forged.write_text(index.read_text(encoding="utf-8"))
+            real_sha256 = MODULE.sha256
+            swapped = False
+            index_resolved = index.resolve()
+
+            def swap_index_after_sha256(path: Path) -> str:
+                nonlocal swapped
+                digest = real_sha256(path)
+                if path == index_resolved and not swapped:
+                    swapped = True
+                    path.unlink()
+                    path.symlink_to(forged)
+                return digest
+
+            with (
+                self.assertRaisesRegex(ValueError, "public index must be a real file"),
+                mock.patch.object(MODULE, "sha256", side_effect=swap_index_after_sha256),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+            ):
+                MODULE.run(
+                    self.args(
+                        index,
+                        root / "receipt.json",
+                        reviewed_public_receipts=receipts,
+                    )
+                )
+
+            self.assertTrue(swapped)
+            self.assertFalse((root / "receipt.json").exists())
+
     def test_rejects_index_below_symlinked_parent_before_aws(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

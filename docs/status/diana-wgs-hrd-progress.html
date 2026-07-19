@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real materializer-validation JSON files</li>
+          <li class="pill">Latest milestone = local real public-index JSON files</li>
+          <li class="pill">Public-index JSON files = real</li>
           <li class="pill">Materializer-validation JSON files = real</li>
           <li class="pill">AI-bundle JSON files = real</li>
           <li class="pill">Reviewed-public JSON files = real</li>
@@ -1786,6 +1787,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real public-index JSON files</strong>
+              <span>Public-index publication now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before reviewed-public objects or dry-run receipts can feed reviewed-public index publication.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real reviewed-public JSON files</strong>
               <span>Reviewed-public report publication now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before private-publication receipts, dry-run receipts, or downloaded report manifests can feed reviewed-public publication.</span>
             </li>
@@ -1995,6 +2000,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T04:35:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require real public-index JSON files:</strong>
+                Public-index publication now rejects symlinked local JSON
+                leaves before reviewed-public objects or dry-run receipts can
+                feed reviewed-public index publication.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T04:30:00-07:00">Jul 20 · local</time>
               <span>

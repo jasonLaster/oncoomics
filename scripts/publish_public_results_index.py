@@ -129,6 +129,7 @@ def is_nonnegative_exact_int(value: Any) -> bool:
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
+    path = require_real_input_file(path, label)
     try:
         value = json.loads(
             path.read_text(encoding="utf-8"),
