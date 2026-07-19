@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from build_ai_review_bundle import require_bundle_manifest
+
 ROLES = ("A", "B")
 ROLE_DIRS = {"A": "reviewer-a-input", "B": "reviewer-b-input"}
 ROLE_PROMPTS = {"A": "reviewer-a.prompt.md", "B": "reviewer-b.prompt.md"}
@@ -175,10 +177,8 @@ def validate_bundle(bundle_dir: Path) -> dict[str, str]:
             "bundle inventory is not exact: " + "; ".join(details)
         )
 
-    require_real_file(
-        bundle_dir / "bundle_manifest.json",
-        "bundle_manifest.json",
-    )
+    require_bundle_manifest(bundle_dir)
+
     bundle_manifest = load_object(
         bundle_dir / "bundle_manifest.json",
         "bundle_manifest.json",

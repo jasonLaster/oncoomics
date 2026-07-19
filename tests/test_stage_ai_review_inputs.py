@@ -6,12 +6,15 @@ import importlib.util
 import io
 import json
 import stat
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 STAGE_SCRIPT = SCRIPT_DIR / "stage_ai_review_inputs.py"
 STAGE_SPEC = importlib.util.spec_from_file_location(
     "stage_ai_review_inputs",
@@ -41,7 +44,25 @@ class StageAiReviewInputsTests(unittest.TestCase):
     def write_bundle(self, bundle: Path) -> None:
         bundle.mkdir()
         (bundle / "review_bundle.json").write_text(
-            '{"subject_alias":"subject01"}\n',
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "generated_at": "2026-07-18T00:00:00+00:00",
+                    "purpose": "deidentified_independent_narrative_crosscheck",
+                    "subject_alias": "subject01",
+                    "authorized_hrd_state": "no_call",
+                    "required_method_ids": ["deterministic_full_wgs"],
+                    "method_inventory": {"inventory_id": "unit"},
+                    "method_inventory_sha256": "a" * 64,
+                    "evidence_sources": [],
+                    "quantitative_facts": [],
+                    "model_execution_contracts": {},
+                    "model_catalog_receipt_sha256": "b" * 64,
+                    "policy": {},
+                },
+                sort_keys=True,
+            )
+            + "\n",
             encoding="utf-8",
         )
         (bundle / "reviewer-a.prompt.md").write_text(
@@ -62,6 +83,14 @@ class StageAiReviewInputsTests(unittest.TestCase):
             json.dumps(
                 {
                     "schema_version": 2,
+                    "generated_at": "2026-07-18T00:00:01+00:00",
+                    "subject_alias": "subject01",
+                    "authorized_hrd_state": "no_call",
+                    "required_method_ids": ["deterministic_full_wgs"],
+                    "method_inventory": {"inventory_id": "unit"},
+                    "method_inventory_sha256": "a" * 64,
+                    "input_manifest_sha256": {},
+                    "forbidden_token_sha256": {},
                     "review_bundle_sha256": sha256(
                         bundle / "review_bundle.json"
                     ),
@@ -69,6 +98,8 @@ class StageAiReviewInputsTests(unittest.TestCase):
                         "A": sha256(bundle / "reviewer-a.prompt.md"),
                         "B": sha256(bundle / "reviewer-b.prompt.md"),
                     },
+                    "model_execution_contracts": {},
+                    "model_catalog_receipt_sha256": "b" * 64,
                 },
                 indent=2,
                 sort_keys=True,
@@ -136,7 +167,10 @@ class StageAiReviewInputsTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
+        with self.assertRaisesRegex(
+            ValueError,
+            "AI review bundle manifest is stale for reviewer-a.prompt.md",
+        ):
             STAGE.stage(self.bundle, self.output_root, self.receipt)
 
         self.assertFalse(self.output_root.exists())
@@ -153,6 +187,44 @@ class StageAiReviewInputsTests(unittest.TestCase):
 
         self.assertFalse(self.output_root.exists())
         self.assertFalse(self.receipt.exists())
+
+    def test_rejects_rebound_bundle_with_non_exact_envelopes(self) -> None:
+        cases = (
+            (
+                "review bundle",
+                "review_bundle.json",
+                "AI review bundle envelope is not exact",
+            ),
+            (
+                "bundle manifest",
+                "bundle_manifest.json",
+                "AI review bundle manifest envelope is not exact",
+            ),
+        )
+        for label, relative, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                bundle = root / "bundle"
+                self.write_bundle(bundle)
+                output_root = root / "inputs"
+                receipt = root / "stage-receipt.json"
+
+                path = bundle / relative
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload["legacy_note"] = "accepted"
+                path.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                if relative == "review_bundle.json":
+                    self.write_bundle_manifest(bundle)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    STAGE.stage(bundle, output_root, receipt)
+
+                self.assertFalse(output_root.exists())
+                self.assertFalse(receipt.exists())
 
     def test_write_once_fsyncs_file_and_parent_directory(self) -> None:
         output = self.root / "complete.json"
