@@ -361,6 +361,39 @@ def adapter_row(adapter: str, state: str, blocker: str, next_action: str) -> dic
     }
 
 
+def normalized_hcc1395_tool_state(state: str) -> str:
+    if state == "input_ready_threshold_met":
+        return "input_matrix_ready_assignment_not_run"
+    return state
+
+
+def adapter_interpretation_gaps(adapter_rows: Sequence[Mapping[str, Any]]) -> list[dict[str, str]]:
+    """Return the latest non-ready state for each case-insensitive adapter name."""
+    by_adapter: dict[str, dict[str, str]] = {}
+    for row in adapter_rows:
+        adapter = str(row.get("adapter", "unknown"))
+        key = adapter.casefold()
+        by_adapter[key] = {
+            "adapter": adapter,
+            "state": str(row.get("state", "unknown")),
+            "reason": str(row.get("blocker", "")),
+            "required_observation": str(row.get("next_action", "")),
+        }
+    return [gap for gap in by_adapter.values() if gap["state"] != "ready"]
+
+
+def interpretation_gap_lines(interpretation_gaps: Sequence[Mapping[str, str]]) -> list[str]:
+    if not interpretation_gaps:
+        return ["- None; every listed adapter is ready."]
+    return [
+        (
+            f"- **{gap['adapter']}** — `{gap['state']}`: {gap['reason']} "
+            f"Required observation: {gap['required_observation']}"
+        )
+        for gap in interpretation_gaps
+    ]
+
+
 def payload_blockers(*payloads: Mapping[str, Any]) -> list[str]:
     blockers: list[str] = []
     for payload in payloads:
@@ -577,7 +610,9 @@ def hcc1395_wgs_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], 
         adapters.append(
             adapter_row(
                 str(row.get("tool", "unknown")),
-                str(row.get("interpretability_status", "unknown")),
+                normalized_hcc1395_tool_state(
+                    str(row.get("interpretability_status", "unknown"))
+                ),
                 str(row.get("caveat", "")),
                 "Promote to ready only after the required production adapter and known-answer validation pass.",
             )
@@ -2255,6 +2290,7 @@ def write_packet_to_dir(
     forbidden_tokens: Sequence[str],
 ) -> dict[str, Any]:
     evidence_rows, adapter_rows, blockers = EVIDENCE_BUILDERS[spec.sample_set]()
+    interpretation_gaps = adapter_interpretation_gaps(adapter_rows)
     deterministic_binding = (
         diana_wgs_deterministic_binding() if spec.sample_set == "diana_wgs" else None
     )
@@ -2299,9 +2335,16 @@ def write_packet_to_dir(
             [
                 f"# Next Actions: {spec.title}",
                 "",
-                "## Blockers",
+                "## Interpretation Gaps",
+                *interpretation_gap_lines(interpretation_gaps),
+                "",
+                "## Operational/Data Blockers",
                 *(f"- {blocker}" for blocker in blockers),
-                *(["- No packet-specific blockers beyond the standard no-call boundaries."] if not blockers else []),
+                *(
+                    ["- No additional operational/data blockers; interpretation gaps above remain active."]
+                    if not blockers
+                    else []
+                ),
                 "",
                 "## Recommended Order",
                 "- Preserve this packet as the run boundary before recompute.",
@@ -2329,10 +2372,17 @@ def write_packet_to_dir(
             "## HRD Adapter Status",
             markdown_table(adapter_rows),
             "",
+            "## Interpretation Gaps",
+            *interpretation_gap_lines(interpretation_gaps),
+            "",
             *process_lines,
-            "## Blockers",
+            "## Operational/Data Blockers",
             *(f"- {blocker}" for blocker in blockers),
-            *(["- None beyond the listed adapter no-call boundaries."] if not blockers else []),
+            *(
+                ["- No additional operational/data blockers; interpretation gaps above remain active."]
+                if not blockers
+                else []
+            ),
             "",
             "## Research Context Boundary",
             "Use external databases only to enrich observed sample events. Do not use literature or database context to override missing inputs, failed QC, or no-call adapter states.",
@@ -2392,6 +2442,7 @@ def write_packet_to_dir(
                 }
                 for row in adapter_rows
             ],
+            "interpretation_gaps": interpretation_gaps,
             "blockers": list(blockers),
             **(
                 {"provenance": diana_wgs_report_provenance(deterministic_binding)}
@@ -2422,6 +2473,7 @@ def write_packet_to_dir(
         "outputDir": output_dir,
         "evidenceRows": len(evidence_rows),
         "adapterRows": len(adapter_rows),
+        "interpretationGaps": interpretation_gaps,
         "blockers": blockers,
         "missingArtifacts": missing_artifacts,
         "allowedConclusion": spec.allowed_conclusion,

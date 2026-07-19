@@ -405,6 +405,166 @@ class RosalindHrdPacketTest(unittest.TestCase):
             next_actions = utils.read_text(root / "results/rosalind_hrd/hcc1395_wgs/unit/next_actions.md")
             self.assertIn("regenerate full SV evidence", next_actions)
 
+    def test_hcc1395_wgs_packet_surfaces_interpretation_gaps_without_operational_blockers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            utils.write_json(
+                root / "results/phase3_wgs_smoke/phase3_wgs_summary.json",
+                {
+                    "status": "passed",
+                    "fullSourceFastqs": True,
+                    "readPairsPerEnd": 568040077,
+                    "bamValidationStatus": "passed",
+                    "mutect2Status": "passed",
+                    "truthVariantsDepthEligible": 300,
+                    "exactPassTruthMatches": 268,
+                    "coverageCnvStatus": "passed",
+                    "coverageCnvBins": 631,
+                    "sbs96MatrixStatus": "passed",
+                    "sbs96UsableSnvRecords": 265,
+                },
+            )
+            utils.write_csv(
+                root / "results/phase3_wgs_smoke/bam_validation_summary.csv",
+                [{"status": "passed"}],
+            )
+            utils.write_json(
+                root / "results/phase3_wgs_smoke/coverage_cnv_summary.json",
+                {"status": "passed"},
+            )
+            utils.write_json(
+                root / "results/phase3_wgs_smoke/signature_assignment_summary.json",
+                {"status": "passed"},
+            )
+            utils.write_json(
+                root / "results/phase3_wgs_smoke/sv_evidence_summary.json",
+                {
+                    "status": "passed",
+                    "rows": [
+                        {
+                            "discordant_mapped_pairs": 42,
+                            "chord_input_status": "not_assessable_requires_validated_sv_caller_vcf",
+                        }
+                    ],
+                },
+            )
+            utils.write_json(
+                root / "results/phase3_wgs_smoke/hrd_tool_readiness_summary.json",
+                {
+                    "status": "passed",
+                    "rows": [
+                        {
+                            "tool": "SigProfilerAssignment",
+                            "interpretability_status": "input_ready_threshold_met",
+                            "caveat": "SBS96 input exists, but assignment has not run.",
+                        },
+                        {
+                            "tool": "scarHRD",
+                            "interpretability_status": "no_call",
+                            "caveat": "Allele-specific segments are absent.",
+                        },
+                        {
+                            "tool": "CHORD",
+                            "interpretability_status": "no_call",
+                            "caveat": "A production SV callset is absent.",
+                        },
+                    ],
+                },
+            )
+            utils.write_json(
+                root / "results/clinicalization/hrd_interpretation_readiness_summary.json",
+                {
+                    "status": "passed",
+                    "rows": [
+                        {
+                            "adapter_id": "scarhrd",
+                            "interpretation_status": "no_call",
+                            "no_call_reason": "Allele-specific CNV/LOH is unavailable.",
+                            "required_inputs": "Total/minor copy number, purity, and ploidy.",
+                        },
+                        {
+                            "adapter_id": "SBS3",
+                            "interpretation_status": "no_call",
+                            "no_call_reason": "Assignment and thresholds are not locked.",
+                            "required_inputs": "Validated assignment and reconstruction metrics.",
+                        },
+                        {
+                            "adapter_id": "chord",
+                            "interpretation_status": "no_call",
+                            "no_call_reason": "A production SV callset is unavailable.",
+                            "required_inputs": "Validated SNV, indel, SV, and CNV features.",
+                        },
+                        {
+                            "adapter_id": "HRDetect",
+                            "interpretation_status": "no_call",
+                            "no_call_reason": "The calibrated feature vector is unavailable.",
+                            "required_inputs": "A locked six-feature input set and calibration.",
+                        },
+                    ],
+                },
+            )
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wgs_summary.json",
+                {"status": "passed"},
+            )
+            utils.write_json(
+                root / "results/clinicalization/sv_caller_readiness_summary.json",
+                {
+                    "status": "partial_evidence",
+                    "rows": [
+                        {
+                            "candidate_count": 4,
+                            "phase3_discordant_mapped_pairs": 42,
+                            "ready_for_clinical_interpretation": "no",
+                        }
+                    ],
+                },
+            )
+            utils.write_json(
+                root / "results/clinicalization/cnv_loh_readiness_summary.json",
+                {
+                    "status": "partial_evidence",
+                    "rows": [
+                        {
+                            "phase3_cnv_bins": 631,
+                            "current_bins_are_not_allele_specific_segments": "yes",
+                            "ready_for_clinical_interpretation": "no",
+                        }
+                    ],
+                },
+            )
+
+            with patch.object(packet, "path_from_root", lambda relative: root / relative):
+                summary = packet.write_packet(packet.PACKET_SPECS["hcc1395_wgs"], "unit")
+
+            output_dir = root / "results/rosalind_hrd/hcc1395_wgs/unit"
+            self.assertEqual(summary["blockers"], [])
+            gap_names = [gap["adapter"].casefold() for gap in summary["interpretationGaps"]]
+            self.assertIn("sigprofilerassignment", gap_names)
+            self.assertIn("scarhrd", gap_names)
+            self.assertIn("sbs3", gap_names)
+            self.assertIn("chord", gap_names)
+            self.assertIn("hrdetect", gap_names)
+            self.assertEqual(gap_names.count("scarhrd"), 1)
+            self.assertEqual(gap_names.count("chord"), 1)
+
+            adapter_text = utils.read_text(output_dir / "hrd_adapter_status.csv")
+            report = utils.read_text(output_dir / "report.md")
+            next_actions = utils.read_text(output_dir / "next_actions.md")
+            self.assertNotIn("input_ready_threshold_met", adapter_text)
+            self.assertNotIn("input_ready_threshold_met", report)
+            self.assertIn("input_matrix_ready_assignment_not_run", adapter_text)
+            self.assertIn("## Interpretation Gaps", report)
+            self.assertIn("## Operational/Data Blockers", report)
+            self.assertIn("interpretation gaps above remain active", report)
+            self.assertIn("## Interpretation Gaps", next_actions)
+
+            manifest = utils.read_json(output_dir / "report_manifest.json")
+            self.assertEqual(
+                manifest["review_summary"]["interpretation_gaps"],
+                summary["interpretationGaps"],
+            )
+
     def test_hcc1395_wgs_packet_flags_stale_sv_readiness_sidecar(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -558,6 +718,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
             self.assertEqual(summary["missingArtifacts"], [])
             self.assertEqual(summary["blockers"], [])
+            self.assertTrue(summary["interpretationGaps"])
             evidence_rows = utils.parse_csv(
                 utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/sample_validation_summary.csv")
             )
@@ -601,6 +762,10 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertEqual(manifest["evidence_status"], "partial_evidence")
             self.assertEqual(manifest["authorized_hrd_state"], "no_call")
             self.assertFalse(manifest["classification_authorized"])
+            self.assertEqual(
+                manifest["review_summary"]["interpretation_gaps"],
+                summary["interpretationGaps"],
+            )
             self.assertEqual(manifest["report_sha256"], hashlib.sha256(report.read_bytes()).hexdigest())
             self.assertEqual(len(manifest["source_sha256"]), len(evidence_index["artifacts"]))
             self.assertEqual(
@@ -642,6 +807,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
             self.assertEqual(summary["missingArtifacts"], [])
             self.assertEqual(summary["blockers"], [])
+            self.assertTrue(summary["interpretationGaps"])
 
             output_dir = output_root / "results/rosalind_hrd/diana_wgs/phase3-fast"
             evidence_rows = utils.parse_csv(utils.read_text(output_dir / "sample_validation_summary.csv"))
@@ -699,6 +865,10 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertEqual(manifest["evidence_status"], "partial_evidence")
             self.assertEqual(manifest["authorized_hrd_state"], "no_call")
             self.assertFalse(manifest["classification_authorized"])
+            self.assertEqual(
+                manifest["review_summary"]["interpretation_gaps"],
+                summary["interpretationGaps"],
+            )
             self.assertEqual(
                 manifest["review_summary"]["provenance"]["binding_kind"],
                 "phase3_fast_final",
