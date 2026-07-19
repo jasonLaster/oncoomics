@@ -348,8 +348,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 7fb785d</li>
-          <li class="pill">Prior dashboard = c7130a3</li>
+          <li class="pill">Latest milestone = 9efb447</li>
+          <li class="pill">Comparative synthesis manifests = exact</li>
+          <li class="pill">Prior dashboard = 0b44ec7</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -362,6 +363,7 @@
           <li class="pill">Final freeze dry-run = exact</li>
           <li class="pill">Input contract dry-run = exact</li>
           <li class="pill">AI validation post-write = exact</li>
+          <li class="pill">AI review envelopes = exact</li>
           <li class="pill">AI synthesis source hashes = exact</li>
           <li class="pill">AI validation method inventory = exact</li>
           <li class="pill">Terminal cross-check inputs = absent</li>
@@ -608,6 +610,14 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact comparative synthesis manifests</strong>
+              <span>Comparative HRD synthesis now rejects stale <code>report_manifest.json</code> envelopes and mismatched support inventories before a synthesis packet can install.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI review bundle envelopes</strong>
+              <span>AI review bundle preparation now rejects stale request and receipt envelopes before isolated reviewer packet staging can proceed.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind AI synthesis source hashes exactly</strong>
               <span>Reviewer finalization now rehashes <code>review_bundle.json</code>, <code>bundle_manifest.json</code>, the reviewer prompt, and <code>model_catalog_receipt.json</code> after writing <code>report_manifest.json</code>, while comparative synthesis validates its full staged <code>source_sha256</code> map before installation.</span>
             </li>
@@ -717,6 +727,27 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T01:03:09-07:00">Jul 19 · 1:03 AM</time>
+              <span>
+                <strong>9efb447 Require exact comparative synthesis manifests:</strong>
+                comparative HRD synthesis now rejects stale
+                <code>report_manifest.json</code> envelopes and mismatched
+                support inventories before a synthesis packet can install. No
+                S3, Batch, route, GPU, quota, or replacement compute was
+                launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T01:02:25-07:00">Jul 19 · 1:02 AM</time>
+              <span>
+                <strong>fb25c55 Require exact AI review bundle envelopes:</strong>
+                AI review bundle preparation now rejects stale request and
+                receipt envelopes before isolated reviewer packet staging can
+                proceed. No S3, Batch, route, GPU, quota, or replacement compute
+                was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:59:54-07:00">Jul 19 · 12:59 AM</time>
               <span>
