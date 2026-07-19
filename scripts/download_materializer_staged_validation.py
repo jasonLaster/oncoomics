@@ -323,13 +323,15 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
         raise ValueError(f"materializer receipt does not contain {OUTPUT_NAME}")
     if set(row) != EXPECTED_OUTPUT_CUSTODY_KEYS:
         raise ValueError(f"{OUTPUT_NAME} lacks exact materializer custody")
-    uri = str(row.get("uri", ""))
-    version_id = str(row.get("version_id", ""))
-    digest = str(row.get("sha256", ""))
+    uri = row.get("uri")
+    version_id = row.get("version_id")
+    digest = row.get("sha256")
     size = row.get("bytes")
     row_checks = row.get("checks")
     if (
-        not uri
+        not isinstance(uri, str)
+        or not uri
+        or not isinstance(version_id, str)
         or not version_id
         or version_id.lower() in {"none", "null"}
         or row_checks != EXPECTED_OUTPUT_CHECKS
@@ -338,6 +340,7 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
         or size <= 0
         or not isinstance(row.get("checksums"), dict)
         or not any(str(row["checksums"].get(key, "")).strip() for key in CHECKSUM_FIELDS)
+        or not isinstance(digest, str)
         or not all(character in "0123456789abcdef" for character in digest)
         or len(digest) != 64
     ):

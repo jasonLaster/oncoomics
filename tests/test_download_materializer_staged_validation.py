@@ -125,6 +125,28 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "lacks exact materializer custody"):
             MODULE.validate_receipt(payload, KMS)
 
+    def test_validate_receipt_requires_string_version_and_sha(self) -> None:
+        numeric_sha256 = "1" * 64
+        cases = (
+            ("numeric_version", "version_id", 1234567890),
+            ("numeric_sha256", "sha256", int(numeric_sha256)),
+        )
+
+        for name, field, value in cases:
+            with self.subTest(name=name):
+                payload = receipt(b"1")
+                output = payload["outputs"][MODULE.OUTPUT_NAME]
+                output[field] = value
+                output["checksums"]["ChecksumSHA256"] = MODULE.checksum_sha256(
+                    numeric_sha256
+                )
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "lacks exact materializer custody",
+                ):
+                    MODULE.validate_receipt(payload, KMS)
+
     def test_validate_receipt_rejects_missing_unexpected_or_failed_check_maps(
         self,
     ) -> None:
