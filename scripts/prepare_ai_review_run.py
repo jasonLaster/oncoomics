@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare a seven-method Diana WGS HRD bundle for two independent AI reviews."""
+"""Prepare a seven-method WGS HRD bundle for two independent AI reviews."""
 
 from __future__ import annotations
 
@@ -20,20 +20,21 @@ from typing import Any, Sequence
 
 from forbidden_text import merge_forbidden_tokens
 from hrd_report_inventory import (
-    REQUIRED_METHOD_IDS,
+    INVENTORY_ID,
     inventory_payload,
     inventory_sha256,
     require_inventory_binding,
+    required_method_ids,
 )
 
-METHOD_ARGUMENTS = (
-    ("deterministic_full_wgs", "deterministic_manifest"),
-    ("rosalind_diana_wgs", "rosalind_manifest"),
-    ("sequenza_scarhrd", "sequenza_manifest"),
-    ("sigprofiler_sbs3", "sigprofiler_manifest"),
-    ("facets_scarhrd_blocked", "facets_blocked_manifest"),
-    ("oncoanalyser_chord_blocked", "oncoanalyser_blocked_manifest"),
-    ("hrdetect_blocked", "hrdetect_blocked_manifest"),
+MANIFEST_ARGUMENTS = (
+    "deterministic_manifest",
+    "rosalind_manifest",
+    "sequenza_manifest",
+    "sigprofiler_manifest",
+    "facets_blocked_manifest",
+    "oncoanalyser_blocked_manifest",
+    "hrdetect_blocked_manifest",
 )
 STAGED_RUN_ENTRIES = (
     "bundle",
@@ -187,17 +188,28 @@ def require_manifest(path: Path, expected_method: str) -> dict[str, Any]:
     return manifest
 
 
+def required_methods(args: argparse.Namespace) -> tuple[str, ...]:
+    return required_method_ids(args.inventory_id)
+
+
 def method_manifest_paths(args: argparse.Namespace) -> dict[str, Path]:
-    return {method_id: Path(getattr(args, argument)) for method_id, argument in METHOD_ARGUMENTS}
+    return {
+        method_id: Path(getattr(args, argument))
+        for method_id, argument in zip(required_methods(args), MANIFEST_ARGUMENTS)
+    }
 
 
-def parse_expected_source_manifest_sha256(values: Sequence[str]) -> dict[str, str]:
+def parse_expected_source_manifest_sha256(
+    values: Sequence[str],
+    inventory_id: str,
+) -> dict[str, str]:
+    methods = required_method_ids(inventory_id)
     result: dict[str, str] = {}
     for value in values:
         method_id, separator, digest = value.partition("=")
         if not separator:
             raise ValueError("expected source manifest SHA-256 values must use method_id=sha256")
-        if method_id not in REQUIRED_METHOD_IDS:
+        if method_id not in methods:
             raise ValueError(f"unexpected source manifest method: {method_id}")
         if method_id in result:
             raise ValueError(f"duplicate source manifest SHA-256 for {method_id}")
@@ -205,20 +217,21 @@ def parse_expected_source_manifest_sha256(values: Sequence[str]) -> dict[str, st
             raise ValueError(f"source manifest SHA-256 for {method_id} is not lowercase hex")
         result[method_id] = digest
 
-    if set(result) != set(REQUIRED_METHOD_IDS):
+    if set(result) != set(methods):
         raise ValueError("expected source manifest SHA-256 values must cover exactly the seven required methods")
-    return {method_id: result[method_id] for method_id in REQUIRED_METHOD_IDS}
+    return {method_id: result[method_id] for method_id in methods}
 
 
 def validate_sources(
     output: Path,
     manifest_paths: dict[str, Path],
     expected_sha256: dict[str, str],
+    methods: tuple[str, ...],
 ) -> dict[str, dict[str, str]]:
     source_manifests: dict[str, dict[str, str]] = {}
     seen_paths: set[Path] = set()
     seen_dirs: set[Path] = set()
-    for method_id in REQUIRED_METHOD_IDS:
+    for method_id in methods:
         path = require_real_file(manifest_paths[method_id], f"{method_id} manifest")
         directory = path.parent.resolve()
         if path in seen_paths:
@@ -256,13 +269,16 @@ def build_bundle(
     manifest_paths: dict[str, Path],
     bundle_dir: Path,
 ) -> None:
+    methods = required_methods(args)
     command = [
         sys.executable,
         str(script_path("build_ai_review_bundle.py")),
+        "--inventory-id",
+        args.inventory_id,
     ]
-    for method_id in REQUIRED_METHOD_IDS:
+    for method_id in methods:
         command.extend(["--manifest", str(manifest_paths[method_id])])
-    for method_id in REQUIRED_METHOD_IDS:
+    for method_id in methods:
         command.extend(["--require-method", method_id])
     command.extend(
         [
@@ -336,7 +352,9 @@ def validate_postconditions(
     stage_receipt_path: Path,
     source_manifests: dict[str, dict[str, str]],
     output: Path,
+    inventory_id: str,
 ) -> dict[str, Any]:
+    methods = required_method_ids(inventory_id)
     bundle_manifest_path = bundle_dir / "bundle_manifest.json"
     bundle_manifest = load_object(bundle_manifest_path)
     stage_receipt = load_object(stage_receipt_path)
@@ -344,8 +362,12 @@ def validate_postconditions(
         bundle_manifest.get("method_inventory"),
         bundle_manifest.get("method_inventory_sha256"),
         "AI review bundle",
+        inventory_id,
     )
-    expected_inputs = {f"E{index:03d}": source_manifests[method]["sha256"] for index, method in enumerate(REQUIRED_METHOD_IDS, 1)}
+    expected_inputs = {
+        f"E{index:03d}": source_manifests[method]["sha256"]
+        for index, method in enumerate(methods, 1)
+    }
     stage_receipt_reviewers = require_rebased_stage_receipt(
         stage_receipt,
         output,
@@ -353,7 +375,7 @@ def validate_postconditions(
     )
     expected_prompt_hashes = bundle_manifest["prompt_sha256"]
     checks = {
-        "pinned_seven_method_inventory": bundle_manifest.get("required_method_ids") == list(REQUIRED_METHOD_IDS),
+        "pinned_seven_method_inventory": bundle_manifest.get("required_method_ids") == list(methods),
         "source_report_hashes_match": bundle_manifest.get("input_manifest_sha256") == expected_inputs,
         "bundle_manifest_bound": bundle_manifest.get("review_bundle_sha256") == sha256(bundle_dir / "review_bundle.json"),
         "reviewer_a_two_file_inventory": sorted(path.name for path in (reviewer_root / "reviewer-a-input").iterdir())
@@ -599,14 +621,19 @@ def install_staged_run(staging: Path, output: Path) -> None:
 
 def prepare(args: argparse.Namespace) -> dict[str, Any]:
     output = resolve_new_output(args.output_dir)
+    methods = required_methods(args)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     manifest_paths = method_manifest_paths(args)
-    expected_source_sha256 = parse_expected_source_manifest_sha256(args.expected_source_manifest_sha256)
+    expected_source_sha256 = parse_expected_source_manifest_sha256(
+        args.expected_source_manifest_sha256,
+        args.inventory_id,
+    )
     source_manifests = validate_sources(
         output,
         manifest_paths,
         expected_source_sha256,
+        methods,
     )
 
     staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=str(output.parent)))
@@ -625,6 +652,7 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
             stage_receipt,
             source_manifests,
             output,
+            args.inventory_id,
         )
 
         bundle_manifest = postconditions["bundle_manifest"]
@@ -633,8 +661,8 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
             "status": "passed",
             "generated_at": now(),
             "subject_alias": args.subject_alias,
-            "method_inventory": inventory_payload(),
-            "method_inventory_sha256": inventory_sha256(),
+            "method_inventory": inventory_payload(args.inventory_id),
+            "method_inventory_sha256": inventory_sha256(args.inventory_id),
             "source_manifests": source_manifests,
             "model_catalog_receipt_sha256": sha256(require_real_file(args.model_catalog_receipt, "model catalog receipt")),
             "bundle_dir": str(output / "bundle"),
@@ -663,12 +691,17 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    for _, argument in METHOD_ARGUMENTS:
+    for argument in MANIFEST_ARGUMENTS:
         parser.add_argument(
             "--" + argument.replace("_", "-"),
             required=True,
             type=Path,
         )
+    parser.add_argument(
+        "--inventory-id",
+        default=INVENTORY_ID,
+        help="Pinned HRD report inventory ID. Defaults to the Diana WGS inventory.",
+    )
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--subject-alias", required=True)
     parser.add_argument("--model-catalog-receipt", required=True, type=Path)

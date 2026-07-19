@@ -34,11 +34,21 @@ def write_staged_run(staging: Path) -> None:
             path.write_text("{}\n", encoding="utf-8")
 
 
-def namespace(fixture: AiReviewBundleFixture, output_dir: Path) -> SimpleNamespace:
-    by_method = dict(zip(INVENTORY.REQUIRED_METHOD_IDS, fixture.manifests))
-    args = {argument: by_method[method_id] for method_id, argument in PREPARE.METHOD_ARGUMENTS}
+def namespace(
+    fixture: AiReviewBundleFixture,
+    output_dir: Path,
+    *,
+    inventory_id: str = INVENTORY.INVENTORY_ID,
+    methods: tuple[str, ...] = INVENTORY.REQUIRED_METHOD_IDS,
+) -> SimpleNamespace:
+    by_method = dict(zip(methods, fixture.manifests))
+    args = {
+        argument: by_method[method_id]
+        for method_id, argument in zip(methods, PREPARE.MANIFEST_ARGUMENTS)
+    }
     args.update(
         {
+            "inventory_id": inventory_id,
             "output_dir": output_dir,
             "subject_alias": "subject01",
             "model_catalog_receipt": fixture.catalog_receipt,
@@ -50,59 +60,66 @@ def namespace(fixture: AiReviewBundleFixture, output_dir: Path) -> SimpleNamespa
             "forbidden_token": ["DirectIdentifier"],
             "forbidden_tokens_file": [],
             "expected_source_manifest_sha256": [
-                f"{method_id}={PREPARE.sha256(by_method[method_id])}" for method_id in INVENTORY.REQUIRED_METHOD_IDS
+                f"{method_id}={PREPARE.sha256(by_method[method_id])}"
+                for method_id in methods
             ],
         }
     )
     return SimpleNamespace(**args)
 
 
-def command(fixture: AiReviewBundleFixture, output_dir: Path) -> list[str]:
-    by_method = dict(zip(INVENTORY.REQUIRED_METHOD_IDS, fixture.manifests))
-    return [
+def command(
+    fixture: AiReviewBundleFixture,
+    output_dir: Path,
+    *,
+    inventory_id: str = INVENTORY.INVENTORY_ID,
+    methods: tuple[str, ...] = INVENTORY.REQUIRED_METHOD_IDS,
+) -> list[str]:
+    by_method = dict(zip(methods, fixture.manifests))
+    cmd = [
         sys.executable,
         str(SCRIPT_DIR / "prepare_ai_review_run.py"),
-        "--deterministic-manifest",
-        str(by_method["deterministic_full_wgs"]),
-        "--rosalind-manifest",
-        str(by_method["rosalind_diana_wgs"]),
-        "--sequenza-manifest",
-        str(by_method["sequenza_scarhrd"]),
-        "--sigprofiler-manifest",
-        str(by_method["sigprofiler_sbs3"]),
-        "--facets-blocked-manifest",
-        str(by_method["facets_scarhrd_blocked"]),
-        "--oncoanalyser-blocked-manifest",
-        str(by_method["oncoanalyser_chord_blocked"]),
-        "--hrdetect-blocked-manifest",
-        str(by_method["hrdetect_blocked"]),
-        "--output-dir",
-        str(output_dir),
-        "--subject-alias",
-        "subject01",
-        "--model-catalog-receipt",
-        str(fixture.catalog_receipt),
-        "--model-catalog-verified-at",
-        fixture.catalog_verified_at,
-        "--reviewer-a-provider",
-        "synthetic-provider-a",
-        "--reviewer-a-model-id",
-        "synthetic-model-a-current",
-        "--reviewer-b-provider",
-        "synthetic-provider-b",
-        "--reviewer-b-model-id",
-        "synthetic-model-b-current",
-        "--forbidden-token",
-        "DirectIdentifier",
-        *[
-            token
-            for method_id in INVENTORY.REQUIRED_METHOD_IDS
-            for token in (
-                "--expected-source-manifest-sha256",
-                f"{method_id}={PREPARE.sha256(by_method[method_id])}",
-            )
-        ],
+        "--inventory-id",
+        inventory_id,
     ]
+    for method_id, argument in zip(methods, PREPARE.MANIFEST_ARGUMENTS):
+        cmd.extend(
+            [
+                "--" + argument.replace("_", "-"),
+                str(by_method[method_id]),
+            ]
+        )
+    cmd.extend(
+        [
+            "--output-dir",
+            str(output_dir),
+            "--subject-alias",
+            "subject01",
+            "--model-catalog-receipt",
+            str(fixture.catalog_receipt),
+            "--model-catalog-verified-at",
+            fixture.catalog_verified_at,
+            "--reviewer-a-provider",
+            "synthetic-provider-a",
+            "--reviewer-a-model-id",
+            "synthetic-model-a-current",
+            "--reviewer-b-provider",
+            "synthetic-provider-b",
+            "--reviewer-b-model-id",
+            "synthetic-model-b-current",
+            "--forbidden-token",
+            "DirectIdentifier",
+            *[
+                token
+                for method_id in methods
+                for token in (
+                    "--expected-source-manifest-sha256",
+                    f"{method_id}={PREPARE.sha256(by_method[method_id])}",
+                )
+            ],
+        ]
+    )
+    return cmd
 
 
 def command_with_forbidden_tokens_file(
@@ -155,6 +172,48 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 sorted(path.name for path in (output / "reviewer-inputs/reviewer-b-input").iterdir()),
                 ["review_bundle.json", "reviewer-b.prompt.md"],
             )
+
+    def test_prepares_hcc1395_known_answer_inventory_without_diana_relabeling(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            fixture.update_manifest(1, {"method_id": "rosalind_hcc1395_wgs"})
+            inventory_id = INVENTORY.HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID
+            methods = INVENTORY.HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS
+            output = Path(temporary) / "ai-review"
+
+            result = subprocess.run(
+                command(
+                    fixture,
+                    output,
+                    inventory_id=inventory_id,
+                    methods=methods,
+                ),
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            receipt = json.loads(
+                (output / "prepare_ai_review_run_receipt.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            bundle = json.loads(
+                (output / "bundle/review_bundle.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                receipt["method_inventory"],
+                INVENTORY.inventory_payload(inventory_id),
+            )
+            self.assertEqual(
+                receipt["method_inventory_sha256"],
+                INVENTORY.inventory_sha256(inventory_id),
+            )
+            self.assertEqual(bundle["required_method_ids"], list(methods))
+            self.assertIn("rosalind_hcc1395_wgs", receipt["source_manifests"])
+            self.assertNotIn("rosalind_diana_wgs", receipt["source_manifests"])
 
     def test_prepares_bundle_with_forbidden_tokens_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
