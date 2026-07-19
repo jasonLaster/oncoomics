@@ -346,8 +346,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 9d55326</li>
-          <li class="pill">Prior dashboard = 5e9a4f0</li>
+          <li class="pill">Latest milestone = 943694f</li>
+          <li class="pill">Prior dashboard = 67f99d3</li>
+          <li class="pill">Stage freeze dry-run = exact</li>
           <li class="pill">Final freeze dry-run = exact</li>
           <li class="pill">Input contract dry-run = exact</li>
           <li class="pill">AI validation method inventory = exact</li>
@@ -514,6 +515,10 @@
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind stage freeze apply to its dry-run receipt</strong>
+              <span>Live stage-provenance freeze now requires its matching dry-run receipt and rejects stale top-level metadata, failed source-object checks, run/KMS/source/destination/script drift, or preflight/gather object drift before any provenance copy.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind final freeze apply to its dry-run receipt</strong>
               <span>Live final-artifact freeze now requires its matching dry-run receipt and rejects stale receipt metadata, failed checks, run binding, source inventory, or object rows before any create-only copy.</span>
             </li>
@@ -655,6 +660,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:13:50-07:00">Jul 19 · 12:13 AM</time>
+              <span>
+                <strong>943694f Bind stage freeze apply to dry-run receipt:</strong>
+                live stage-provenance freeze now requires its matching dry-run
+                receipt and rejects stale top-level metadata, failed
+                source-object checks, run/KMS/source/destination/script drift,
+                or preflight/gather object drift before any provenance copy.
+                Validation passed: 38 focused tests + 16 subtests, then 1,716
+                full-suite tests + 748 subtests. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:09:36-07:00">Jul 19 · 12:09 AM</time>
               <span>
