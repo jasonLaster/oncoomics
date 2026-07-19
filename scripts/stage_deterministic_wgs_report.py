@@ -18,10 +18,20 @@ import tempfile
 from collections import Counter
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
+from urllib.parse import urlparse
 
 import finalize_input_contract as INPUT_CONTRACT
 from capture_materializer_terminal import (
+    EXPECTED_DESTINATION_INVENTORY_KEYS as EXPECTED_CROSSCHECK_DESTINATION_INVENTORY_KEYS,
+)
+from capture_materializer_terminal import (
     EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS as EXPECTED_CROSSCHECK_RECEIPT_DOWNLOAD_CHECKS,
+)
+from capture_materializer_terminal import (
+    EXPECTED_MATERIALIZER_RECEIPT_CHECKS as EXPECTED_CROSSCHECK_RECEIPT_CHECKS,
+)
+from capture_materializer_terminal import (
+    EXPECTED_MATERIALIZER_RECEIPT_KEYS as EXPECTED_CROSSCHECK_RECEIPT_KEYS,
 )
 from forbidden_text import merge_forbidden_tokens
 
@@ -589,6 +599,13 @@ def s3_full_object_sha256_matches(value: Any, digest: Any) -> bool:
         value.get("ChecksumType") == "FULL_OBJECT"
         and value.get("ChecksumSHA256") == checksum_sha256(text)
     )
+
+
+def s3_key(value: Any) -> str:
+    parsed = urlparse(str(value))
+    if parsed.scheme != "s3" or not parsed.netloc or not parsed.path.lstrip("/"):
+        return ""
+    return parsed.path.lstrip("/")
 
 
 def positive_int(value: Any) -> bool:
@@ -2281,9 +2298,46 @@ def main() -> None:
     crosscheck_output_prefix = ""
     if freeze_destination_prefix.endswith(final_suffix):
         crosscheck_output_prefix = freeze_destination_prefix
+    crosscheck_receipt_checks = (
+        crosscheck_materialization.get("checks")
+        if isinstance(crosscheck_materialization.get("checks"), dict)
+        else {}
+    )
+    destination_inventory = (
+        crosscheck_materialization.get("destination_inventory")
+        if isinstance(crosscheck_materialization.get("destination_inventory"), list)
+        else []
+    )
+    inventory_by_name: dict[str, dict[str, Any]] = {}
+    duplicate_or_malformed_inventory = False
+    for raw_row in destination_inventory:
+        if (
+            not isinstance(raw_row, dict)
+            or set(raw_row) != EXPECTED_CROSSCHECK_DESTINATION_INVENTORY_KEYS
+        ):
+            duplicate_or_malformed_inventory = True
+            continue
+        filename = str(raw_row.get("filename", ""))
+        if filename in inventory_by_name:
+            duplicate_or_malformed_inventory = True
+            continue
+        inventory_by_name[filename] = raw_row
+
     crosscheck_outputs_valid = (
         bool(crosscheck_output_prefix)
         and set(crosscheck_outputs) == expected_crosscheck_output_names
+        and set(crosscheck_materialization) == EXPECTED_CROSSCHECK_RECEIPT_KEYS
+        and crosscheck_materialization.get("destination_prefix")
+        == crosscheck_output_prefix
+        and crosscheck_materialization.get("destination_bucket_versioning")
+        == "Enabled"
+        and crosscheck_materialization.get("destination_initial_version_history_count")
+        == 0
+        and crosscheck_materialization.get("receipt_anchor_strategy")
+        == "sha256_content_addressed_create_only"
+        and crosscheck_receipt_checks == EXPECTED_CROSSCHECK_RECEIPT_CHECKS
+        and not duplicate_or_malformed_inventory
+        and set(inventory_by_name) == expected_crosscheck_output_names
     )
     for output_name in expected_crosscheck_output_names:
         output_row = (
@@ -2296,6 +2350,7 @@ def main() -> None:
             if isinstance(output_row.get("checks"), dict)
             else {}
         )
+        inventory = inventory_by_name.get(output_name, {})
         if not (
             output_row.get("uri") == crosscheck_output_prefix + output_name
             and valid_version_id(output_row.get("version_id"))
@@ -2307,6 +2362,11 @@ def main() -> None:
                 output_row.get("sha256"),
             )
             and output_checks == EXPECTED_CROSSCHECK_OUTPUT_CHECKS
+            and inventory.get("key") == s3_key(output_row.get("uri"))
+            and inventory.get("version_id") == output_row.get("version_id")
+            and inventory.get("bytes") == output_row.get("bytes")
+            and inventory.get("sha256") == output_row.get("sha256")
+            and inventory.get("checksums") == output_row.get("checksums")
         ):
             crosscheck_outputs_valid = False
     staged_output = (

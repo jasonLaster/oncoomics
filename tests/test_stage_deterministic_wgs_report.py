@@ -1355,6 +1355,20 @@ class SyntheticFixture:
             }
             for index, (name, digest) in enumerate(output_digests.items(), 1)
         }
+        destination_inventory = [
+            {
+                "filename": name,
+                "key": outputs[name]["uri"].split(
+                    "s3://diana-omics-private-results-test/",
+                    1,
+                )[1],
+                "version_id": outputs[name]["version_id"],
+                "bytes": outputs[name]["bytes"],
+                "sha256": outputs[name]["sha256"],
+                "checksums": outputs[name]["checksums"],
+            }
+            for name in outputs
+        ]
         source_vcf = "variants/diana.wgs.mutect2.filtered.vcf.gz"
         source_vcf_index = source_vcf + ".tbi"
         source_matrix = "signatures/wgs_sbs96_matrix.csv"
@@ -1366,6 +1380,10 @@ class SyntheticFixture:
                 "generated_at_utc": "2026-07-17T00:00:01+00:00",
                 "run_alias": "subject01",
                 "script_sha256": "f" * 64,
+                "destination_prefix": final_prefix,
+                "destination_bucket_versioning": "Enabled",
+                "destination_initial_version_history_count": 0,
+                "receipt_anchor_strategy": "sha256_content_addressed_create_only",
                 "source_custody": {
                     "vcf": final_source(source_vcf),
                     "vcf_index": final_source(source_vcf_index),
@@ -1403,6 +1421,15 @@ class SyntheticFixture:
                     "reference_fai": reference_fai_sha256,
                 },
                 "outputs": outputs,
+                "destination_inventory": destination_inventory,
+                "checks": {
+                    "all_sources_exact_version_and_sha256": True,
+                    "alias_only_pass_snv_vcf": True,
+                    "sbs96_matches_independent_pass_vcf_derivation": True,
+                    "destination_prefix_initially_empty": True,
+                    "all_outputs_create_only": True,
+                    "destination_exact_single_version_history": True,
+                },
                 "classification_authorization": "none",
                 "authorized_hrd_state": "no_call",
             },
@@ -2288,6 +2315,36 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             receipt["outputs"]["sbs96.csv"]["checksums"]["ChecksumSHA256"] = (
                 base64.b64encode(bytes.fromhex("0" * 64)).decode("ascii")
             )
+            write_json(receipt_path, receipt)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "crosscheck_materialization_custody", result.stdout + result.stderr
+            )
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_stale_crosscheck_destination_inventory_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "crosscheck-materialization.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["destination_inventory"][0]["key"] = (
+                "runs/subject01/stale-run/deterministic/final/sbs96.csv"
+            )
+            write_json(receipt_path, receipt)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "crosscheck_materialization_custody", result.stdout + result.stderr
+            )
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_stale_crosscheck_receipt_envelope_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "crosscheck-materialization.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["checks"].pop("destination_exact_single_version_history")
             write_json(receipt_path, receipt)
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
             self.assertNotEqual(result.returncode, 0)
