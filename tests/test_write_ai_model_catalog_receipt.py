@@ -217,6 +217,13 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
             self.assertIn("--attest-models-latest", result.stderr)
             self.assertFalse(output.exists())
 
+    def test_model_catalog_receipt_envelope_is_exact(self) -> None:
+        receipt = CATALOG.model_catalog_receipt()
+
+        self.assertEqual(set(receipt), CATALOG.MODEL_CATALOG_RECEIPT_KEYS)
+        for row in receipt["models"]:
+            self.assertEqual(set(row), CATALOG.MODEL_CATALOG_MODEL_KEYS)
+
     def test_model_catalog_requires_distinct_reviewer_models(self) -> None:
         with mock.patch.object(CATALOG, "REVIEWER_B", CATALOG.REVIEWER_A):
             with self.assertRaisesRegex(ValueError, "distinct reviewer model"):

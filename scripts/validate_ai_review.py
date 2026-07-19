@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Sequence
 
+from ai_model_catalog import MODEL_CATALOG_MODEL_KEYS, MODEL_CATALOG_RECEIPT_KEYS
 from build_ai_review_bundle import (
     BUNDLE_MANIFEST_KEYS,
     BUNDLE_REVIEW_BUNDLE_KEYS,
@@ -214,6 +215,8 @@ def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str
     if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
         raise ValueError("model catalog receipt is missing or empty")
     receipt = load_object(path)
+    if set(receipt) != MODEL_CATALOG_RECEIPT_KEYS:
+        raise ValueError("model catalog receipt envelope is not exact")
     if receipt.get("schema_version") != 1:
         raise ValueError("model catalog receipt schema is unsupported")
     if not str(receipt.get("provider_catalog", "")).strip() or not str(receipt.get("catalog_source", "")).strip():
@@ -232,8 +235,8 @@ def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str
         raise ValueError("model catalog receipt must contain exactly the two reviewer models")
     observed: set[tuple[str, str]] = set()
     for row in rows:
-        if not isinstance(row, dict):
-            raise ValueError("model catalog receipt contains a malformed model row")
+        if not isinstance(row, dict) or set(row) != MODEL_CATALOG_MODEL_KEYS:
+            raise ValueError("model catalog receipt model row envelope is not exact")
         pair = (str(row.get("provider", "")), str(row.get("model_id", "")))
         if pair in observed or row.get("available") is not True or row.get("latest_available") is not True:
             raise ValueError("model catalog receipt contains duplicate, unavailable, or non-latest models")

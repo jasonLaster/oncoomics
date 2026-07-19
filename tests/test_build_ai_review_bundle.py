@@ -227,6 +227,25 @@ class AiReviewBundleFixture:
 
 
 class BuildAiReviewBundleTests(unittest.TestCase):
+    def test_rejects_stale_model_catalog_receipt_envelope(self) -> None:
+        for label, mutate in (
+            ("top-level", lambda receipt: receipt.update(legacy=True)),
+            ("model row", lambda receipt: receipt["models"][0].update(legacy=True)),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = AiReviewBundleFixture(Path(temporary))
+                receipt = json.loads(
+                    fixture.catalog_receipt.read_text(encoding="utf-8")
+                )
+                mutate(receipt)
+                write_json(fixture.catalog_receipt, receipt)
+
+                result = fixture.run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("model catalog receipt", result.stderr)
+                self.assertIn("envelope is not exact", result.stderr)
+
     def test_bundle_file_install_is_create_only_and_fsynced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

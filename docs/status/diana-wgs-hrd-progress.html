@@ -348,13 +348,14 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local input receipts</li>
+          <li class="pill">Latest milestone = local AI model catalog</li>
+          <li class="pill">AI model-catalog receipts = exact</li>
           <li class="pill">Input contract receipts = exact</li>
           <li class="pill">Phase 3 validation receipts = exact</li>
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 77ceb7b</li>
+          <li class="pill">Prior dashboard = 6c9010b</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -644,6 +645,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI model-catalog receipts</strong>
+              <span>AI review bundle construction and isolated reviewer validation now reject stale <code>model_catalog_receipt.json</code> top-level fields or per-model rows before trusting the two de-identified reviewer model attestations.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI source report manifests</strong>
               <span>AI bundle, review validation, reviewer finalization, and comparative synthesis now reject source <code>report_manifest.json</code> payloads unless the core v1 envelope and report-kind extension keys exactly match a known repo-authored packet kind.</span>
             </li>
@@ -786,9 +791,21 @@
           <h2>Changelog</h2>
           <ol class="changelog">
             <li class="item">
-              <time datetime="2026-07-19T01:34:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T01:38:00-07:00">Jul 19 · local</time>
               <span>
-                <strong>Local patch · Require exact input-contract receipts:</strong>
+                <strong>Local patch · Require exact AI model-catalog receipts:</strong>
+                model-catalog receipts now define exact top-level and
+                per-model row keys, and both AI review bundle construction and
+                isolated reviewer validation reject stale catalog envelopes
+                before trusting de-identified reviewer model attestations. No
+                S3, Batch, route, GPU, quota, or replacement compute was
+                launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T01:33:46-07:00">Jul 19 · 1:33 AM</time>
+              <span>
+                <strong>6c9010b Require exact input contract receipts:</strong>
                 input-contract finalization now enforces exact final-freeze,
                 exact-version materialization, and schema-2 cross-check
                 materialization receipt envelopes, accepting only known

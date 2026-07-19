@@ -11,6 +11,23 @@ MODEL_CATALOG_SOURCE = "Active Codex collaboration model override catalog expose
 PROVIDER_CATALOG = "Codex collaboration available model overrides"
 REVIEWER_A = ("openai-codex", "gpt-5.6-sol")
 REVIEWER_B = ("openai-codex", "gpt-5.6-terra")
+MODEL_CATALOG_RECEIPT_KEYS = frozenset(
+    {
+        "schema_version",
+        "provider_catalog",
+        "catalog_source",
+        "catalog_verified_at",
+        "models",
+    }
+)
+MODEL_CATALOG_MODEL_KEYS = frozenset(
+    {
+        "provider",
+        "model_id",
+        "available",
+        "latest_available",
+    }
+)
 
 
 def reviewer_models() -> tuple[tuple[str, str], tuple[str, str]]:

@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
+from ai_model_catalog import MODEL_CATALOG_MODEL_KEYS, MODEL_CATALOG_RECEIPT_KEYS
 from forbidden_text import forbidden_token_fingerprints, normalized_scan_text
 from hrd_report_inventory import (
     INVENTORY_ID,
@@ -291,6 +292,8 @@ def validate_catalog_receipt(
 ) -> str:
     resolved = require_real_input_file(path, "model catalog receipt")
     receipt = load_object(resolved)
+    if set(receipt) != MODEL_CATALOG_RECEIPT_KEYS:
+        raise ValueError("model catalog receipt envelope is not exact")
     if receipt.get("schema_version") != 1:
         raise ValueError("model catalog receipt schema is unsupported")
     receipt_time = parse_catalog_time(
@@ -311,8 +314,8 @@ def validate_catalog_receipt(
         )
     observed: set[tuple[str, str]] = set()
     for row in rows:
-        if not isinstance(row, dict):
-            raise ValueError("model catalog receipt contains a malformed model row")
+        if not isinstance(row, dict) or set(row) != MODEL_CATALOG_MODEL_KEYS:
+            raise ValueError("model catalog receipt model row envelope is not exact")
         pair = (str(row.get("provider", "")), str(row.get("model_id", "")))
         if (
             pair in observed
