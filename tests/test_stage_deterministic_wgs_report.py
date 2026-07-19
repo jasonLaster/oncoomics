@@ -671,6 +671,8 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                     'execution_worker.get("bytes"',
                     "input_snapshot.get('file_count'",
                     'input_snapshot.get("file_count"',
+                    "input_snapshot['file_count'",
+                    'input_snapshot["file_count"',
                     "materialized.get('bytes'",
                     'materialized.get("bytes"',
                     "exact_materialization.get('object_count'",

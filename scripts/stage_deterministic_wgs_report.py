@@ -2730,6 +2730,7 @@ def main() -> None:
         raise SystemExit("Fail-closed: evidence validation failed:\n" + "\n".join(f"{row['check_id']}: {row['detail']}" for row in failed))
 
     input_rows = build_input_rows(paths, artifact_root, early_root)
+    input_snapshot_file_count = input_snapshot["file_count"]
     contamination = safe_float(contamination_rows[0]["contamination"])
     contamination_error = safe_float(contamination_rows[0]["error"])
     early_contamination = safe_float(early.get("contamination", {}).get("contamination"))
@@ -2805,7 +2806,7 @@ def main() -> None:
             f"The cross-check materialization receipt independently re-bound the final filtered VCF, index, and SBS96 source matrix to those frozen VersionIds and SHA-256 values, then recorded exact VersionIds, SHA-256 values, checksums, byte counts, and the run KMS key for all four canonical outputs. Receipt SHA-256: `{sha256(paths['crosscheck_materialization'])}`.",
             f"The terminal materializer capture bound that receipt to the one successful Batch/CloudWatch terminal payload, and the staged-input-validation download receipt re-bound the consumed local staged-validation bytes. Capture SHA-256: `{crosscheck_terminal_evidence['capture_sha256']}`.",
             f"Preflight and gather were independently frozen in private storage at exact VersionIds under the run KMS key. Their receipt is content-addressed at VersionId `{stage_provenance_evidence['receipt_version_id']}` with SHA-256 `{stage_provenance_evidence['receipt_sha256']}`.",
-            f"Before validation, all {format_int(input_snapshot['file_count'])} files in the artifact tree, early-look tree, and external receipt set were copied into a private stable snapshot using no-follow opens, file-descriptor identity checks, and a global source re-stat. Snapshot receipt SHA-256: `{sha256(paths['input_snapshot'])}`.",
+            f"Before validation, all {format_int(input_snapshot_file_count)} files in the artifact tree, early-look tree, and external receipt set were copied into a private stable snapshot using no-follow opens, file-descriptor identity checks, and a global source re-stat. Snapshot receipt SHA-256: `{sha256(paths['input_snapshot'])}`.",
             "",
             f"Preflight and gather share the full-run ID and record eight lanes, the `{input_payload.get('reference')}` reference, and four lanes per tumor/normal role. Input SHA-256 verification establishes byte integrity, not sequence quality or biological interpretation.",
             "",
@@ -2907,7 +2908,7 @@ def main() -> None:
         "input_sha256": input_rows,
         "input_snapshot": {
             "receipt_sha256": sha256(paths["input_snapshot"]),
-            "file_count": int(input_snapshot["file_count"]),
+            "file_count": input_snapshot_file_count,
             "strategy": input_snapshot["snapshot_strategy"],
         },
         "stage_provenance": stage_provenance_evidence,
