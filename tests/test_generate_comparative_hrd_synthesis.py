@@ -626,6 +626,26 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.require_synthesis_report_manifest(staging)
 
+    def test_synthesis_rejects_inexact_staged_inventory(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            GENERATE.write_agreement(agreement, [])
+            write_synthesis_manifest(manifest, report, agreement)
+            (staging / "unexpected.tmp").write_text(
+                "unbound synthesis scratch\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis inventory is not exact",
+            ):
+                GENERATE.require_synthesis_report_manifest(staging)
+
     def test_synthesis_install_failure_removes_only_installed_packet_files(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
             root = Path(temporary)
@@ -832,6 +852,56 @@ class GenerateSynthesisTests(unittest.TestCase):
 
             self.assertTrue(output.is_dir())
             self.assertEqual([], list(output.iterdir()))
+
+    def test_synthesis_install_removes_installed_files_after_inexact_final_inventory(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-install-") as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "synthesis"
+            staging.mkdir()
+            output.mkdir()
+
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            GENERATE.write_agreement(agreement, [])
+            write_synthesis_manifest(manifest, report, agreement)
+            real_fsync_directory = GENERATE.fsync_directory
+
+            def create_unexpected_file_after_final_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                if path == output:
+                    (output / "unexpected.tmp").write_text(
+                        "unbound final synthesis file\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    GENERATE,
+                    "fsync_directory",
+                    side_effect=create_unexpected_file_after_final_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "comparative synthesis inventory is not exact",
+                ),
+            ):
+                GENERATE.install_packet_create_only(
+                    (report, agreement, manifest),
+                    output,
+                )
+
+            self.assertTrue(output.is_dir())
+            for name in GENERATE.OUTPUT_FILES:
+                self.assertFalse((output / name).exists())
+            self.assertEqual(
+                (output / "unexpected.tmp").read_text(encoding="utf-8"),
+                "unbound final synthesis file\n",
+            )
 
     def test_generates_descriptive_report_table_and_schema_one_manifest(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:

@@ -1015,6 +1015,19 @@ def require_synthesis_review_summary(manifest: Dict[str, Any]) -> None:
 
 
 def require_synthesis_report_manifest(packet_dir: Path) -> None:
+    observed = {path.name for path in packet_dir.iterdir()}
+    if observed != OUTPUT_FILES:
+        missing = sorted(OUTPUT_FILES - observed)
+        unexpected = sorted(observed - OUTPUT_FILES)
+        details = []
+        if missing:
+            details.append("missing " + ",".join(missing))
+        if unexpected:
+            details.append("unexpected " + ",".join(unexpected))
+        raise ValueError(
+            "comparative synthesis inventory is not exact: " + "; ".join(details)
+        )
+
     manifest = load_object(packet_dir / "report_manifest.json", "synthesis packet")
     if (
         manifest.get("schema_version") != 1
