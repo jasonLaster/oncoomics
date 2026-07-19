@@ -406,6 +406,22 @@ def collect_log_events(region: str, log_stream: str) -> list[dict[str, Any]]:
     raise ValueError("CloudWatch log pagination exceeded the safety limit")
 
 
+def exact_cloudwatch_event_timestamps(events: list[dict[str, Any]]) -> list[int]:
+    timestamps: list[int] = []
+    for index, event in enumerate(events):
+        timestamp = event.get("timestamp")
+        if type(timestamp) is not int or timestamp <= 0:
+            raise ValueError(
+                f"CloudWatch event timestamp {index} is not an exact positive integer"
+            )
+        timestamps.append(timestamp)
+    if not timestamps:
+        raise ValueError("CloudWatch event timestamps are empty")
+    if any(previous > current for previous, current in zip(timestamps, timestamps[1:])):
+        raise ValueError("CloudWatch event timestamps are not ordered")
+    return timestamps
+
+
 def parse_terminal_payload(events: list[dict[str, Any]]) -> tuple[dict[str, Any], str]:
     messages: list[str] = []
     for event in events:
@@ -1044,6 +1060,7 @@ def capture(args: argparse.Namespace) -> dict[str, Any]:
         expected_parameters,
     )
     events = collect_log_events(args.region, batch["log_stream"])
+    event_timestamps = exact_cloudwatch_event_timestamps(events)
     terminal_payload, terminal_json = parse_terminal_payload(events)
     location = validate_logged_anchor(terminal_payload, args.expected_receipt_prefix, args.expected_kms_key_arn)
     expected_destination_prefix = materializer_destination_prefix(args.expected_receipt_prefix)
@@ -1102,8 +1119,8 @@ def capture(args: argparse.Namespace) -> dict[str, Any]:
             "log_group": LOG_GROUP,
             "log_stream": batch["log_stream"],
             "event_count": len(events),
-            "first_event_timestamp": int(events[0].get("timestamp", 0)) if events else 0,
-            "last_event_timestamp": int(events[-1].get("timestamp", 0)) if events else 0,
+            "first_event_timestamp": event_timestamps[0],
+            "last_event_timestamp": event_timestamps[-1],
             "messages_sha256": canonical_sha256(event_messages),
             "terminal_payload_sha256": canonical_sha256(terminal_payload),
             "terminal_json_sha256": sha256_bytes(terminal_json.encode("utf-8")),

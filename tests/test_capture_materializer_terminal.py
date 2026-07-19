@@ -825,6 +825,25 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                         self.parameters,
                     )
 
+    def test_cloudwatch_event_timestamps_must_be_exact_integers(self) -> None:
+        cases = (
+            ("float", 1000.0, "not an exact positive integer"),
+            ("bool", True, "not an exact positive integer"),
+            ("string", "1000", "not an exact positive integer"),
+            ("unordered", 999, "not ordered"),
+        )
+
+        for label, value, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                events = self.events()
+                events[-1]["timestamp"] = value
+
+                with self.assertRaisesRegex(ValueError, error):
+                    self.run_capture(
+                        self.args(Path(temporary)),
+                        aws=self.aws_side_effect(events=events),
+                    )
+
     def test_logged_anchor_outer_check_map_must_be_exact(self) -> None:
         cases = (
             (
