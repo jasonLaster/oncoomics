@@ -70,6 +70,10 @@ def valid_blob(value: object) -> bool:
     )
 
 
+def exact_schema_version(payload: dict, expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def private_output(uri: str) -> bool:
     return bool(
         re.match(
@@ -120,7 +124,7 @@ def validate(contract: dict) -> dict:
     if not isinstance(custody, dict):
         shared.append("custody must contain the receipt-bound finalization evidence")
     else:
-        if custody.get("schema_version") != 1 or custody.get("status") != "passed":
+        if not exact_schema_version(custody, 1) or custody.get("status") != "passed":
             shared.append("custody must be a passed schema-1 finalization record")
         for key in (
             "finalizer_script_sha256",

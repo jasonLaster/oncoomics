@@ -789,6 +789,69 @@ class CustodyHandoffTests(unittest.TestCase):
             )
         )
 
+    def test_contract_check_rejects_non_integer_custody_schema_version(self):
+        contract = CustodyFixture().finalize()
+        contract["custody"]["schema_version"] = 1.0
+
+        result = checker.validate(contract)
+
+        self.assertEqual(result["overall_status"], "blocked")
+        self.assertTrue(
+            any(
+                "custody must be a passed schema-1 finalization record" in reason
+                for route in result["routes"].values()
+                for reason in route["reasons"]
+            )
+        )
+
+    def test_contract_check_schema_version_checks_use_exact_integer_helper(self):
+        cases = (
+            (1, 1, True),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (2, 1, False),
+            (None, 1, False),
+            (True, 1, False),
+            (False, 0, False),
+        )
+        for value, expected, accepted in cases:
+            with self.subTest(value=value, expected=expected):
+                self.assertIs(
+                    checker.exact_schema_version(
+                        {"schema_version": value},
+                        expected,
+                    ),
+                    accepted,
+                )
+
+    def test_contract_check_schema_version_checks_avoid_raw_comparisons(self):
+        module = ast.parse(
+            (ROOT / "scripts/check_contract.py").read_text(encoding="utf-8")
+        )
+        parent_by_child = {
+            child: parent
+            for parent in ast.walk(module)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def in_exact_schema_helper(node: ast.AST) -> bool:
+            parent = parent_by_child.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef):
+                    return parent.name == "exact_schema_version"
+                parent = parent_by_child.get(parent)
+            return False
+
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+            and not in_exact_schema_helper(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
+
     def test_finalized_custody_check_inventory_matches_checker(self):
         self.assertEqual(
             finalizer.EXPECTED_FINALIZED_CUSTODY_CHECKS,
