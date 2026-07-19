@@ -551,6 +551,35 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertFalse(fixture.output_path.exists())
 
+    def test_apply_rejects_dry_run_receipt_with_duplicate_json_object_names_before_s3(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            dry_receipt = fixture.write_dry_run_receipt()
+            payload = json.loads(dry_receipt.read_text(encoding="utf-8"))
+            text = json.dumps(payload, indent=2, sort_keys=True)
+            status = f'  "status": "{payload["status"]}"'
+            self.assertEqual(text.count(status), 1)
+            text = text.replace(status, f'  "status": "failed",\n{status}', 1)
+            dry_receipt.write_text(text + "\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    (
+                        "duplicate JSON object name in "
+                        "reviewed-public report dry-run receipt: status"
+                    ),
+                ),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_receipt))
+
+            self.assertFalse(fixture.output_path.exists())
+
     def test_apply_rejects_dry_run_receipt_with_extra_failed_check_before_s3(
         self,
     ) -> None:
@@ -894,6 +923,33 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             with mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")):
                 with self.assertRaisesRegex(ValueError, "not exact and passed"):
                     MODULE.run(fixture.args())
+
+    def test_rejects_private_receipt_with_duplicate_json_object_names_before_aws(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            payload = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+            text = json.dumps(payload, indent=2, sort_keys=True)
+            apply = f'  "apply": {json.dumps(payload["apply"])}'
+            self.assertEqual(text.count(apply), 1)
+            text = text.replace(apply, f'  "apply": false,\n{apply}', 1)
+            fixture.receipt_path.write_text(text + "\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "duplicate JSON object name in private publication receipt: apply",
+                ),
+            ):
+                MODULE.run(fixture.args())
+
+            self.assertFalse(fixture.output_path.exists())
 
     def test_rejects_unallowlisted_or_reserved_private_file(self) -> None:
         for relative in ("raw.fastq.gz", "_publication"):

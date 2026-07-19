@@ -22,6 +22,10 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 from forbidden_text import (
     DEFAULT_FORBIDDEN_TOKENS,
     forbidden_token_fingerprints,
@@ -340,7 +344,15 @@ def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value
