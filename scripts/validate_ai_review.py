@@ -17,6 +17,7 @@ from ai_model_catalog import MODEL_CATALOG_MODEL_KEYS, MODEL_CATALOG_RECEIPT_KEY
 from build_ai_review_bundle import (
     BUNDLE_MANIFEST_KEYS,
     BUNDLE_REVIEW_BUNDLE_KEYS,
+    require_bundle_manifest,
     validate_report_manifest_support,
 )
 from forbidden_text import (
@@ -1089,9 +1090,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("at least one forbidden token is required")
 
         bundle_dir = resolve_real_dir(args.bundle_dir, "bundle directory")
+        require_bundle_manifest(bundle_dir)
         bundle_path = bundle_dir / "review_bundle.json"
         bundle_manifest_path = bundle_dir / "bundle_manifest.json"
-        prompt_path = bundle_dir / f"reviewer-{args.reviewer.lower()}.prompt.md"
+        prompt_paths = {
+            role: bundle_dir / f"reviewer-{role.lower()}.prompt.md"
+            for role in ("A", "B")
+        }
+        prompt_path = prompt_paths[args.reviewer]
         report_path = review_dir / "report.md"
         claims_path = review_dir / "claims.csv"
         review_manifest_path = review_dir / "review_manifest.json"
@@ -1170,7 +1176,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             [
                 bundle_path,
                 bundle_manifest_path,
-                prompt_path,
+                prompt_paths["A"],
+                prompt_paths["B"],
                 report_path,
                 claims_path,
                 review_manifest_path,

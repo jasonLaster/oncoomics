@@ -457,6 +457,13 @@ class ValidateAiReviewTests(unittest.TestCase):
                     payload["model_execution_contracts"]["A"]
                 )
                 write_json(path, payload)
+            bundle_path = fixture.bundle_dir / "review_bundle.json"
+            bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+            bundle_manifest = json.loads(
+                bundle_manifest_path.read_text(encoding="utf-8")
+            )
+            bundle_manifest["review_bundle_sha256"] = sha256(bundle_path)
+            write_json(bundle_manifest_path, bundle_manifest)
 
             review = Path(temporary) / "review-a"
             fixture.write_review(review)
@@ -500,6 +507,50 @@ class ValidateAiReviewTests(unittest.TestCase):
 
                 review = Path(temporary) / "review-a"
                 fixture.write_review(review)
+
+                validated = fixture.validate(review)
+
+                self.assertNotEqual(validated.returncode, 0)
+                self.assertIn(message, validated.stderr)
+                self.assertFalse((review / "validation.json").exists())
+
+    def test_rejects_inexact_bundle_directory_before_validation(self) -> None:
+        cases = (
+            (
+                "extra",
+                lambda fixture, root: (
+                    fixture.bundle_dir / "raw.fastq"
+                ).write_text("stale raw input\n", encoding="utf-8"),
+                "AI review bundle inventory is not exact",
+            ),
+            (
+                "missing prompt",
+                lambda fixture, root: (
+                    fixture.bundle_dir / "reviewer-b.prompt.md"
+                ).unlink(),
+                "AI review bundle inventory is not exact",
+            ),
+            (
+                "symlink prompt",
+                lambda fixture, root: (
+                    (fixture.bundle_dir / "reviewer-b.prompt.md").replace(
+                        root / "reviewer-b.prompt.real.md",
+                    ),
+                    (fixture.bundle_dir / "reviewer-b.prompt.md").symlink_to(
+                        root / "reviewer-b.prompt.real.md",
+                    ),
+                ),
+                "AI review bundle file is missing, unsafe, or empty",
+            ),
+        )
+        for name, mutate, message in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = ValidateReviewFixture(root)
+                fixture.build()
+                review = root / "review-a"
+                fixture.write_review(review)
+                mutate(fixture, root)
 
                 validated = fixture.validate(review)
 

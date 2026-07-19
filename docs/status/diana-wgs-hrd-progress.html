@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local AI finalizer integers</li>
+          <li class="pill">Latest milestone = local AI validator bundle exactness</li>
+          <li class="pill">AI validator bundles = exact</li>
           <li class="pill">AI finalizer integers = exact</li>
           <li class="pill">Comparative synthesis integers = exact</li>
           <li class="pill">Public index integers = exact</li>
@@ -373,7 +374,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 01b29cf</li>
+          <li class="pill">Prior dashboard = 5ad7c5b</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -699,6 +700,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI validator bundles</strong>
+              <span>Independent AI validation now revalidates the exact four-file AI bundle and scans both reviewer prompts before reading bundle inputs or writing <code>validation.json</code>.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI finalizer integers</strong>
               <span>Independent AI-review finalization now rejects upstream validation claim counts or disagreement counts that are JSON booleans, non-exact integers, or larger than the total claim count before a reviewer <code>report_manifest.json</code> can be written.</span>
             </li>
@@ -880,6 +885,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:25:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI validator bundles:</strong>
+                independent AI validation now revalidates the four-file bundle
+                manifest and scans both reviewer prompts before reading bundle
+                files or writing <code>validation.json</code>, rejecting extra,
+                missing, or symlinked bundle files. No S3, Batch, route, GPU,
+                quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:24:00-07:00">Jul 19 · local</time>
               <span>
