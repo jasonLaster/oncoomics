@@ -257,6 +257,32 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                     "executed-worker freeze receipt",
                 )
 
+    def test_load_object_rejects_duplicate_object_names(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "executed-worker-freeze-receipt.json"
+            receipt.write_text(
+                '{"schema_version":0,"schema_version":1}\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in "
+                "executed-worker freeze receipt: schema_version",
+            ):
+                MODULE.load_object(receipt, "executed-worker freeze receipt")
+
+    def test_worker_freeze_command_output_rejects_duplicate_object_names(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate JSON object name in "
+            "worker freeze command output: VersionId",
+        ):
+            MODULE.parse_json_object(
+                '{"VersionId":"forged","VersionId":"exact"}',
+                "worker freeze command output",
+            )
+
     def test_get_exact_object_rejects_symlinked_worker_download(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             destination = Path(temporary) / "worker.py"

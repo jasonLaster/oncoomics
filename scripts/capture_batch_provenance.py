@@ -20,6 +20,11 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
+
 EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS = {
     "active_task_identity_matches_batch_job": True,
     "container_file_hash_and_size_captured": True,
@@ -468,7 +473,19 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    return parse_json_object(path.read_text(encoding="utf-8"), label)
+
+
+def parse_json_object(value: str | bytes, label: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(
+            value,
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"{label} is not JSON: {error}") from error
     if not isinstance(payload, dict):
         raise ValueError(f"{label} is not a JSON object")
     return payload
@@ -1097,9 +1114,13 @@ def main() -> None:
     command_sha256, command_bytes = parse_hash_command_output(
         hash_invocation.get("StandardOutputContent")
     )
-    freeze_output = json.loads(str(freeze_invocation.get("StandardOutputContent", "")))
-    if not isinstance(freeze_output, dict):
-        raise SystemExit("Fail-closed: worker freeze command output is malformed")
+    try:
+        freeze_output = parse_json_object(
+            str(freeze_invocation.get("StandardOutputContent", "")),
+            "worker freeze command output",
+        )
+    except ValueError as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
     worker_head_metadata = worker_head.get("Metadata")
     if not isinstance(worker_head_metadata, dict):
         raise SystemExit("Fail-closed: executed worker HEAD metadata is malformed")
