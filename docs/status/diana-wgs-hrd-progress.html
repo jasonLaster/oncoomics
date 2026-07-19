@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact final-freeze ETags</li>
+          <li class="pill">Latest milestone = local exact stage-freeze ETags</li>
+          <li class="pill">Stage-freeze ETags = exact</li>
           <li class="pill">Final-freeze ETags = exact</li>
           <li class="pill">Final-freeze source-list markers = exact</li>
           <li class="pill">v4 materializer pagination markers = exact</li>
@@ -796,6 +797,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact stage-freeze ETags</strong>
+              <span>Stage provenance freezing now exact-validates unversioned source, HEAD-vs-GET, post-copy, destination, and receipt-anchor ETags, rejecting boolean, nullish, empty, sentinel, or whitespace-bearing values before stage custody can feed final artifact freezing, exact local materialization, HRD input-contract finalization, deterministic staging, Rosalind packets, cross-check inputs, AI synthesis, or reviewed-public reports.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final-freeze ETags</strong>
               <span>Final artifact freezing now exact-validates source and destination ETags, rejecting boolean, nullish, empty, sentinel, or whitespace-bearing values before stability checks, copy preconditions, dry-run identities, destination snapshots, receipts, exact local materialization, HRD input-contract finalization, deterministic staging, Rosalind packets, cross-check inputs, AI synthesis, or reviewed-public reports can consume the frozen final tree.</span>
@@ -1790,6 +1795,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T01:10:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact stage-freeze ETags:</strong>
+                Stage provenance freezing now rejects boolean, nullish, empty,
+                sentinel, or whitespace-bearing ETags before stage-source,
+                destination, or receipt-anchor custody can serialize.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T01:05:00-07:00">Jul 20 · local</time>
               <span>

@@ -150,6 +150,27 @@ def exact_version_id(value: Any, label: str) -> str:
     return value
 
 
+def exact_s3_etag(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or any(character.isspace() for character in value)
+        or value.lower() in {"none", "null"}
+    ):
+        raise RuntimeError(f"{label} omitted an exact S3 ETag")
+    return value
+
+
+def same_exact_s3_etag(left: Any, right: Any) -> bool:
+    try:
+        return exact_s3_etag(left, "left S3 ETag") == exact_s3_etag(
+            right,
+            "right S3 ETag",
+        )
+    except RuntimeError:
+        return False
+
+
 def null_version_id(value: Any) -> bool:
     return value is None or value == "null"
 
@@ -545,7 +566,7 @@ def source_stable(before: dict[str, Any], after: dict[str, Any]) -> bool:
     return (
         is_positive_exact_int(before.get("ContentLength"))
         and exact_int(after.get("ContentLength"), before["ContentLength"])
-        and str(before.get("ETag", "")) == str(after.get("ETag", ""))
+        and same_exact_s3_etag(before.get("ETag"), after.get("ETag"))
         and checksums(before) == checksums(after)
         and before.get("ChecksumType") == after.get("ChecksumType") == "FULL_OBJECT"
         and null_version_id(before.get("VersionId"))
@@ -570,7 +591,7 @@ def response_matches_head(
         response_version == expected_version_id
         and exact_int(response.get("ContentLength"), local_path.stat().st_size)
         and exact_int(head.get("ContentLength"), local_path.stat().st_size)
-        and str(response.get("ETag", "")) == str(head.get("ETag", ""))
+        and same_exact_s3_etag(response.get("ETag"), head.get("ETag"))
         and checksums(response) == checksums(head)
         and response.get("ChecksumType") == head.get("ChecksumType") == "FULL_OBJECT"
         and response.get("ServerSideEncryption")
@@ -644,12 +665,15 @@ def prepare_source_row(
     destination_key = destination_prefix + name
     before = head_object(source_bucket, source_key, region)
     source_size = before.get("ContentLength")
+    try:
+        source_etag = exact_s3_etag(before.get("ETag"), f"source {name}")
+    except RuntimeError as error:
+        raise RuntimeError(f"invalid unversioned source object: {name}") from error
     if (
         not is_positive_exact_int(source_size)
         or before.get("ChecksumType") != "FULL_OBJECT"
         or not checksums(before)
         or not null_version_id(before.get("VersionId"))
-        or not str(before.get("ETag", "")).strip()
         or before.get("ContentType") != "application/json"
         or before.get("ServerSideEncryption") != "aws:kms"
         or before.get("SSEKMSKeyId") != kms_key_arn
@@ -661,7 +685,7 @@ def prepare_source_row(
         source_key,
         source_local,
         region,
-        etag=str(before.get("ETag", "")),
+        etag=source_etag,
     )
     require_real_downloaded_file(
         source_local,
@@ -687,7 +711,7 @@ def prepare_source_row(
                 "key": source_key,
                 "version_id": "null",
                 "bytes": source_size,
-                "etag": str(before["ETag"]),
+                "etag": source_etag,
                 "checksums": checksums(before),
                 "checksum_type": "FULL_OBJECT",
                 "sha256": source_sha,
@@ -777,13 +801,17 @@ def exact_history_matches(
         version_id = row.get("VersionId")
         if not is_positive_exact_int(size) or not valid_version_id(version_id):
             return None
+        try:
+            etag = exact_s3_etag(row.get("ETag"), "destination history")
+        except RuntimeError:
+            return None
         return (
             str(row.get("history_type", "")),
             str(row.get("Key", "")),
             version_id,
             row.get("IsLatest") is True,
             size,
-            str(row.get("ETag", "")),
+            etag,
         )
 
     actual_normalized = [normalized(row) for row in actual]
@@ -949,7 +977,10 @@ def main() -> int:
                     copied = copy_object(
                         source_bucket,
                         source_key,
-                        str(before["ETag"]),
+                        exact_s3_etag(
+                            before.get("ETag"),
+                            f"copy source {source_name}",
+                        ),
                         destination_bucket,
                         destination_key,
                         args.kms_key_arn,
@@ -981,6 +1012,10 @@ def main() -> int:
                             "destination ContentLength is not an exact positive "
                             f"integer: {source_name}"
                         )
+                    destination_etag = exact_s3_etag(
+                        destination.get("ETag"),
+                        f"destination {source_name}",
+                    )
                     destination_local = temp / f"destination-{source_name}"
                     downloaded = download_object(
                         destination_bucket,
@@ -998,7 +1033,7 @@ def main() -> int:
                         {
                             "version_id": version_id,
                             "bytes": destination_size,
-                            "etag": str(destination.get("ETag", "")),
+                            "etag": destination_etag,
                             "checksums": checksums(destination),
                             "checksum_type": destination_checksum_type,
                             "sha256": destination_sha,
@@ -1047,7 +1082,7 @@ def main() -> int:
                             "VersionId": version_id,
                             "IsLatest": True,
                             "Size": destination_size,
-                            "ETag": str(destination["ETag"]),
+                            "ETag": destination_etag,
                         }
                     )
                 else:
@@ -1184,7 +1219,10 @@ def main() -> int:
                     "VersionId": version_id,
                     "IsLatest": True,
                     "Size": anchored_size,
-                    "ETag": str(anchored.get("ETag", "")),
+                    "ETag": exact_s3_etag(
+                        anchored.get("ETag"),
+                        "receipt anchor",
+                    ),
                 },
             ]
             checks["history_exact"] = exact_history_matches(

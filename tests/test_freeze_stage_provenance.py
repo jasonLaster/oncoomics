@@ -426,6 +426,14 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                         {**before, "ContentLength": value},
                     )
                 )
+        for value in (True, None, "", "None", "null", "has space"):
+            with self.subTest(etag=value):
+                self.assertFalse(
+                    MODULE.source_stable(
+                        {**before, "ETag": value},
+                        {**before, "ETag": value},
+                    )
+                )
 
     def test_get_response_must_match_head_and_local_bytes(self) -> None:
         payload = b"payload"
@@ -474,11 +482,56 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                                 expected_version_id="v1",
                             )
                         )
+            for response_name in ("GET", "HEAD"):
+                for etag in (True, None, "", "None", "null", "has space"):
+                    with self.subTest(response_name=response_name, etag=etag):
+                        response = dict(head)
+                        current_head = dict(head)
+                        if response_name == "GET":
+                            response["ETag"] = etag
+                        else:
+                            current_head["ETag"] = etag
+                        self.assertFalse(
+                            MODULE.response_matches_head(
+                                response,
+                                current_head,
+                                local,
+                                expected_version_id="v1",
+                            )
+                        )
 
     def test_prepare_source_row_content_length_must_be_exact_integer(self) -> None:
         for value in (True, 7.0, "7"):
             with self.subTest(value=value), tempfile.TemporaryDirectory() as raw:
                 head = {**object_head(b"payload"), "ContentLength": value}
+                with (
+                    patch.object(MODULE, "head_object", return_value=head),
+                    patch.object(
+                        MODULE,
+                        "download_object",
+                        side_effect=AssertionError("downloaded"),
+                    ),
+                    self.assertRaisesRegex(RuntimeError, "invalid unversioned"),
+                ):
+                    MODULE.prepare_source_row(
+                        name="preflight.json",
+                        source_bucket=SOURCE_BUCKET,
+                        source_prefix=f"runs/diana-hrd/{RUN_ID}/private-results/",
+                        destination_bucket=DESTINATION_BUCKET,
+                        destination_prefix=(
+                            f"runs/subject01/{RUN_ID}/deterministic/"
+                            "provenance/wgs-stage/"
+                        ),
+                        kms_key_arn=KMS,
+                        run_id=RUN_ID,
+                        region=REGION,
+                        temp=Path(raw),
+                    )
+
+    def test_prepare_source_row_etag_must_be_exact_string(self) -> None:
+        for value in (True, None, "", "None", "null", "has space"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as raw:
+                head = {**object_head(b"payload"), "ETag": value}
                 with (
                     patch.object(MODULE, "head_object", return_value=head),
                     patch.object(
@@ -704,6 +757,14 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                     MODULE.exact_history_matches(
                         expected,
                         [{**expected[0], "Size": value}],
+                    )
+                )
+        for value in (True, None, "", "None", "null", "has space"):
+            with self.subTest(etag=value):
+                self.assertFalse(
+                    MODULE.exact_history_matches(
+                        [{**expected[0], "ETag": value}],
+                        [{**expected[0], "ETag": value}],
                     )
                 )
 
@@ -1055,6 +1116,44 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             'anchored.get("VersionId"',
             "anchored_get.get('VersionId'",
             'anchored_get.get("VersionId"',
+        )
+        raw_string_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(field in ast.unparse(node.args[0]) for field in guarded_fields)
+        ]
+
+        self.assertEqual(raw_string_coercions, [])
+
+    def test_etag_guards_avoid_raw_string_coercion(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "freeze_stage_provenance.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        guarded_fields = (
+            "before['ETag'",
+            'before["ETag"',
+            "before.get('ETag'",
+            'before.get("ETag"',
+            "after.get('ETag'",
+            'after.get("ETag"',
+            "response.get('ETag'",
+            'response.get("ETag"',
+            "head.get('ETag'",
+            'head.get("ETag"',
+            "destination['ETag'",
+            'destination["ETag"',
+            "destination.get('ETag'",
+            'destination.get("ETag"',
+            "anchored.get('ETag'",
+            'anchored.get("ETag"',
+            "row.get('ETag'",
+            'row.get("ETag"',
         )
         raw_string_coercions = [
             ast.unparse(node)
