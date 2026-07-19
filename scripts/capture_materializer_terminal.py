@@ -74,6 +74,54 @@ EXPECTED_RECEIPT_ANCHOR_CHECKS = {
     "exact_kms": True,
     "single_create_only_version": True,
 }
+EXPECTED_BATCH_IDENTITY_CHECKS = {
+    "job_id_exact": True,
+    "succeeded": True,
+    "terminal_timestamps": True,
+    "exact_job_definition": True,
+    "exact_queue": True,
+    "one_retry_attempt": True,
+    "one_terminal_attempt": True,
+    "job_exit_zero": True,
+    "attempt_exit_zero": True,
+    "parameters_exact": True,
+    "log_stream_exact": True,
+    "definition_exact": True,
+    "definition_log_exact": True,
+    "queue_live_exact": True,
+    "arm_compute_environment_exact": True,
+}
+EXPECTED_LOGGED_RECEIPT_ANCHOR_CHECKS = {
+    "outer_status": True,
+    "anchor_schema_status": True,
+    "anchor_checks_exact": True,
+    "receipt_sha256_well_formed": True,
+    "receipt_bytes_positive": True,
+    "receipt_version_nonempty": True,
+    "receipt_uri_content_addressed": True,
+    "upload_binding": True,
+    "upload_checks_exact": True,
+    "logged_checksum_sha256": True,
+}
+EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS = {
+    "logged_local_sha256_exact": True,
+    "logged_local_bytes_exact": True,
+    "get_version_exact": True,
+    "head_version_exact": True,
+    "get_bytes_exact": True,
+    "head_bytes_exact": True,
+    "get_sha256_checksum_exact": True,
+    "head_sha256_checksum_exact": True,
+    "get_kms_exact": True,
+    "head_kms_exact": True,
+    "get_metadata_sha256_exact": True,
+    "head_metadata_sha256_exact": True,
+    "single_version_no_delete_history": True,
+    "receipt_schema_status": True,
+    "receipt_script_exact": True,
+    "receipt_checks_exact": True,
+    "receipt_boundary_no_call": True,
+}
 
 
 def now() -> str:
@@ -147,6 +195,26 @@ def require_one(payload: dict[str, Any], key: str) -> dict[str, Any]:
     if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
         raise ValueError(f"expected exactly one {key} record")
     return rows[0]
+
+
+def check_map_mismatches(value: dict[str, Any], expected: dict[str, bool]) -> list[str]:
+    missing = sorted(set(expected) - set(value))
+    unexpected = sorted(set(value) - set(expected))
+    failed = sorted(key for key in set(expected) & set(value) if value[key] is not expected[key])
+    errors: list[str] = []
+    if missing:
+        errors.append("missing " + ",".join(missing))
+    if unexpected:
+        errors.append("unexpected " + ",".join(unexpected))
+    if failed:
+        errors.append("failed " + ",".join(failed))
+    return errors
+
+
+def require_exact_checks(checks: dict[str, bool], expected: dict[str, bool], label: str) -> None:
+    errors = check_map_mismatches(checks, expected)
+    if errors:
+        raise ValueError(f"{label} check map is not exact: {'; '.join(errors)}")
 
 
 def s3_location(uri: str) -> tuple[str, str]:
@@ -358,8 +426,14 @@ def validate_job(
             and sorted(str(value) for value in instance_types) == sorted(EXPECTED_ARM_INSTANCE_TYPES)
         ),
     }
-    if not all(checks.values()):
-        raise ValueError(f"terminal materializer Batch identity failed: {checks}")
+    try:
+        require_exact_checks(
+            checks,
+            EXPECTED_BATCH_IDENTITY_CHECKS,
+            "terminal materializer Batch identity",
+        )
+    except ValueError as error:
+        raise ValueError(f"terminal materializer Batch identity failed: {error}") from error
     return {
         "job_id": job_id,
         "job_name": str(job.get("jobName", "")),
@@ -426,8 +500,16 @@ def validate_logged_anchor(
             == receipt_sha
         ),
     }
-    if not all(checks.values()):
-        raise ValueError(f"logged materialization receipt anchor failed: {checks}")
+    try:
+        require_exact_checks(
+            checks,
+            EXPECTED_LOGGED_RECEIPT_ANCHOR_CHECKS,
+            "logged materialization receipt anchor",
+        )
+    except ValueError as error:
+        raise ValueError(
+            f"logged materialization receipt anchor failed: {error}"
+        ) from error
     return {
         "bucket": bucket,
         "key": key,
@@ -497,8 +579,16 @@ def validate_exact_receipt(
             receipt.get("classification_authorization") == "none" and receipt.get("authorized_hrd_state") == "no_call"
         ),
     }
-    if not all(checks.values()):
-        raise ValueError(f"exact materialization receipt verification failed: {checks}")
+    try:
+        require_exact_checks(
+            checks,
+            EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS,
+            "exact materialization receipt verification",
+        )
+    except ValueError as error:
+        raise ValueError(
+            f"exact materialization receipt verification failed: {error}"
+        ) from error
     return receipt, checks
 
 

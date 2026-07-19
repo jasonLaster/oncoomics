@@ -278,6 +278,23 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
         with mock.patch.object(MODULE, "aws_json", side_effect=aws), mock.patch.object(MODULE, "get_exact_object", side_effect=get):
             return MODULE.capture(args)
 
+    def receipt_location(self) -> dict:
+        return MODULE.validate_logged_anchor(
+            self.terminal,
+            self.prefix,
+            self.kms,
+        )
+
+    def receipt_history_rows(self) -> list[dict]:
+        return [
+            {
+                "Key": self.key,
+                "VersionId": self.version_id,
+                "IsLatest": True,
+                "history_kind": "version",
+            }
+        ]
+
     def test_receipt_history_consumes_key_and_version_markers(self) -> None:
         pages = [
             {
@@ -583,6 +600,92 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                         aws=self.aws_side_effect(events=self.events(terminal)),
                     )
 
+    def test_batch_identity_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                {
+                    **MODULE.EXPECTED_BATCH_IDENTITY_CHECKS,
+                    "future_batch_identity_check": True,
+                },
+                "missing future_batch_identity_check",
+            ),
+            (
+                {
+                    name: value
+                    for name, value in MODULE.EXPECTED_BATCH_IDENTITY_CHECKS.items()
+                    if name != "definition_log_exact"
+                },
+                "unexpected definition_log_exact",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(MODULE, "EXPECTED_BATCH_IDENTITY_CHECKS", expected),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.validate_job(
+                    self.job,
+                    self.definition,
+                    self.queue,
+                    self.compute,
+                    "job-1",
+                    self.parameters,
+                )
+
+    def test_failed_batch_identity_check_reports_exact_key(self) -> None:
+        job = copy.deepcopy(self.job)
+        job["stoppedAt"] = 99
+
+        with self.assertRaisesRegex(ValueError, "failed terminal_timestamps"):
+            MODULE.validate_job(
+                job,
+                self.definition,
+                self.queue,
+                self.compute,
+                "job-1",
+                self.parameters,
+            )
+
+    def test_logged_anchor_outer_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                {
+                    **MODULE.EXPECTED_LOGGED_RECEIPT_ANCHOR_CHECKS,
+                    "future_logged_anchor_check": True,
+                },
+                "missing future_logged_anchor_check",
+            ),
+            (
+                {
+                    name: value
+                    for name, value in MODULE.EXPECTED_LOGGED_RECEIPT_ANCHOR_CHECKS.items()
+                    if name != "upload_checks_exact"
+                },
+                "unexpected upload_checks_exact",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(
+                    MODULE,
+                    "EXPECTED_LOGGED_RECEIPT_ANCHOR_CHECKS",
+                    expected,
+                ),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                self.receipt_location()
+
+    def test_failed_logged_anchor_outer_check_reports_exact_key(self) -> None:
+        terminal = copy.deepcopy(self.terminal)
+        terminal["receipt"]["sha256"] = "0" * 64
+
+        with self.assertRaisesRegex(ValueError, "failed upload_binding"):
+            MODULE.validate_logged_anchor(terminal, self.prefix, self.kms)
+
     def test_rejects_logged_anchor_with_missing_unexpected_or_failed_upload_check(self) -> None:
         cases = {}
         for label, mutate in (
@@ -697,6 +800,55 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                             key=receipt_key,
                         ),
                     )
+
+    def test_exact_receipt_download_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                {
+                    **MODULE.EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS,
+                    "future_exact_receipt_check": True,
+                },
+                "missing future_exact_receipt_check",
+            ),
+            (
+                {
+                    name: value
+                    for name, value in MODULE.EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS.items()
+                    if name != "head_metadata_sha256_exact"
+                },
+                "unexpected head_metadata_sha256_exact",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(
+                    MODULE,
+                    "EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS",
+                    expected,
+                ),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.validate_exact_receipt(
+                    self.receipt_bytes,
+                    self.metadata,
+                    self.metadata,
+                    self.receipt_history_rows(),
+                    self.receipt_location(),
+                )
+
+    def test_failed_exact_receipt_download_check_reports_exact_key(self) -> None:
+        get_response = {**self.metadata, "VersionId": "wrong-version"}
+
+        with self.assertRaisesRegex(ValueError, "failed get_version_exact"):
+            MODULE.validate_exact_receipt(
+                self.receipt_bytes,
+                get_response,
+                self.metadata,
+                self.receipt_history_rows(),
+                self.receipt_location(),
+            )
 
     def test_rejects_symlinked_exact_receipt_download_before_capture(self) -> None:
         def get(region, bucket, key, version_id, destination):
