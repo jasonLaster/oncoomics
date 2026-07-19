@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local materializer Batch integer exactness</li>
+          <li class="pill">Latest milestone = local terminal Batch runtime exactness</li>
+          <li class="pill">Terminal Batch runtime = exact</li>
           <li class="pill">Materializer Batch ints = exact</li>
           <li class="pill">Public index import = 3.9-safe</li>
           <li class="pill">HRD method inventory = exact</li>
@@ -766,6 +767,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact terminal Batch runtime</strong>
+              <span>Terminal materializer and cross-check route capture now reject non-exact successful-job retry, live job-definition revision, live retry/timeout, route runtime, and compute-environment vCPU integers before terminal Batch runtime metadata can be trusted.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer Batch integers</strong>
               <span>Materializer registration and v4 submit now reject non-exact Batch revision, retry, timeout, vCPU, and memory integers before registered-not-submitted receipts, preflight, or live job-definition checks can trust materializer Batch runtime metadata.</span>
@@ -1240,6 +1245,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T04:15:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact terminal Batch runtime:</strong>
+                terminal materializer and cross-check route capture now reject
+                non-exact successful-job retry, live job-definition revision,
+                live retry/timeout, route runtime, and compute-environment vCPU
+                integers before terminal Batch runtime metadata can be trusted.
+                No S3, Batch, route, GPU, quota, replacement compute, or
+                AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:55:00-07:00">Jul 19 · local</time>
               <span>

@@ -849,6 +849,60 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                 fixture["submission_environment"],
             )
 
+    def test_batch_runtime_numbers_must_be_exact_integers(self):
+        cases = (
+            ("job_retry", {"job_retry": 1.0}, "failed one_retry_attempt"),
+            ("definition_revision", {"definition_revision": 3.0}, "failed definition_identity_exact"),
+            ("definition_retry", {"definition_retry": True}, "failed definition_identity_exact"),
+            ("definition_timeout", {"definition_timeout": 21600.0}, "failed definition_identity_exact"),
+            ("vcpus", {"vcpus": 4.0}, "failed definition_container_exact"),
+            ("memory", {"memory": 16384.0}, "failed definition_container_exact"),
+            ("min_vcpus", {"min_vcpus": 0.0}, "failed x86_compute_environment_live_exact"),
+            ("max_vcpus", {"max_vcpus": 128.0}, "failed x86_compute_environment_live_exact"),
+        )
+
+        for label, values, error in cases:
+            with self.subTest(label=label):
+                fixture = self.fixture()
+                if "job_retry" in values:
+                    fixture["job"]["retryStrategy"]["attempts"] = values["job_retry"]
+                if "definition_revision" in values:
+                    fixture["definition"]["revision"] = values["definition_revision"]
+                if "definition_retry" in values:
+                    fixture["definition"]["retryStrategy"]["attempts"] = values[
+                        "definition_retry"
+                    ]
+                if "definition_timeout" in values:
+                    fixture["definition"]["timeout"]["attemptDurationSeconds"] = values[
+                        "definition_timeout"
+                    ]
+                if "vcpus" in values:
+                    fixture["definition"]["containerProperties"]["vcpus"] = values[
+                        "vcpus"
+                    ]
+                if "memory" in values:
+                    fixture["definition"]["containerProperties"]["memory"] = values[
+                        "memory"
+                    ]
+                if "min_vcpus" in values:
+                    fixture["compute"]["computeResources"]["minvCpus"] = values[
+                        "min_vcpus"
+                    ]
+                if "max_vcpus" in values:
+                    fixture["compute"]["computeResources"]["maxvCpus"] = values[
+                        "max_vcpus"
+                    ]
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_job(
+                        fixture["job"],
+                        fixture["definition"],
+                        fixture["queue"],
+                        fixture["compute"],
+                        self.args(Path("unused"), fixture),
+                        fixture["submission_environment"],
+                    )
+
     def test_terminal_parser_rejects_duplicate_anchor_and_trailing_output(self):
         fixture = self.fixture()
         valid = self.events(fixture)

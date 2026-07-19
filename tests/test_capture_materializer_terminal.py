@@ -767,6 +767,39 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 self.parameters,
             )
 
+    def test_batch_runtime_numbers_must_be_exact_integers(self) -> None:
+        cases = (
+            ("job_retry", {"job_retry": 1.0}, "failed one_retry_attempt"),
+            ("definition_revision", {"definition_revision": 4.0}, "failed definition_exact"),
+            ("definition_retry", {"definition_retry": True}, "failed definition_exact"),
+            ("definition_timeout", {"definition_timeout": 21600.0}, "failed definition_exact"),
+        )
+
+        for label, values, error in cases:
+            with self.subTest(label=label):
+                job = copy.deepcopy(self.job)
+                definition = copy.deepcopy(self.definition)
+                if "job_retry" in values:
+                    job["retryStrategy"]["attempts"] = values["job_retry"]
+                if "definition_revision" in values:
+                    definition["revision"] = values["definition_revision"]
+                if "definition_retry" in values:
+                    definition["retryStrategy"]["attempts"] = values["definition_retry"]
+                if "definition_timeout" in values:
+                    definition["timeout"]["attemptDurationSeconds"] = values[
+                        "definition_timeout"
+                    ]
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_job(
+                        job,
+                        definition,
+                        self.queue,
+                        self.compute,
+                        "job-1",
+                        self.parameters,
+                    )
+
     def test_logged_anchor_outer_check_map_must_be_exact(self) -> None:
         cases = (
             (

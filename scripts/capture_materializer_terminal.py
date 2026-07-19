@@ -500,13 +500,15 @@ def validate_job(
         else {}
     )
     log_options = log_configuration.get("options", {}) if isinstance(log_configuration, dict) else {}
+    definition_retry = definition.get("retryStrategy")
+    definition_timeout = definition.get("timeout")
     checks = {
         "job_id_exact": job.get("jobId") == job_id,
         "succeeded": job.get("status") == "SUCCEEDED",
         "terminal_timestamps": (int(job.get("startedAt", 0)) > 0 and int(job.get("stoppedAt", 0)) >= int(job.get("startedAt", 0))),
         "exact_job_definition": job.get("jobDefinition") == EXPECTED_JOB_DEFINITION,
         "exact_queue": job.get("jobQueue") == EXPECTED_QUEUE_ARN,
-        "one_retry_attempt": isinstance(retry, dict) and retry.get("attempts") == 1,
+        "one_retry_attempt": isinstance(retry, dict) and exact_int(retry.get("attempts"), 1),
         "one_terminal_attempt": len(attempts) == 1,
         "job_exit_zero": container.get("exitCode") == 0,
         "attempt_exit_zero": attempt_container.get("exitCode") == 0,
@@ -517,10 +519,14 @@ def validate_job(
         "definition_exact": (
             definition.get("jobDefinitionArn") == EXPECTED_JOB_DEFINITION
             and definition.get("jobDefinitionName") == EXPECTED_JOB_DEFINITION_NAME
-            and definition.get("revision") == 4
+            and exact_int(definition.get("revision"), 4)
             and definition.get("status") == "ACTIVE"
-            and definition.get("retryStrategy") == {"attempts": 1}
-            and definition.get("timeout") == {"attemptDurationSeconds": 21600}
+            and isinstance(definition_retry, dict)
+            and set(definition_retry) == {"attempts"}
+            and exact_int(definition_retry.get("attempts"), 1)
+            and isinstance(definition_timeout, dict)
+            and set(definition_timeout) == {"attemptDurationSeconds"}
+            and exact_int(definition_timeout.get("attemptDurationSeconds"), 21600)
         ),
         "definition_log_exact": (
             log_configuration.get("logDriver") == "awslogs"

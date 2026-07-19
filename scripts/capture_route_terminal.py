@@ -544,6 +544,8 @@ def validate_job(
     # independently against the live revision-3 definition below.
     expected_job_environment = submission_environment
     log_configuration = properties.get("logConfiguration")
+    definition_retry = definition.get("retryStrategy")
+    definition_timeout = definition.get("timeout")
     resources = compute_environment.get("computeResources")
     instance_types = resources.get("instanceTypes") if isinstance(resources, dict) else None
     queue_order = queue.get("computeEnvironmentOrder")
@@ -555,7 +557,7 @@ def validate_job(
         "terminal_timestamps": (int(job.get("startedAt", 0)) > 0 and int(job.get("stoppedAt", 0)) >= int(job.get("startedAt", 0))),
         "exact_job_definition": (job.get("jobDefinition") == route["job_definition_arn"]),
         "exact_queue": job.get("jobQueue") == EXPECTED_QUEUE_ARN,
-        "one_retry_attempt": (isinstance(retry, dict) and retry.get("attempts") == 1),
+        "one_retry_attempt": (isinstance(retry, dict) and exact_int(retry.get("attempts"), 1)),
         "one_terminal_attempt": len(attempts) == 1,
         "job_exit_zero": container.get("exitCode") == 0,
         "attempt_exit_zero": attempt_container.get("exitCode") == 0,
@@ -567,19 +569,27 @@ def validate_job(
         "definition_identity_exact": (
             definition.get("jobDefinitionArn") == route["job_definition_arn"]
             and definition.get("jobDefinitionName") == route["job_definition_name"]
-            and definition.get("revision") == route["revision"]
+            and exact_int(definition.get("revision"), route["revision"])
             and definition.get("status") == "ACTIVE"
             and definition.get("type") == "container"
             and definition.get("platformCapabilities") == ["EC2"]
-            and definition.get("retryStrategy") == {"attempts": 1, "evaluateOnExit": []}
-            and definition.get("timeout") == {"attemptDurationSeconds": route["timeout_seconds"]}
+            and isinstance(definition_retry, dict)
+            and definition_retry.get("evaluateOnExit") == []
+            and set(definition_retry) == {"attempts", "evaluateOnExit"}
+            and exact_int(definition_retry.get("attempts"), 1)
+            and isinstance(definition_timeout, dict)
+            and set(definition_timeout) == {"attemptDurationSeconds"}
+            and exact_int(
+                definition_timeout.get("attemptDurationSeconds"),
+                route["timeout_seconds"],
+            )
         ),
         "definition_container_exact": (
             properties.get("command") == route["command"]
             and properties.get("image") == route["image"]
             and properties.get("jobRoleArn") == EXPECTED_JOB_ROLE
-            and properties.get("vcpus") == route["vcpus"]
-            and properties.get("memory") == route["memory"]
+            and exact_int(properties.get("vcpus"), route["vcpus"])
+            and exact_int(properties.get("memory"), route["memory"])
             and definition_environment == route["definition_environment"]
         ),
         "definition_log_exact": (
@@ -613,8 +623,8 @@ def validate_job(
             and isinstance(resources, dict)
             and resources.get("type") == "EC2"
             and resources.get("allocationStrategy") == "BEST_FIT_PROGRESSIVE"
-            and resources.get("minvCpus") == 0
-            and resources.get("maxvCpus") == 128
+            and exact_int(resources.get("minvCpus"), 0)
+            and exact_int(resources.get("maxvCpus"), 128)
             and isinstance(instance_types, list)
             and len(instance_types) == len(EXPECTED_X86_INSTANCE_TYPES)
             and sorted(str(value) for value in instance_types) == sorted(EXPECTED_X86_INSTANCE_TYPES)
