@@ -1013,6 +1013,204 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             )
             self.assertFalse(anchor.exists())
 
+    def test_main_copy_content_lengths_must_be_exact_integers(self) -> None:
+        run_id = "run-id"
+        job_id = "job-id"
+        command = ["worker", "--run-id", run_id]
+        job = {
+            "jobArn": f"arn:aws:batch:us-east-1:172630973301:job/{job_id}",
+            "jobId": job_id,
+            "jobName": "wgs",
+            "jobDefinition": "arn:aws:batch:us-east-1:172630973301:job-definition/wgs:1",
+            "status": "SUCCEEDED",
+            "retryStrategy": {"attempts": 1, "evaluateOnExit": []},
+            "timeout": {"attemptDurationSeconds": 129600},
+            "container": {
+                "command": command,
+                "taskArn": "arn:aws:ecs:us-east-1:172630973301:task/cluster/task-id",
+                "logStreamName": "wgs/default/stream",
+            },
+        }
+        normalized_attempt = {
+            "started_at_epoch_ms": 1,
+            "stopped_at_epoch_ms": 2,
+            "status_reason": "",
+            "container_instance_arn": "arn:aws:ecs:us-east-1:172630973301:container-instance/cluster/instance-id",
+            "task_arn": job["container"]["taskArn"],
+            "log_stream": job["container"]["logStreamName"],
+            "exit_code": 0,
+            "reason": "",
+        }
+        job["attempts"] = [
+            {
+                "startedAt": 1,
+                "stoppedAt": 2,
+                "statusReason": "",
+                "container": {
+                    "containerInstanceArn": normalized_attempt[
+                        "container_instance_arn"
+                    ],
+                    "taskArn": normalized_attempt["task_arn"],
+                    "logStreamName": normalized_attempt["log_stream"],
+                    "exitCode": 0,
+                    "reason": "",
+                },
+            }
+        ]
+        source_row = {
+            "relative_key": "variants/final.vcf.gz",
+            "key": (
+                f"runs/diana-hrd/{run_id}/private-results/final/artifacts/"
+                "variants/final.vcf.gz"
+            ),
+            "bytes": 10,
+            "etag": '"etag"',
+            "version_id": "source-version",
+            "checksums": {"ChecksumSHA256": "source-checksum"},
+            "checksum_type": "FULL_OBJECT",
+        }
+        source_head = {
+            "ContentLength": 10,
+            "ETag": '"etag"',
+            "VersionId": "source-version",
+            "ChecksumType": "FULL_OBJECT",
+            "ChecksumSHA256": "source-checksum",
+        }
+        destination_head = {
+            **source_head,
+            "VersionId": "destination-version",
+            "ServerSideEncryption": "aws:kms",
+            "SSEKMSKeyId": "arn:aws:kms:us-east-1:172630973301:key/test",
+        }
+        observed = [
+            {
+                "history_kind": "version",
+                "Key": (
+                    f"runs/subject01/{run_id}/deterministic/final/"
+                    "variants/final.vcf.gz"
+                ),
+                "VersionId": "destination-version",
+                "IsLatest": True,
+            }
+        ]
+        cases = (
+            ("pre_copy_source", True, [[], []], False),
+            (
+                "post_copy_source",
+                {**source_head, "ContentLength": 10.0},
+                [[], observed],
+                True,
+            ),
+            (
+                "post_copy_destination",
+                {**destination_head, "ContentLength": "10"},
+                [[], observed],
+                True,
+            ),
+        )
+        for phase, bad_head, history, copied in cases:
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as value:
+                root = Path(value)
+                execution = root / "execution.json"
+                output = root / "freeze.json"
+                anchor = root / "anchor.json"
+                execution.write_text(
+                    json.dumps(
+                        {
+                            "schema_version": 1,
+                            "region": "us-east-1",
+                            "run_id": run_id,
+                            "batch": {
+                                "job_id": job_id,
+                                "job_name": "wgs",
+                                "job_definition_arn": job["jobDefinition"],
+                                "status": "SUCCEEDED",
+                                "command": command,
+                                "log_stream": job["container"]["logStreamName"],
+                                "attempt_count": 1,
+                                "attempts": [normalized_attempt],
+                                "retry_strategy": job["retryStrategy"],
+                                "timeout": job["timeout"],
+                            },
+                            "container": {"task_arn": job["container"]["taskArn"]},
+                            "worker": {
+                                "kms_key_id": (
+                                    "arn:aws:kms:us-east-1:172630973301:key/test"
+                                ),
+                                "checks": dict(MODULE.EXPECTED_BATCH_WORKER_CHECKS),
+                            },
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                dry_run = write_final_freeze_dry_run_receipt(
+                    root / "freeze.dry.json",
+                    execution,
+                    [source_row],
+                    run_id=run_id,
+                    job_id=job_id,
+                )
+                argv = [
+                    "freeze_final_artifacts.py",
+                    "--job-id",
+                    job_id,
+                    "--run-id",
+                    run_id,
+                    "--execution-receipt",
+                    str(execution),
+                    "--source-prefix",
+                    (
+                        "s3://diana-omics-work-172630973301-us-east-1/"
+                        f"runs/diana-hrd/{run_id}/private-results/final/artifacts/"
+                    ),
+                    "--destination-prefix",
+                    (
+                        "s3://diana-omics-private-results-172630973301-us-east-1/"
+                        f"runs/subject01/{run_id}/deterministic/final/"
+                    ),
+                    "--kms-key-arn",
+                    "arn:aws:kms:us-east-1:172630973301:key/test",
+                    "--output",
+                    str(output),
+                    "--anchor-output",
+                    str(anchor),
+                    "--dry-run-receipt",
+                    str(dry_run),
+                    "--apply",
+                ]
+                if phase == "pre_copy_source":
+                    heads = [{**source_head, "ContentLength": bad_head}]
+                elif phase == "post_copy_source":
+                    heads = [source_head, bad_head, destination_head]
+                else:
+                    heads = [source_head, source_head, bad_head]
+
+                with patch.object(sys, "argv", argv), patch.object(
+                    MODULE,
+                    "aws_json",
+                    return_value={"jobs": [job]},
+                ), patch.object(MODULE, "require_bucket_versioning"), patch.object(
+                    MODULE, "snapshot_inventory", return_value=[source_row]
+                ), patch.object(
+                    MODULE, "version_history", side_effect=history
+                ), patch.object(
+                    MODULE,
+                    "copy_object",
+                    return_value={"VersionId": "destination-version"},
+                ) as copy_object, patch.object(
+                    MODULE,
+                    "head",
+                    side_effect=heads,
+                ):
+                    with self.assertRaisesRegex(RuntimeError, "exact integer"):
+                        MODULE.main()
+
+                self.assertEqual(copy_object.called, copied)
+                failed = json.loads(output.read_text(encoding="utf-8"))
+                self.assertEqual(failed["status"], "failed")
+                self.assertIn("S3 object size must be an exact integer", failed["error"])
+                self.assertFalse(anchor.exists())
+
     def test_snapshot_inventory_captures_exact_version_and_sorts(self) -> None:
         listed = [
             {"Key": "prefix/z", "Size": 2, "ETag": '"z"'},

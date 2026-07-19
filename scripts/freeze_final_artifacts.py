@@ -926,9 +926,10 @@ def main() -> int:
             destination_key = destination_prefix + relative
             before = head(source_bucket, source_key, args.region)
             source_version_id = str(before.get("VersionId", ""))
+            before_size = exact_s3_size(before.get("ContentLength"))
             if (
-                int(before.get("ContentLength", -1)) <= 0
-                or int(before.get("ContentLength", -1)) > MAX_SINGLE_COPY_BYTES
+                before_size <= 0
+                or before_size > MAX_SINGLE_COPY_BYTES
                 or source_version_id in {"", "None"}
                 or before.get("ChecksumType") != "FULL_OBJECT"
                 or not checksums(before)
@@ -938,7 +939,7 @@ def main() -> int:
                     f"or full-object checksum: {relative}"
                 )
             listed_stable = (
-                int(initial_row.get("bytes", -1)) == int(before.get("ContentLength", -2))
+                exact_s3_size(initial_row.get("bytes")) == before_size
                 and str(initial_row.get("etag", "")) == str(before.get("ETag", ""))
                 and str(initial_row.get("version_id", "")) == source_version_id
             )
@@ -950,7 +951,7 @@ def main() -> int:
                     "bucket": source_bucket,
                     "key": source_key,
                     "version_id": source_version_id,
-                    "bytes": int(before.get("ContentLength", -1)),
+                    "bytes": before_size,
                     "etag": str(before.get("ETag", "")),
                     "checksums": checksums(before),
                     "checksum_type": str(before.get("ChecksumType", "")),
@@ -989,14 +990,16 @@ def main() -> int:
                     args.region,
                     copied_version_id,
                 )
+                after_source_size = exact_s3_size(after_source.get("ContentLength"))
+                destination_size = exact_s3_size(destination.get("ContentLength"))
                 source_stable = (
-                    int(before.get("ContentLength", -1)) == int(after_source.get("ContentLength", -2))
+                    before_size == after_source_size
                     and str(before.get("ETag", "")) == str(after_source.get("ETag", ""))
                     and source_version_id == str(after_source.get("VersionId", ""))
                     and checksums(before) == checksums(after_source)
                     and before.get("ChecksumType") == after_source.get("ChecksumType") == "FULL_OBJECT"
                 )
-                size_matches = int(before.get("ContentLength", -1)) == int(destination.get("ContentLength", -2))
+                size_matches = before_size == destination_size
                 checksum_matches = common_checksum_matches(before, destination)
                 kms_matches = (
                     destination.get("ServerSideEncryption") == "aws:kms"
@@ -1011,7 +1014,7 @@ def main() -> int:
                 row["destination"].update(
                     {
                         "version_id": str(destination.get("VersionId", "")),
-                        "bytes": int(destination.get("ContentLength", -1)),
+                        "bytes": destination_size,
                         "etag": str(destination.get("ETag", "")),
                         "checksums": checksums(destination),
                         "checksum_type": str(destination.get("ChecksumType", "")),

@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local final-freeze S3 snapshot-size exactness</li>
+          <li class="pill">Latest milestone = local final-freeze copy-time byte exactness</li>
+          <li class="pill">Final-freeze copy-time bytes = exact</li>
           <li class="pill">Final-freeze S3 snapshot sizes = exact</li>
           <li class="pill">Terminal receipt-anchor bytes = exact</li>
           <li class="pill">Public-index S3 bytes = exact</li>
@@ -632,6 +633,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact final-freeze copy-time bytes</strong>
+              <span>Final artifact freezing now rejects non-exact pre-copy source, post-copy source, and post-copy exact-version destination ContentLength values before apply-mode freeze receipts can record source or destination bytes and pass size or source-stability checks.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final-freeze S3 snapshot sizes</strong>
               <span>Final artifact freezing now rejects non-exact source list/head and destination exact-version head snapshot sizes before S3 object Size or ContentLength metadata can become immutable final-freeze receipt byte counts.</span>
@@ -1130,6 +1135,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:15:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact final-freeze copy-time bytes:</strong>
+                final artifact freezing now rejects non-exact pre-copy source,
+                post-copy source, and post-copy exact-version destination
+                ContentLength values before apply-mode freeze receipts can
+                record source or destination bytes and pass size or
+                source-stability checks. Failed copy-time receipts are
+                preserved without anchors. No S3, Batch, route, GPU, quota,
+                replacement compute, or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:14:00-07:00">Jul 19 · local</time>
               <span>
