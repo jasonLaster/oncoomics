@@ -308,6 +308,34 @@ class Phase3FastFilterMutectPlanTests(unittest.TestCase):
             self.assertEqual("planned", plan["status"])
             self.assertIn('"manifest_type": "phase3_wgs_fast_filter_mutect_plan"', output_path.read_text(encoding="utf-8"))
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            staged, mutect = parabricks_plan(root)
+            real_manifest = root / "staged-inputs.json"
+            linked_manifest = root / "staged-inputs-link.json"
+            write_json(real_manifest, staged)
+            linked_manifest.symlink_to(real_manifest)
+
+            with self.assertRaisesRegex(
+                filter_mutect.ManifestError,
+                "staged-inputs-link\\.json SHA-256 input is missing or a symlink",
+            ):
+                filter_mutect._sha256_path(linked_manifest)
+
+            real_parent = root / "real-inputs"
+            linked_parent = root / "linked-inputs"
+            real_parent.mkdir()
+            parent_plan = real_parent / "mutect-plan.json"
+            write_json(parent_plan, mutect)
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                filter_mutect.ManifestError,
+                "mutect-plan\\.json SHA-256 input parent may not be a symlink",
+            ):
+                filter_mutect._sha256_path(linked_parent / "mutect-plan.json")
+
 
 if __name__ == "__main__":
     unittest.main()

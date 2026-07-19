@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -9,7 +8,7 @@ from typing import Any, Mapping
 from ...paths import path_from_root
 from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
-from .safe_json_output import read_real_json, require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path, sha256_real_file
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
@@ -117,11 +116,7 @@ def _with_runtime(command: list[str], tmp_dir: str, log_file: str, num_gpus: int
 
 
 def _sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_real_file(path, ManifestError)
 
 
 def build_phase3_fast_parabricks_mutect_plan(
