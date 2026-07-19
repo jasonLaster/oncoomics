@@ -468,6 +468,14 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 "download verification is not passed and exact",
             ),
             (
+                "string object count",
+                lambda payload: payload.__setitem__(
+                    "object_count",
+                    str(len(payload["objects"])),
+                ),
+                "download verification is not passed and exact",
+            ),
+            (
                 "object",
                 lambda payload: payload["objects"][0].__setitem__(
                     "legacy_note",
@@ -494,6 +502,34 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     )
 
                 self.assertFalse((root / "staged").exists())
+
+    def test_stage_rejects_boolean_download_verification_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            support = source / "route_result.json"
+            support.write_text("1", encoding="utf-8")
+            manifest_path = source / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            support_hash = STAGE.sha256(support)
+            manifest["support_sha256"] = {"route_result.json": support_hash}
+            manifest["source_sha256"] = {"route_result.json": support_hash}
+            write_json(manifest_path, manifest)
+            refresh_download_verification(source, verification)
+            payload = json.loads(verification.read_text(encoding="utf-8"))
+            payload["objects"][2]["bytes"] = True
+            write_json(verification, payload)
+
+            with self.assertRaisesRegex(ValueError, "stale for support"):
+                STAGE.stage(
+                    source,
+                    verification,
+                    root / "staged",
+                    "sigprofiler_sbs3",
+                )
+
+            self.assertFalse((root / "staged").exists())
 
     def test_stage_rejects_float_schema_source_report_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

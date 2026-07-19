@@ -118,6 +118,13 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "incomplete or not passed"):
             MODULE.validate_receipt(payload, KMS)
 
+    def test_validate_receipt_rejects_boolean_staged_validation_bytes(self) -> None:
+        payload = receipt(b"1")
+        payload["outputs"][MODULE.OUTPUT_NAME]["bytes"] = True
+
+        with self.assertRaisesRegex(ValueError, "lacks exact materializer custody"):
+            MODULE.validate_receipt(payload, KMS)
+
     def test_validate_receipt_rejects_missing_unexpected_or_failed_check_maps(
         self,
     ) -> None:

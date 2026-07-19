@@ -209,7 +209,8 @@ def require_download_verification(
         or not str(verification.get("output_dir", ""))
         or not isinstance(rows, list)
         or not rows
-        or int(verification.get("object_count", -1)) != len(rows)
+        or type(verification.get("object_count")) is not int
+        or verification.get("object_count") != len(rows)
     ):
         raise ValueError("download verification is not passed and exact")
     require_exact_check_map(
@@ -242,7 +243,8 @@ def require_download_verification(
         local = require_source_file(source_dir, relative)
         if (
             row is None
-            or int(row.get("bytes", -1)) != local.stat().st_size
+            or type(row.get("bytes")) is not int
+            or row.get("bytes") != local.stat().st_size
             or str(row.get("sha256", "")) != sha256(local)
         ):
             raise ValueError(f"download verification is stale for {relative}")
@@ -288,7 +290,8 @@ def require_download_verification(
         observed_sha256 = sha256(local)
         if (
             row is None
-            or int(row.get("bytes", -1)) != local.stat().st_size
+            or type(row.get("bytes")) is not int
+            or row.get("bytes") != local.stat().st_size
             or str(row.get("sha256", "")) != observed_sha256
         ):
             raise ValueError(f"download verification is stale for support {relative}")

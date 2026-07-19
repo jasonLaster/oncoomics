@@ -348,7 +348,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local Phase 3 WGS integer guard closure</li>
+          <li class="pill">Latest milestone = local cross-check report replay byte exactness</li>
+          <li class="pill">Cross-check report replay bytes = exact</li>
+          <li class="pill">Staged-validation bytes = exact</li>
           <li class="pill">Phase 3 WGS integer guards = exact</li>
           <li class="pill">Deterministic report bytes = exact</li>
           <li class="pill">Phase 3 fast final evidence bytes = exact</li>
@@ -696,6 +698,14 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact cross-check report replay bytes</strong>
+              <span>SigProfiler and Sequenza route replay staging now rejects non-exact download verification object counts and JSON boolean or string byte counts before staging exact HRD cross-check reports for Rosalind and AI review.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer staged-validation bytes</strong>
+              <span>Materializer staged-validation download now rejects JSON booleans in the <code>staged_input_validation.json</code> byte custody row before the deterministic-to-cross-check handoff can publish the HRD cross-check input contract.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact deterministic Phase 3 fast schemas</strong>
               <span>The no-compute deterministic report stager now rejects JSON floats or booleans in the Phase 3 fast final-evidence manifest and cross-check materialization plan before producing any deterministic report manifest.</span>
@@ -1090,6 +1100,30 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:08:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact cross-check report replay bytes:</strong>
+                SigProfiler and Sequenza route replay staging now rejects
+                non-exact download verification object counts and JSON boolean
+                or string byte counts before staging exact HRD cross-check
+                reports for Rosalind and AI review. No S3, Batch, route, GPU,
+                quota, replacement compute, or AWS-side verification was
+                launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T03:07:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact materializer staged-validation bytes:</strong>
+                materializer staged-validation download now rejects JSON
+                booleans in the <code>staged_input_validation.json</code> byte
+                custody row before the deterministic-to-cross-check handoff
+                can publish the HRD cross-check input contract. No S3, Batch,
+                route, GPU, quota, replacement compute, or AWS-side
+                verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:06:00-07:00">Jul 19 · local</time>
               <span>

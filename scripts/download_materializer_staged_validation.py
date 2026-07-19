@@ -326,6 +326,7 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
     uri = str(row.get("uri", ""))
     version_id = str(row.get("version_id", ""))
     digest = str(row.get("sha256", ""))
+    size = row.get("bytes")
     row_checks = row.get("checks")
     if (
         not uri
@@ -333,8 +334,8 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
         or version_id.lower() in {"none", "null"}
         or row_checks != EXPECTED_OUTPUT_CHECKS
         or row.get("kms_key_arn") != expected_kms
-        or not isinstance(row.get("bytes"), int)
-        or int(row.get("bytes", 0)) <= 0
+        or type(size) is not int
+        or size <= 0
         or not isinstance(row.get("checksums"), dict)
         or not any(str(row["checksums"].get(key, "")).strip() for key in CHECKSUM_FIELDS)
         or not all(character in "0123456789abcdef" for character in digest)
