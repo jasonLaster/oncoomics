@@ -694,6 +694,58 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.require_synthesis_report_manifest(staging)
 
+    def test_synthesis_rejects_non_string_staged_packet_hashes(self) -> None:
+        hash64 = "1" * 64
+        numeric_hash = int(hash64)
+        cases = (
+            (
+                "report",
+                lambda payload: payload.__setitem__("report_sha256", numeric_hash),
+                "comparative synthesis report.md",
+            ),
+            (
+                "agreement",
+                lambda payload: payload.__setitem__(
+                    "agreement_disagreement_sha256",
+                    numeric_hash,
+                ),
+                "comparative synthesis agreement_disagreement.csv",
+            ),
+            (
+                "support agreement",
+                lambda payload: payload["support_sha256"].__setitem__(
+                    "agreement_disagreement.csv",
+                    numeric_hash,
+                ),
+                "comparative synthesis support agreement_disagreement.csv",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-"
+            ) as temporary:
+                staging = Path(temporary)
+                report = staging / "report.md"
+                agreement = staging / "agreement_disagreement.csv"
+                manifest = staging / "report_manifest.json"
+                GENERATE.write_staged_text(report, "# Report\n")
+                write_synthesis_agreement(agreement)
+                payload = write_synthesis_manifest(manifest, report, agreement)
+                payload["source_sha256"]["agreement_disagreement.csv"] = hash64
+                payload["source_sha256"]["generator"] = hash64
+                mutate(payload)
+                write_json(manifest, payload)
+
+                with (
+                    mock.patch.object(GENERATE, "sha256", return_value=hash64),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "malformed SHA-256 for " + message,
+                    ),
+                ):
+                    GENERATE.require_synthesis_report_manifest(staging)
+
     def test_synthesis_rejects_non_exact_report_manifest_envelope(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             staging = Path(temporary)

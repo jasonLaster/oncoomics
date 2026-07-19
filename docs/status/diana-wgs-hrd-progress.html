@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact private-publication hashes</li>
+          <li class="pill">Latest milestone = local exact synthesis packet hashes</li>
+          <li class="pill">Synthesis packet hashes = exact</li>
           <li class="pill">Private-publication hashes = exact</li>
           <li class="pill">Blocked cross-check hashes = exact</li>
           <li class="pill">Cross-check contract hashes = exact</li>
@@ -1103,6 +1104,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact synthesis packet hashes</strong>
+              <span>Comparative HRD synthesis packet validation now rejects non-string SHA-256 values for <code>report.md</code>, <code>agreement_disagreement.csv</code>, and support-artifact bindings before the synthesis packet can feed AI review or reviewed-public publication.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact synthesis bundle hashes</strong>
               <span>Comparative HRD synthesis now rejects non-lowercase or non-string AI bundle-manifest hashes before joining source reports with independent reviewer outputs.</span>
             </li>
@@ -1400,6 +1405,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:15:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact synthesis packet hashes:</strong>
+                comparative HRD synthesis packet validation now rejects
+                non-string SHA-256 values for <code>report.md</code>,
+                <code>agreement_disagreement.csv</code>, and support-artifact
+                bindings before the synthesis packet can feed AI review or
+                reviewed-public publication. No live cloud action, compute
+                action, or replacement run was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:00:00-07:00">Jul 19 · local</time>
               <span>

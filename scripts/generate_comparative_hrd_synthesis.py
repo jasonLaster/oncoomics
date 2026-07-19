@@ -1238,10 +1238,16 @@ def require_synthesis_report_manifest(
     ):
         raise ValueError("comparative synthesis manifest does not preserve authorization")
     expected = [
-        ("report.md", str(manifest.get("report_sha256", ""))),
+        (
+            "report.md",
+            checked_hash(manifest.get("report_sha256"), "comparative synthesis report.md"),
+        ),
         (
             "agreement_disagreement.csv",
-            str(manifest.get("agreement_disagreement_sha256", "")),
+            checked_hash(
+                manifest.get("agreement_disagreement_sha256"),
+                "comparative synthesis agreement_disagreement.csv",
+            ),
         ),
     ]
     support_hashes = manifest.get("support_sha256")
@@ -1253,7 +1259,10 @@ def require_synthesis_report_manifest(
     expected.append(
         (
             "agreement_disagreement.csv",
-            str(support_hashes.get("agreement_disagreement.csv", "")),
+            checked_hash(
+                support_hashes.get("agreement_disagreement.csv"),
+                "comparative synthesis support agreement_disagreement.csv",
+            ),
         )
     )
 
