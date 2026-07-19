@@ -228,6 +228,38 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "report.md").exists())
 
+    def test_sha256_file_rejects_symlinked_leaf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.txt"
+            source_link = root / "source-link.txt"
+            real_source.write_text("real source\n", encoding="utf-8")
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source-link.txt SHA-256 input must be a real non-empty file",
+            ):
+                GENERATOR.sha256_file(source_link)
+
+    def test_sha256_file_rejects_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_inputs = root / "real-inputs"
+            linked_inputs = root / "linked-inputs"
+            real_inputs.mkdir()
+            (real_inputs / "report_manifest.json").write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+            linked_inputs.symlink_to(real_inputs, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report_manifest.json SHA-256 input parent may not be a symlink",
+            ):
+                GENERATOR.sha256_file(linked_inputs / "report_manifest.json")
+
     def test_packet_file_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "report.md"
@@ -250,6 +282,38 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             ):
                 GENERATOR.write_file_create_only(output, b"first\n")
 
+            self.assertFalse(output.exists())
+
+    def test_packet_file_rejects_symlink_swap_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "report.md"
+            relocated = root / "relocated.md"
+            real_fsync_directory = GENERATOR.fsync_directory
+
+            def swap_to_symlink_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                relocated.write_text(
+                    "relocated blocked packet\n",
+                    encoding="utf-8",
+                )
+                output.unlink()
+                output.symlink_to(relocated)
+
+            with (
+                mock.patch.object(
+                    GENERATOR,
+                    "fsync_directory",
+                    side_effect=swap_to_symlink_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report.md SHA-256 input must be a real non-empty file",
+                ),
+            ):
+                GENERATOR.write_file_create_only(output, b"first\n")
+
+            self.assertTrue(relocated.exists())
             self.assertFalse(output.exists())
 
     def test_packet_manifest_rejects_stale_report_binding(self) -> None:

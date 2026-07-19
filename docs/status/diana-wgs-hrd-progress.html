@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real public-index build hashes</li>
+          <li class="pill">Latest milestone = local real blocked-packet hash inputs</li>
+          <li class="pill">Blocked-packet hash inputs = real</li>
           <li class="pill">Public-index build hashes = real</li>
           <li class="pill">Public-index hash inputs = real</li>
           <li class="pill">Reviewed-public hash inputs = real</li>
@@ -1229,6 +1230,10 @@
               <span>Blocked cross-check packet generation now rejects duplicate JSON object names while loading upstream source manifests and while self-checking generated <code>report_manifest.json</code> files before source-manifest gates or blocked packet envelope, source-hash, and support-hash gates can pass.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real blocked-packet hash inputs</strong>
+              <span>Blocked cross-check packet generation now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before blocked FACETS, CHORD, and HRDetect packets can bind local report artifacts for source-freeze and AI review.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 fast packet JSON</strong>
               <span>Phase 3 fast packet validation now rejects duplicate JSON object names while loading validation receipts, blocked packet manifests, and blocked packet specs before checking packet hashes and source bindings; the reviewed-public runbook preflight now copies the local parsing helpers it needs.</span>
             </li>
@@ -2090,6 +2095,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:15-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real blocked-packet hash inputs:</strong>
+                Blocked cross-check packet generation now rejects symlinked
+                local SHA-256 inputs and hash-input ancestors before blocked
+                packets bind local artifacts for source-freeze and AI review.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:14-07:00">Jul 19 · local</time>
               <span>

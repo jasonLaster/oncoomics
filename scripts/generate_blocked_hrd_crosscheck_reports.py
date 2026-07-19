@@ -349,6 +349,7 @@ def json_bytes(value: Any) -> bytes:
 
 
 def sha256_file(path: Path) -> str:
+    require_real_hash_input(path)
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -372,6 +373,10 @@ def require_real_nonempty_file(path: Path, label: str) -> None:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
         raise ValueError(f"{label} must be a real non-empty file")
+
+
+def require_real_hash_input(path: Path) -> None:
+    require_real_nonempty_file(path, f"{path.name} SHA-256 input")
 
 
 def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
