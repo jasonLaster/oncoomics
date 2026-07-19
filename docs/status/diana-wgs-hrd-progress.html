@@ -336,18 +336,21 @@
           to terminal reports, while deterministic staging, Rosalind,
           source-freeze, private/public publication, AI, and Phase 3 packet
           gates now share one static forbidden-token inventory plus the
-          run-specific scan. Private report, reviewed-public report, and
-          public-index apply gates now reject stale top-level or nested dry-run
-          receipt metadata before live publication. Diana terminal deterministic
-          artifacts are still absent, compute is GPU-quota blocked under the
+          run-specific scan. Source and AI private handoff renderers now require
+          matching dry-run receipts for every generated live private publish;
+          private report, reviewed-public report, and public-index apply gates
+          now reject stale top-level or nested dry-run receipt metadata before
+          live publication. Diana terminal deterministic artifacts are still
+          absent, compute is GPU-quota blocked under the
           selected quota-only, no-race plan, the legacy CPU run remains stopped,
           and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code>.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 943694f</li>
-          <li class="pill">Prior dashboard = 67f99d3</li>
+          <li class="pill">Latest milestone = 2d585c7</li>
+          <li class="pill">Prior dashboard = 7c1a339</li>
+          <li class="pill">Private handoff dry-runs = required</li>
           <li class="pill">Stage freeze dry-run = exact</li>
           <li class="pill">Final freeze dry-run = exact</li>
           <li class="pill">Input contract dry-run = exact</li>
@@ -515,6 +518,10 @@
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require private handoff dry-run receipts</strong>
+              <span>The source-freeze and AI/freeform private-publish renderers now fail fast if a live private apply command is built without its matching dry-run receipt, and regressions prove each generated source, reviewer, and synthesis apply stays receipt-bound.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind stage freeze apply to its dry-run receipt</strong>
               <span>Live stage-provenance freeze now requires its matching dry-run receipt and rejects stale top-level metadata, failed source-object checks, run/KMS/source/destination/script drift, or preflight/gather object drift before any provenance copy.</span>
             </li>
@@ -660,6 +667,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:18:42-07:00">Jul 19 · 12:18 AM</time>
+              <span>
+                <strong>2d585c7 Require private handoff dry-run receipts:</strong>
+                source-freeze and AI/freeform private-publish helpers now
+                reject live apply command construction unless the matching
+                dry-run receipt is passed, keeping generated source, reviewer,
+                and synthesis private publishes dry-run-bound before they hand
+                receipts to the public renderer. Validation passed: 78 focused
+                tests + 17 subtests, then 1,717 full-suite tests + 748 subtests.
+                No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:13:50-07:00">Jul 19 · 12:13 AM</time>
               <span>
