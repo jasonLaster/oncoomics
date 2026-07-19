@@ -13,6 +13,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import materialize_frozen_artifacts as MODULE  # noqa: E402
+import submit_materializer_v4 as SUBMITTER  # noqa: E402
 
 
 class MaterializeFrozenArtifactsTests(unittest.TestCase):
@@ -99,7 +100,7 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             }
             row = MODULE.validate_materialized(expected, response, path, kms)
             self.assertEqual(row["sha256"], MODULE.sha256(path))
-            self.assertTrue(all(row["checks"].values()))
+            self.assertEqual(row["checks"], MODULE.EXPECTED_MATERIALIZATION_CHECKS)
 
             for field, value in (
                 ("VersionId", "other-version"),
@@ -112,6 +113,22 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                     ValueError, "materialization checks failed"
                 ):
                     MODULE.validate_materialized(expected, altered, path, kms)
+
+            with patch.object(
+                MODULE,
+                "EXPECTED_MATERIALIZATION_CHECKS",
+                {**MODULE.EXPECTED_MATERIALIZATION_CHECKS, "future_check": True},
+            ), self.assertRaisesRegex(
+                ValueError,
+                "materialization checks failed",
+            ):
+                MODULE.validate_materialized(expected, response, path, kms)
+
+    def test_materialization_check_inventory_matches_v4_submitter(self) -> None:
+        self.assertEqual(
+            set(MODULE.EXPECTED_MATERIALIZATION_CHECKS),
+            SUBMITTER.EXPECTED_MATERIALIZATION_ROW_CHECKS,
+        )
 
     def test_positive_bytes_and_checksum_are_required(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

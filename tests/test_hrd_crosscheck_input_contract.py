@@ -25,7 +25,11 @@ def load(name: str, path: Path):
 
 
 finalizer = load("finalize_input_contract", ROOT / "scripts/finalize_input_contract.py")
+materializer = load(
+    "materialize_frozen_artifacts", ROOT / "scripts/materialize_frozen_artifacts.py"
+)
 publisher = load("publish_input_contract", ROOT / "scripts/publish_input_contract.py")
+submitter = load("submit_materializer_v4", ROOT / "scripts/submit_materializer_v4.py")
 checker = load("check_contract_for_custody", ROOT / "scripts/check_contract.py")
 
 KMS = "arn:aws:kms:us-east-1:172630973301:key/45aa290c-d70c-4d86-9c8d-c4a76f1ff97f"
@@ -172,9 +176,11 @@ class CustodyFixture:
                         "ChecksumType": "FULL_OBJECT",
                         "ChecksumSHA256": checksum,
                     },
+                    "checksum_type": "FULL_OBJECT",
+                    "server_side_encryption": "aws:kms",
                     "kms_key_id": KMS,
                     "sha256": digest,
-                    "checks": {"exact": True},
+                    "checks": dict(finalizer.EXPECTED_MATERIALIZATION_CHECKS),
                 }
             )
             self.cross_sources[role] = {
@@ -615,6 +621,40 @@ class CustodyHandoffTests(unittest.TestCase):
         fixture.cross["source_custody"]["vcf"]["version_id"] = "raced-version"
         with self.assertRaisesRegex(ValueError, "not the exact final freeze"):
             fixture.finalize()
+
+    def test_finalizer_rejects_incomplete_materialization_row_checks(self):
+        fixture = CustodyFixture()
+        fixture.exact["objects"][0]["checks"].pop("checksum_type")
+        with self.assertRaisesRegex(ValueError, "exact custody checks"):
+            fixture.finalize()
+
+    def test_finalizer_rejects_unexpected_materialization_row_checks(self):
+        fixture = CustodyFixture()
+        fixture.exact["objects"][0]["checks"]["future_check"] = True
+        with self.assertRaisesRegex(ValueError, "exact custody checks"):
+            fixture.finalize()
+
+    def test_finalizer_rejects_failed_materialization_row_checks(self):
+        fixture = CustodyFixture()
+        fixture.exact["objects"][0]["checks"]["checksum_type"] = False
+        with self.assertRaisesRegex(ValueError, "exact custody checks"):
+            fixture.finalize()
+
+    def test_finalizer_requires_full_object_materialization_rows(self):
+        fixture = CustodyFixture()
+        fixture.exact["objects"][0].pop("checksum_type")
+        with self.assertRaisesRegex(ValueError, "differs from final freeze"):
+            fixture.finalize()
+
+    def test_finalizer_materialization_check_inventory_matches_producers(self):
+        self.assertEqual(
+            finalizer.EXPECTED_MATERIALIZATION_CHECKS,
+            materializer.EXPECTED_MATERIALIZATION_CHECKS,
+        )
+        self.assertEqual(
+            set(finalizer.EXPECTED_MATERIALIZATION_CHECKS),
+            submitter.EXPECTED_MATERIALIZATION_ROW_CHECKS,
+        )
 
     def test_finalizer_rejects_crosscheck_output_without_exact_sha256_checksum(self):
         fixture = CustodyFixture()

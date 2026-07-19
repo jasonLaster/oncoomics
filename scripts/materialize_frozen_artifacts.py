@@ -26,6 +26,15 @@ CHECKSUM_FIELDS = (
     "ChecksumCRC32C",
     "ChecksumCRC32",
 )
+EXPECTED_MATERIALIZATION_CHECKS = {
+    "version_id": True,
+    "content_length": True,
+    "local_bytes": True,
+    "checksums": True,
+    "checksum_type": True,
+    "sse": True,
+    "kms": True,
+}
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -312,7 +321,7 @@ def validate_materialized(
         "sse": response.get("ServerSideEncryption") == "aws:kms",
         "kms": response.get("SSEKMSKeyId") == expected_kms_key_arn,
     }
-    if not all(checks.values()):
+    if checks != EXPECTED_MATERIALIZATION_CHECKS:
         raise ValueError(f"exact-version materialization checks failed: {checks}")
     return {
         "bytes": expected_bytes,

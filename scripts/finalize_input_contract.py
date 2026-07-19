@@ -34,6 +34,15 @@ SOURCE_ROLES = {
     "matrix": "sbs96_matrix",
 }
 REFERENCE_ROLES = {"fasta": "fasta", "fai": "fai"}
+EXPECTED_MATERIALIZATION_CHECKS = {
+    "version_id": True,
+    "content_length": True,
+    "local_bytes": True,
+    "checksums": True,
+    "checksum_type": True,
+    "sse": True,
+    "kms": True,
+}
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -107,6 +116,11 @@ def require_version(value: Any, label: str) -> str:
 def require_all_true(value: Any, label: str) -> None:
     if not isinstance(value, dict) or not value or any(item is not True for item in value.values()):
         raise ValueError(f"{label} did not pass every custody check")
+
+
+def require_exact_true(value: Any, expected: dict[str, bool], label: str) -> None:
+    if value != expected:
+        raise ValueError(f"{label} did not pass the exact custody checks")
 
 
 def validate_anchor(
@@ -190,7 +204,11 @@ def validate_exact_materialization(
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError("exact-version materialization contains a malformed row")
-        require_all_true(row.get("checks"), "exact-version materialization row")
+        require_exact_true(
+            row.get("checks"),
+            EXPECTED_MATERIALIZATION_CHECKS,
+            "exact-version materialization row",
+        )
         uri = f"s3://{row.get('bucket', '')}/{row.get('key', '')}"
         frozen = freeze_by_uri.get(uri)
         if (
@@ -198,6 +216,9 @@ def validate_exact_materialization(
             or row.get("version_id") != frozen.get("version_id")
             or int(row.get("bytes", -1)) != int(frozen.get("bytes", -2))
             or row.get("checksums") != frozen.get("checksums")
+            or row.get("checksum_type") != frozen.get("checksum_type")
+            or row.get("checksum_type") != "FULL_OBJECT"
+            or row.get("server_side_encryption") != "aws:kms"
             or row.get("kms_key_id") != receipt.get("expected_kms_key_arn")
         ):
             raise ValueError("exact-version materialization differs from final freeze")
