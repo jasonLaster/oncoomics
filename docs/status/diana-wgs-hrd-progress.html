@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact AI-staging bundle manifests</li>
+          <li class="pill">Latest milestone = local exact runbook JSON loading</li>
+          <li class="pill">Runbook JSON loading = exact</li>
           <li class="pill">AI-staging bundle manifests = exact</li>
           <li class="pill">AI-finalizer invocations = exact</li>
           <li class="pill">AI-prep source-artifact IDs = exact</li>
@@ -1669,6 +1670,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact runbook JSON loading</strong>
+              <span>Shared runbook JSON loading now rejects duplicate JSON object names before source-freeze, AI-synthesis, or reviewed-publication handoff renderers can consume receipt or manifest inputs.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact public recovery object rows</strong>
               <span>Public analysis recovery now exact-validates object-list keys and byte counts before sorting, counting, or object HEAD calls, rejecting malformed rows and sorting by exact keys before preserved analysis rows can be counted, audited, or copied into public recovery outputs.</span>
             </li>
@@ -1850,6 +1855,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T02:10:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact runbook JSON loading:</strong>
+                Shared runbook handoff loading now rejects duplicate JSON
+                object names before source-freeze, AI-synthesis, or
+                reviewed-publication renderers consume receipts or manifests.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T02:05:00-07:00">Jul 20 · local</time>
               <span>

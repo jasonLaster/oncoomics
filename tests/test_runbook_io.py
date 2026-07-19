@@ -97,9 +97,16 @@ class RunbookIoTests(unittest.TestCase):
             root = Path(temporary)
             receipt = root / "receipt.json"
             array = root / "array.json"
+            duplicate = root / "duplicate.json"
+            invalid = root / "invalid.json"
             broken_symlink = root / "broken.json"
             receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
             array.write_text('["not", "an", "object"]\n', encoding="utf-8")
+            duplicate.write_text(
+                '{"status":"passed","status":"passed"}\n',
+                encoding="utf-8",
+            )
+            invalid.write_text('{"status":\n', encoding="utf-8")
             broken_symlink.symlink_to(root / "absent.json")
 
             self.assertEqual(
@@ -108,6 +115,10 @@ class RunbookIoTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "not a JSON object"):
                 MODULE.load_json_object(array, "private publication receipt")
+            with self.assertRaisesRegex(ValueError, "duplicate JSON object name"):
+                MODULE.load_json_object(duplicate, "private publication receipt")
+            with self.assertRaisesRegex(ValueError, "invalid JSON"):
+                MODULE.load_json_object(invalid, "private publication receipt")
             with self.assertRaisesRegex(ValueError, "missing or a symlink"):
                 MODULE.load_json_object(broken_symlink, "private publication receipt")
             with self.assertRaisesRegex(ValueError, "missing or a symlink"):
