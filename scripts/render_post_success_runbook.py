@@ -328,6 +328,32 @@ def final_freeze_review_checklist(deterministic: Path) -> list[str]:
     ]
 
 
+def input_contract_publication_review_checklist(deterministic: Path) -> list[str]:
+    dry_receipt = deterministic / "terminal.input-contract.publication.dry.json"
+    return [
+        f"Review `{dry_receipt}` before input-contract publication apply:",
+        "",
+        "- [ ] `status` is `dry_run`, `receipt_version_id` is empty, and "
+        "`receipt_sha256`, `receipt_bytes`, and `receipt_uri` match "
+        "`input-contract.json`.",
+        "- [ ] `bucket_versioning` is `Enabled`, "
+        "`initial_version_history_count` is `0`, "
+        "`publication_strategy` is `sha256_content_addressed_create_only`, "
+        "and `kms_key_arn` matches the finalized contract.",
+        "- [ ] `checks.contract_ready`, "
+        "`checks.finalized_custody_exact`, "
+        "`checks.publication_prefix_matches_contract`, "
+        "`checks.bucket_versioning_enabled`, and "
+        "`checks.destination_history_empty` are all true.",
+        "- [ ] The matching apply will enforce `checks.version_exact`, "
+        "`checks.bytes_exact`, `checks.sha256_exact`, "
+        "`checks.sha256_checksum_exact`, `checks.metadata_sha256_exact`, "
+        "`checks.exact_kms`, and `checks.single_create_only_version`.",
+        "- [ ] Running the following `--apply` command is still the intended "
+        "input-contract publication action.",
+    ]
+
+
 def stage_deterministic_command(
     scripts: Path,
     deterministic: Path,
@@ -975,6 +1001,7 @@ def render(root: Path, terminal_job_id: str) -> str:
                 REGION,
             ]
         ),
+        *input_contract_publication_review_checklist(deterministic),
         block(
             [
                 "python3",

@@ -374,6 +374,46 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             apply.index("--dry-run-receipt") + text.index(apply),
         )
 
+    def test_input_contract_publication_review_checklist_is_concrete(self) -> None:
+        text = render()
+        review = text.index(
+            "Review `/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.input-contract.publication.dry.json` before "
+            "input-contract publication apply:"
+        )
+        apply = text.index("terminal.input-contract.publication.json", review)
+        dry = text.index(
+            "--anchor-output /repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.input-contract.publication.dry.json"
+        )
+        checklist = text[review:apply]
+
+        self.assertLess(dry, review)
+        self.assertIn("`status` is `dry_run`", checklist)
+        self.assertIn("`receipt_version_id` is empty", checklist)
+        self.assertIn("`receipt_sha256`", checklist)
+        self.assertIn("`receipt_bytes`", checklist)
+        self.assertIn("`receipt_uri`", checklist)
+        self.assertIn("`input-contract.json`", checklist)
+        self.assertIn("`bucket_versioning` is `Enabled`", checklist)
+        self.assertIn("`initial_version_history_count` is `0`", checklist)
+        self.assertIn("`publication_strategy`", checklist)
+        self.assertIn("`sha256_content_addressed_create_only`", checklist)
+        self.assertIn("`kms_key_arn`", checklist)
+        self.assertIn("`checks.contract_ready`", checklist)
+        self.assertIn("`checks.finalized_custody_exact`", checklist)
+        self.assertIn("`checks.publication_prefix_matches_contract`", checklist)
+        self.assertIn("`checks.bucket_versioning_enabled`", checklist)
+        self.assertIn("`checks.destination_history_empty`", checklist)
+        self.assertIn("`checks.version_exact`", checklist)
+        self.assertIn("`checks.bytes_exact`", checklist)
+        self.assertIn("`checks.sha256_exact`", checklist)
+        self.assertIn("`checks.sha256_checksum_exact`", checklist)
+        self.assertIn("`checks.metadata_sha256_exact`", checklist)
+        self.assertIn("`checks.exact_kms`", checklist)
+        self.assertIn("`checks.single_create_only_version`", checklist)
+        self.assertIn("`--apply` command", checklist)
+
     def test_final_freeze_apply_is_bound_to_dry_run_receipt(self) -> None:
         text = render()
 
