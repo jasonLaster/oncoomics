@@ -806,7 +806,9 @@ class SyntheticFixture:
                     "checksum_sha256_hex": "b" * 64,
                     "kms_key_id": KMS_ARN,
                 },
-                "checks": {"synthetic_container_capture": True},
+                "checks": dict(
+                    REPORT_MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS
+                ),
             },
         )
         worker_receipt_upload_path = self.aux / "executed-worker-freeze-upload.json"
@@ -821,7 +823,9 @@ class SyntheticFixture:
                     "checksum_sha256_hex": sha256(worker_receipt_path),
                     "kms_key_id": KMS_ARN,
                 },
-                "checks": {"synthetic_receipt_upload": True},
+                "checks": dict(
+                    REPORT_MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS
+                ),
             },
         )
         write_json(
@@ -2399,6 +2403,102 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             receipt["source"]["sha256"] = "0" * 64
             write_json(receipt_path, receipt)
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("batch_worker_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_missing_executed_worker_freeze_check_fails_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "executed-worker-freeze.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["checks"].pop("container_file_uploaded_directly")
+            write_json(receipt_path, receipt)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("batch_worker_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_unexpected_executed_worker_freeze_check_fails_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "executed-worker-freeze.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["checks"]["future_check"] = True
+            write_json(receipt_path, receipt)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("batch_worker_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_failed_executed_worker_freeze_check_fails_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "executed-worker-freeze.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["checks"]["s3_exact_version_present"] = False
+            write_json(receipt_path, receipt)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("batch_worker_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_missing_executed_worker_freeze_upload_check_fails_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "executed-worker-freeze-upload.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["checks"].pop("local_sha256_matches_s3_checksum")
+            write_json(receipt_path, receipt)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("batch_worker_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_unexpected_executed_worker_freeze_upload_check_fails_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "executed-worker-freeze-upload.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["checks"]["future_check"] = True
+            write_json(receipt_path, receipt)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("batch_worker_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_failed_executed_worker_freeze_upload_check_fails_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "executed-worker-freeze-upload.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["checks"]["exact_version"] = False
+            write_json(receipt_path, receipt)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("batch_worker_custody", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())

@@ -129,6 +129,24 @@ EXPECTED_BATCH_WORKER_CHECKS: dict[str, bool] = {
     "full_object_checksum": True,
     "kms": True,
 }
+EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS: dict[str, bool] = {
+    "active_task_identity_matches_batch_job": True,
+    "container_file_hash_and_size_captured": True,
+    "container_file_uploaded_directly": True,
+    "s3_bytes_match_container_bytes": True,
+    "s3_exact_kms_key_matches": True,
+    "s3_exact_version_present": True,
+    "s3_full_object_sha256_matches_container_sha256": True,
+    "s3_metadata_sha256_matches_container_sha256": True,
+}
+EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS: dict[str, bool] = {
+    "bytes": True,
+    "exact_kms": True,
+    "exact_version": True,
+    "full_object_sha256": True,
+    "local_sha256_matches_s3_checksum": True,
+    "metadata": True,
+}
 EXPECTED_EXACT_MATERIALIZATION_ROW_CHECKS: dict[str, bool] = {
     "version_id": True,
     "content_length": True,
@@ -1960,12 +1978,9 @@ def main() -> None:
         and isinstance(execution_worker.get("checksums"), dict)
         and bool(execution_worker.get("checksums"))
         and worker_checks == EXPECTED_BATCH_WORKER_CHECKS
-        and isinstance(worker_freeze_checks, dict)
-        and bool(worker_freeze_checks)
-        and all(value is True for value in worker_freeze_checks.values())
-        and isinstance(worker_freeze_upload_checks, dict)
-        and bool(worker_freeze_upload_checks)
-        and all(value is True for value in worker_freeze_upload_checks.values()),
+        and worker_freeze_checks == EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS
+        and worker_freeze_upload_checks
+        == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS,
         "The exact worker bytes read from the active ECS container were SHA-256 hashed, frozen under a non-null private S3 VersionId, and independently rebound to the Batch task, runtime ID, full-object checksum, and exact KMS key.",
     )
 
