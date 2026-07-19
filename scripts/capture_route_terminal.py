@@ -214,6 +214,10 @@ def valid_version_id(value: str) -> bool:
     return bool(value and value.lower() not in {"none", "null"} and not any(character.isspace() for character in value))
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def aws_json(region: str, *args: str) -> dict[str, Any]:
     output = subprocess.check_output(
         ["aws", *args, "--region", region, "--output", "json"],
@@ -678,7 +682,7 @@ def validate_logged_anchor(
     expected_key = expected_prefix_key.removesuffix("sentinel") + receipt_sha + ".json"
     checks = {
         "anchor_keys_exact": set(anchor) == expected_anchor_keys,
-        "anchor_schema_status": (anchor.get("schema_version") == 1 and anchor.get("status") == "passed"),
+        "anchor_schema_status": (exact_schema_version(anchor, 1) and anchor.get("status") == "passed"),
         "anchor_checks_exact": anchor_checks == EXPECTED_PUBLICATION_ANCHOR_CHECKS,
         "receipt_sha256_well_formed": bool(re.fullmatch(r"[0-9a-f]{64}", receipt_sha)),
         "receipt_bytes_positive": (isinstance(receipt_bytes, int) and not isinstance(receipt_bytes, bool) and receipt_bytes > 0),
@@ -902,7 +906,7 @@ def validate_exact_receipt(
             isinstance(head_response.get("Metadata"), dict) and head_response["Metadata"].get("sha256") == local_sha
         ),
         "single_version_no_delete_history": exact_history,
-        "receipt_schema_status": (receipt.get("schema_version") == 1 and receipt.get("status") == "passed"),
+        "receipt_schema_status": (exact_schema_version(receipt, 1) and receipt.get("status") == "passed"),
         "receipt_route_submission_exact": (receipt.get("route") == args.route and receipt.get("submission_id") == args.submission_id),
         "receipt_contract_exact": receipt.get("contract") == expected_contract,
         "receipt_output_exact": (

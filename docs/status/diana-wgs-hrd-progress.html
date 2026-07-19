@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local materializer capture schema exactness</li>
+          <li class="pill">Latest milestone = local route capture schema exactness</li>
+          <li class="pill">Route capture schemas = exact</li>
           <li class="pill">Materializer capture schemas = exact</li>
           <li class="pill">Report-tree download schemas = exact</li>
           <li class="pill">Stage-freeze schemas = exact</li>
@@ -627,6 +628,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact route capture schemas</strong>
+              <span>Terminal SigProfiler and Sequenza route capture now rejects JSON floats or booleans in logged publication anchors and exact route publication receipts before executable cross-check report trees can be replayed, staged, and handed to Rosalind or AI review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer capture schemas</strong>
               <span>Terminal materializer capture now rejects JSON floats or booleans in logged receipt anchors and exact schema-2 materialization receipts before the alias-only VCF/index/SBS96 quartet can feed route reports or Rosalind/AI review.</span>
@@ -985,6 +990,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:46:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact route capture schemas:</strong>
+                terminal SigProfiler and Sequenza route capture now rejects
+                non-exact <code>schema_version</code> values in schema-1
+                logged publication anchors and exact schema-1 publication
+                receipts before executable cross-check report trees can be
+                replayed, staged, and handed to Rosalind/AI review. No S3,
+                Batch, route, GPU, quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:45:00-07:00">Jul 19 · local</time>
               <span>
