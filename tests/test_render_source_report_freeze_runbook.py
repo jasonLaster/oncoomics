@@ -675,6 +675,36 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             ):
                 MODULE.validate_packet_dirs(paths)
 
+    def test_validate_packet_dirs_rejects_extra_stale_blocked_report_hash_lines(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+            blocked_dir = paths["hrdetect_blocked"]
+            report_path = blocked_dir / "report.md"
+            report_path.write_text(
+                report_path.read_text(encoding="utf-8")
+                + "- deterministic_full_wgs report_manifest_sha256: `"
+                + ("0" * 64)
+                + "`\n",
+                encoding="utf-8",
+            )
+            manifest_path = blocked_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = MODULE.sha256(report_path)
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "not bound to current upstream report manifests",
+            ):
+                MODULE.validate_packet_dirs(paths)
+
     def test_validate_packet_dirs_rejects_pre_route_blocked_reports(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

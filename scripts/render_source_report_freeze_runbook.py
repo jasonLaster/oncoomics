@@ -164,10 +164,10 @@ def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
         f"{method_id}_report_manifest": digest
         for method_id, digest in expected.items()
     }
-    expected_lines = {
+    expected_lines = [
         f"- {method_id} report_manifest_sha256: `{digest}`"
         for method_id, digest in expected.items()
-    }
+    ]
 
     for blocked_method_id in BLOCKED_CROSSCHECK_METHOD_IDS:
         packet_dir = paths[blocked_method_id]
@@ -192,6 +192,11 @@ def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
             for key, value in (source_sha256 or {}).items()
             if key in expected_source_sha256
         } if isinstance(source_sha256, dict) else {}
+        observed_lines = [
+            line
+            for line in report.splitlines()
+            if "report_manifest_sha256" in line
+        ]
         if (
             method_spec.get("source_report_manifests") != expected
             or method_spec.get("source_report_binding_scope")
@@ -204,7 +209,7 @@ def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
             != TERMINAL_SOURCE_REPORT_BINDING_SCOPE
             or observed != expected_source_sha256
             or "source_report_manifests: `not_bound`" in report
-            or not expected_lines.issubset(set(report.splitlines()))
+            or observed_lines != expected_lines
         ):
             raise ValueError(
                 f"{blocked_method_id} packet is not bound to current upstream "
