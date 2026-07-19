@@ -89,6 +89,10 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
@@ -437,7 +441,7 @@ def validate_execution(
         f"provenance/executed-workers/{worker_sha}.py"
     )
     if (
-        receipt.get("schema_version") != 1
+        not exact_schema_version(receipt, 1)
         or receipt.get("run_id") != run_id
         or receipt.get("region") != region
         or not isinstance(batch, dict)
@@ -653,7 +657,7 @@ def validate_dry_run_receipt(path: Path, expected: dict[str, Any]) -> None:
             f"unexpected={sorted(observed_keys - EXPECTED_DRY_RUN_RECEIPT_KEYS)}"
         )
     if (
-        receipt.get("schema_version") != 1
+        not exact_schema_version(receipt, 1)
         or receipt.get("status") != "dry_run"
         or receipt.get("batch_status") != "SUCCEEDED"
         or receipt.get("object_count") != len(SOURCE_NAMES)

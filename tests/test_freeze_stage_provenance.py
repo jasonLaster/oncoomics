@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import ast
 import base64
 import hashlib
 import importlib.util
@@ -297,6 +298,9 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         wrong_effective_timeout = deepcopy(receipt)
         wrong_effective_timeout["batch"]["timeout"]["attemptDurationSeconds"] = 64800
         tampered.append(wrong_effective_timeout)
+        wrong_schema = deepcopy(receipt)
+        wrong_schema["schema_version"] = 1.0
+        tampered.append(wrong_schema)
         legacy_worker_checks = deepcopy(receipt)
         legacy_worker_checks["worker"]["checks"] = dict(LEGACY_BATCH_WORKER_CHECKS)
         tampered.append(legacy_worker_checks)
@@ -732,6 +736,11 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                     "does not match this apply",
                 ),
                 (
+                    "non-exact-schema",
+                    lambda payload: payload.__setitem__("schema_version", 1.0),
+                    "did not pass preflight",
+                ),
+                (
                     "stale-object",
                     lambda payload: payload["objects"][0]["source"].__setitem__(
                         "sha256", "0" * 64
@@ -756,6 +765,56 @@ class FreezeStageProvenanceTests(unittest.TestCase):
 
                     with self.assertRaisesRegex(ValueError, message):
                         MODULE.validate_dry_run_receipt(path, receipt)
+
+    def test_schema_version_checks_use_exact_integer_helper(self) -> None:
+        cases = (
+            (1, 1, True),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (2, 1, False),
+            (None, 1, False),
+            (True, 1, False),
+            (False, 0, False),
+        )
+        for value, expected, accepted in cases:
+            with self.subTest(value=value, expected=expected):
+                self.assertIs(
+                    MODULE.exact_schema_version(
+                        {"schema_version": value},
+                        expected,
+                    ),
+                    accepted,
+                )
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "freeze_stage_provenance.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        parent_by_child = {
+            child: parent
+            for parent in ast.walk(module)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def in_exact_schema_helper(node: ast.AST) -> bool:
+            parent = parent_by_child.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef):
+                    return parent.name == "exact_schema_version"
+                parent = parent_by_child.get(parent)
+            return False
+
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+            and not in_exact_schema_helper(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
 
     def test_main_rejects_symlink_output_before_aws_observation(self) -> None:
         with tempfile.TemporaryDirectory() as value:
