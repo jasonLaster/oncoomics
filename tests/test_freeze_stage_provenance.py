@@ -435,6 +435,14 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                     expected_version_id="v1",
                 )
             )
+            self.assertFalse(
+                MODULE.response_matches_head(
+                    {**head, "VersionId": True},
+                    head,
+                    local,
+                    expected_version_id="True",
+                )
+            )
             for response_name in ("GET", "HEAD"):
                 for content_length in (True, len(payload) * 1.0, str(len(payload))):
                     with self.subTest(
@@ -633,6 +641,18 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         self.assertTrue(MODULE.exact_history_matches(expected, deepcopy(expected)))
         self.assertFalse(
             MODULE.exact_history_matches(
+                [{**expected[0], "VersionId": True}],
+                [{**expected[0], "VersionId": "True"}],
+            )
+        )
+        self.assertFalse(
+            MODULE.exact_history_matches(
+                [{**expected[0], "VersionId": True}],
+                [{**expected[0], "VersionId": True}],
+            )
+        )
+        self.assertFalse(
+            MODULE.exact_history_matches(
                 [
                     *expected,
                     {
@@ -661,9 +681,13 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 )
 
     def test_null_versions_and_cross_account_kms_are_rejected(self) -> None:
-        for value in ("", None, "null", "None", " NULL "):
+        for value in ("", True, None, "null", "None", " NULL ", "has space"):
             self.assertFalse(MODULE.valid_version_id(value))
         self.assertTrue(MODULE.valid_version_id("version-1"))
+        self.assertTrue(MODULE.null_version_id(None))
+        self.assertTrue(MODULE.null_version_id("null"))
+        self.assertFalse(MODULE.null_version_id(True))
+        self.assertFalse(MODULE.null_version_id("None"))
         MODULE.validate_kms_arn(KMS, ACCOUNT, REGION)
         with self.assertRaisesRegex(ValueError, "account and region"):
             MODULE.validate_kms_arn(
@@ -929,6 +953,18 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 self.assertFalse(MODULE.is_positive_exact_int(value))
                 self.assertFalse(MODULE.exact_int(value, 1))
 
+    def test_s3_checksum_helpers_require_strings(self) -> None:
+        head = {
+            "ChecksumSHA256": True,
+            "ChecksumCRC64NVME": "crc",
+            "ChecksumCRC32": "",
+        }
+
+        self.assertEqual(MODULE.checksums(head), {"ChecksumCRC64NVME": "crc"})
+        self.assertEqual(MODULE.preferred_checksum_algorithm(head), "CRC64NVME")
+        with self.assertRaisesRegex(ValueError, "no supported checksum"):
+            MODULE.preferred_checksum_algorithm({"ChecksumSHA256": True})
+
     def test_s3_byte_guards_avoid_raw_int_coercion(self) -> None:
         module = ast.parse(
             (SCRIPT_DIR / "freeze_stage_provenance.py").read_text(
@@ -955,6 +991,38 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         ]
 
         self.assertEqual(raw_byte_coercions, [])
+
+    def test_version_guards_avoid_raw_string_coercion(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "freeze_stage_provenance.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        guarded_fields = (
+            "copied.get('VersionId'",
+            'copied.get("VersionId"',
+            "destination.get('VersionId'",
+            'destination.get("VersionId"',
+            "downloaded.get('VersionId'",
+            'downloaded.get("VersionId"',
+            "uploaded.get('VersionId'",
+            'uploaded.get("VersionId"',
+            "anchored.get('VersionId'",
+            'anchored.get("VersionId"',
+            "anchored_get.get('VersionId'",
+            'anchored_get.get("VersionId"',
+        )
+        raw_string_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(field in ast.unparse(node.args[0]) for field in guarded_fields)
+        ]
+
+        self.assertEqual(raw_string_coercions, [])
 
     def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
         module = ast.parse(

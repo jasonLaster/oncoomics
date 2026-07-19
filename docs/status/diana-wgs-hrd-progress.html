@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact executed-worker scalars</li>
+          <li class="pill">Latest milestone = local exact stage-freeze scalars</li>
+          <li class="pill">Stage-freeze VersionIds/checksums = exact</li>
           <li class="pill">Executed-worker VersionIds/checksums = exact</li>
           <li class="pill">Input-contract receipt VersionIds = exact</li>
           <li class="pill">AI-review bundle hashes = exact</li>
@@ -715,6 +716,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact stage-freeze scalars</strong>
+              <span><code>freeze_stage_provenance.py</code> now requires exact object VersionIds and string-only checksum scalars before freezing stage provenance.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact executed-worker scalars</strong>
               <span><code>capture_batch_provenance.py</code> now rejects non-string, sentinel, or whitespace-containing executed-worker VersionIds and non-string or malformed SHA-256 / ChecksumSHA256 scalars before using freeze and receipt-upload identities in exact object HEAD/GET checks.</span>
@@ -1545,6 +1550,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:20:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact stage-freeze scalars:</strong>
+                <code>freeze_stage_provenance.py</code> now requires exact
+                object VersionIds and string-only checksum scalars before
+                freezing stage provenance.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:10:00-07:00">Jul 19 · local</time>
               <span>

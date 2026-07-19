@@ -126,7 +126,22 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def valid_version_id(value: Any) -> bool:
-    return str(value or "").strip().lower() not in {"", "null", "none"}
+    return (
+        isinstance(value, str)
+        and value
+        and value.lower() not in {"null", "none"}
+        and not any(character.isspace() for character in value)
+    )
+
+
+def exact_version_id(value: Any, label: str) -> str:
+    if not valid_version_id(value):
+        raise RuntimeError(f"{label} omitted an exact S3 VersionId")
+    return value
+
+
+def null_version_id(value: Any) -> bool:
+    return value is None or value == "null"
 
 
 def require_safe_output_parent(path: Path, label: str) -> None:
@@ -220,15 +235,16 @@ def aws_json(arguments: list[str], region: str) -> dict[str, Any]:
 
 def checksums(head: dict[str, Any]) -> dict[str, str]:
     return {
-        field: str(head[field])
+        field: value
         for field in CHECKSUM_FIELDS
-        if str(head.get(field, "")).strip()
+        if isinstance((value := head.get(field)), str) and value.strip()
     }
 
 
 def preferred_checksum_algorithm(head: dict[str, Any]) -> str:
     for field in CHECKSUM_FIELDS:
-        if str(head.get(field, "")).strip():
+        value = head.get(field)
+        if isinstance(value, str) and value.strip():
             return CHECKSUM_ALGORITHMS[field]
     raise ValueError("source object has no supported checksum")
 
@@ -512,9 +528,8 @@ def source_stable(before: dict[str, Any], after: dict[str, Any]) -> bool:
         and str(before.get("ETag", "")) == str(after.get("ETag", ""))
         and checksums(before) == checksums(after)
         and before.get("ChecksumType") == after.get("ChecksumType") == "FULL_OBJECT"
-        and str(before.get("VersionId", "null"))
-        == str(after.get("VersionId", "null"))
-        == "null"
+        and null_version_id(before.get("VersionId"))
+        and null_version_id(after.get("VersionId"))
         and before.get("ContentType") == after.get("ContentType") == "application/json"
         and before.get("ServerSideEncryption")
         == after.get("ServerSideEncryption")
@@ -530,7 +545,7 @@ def response_matches_head(
     *,
     expected_version_id: str,
 ) -> bool:
-    response_version = str(response.get("VersionId", "null"))
+    response_version = response.get("VersionId")
     return (
         response_version == expected_version_id
         and exact_int(response.get("ContentLength"), local_path.stat().st_size)
@@ -613,7 +628,7 @@ def prepare_source_row(
         not is_positive_exact_int(source_size)
         or before.get("ChecksumType") != "FULL_OBJECT"
         or not checksums(before)
-        or str(before.get("VersionId", "null")) != "null"
+        or not null_version_id(before.get("VersionId"))
         or not str(before.get("ETag", "")).strip()
         or before.get("ContentType") != "application/json"
         or before.get("ServerSideEncryption") != "aws:kms"
@@ -739,12 +754,13 @@ def exact_history_matches(
 ) -> bool:
     def normalized(row: dict[str, Any]) -> tuple[Any, ...] | None:
         size = row.get("Size")
-        if not is_positive_exact_int(size):
+        version_id = row.get("VersionId")
+        if not is_positive_exact_int(size) or not valid_version_id(version_id):
             return None
         return (
             str(row.get("history_type", "")),
             str(row.get("Key", "")),
-            str(row.get("VersionId", "")),
+            version_id,
             row.get("IsLatest") is True,
             size,
             str(row.get("ETag", "")),
@@ -920,15 +936,13 @@ def main() -> int:
                         preferred_checksum_algorithm(before),
                         args.region,
                     )
-                    version_id = str(copied.get("VersionId", ""))
+                    version_id = exact_version_id(
+                        copied.get("VersionId"),
+                        f"copy response {source_name}",
+                    )
                     row["destination"]["version_id"] = version_id
                     row["destination"]["copy_response"] = copied
                     row["status"] = "copy_returned"
-                    if not valid_version_id(version_id):
-                        raise RuntimeError(
-                            "copy returned a null destination VersionId: "
-                            f"{source_name}"
-                        )
                     after_source = head_object(source_bucket, source_key, args.region)
                     row["source"]["post_copy_head"] = after_source
                     destination = head_object(
@@ -970,9 +984,9 @@ def main() -> int:
                     )
                     row["checks"].update({
                         "source_unchanged": source_stable(before, after_source),
-                        "copy_version_exact": valid_version_id(version_id)
-                        and version_id == str(destination.get("VersionId", ""))
-                        and version_id == str(downloaded.get("VersionId", "")),
+                        "copy_version_exact": version_id
+                        == destination.get("VersionId")
+                        == downloaded.get("VersionId"),
                         "destination_get_matches_head": response_matches_head(
                             downloaded,
                             destination,
@@ -1082,12 +1096,13 @@ def main() -> int:
                 args.kms_key_arn,
                 args.region,
             )
-            version_id = str(uploaded.get("VersionId", ""))
+            version_id = exact_version_id(
+                uploaded.get("VersionId"),
+                "receipt put response",
+            )
             anchor_state["status"] = "receipt_put_returned"
             anchor_state["receipt_version_id"] = version_id
             anchor_state["put_response"] = uploaded
-            if not valid_version_id(version_id):
-                raise RuntimeError("receipt put returned a null VersionId")
             anchored = head_object(
                 destination_bucket, receipt_key, args.region, version_id
             )
@@ -1111,9 +1126,9 @@ def main() -> int:
                     bytes.fromhex(receipt_sha)
                 ).decode("ascii")
                 checks = {
-                    "version_exact": valid_version_id(version_id)
-                    and version_id == str(anchored.get("VersionId", ""))
-                    and version_id == str(anchored_get.get("VersionId", "")),
+                    "version_exact": version_id
+                    == anchored.get("VersionId")
+                    == anchored_get.get("VersionId"),
                     "get_matches_head": response_matches_head(
                         anchored_get,
                         anchored,
