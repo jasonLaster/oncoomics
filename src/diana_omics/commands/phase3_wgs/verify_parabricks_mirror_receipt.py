@@ -33,9 +33,9 @@ def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
 
 
 def _require_string(value: Any, label: str) -> str:
-    if not isinstance(value, str) or not value.strip():
+    if not isinstance(value, str) or not value:
         raise MirrorReceiptError(f"{label} is required")
-    return value.strip()
+    return value
 
 
 def _is_exact_int(value: Any, expected: int) -> bool:

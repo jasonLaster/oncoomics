@@ -168,7 +168,7 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
         with self.assertRaisesRegex(verify.MirrorReceiptError, "dockerfile_sha256"):
             verify.validate_mirror_receipt(malformed)
 
-    def test_rejects_non_exact_uppercase_digests_and_revisions(self) -> None:
+    def test_rejects_non_exact_digests_and_revisions(self) -> None:
         cases = (
             (
                 "source.digest",
@@ -207,6 +207,46 @@ class ParabricksMirrorReceiptTests(unittest.TestCase):
                 lambda payload: payload["diana_omics"].__setitem__(
                     "git_commit",
                     DIANA_GIT_COMMIT.upper(),
+                ),
+                "40-character Git SHA",
+            ),
+            (
+                "padded source.digest",
+                lambda payload: payload["source"].__setitem__(
+                    "digest",
+                    f" {SOURCE_DIGEST}",
+                ),
+                "source.digest",
+            ),
+            (
+                "padded source.image",
+                lambda payload: payload["source"].__setitem__(
+                    "image",
+                    f"nvcr.io/nvidia/clara/parabricks@{SOURCE_DIGEST} ",
+                ),
+                "source.image",
+            ),
+            (
+                "padded destination.digest",
+                lambda payload: payload["destination"].__setitem__(
+                    "digest",
+                    f"\t{DESTINATION_DIGEST}",
+                ),
+                "destination.digest",
+            ),
+            (
+                "padded dockerfile_sha256",
+                lambda payload: payload["diana_omics"].__setitem__(
+                    "dockerfile_sha256",
+                    "sha256:" + "d" * 64 + " ",
+                ),
+                "dockerfile_sha256",
+            ),
+            (
+                "padded git_commit",
+                lambda payload: payload["diana_omics"].__setitem__(
+                    "git_commit",
+                    f" {DIANA_GIT_COMMIT}",
                 ),
                 "40-character Git SHA",
             ),
