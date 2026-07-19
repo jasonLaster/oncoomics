@@ -303,7 +303,7 @@ def build_manifest(
     }
 
 
-def write_create_only(path: Path, value: dict[str, Any]) -> None:
+def write_create_only(path: Path, value: dict[str, Any]) -> str:
     require_safe_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = json.dumps(value, indent=2, sort_keys=True).encode("utf-8") + b"\n"
@@ -332,6 +332,7 @@ def write_create_only(path: Path, value: dict[str, Any]) -> None:
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+    return expected_sha256
 
 
 def require_installed_manifest(path: Path, expected_sha256: str) -> None:
@@ -389,7 +390,7 @@ def finalize(
         reviewer,
         model_catalog_receipt,
     )
-    write_create_only(output, manifest)
+    manifest_sha256 = write_create_only(output, manifest)
     try:
         require_exact_review_dir(review_dir, REVIEW_PACKET_FILES)
         validate_report_manifest_support(
@@ -397,6 +398,7 @@ def finalize(
             manifest,
             REVIEWER_METHODS[reviewer],
         )
+        require_installed_manifest(output, manifest_sha256)
     except ValueError:
         output.unlink(missing_ok=True)
         raise

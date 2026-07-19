@@ -360,6 +360,45 @@ class FinalizeAiReviewTests(unittest.TestCase):
 
             self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_rejects_stale_final_manifest_after_support_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            real_validate_report_manifest_support = (
+                FINALIZE.validate_report_manifest_support
+            )
+
+            def tamper_after_support_validation(
+                packet_dir: Path,
+                manifest: dict,
+                method: str,
+            ) -> None:
+                real_validate_report_manifest_support(packet_dir, manifest, method)
+                (review / "report_manifest.json").write_text(
+                    '{"changed": true}\n',
+                    encoding="utf-8",
+                )
+
+            with (
+                mock.patch.object(
+                    FINALIZE,
+                    "validate_report_manifest_support",
+                    side_effect=tamper_after_support_validation,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report_manifest.json changed during write",
+                ),
+            ):
+                FINALIZE.finalize(
+                    fixture.bundle_dir,
+                    review,
+                    "A",
+                    fixture.catalog_receipt,
+                    review / "report_manifest.json",
+                )
+
+            self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_report_manifest_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)
