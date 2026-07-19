@@ -348,8 +348,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = fa19377</li>
-          <li class="pill">Prior dashboard = 343fe1d</li>
+          <li class="pill">Latest milestone = ae9fa0d</li>
+          <li class="pill">Prior dashboard = 339171d</li>
+          <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
           <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
@@ -558,6 +559,10 @@
               <span>Live input-contract publication now requires the matching dry-run receipt and rejects stale metadata, failed preflight checks, or contract SHA-256, byte-size, URI, and KMS drift before create-only publication.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact blocked cross-check manifests</strong>
+              <span>Blocked FACETS, CHORD, and HRDetect packets now reject stale <code>report_manifest.json</code> envelopes or source SHA-256 maps that differ from the generator plus bound upstream report-manifest hashes.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 blocked source hashes</strong>
               <span>Pre-route blocked packets now require exactly the blocked-report generator plus deterministic and Rosalind report-manifest hashes, rejecting unrelated hidden source hashes instead of validating only the projected report-manifest keys.</span>
             </li>
@@ -707,6 +712,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:57:24-07:00">Jul 19 · 12:57 AM</time>
+              <span>
+                <strong>ae9fa0d Require exact blocked crosscheck manifests:</strong>
+                blocked FACETS, CHORD, and HRDetect report generation now
+                rejects stale <code>report_manifest.json</code> envelopes and
+                any source SHA-256 map that differs from the generator plus
+                bound upstream report-manifest hashes. No S3, Batch, route, GPU,
+                or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:56:07-07:00">Jul 19 · 12:56 AM</time>
               <span>
