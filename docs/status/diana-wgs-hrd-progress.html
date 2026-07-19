@@ -348,11 +348,12 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 0164993</li>
-          <li class="pill">Prior dashboard = 19c1f41</li>
+          <li class="pill">Latest milestone = b61de01</li>
+          <li class="pill">Prior dashboard = 07ec0a5</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
           <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
+          <li class="pill">Materializer receipts = alias-exact</li>
           <li class="pill">Private handoff dry-runs = required</li>
           <li class="pill">Stage freeze dry-run = exact</li>
           <li class="pill">Final freeze dry-run = exact</li>
@@ -532,6 +533,10 @@
               <span>Materializer and route submits now require an exact matching dry-run request receipt before Batch submission, and reject stale live preflight or job-request drift before submit.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · validate materializer terminal receipt outputs</strong>
+              <span>Terminal materializer capture now rejects schema-2 receipts unless they exactly prove the four alias-only final outputs, source custody/input SHA-256 binding, and destination inventory before downstream handoff.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require private handoff dry-run receipts</strong>
               <span>The source-freeze and AI/freeform private-publish renderers now fail fast if a live private apply command is built without its matching dry-run receipt, and regressions prove each generated source, reviewer, and synthesis apply stays receipt-bound.</span>
             </li>
@@ -697,6 +702,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:51:47-07:00">Jul 19 · 12:51 AM</time>
+              <span>
+                <strong>b61de01 Validate materializer terminal receipt outputs:</strong>
+                terminal materializer capture now rejects schema-2 receipts
+                unless they exactly prove <code>somatic.pass.vcf.gz</code>,
+                <code>somatic.pass.vcf.gz.tbi</code>, <code>sbs96.csv</code>,
+                <code>staged_input_validation.json</code>, source custody/input
+                SHA-256 binding, and destination inventory. No S3, Batch, route,
+                GPU, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:47:40-07:00">Jul 19 · 12:47 AM</time>
               <span>
