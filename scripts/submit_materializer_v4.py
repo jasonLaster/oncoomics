@@ -1032,13 +1032,25 @@ def require_empty_history(uri: str, region: str) -> dict[str, Any]:
             raise ValueError(f"destination prefix has object or delete-marker history: {uri}")
         if page.get("IsTruncated") is not True:
             return {"uri": uri, "page_count": page_count, "history_count": 0}
-        next_key = str(page.get("NextKeyMarker", ""))
-        next_version = str(page.get("NextVersionIdMarker", ""))
-        if not next_key or not next_version or (next_key, next_version) in observed:
+        next_key, next_version = require_next_version_history_markers(page)
+        if (next_key, next_version) in observed:
             raise ValueError("truncated S3 version history omitted or repeated its marker")
         observed.add((next_key, next_version))
         key_marker, version_marker = next_key, next_version
     raise ValueError("S3 history pagination exceeded the safety limit")
+
+
+def require_next_version_history_markers(page: dict[str, Any]) -> tuple[str, str]:
+    next_key = page.get("NextKeyMarker")
+    next_version = page.get("NextVersionIdMarker")
+    if (
+        not isinstance(next_key, str)
+        or not isinstance(next_version, str)
+        or not next_key
+        or not next_version
+    ):
+        raise ValueError("truncated S3 version history omitted or repeated its marker")
+    return next_key, next_version
 
 
 def validate_identity(region: str) -> dict[str, Any]:

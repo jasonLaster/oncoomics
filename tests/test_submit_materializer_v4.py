@@ -1272,16 +1272,22 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             self.run_preflight(aws=aws)
         self.assertGreater(calls, 0)
 
-        with mock.patch.object(
-            MODULE,
-            "aws_json",
-            return_value={"IsTruncated": True, "NextKeyMarker": "next-key"},
-        ):
-            with self.assertRaisesRegex(ValueError, "omitted or repeated"):
-                MODULE.require_empty_history(
-                    f"s3://{self.private_bucket}/runs/subject01/{self.run_id}/empty/",
-                    MODULE.REGION,
-                )
+        pages = (
+            {"NextKeyMarker": "next-key"},
+            {"NextKeyMarker": True, "NextVersionIdMarker": "next-version"},
+            {"NextKeyMarker": "next-key", "NextVersionIdMarker": True},
+        )
+        for page in pages:
+            with self.subTest(page=page), mock.patch.object(
+                MODULE,
+                "aws_json",
+                return_value={"IsTruncated": True, **page},
+            ):
+                with self.assertRaisesRegex(ValueError, "omitted or repeated"):
+                    MODULE.require_empty_history(
+                        f"s3://{self.private_bucket}/runs/subject01/{self.run_id}/empty/",
+                        MODULE.REGION,
+                    )
 
     def test_dry_run_main_emits_exclusive_mode_0600_without_submit(self) -> None:
         args = self.args()
