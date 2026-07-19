@@ -8,7 +8,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -115,6 +114,17 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             "phase3_wgs_fast/forbidden_tokens/workspace/manifests/"
             'phase3_wgs_fast/forbidden_tokens.json)"',
             text,
+        )
+        self.assertIn(
+            "--forbidden-tokens-file "
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "materialized-final/phase3_wgs_fast/forbidden_tokens/workspace/"
+            "manifests/phase3_wgs_fast/forbidden_tokens.json",
+            text[
+                text.index("stage_deterministic_wgs_report.py") : text.index(
+                    "build:rosalind-hrd-packet"
+                )
+            ],
         )
         self.assertNotIn("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON=[", text)
         self.assertIn("build:rosalind-hrd-packet", text)

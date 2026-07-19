@@ -19,6 +19,7 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
+from forbidden_text import merge_forbidden_tokens
 
 EXPECTED_READINESS = {
     "source_sha256": "ready",
@@ -1103,6 +1104,7 @@ def forbidden_tokens(
     sbs_rows: list[dict[str, str]],
     audit: dict[str, Any],
     explicit: list[str],
+    forbidden_token_files: Iterable[Path] = (),
 ) -> list[str]:
     values: set[str] = {token.strip() for token in explicit if token.strip()}
     generic_words = {
@@ -1154,7 +1156,13 @@ def forbidden_tokens(
         add_value(row.get("assay", ""), split_words=True)
     for key in ("source_uri", "result_uri"):
         add_value(audit.get(key, ""), split_words=True)
-    return sorted(values, key=lambda value: (-len(value), value.lower()))
+    return rank_forbidden_tokens(
+        merge_forbidden_tokens(values, files=forbidden_token_files)
+    )
+
+
+def rank_forbidden_tokens(tokens: Iterable[str]) -> list[str]:
+    return sorted(tokens, key=lambda value: (-len(value), value.lower()))
 
 
 def scan_outputs(paths: list[Path], tokens: list[str]) -> list[dict[str, str]]:
@@ -1642,6 +1650,7 @@ def main() -> None:
     parser.add_argument("--early-look-root", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--forbidden-token", action="append", default=[])
+    parser.add_argument("--forbidden-tokens-file", action="append", default=[], type=Path)
     args = parser.parse_args()
 
     if args.artifact_root.is_symlink() or args.early_look_root.is_symlink():
@@ -2735,7 +2744,14 @@ def main() -> None:
             row["evidence_surface"]: row["state"] for row in output_readiness
         },
     }
-    tokens = forbidden_tokens(summary, contamination_rows, sbs_rows, audit, list(args.forbidden_token))
+    tokens = forbidden_tokens(
+        summary,
+        contamination_rows,
+        sbs_rows,
+        audit,
+        list(args.forbidden_token),
+        args.forbidden_tokens_file,
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="deterministic-full-", dir=str(output.parent)) as temporary:
         staging = Path(temporary)

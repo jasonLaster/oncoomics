@@ -273,6 +273,22 @@
         grid-template-columns: 92px 1fr;
       }
 
+      .history {
+        margin-top: 12px;
+      }
+
+      .history summary {
+        cursor: pointer;
+        color: #93c5fd;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
+
+      .history[open] summary {
+        margin-bottom: 12px;
+      }
+
       time {
         color: #93c5fd;
         font-size: 12px;
@@ -317,16 +333,19 @@
           only, and validators now enforce the pre-route and terminal scopes on
           both sides of the handoff. The terminal runbook now skips the
           pre-route five-packet validator once the blocked packets are rebound
-          to terminal reports, while source-freeze, private/public publication,
-          AI, and Phase 3 packet gates now share one static forbidden-token
-          inventory plus the run-specific scan. Diana terminal deterministic
-          artifacts are still absent, compute is GPU-quota blocked, the legacy
-          CPU run remains stopped, and Diana HRD remains
+          to terminal reports, while deterministic staging, Rosalind,
+          source-freeze, private/public publication, AI, and Phase 3 packet
+          gates now share one static forbidden-token inventory plus the
+          run-specific scan. Diana terminal deterministic artifacts are still
+          absent, compute is GPU-quota blocked, the legacy CPU run remains
+          stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code>.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = bfd447f</li>
+          <li class="pill">Latest milestone = 52f7f22</li>
+          <li class="pill">Source hardening = bfd447f</li>
+          <li class="pill">Working tree = deterministic scan hardening</li>
           <li class="pill">Public access foundation = ready</li>
           <li class="pill">HCC1395 seven-report stack = passed</li>
           <li class="pill">Forbidden scans = shared</li>
@@ -382,6 +401,10 @@
             public known-answer validation. The analytical HRD methods were not
             run; their reports preserve <code>partial_evidence</code>,
             <code>blocked</code>, and <code>no_call</code> states.
+            Coverage bins are not allele-specific LOH, and metadata-only or
+            BAM-derived SV evidence is not sufficient for CHORD or HRDetect.
+            Launch no extra cross-check routes or significant compute without
+            explicit approval.
           </p>
         </article>
 
@@ -438,6 +461,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done locally · scan deterministic packets before install</strong>
+              <span>Deterministic staging now merges the run-specific file with derived and explicit forbidden tokens, preserves longest-token-first scan ranking, and checks packet outputs before installation.</span>
+            </li>
             <li class="item" style="--tone: var(--blocked)">
               <strong>Blocked · terminal WGS artifacts are absent</strong>
               <span>No terminal deterministic artifact set or terminal HRD call exists; downstream Diana lanes remain queued.</span>
@@ -453,6 +480,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · enforce the pre-route / terminal packet split</strong>
               <span>Fast-DAG validation now requires <code>pre_route_deterministic_rosalind</code> on blocked packets, terminal source-freeze independently requires <code>terminal_source_reports</code>, and the terminal runbook no longer sends terminal packets through the pre-route gate.</span>
+            </li>
+            <li class="item" style="--tone: var(--blocked)">
+              <strong>Blocked · require exact evidence inputs and explicit approval</strong>
+              <span>Coverage bins cannot substitute for allele-specific LOH, and metadata-only or BAM-derived SV evidence cannot support CHORD or HRDetect. Do not launch extra routes until both the method contract and compute decision are approved.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Next · freeze real terminal artifacts</strong>
@@ -504,6 +535,30 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T22:34:31-07:00">Jul 18 · 10:34 PM</time>
+              <span>
+                <strong>Working tree · Share deterministic staging scan inventory:</strong>
+                deterministic staging now accepts the canonical run-specific
+                forbidden-token file, merges it with derived and explicit
+                tokens in longest-token-first order, and scans packet outputs
+                before installation. The post-success handoff passes that same
+                inventory through deterministic staging, Rosalind, and
+                source-freeze. Local validation passed: focused seam, 87
+                passed and 2 subtests passed; full local suite, 1,679 passed and
+                714 subtests passed. No compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T22:30:03-07:00">Jul 18 · 10:30 PM</time>
+              <span>
+                <strong>52f7f22 Refresh HRD dashboard for shared scan defaults:</strong>
+                published the shared scan-default milestone in this source-only
+                tracker while preserving the absent terminal artifacts, stopped
+                legacy CPU boundary, and Diana <code>partial_evidence</code> /
+                <code>no_call</code> state. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T22:29:46-07:00">Jul 18 · 10:29 PM</time>
               <span>
@@ -646,6 +701,10 @@
                 run rather than biological results.
               </span>
             </li>
+          </ol>
+          <details class="history">
+            <summary>Earlier July 18 handoff-hardening milestones</summary>
+            <ol class="changelog">
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
@@ -1650,6 +1709,7 @@
               </span>
             </li>
           </ol>
+          </details>
         </article>
       </section>
 

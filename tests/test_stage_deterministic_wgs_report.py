@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -153,6 +152,30 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
                 REPORT_MODULE.load_csv(linked_parent / "input.csv")
+
+    def test_forbidden_tokens_merge_materialized_file_tokens(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-forbidden-tokens-"
+        ) as temporary:
+            token_file = Path(temporary) / "forbidden_tokens.json"
+            write_json(token_file, ["synthetic", "synthetic-private-sample"])
+
+            tokens = REPORT_MODULE.forbidden_tokens(
+                {"input": {"dataset": "", "pair": ""}},
+                [],
+                [],
+                {"objects": [], "source_uri": "", "result_uri": ""},
+                [" synthetic "],
+                [token_file],
+            )
+
+        self.assertEqual(len(tokens), len(set(tokens)))
+        self.assertIn("synthetic", tokens)
+        self.assertIn("synthetic-private-sample", tokens)
+        self.assertLess(
+            tokens.index("synthetic-private-sample"),
+            tokens.index("synthetic"),
+        )
 
     def test_input_snapshot_receipt_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory(
@@ -1772,6 +1795,30 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                     )
                 )
             )
+
+    def test_forbidden_token_file_findings_fail_before_report_install(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            token_file = fixture.root / "forbidden_tokens.json"
+            write_json(token_file, ["Overall HRD status"])
+            command = [
+                *fixture.command(),
+                "--forbidden-tokens-file",
+                str(token_file),
+            ]
+
+            result = subprocess.run(command, text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "sample/vendor identifier scan failed",
+                result.stdout + result.stderr,
+            )
+            self.assertIn(
+                "report.md: Overall HRD status",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((fixture.output / "report.md").exists())
 
     def test_variant_count_inconsistency_fails_before_report_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:

@@ -218,7 +218,10 @@ def materializer_command(
 
 
 def stage_deterministic_command(
-    scripts: Path, deterministic: Path, early_look_root: Path
+    scripts: Path,
+    deterministic: Path,
+    early_look_root: Path,
+    forbidden_tokens_file: Path,
 ) -> list[str | Path]:
     return [
         "python3",
@@ -265,6 +268,8 @@ def stage_deterministic_command(
         early_look_root,
         "--output-dir",
         deterministic / "report",
+        "--forbidden-tokens-file",
+        forbidden_tokens_file,
         *forbidden_flags(),
     ]
 
@@ -862,7 +867,14 @@ def render(root: Path, terminal_job_id: str) -> str:
         ),
         "## 4. Stage deterministic and Rosalind packets",
         "",
-        block(stage_deterministic_command(scripts, deterministic, early_look)),
+        block(
+            stage_deterministic_command(
+                scripts,
+                deterministic,
+                early_look,
+                forbidden_tokens_file,
+            )
+        ),
         block(rosalind_command(root, deterministic, forbidden_tokens_file)),
         "## 5. Execute and stage supported cross-check routes",
         "",
