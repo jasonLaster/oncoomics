@@ -596,6 +596,43 @@ class FinalizeAiReviewTests(unittest.TestCase):
             self.assertNotEqual(finalized.returncode, 0)
             self.assertIn("report_manifest.json already exists", finalized.stderr)
 
+    def test_rejects_symlinked_review_manifest_after_file_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            real_require_file = FINALIZE.require_file
+            swapped = False
+
+            def swap_manifest_after_file_audit(path: Path, label: str) -> None:
+                nonlocal swapped
+                real_require_file(path, label)
+                if label == "model_catalog_receipt.json" and not swapped:
+                    review_manifest = review / "review_manifest.json"
+                    relocated = review.parent / "review_manifest.real.json"
+                    review_manifest.rename(relocated)
+                    review_manifest.symlink_to(relocated)
+                    swapped = True
+
+            with (
+                mock.patch.object(
+                    FINALIZE,
+                    "require_file",
+                    side_effect=swap_manifest_after_file_audit,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "review manifest must be a non-empty real file",
+                ),
+            ):
+                FINALIZE.finalize(
+                    fixture.bundle_dir,
+                    review,
+                    "A",
+                    fixture.catalog_receipt,
+                    review / "report_manifest.json",
+                )
+
+            self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_symlinked_custody_inputs(self) -> None:
         cases = (
             ("bundle directory", "bundle directory", "bundle"),

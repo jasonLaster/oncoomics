@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact AI-prep JSON files</li>
+          <li class="pill">Latest milestone = local exact AI-finalizer JSON files</li>
+          <li class="pill">AI-finalizer JSON files = real</li>
           <li class="pill">AI-prep JSON files = real</li>
           <li class="pill">AI-staging manifest file = real</li>
           <li class="pill">Materializer input files = real</li>
@@ -1529,6 +1530,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real AI-finalizer JSON files</strong>
+              <span>AI-review finalization now rejects symlinked local JSON leaves inside its duplicate-key-safe loader after the initial file audit and before wrapping validated independent reviews into report manifests.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real AI-prep JSON files</strong>
               <span>AI-review preparation now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before rebasing staged reviewer-input receipts or validating generated bundle and postcondition JSON for preparation receipts.</span>
             </li>
@@ -1970,6 +1975,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T04:10:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require real AI-finalizer JSON files:</strong>
+                AI-review finalization now rejects symlinked local JSON leaves
+                after the initial file audit, before validated independent reviews
+                can become report manifests.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T04:05:00-07:00">Jul 20 · local</time>
               <span>
