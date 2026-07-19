@@ -237,6 +237,41 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             self.assertIn(f"--private-publication-receipt {receipt_path}", text)
             self.assertNotIn(f"{receipt_path}.private.json", text)
 
+    def test_ai_private_apply_commands_require_matching_dry_receipts(self) -> None:
+        root = Path("/repo")
+        text = render()
+
+        for method_id, apply_receipt in MODULE.ai_private_receipt_outputs(
+            root,
+            "terminal",
+        ):
+            dry_receipt = dict(
+                MODULE.ai_private_receipt_outputs(root, "terminal", ".dry")
+            )[method_id]
+            dry_index = text.index(f"--receipt-output {dry_receipt}")
+            apply_index = text.index(f"--receipt-output {apply_receipt}")
+            dry_ref_index = text.index(f"--dry-run-receipt {dry_receipt}")
+            self.assertLess(dry_index, apply_index)
+            self.assertLess(apply_index, dry_ref_index)
+
+        with self.assertRaisesRegex(ValueError, "requires a dry-run receipt"):
+            MODULE.publish_command(
+                Path("/repo/scripts"),
+                Path("/repo/reviewer-a"),
+                "ai_review_reviewer_a",
+                root / "ai-reviewer-a.private.json",
+                apply=True,
+            )
+        with self.assertRaisesRegex(ValueError, "only valid with --apply"):
+            MODULE.publish_command(
+                Path("/repo/scripts"),
+                Path("/repo/reviewer-a"),
+                "ai_review_reviewer_a",
+                root / "ai-reviewer-a.private.dry.json",
+                apply=False,
+                dry_run_receipt=root / "ai-reviewer-a.private.dry.json",
+            )
+
     def test_renderer_hands_forbidden_tokens_file_to_ai_chain(self) -> None:
         text = MODULE.render(
             Path("/repo"),

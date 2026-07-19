@@ -248,10 +248,13 @@ def publish_command(
         *forbidden_flags(),
         *forbidden_tokens_file_flags,
     ]
-    if dry_run_receipt is not None:
-        command.extend(["--dry-run-receipt", dry_run_receipt])
     if apply:
+        if dry_run_receipt is None:
+            raise ValueError("AI private report apply command requires a dry-run receipt")
+        command.extend(["--dry-run-receipt", dry_run_receipt])
         command.append("--apply")
+    elif dry_run_receipt is not None:
+        raise ValueError("--dry-run-receipt is only valid with --apply")
     return command
 
 

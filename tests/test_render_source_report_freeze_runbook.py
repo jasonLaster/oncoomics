@@ -310,6 +310,24 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             ],
         )
 
+        with self.assertRaisesRegex(ValueError, "requires a dry-run receipt"):
+            MODULE.publish_command(
+                Path("/repo/scripts"),
+                Path("/packets/deterministic"),
+                "deterministic_full_wgs",
+                Path("/receipts/deterministic.json"),
+                apply=True,
+            )
+        with self.assertRaisesRegex(ValueError, "only valid with --apply"):
+            MODULE.publish_command(
+                Path("/repo/scripts"),
+                Path("/packets/deterministic"),
+                "deterministic_full_wgs",
+                dry,
+                apply=False,
+                dry_run_receipt=dry,
+            )
+
     def test_publish_command_reads_forbidden_tokens_file_by_path(self) -> None:
         command = MODULE.publish_command(
             Path("/repo/scripts"),
