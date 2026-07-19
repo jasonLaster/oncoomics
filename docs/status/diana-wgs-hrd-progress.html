@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real cross-check staging copies</li>
+          <li class="pill">Latest milestone = local exact AI staging bundle rereads</li>
+          <li class="pill">AI staging bundle rereads = exact</li>
           <li class="pill">Cross-check staging copies = real</li>
           <li class="pill">Phase 3 terminal hashes = real</li>
           <li class="pill">Cross-check FASTQ lanes = exact</li>
@@ -693,6 +694,7 @@
           <li class="pill">AI validation method inventory = exact</li>
           <li class="pill">Terminal cross-check inputs = absent</li>
           <li class="pill">AI bundle staging = exact</li>
+          <li class="pill">AI staging bundle rereads = exact</li>
           <li class="pill">Pre-route digests = bound</li>
           <li class="pill">Route report receipts = exact</li>
           <li class="pill">Staged route replays = exact</li>
@@ -1855,6 +1857,10 @@
               <span>AI-review staging now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before staged per-reviewer inputs can rebind <code>review_bundle.json</code> or reviewer prompt bytes.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · revalidate AI staging bundle reads</strong>
+              <span>AI review input staging now revalidates the review bundle and role prompt source files through hash-bound real-file reads immediately before copying exact two-file reviewer inputs.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact known-answer stack JSON</strong>
               <span>Public known-answer stack assembly now rejects duplicate JSON object names in required source, model, and manifest objects before report or AI-input stack installation can proceed.</span>
             </li>
@@ -2320,6 +2326,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T15:34:41-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Revalidate AI staging bundle reads:</strong>
+                AI review input staging now revalidates the review bundle and
+                role prompt source files through hash-bound real-file reads
+                immediately before copying exact two-file reviewer inputs.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T15:31:50-07:00">Jul 19 · local</time>
               <span>

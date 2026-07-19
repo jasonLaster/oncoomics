@@ -159,6 +159,19 @@ def require_file(path: Path, expected_sha256: str, label: str) -> None:
         raise ValueError(f"{label} SHA-256 mismatch")
 
 
+def read_bound_file(path: Path, expected_sha256: str, label: str) -> bytes:
+    require_file(path, expected_sha256, label)
+    data = path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != expected_sha256:
+        raise ValueError(f"{label} changed during read")
+    require_file(path, expected_sha256, label)
+    return data
+
+
+def read_bundle_file(bundle_dir: Path, relative: str, hashes: dict[str, str]) -> bytes:
+    return read_bound_file(bundle_dir / relative, hashes[relative], relative)
+
+
 def require_real_file(path: Path, label: str) -> None:
     require_no_symlink_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
@@ -314,11 +327,11 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
             role_dir.mkdir(mode=0o700)
             write_once(
                 role_dir / "review_bundle.json",
-                (bundle_dir / "review_bundle.json").read_bytes(),
+                read_bundle_file(bundle_dir, "review_bundle.json", hashes),
             )
             write_once(
                 role_dir / ROLE_PROMPTS[role],
-                (bundle_dir / ROLE_PROMPTS[role]).read_bytes(),
+                read_bundle_file(bundle_dir, ROLE_PROMPTS[role], hashes),
             )
             reviewer_inventory(role_dir, role, hashes)
 

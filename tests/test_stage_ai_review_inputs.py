@@ -252,6 +252,62 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse(self.output_root.exists())
         self.assertFalse(self.receipt.exists())
 
+    def test_rejects_symlinked_review_bundle_after_validation(self) -> None:
+        real_validate_bundle = STAGE.validate_bundle
+
+        def symlink_after_validation(bundle: Path) -> dict[str, str]:
+            hashes = real_validate_bundle(bundle)
+            review_bundle = bundle / "review_bundle.json"
+            relocated = bundle.parent / "review_bundle.real.json"
+            review_bundle.rename(relocated)
+            review_bundle.symlink_to(relocated)
+            return hashes
+
+        with (
+            mock.patch.object(
+                STAGE,
+                "validate_bundle",
+                side_effect=symlink_after_validation,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "review_bundle.json is not a non-empty real file",
+            ),
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse((self.output_root / "reviewer-a-input").exists())
+        self.assertFalse((self.output_root / "reviewer-b-input").exists())
+        self.assertFalse(self.receipt.exists())
+
+    def test_rejects_rebound_prompt_after_validation(self) -> None:
+        real_validate_bundle = STAGE.validate_bundle
+
+        def tamper_after_validation(bundle: Path) -> dict[str, str]:
+            hashes = real_validate_bundle(bundle)
+            (bundle / "reviewer-a.prompt.md").write_text(
+                "tampered after validation\n",
+                encoding="utf-8",
+            )
+            return hashes
+
+        with (
+            mock.patch.object(
+                STAGE,
+                "validate_bundle",
+                side_effect=tamper_after_validation,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "reviewer-a.prompt.md SHA-256 mismatch",
+            ),
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse((self.output_root / "reviewer-a-input").exists())
+        self.assertFalse((self.output_root / "reviewer-b-input").exists())
+        self.assertFalse(self.receipt.exists())
+
     def test_rejects_unbound_bundle_files_before_creating_outputs(self) -> None:
         (self.bundle / "unbound-scratch.json").write_text(
             "{}\n",
