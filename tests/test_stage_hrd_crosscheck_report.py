@@ -840,6 +840,39 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
                     self.assertFalse(output.exists())
 
+    def test_stage_rejects_method_spec_review_summary_that_differs_from_manifest(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            staging = root / "staging"
+            output = root / "staged"
+            STAGE.stage(source, verification, staging, "sigprofiler_sbs3")
+
+            method_spec_path = staging / "method_spec.json"
+            method_spec = json.loads(method_spec_path.read_text(encoding="utf-8"))
+            method_spec["source_review_summary"] = {
+                "stale": "review summary from another route"
+            }
+            write_json(method_spec_path, method_spec)
+
+            manifest_path = staging / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["support_sha256"]["method_spec.json"] = STAGE.sha256(
+                method_spec_path
+            )
+            write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "method spec differs from the manifest",
+            ):
+                STAGE.install_staged_packet(staging, output)
+
+            self.assertFalse(output.exists())
+
     def test_stage_rehashes_packet_after_final_directory_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

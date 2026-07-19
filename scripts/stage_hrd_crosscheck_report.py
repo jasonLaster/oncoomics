@@ -391,6 +391,7 @@ def require_staged_report_manifest(packet_dir: Path) -> None:
         or method_spec.get("authorized_hrd_state") != "no_call"
         or method_spec.get("classification_authorized") is not False
         or method_spec.get("classification_qc_status") != "not_applicable"
+        or method_spec.get("source_review_summary") != manifest.get("review_summary")
     ):
         raise ValueError("staged cross-check method spec differs from the manifest")
 
