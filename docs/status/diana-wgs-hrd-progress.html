@@ -307,15 +307,14 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>91ab4ec9ddda67a12108a4f880a7c3dc5879f0af</strong>.
-          The latest work is AI-review receipt mode hardening:
-          <code>validate_ai_review.py</code> now rechecks
-          <code>validation.json</code> and <code>finalize_ai_review.py</code>
-          now rechecks <code>report_manifest.json</code> after file plus
-          parent-directory fsync so each create-only receipt must still be mode
-          <code>0600</code> before validation or finalization can continue.
-          The regressions chmod those receipts to <code>0644</code> after
-          directory fsync and prove partial outputs are rejected and unlinked.
+          <strong>03a0ce029fb6213e2d77337f8bc2a8acc5e33b79</strong>.
+          The latest work is publication dry-run receipt hardening:
+          <code>publish_private_report.py</code> and
+          <code>publish_reviewed_public_report.py</code> now require exact
+          passed check dictionaries when an apply run consumes a dry-run
+          receipt. A stale dry-run receipt that carries an unexpected failed
+          check is rejected before AWS or S3 access, so private freezes and
+          reviewed-public publication keep their dry-run/apply contract exact.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -323,7 +322,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 91ab4ec</li>
+          <li class="pill">Latest hardening = 03a0ce0</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -405,8 +404,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 91ab4ec</strong>
-              <span>AI-review validation/finalization now reject receipts whose modes drift after directory fsync and unlink the partial outputs.</span>
+              <strong>Preserve 03a0ce0</strong>
+              <span>Private and reviewed-public publication apply runs now reject dry-run receipts whose check inventories are not exact.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -454,6 +453,22 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>03a0ce0 Require exact publication dry-run checks:</strong>
+                <code>publish_private_report.py</code> and
+                <code>publish_reviewed_public_report.py</code> now require
+                dry-run receipts to carry only the expected passed check
+                inventory before <code>--apply</code> can continue. The new
+                <code>test_apply_rejects_dry_run_receipt_with_extra_failed_check_before_aws</code>
+                and
+                <code>test_apply_rejects_dry_run_receipt_with_extra_failed_check_before_s3</code>
+                regressions append <code>unexpected_late_check: false</code>
+                to otherwise valid dry-run receipts and prove both publishers
+                fail before AWS access.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
