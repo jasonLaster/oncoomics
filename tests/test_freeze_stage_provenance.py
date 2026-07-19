@@ -301,6 +301,10 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         wrong_schema = deepcopy(receipt)
         wrong_schema["schema_version"] = 1.0
         tampered.append(wrong_schema)
+        for value in (True, 42.0, "42", 0):
+            non_exact_worker_bytes = deepcopy(receipt)
+            non_exact_worker_bytes["worker"]["bytes"] = value
+            tampered.append(non_exact_worker_bytes)
         legacy_worker_checks = deepcopy(receipt)
         legacy_worker_checks["worker"]["checks"] = dict(LEGACY_BATCH_WORKER_CHECKS)
         tampered.append(legacy_worker_checks)
@@ -331,6 +335,21 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         wrong_gather["samples"][1]["lane_count"] = 3
         with self.assertRaisesRegex(ValueError, "tumor sample"):
             MODULE.validate_source_document("gather.json", wrong_gather, RUN_ID)
+        for value in (True, 100.0, "100"):
+            with self.subTest(document="preflight", value=value):
+                wrong_preflight = preflight_payload()
+                wrong_preflight["wgs_bytes"] = value
+                with self.assertRaisesRegex(ValueError, "WGS stage semantics"):
+                    MODULE.validate_source_document(
+                        "preflight.json", wrong_preflight, RUN_ID
+                    )
+            with self.subTest(document="gather", value=value):
+                wrong_gather = gather_payload()
+                wrong_gather["samples"][1]["output_bam_bytes"] = value
+                with self.assertRaisesRegex(ValueError, "tumor sample"):
+                    MODULE.validate_source_document(
+                        "gather.json", wrong_gather, RUN_ID
+                    )
 
     def test_source_stable_compares_full_identity(self) -> None:
         payload = json.dumps(preflight_payload()).encode()
@@ -344,6 +363,20 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         ):
             with self.subTest(field=field):
                 self.assertFalse(MODULE.source_stable(before, {**before, field: value}))
+        for value in (True, len(payload) * 1.0, str(len(payload))):
+            with self.subTest(content_length=value):
+                self.assertFalse(
+                    MODULE.source_stable(
+                        {**before, "ContentLength": value},
+                        before,
+                    )
+                )
+                self.assertFalse(
+                    MODULE.source_stable(
+                        before,
+                        {**before, "ContentLength": value},
+                    )
+                )
 
     def test_get_response_must_match_head_and_local_bytes(self) -> None:
         payload = b"payload"
@@ -364,6 +397,54 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                     expected_version_id="v1",
                 )
             )
+            for response_name in ("GET", "HEAD"):
+                for content_length in (True, len(payload) * 1.0, str(len(payload))):
+                    with self.subTest(
+                        response_name=response_name,
+                        content_length=content_length,
+                    ):
+                        response = dict(head)
+                        current_head = dict(head)
+                        if response_name == "GET":
+                            response["ContentLength"] = content_length
+                        else:
+                            current_head["ContentLength"] = content_length
+                        self.assertFalse(
+                            MODULE.response_matches_head(
+                                response,
+                                current_head,
+                                local,
+                                expected_version_id="v1",
+                            )
+                        )
+
+    def test_prepare_source_row_content_length_must_be_exact_integer(self) -> None:
+        for value in (True, 7.0, "7"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as raw:
+                head = {**object_head(b"payload"), "ContentLength": value}
+                with (
+                    patch.object(MODULE, "head_object", return_value=head),
+                    patch.object(
+                        MODULE,
+                        "download_object",
+                        side_effect=AssertionError("downloaded"),
+                    ),
+                    self.assertRaisesRegex(RuntimeError, "invalid unversioned"),
+                ):
+                    MODULE.prepare_source_row(
+                        name="preflight.json",
+                        source_bucket=SOURCE_BUCKET,
+                        source_prefix=f"runs/diana-hrd/{RUN_ID}/private-results/",
+                        destination_bucket=DESTINATION_BUCKET,
+                        destination_prefix=(
+                            f"runs/subject01/{RUN_ID}/deterministic/"
+                            "provenance/wgs-stage/"
+                        ),
+                        kms_key_arn=KMS,
+                        run_id=RUN_ID,
+                        region=REGION,
+                        temp=Path(raw),
+                    )
 
     def test_download_object_rejects_symlinked_destination(self) -> None:
         with tempfile.TemporaryDirectory() as value:
@@ -526,6 +607,20 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 expected,
             )
         )
+        for value in (True, 1.0, "1"):
+            with self.subTest(value=value):
+                self.assertFalse(
+                    MODULE.exact_history_matches(
+                        [{**expected[0], "Size": value}],
+                        expected,
+                    )
+                )
+                self.assertFalse(
+                    MODULE.exact_history_matches(
+                        expected,
+                        [{**expected[0], "Size": value}],
+                    )
+                )
 
     def test_null_versions_and_cross_account_kms_are_rejected(self) -> None:
         for value in ("", None, "null", "None", " NULL "):
@@ -785,6 +880,43 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                     ),
                     accepted,
                 )
+
+    def test_s3_byte_helpers_require_exact_integers(self) -> None:
+        for value in (1, 7):
+            with self.subTest(value=value):
+                self.assertTrue(MODULE.is_positive_exact_int(value))
+                self.assertTrue(MODULE.exact_int(value, value))
+        for value in (True, 1.0, "1", 0, -1, None):
+            with self.subTest(value=value):
+                self.assertFalse(MODULE.is_positive_exact_int(value))
+                self.assertFalse(MODULE.exact_int(value, 1))
+
+    def test_s3_byte_guards_avoid_raw_int_coercion(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "freeze_stage_provenance.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        raw_byte_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "ContentLength",
+                    "Size",
+                    "bytes",
+                    "wgs_bytes",
+                    "output_bam_bytes",
+                )
+            )
+        ]
+
+        self.assertEqual(raw_byte_coercions, [])
 
     def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
         module = ast.parse(

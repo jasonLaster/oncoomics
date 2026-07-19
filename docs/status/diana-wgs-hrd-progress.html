@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local final-freeze copy-time byte exactness</li>
+          <li class="pill">Latest milestone = local stage-freeze byte exactness</li>
+          <li class="pill">Stage-freeze byte counts = exact</li>
           <li class="pill">Final-freeze copy-time bytes = exact</li>
           <li class="pill">Final-freeze S3 snapshot sizes = exact</li>
           <li class="pill">Terminal receipt-anchor bytes = exact</li>
@@ -633,6 +634,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact stage-freeze byte counts</strong>
+              <span>WGS stage provenance freezing now rejects non-exact worker bytes, stage document byte counters, source and destination ContentLength values, destination history Size values, and receipt-anchor byte metadata before stage receipts can preserve preflight or gather provenance for terminal deterministic materialization.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final-freeze copy-time bytes</strong>
               <span>Final artifact freezing now rejects non-exact pre-copy source, post-copy source, and post-copy exact-version destination ContentLength values before apply-mode freeze receipts can record source or destination bytes and pass size or source-stability checks.</span>
@@ -1135,6 +1140,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:16:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact stage-freeze byte counts:</strong>
+                WGS stage provenance freezing now rejects non-exact worker
+                bytes, source document byte counters, source and destination
+                ContentLength values, destination history Size values, and
+                receipt-anchor byte metadata before preflight or gather
+                provenance can enter deterministic materialization receipts.
+                Regression coverage rejects boolean, float, and string byte
+                counts and blocks future raw byte coercions in the stage
+                freezer. No S3, Batch, route, GPU, quota, replacement compute,
+                or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:15:00-07:00">Jul 19 · local</time>
               <span>

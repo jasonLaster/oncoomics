@@ -93,6 +93,14 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
@@ -469,7 +477,7 @@ def validate_execution(
         or not valid_version_id(worker.get("executed_version_id"))
         or not valid_version_id(worker.get("freeze_receipt_version_id"))
         or not re.fullmatch(r"[0-9a-f]{64}", worker_sha)
-        or int(worker.get("bytes", 0)) <= 0
+        or not is_positive_exact_int(worker.get("bytes"))
         or worker.get("server_side_encryption") != "aws:kms"
         or worker.get("kms_key_id") != kms_key_arn
         or worker_checks != EXPECTED_BATCH_WORKER_CHECKS
@@ -483,7 +491,8 @@ def validate_execution(
 
 def source_stable(before: dict[str, Any], after: dict[str, Any]) -> bool:
     return (
-        int(before.get("ContentLength", -1)) == int(after.get("ContentLength", -2))
+        is_positive_exact_int(before.get("ContentLength"))
+        and exact_int(after.get("ContentLength"), before["ContentLength"])
         and str(before.get("ETag", "")) == str(after.get("ETag", ""))
         and checksums(before) == checksums(after)
         and before.get("ChecksumType") == after.get("ChecksumType") == "FULL_OBJECT"
@@ -508,9 +517,8 @@ def response_matches_head(
     response_version = str(response.get("VersionId", "null"))
     return (
         response_version == expected_version_id
-        and int(response.get("ContentLength", -1))
-        == int(head.get("ContentLength", -2))
-        == local_path.stat().st_size
+        and exact_int(response.get("ContentLength"), local_path.stat().st_size)
+        and exact_int(head.get("ContentLength"), local_path.stat().st_size)
         and str(response.get("ETag", "")) == str(head.get("ETag", ""))
         and checksums(response) == checksums(head)
         and response.get("ChecksumType") == head.get("ChecksumType") == "FULL_OBJECT"
@@ -532,7 +540,7 @@ def validate_source_document(name: str, document: dict[str, Any], run_id: str) -
         if (
             document.get("reference") != PREFLIGHT_REFERENCE_LABEL
             or document.get("wgs_lanes") != 8
-            or int(document.get("wgs_bytes", 0)) <= 0
+            or not is_positive_exact_int(document.get("wgs_bytes"))
             or document.get("boundary")
             != "Preflight only; no sample interpretation."
             or not isinstance(tools, dict)
@@ -558,7 +566,7 @@ def validate_source_document(name: str, document: dict[str, Any], run_id: str) -
             sample.get("status") != "passed"
             or sample.get("lane_count") != 4
             or sample.get("output_bam") != f"{role}.markdup.bam"
-            or int(sample.get("output_bam_bytes", 0)) <= 0
+            or not is_positive_exact_int(sample.get("output_bam_bytes"))
         ):
             raise ValueError(f"gather.json has invalid {role} sample semantics")
     if (
@@ -584,8 +592,9 @@ def prepare_source_row(
     source_key = source_prefix + name
     destination_key = destination_prefix + name
     before = head_object(source_bucket, source_key, region)
+    source_size = before.get("ContentLength")
     if (
-        int(before.get("ContentLength", -1)) <= 0
+        not is_positive_exact_int(source_size)
         or before.get("ChecksumType") != "FULL_OBJECT"
         or not checksums(before)
         or str(before.get("VersionId", "null")) != "null"
@@ -626,7 +635,7 @@ def prepare_source_row(
                 "bucket": source_bucket,
                 "key": source_key,
                 "version_id": "null",
-                "bytes": int(before["ContentLength"]),
+                "bytes": source_size,
                 "etag": str(before["ETag"]),
                 "checksums": checksums(before),
                 "checksum_type": "FULL_OBJECT",
@@ -712,17 +721,26 @@ def validate_dry_run_receipt(path: Path, expected: dict[str, Any]) -> None:
 def exact_history_matches(
     actual: list[dict[str, Any]], expected: list[dict[str, Any]]
 ) -> bool:
-    def normalized(row: dict[str, Any]) -> tuple[Any, ...]:
+    def normalized(row: dict[str, Any]) -> tuple[Any, ...] | None:
+        size = row.get("Size")
+        if not is_positive_exact_int(size):
+            return None
         return (
             str(row.get("history_type", "")),
             str(row.get("Key", "")),
             str(row.get("VersionId", "")),
             row.get("IsLatest") is True,
-            int(row.get("Size", -1)),
+            size,
             str(row.get("ETag", "")),
         )
 
-    return sorted(map(normalized, actual)) == sorted(map(normalized, expected))
+    actual_normalized = [normalized(row) for row in actual]
+    expected_normalized = [normalized(row) for row in expected]
+    return (
+        None not in actual_normalized
+        and None not in expected_normalized
+        and sorted(actual_normalized) == sorted(expected_normalized)
+    )
 
 
 def put_receipt(
@@ -903,6 +921,12 @@ def main() -> int:
                         args.region,
                         version_id,
                     )
+                    destination_size = destination.get("ContentLength")
+                    if not is_positive_exact_int(destination_size):
+                        raise RuntimeError(
+                            "destination ContentLength is not an exact positive "
+                            f"integer: {source_name}"
+                        )
                     destination_local = temp / f"destination-{source_name}"
                     downloaded = download_object(
                         destination_bucket,
@@ -919,7 +943,7 @@ def main() -> int:
                     row["destination"].update(
                         {
                             "version_id": version_id,
-                            "bytes": int(destination.get("ContentLength", -1)),
+                            "bytes": destination_size,
                             "etag": str(destination.get("ETag", "")),
                             "checksums": checksums(destination),
                             "checksum_type": str(destination.get("ChecksumType", "")),
@@ -939,9 +963,14 @@ def main() -> int:
                             destination_local,
                             expected_version_id=version_id,
                         ),
-                        "bytes_equal": int(before["ContentLength"])
-                        == int(destination.get("ContentLength", -1))
-                        == destination_local.stat().st_size,
+                        "bytes_equal": exact_int(
+                            destination_size,
+                            before["ContentLength"],
+                        )
+                        and exact_int(
+                            destination_size,
+                            destination_local.stat().st_size,
+                        ),
                         "sha256_equal": source_sha == destination_sha,
                         "full_object_checksum": destination.get("ChecksumType")
                         == "FULL_OBJECT"
@@ -963,7 +992,7 @@ def main() -> int:
                             "Key": destination_key,
                             "VersionId": version_id,
                             "IsLatest": True,
-                            "Size": int(destination["ContentLength"]),
+                            "Size": destination_size,
                             "ETag": str(destination["ETag"]),
                         }
                     )
@@ -1046,6 +1075,7 @@ def main() -> int:
             anchored = head_object(
                 destination_bucket, receipt_key, args.region, version_id
             )
+            anchored_size = anchored.get("ContentLength")
             with tempfile.TemporaryDirectory(
                 prefix="diana-wgs-anchor-"
             ) as anchor_temp_value:
@@ -1074,9 +1104,14 @@ def main() -> int:
                         anchored_local,
                         expected_version_id=version_id,
                     ),
-                    "bytes_exact": args.output.stat().st_size
-                    == int(anchored.get("ContentLength", -1))
-                    == anchored_local.stat().st_size,
+                    "bytes_exact": exact_int(
+                        anchored_size,
+                        args.output.stat().st_size,
+                    )
+                    and exact_int(
+                        anchored_size,
+                        anchored_local.stat().st_size,
+                    ),
                     "local_sha256_exact": sha256(anchored_local) == receipt_sha,
                     "sha256_checksum_exact": anchored.get("ChecksumType")
                     == "FULL_OBJECT"
@@ -1093,7 +1128,7 @@ def main() -> int:
                     "Key": receipt_key,
                     "VersionId": version_id,
                     "IsLatest": True,
-                    "Size": int(anchored.get("ContentLength", -1)),
+                    "Size": anchored_size,
                     "ETag": str(anchored.get("ETag", "")),
                 },
             ]
