@@ -424,6 +424,45 @@ class FinalizeAiReviewTests(unittest.TestCase):
                 self.assertIn("review validation counts are not exact", finalized.stderr)
                 self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_rejects_stale_validation_claim_summary(self) -> None:
+        cases = (
+            (
+                "claim_count",
+                lambda validation: validation.__setitem__(
+                    "claim_count",
+                    validation["claim_count"] + 1,
+                ),
+            ),
+            (
+                "disagreement_claim_count",
+                lambda validation: validation.__setitem__(
+                    "disagreement_claim_count",
+                    validation["disagreement_claim_count"] + 1,
+                ),
+            ),
+            (
+                "covered_evidence_ids",
+                lambda validation: validation.__setitem__(
+                    "covered_evidence_ids",
+                    validation["covered_evidence_ids"][:-1],
+                ),
+            ),
+        )
+
+        for label, mutate in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture, review = self.validated_review(temporary)
+                validation_path = review / "validation.json"
+                validation = load_json(validation_path)
+                mutate(validation)
+                write_json(validation_path, validation)
+
+                finalized = self.execute(fixture, review)
+
+                self.assertNotEqual(finalized.returncode, 0)
+                self.assertIn("review validation claim summary is stale", finalized.stderr)
+                self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_extra_review_file_before_final_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)

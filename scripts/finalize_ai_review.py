@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import os
@@ -16,6 +17,7 @@ from build_ai_review_bundle import (
     validate_report_manifest_support,
 )
 from validate_ai_review import (
+    CLAIMS_FIELDS,
     REVIEW_INVOCATION_KEYS,
     REVIEW_MANIFEST_KEYS,
     VALIDATION_KEYS,
@@ -168,6 +170,54 @@ def is_nonnegative_exact_int(value: Any) -> bool:
 
 def is_positive_exact_int(value: Any) -> bool:
     return type(value) is int and value > 0
+
+
+def split_semicolon(value: str) -> list[str]:
+    return [item.strip() for item in value.split(";") if item.strip()]
+
+
+def validated_claim_summary(
+    claims_path: Path,
+    evidence_sources: Sequence[Any],
+) -> dict[str, Any]:
+    evidence_ids = []
+    for row in evidence_sources:
+        if not isinstance(row, dict) or not isinstance(row.get("evidence_id"), str):
+            raise ValueError("review bundle evidence IDs are not exact")
+        evidence_ids.append(row["evidence_id"])
+    if len(evidence_ids) != len(set(evidence_ids)):
+        raise ValueError("review bundle evidence IDs are not exact")
+
+    with claims_path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames != CLAIMS_FIELDS:
+            raise ValueError("claims.csv header does not match the required schema")
+        claims = list(reader)
+    if not claims:
+        raise ValueError("claims.csv contains no claims")
+    if any(
+        None in row or any(not isinstance(row.get(field), str) for field in CLAIMS_FIELDS)
+        for row in claims
+    ):
+        raise ValueError("claims.csv row does not match the required schema")
+
+    covered = sorted(
+        {
+            evidence_id
+            for row in claims
+            for evidence_id in split_semicolon(row["evidence_ids"])
+        }
+    )
+    if covered != sorted(evidence_ids):
+        raise ValueError("claims do not preserve every evidence source and state")
+
+    return {
+        "claim_count": len(claims),
+        "covered_evidence_ids": covered,
+        "disagreement_claim_count": sum(
+            row["disagreement_status"].strip() != "none" for row in claims
+        ),
+    }
 
 
 def build_manifest(
@@ -328,6 +378,15 @@ def build_manifest(
     evidence_sources = bundle.get("evidence_sources")
     if not isinstance(evidence_sources, list) or not evidence_sources:
         raise ValueError("review bundle has no evidence sources")
+    expected_claim_summary = validated_claim_summary(
+        claims_path,
+        evidence_sources,
+    )
+    if any(
+        validation.get(key) != expected
+        for key, expected in expected_claim_summary.items()
+    ):
+        raise ValueError("review validation claim summary is stale")
     invocation = review_manifest.get("invocation")
     if (
         not isinstance(invocation, dict)
@@ -363,9 +422,7 @@ def build_manifest(
             "required_method_ids": required_methods,
             "method_inventory": inventory_payload(inventory_id),
             "method_inventory_sha256": inventory_sha256(inventory_id),
-            "claim_count": claim_count,
-            "covered_evidence_ids": validation.get("covered_evidence_ids"),
-            "disagreement_claim_count": disagreement_claim_count,
+            **expected_claim_summary,
             "limitations": [
                 "Narrative AI cross-check only; not an HRD algorithm or clinical interpretation.",
                 "The review cannot promote the deterministic authorization ceiling.",

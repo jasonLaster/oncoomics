@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact public-index reviewed versions</li>
+          <li class="pill">Latest milestone = local exact AI-review final summaries</li>
+          <li class="pill">AI-review final summaries = exact</li>
           <li class="pill">Public-index reviewed versions = exact</li>
           <li class="pill">Synthesis method summaries = exact</li>
           <li class="pill">Blocked source binding = exact</li>
@@ -1165,6 +1166,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind AI-review final summaries to claims</strong>
+              <span>Independent AI-review finalization now recomputes claim counts, covered evidence IDs, and disagreement claim counts from <code>claims.csv</code> plus the exact AI-bundle evidence list before writing reviewer <code>report_manifest</code> summaries.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact synthesis method summaries</strong>
               <span>Comparative HRD synthesis now derives <code>report_manifest</code> review-summary methods from exact <code>agreement_disagreement.csv</code> rows, and agreement rows must preserve exact ordered method IDs before the synthesis packet can validate.</span>
             </li>
@@ -1490,6 +1495,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T16:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind AI-review final summaries to claims:</strong>
+                independent AI-review finalization now recomputes claim counts,
+                covered evidence IDs, and disagreement claim counts from
+                <code>claims.csv</code> plus the exact AI-bundle evidence list
+                before writing reviewer <code>report_manifest</code> summaries.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T16:20:00-07:00">Jul 19 · local</time>
               <span>
