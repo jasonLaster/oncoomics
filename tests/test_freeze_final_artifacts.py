@@ -1362,6 +1362,36 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         self.assertNotEqual(MODULE.inventory_identity(original), MODULE.inventory_identity(replaced))
         self.assertNotEqual(MODULE.inventory_identity(original), MODULE.inventory_identity(added))
 
+    def test_inventory_identity_and_dry_run_objects_require_exact_bytes(self) -> None:
+        row = {
+            "relative_key": "a",
+            "key": "prefix/a",
+            "bytes": 1,
+            "etag": '"a"',
+            "version_id": "v1",
+            "checksums": {"ChecksumSHA256": "sha"},
+            "checksum_type": "FULL_OBJECT",
+        }
+        self.assertEqual(MODULE.inventory_identity([row])[0]["bytes"], 1)
+        self.assertEqual(
+            MODULE.dry_run_objects([row], "source", "destination", "final/")[0][
+                "source"
+            ]["bytes"],
+            1,
+        )
+        for value in (True, 1.0, "1", -1, None):
+            with self.subTest(value=value):
+                malformed = {**row, "bytes": value}
+                with self.assertRaisesRegex(RuntimeError, "exact integer"):
+                    MODULE.inventory_identity([malformed])
+                with self.assertRaisesRegex(RuntimeError, "exact integer"):
+                    MODULE.dry_run_objects(
+                        [malformed],
+                        "source",
+                        "destination",
+                        "final/",
+                    )
+
     def test_validate_execution_binding_requires_exact_job_and_source_tree(self) -> None:
         job = {
             "jobArn": "arn:aws:batch:us-east-1:172630973301:job/job-id",

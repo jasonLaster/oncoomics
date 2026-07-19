@@ -482,7 +482,7 @@ def inventory_identity(snapshot: list[dict[str, Any]]) -> list[dict[str, Any]]:
         {
             "relative_key": str(row["relative_key"]),
             "key": str(row["key"]),
-            "bytes": int(row["bytes"]),
+            "bytes": exact_s3_size(row.get("bytes")),
             "etag": str(row["etag"]),
             "version_id": str(row["version_id"]),
         }
@@ -503,7 +503,7 @@ def dry_run_objects(
                 "bucket": source_bucket,
                 "key": str(row["key"]),
                 "version_id": str(row["version_id"]),
-                "bytes": int(row["bytes"]),
+                "bytes": exact_s3_size(row.get("bytes")),
                 "etag": str(row["etag"]),
                 "checksums": row["checksums"],
                 "checksum_type": str(row["checksum_type"]),

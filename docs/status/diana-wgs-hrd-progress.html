@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local freeze Batch attempt exactness</li>
+          <li class="pill">Latest milestone = local final-freeze source inventory exactness</li>
+          <li class="pill">Final-freeze source bytes = exact</li>
           <li class="pill">Freeze Batch attempts = exact</li>
           <li class="pill">Final-freeze destination bytes = exact</li>
           <li class="pill">Batch controls = exact</li>
@@ -693,6 +694,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact stage-freeze byte counts</strong>
               <span>WGS stage provenance freezing now rejects non-exact worker bytes, stage document byte counters, source and destination ContentLength values, destination history Size values, and receipt-anchor byte metadata before stage receipts can preserve preflight or gather provenance for terminal deterministic materialization.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact final-freeze source inventory bytes</strong>
+              <span>Final artifact freezing now rejects bool, float, string, negative, or missing source inventory byte values before source identity or dry-run object rows can feed final-freeze receipts.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final-freeze copy-time bytes</strong>
@@ -1260,6 +1265,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T05:15:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact final-freeze source inventory bytes:</strong>
+                final artifact freezing now rejects bool, float, string,
+                negative, or missing source inventory byte values before source
+                identity or dry-run object rows can feed final-freeze receipts.
+                No live cloud action, compute action, or replacement run was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T05:00:00-07:00">Jul 19 · local</time>
               <span>
