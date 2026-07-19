@@ -348,10 +348,11 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 093287e</li>
+          <li class="pill">Latest milestone = local source manifests</li>
+          <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 0b44ec7</li>
+          <li class="pill">Prior dashboard = b353de5</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -633,6 +634,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI source report manifests</strong>
+              <span>AI bundle, review validation, reviewer finalization, and comparative synthesis now reject source <code>report_manifest.json</code> payloads unless the core v1 envelope and report-kind extension keys exactly match a known repo-authored packet kind.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI bundle envelopes in synthesis</strong>
               <span>Comparative synthesis now reuses the review-bundle and bundle-manifest envelope contracts before consuming <code>review_bundle.json</code> or <code>bundle_manifest.json</code>, rejecting rebound extra legacy fields before rendering <code>report_manifest.json</code>.</span>
             </li>
@@ -770,6 +775,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T01:23:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI source report manifests:</strong>
+                shared AI review bundle validation now rejects source
+                <code>report_manifest.json</code> payloads unless their core v1
+                envelope and report-kind extension keys match known
+                repo-authored packet kinds. The exact validator is reused by
+                bundle build, review validation, reviewer finalization, and
+                comparative synthesis. No S3, Batch, route, GPU, quota, or
+                replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T01:21:49-07:00">Jul 19 · 1:21 AM</time>
               <span>

@@ -163,10 +163,13 @@ class AiReviewBundleFixture:
         support.write_text('{"status":"passed"}\n', encoding="utf-8")
         manifest = {
             "schema_version": 1,
-            "report_kind": "deterministic" if index == 0 else "method",
+            "report_kind": (
+                "deterministic_baseline"
+                if index == 0
+                else "rosalind_hrd_reviewer_packet"
+            ),
             "method_id": method_id,
             "evidence_status": "blocked" if index >= 4 else "partial_evidence",
-            "interpretation_status": "no_call",
             "authorized_hrd_state": "no_call",
             "classification_authorized": False,
             "classification_qc_status": "not_applicable",
@@ -732,6 +735,32 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
                 self.assertNotEqual(built.returncode, 0)
                 self.assertIn(message, built.stderr)
+                self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_rejects_inexact_source_packet_report_manifest_envelope(self) -> None:
+        cases = (
+            ("extra_legacy_key", {"legacy_support": {}}, {}),
+            ("missing_report_kind", {}, {"report_kind"}),
+            ("unknown_report_kind", {"report_kind": "unknown_packet"}, {}),
+        )
+
+        for name, patch, remove in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                fixture = AiReviewBundleFixture(Path(temporary))
+                manifest_path = fixture.manifests[0]
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest.update(patch)
+                for key in remove:
+                    manifest.pop(key)
+                write_json(manifest_path, manifest)
+
+                built = fixture.run()
+
+                self.assertNotEqual(built.returncode, 0)
+                self.assertIn(
+                    "report manifest envelope is not exact for deterministic_full_wgs",
+                    built.stderr,
+                )
                 self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
     def test_rejects_symlinked_source_packet_support_file(self) -> None:

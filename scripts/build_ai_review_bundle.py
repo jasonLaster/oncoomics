@@ -92,6 +92,54 @@ BUNDLE_MANIFEST_KEYS = set(BUNDLE_REVIEW_BUNDLE_BOUND_FIELDS) | {
     "prompt_sha256",
 }
 CORE_REPORT_FILES = {"report.md", "report_manifest.json"}
+CORE_REPORT_MANIFEST_KEYS = {
+    "schema_version",
+    "method_id",
+    "report_kind",
+    "evidence_status",
+    "authorized_hrd_state",
+    "classification_authorized",
+    "classification_qc_status",
+    "review_summary",
+    "report_sha256",
+    "support_sha256",
+    "source_sha256",
+}
+REPORT_KIND_EXTRA_KEYS = {
+    "blocked_method": frozenset(
+        {
+            "alias_scope",
+            "blockers",
+            "classification_authorization",
+            "explicit_no_patient_result",
+            "generated_at",
+            "intended_computation",
+            "interpretation_status",
+            "next_gate",
+            "patient_result",
+            "prerequisites",
+            "run_id",
+            "source_report_binding_scope",
+            "sources",
+        }
+    ),
+    "comparative_synthesis": frozenset(
+        {
+            "agreement_disagreement_sha256",
+            "classification_authorization",
+            "generated_at",
+            "interpretation_status",
+            "subject_alias",
+        }
+    ),
+    "deterministic_baseline": frozenset(),
+    "executable_crosscheck_method": frozenset({"route"}),
+    "hcc1395_wgs_known_answer": frozenset(),
+    "independent_ai_hrd_evidence_review": frozenset(),
+    "phase3_fast_deterministic_evidence": frozenset(),
+    "public_known_answer_method_no_call": frozenset({"execution_status"}),
+    "rosalind_hrd_reviewer_packet": frozenset(),
+}
 
 
 def sha256(path: Path) -> str:
@@ -393,6 +441,16 @@ def validate_report_manifest_support(
     manifest: dict[str, Any],
     method: str,
 ) -> None:
+    report_kind = str(manifest.get("report_kind", ""))
+    expected_extra = REPORT_KIND_EXTRA_KEYS.get(report_kind)
+    if (
+        manifest.get("schema_version") != 1
+        or manifest.get("method_id") != method
+        or expected_extra is None
+        or set(manifest) != CORE_REPORT_MANIFEST_KEYS | set(expected_extra)
+    ):
+        raise ValueError(f"report manifest envelope is not exact for {method}")
+
     support_hashes = manifest.get("support_sha256")
     if not isinstance(support_hashes, dict) or not support_hashes:
         raise ValueError(f"missing support hashes for {method}")
@@ -545,10 +603,11 @@ def require_bundle_manifest(bundle_dir: Path) -> None:
         raise ValueError("AI review bundle manifest lacks prompt hashes")
 
     for filename, field in BUNDLE_MANIFEST_BOUND_FILES.items():
-        if isinstance(field, tuple):
-            expected_sha256 = prompt_sha256.get(field[1])
-        else:
-            expected_sha256 = manifest.get(field)
+        expected_sha256 = (
+            prompt_sha256.get(field[1])
+            if isinstance(field, tuple)
+            else manifest.get(field)
+        )
         if not isinstance(expected_sha256, str) or not HEX64.fullmatch(
             expected_sha256
         ):

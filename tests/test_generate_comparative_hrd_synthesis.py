@@ -194,10 +194,13 @@ class SynthesisFixture:
                 f"method-{index + 1:02d}",
                 {
                     "schema_version": 1,
-                    "report_kind": "deterministic" if index == 0 else "statistical_method",
+                    "report_kind": (
+                        "deterministic_baseline"
+                        if index == 0
+                        else "rosalind_hrd_reviewer_packet"
+                    ),
                     "method_id": method_id,
                     "evidence_status": "blocked" if blocked else "partial_evidence",
-                    "interpretation_status": "no_call",
                     "authorized_hrd_state": "no_call",
                     "classification_authorized": False,
                     "classification_qc_status": "not_applicable",
