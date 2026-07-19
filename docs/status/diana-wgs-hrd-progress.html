@@ -307,11 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>8cdd88162e25d694a6863488e12d1a73ef104f7a</strong>.
-          The latest work parallelizes fast BAM and SV evidence scans:
-          <code>run_phase3_fast_bam_qc.py</code> and
-          <code>run_phase3_fast_sv_evidence.py</code> now launch exact
-          tumor/normal samtools commands as bounded waves.
+          <strong>627991fed79654249b7a1b12972224a805f4cdca</strong>.
+          The latest work binds public index publication to reviewed receipts:
+          <code>objects.json</code> build, dry-run publication, and apply
+          publication now share the canonical ten-method reviewed-public
+          receipt set.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 8cdd881</li>
+          <li class="pill">Latest hardening = 627991f</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -401,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 8cdd881</strong>
-              <span>Fast BAM QC and SV evidence now run the six exact planned tumor/normal samtools scans as bounded waves while preserving deterministic receipts.</span>
+              <strong>Preserve 627991f</strong>
+              <span>Public-index build, dry-run, and apply paths now stay bound to the same ten reviewed-public receipts before index publication.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +450,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>627991f Bind public index publish to reviewed receipts:</strong>
+                <code>build_public_results_index.py</code> now embeds canonical
+                ten-method reviewed-public receipt bindings in
+                <code>objects.json</code>.
+                <code>publish_public_results_index.py</code> now requires and
+                revalidates those ten receipts for both dry-run and apply before
+                remote index publication, and
+                <code>render_reviewed_publication_runbook.py</code> threads the
+                same ten receipt paths through build, dry-run, and apply.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
