@@ -289,6 +289,12 @@ def parse_catalog_time(value: str) -> datetime:
     return parsed_utc
 
 
+def require_exact_catalog_string(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise ValueError(f"model catalog receipt {label} is not exact")
+    return value
+
+
 def validate_catalog_receipt(
     path: Path,
     catalog_verified_at: str,
@@ -301,15 +307,25 @@ def validate_catalog_receipt(
     if not is_exact_int(receipt.get("schema_version"), 1):
         raise ValueError("model catalog receipt schema is unsupported")
     receipt_time = parse_catalog_time(
-        str(receipt.get("catalog_verified_at", ""))
+        require_exact_catalog_string(
+            receipt.get("catalog_verified_at"),
+            "timestamp",
+        )
     ).isoformat()
     if receipt_time != catalog_verified_at:
         raise ValueError(
             "model catalog receipt timestamp differs from the attested timestamp"
         )
-    if not str(receipt.get("provider_catalog", "")).strip() or not str(
-        receipt.get("catalog_source", "")
-    ).strip():
+    if (
+        not require_exact_catalog_string(
+            receipt.get("provider_catalog"),
+            "provider catalog",
+        )
+        or not require_exact_catalog_string(
+            receipt.get("catalog_source"),
+            "catalog source",
+        )
+    ):
         raise ValueError("model catalog receipt lacks provider catalog provenance")
     rows = receipt.get("models")
     if not isinstance(rows, list) or len(rows) != 2:
@@ -320,7 +336,18 @@ def validate_catalog_receipt(
     for row in rows:
         if not isinstance(row, dict) or set(row) != MODEL_CATALOG_MODEL_KEYS:
             raise ValueError("model catalog receipt model row envelope is not exact")
-        pair = (str(row.get("provider", "")), str(row.get("model_id", "")))
+        provider = row.get("provider")
+        model_id = row.get("model_id")
+        if (
+            not isinstance(provider, str)
+            or not provider
+            or provider != provider.strip()
+            or not isinstance(model_id, str)
+            or not model_id
+            or model_id != model_id.strip()
+        ):
+            raise ValueError("model catalog receipt model identity is not exact")
+        pair = (provider, model_id)
         if (
             pair in observed
             or row.get("available") is not True

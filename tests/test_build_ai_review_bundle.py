@@ -277,6 +277,47 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertIn("model catalog receipt schema is unsupported", result.stderr)
             self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
+    def test_rejects_non_exact_model_catalog_strings(self) -> None:
+        cases = (
+            (
+                "numeric provider catalog",
+                lambda receipt: receipt.__setitem__("provider_catalog", 123),
+                [],
+                "provider catalog is not exact",
+            ),
+            (
+                "numeric catalog source",
+                lambda receipt: receipt.__setitem__("catalog_source", True),
+                [],
+                "catalog source is not exact",
+            ),
+            (
+                "coerced provider row",
+                lambda receipt: receipt["models"][0].__setitem__("provider", 123),
+                ["--reviewer-a-provider", "123"],
+                "model identity is not exact",
+            ),
+            (
+                "coerced model row",
+                lambda receipt: receipt["models"][0].__setitem__("model_id", 123),
+                ["--reviewer-a-model-id", "123"],
+                "model identity is not exact",
+            ),
+        )
+
+        for label, mutate, extra_args, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = AiReviewBundleFixture(Path(temporary))
+                receipt = json.loads(fixture.catalog_receipt.read_text(encoding="utf-8"))
+                mutate(receipt)
+                write_json(fixture.catalog_receipt, receipt)
+
+                result = fixture.run(extra_args=extra_args)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+                self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
     def test_rejects_non_integer_source_packet_schema(self) -> None:
         for value in (True, 1.0):
             with self.subTest(value=value), tempfile.TemporaryDirectory() as temporary:

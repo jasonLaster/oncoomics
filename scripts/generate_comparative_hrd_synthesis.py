@@ -1080,7 +1080,18 @@ def require_string_list(value: Any, label: str) -> List[str]:
     return value
 
 
+def require_exact_summary_string(value: Any) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        return ""
+    return value
+
+
 def require_reviewer_model_summary(model: Any, reviewer: str) -> Tuple[str, str, str]:
+    provider = model.get("provider") if isinstance(model, dict) else None
+    model_id = model.get("model_id") if isinstance(model, dict) else None
+    catalog_verified_at = (
+        model.get("catalog_verified_at") if isinstance(model, dict) else None
+    )
     if (
         not isinstance(model, dict)
         or set(model) != {
@@ -1089,8 +1100,9 @@ def require_reviewer_model_summary(model: Any, reviewer: str) -> Tuple[str, str,
             "catalog_verified_at",
             "latest_available_attested",
         }
-        or not str(model.get("provider", "")).strip()
-        or not str(model.get("model_id", "")).strip()
+        or not require_exact_summary_string(provider)
+        or not require_exact_summary_string(model_id)
+        or not require_exact_summary_string(catalog_verified_at)
         or model.get("latest_available_attested") is not True
     ):
         raise ValueError(
@@ -1098,7 +1110,7 @@ def require_reviewer_model_summary(model: Any, reviewer: str) -> Tuple[str, str,
         )
     try:
         verified_at = datetime.fromisoformat(
-            str(model["catalog_verified_at"]).replace("Z", "+00:00")
+            catalog_verified_at.replace("Z", "+00:00")
         )
     except ValueError as error:
         raise ValueError(
@@ -1109,9 +1121,9 @@ def require_reviewer_model_summary(model: Any, reviewer: str) -> Tuple[str, str,
             f"comparative synthesis reviewer {reviewer} model summary is not exact"
         )
     return (
-        str(model["provider"]).strip(),
-        str(model["model_id"]).strip(),
-        str(model["catalog_verified_at"]).strip(),
+        provider,
+        model_id,
+        catalog_verified_at,
     )
 
 

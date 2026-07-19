@@ -1315,6 +1315,14 @@ class GenerateSynthesisTests(unittest.TestCase):
 
             for label, mutate_model in (
                 (
+                    "coerced provider",
+                    lambda model: model.__setitem__("provider", 123),
+                ),
+                (
+                    "padded model",
+                    lambda model: model.__setitem__("model_id", " latest-model-a\n"),
+                ),
+                (
                     "missing catalog timestamp",
                     lambda model: model.pop("catalog_verified_at"),
                 ),

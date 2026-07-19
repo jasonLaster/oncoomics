@@ -284,6 +284,56 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertIn("model catalog receipt schema is unsupported", result.stderr)
             self.assertFalse((review / "validation.json").exists())
 
+    def test_rejects_non_exact_model_catalog_strings(self) -> None:
+        cases = (
+            (
+                "numeric provider catalog",
+                lambda receipt, contracts: receipt.__setitem__("provider_catalog", 123),
+                "model catalog receipt lacks provider catalog provenance",
+            ),
+            (
+                "numeric catalog source",
+                lambda receipt, contracts: receipt.__setitem__("catalog_source", True),
+                "model catalog receipt lacks provider catalog provenance",
+            ),
+            (
+                "coerced provider row",
+                lambda receipt, contracts: (
+                    receipt["models"][0].__setitem__("provider", 123),
+                    contracts["A"].__setitem__("provider", 123),
+                ),
+                "model catalog receipt model identity is not exact",
+            ),
+            (
+                "coerced model row",
+                lambda receipt, contracts: (
+                    receipt["models"][0].__setitem__("model_id", 123),
+                    contracts["A"].__setitem__("model_id", 123),
+                ),
+                "model catalog receipt model identity is not exact",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = ValidateReviewFixture(root)
+                fixture.build()
+                receipt = json.loads(fixture.catalog_receipt.read_text(encoding="utf-8"))
+                contracts = json.loads(
+                    (fixture.bundle_dir / "review_bundle.json").read_text(
+                        encoding="utf-8"
+                    )
+                )["model_execution_contracts"]
+                mutate(receipt, contracts)
+                write_json(fixture.catalog_receipt, receipt)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    VALIDATE.validate_catalog_receipt(
+                        fixture.catalog_receipt,
+                        contracts,
+                    )
+
     def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
         module = ast.parse(VALIDATE_SCRIPT.read_text(encoding="utf-8"))
         raw_schema_version_comparisons = [

@@ -213,6 +213,12 @@ def parse_time(value: Any, label: str) -> datetime:
     return parsed
 
 
+def exact_nonempty_string(value: Any) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        return ""
+    return value
+
+
 def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str:
     if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
         raise ValueError("model catalog receipt is missing or empty")
@@ -221,7 +227,9 @@ def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str
         raise ValueError("model catalog receipt envelope is not exact")
     if not is_exact_int(receipt.get("schema_version"), 1):
         raise ValueError("model catalog receipt schema is unsupported")
-    if not str(receipt.get("provider_catalog", "")).strip() or not str(receipt.get("catalog_source", "")).strip():
+    if not exact_nonempty_string(
+        receipt.get("provider_catalog")
+    ) or not exact_nonempty_string(receipt.get("catalog_source")):
         raise ValueError("model catalog receipt lacks provider catalog provenance")
 
     receipt_time = parse_time(
@@ -239,12 +247,16 @@ def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str
     for row in rows:
         if not isinstance(row, dict) or set(row) != MODEL_CATALOG_MODEL_KEYS:
             raise ValueError("model catalog receipt model row envelope is not exact")
-        pair = (str(row.get("provider", "")), str(row.get("model_id", "")))
+        provider = exact_nonempty_string(row.get("provider"))
+        model_id = exact_nonempty_string(row.get("model_id"))
+        if not provider or not model_id:
+            raise ValueError("model catalog receipt model identity is not exact")
+        pair = (provider, model_id)
         if pair in observed or row.get("available") is not True or row.get("latest_available") is not True:
             raise ValueError("model catalog receipt contains duplicate, unavailable, or non-latest models")
         observed.add(pair)
 
-    expected = {(str(row.get("provider", "")), str(row.get("model_id", ""))) for row in model_contracts.values()}
+    expected = {(row["provider"], row["model_id"]) for row in model_contracts.values()}
     if observed != expected:
         raise ValueError("model catalog receipt does not match the pinned reviewer models")
     return sha256(path)
@@ -573,8 +585,10 @@ def validate_bundle(
             "latest_available_attested",
         }:
             raise ValueError(f"pinned model contract is malformed for reviewer {role}")
-        if not str(contract["provider"]).strip() or not str(contract["model_id"]).strip():
+        if not exact_nonempty_string(contract["provider"]) or not exact_nonempty_string(contract["model_id"]):
             raise ValueError(f"pinned model identity is empty for reviewer {role}")
+        if not exact_nonempty_string(contract["catalog_verified_at"]):
+            raise ValueError(f"model catalog attestation is malformed for reviewer {role}")
         if contract["latest_available_attested"] is not True:
             raise ValueError(f"latest-model attestation is absent for reviewer {role}")
         verified_at = parse_time(contract["catalog_verified_at"], "catalog_verified_at")
