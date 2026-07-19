@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local strict explicit forbidden tokens</li>
+          <li class="pill">Latest milestone = local strict AI bundle explicit tokens</li>
+          <li class="pill">AI bundle explicit tokens = strict</li>
           <li class="pill">Explicit forbidden tokens = strict</li>
           <li class="pill">Phase 3 post-join hashes = real</li>
           <li class="pill">Phase 3 evidence-join hashes = real</li>
@@ -624,6 +625,7 @@
           <li class="pill">AI run-prep schemas = exact</li>
           <li class="pill">AI stage bundle schemas = exact</li>
           <li class="pill">AI bundle ingress schemas = exact</li>
+          <li class="pill">AI bundle explicit tokens = strict</li>
           <li class="pill">Public-index schemas = exact</li>
           <li class="pill">Private reviewed-report schemas = exact</li>
           <li class="pill">Reviewed-public schemas = exact</li>
@@ -1739,6 +1741,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · normalize AI bundle explicit tokens strictly</strong>
+              <span><code>build_ai_review_bundle.py</code> direct bundle construction now normalizes explicit <code>--forbidden-token</code> values through the same strict shared policy as the rest of the report and publication chain.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · carry verified AI synthesis hashes</strong>
               <span>Comparative synthesis now carries forward verified bundle and source-manifest SHA-256 values before building the synthesis packet, avoiding later path rehashes inside reviewer output summarization.</span>
             </li>
@@ -2284,6 +2290,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T15:15:44-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Normalize AI bundle explicit tokens strictly:</strong>
+                <code>build_ai_review_bundle.py</code> direct bundle
+                construction now normalizes explicit
+                <code>--forbidden-token</code> values through the same strict
+                shared policy as the rest of the report and publication chain.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T15:13:16-07:00">Jul 19 · local</time>
               <span>

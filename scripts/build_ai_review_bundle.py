@@ -15,7 +15,11 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from ai_model_catalog import MODEL_CATALOG_MODEL_KEYS, MODEL_CATALOG_RECEIPT_KEYS
-from forbidden_text import forbidden_token_fingerprints, normalized_scan_text
+from forbidden_text import (
+    forbidden_token_fingerprints,
+    merge_forbidden_tokens,
+    normalized_scan_text,
+)
 from hrd_report_inventory import (
     INVENTORY_ID,
     inventory_payload,
@@ -873,7 +877,10 @@ def main() -> None:
         raise SystemExit(f"Fail-closed: {error}") from error
     output = output.resolve()
 
-    forbidden = [token.strip() for token in args.forbidden_token if token.strip()]
+    try:
+        forbidden = list(merge_forbidden_tokens(args.forbidden_token))
+    except ValueError as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
     if not forbidden:
         raise SystemExit("Fail-closed: at least one --forbidden-token is required")
     if not SUBJECT_ALIAS.fullmatch(args.subject_alias):

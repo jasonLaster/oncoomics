@@ -1224,6 +1224,26 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertIn("forbidden token found", built.stderr)
             self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
+    def test_rejects_malformed_explicit_forbidden_tokens(self) -> None:
+        cases = (
+            ("blank", " ", "forbidden token\\[1\\] must be a non-empty string"),
+            ("short", "ab", "forbidden token\\[1\\] must be at least 3 characters"),
+            (
+                "control",
+                "Direct\nIdentifier",
+                "forbidden token\\[1\\] must not contain control characters",
+            ),
+        )
+        for name, token, message in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                fixture = AiReviewBundleFixture(Path(temporary))
+
+                built = fixture.run(extra_args=["--forbidden-token", token])
+
+                self.assertNotEqual(built.returncode, 0)
+                self.assertIn(message.replace("\\", ""), built.stderr)
+                self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
     def test_rejects_symlinked_manifest_or_report(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
