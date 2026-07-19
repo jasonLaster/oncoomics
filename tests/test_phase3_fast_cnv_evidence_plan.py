@@ -153,6 +153,22 @@ class Phase3FastCnvEvidencePlanTests(unittest.TestCase):
                 output_root="scratch/diana/phase3_wgs_fast/cnv_evidence",
             )
 
+    def test_rejects_non_exact_bin_size_and_bedcov_workers(self) -> None:
+        cases = (
+            {"bin_size": True, "bedcov_workers": 4},
+            {"bin_size": 5_000_000, "bedcov_workers": True},
+        )
+        for kwargs in cases:
+            with self.subTest(kwargs=kwargs), TemporaryDirectory() as tmp:
+                manifest = staged_inputs_manifest(Path(tmp))
+
+                with self.assertRaisesRegex(cnv_evidence.ManifestError, "positive integer"):
+                    cnv_evidence.build_phase3_fast_cnv_evidence_plan(
+                        manifest,
+                        staged_inputs_manifest_sha256=SHA_1,
+                        **kwargs,
+                    )
+
     def test_environment_command_writes_plan(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

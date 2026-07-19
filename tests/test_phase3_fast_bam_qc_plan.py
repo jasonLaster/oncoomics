@@ -115,6 +115,17 @@ class Phase3FastBamQcPlanTests(unittest.TestCase):
                 output_root="scratch/diana/phase3_wgs_fast/bam_qc",
             )
 
+    def test_rejects_non_exact_threads(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = staged_inputs_manifest(Path(tmp))
+
+        with self.assertRaisesRegex(bam_qc.ManifestError, "threads"):
+            bam_qc.build_phase3_fast_bam_qc_plan(
+                manifest,
+                staged_inputs_manifest_sha256=SHA_1,
+                threads=True,
+            )
+
     def test_environment_command_writes_plan(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

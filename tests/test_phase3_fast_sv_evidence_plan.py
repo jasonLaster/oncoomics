@@ -116,6 +116,17 @@ class Phase3FastSvEvidencePlanTests(unittest.TestCase):
                 output_root="scratch/diana/phase3_wgs_fast/sv_evidence",
             )
 
+    def test_rejects_non_exact_threads(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = staged_inputs_manifest(Path(tmp))
+
+        with self.assertRaisesRegex(sv_evidence.ManifestError, "threads"):
+            sv_evidence.build_phase3_fast_sv_evidence_plan(
+                manifest,
+                staged_inputs_manifest_sha256=SHA_1,
+                threads=True,
+            )
+
     def test_environment_command_writes_plan(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
