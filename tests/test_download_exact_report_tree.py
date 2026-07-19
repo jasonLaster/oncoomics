@@ -39,10 +39,18 @@ class ExactReportDownloadTests(unittest.TestCase):
             "key": f"{PREFIX}report.md",
             "version_id": "report-version",
             "sha256": hashlib.sha256(data).hexdigest(),
+            "etag": '"synthetic-etag"',
             "content_length": len(data),
+            "server_side_encryption": "aws:kms",
             "checksum_sha256": checksum_sha256(data),
             "ssekms_key_id": KMS,
             "checks": dict(MODULE.EXPECTED_PUBLICATION_OBJECT_CHECKS),
+        }
+        history_audit = {
+            "key": row["key"],
+            "version_id": row["version_id"],
+            "sha256": row["sha256"],
+            "checks": dict(MODULE.EXPECTED_HISTORY_AUDIT_CHECKS),
         }
 
         receipt = root / "publication.json"
@@ -51,11 +59,19 @@ class ExactReportDownloadTests(unittest.TestCase):
             {
                 "schema_version": 1,
                 "status": "passed",
+                "route": "sigprofiler_sbs3",
+                "submission_id": "20260717T200000Z-a1b2c3d4",
+                "contract": {
+                    "uri": f"s3://{BUCKET}/input-contract/deadbeef.json",
+                    "version_id": "contract-version",
+                    "sha256": "c" * 64,
+                },
                 "route_output_uri": f"s3://{BUCKET}/{PREFIX}",
                 "route_output_initial_version_history_count": 0,
                 "route_output_bucket_versioning": "Enabled",
                 "publication_strategy": "one_shot_create_only_exact_version_history",
                 "objects": [row],
+                "history_audit": [history_audit],
                 "checks": dict(MODULE.EXPECTED_PUBLICATION_RECEIPT_CHECKS),
             },
         )
@@ -453,6 +469,57 @@ class ExactReportDownloadTests(unittest.TestCase):
 
                     with self.assertRaisesRegex(ValueError, error):
                         MODULE.validate_publication(receipt, anchor, KMS)
+
+    def test_rejects_inexact_publication_receipt_envelopes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, _, _ = self.fixture(root)
+
+            def rewrite_receipt(payload: dict) -> None:
+                write_json(receipt, payload)
+                anchor_payload = json.loads(anchor.read_text(encoding="utf-8"))
+                anchor_payload["receipt_sha256"] = MODULE.sha256(receipt)
+                anchor_payload["receipt_bytes"] = receipt.stat().st_size
+                write_json(anchor, anchor_payload)
+
+            for location, mutate, error in (
+                (
+                    "receipt",
+                    lambda payload: payload.__setitem__("legacy_note", "accepted"),
+                    "receipt envelope",
+                ),
+                (
+                    "object",
+                    lambda payload: payload["objects"][0].__setitem__(
+                        "legacy_note",
+                        "accepted",
+                    ),
+                    "object row",
+                ),
+                (
+                    "history",
+                    lambda payload: payload["history_audit"][0].__setitem__(
+                        "legacy_note",
+                        "accepted",
+                    ),
+                    "history audit",
+                ),
+            ):
+                with self.subTest(location=location):
+                    self.fixture(root)
+                    payload = json.loads(receipt.read_text(encoding="utf-8"))
+                    mutate(payload)
+                    rewrite_receipt(payload)
+
+                    with self.assertRaisesRegex(ValueError, error):
+                        MODULE.validate_publication(receipt, anchor, KMS)
+
+            payload = json.loads(anchor.read_text(encoding="utf-8"))
+            payload["legacy_note"] = "accepted"
+            write_json(anchor, payload)
+
+            with self.assertRaisesRegex(ValueError, "anchor envelope"):
+                MODULE.validate_publication(receipt, anchor, KMS)
 
     def test_rejects_unexpected_staging_child_before_local_cutover(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

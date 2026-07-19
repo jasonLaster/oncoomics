@@ -46,6 +46,60 @@ EXPECTED_PUBLICATION_OBJECT_CHECKS = {
     "metadata_sha256_exact": True,
     "exact_kms": True,
 }
+EXPECTED_HISTORY_AUDIT_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "metadata_sha256_exact": True,
+    "checksum_sha256_exact": True,
+    "exact_kms": True,
+}
+PUBLICATION_RECEIPT_KEYS = frozenset(
+    (
+        "schema_version",
+        "status",
+        "route",
+        "submission_id",
+        "contract",
+        "route_output_uri",
+        "route_output_initial_version_history_count",
+        "route_output_bucket_versioning",
+        "publication_strategy",
+        "objects",
+        "history_audit",
+        "checks",
+    )
+)
+PUBLICATION_CONTRACT_KEYS = frozenset(("uri", "version_id", "sha256"))
+PUBLICATION_OBJECT_KEYS = frozenset(
+    (
+        "relative_path",
+        "uri",
+        "key",
+        "sha256",
+        "etag",
+        "version_id",
+        "content_length",
+        "server_side_encryption",
+        "ssekms_key_id",
+        "checksum_sha256",
+        "checks",
+    )
+)
+PUBLICATION_HISTORY_AUDIT_KEYS = frozenset(
+    ("key", "version_id", "sha256", "checks")
+)
+PUBLICATION_ANCHOR_KEYS = frozenset(
+    (
+        "schema_version",
+        "status",
+        "receipt_sha256",
+        "receipt_bytes",
+        "receipt_uri",
+        "receipt_version_id",
+        "route_output_uri",
+        "checks",
+    )
+)
 EXPECTED_LIVE_HISTORY_CHECKS = {
     "version_count_exact": True,
     "all_entries_are_versions": True,
@@ -413,10 +467,22 @@ def validate_publication(
     anchor_checks = anchor.get("checks")
     receipt_checks = receipt.get("checks")
     rows = receipt.get("objects")
+    history_audit = receipt.get("history_audit")
     route_uri = str(receipt.get("route_output_uri", ""))
     bucket, sentinel = s3_parts(route_uri.rstrip("/") + "/sentinel")
     prefix = sentinel.removesuffix("sentinel")
 
+    if set(receipt) != PUBLICATION_RECEIPT_KEYS:
+        raise ValueError("publication receipt envelope is not exact")
+    contract = receipt.get("contract")
+    if (
+        not isinstance(contract, dict)
+        or set(contract) != PUBLICATION_CONTRACT_KEYS
+        or not str(contract.get("uri", "")).startswith("s3://")
+        or not str(contract.get("version_id", ""))
+        or len(str(contract.get("sha256", ""))) != 64
+    ):
+        raise ValueError("publication receipt contract is not exact")
     if (
         receipt.get("schema_version") != 1
         or receipt.get("status") != "passed"
@@ -426,10 +492,14 @@ def validate_publication(
         != "one_shot_create_only_exact_version_history"
         or not isinstance(rows, list)
         or not rows
+        or not isinstance(history_audit, list)
+        or len(history_audit) != len(rows)
         or receipt_checks != EXPECTED_PUBLICATION_RECEIPT_CHECKS
     ):
         raise ValueError("publication receipt is incomplete or not passed")
 
+    if set(anchor) != PUBLICATION_ANCHOR_KEYS:
+        raise ValueError("publication anchor envelope is not exact")
     if (
         anchor.get("schema_version") != 1
         or anchor.get("status") != "passed"
@@ -448,13 +518,23 @@ def validate_publication(
         raise ValueError("report tree is outside the private-results bucket")
 
     seen: set[str] = set()
+    row_bindings: set[tuple[str, str, str]] = set()
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError("publication receipt has a malformed object row")
+        if set(row) != PUBLICATION_OBJECT_KEYS:
+            raise ValueError("publication receipt object row is not exact")
         relative = safe_relative(row.get("relative_path"))
         if relative in seen:
             raise ValueError(f"duplicate report relative path: {relative}")
         seen.add(relative)
+        row_bindings.add(
+            (
+                str(row.get("key", "")),
+                str(row.get("version_id", "")),
+                str(row.get("sha256", "")),
+            )
+        )
 
         expected_uri = f"s3://{bucket}/{prefix}{relative}"
         if row.get("uri") != expected_uri or row.get("key") != prefix + relative:
@@ -466,10 +546,26 @@ def validate_publication(
             or str(row.get("version_id", "")).lower() in {"none", "null"}
             or not str(row.get("sha256", ""))
             or int(row.get("content_length", -1)) <= 0
+            or row.get("server_side_encryption") != "aws:kms"
             or row.get("ssekms_key_id") != kms_key_arn
             or row.get("checks") != EXPECTED_PUBLICATION_OBJECT_CHECKS
         ):
             raise ValueError(f"report row lacks exact custody: {relative}")
+
+    audit_bindings: set[tuple[str, str, str]] = set()
+    for row in history_audit:
+        if not isinstance(row, dict) or set(row) != PUBLICATION_HISTORY_AUDIT_KEYS:
+            raise ValueError("publication receipt history audit is not exact")
+        binding = (
+            str(row.get("key", "")),
+            str(row.get("version_id", "")),
+            str(row.get("sha256", "")),
+        )
+        if row.get("checks") != EXPECTED_HISTORY_AUDIT_CHECKS or binding in audit_bindings:
+            raise ValueError("publication receipt history audit is not exact")
+        audit_bindings.add(binding)
+    if audit_bindings != row_bindings:
+        raise ValueError("publication receipt history audit is not exact")
 
     return receipt, rows, bucket, prefix
 
