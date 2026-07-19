@@ -482,8 +482,8 @@ def list_objects(bucket: str, prefix: str, region: str) -> list[dict[str, Any]]:
         objects.extend(contents)
         if page.get("IsTruncated") is not True:
             return objects
-        continuation_token = str(page.get("NextContinuationToken", ""))
-        if not continuation_token:
+        continuation_token = page.get("NextContinuationToken")
+        if not isinstance(continuation_token, str) or not continuation_token:
             raise RuntimeError("Truncated S3 inventory omitted NextContinuationToken")
         if continuation_token in seen_tokens:
             raise RuntimeError("S3 object inventory pagination did not advance")

@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact v4 materializer pagination markers</li>
+          <li class="pill">Latest milestone = local exact final-freeze source-list markers</li>
+          <li class="pill">Final-freeze source-list markers = exact</li>
           <li class="pill">v4 materializer pagination markers = exact</li>
           <li class="pill">CloudWatch terminal pagination markers = exact</li>
           <li class="pill">Public-index pagination markers = exact</li>
@@ -794,6 +795,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact final-freeze source-list markers</strong>
+              <span>Final artifact freezing now exact-validates truncated source-inventory continuation markers, failing closed on missing, boolean, empty, or non-string tokens before another source page can feed exact local materialization, HRD input-contract finalization, deterministic staging, Rosalind packets, cross-check inputs, AI synthesis, or reviewed-public reports.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact v4 materializer pagination markers</strong>
               <span>The alias-only v4 materializer submit preflight now exact-validates present job-page continuation markers, failing closed on missing, boolean, empty, or non-string tokens before another page can feed deterministic, Rosalind, cross-check, AI synthesis, or reviewed-public report materialization.</span>
@@ -1780,6 +1785,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T01:00:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact final-freeze source-list markers:</strong>
+                Final artifact freezing now rejects missing, boolean, empty, or
+                non-string source-inventory continuation markers before
+                requesting a follow-up source page.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:55:00-07:00">Jul 20 · local</time>
               <span>

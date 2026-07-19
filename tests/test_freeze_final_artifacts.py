@@ -524,13 +524,21 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         )
 
     def test_list_objects_rejects_missing_continuation_token(self) -> None:
-        with patch.object(
-            MODULE,
-            "aws_json",
-            return_value={"IsTruncated": True, "Contents": []},
-        ):
-            with self.assertRaisesRegex(RuntimeError, "NextContinuationToken"):
-                MODULE.list_objects("bucket", "prefix/", "us-east-1")
+        for token in (None, True):
+            with self.subTest(NextContinuationToken=token):
+                with patch.object(
+                    MODULE,
+                    "aws_json",
+                    return_value={
+                        "IsTruncated": True,
+                        "Contents": [],
+                        "NextContinuationToken": token,
+                    },
+                ) as aws_json:
+                    with self.assertRaisesRegex(RuntimeError, "NextContinuationToken"):
+                        MODULE.list_objects("bucket", "prefix/", "us-east-1")
+
+                self.assertEqual(aws_json.call_count, 1)
 
     def test_list_objects_rejects_stalled_pagination(self) -> None:
         stalled = {
