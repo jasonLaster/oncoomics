@@ -972,6 +972,54 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertFalse(MODULE.exact_int(value, 1))
 
+    def test_worker_version_and_checksum_guards_are_exact(self) -> None:
+        digest = "a" * 64
+        self.assertEqual(
+            MODULE.require_version_id("worker-version", "worker"),
+            "worker-version",
+        )
+        self.assertEqual(
+            MODULE.require_sha256_hex(digest, "worker SHA-256"),
+            digest,
+        )
+        self.assertEqual(
+            MODULE.decode_checksum_sha256(
+                MODULE.checksum_sha256(digest),
+                "worker ChecksumSHA256",
+            ),
+            digest,
+        )
+        self.assertEqual(
+            MODULE.checksums(
+                {
+                    "ChecksumSHA256": MODULE.checksum_sha256(digest),
+                    "ChecksumCRC64NVME": True,
+                }
+            ),
+            {"ChecksumSHA256": MODULE.checksum_sha256(digest)},
+        )
+
+        for value in (True, "", "null", "none", "has whitespace"):
+            with self.subTest(version_id=value), self.assertRaisesRegex(
+                ValueError,
+                "exact S3 VersionId",
+            ):
+                MODULE.require_version_id(value, "worker")
+
+        for value in (True, int(digest, 16), digest.upper(), "g" * 64):
+            with self.subTest(sha256=value), self.assertRaisesRegex(
+                ValueError,
+                "exact lowercase SHA-256",
+            ):
+                MODULE.require_sha256_hex(value, "worker SHA-256")
+
+        for value in (True, "not-base64", "eA=="):
+            with self.subTest(checksum=value), self.assertRaisesRegex(
+                ValueError,
+                "full-object SHA-256 checksum",
+            ):
+                MODULE.decode_checksum_sha256(value, "worker ChecksumSHA256")
+
     def test_worker_byte_guards_avoid_raw_int_coercion(self) -> None:
         module = ast.parse(
             (SCRIPT_DIR / "capture_batch_provenance.py").read_text(
@@ -1027,6 +1075,40 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
         ]
 
         self.assertEqual(raw_runtime_coercions, [])
+
+    def test_worker_identity_guards_avoid_raw_string_coercion(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "capture_batch_provenance.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        guarded_fields = (
+            'worker_freeze.get("version_id"',
+            "worker_freeze.get('version_id'",
+            'worker_freeze.get("checksum_sha256_hex"',
+            "worker_freeze.get('checksum_sha256_hex'",
+            'worker_receipt_upload_object.get("version_id"',
+            "worker_receipt_upload_object.get('version_id'",
+            'worker_receipt_upload_object.get("checksum_sha256_hex"',
+            "worker_receipt_upload_object.get('checksum_sha256_hex'",
+            'worker_head.get("ChecksumSHA256"',
+            "worker_head.get('ChecksumSHA256'",
+            'worker_get.get("ChecksumSHA256"',
+            "worker_get.get('ChecksumSHA256'",
+            'receipt_upload_head.get("ChecksumSHA256"',
+            "receipt_upload_head.get('ChecksumSHA256'",
+        )
+        raw_string_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(field in ast.unparse(node.args[0]) for field in guarded_fields)
+        ]
+
+        self.assertEqual(raw_string_coercions, [])
 
     def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
         module = ast.parse(

@@ -123,6 +123,7 @@ EXPECTED_SSM_COMMAND_BINDING_CHECKS = {
     "invocation_status": True,
     "invocation_response_code": True,
 }
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
 EXPECTED_BATCH_WORKER_CHECKS = {
     "receipt_status": True,
     "receipt_envelope": True,
@@ -212,6 +213,37 @@ def require_nonnegative_exact_int(value: Any, label: str) -> int:
     if type(value) is not int or value < 0:
         raise ValueError(f"{label} must be an exact nonnegative integer")
     return value
+
+
+def require_version_id(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.lower() in {"none", "null"}
+        or any(character.isspace() for character in value)
+    ):
+        raise ValueError(f"{label} must be an exact S3 VersionId")
+    return value
+
+
+def require_sha256_hex(value: Any, label: str) -> str:
+    if not isinstance(value, str) or HEX64.fullmatch(value) is None:
+        raise ValueError(f"{label} must be an exact lowercase SHA-256")
+    return value
+
+
+def decode_checksum_sha256(value: Any, label: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be an exact full-object SHA-256 checksum")
+    try:
+        decoded = base64.b64decode(value, validate=True)
+    except Exception as error:
+        raise ValueError(
+            f"{label} must be an exact full-object SHA-256 checksum"
+        ) from error
+    if len(decoded) != 32:
+        raise ValueError(f"{label} must be an exact full-object SHA-256 checksum")
+    return decoded.hex()
 
 
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
@@ -412,11 +444,12 @@ CHECKSUM_FIELDS = (
 
 
 def checksums(head: dict[str, Any]) -> dict[str, str]:
-    return {
-        field: str(head[field])
-        for field in CHECKSUM_FIELDS
-        if str(head.get(field, "")).strip()
-    }
+    checksums: dict[str, str] = {}
+    for field in CHECKSUM_FIELDS:
+        value = head.get(field)
+        if isinstance(value, str) and value.strip():
+            checksums[field] = value
+    return checksums
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
@@ -893,7 +926,39 @@ def main() -> None:
     worker_receipt_upload_checks = worker_receipt_upload.get("checks")
     worker_bucket = str(worker_freeze.get("bucket", ""))
     worker_key = str(worker_freeze.get("key", ""))
-    worker_version = str(worker_freeze.get("version_id", ""))
+    try:
+        worker_version = require_version_id(
+            worker_freeze.get("version_id"),
+            "executed-worker freeze version_id",
+        )
+        receipt_upload_version = require_version_id(
+            worker_receipt_upload_object.get("version_id"),
+            "executed-worker freeze receipt upload version_id",
+        )
+        expected_checksum_hex = require_sha256_hex(
+            worker_freeze.get("checksum_sha256_hex"),
+            "executed-worker freeze SHA-256",
+        )
+        worker_checksum_hex = decode_checksum_sha256(
+            worker_freeze.get("checksum_sha256_base64"),
+            "executed-worker freeze ChecksumSHA256",
+        )
+        receipt_upload_checksum_hex = require_sha256_hex(
+            worker_receipt_upload_object.get("checksum_sha256_hex"),
+            "executed-worker freeze receipt upload SHA-256",
+        )
+        uploaded_receipt_checksum_hex = decode_checksum_sha256(
+            worker_receipt_upload_object.get("checksum_sha256_base64"),
+            "executed-worker freeze receipt upload ChecksumSHA256",
+        )
+    except ValueError as error:
+        raise SystemExit(f"Fail-closed: {error}") from error
+    if worker_checksum_hex != expected_checksum_hex:
+        raise SystemExit("Fail-closed: executed-worker freeze checksums differ")
+    if uploaded_receipt_checksum_hex != receipt_upload_checksum_hex:
+        raise SystemExit(
+            "Fail-closed: executed-worker freeze receipt upload checksums differ"
+        )
     task_container_instance_arn = str(task.get("containerInstanceArn", ""))
     if not task_container_instance_arn:
         raise SystemExit("Fail-closed: ECS task has no container-instance ARN")
@@ -937,7 +1002,7 @@ def main() -> None:
         "--key",
         str(worker_receipt_upload_object.get("key", "")),
         "--version-id",
-        str(worker_receipt_upload_object.get("version_id", "")),
+        receipt_upload_version,
         "--checksum-mode",
         "ENABLED",
     )
@@ -1010,7 +1075,7 @@ def main() -> None:
                 worker_bucket,
                 worker_key,
                 str(worker_freeze.get("kms_key_id", "")),
-                str(worker_freeze.get("checksum_sha256_hex", "")),
+                expected_checksum_hex,
                 args.region,
             ),
             label="executed-worker freeze",
@@ -1023,15 +1088,20 @@ def main() -> None:
     freeze_output = json.loads(str(freeze_invocation.get("StandardOutputContent", "")))
     if not isinstance(freeze_output, dict):
         raise SystemExit("Fail-closed: worker freeze command output is malformed")
-    expected_checksum_hex = str(worker_freeze.get("checksum_sha256_hex", ""))
     try:
-        head_checksum_hex = base64.b64decode(
-            str(worker_head.get("ChecksumSHA256", "")), validate=True
-        ).hex()
-        get_checksum_hex = base64.b64decode(
-            str(worker_get.get("ChecksumSHA256", "")), validate=True
-        ).hex()
-    except Exception as error:
+        head_checksum_hex = decode_checksum_sha256(
+            worker_head.get("ChecksumSHA256"),
+            "executed-worker HEAD ChecksumSHA256",
+        )
+        get_checksum_hex = decode_checksum_sha256(
+            worker_get.get("ChecksumSHA256"),
+            "executed-worker GET ChecksumSHA256",
+        )
+        receipt_upload_head_checksum_hex = decode_checksum_sha256(
+            receipt_upload_head.get("ChecksumSHA256"),
+            "executed-worker freeze receipt upload HEAD ChecksumSHA256",
+        )
+    except ValueError as error:
         raise SystemExit(
             f"Fail-closed: executed worker checksum is malformed: {error}"
         ) from error
@@ -1065,13 +1135,12 @@ def main() -> None:
             and worker_receipt_upload.get("local_receipt_sha256")
             == sha256(args.executed_worker_freeze_receipt)
             and receipt_upload_head.get("VersionId")
-            == worker_receipt_upload_object.get("version_id")
+            == receipt_upload_version
             and exact_int(receipt_upload_size, freeze_receipt_bytes)
             and exact_int(worker_receipt_upload_bytes, freeze_receipt_bytes)
             and receipt_upload_head.get("ChecksumType") == "FULL_OBJECT"
-            and base64.b64decode(
-                str(receipt_upload_head.get("ChecksumSHA256", "")), validate=True
-            ).hex()
+            and receipt_upload_head_checksum_hex
+            == receipt_upload_checksum_hex
             == sha256(args.executed_worker_freeze_receipt)
             and receipt_upload_head.get("ServerSideEncryption") == "aws:kms"
             and receipt_upload_head.get("SSEKMSKeyId")
@@ -1209,9 +1278,7 @@ def main() -> None:
             "executed_version_id": worker_version,
             "freeze_receipt_path": str(args.executed_worker_freeze_receipt.resolve()),
             "freeze_receipt_sha256": sha256(args.executed_worker_freeze_receipt),
-            "freeze_receipt_version_id": str(
-                worker_receipt_upload_object.get("version_id", "")
-            ),
+            "freeze_receipt_version_id": receipt_upload_version,
             "freeze_receipt_upload_path": str(
                 args.executed_worker_freeze_receipt_upload.resolve()
             ),
