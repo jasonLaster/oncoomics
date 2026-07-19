@@ -438,6 +438,21 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             ):
                 BUILD.require_staged_bundle_manifest(staging)
 
+    def test_bundle_rejects_inexact_staged_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            staging = Path(temporary)
+            write_staged_bundle(staging)
+            (staging / "unexpected.tmp").write_text(
+                "unbound scratch\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "AI review bundle inventory is not exact",
+            ):
+                BUILD.require_staged_bundle_manifest(staging)
+
     def test_bundle_install_removes_installed_files_after_final_directory_fsync_failure(
         self,
     ) -> None:
@@ -506,6 +521,49 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
             self.assertTrue(output.is_dir())
             self.assertEqual([], list(output.iterdir()))
+
+    def test_bundle_install_removes_installed_files_after_inexact_final_inventory(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            output.mkdir()
+            staged_paths = write_staged_bundle(staging)
+            real_fsync_directory = BUILD.fsync_directory
+            fsyncs = 0
+
+            def create_unexpected_file_after_final_fsync(path: Path) -> None:
+                nonlocal fsyncs
+                real_fsync_directory(path)
+                fsyncs += 1
+                if fsyncs == len(BUILD.BUNDLE_FILENAMES) + 1:
+                    (output / "unexpected.tmp").write_text(
+                        "unbound final file\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    BUILD,
+                    "fsync_directory",
+                    side_effect=create_unexpected_file_after_final_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "AI review bundle inventory is not exact",
+                ),
+            ):
+                BUILD.install_bundle_create_only(staged_paths, output)
+
+            self.assertTrue(output.is_dir())
+            for name in BUILD.BUNDLE_FILENAMES:
+                self.assertFalse((output / name).exists())
+            self.assertEqual(
+                (output / "unexpected.tmp").read_text(encoding="utf-8"),
+                "unbound final file\n",
+            )
 
     def test_bundle_install_rejects_manifest_that_differs_from_review_bundle(
         self,

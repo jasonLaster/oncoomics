@@ -60,6 +60,7 @@ BUNDLE_FILENAMES = (
     "reviewer-b.prompt.md",
     "bundle_manifest.json",
 )
+BUNDLE_FILE_SET = set(BUNDLE_FILENAMES)
 BUNDLE_MANIFEST_BOUND_FILES = {
     "review_bundle.json": "review_bundle_sha256",
     "reviewer-a.prompt.md": ("prompt_sha256", "A"),
@@ -487,6 +488,19 @@ def write_staged_bytes(path: Path, payload: bytes) -> None:
 
 
 def require_bundle_manifest(bundle_dir: Path) -> None:
+    observed = {path.name for path in bundle_dir.iterdir()}
+    if observed != BUNDLE_FILE_SET:
+        missing = sorted(BUNDLE_FILE_SET - observed)
+        unexpected = sorted(observed - BUNDLE_FILE_SET)
+        details = []
+        if missing:
+            details.append("missing " + ",".join(missing))
+        if unexpected:
+            details.append("unexpected " + ",".join(unexpected))
+        raise ValueError(
+            "AI review bundle inventory is not exact: " + "; ".join(details)
+        )
+
     bundle = load_object(
         require_real_input_file(
             bundle_dir / "review_bundle.json",
