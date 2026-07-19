@@ -246,8 +246,32 @@ def is_positive_exact_int(value: Any) -> bool:
     return type(value) is int and value > 0
 
 
-def split_semicolon(value: str) -> Tuple[str, ...]:
-    return tuple(item.strip() for item in value.split(";") if item.strip())
+def require_exact_csv_row(
+    row: Dict[str, Any],
+    fields: Sequence[str],
+    label: str,
+) -> Dict[str, str]:
+    if None in row or any(not isinstance(row.get(field), str) for field in fields):
+        raise ValueError(label + " contains a malformed row")
+    for field in fields:
+        value = row[field]
+        if (
+            value != value.strip()
+            or "\n" in value
+            or "\r" in value
+            or "\0" in value
+        ):
+            raise ValueError(label + " contains a non-exact field: " + field)
+    return {field: row[field] for field in fields}
+
+
+def split_semicolon(value: str, label: str = "semicolon list") -> Tuple[str, ...]:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise ValueError(label + " is not exact")
+    parts = tuple(value.split(";"))
+    if any(not item or item != item.strip() for item in parts):
+        raise ValueError(label + " is not exact")
+    return parts
 
 
 def join_values(values: Iterable[str]) -> str:
@@ -566,40 +590,56 @@ def read_claims(path: Path, evidence_by_id: Dict[str, Dict[str, Any]], ceiling: 
         raise ValueError("claims.csv contains no claims")
     seen = set()
     covered = set()
-    for row in rows:
-        if None in row or any(not isinstance(row.get(field), str) for field in CLAIMS_FIELDS):
-            raise ValueError("claims.csv contains a malformed row")
-        claim_id = row["claim_id"].strip()
+    exact_rows = []
+    for raw_row in rows:
+        row = require_exact_csv_row(raw_row, CLAIMS_FIELDS, "claims.csv")
+        exact_rows.append(row)
+        claim_id = row["claim_id"]
         if not CLAIM_ID.fullmatch(claim_id) or claim_id in seen:
             raise ValueError("claims.csv contains a malformed or duplicate claim ID")
         seen.add(claim_id)
-        evidence_ids = split_semicolon(row["evidence_ids"])
+        evidence_ids = split_semicolon(
+            row["evidence_ids"],
+            "claim " + claim_id + " evidence_ids",
+        )
         if not evidence_ids or len(set(evidence_ids)) != len(evidence_ids):
             raise ValueError("claim " + claim_id + " has missing or duplicate evidence IDs")
         if any(item not in evidence_by_id for item in evidence_ids):
             raise ValueError("claim " + claim_id + " cites unknown evidence")
         expected_methods = tuple(str(evidence_by_id[item]["method_id"]) for item in evidence_ids)
         expected_states = tuple(str(evidence_by_id[item]["evidence_status"]) for item in evidence_ids)
-        if split_semicolon(row["source_methods"]) != expected_methods:
+        if (
+            split_semicolon(
+                row["source_methods"],
+                "claim " + claim_id + " source_methods",
+            )
+            != expected_methods
+        ):
             raise ValueError("claim " + claim_id + " method binding changed")
-        if split_semicolon(row["evidence_states"]) != expected_states:
+        if (
+            split_semicolon(
+                row["evidence_states"],
+                "claim " + claim_id + " evidence_states",
+            )
+            != expected_states
+        ):
             raise ValueError("claim " + claim_id + " evidence-state binding changed")
-        proposed = row["proposed_hrd_state"].strip()
+        proposed = row["proposed_hrd_state"]
         if proposed not in ALLOWED_HRD_STATES or proposed not in {"no_call", ceiling}:
             raise ValueError("claim " + claim_id + " exceeds deterministic authorization")
         if ceiling == "no_call" and proposed != "no_call":
             raise ValueError("claim " + claim_id + " promotes a no_call synthesis")
-        disagreement = row["disagreement_status"].strip()
+        disagreement = row["disagreement_status"]
         if disagreement not in ALLOWED_DISAGREEMENTS:
             raise ValueError("claim " + claim_id + " has an invalid disagreement state")
-        if disagreement == "none" and row["resolution_needed"].strip() != "not_applicable":
+        if disagreement == "none" and row["resolution_needed"] != "not_applicable":
             raise ValueError("claim " + claim_id + " has inconsistent disagreement metadata")
-        if disagreement != "none" and row["resolution_needed"].strip() in {"", "not_applicable"}:
+        if disagreement != "none" and row["resolution_needed"] in {"", "not_applicable"}:
             raise ValueError("claim " + claim_id + " omits a disagreement resolution")
         covered.update(evidence_ids)
     if covered != set(evidence_by_id):
         raise ValueError("claims.csv does not preserve every source method and state")
-    return rows
+    return exact_rows
 
 
 def verify_review(
@@ -686,7 +726,7 @@ def verify_review(
         or claim_count != len(claims)
     ):
         raise ValueError("reviewer " + reviewer + " claim count changed")
-    disagreement_count = sum(row["disagreement_status"].strip() != "none" for row in claims)
+    disagreement_count = sum(row["disagreement_status"] != "none" for row in claims)
     validation_disagreement_count = validation.get("disagreement_claim_count")
     if (
         not is_nonnegative_exact_int(validation_disagreement_count)
@@ -741,12 +781,12 @@ def build_agreement_rows(
         evidence_id = str(evidence["evidence_id"])
         claims_a = claims_for_evidence(review_a["claims"], evidence_id)
         claims_b = claims_for_evidence(review_b["claims"], evidence_id)
-        states_a = {row["proposed_hrd_state"].strip() for row in claims_a}
-        states_b = {row["proposed_hrd_state"].strip() for row in claims_b}
-        dispositions_a = {row["disposition"].strip() for row in claims_a}
-        dispositions_b = {row["disposition"].strip() for row in claims_b}
-        disagreements_a = {row["disagreement_status"].strip() for row in claims_a}
-        disagreements_b = {row["disagreement_status"].strip() for row in claims_b}
+        states_a = {row["proposed_hrd_state"] for row in claims_a}
+        states_b = {row["proposed_hrd_state"] for row in claims_b}
+        dispositions_a = {row["disposition"] for row in claims_a}
+        dispositions_b = {row["disposition"] for row in claims_b}
+        disagreements_a = {row["disagreement_status"] for row in claims_a}
+        disagreements_b = {row["disagreement_status"] for row in claims_b}
         types = (disagreements_a | disagreements_b) - {"none"}
         if states_a != states_b:
             status = "discordant"
@@ -764,9 +804,9 @@ def build_agreement_rows(
         elif evidence["evidence_status"] == "partial_evidence":
             types.add("source_partial_evidence")
         resolutions = {
-            row["resolution_needed"].strip()
+            row["resolution_needed"]
             for row in claims_a + claims_b
-            if row["resolution_needed"].strip() not in {"", "not_applicable"}
+            if row["resolution_needed"] not in {"", "not_applicable"}
         }
         output.append(
             {
@@ -799,17 +839,17 @@ def collect_limitations(evidence_rows: Sequence[Dict[str, Any]], reviews: Sequen
         if isinstance(limitations, list):
             values.update(str(value).strip() for value in limitations if str(value).strip())
     for review in reviews:
-        values.update(row["caveat"].strip() for row in review["claims"] if row["caveat"].strip())
+        values.update(row["caveat"] for row in review["claims"] if row["caveat"])
     return sorted(values)
 
 
 def collect_unresolved(reviews: Sequence[Dict[str, Any]]) -> List[str]:
     return sorted(
         {
-            row["resolution_needed"].strip()
+            row["resolution_needed"]
             for review in reviews
             for row in review["claims"]
-            if row["resolution_needed"].strip() not in {"", "not_applicable"}
+            if row["resolution_needed"] not in {"", "not_applicable"}
         }
     )
 
@@ -971,12 +1011,10 @@ def read_agreement(path: Path) -> List[Dict[str, str]]:
         rows = list(reader)
     if not rows:
         raise ValueError("agreement_disagreement.csv contains no comparisons")
-    for row in rows:
-        if None in row or any(
-            not isinstance(row.get(field), str) for field in AGREEMENT_FIELDS
-        ):
-            raise ValueError("agreement_disagreement.csv contains a malformed row")
-    return rows
+    return [
+        require_exact_csv_row(row, AGREEMENT_FIELDS, "agreement_disagreement.csv")
+        for row in rows
+    ]
 
 
 def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:

@@ -884,6 +884,61 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.require_synthesis_report_manifest(staging)
 
+    def test_reviewer_claims_must_preserve_exact_fields(self) -> None:
+        cases = (
+            (
+                lambda row: row.__setitem__("proposed_hrd_state", " no_call"),
+                "claims.csv contains a non-exact field: proposed_hrd_state",
+            ),
+            (
+                lambda row: row.__setitem__("evidence_ids", "E001; E002"),
+                "claim C001 evidence_ids is not exact",
+            ),
+        )
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-claims-",
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                bundle = json.loads(
+                    (fixture.bundle_dir / "review_bundle.json").read_text(
+                        encoding="utf-8",
+                    ),
+                )
+                evidence_by_id = {
+                    row["evidence_id"]: row for row in bundle["evidence_sources"]
+                }
+                claims = fixture.review_a / "claims.csv"
+                with claims.open(newline="", encoding="utf-8") as handle:
+                    rows = list(csv.DictReader(handle))
+                mutate(rows[0])
+                with claims.open("w", newline="", encoding="utf-8") as handle:
+                    writer = csv.DictWriter(
+                        handle,
+                        fieldnames=CLAIMS_FIELDS,
+                        lineterminator="\n",
+                    )
+                    writer.writeheader()
+                    writer.writerows(rows)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    GENERATE.read_claims(claims, evidence_by_id, "no_call")
+
+    def test_synthesis_agreement_must_preserve_exact_fields(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-agreement-") as temporary:
+            agreement = Path(temporary) / "agreement_disagreement.csv"
+            write_synthesis_agreement(agreement)
+            rows = GENERATE.read_agreement(agreement)
+            rows[0]["resolution_needed"] = "not_specified\nhidden"
+            agreement.unlink()
+            GENERATE.write_agreement(agreement, rows)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "agreement_disagreement.csv contains a non-exact field: resolution_needed",
+            ):
+                GENERATE.read_agreement(agreement)
+
     def test_synthesis_rejects_stale_agreement_count_summary(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             staging = Path(temporary)
