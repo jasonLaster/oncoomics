@@ -94,6 +94,10 @@ def sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
@@ -254,7 +258,7 @@ def validate(
     source = script_anchor.get("source") if isinstance(script_anchor.get("source"), dict) else {}
     script_object = script_anchor.get("object") if isinstance(script_anchor.get("object"), dict) else {}
     source_sha = require_hex(source.get("sha256"), "materializer source SHA-256")
-    if script_anchor.get("schema_version") != 1 or script_anchor.get("status") != "passed":
+    if not exact_schema_version(script_anchor, 1) or script_anchor.get("status") != "passed":
         raise ValueError("materializer script anchor must be schema 1 and passed")
     require_passed_checks(
         script_anchor.get("checks"),
