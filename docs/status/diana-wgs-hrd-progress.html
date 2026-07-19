@@ -307,13 +307,13 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>99c4910d2d029c3e2f668691f79657f2341542f5</strong>.
-          The latest work is exact input-contract publication hardening:
-          <code>publish_input_contract.py</code> now emits and validates a named
-          seven-check post-upload map for content-addressed contract anchors,
-          and fails closed unless the verified version, byte count, SHA-256,
-          checksum, metadata, KMS, and create-only history checks exactly match
-          the required contract before a publication anchor can pass.
+          <strong>86cd25708360808ee6fedf132f3a158850209c1a</strong>.
+          The latest work is exact deterministic-report stage-provenance
+          hardening: <code>stage_deterministic_wgs_report.py</code> now names
+          the complete preflight/gather copy check inventory and receipt-anchor
+          check inventory, then rejects missing, failed, or unreviewed future
+          checks before provenance from the terminal run can support the staged
+          WGS report packet.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -321,7 +321,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 99c4910</li>
+          <li class="pill">Latest hardening = 86cd257</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -403,8 +403,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 99c4910</strong>
-              <span>Input-contract publication now rejects missing, unexpected, or failed post-upload anchor checks before a private contract publication can be marked passed.</span>
+              <strong>Preserve 86cd257</strong>
+              <span>Deterministic report staging now rejects incomplete or widened stage-provenance row and anchor check maps before a WGS report packet can be marked passed.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -452,6 +452,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>86cd257 Require exact stage provenance checks:</strong>
+                <code>stage_deterministic_wgs_report.py</code> now defines
+                <code>EXPECTED_STAGE_PROVENANCE_OBJECT_CHECKS</code> and
+                <code>EXPECTED_STAGE_PROVENANCE_ANCHOR_CHECKS</code>, then
+                requires both maps exactly when validating preflight/gather
+                provenance for the deterministic WGS report. The synthetic
+                report tests prove staging fails before report publication if a
+                stage row omits a source-binding check or a receipt anchor
+                includes an unreviewed future check.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
