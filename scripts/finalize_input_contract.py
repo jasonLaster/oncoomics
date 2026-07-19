@@ -42,11 +42,56 @@ EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS = {
     "exact_kms": True,
     "single_create_only_version": True,
 }
+EXPECTED_FINAL_FREEZE_KEYS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "generated_at",
+        "run_id",
+        "batch_job_id",
+        "batch_status",
+        "execution_receipt",
+        "source_prefix",
+        "destination_prefix",
+        "kms_key_arn",
+        "script_sha256",
+        "destination_bucket_versioning",
+        "destination_initial_version_history_count",
+        "receipt_anchor_strategy",
+        "object_count",
+        "initial_inventory_identity",
+        "objects",
+        "final_inventory_identity",
+        "destination_inventory",
+        "checks",
+        "completed_at",
+        "passed_count",
+    }
+)
 EXPECTED_FINAL_FREEZE_CHECKS = {
     "execution_receipt_bound": True,
     "complete_source_inventory_unchanged": True,
     "destination_exact_history_and_receipt_match": True,
 }
+EXPECTED_FINAL_ROW_KEYS = frozenset(
+    {"relative_key", "source", "destination", "status", "checks"}
+)
+EXPECTED_FINAL_SOURCE_KEYS = frozenset(
+    {"bucket", "key", "version_id", "bytes", "etag", "checksums", "checksum_type"}
+)
+EXPECTED_FINAL_DESTINATION_KEYS = frozenset(
+    {
+        "bucket",
+        "key",
+        "version_id",
+        "bytes",
+        "etag",
+        "checksums",
+        "checksum_type",
+        "server_side_encryption",
+        "kms_key_id",
+    }
+)
 EXPECTED_FINAL_ROW_CHECKS = {
     "listed_inventory_stable": True,
     "source_stable": True,
@@ -56,6 +101,44 @@ EXPECTED_FINAL_ROW_CHECKS = {
     "destination_versioned": True,
     "copy_response_version_matches": True,
 }
+EXPECTED_MATERIALIZATION_KEYS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "run_id",
+        "batch_job_id",
+        "script_sha256",
+        "freeze_receipt_sha256",
+        "expected_kms_key_arn",
+        "materialization_dir",
+        "object_count",
+        "objects",
+        "passed_count",
+    }
+)
+OPTIONAL_MATERIALIZATION_RECOVERY_KEYS = frozenset(
+    {
+        "recovered_from_status",
+        "prior_receipt_sha256",
+        "prior_error",
+        "recovered_prepared_cutover",
+    }
+)
+EXPECTED_MATERIALIZATION_ROW_KEYS = frozenset(
+    {
+        "relative_key",
+        "bucket",
+        "key",
+        "bytes",
+        "version_id",
+        "checksums",
+        "checksum_type",
+        "server_side_encryption",
+        "kms_key_id",
+        "sha256",
+        "checks",
+    }
+)
 EXPECTED_MATERIALIZATION_CHECKS = {
     "version_id": True,
     "content_length": True,
@@ -73,6 +156,45 @@ EXPECTED_CROSSCHECK_CHECKS = {
     "all_outputs_create_only": True,
     "destination_exact_single_version_history": True,
 }
+EXPECTED_CROSSCHECK_RECEIPT_KEYS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "generated_at_utc",
+        "run_alias",
+        "script_sha256",
+        "destination_prefix",
+        "destination_bucket_versioning",
+        "destination_initial_version_history_count",
+        "receipt_anchor_strategy",
+        "source_custody",
+        "validation",
+        "input_sha256",
+        "outputs",
+        "destination_inventory",
+        "checks",
+        "classification_authorization",
+        "authorized_hrd_state",
+    }
+)
+EXPECTED_CROSSCHECK_SOURCE_KEYS = frozenset(
+    {
+        "uri",
+        "version_id",
+        "bytes",
+        "etag",
+        "checksums",
+        "sha256",
+        "expected_sha256",
+        "kms_key_arn",
+    }
+)
+EXPECTED_CROSSCHECK_OUTPUT_KEYS = frozenset(
+    {"uri", "version_id", "bytes", "etag", "checksums", "sha256", "kms_key_arn", "checks"}
+)
+EXPECTED_CROSSCHECK_INVENTORY_KEYS = frozenset(
+    {"filename", "key", "version_id", "bytes", "sha256", "checksums"}
+)
 EXPECTED_CROSSCHECK_OUTPUT_CHECKS = {
     "create_only_put": True,
     "version_exact": True,
@@ -178,6 +300,26 @@ def require_exact_true(value: Any, expected: dict[str, bool], label: str) -> Non
         raise ValueError(f"{label} did not pass the exact custody checks")
 
 
+def require_exact_keys(
+    value: Any,
+    expected: frozenset[str],
+    label: str,
+    *,
+    optional: frozenset[str] = frozenset(),
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} is malformed")
+    observed = set(value)
+    missing = expected - observed
+    unexpected = observed - expected - optional
+    if missing or unexpected:
+        raise ValueError(
+            f"{label} has stale or missing metadata: "
+            f"missing={sorted(missing)} unexpected={sorted(unexpected)}"
+        )
+    return value
+
+
 def validate_anchor(
     receipt_path: Path,
     anchor_path: Path,
@@ -205,6 +347,11 @@ def validate_anchor(
 def validate_freeze(
     receipt: dict[str, Any], anchor: dict[str, Any], receipt_sha256: str
 ) -> dict[str, dict[str, Any]]:
+    require_exact_keys(
+        receipt,
+        EXPECTED_FINAL_FREEZE_KEYS,
+        "final artifact freeze receipt",
+    )
     rows = receipt.get("objects")
     checks = receipt.get("checks")
     if (
@@ -229,16 +376,29 @@ def validate_freeze(
     kms_key_arn = receipt.get("kms_key_arn")
     by_uri: dict[str, dict[str, Any]] = {}
     for row in rows:
-        if not isinstance(row, dict) or row.get("status") != "passed":
+        row = require_exact_keys(
+            row,
+            EXPECTED_FINAL_ROW_KEYS,
+            "final artifact freeze row",
+        )
+        if row.get("status") != "passed":
             raise ValueError("final artifact freeze contains a non-passed row")
+        require_exact_keys(
+            row.get("source"),
+            EXPECTED_FINAL_SOURCE_KEYS,
+            "final artifact freeze source",
+        )
         require_exact_true(
             row.get("checks"),
             EXPECTED_FINAL_ROW_CHECKS,
             "final artifact freeze row",
         )
         destination = row.get("destination")
-        if not isinstance(destination, dict):
-            raise ValueError("final artifact freeze row lacks a destination")
+        destination = require_exact_keys(
+            destination,
+            EXPECTED_FINAL_DESTINATION_KEYS,
+            "final artifact freeze destination",
+        )
         uri = f"s3://{destination.get('bucket', '')}/{destination.get('key', '')}"
         if not uri.startswith("s3://diana-omics-private-results-"):
             raise ValueError("final artifact freeze destination is not private")
@@ -263,6 +423,12 @@ def validate_freeze(
 def validate_exact_materialization(
     receipt: dict[str, Any], freeze_sha256: str, freeze_by_uri: dict[str, dict[str, Any]]
 ) -> dict[str, dict[str, Any]]:
+    require_exact_keys(
+        receipt,
+        EXPECTED_MATERIALIZATION_KEYS,
+        "exact-version materialization",
+        optional=OPTIONAL_MATERIALIZATION_RECOVERY_KEYS,
+    )
     rows = receipt.get("objects")
     if (
         receipt.get("schema_version") != 1
@@ -276,8 +442,11 @@ def validate_exact_materialization(
         raise ValueError("exact-version materialization is incomplete or unbound")
     by_uri: dict[str, dict[str, Any]] = {}
     for row in rows:
-        if not isinstance(row, dict):
-            raise ValueError("exact-version materialization contains a malformed row")
+        row = require_exact_keys(
+            row,
+            EXPECTED_MATERIALIZATION_ROW_KEYS,
+            "exact-version materialization row",
+        )
         require_exact_true(
             row.get("checks"),
             EXPECTED_MATERIALIZATION_CHECKS,
@@ -330,6 +499,11 @@ def finalize(
     finalizer_sha256: str,
     expected_crosscheck_materializer_sha256: str,
 ) -> dict[str, Any]:
+    require_exact_keys(
+        crosscheck_receipt,
+        EXPECTED_CROSSCHECK_RECEIPT_KEYS,
+        "cross-check materialization receipt",
+    )
     freeze_by_uri = validate_freeze(
         freeze_receipt, freeze_anchor, freeze_receipt_sha256
     )
@@ -383,8 +557,11 @@ def finalize(
     if set(inventory_by_name) != set(outputs):
         raise ValueError("cross-check destination inventory differs from outputs")
     for filename, row in outputs.items():
-        if not isinstance(row, dict):
-            raise ValueError("cross-check materialization output is malformed")
+        row = require_exact_keys(
+            row,
+            EXPECTED_CROSSCHECK_OUTPUT_KEYS,
+            "cross-check materialization output",
+        )
         require_exact_true(
             row.get("checks"),
             EXPECTED_CROSSCHECK_OUTPUT_CHECKS,
@@ -392,6 +569,11 @@ def finalize(
         )
         require_full_object_sha256(row, f"{filename} materializer output")
         inventory = inventory_by_name[filename]
+        require_exact_keys(
+            inventory,
+            EXPECTED_CROSSCHECK_INVENTORY_KEYS,
+            "cross-check destination inventory",
+        )
         if (
             row.get("version_id") != inventory.get("version_id")
             or row.get("bytes") != inventory.get("bytes")
@@ -407,9 +589,11 @@ def finalize(
         raise ValueError("pending contract omits artifacts or reference")
 
     for source_role in SOURCE_ROLES:
-        row = source.get(source_role)
-        if not isinstance(row, dict):
-            raise ValueError(f"cross-check source custody omits {source_role}")
+        row = require_exact_keys(
+            source.get(source_role),
+            EXPECTED_CROSSCHECK_SOURCE_KEYS,
+            f"cross-check source custody {source_role}",
+        )
         exact = exact_by_uri.get(str(row.get("uri", "")))
         if (
             exact is None
@@ -419,9 +603,13 @@ def finalize(
         ):
             raise ValueError(f"cross-check source {source_role} is not the exact final freeze")
     for source_role, reference_role in REFERENCE_ROLES.items():
-        row = source.get(source_role)
+        row = require_exact_keys(
+            source.get(source_role),
+            EXPECTED_CROSSCHECK_SOURCE_KEYS,
+            f"cross-check reference custody {source_role}",
+        )
         declared = reference.get(reference_role)
-        if not isinstance(row, dict) or not isinstance(declared, dict):
+        if not isinstance(declared, dict):
             raise ValueError(f"cross-check reference custody omits {source_role}")
         if (
             row.get("uri") != declared.get("uri")

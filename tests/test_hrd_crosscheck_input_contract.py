@@ -148,15 +148,17 @@ class CustodyFixture:
             version = f"frozen-version-{index}"
             digest = f"{index:064x}"
             checksum = checksum_sha256(digest)
+            checksums = {
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": checksum,
+            }
             destination = {
                 "bucket": BUCKET,
                 "key": key,
                 "version_id": version,
                 "bytes": index + 10,
-                "checksums": {
-                    "ChecksumType": "FULL_OBJECT",
-                    "ChecksumSHA256": checksum,
-                },
+                "etag": f"destination-etag-{index}",
+                "checksums": checksums,
                 "checksum_type": "FULL_OBJECT",
                 "server_side_encryption": "aws:kms",
                 "kms_key_id": KMS,
@@ -164,6 +166,15 @@ class CustodyFixture:
             self.freeze_rows.append(
                 {
                     "relative_key": relative,
+                    "source": {
+                        "bucket": "diana-omics-work-172630973301-us-east-1",
+                        "key": f"source/{relative}",
+                        "version_id": f"source-version-{index}",
+                        "bytes": index + 10,
+                        "etag": f"source-etag-{index}",
+                        "checksums": checksums,
+                        "checksum_type": "FULL_OBJECT",
+                    },
                     "status": "passed",
                     "destination": destination,
                     "checks": dict(finalizer.EXPECTED_FINAL_ROW_CHECKS),
@@ -176,10 +187,7 @@ class CustodyFixture:
                     "key": key,
                     "version_id": version,
                     "bytes": index + 10,
-                    "checksums": {
-                        "ChecksumType": "FULL_OBJECT",
-                        "ChecksumSHA256": checksum,
-                    },
+                    "checksums": checksums,
                     "checksum_type": "FULL_OBJECT",
                     "server_side_encryption": "aws:kms",
                     "kms_key_id": KMS,
@@ -190,21 +198,47 @@ class CustodyFixture:
             self.cross_sources[role] = {
                 "uri": uri,
                 "version_id": version,
+                "bytes": index + 10,
+                "etag": f"source-etag-{index}",
+                "checksums": checksums,
                 "sha256": digest,
+                "expected_sha256": digest,
+                "kms_key_arn": KMS,
             }
         for role in ("fasta", "fai"):
             declared = self.pending["reference"][role]
+            digest = declared["sha256"]
             self.cross_sources[role] = {
                 "uri": declared["uri"],
                 "version_id": declared["version_id"],
-                "sha256": declared["sha256"],
+                "bytes": 20,
+                "etag": f"{role}-etag",
+                "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": checksum_sha256(digest),
+                },
+                "sha256": digest,
+                "expected_sha256": digest,
+                "kms_key_arn": KMS,
             }
 
         self.freeze = {
             "schema_version": 1,
             "status": "passed",
+            "generated_at": "2026-07-19T01:00:00+00:00",
+            "run_id": RUN,
+            "batch_job_id": "deterministic-job",
             "batch_status": "SUCCEEDED",
+            "execution_receipt": {
+                "path": "/tmp/execution-receipt.json",
+                "sha256": "d" * 64,
+            },
+            "source_prefix": f"s3://{BUCKET}/runs/subject01/{RUN}/work/final/",
+            "destination_prefix": (
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/final/"
+            ),
             "kms_key_arn": KMS,
+            "script_sha256": "e" * 64,
             "destination_bucket_versioning": "Enabled",
             "destination_initial_version_history_count": 0,
             "receipt_anchor_strategy": "sha256_content_addressed_create_only",
@@ -212,7 +246,9 @@ class CustodyFixture:
             "passed_count": len(self.freeze_rows),
             "initial_inventory_identity": [{"x": 1}],
             "final_inventory_identity": [{"x": 1}],
+            "destination_inventory": [{"x": 1}],
             "checks": dict(finalizer.EXPECTED_FINAL_FREEZE_CHECKS),
+            "completed_at": "2026-07-19T01:01:00+00:00",
             "objects": self.freeze_rows,
         }
         self.freeze_sha = "a" * 64
@@ -224,8 +260,12 @@ class CustodyFixture:
         self.exact = {
             "schema_version": 1,
             "status": "passed",
+            "run_id": RUN,
+            "batch_job_id": "deterministic-job",
+            "script_sha256": "e" * 64,
             "freeze_receipt_sha256": self.freeze_sha,
             "expected_kms_key_arn": KMS,
+            "materialization_dir": "/tmp/materialized-final",
             "object_count": len(self.exact_rows),
             "passed_count": len(self.exact_rows),
             "objects": self.exact_rows,
@@ -239,10 +279,12 @@ class CustodyFixture:
                 "version_id": f"alias-version-{index}",
                 "sha256": digest,
                 "bytes": index + 100,
+                "etag": f"alias-etag-{index}",
                 "checksums": {
                     "ChecksumType": "FULL_OBJECT",
                     "ChecksumSHA256": checksum_sha256(digest),
                 },
+                "kms_key_arn": KMS,
                 "checks": dict(finalizer.EXPECTED_CROSSCHECK_OUTPUT_CHECKS),
             }
         validation_digest = "f" * 64
@@ -251,15 +293,18 @@ class CustodyFixture:
             "version_id": "alias-validation-version",
             "sha256": validation_digest,
             "bytes": 101,
+            "etag": "alias-validation-etag",
             "checksums": {
                 "ChecksumType": "FULL_OBJECT",
                 "ChecksumSHA256": checksum_sha256(validation_digest),
             },
+            "kms_key_arn": KMS,
             "checks": dict(finalizer.EXPECTED_CROSSCHECK_OUTPUT_CHECKS),
         }
         destination_inventory = [
             {
                 "filename": filename,
+                "key": row["uri"].split(f"s3://{BUCKET}/", 1)[1],
                 "version_id": row["version_id"],
                 "bytes": row["bytes"],
                 "sha256": row["sha256"],
@@ -271,12 +316,27 @@ class CustodyFixture:
         self.cross = {
             "schema_version": 2,
             "status": "passed",
+            "generated_at_utc": "2026-07-19T01:02:00+00:00",
             "run_alias": "subject01",
+            "destination_prefix": (
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/final/"
+            ),
             "destination_bucket_versioning": "Enabled",
             "destination_initial_version_history_count": 0,
             "receipt_anchor_strategy": "sha256_content_addressed_create_only",
             "script_sha256": self.materializer_sha,
             "source_custody": self.cross_sources,
+            "validation": {
+                "pass_snv_records": 1,
+                "sbs96_matches_independent_pass_vcf_derivation": True,
+            },
+            "input_sha256": {
+                "source_vcf": self.cross_sources["vcf"]["sha256"],
+                "source_vcf_index": self.cross_sources["vcf_index"]["sha256"],
+                "source_matrix": self.cross_sources["matrix"]["sha256"],
+                "reference_fasta": self.cross_sources["fasta"]["sha256"],
+                "reference_fai": self.cross_sources["fai"]["sha256"],
+            },
             "outputs": outputs,
             "destination_inventory": destination_inventory,
             "checks": dict(finalizer.EXPECTED_CROSSCHECK_CHECKS),
@@ -784,7 +844,7 @@ class CustodyHandoffTests(unittest.TestCase):
     def test_finalizer_requires_full_object_materialization_rows(self):
         fixture = CustodyFixture()
         fixture.exact["objects"][0].pop("checksum_type")
-        with self.assertRaisesRegex(ValueError, "differs from final freeze"):
+        with self.assertRaisesRegex(ValueError, "stale or missing metadata"):
             fixture.finalize()
 
     def test_finalizer_materialization_check_inventory_matches_producers(self):
@@ -872,7 +932,7 @@ class CustodyHandoffTests(unittest.TestCase):
     def test_finalizer_rejects_final_freeze_rows_without_sse_kms(self):
         fixture = CustodyFixture()
         fixture.freeze["objects"][0]["destination"].pop("server_side_encryption")
-        with self.assertRaisesRegex(ValueError, "destination is not exact"):
+        with self.assertRaisesRegex(ValueError, "stale or missing metadata"):
             fixture.finalize()
 
     def test_finalizer_final_freeze_check_inventory_matches_submitter(self):
@@ -884,6 +944,81 @@ class CustodyHandoffTests(unittest.TestCase):
             set(finalizer.EXPECTED_FINAL_ROW_CHECKS),
             submitter.EXPECTED_FINAL_ROW_CHECKS,
         )
+
+    def test_finalizer_rejects_stale_receipt_envelopes(self):
+        for label, mutate in (
+            ("freeze top-level", lambda fixture: fixture.freeze.update(legacy=True)),
+            (
+                "freeze object row",
+                lambda fixture: fixture.freeze["objects"][0].update(legacy=True),
+            ),
+            (
+                "freeze source row",
+                lambda fixture: fixture.freeze["objects"][0]["source"].update(
+                    legacy=True
+                ),
+            ),
+            (
+                "freeze destination row",
+                lambda fixture: fixture.freeze["objects"][0]["destination"].update(
+                    legacy=True
+                ),
+            ),
+            (
+                "exact materialization top-level",
+                lambda fixture: fixture.exact.update(legacy=True),
+            ),
+            (
+                "exact materialization object row",
+                lambda fixture: fixture.exact["objects"][0].update(legacy=True),
+            ),
+            (
+                "cross-check top-level",
+                lambda fixture: fixture.cross.update(legacy=True),
+            ),
+            (
+                "cross-check source row",
+                lambda fixture: fixture.cross["source_custody"]["vcf"].update(
+                    legacy=True
+                ),
+            ),
+            (
+                "cross-check output row",
+                lambda fixture: fixture.cross["outputs"]["sbs96.csv"].update(
+                    legacy=True
+                ),
+            ),
+            (
+                "cross-check inventory row",
+                lambda fixture: fixture.cross["destination_inventory"][0].update(
+                    legacy=True
+                ),
+            ),
+        ):
+            with self.subTest(label=label):
+                fixture = CustodyFixture()
+                mutate(fixture)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "stale or missing metadata",
+                ):
+                    fixture.finalize()
+
+    def test_finalizer_accepts_exact_materialization_recovery_metadata(self):
+        fixture = CustodyFixture()
+        fixture.exact.update(
+            {
+                "recovered_from_status": "failed",
+                "prior_receipt_sha256": "0" * 64,
+                "prior_error": "ValueError: transient exact download failure",
+                "recovered_prepared_cutover": True,
+            }
+        )
+
+        contract = fixture.finalize()
+
+        self.assertEqual(contract["custody"]["status"], "passed")
 
     def test_anchor_validation_binds_exact_local_receipt(self):
         with tempfile.TemporaryDirectory() as temporary:
