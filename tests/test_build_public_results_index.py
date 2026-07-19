@@ -337,6 +337,21 @@ class PublicIndexTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "pagination did not advance"):
                 MODULE.list_prefix("runs/example/")
 
+    def test_list_prefix_rejects_malformed_pagination_token(self) -> None:
+        page = {
+            "IsTruncated": True,
+            "NextContinuationToken": True,
+            "Contents": [],
+        }
+
+        with mock.patch.object(
+            MODULE.subprocess,
+            "run",
+            return_value=SimpleNamespace(stdout=json.dumps(page)),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "malformed pagination token"):
+                MODULE.list_prefix("runs/example/")
+
     def test_list_prefix_rejects_non_exact_object_size(self) -> None:
         page = {
             "IsTruncated": False,

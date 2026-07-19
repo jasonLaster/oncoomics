@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact reviewed-public receipt paths</li>
+          <li class="pill">Latest milestone = local exact public-index pagination markers</li>
+          <li class="pill">Public-index pagination markers = exact</li>
           <li class="pill">Reviewed-public receipt paths = exact</li>
           <li class="pill">AI-synthesis private receipt paths = exact</li>
           <li class="pill">Phase 3 fast Sequenza AI provenance = exact</li>
@@ -1596,6 +1597,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact public-index pagination markers</strong>
+              <span><code>build_public_results_index.py</code> now exact-validates truncated public-index page tokens, rejecting missing, boolean, or non-string markers before requesting another page or generating <code>public-index/objects.json</code>.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact reviewed-public receipt paths</strong>
               <span><code>build_public_results_index.py</code> now validates reviewed-public dry-run and private-publication receipt path summaries, rejecting missing, non-string, empty, padded, multiline, NUL-containing, or sentinel values before building the static public object index.</span>
             </li>
@@ -1765,6 +1770,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:45:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact public-index pagination markers:</strong>
+                Public-index page traversal now rejects missing, boolean, or
+                non-string continuation markers before a malformed listing can
+                reach <code>public-index/objects.json</code> generation.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:40:00-07:00">Jul 20 · local</time>
               <span>

@@ -205,7 +205,9 @@ def list_prefix(prefix: str) -> list[dict[str, Any]]:
 
         if response.get("IsTruncated") is not True:
             return objects
-        next_token = str(response.get("NextContinuationToken", ""))
+        next_token = response.get("NextContinuationToken")
+        if not isinstance(next_token, str):
+            raise RuntimeError(f"S3 returned a malformed pagination token for {prefix}")
         if not next_token or next_token in seen_tokens:
             raise RuntimeError(f"S3 pagination did not advance for {prefix}")
         seen_tokens.add(next_token)
