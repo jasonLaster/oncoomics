@@ -1483,6 +1483,120 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "exact successful Batch job"):
                     MODULE.validate_execution_binding(candidate, **kwargs)
 
+    def test_validate_execution_binding_requires_exact_live_attempt_ints(self) -> None:
+        job = {
+            "jobArn": "arn:aws:batch:us-east-1:172630973301:job/job-id",
+            "jobId": "job-id",
+            "jobName": "wgs-run",
+            "jobDefinition": (
+                "arn:aws:batch:us-east-1:172630973301:job-definition/wgs:1"
+            ),
+            "status": "SUCCEEDED",
+            "retryStrategy": {"attempts": 1, "evaluateOnExit": []},
+            "timeout": {"attemptDurationSeconds": 129600},
+            "container": {
+                "command": ["worker", "--run-id", "run-id"],
+                "taskArn": "arn:aws:ecs:us-east-1:172630973301:task/cluster/task-id",
+                "logStreamName": "wgs/default/stream",
+            },
+            "attempts": [
+                {
+                    "startedAt": 1,
+                    "stoppedAt": 2,
+                    "statusReason": "",
+                    "container": {
+                        "containerInstanceArn": (
+                            "arn:aws:ecs:us-east-1:172630973301:"
+                            "container-instance/cluster/instance-id"
+                        ),
+                        "taskArn": (
+                            "arn:aws:ecs:us-east-1:172630973301:"
+                            "task/cluster/task-id"
+                        ),
+                        "logStreamName": "wgs/default/stream",
+                        "exitCode": 0,
+                        "reason": "",
+                    },
+                }
+            ],
+        }
+        normalized_attempt = {
+            "started_at_epoch_ms": 1,
+            "stopped_at_epoch_ms": 2,
+            "status_reason": "",
+            "container_instance_arn": (
+                "arn:aws:ecs:us-east-1:172630973301:"
+                "container-instance/cluster/instance-id"
+            ),
+            "task_arn": job["container"]["taskArn"],
+            "log_stream": job["container"]["logStreamName"],
+            "exit_code": 0,
+            "reason": "",
+        }
+        receipt = {
+            "schema_version": 1,
+            "region": "us-east-1",
+            "run_id": "run-id",
+            "batch": {
+                "job_id": "job-id",
+                "job_name": "wgs-run",
+                "job_definition_arn": job["jobDefinition"],
+                "status": "SUCCEEDED",
+                "command": job["container"]["command"],
+                "log_stream": job["container"]["logStreamName"],
+                "attempt_count": 1,
+                "attempts": [normalized_attempt],
+                "retry_strategy": job["retryStrategy"],
+                "timeout": job["timeout"],
+            },
+            "container": {"task_arn": job["container"]["taskArn"]},
+            "worker": {
+                "kms_key_id": "arn:aws:kms:us-east-1:172630973301:key/test",
+                "checks": dict(MODULE.EXPECTED_BATCH_WORKER_CHECKS),
+            },
+        }
+        kwargs = {
+            "job": job,
+            "job_id": "job-id",
+            "run_id": "run-id",
+            "source_bucket": "diana-omics-work-172630973301-us-east-1",
+            "source_prefix": (
+                "runs/diana-hrd/run-id/private-results/final/artifacts/"
+            ),
+            "region": "us-east-1",
+        }
+        for label, mutate in (
+            (
+                "started-boolean",
+                lambda candidate: candidate["attempts"][0].__setitem__(
+                    "startedAt",
+                    True,
+                ),
+            ),
+            (
+                "stopped-float",
+                lambda candidate: candidate["attempts"][0].__setitem__(
+                    "stoppedAt",
+                    2.0,
+                ),
+            ),
+            (
+                "exit-string",
+                lambda candidate: candidate["attempts"][0]["container"].__setitem__(
+                    "exitCode",
+                    "0",
+                ),
+            ),
+        ):
+            with self.subTest(label=label):
+                mutated_job = deepcopy(job)
+                mutate(mutated_job)
+                with self.assertRaisesRegex(ValueError, "exact integer"):
+                    MODULE.validate_execution_binding(
+                        receipt,
+                        **{**kwargs, "job": mutated_job},
+                    )
+
     def test_schema_version_checks_use_exact_integer_helper(self) -> None:
         cases = (
             (1, 1, True),

@@ -324,6 +324,44 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                         candidate, job, JOB_ID, RUN_ID, REGION, KMS
                     )
 
+    def test_validate_execution_requires_exact_live_attempt_ints(self) -> None:
+        receipt, job = execution_fixture()
+        for label, mutate in (
+            (
+                "started-boolean",
+                lambda candidate: candidate["attempts"][0].__setitem__(
+                    "startedAt",
+                    True,
+                ),
+            ),
+            (
+                "stopped-float",
+                lambda candidate: candidate["attempts"][0].__setitem__(
+                    "stoppedAt",
+                    2.0,
+                ),
+            ),
+            (
+                "exit-string",
+                lambda candidate: candidate["attempts"][0]["container"].__setitem__(
+                    "exitCode",
+                    "0",
+                ),
+            ),
+        ):
+            with self.subTest(label=label):
+                mutated_job = deepcopy(job)
+                mutate(mutated_job)
+                with self.assertRaisesRegex(ValueError, "exact integer"):
+                    MODULE.validate_execution(
+                        receipt,
+                        mutated_job,
+                        JOB_ID,
+                        RUN_ID,
+                        REGION,
+                        KMS,
+                    )
+
     def test_validate_source_documents_bind_run_roles_lanes_and_reference(self) -> None:
         MODULE.validate_source_document("preflight.json", preflight_payload(), RUN_ID)
         MODULE.validate_source_document("gather.json", gather_payload(), RUN_ID)

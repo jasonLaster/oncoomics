@@ -107,6 +107,12 @@ def same_exact_s3_size(left: Any, right: Any) -> bool:
         return False
 
 
+def exact_batch_int(value: Any, label: str) -> int:
+    if type(value) is not int:
+        raise ValueError(f"{label} must be an exact integer")
+    return value
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -702,15 +708,25 @@ def validate_execution_binding(
         exit_code = attempt_container.get("exitCode")
         normalized_attempts.append(
             {
-                "started_at_epoch_ms": int(attempt.get("startedAt", 0)),
-                "stopped_at_epoch_ms": int(attempt.get("stoppedAt", 0)),
+                "started_at_epoch_ms": exact_batch_int(
+                    attempt.get("startedAt"),
+                    "Batch startedAt",
+                ),
+                "stopped_at_epoch_ms": exact_batch_int(
+                    attempt.get("stoppedAt"),
+                    "Batch stoppedAt",
+                ),
                 "status_reason": str(attempt.get("statusReason", "")),
                 "container_instance_arn": str(
                     attempt_container.get("containerInstanceArn", "")
                 ),
                 "task_arn": str(attempt_container.get("taskArn", "")),
                 "log_stream": str(attempt_container.get("logStreamName", "")),
-                "exit_code": int(exit_code) if exit_code is not None else None,
+                "exit_code": (
+                    exact_batch_int(exit_code, "Batch exitCode")
+                    if exit_code is not None
+                    else None
+                ),
                 "reason": str(attempt_container.get("reason", "")),
             }
         )

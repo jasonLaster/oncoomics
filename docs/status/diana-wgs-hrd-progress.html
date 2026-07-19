@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local final-freeze destination identity exactness</li>
+          <li class="pill">Latest milestone = local freeze Batch attempt exactness</li>
+          <li class="pill">Freeze Batch attempts = exact</li>
           <li class="pill">Final-freeze destination bytes = exact</li>
           <li class="pill">Batch controls = exact</li>
           <li class="pill">Terminal Batch runtime = exact</li>
@@ -684,6 +685,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Batch provenance worker bytes</strong>
               <span>Batch provenance capture now rejects non-exact executed-worker receipt-upload bytes, worker source bytes, worker freeze bytes, and executed-worker HEAD/GET ContentLength metadata before terminal.execution.succeeded.json can bind the worker source consumed by stage and final freezes.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact freeze Batch attempts</strong>
+              <span>Stage and final artifact freezing now reject bool, float, or string live Batch attempt timestamps and exit codes before rebinding freeze receipts to a successful Batch job.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact stage-freeze byte counts</strong>
@@ -1255,6 +1260,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T05:00:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact freeze Batch attempts:</strong>
+                stage and final artifact freezing now reject bool, float, or
+                string live Batch attempt timestamps and exit codes before
+                rebinding freeze receipts to a successful Batch job. No live
+                AWS, S3, Batch, route, GPU, quota, or replacement compute was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T04:45:00-07:00">Jul 19 · local</time>
               <span>
