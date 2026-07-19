@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local public index</li>
+          <li class="pill">Latest milestone = local runbook summaries</li>
+          <li class="pill">Publication summaries = exact</li>
           <li class="pill">Reviewed-public rows = exact</li>
           <li class="pill">AI model-catalog receipts = exact</li>
           <li class="pill">Input contract receipts = exact</li>
@@ -356,7 +357,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = ca6bb3d</li>
+          <li class="pill">Prior dashboard = f4cc76b</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -742,6 +743,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact publication runbook summaries</strong>
+              <span>AI synthesis and reviewed-publication runbook rendering now reject stale private receipt-summary fields before downstream private/public publication commands can be rendered.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact reviewed-public index rows</strong>
               <span>The public results index now rejects stale private-publication receipt summaries, source object rows, and destination object rows before reviewed-public receipts can feed the public index.</span>
             </li>
@@ -796,9 +801,20 @@
           <h2>Changelog</h2>
           <ol class="changelog">
             <li class="item">
-              <time datetime="2026-07-19T01:42:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T01:43:00-07:00">Jul 19 · local</time>
               <span>
-                <strong>Local patch · Require exact reviewed-public index rows:</strong>
+                <strong>Local patch · Require exact publication runbook summaries:</strong>
+                AI synthesis and reviewed-publication runbook renderers now
+                require exact private receipt-summary key sets before
+                producing downstream private/public publication handoffs. No
+                S3, Batch, route, GPU, quota, or replacement compute was
+                launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T01:38:52-07:00">Jul 19 · 1:38 AM</time>
+              <span>
+                <strong>f4cc76b Require exact public index receipt rows:</strong>
                 public index validation now enforces exact embedded private
                 receipt summaries, source object rows, and destination object
                 rows before reviewed-public receipts can publish

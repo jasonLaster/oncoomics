@@ -60,6 +60,14 @@ AI_PRIVATE_RECEIPT_STEMS = (
     (AI_REVIEW_METHOD_IDS[1], "ai-reviewer-b"),
     (COMPARATIVE_METHOD_IDS[0], "comparative-synthesis"),
 )
+PRIVATE_REPORT_RECEIPT_SUMMARY_KEYS = {
+    "method_id",
+    "receipt",
+    "destination_prefix",
+    "report_manifest_version_id",
+    "report_manifest_sha256",
+    "object_count",
+}
 
 
 def sha256_path(path: Path) -> str:
@@ -183,6 +191,11 @@ def require_receipt_summaries(
             f"AI synthesis rendering requires seven receipt-bound source manifests in canonical order; observed={method_ids!r}"
         )
     for summary in summaries:
+        if set(summary) != PRIVATE_REPORT_RECEIPT_SUMMARY_KEYS:
+            raise ValueError(
+                f"{summary.get('method_id', 'unknown')} private receipt "
+                "summary envelope is not exact"
+            )
         method_id = str(summary["method_id"])
         try:
             private_report_prefix(

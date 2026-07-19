@@ -33,6 +33,13 @@ STALE_TOKENS = (
     "--source-dir",
     "--expected-file",
 )
+PRIVATE_RECEIPT_SUMMARY_KEYS = {
+    "method_id",
+    "receipt",
+    "receipt_sha256",
+    "destination_prefix",
+    "object_count",
+}
 
 
 def sha256(path: Path) -> str:
@@ -221,6 +228,11 @@ def require_receipt_summaries(
             f"receipts in canonical order; observed={method_ids!r}"
         )
     for summary in summaries:
+        if set(summary) != PRIVATE_RECEIPT_SUMMARY_KEYS:
+            raise ValueError(
+                f"{summary.get('method_id', 'unknown')} private receipt "
+                "summary envelope is not exact"
+            )
         method_id = str(summary["method_id"])
         if str(summary.get("destination_prefix", "")) != destination_prefix(method_id):
             raise ValueError(

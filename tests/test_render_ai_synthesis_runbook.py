@@ -781,6 +781,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
 
     def test_render_refuses_malformed_receipt_summaries(self) -> None:
         for field, value, message in (
+            ("legacy_receipt_sha256", "0" * 64, "summary envelope is not exact"),
             ("destination_prefix", "s3://wrong/", "destination is malformed"),
             (
                 "report_manifest_version_id",

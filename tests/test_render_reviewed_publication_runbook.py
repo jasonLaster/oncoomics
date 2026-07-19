@@ -475,6 +475,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
         ]
 
         for field, value, message in (
+            ("legacy_source_manifest", "0" * 64, "summary envelope is not exact"),
             ("destination_prefix", "s3://wrong/", "destination is malformed"),
             ("object_count", 0, "object count is malformed"),
             ("object_count", True, "object count is malformed"),
