@@ -846,6 +846,24 @@ PHASE3_FAST_COMPACT_SEQUENZA_KEYS = {
     "artifacts",
     "attestations",
 }
+PHASE3_FAST_SEQUENZA_PLANNED_OUTPUTS = {
+    "tumor_bam": "tumor.bam",
+    "tumor_bai": "tumor.bam.bai",
+    "normal_bam": "normal.bam",
+    "normal_bai": "normal.bam.bai",
+    "staged_validation": "staged_input_validation.json",
+}
+PHASE3_FAST_SEQUENZA_ARTIFACTS = {
+    "tumor_bam",
+    "tumor_bai",
+    "normal_bam",
+    "normal_bai",
+}
+PHASE3_FAST_SEQUENZA_REFERENCE_SOURCES = {
+    "fasta",
+    "fai",
+    "sequence_dictionary",
+}
 DIANA_WGS_DETERMINISTIC_INPUTS = {
     "diana_hrd_summary.json": "summary",
     "hrd_readiness.csv": "readiness",
@@ -1409,6 +1427,71 @@ def phase3_fast_compact_sequenza_summary(value: Any) -> dict[str, Any]:
     }
 
 
+def phase3_fast_sequenza_ai_summary(value: Any) -> dict[str, Any]:
+    try:
+        summary = phase3_fast_compact_sequenza_summary(value)
+    except ValueError as exc:
+        raise ValueError("Phase 3 fast Sequenza AI provenance is not exact") from exc
+    assert isinstance(value, Mapping)
+
+    planned_outputs = value.get("planned_alias_outputs")
+    planned_aliases = value.get("planned_aliases")
+    reference = value.get("reference")
+    artifacts = value.get("artifacts")
+
+    if (
+        planned_outputs != PHASE3_FAST_SEQUENZA_PLANNED_OUTPUTS
+        or not isinstance(planned_aliases, Mapping)
+        or set(planned_aliases) != {"tumor", "normal"}
+        or not isinstance(reference, Mapping)
+        or set(reference) != {"build", *PHASE3_FAST_SEQUENZA_REFERENCE_SOURCES}
+        or reference.get("build") != "GRCh38"
+        or not isinstance(artifacts, Mapping)
+        or set(artifacts) != PHASE3_FAST_SEQUENZA_ARTIFACTS
+    ):
+        raise ValueError("Phase 3 fast Sequenza AI provenance is not exact")
+
+    return {
+        "schema_version": 1,
+        "route": "sequenza_scarhrd",
+        "status": summary["status"],
+        "run_alias": require_exact_nonempty_string(
+            value.get("run_alias"),
+            "Phase 3 fast Sequenza AI run_alias",
+        ),
+        "planned_aliases": {
+            "tumor": require_exact_nonempty_string(
+                planned_aliases.get("tumor"),
+                "Phase 3 fast Sequenza AI tumor alias",
+            ),
+            "normal": require_exact_nonempty_string(
+                planned_aliases.get("normal"),
+                "Phase 3 fast Sequenza AI normal alias",
+            ),
+        },
+        "planned_alias_output_roles": sorted(PHASE3_FAST_SEQUENZA_PLANNED_OUTPUTS),
+        "method_parameters": {"sequenza": {"female": summary["female"]}},
+        "reference": {
+            "build": "GRCh38",
+            **{
+                key: phase3_fast_alias_source_summary(
+                    reference[key],
+                    f"Sequenza AI {key}",
+                )
+                for key in sorted(PHASE3_FAST_SEQUENZA_REFERENCE_SOURCES)
+            },
+        },
+        "artifacts": {
+            key: phase3_fast_alias_source_summary(
+                artifacts[key],
+                f"Sequenza AI {key}",
+            )
+            for key in sorted(PHASE3_FAST_SEQUENZA_ARTIFACTS)
+        },
+        "attestations": dict(summary["attestations"]),
+    }
+
+
 def phase3_fast_run_summary(value: Any) -> dict[str, str]:
     if not isinstance(value, Mapping) or set(value) != {
         "run_id",
@@ -1463,13 +1546,6 @@ def compact_sequenza_alias_contract(route_plan: Mapping[str, Any]) -> dict[str, 
     if not isinstance(alias_contract, Mapping):
         raise ValueError("Phase 3 fast Sequenza route lacks an alias input contract")
 
-    expected_outputs = {
-        "tumor_bam": "tumor.bam",
-        "tumor_bai": "tumor.bam.bai",
-        "normal_bam": "normal.bam",
-        "normal_bai": "normal.bam.bai",
-        "staged_validation": "staged_input_validation.json",
-    }
     run_alias = require_exact_nonempty_string(
         alias_contract.get("run_alias"),
         "Phase 3 fast Sequenza run_alias",
@@ -1496,15 +1572,15 @@ def compact_sequenza_alias_contract(route_plan: Mapping[str, Any]) -> dict[str, 
             "tumor_sample": f"{run_alias}_tumor",
             "normal_sample": f"{run_alias}_normal",
         }
-        or planned_alias_outputs != expected_outputs
+        or planned_alias_outputs != PHASE3_FAST_SEQUENZA_PLANNED_OUTPUTS
         or attestations != PHASE3_FAST_SEQUENZA_ATTESTATIONS
         or not isinstance(sequenza_parameters, Mapping)
         or not isinstance(sequenza_parameters.get("female"), bool)
         or not isinstance(reference, Mapping)
-        or set(reference) != {"build", "fasta", "fai", "sequence_dictionary"}
+        or set(reference) != {"build", *PHASE3_FAST_SEQUENZA_REFERENCE_SOURCES}
         or reference.get("build") != "GRCh38"
         or not isinstance(artifacts, Mapping)
-        or set(artifacts) != {"tumor_bam", "tumor_bai", "normal_bam", "normal_bai"}
+        or set(artifacts) != PHASE3_FAST_SEQUENZA_ARTIFACTS
     ):
         raise ValueError("Phase 3 fast Sequenza alias input contract is not exact")
 
@@ -1527,12 +1603,12 @@ def compact_sequenza_alias_contract(route_plan: Mapping[str, Any]) -> dict[str, 
             "build": "GRCh38",
             **{
                 key: phase3_fast_alias_source_summary(reference[key], f"Sequenza {key}")
-                for key in ("fasta", "fai", "sequence_dictionary")
+                for key in sorted(PHASE3_FAST_SEQUENZA_REFERENCE_SOURCES)
             },
         },
         "artifacts": {
             key: phase3_fast_alias_source_summary(artifacts[key], f"Sequenza {key}")
-            for key in ("tumor_bam", "tumor_bai", "normal_bam", "normal_bai")
+            for key in sorted(PHASE3_FAST_SEQUENZA_ARTIFACTS)
         },
         "attestations": dict(attestations),
     }
@@ -1560,17 +1636,11 @@ def diana_wgs_report_provenance(deterministic_binding: Mapping[str, Any]) -> dic
             "parameter_sha256": workflow_summary["parameter_sha256"],
             "source_commit": workflow_summary["source_commit"],
         }
-        sequenza_contract = phase3_summary.get(
-            "sequenza_scarhrd_alias_input_contract"
+        phase3_summary["sequenza_scarhrd_alias_input_contract"] = (
+            phase3_fast_sequenza_ai_summary(
+                phase3_summary.get("sequenza_scarhrd_alias_input_contract")
+            )
         )
-        if isinstance(sequenza_contract, Mapping):
-            sequenza_summary = dict(sequenza_contract)
-            planned_outputs = sequenza_summary.pop("planned_alias_outputs", {})
-            if isinstance(planned_outputs, Mapping):
-                sequenza_summary["planned_alias_output_roles"] = sorted(
-                    str(key) for key in planned_outputs
-                )
-            phase3_summary["sequenza_scarhrd_alias_input_contract"] = sequenza_summary
         provenance["phase3_fast"] = phase3_summary
     return provenance
 

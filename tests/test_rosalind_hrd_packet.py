@@ -321,6 +321,35 @@ def phase3_fast_process_binding() -> dict:
     }
 
 
+def phase3_fast_ai_provenance_binding() -> dict:
+    binding = phase3_fast_process_binding()
+    binding["phase3_fast"]["run"] = {
+        "run_id": "diana-wgs-hrd-20260716T033101Z",
+        "subject_alias": "subject01",
+        "pair_id": "subject01-tumor-normal",
+    }
+    compact = binding["phase3_fast"]["sequenza_scarhrd_alias_input_contract"]
+    sha256 = "3" * 64
+    version_id = "sequenza-ai-version"
+    compact["reference"] = {
+        "build": "GRCh38",
+        "fasta": {"bytes": 1, "sha256": sha256, "version_id": version_id},
+        "fai": {"bytes": 2, "sha256": sha256, "version_id": version_id},
+        "sequence_dictionary": {
+            "bytes": 3,
+            "sha256": sha256,
+            "version_id": version_id,
+        },
+    }
+    compact["artifacts"] = {
+        "tumor_bam": {"bytes": 4, "sha256": sha256, "version_id": version_id},
+        "tumor_bai": {"bytes": 5, "sha256": sha256, "version_id": version_id},
+        "normal_bam": {"bytes": 6, "sha256": sha256, "version_id": version_id},
+        "normal_bai": {"bytes": 7, "sha256": sha256, "version_id": version_id},
+    }
+    return binding
+
+
 def write_staged_rosalind_packet(root: Path) -> list[Path]:
     root.mkdir(parents=True, exist_ok=True)
     for name in packet.PACKET_REPORT_SUPPORT_FILES:
@@ -1493,6 +1522,73 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
                 with self.assertRaisesRegex(ValueError, error):
                     packet.diana_wgs_deterministic_process_lines(binding)
+
+    def test_diana_wgs_phase3_fast_ai_provenance_summarizes_exact_sequenza_alias_contract(
+        self,
+    ):
+        provenance = packet.diana_wgs_report_provenance(
+            phase3_fast_ai_provenance_binding()
+        )
+
+        sequenza_contract = provenance["phase3_fast"][
+            "sequenza_scarhrd_alias_input_contract"
+        ]
+        self.assertEqual(
+            [
+                "normal_bai",
+                "normal_bam",
+                "staged_validation",
+                "tumor_bai",
+                "tumor_bam",
+            ],
+            sequenza_contract["planned_alias_output_roles"],
+        )
+        self.assertNotIn("planned_alias_outputs", sequenza_contract)
+
+    def test_diana_wgs_phase3_fast_ai_provenance_rejects_loose_sequenza_alias_contract(
+        self,
+    ):
+        cases = (
+            (
+                "missing_planned_alias_outputs",
+                lambda compact: compact.pop("planned_alias_outputs"),
+                "Phase 3 fast Sequenza AI provenance is not exact",
+            ),
+            (
+                "raw_planned_alias_output",
+                lambda compact: compact["planned_alias_outputs"].__setitem__(
+                    "tumor_bam",
+                    "raw.bam",
+                ),
+                "Phase 3 fast Sequenza AI provenance is not exact",
+            ),
+            (
+                "uppercase_reference_sha256",
+                lambda compact: compact["reference"]["fasta"].__setitem__(
+                    "sha256",
+                    "A" * 64,
+                ),
+                "Sequenza AI fasta sha256 must be a SHA-256 hex digest",
+            ),
+            (
+                "blank_artifact_version_id",
+                lambda compact: compact["artifacts"]["tumor_bam"].__setitem__(
+                    "version_id",
+                    " none ",
+                ),
+                "Sequenza AI tumor_bam version_id must be a non-empty VersionId string",
+            ),
+        )
+
+        for label, mutation, error in cases:
+            with self.subTest(label=label):
+                binding = phase3_fast_ai_provenance_binding()
+                mutation(
+                    binding["phase3_fast"]["sequenza_scarhrd_alias_input_contract"]
+                )
+
+                with self.assertRaisesRegex(ValueError, error):
+                    packet.diana_wgs_report_provenance(binding)
 
     def test_diana_wgs_phase3_fast_packet_rejects_json_float_counts_and_bytes(self):
         cases = (
