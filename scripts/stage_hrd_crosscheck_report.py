@@ -14,6 +14,10 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any, Sequence
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 from hrd_report_inventory import EXECUTABLE_CROSSCHECK_METHOD_IDS
 
 SUPPORTED_ROUTES = set(EXECUTABLE_CROSSCHECK_METHOD_IDS)
@@ -102,7 +106,15 @@ def load_json(path: Path, label: str) -> dict[str, Any]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} is missing or a symlink")
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value

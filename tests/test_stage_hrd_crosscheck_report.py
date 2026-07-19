@@ -36,6 +36,17 @@ def write_json(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    current = f'  "{key}": {json.dumps(payload[key], sort_keys=True)}'
+    description = f"top-level JSON field {key}"
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one {description}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 def write_route_report(source: Path, route: str = "sigprofiler_sbs3") -> Path:
     source.mkdir()
     report = source / "report.md"
@@ -306,6 +317,42 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 [row["relative_path"] for row in rows],
                 sorted(PUBLISH.METHOD_CONTRACTS["sigprofiler_sbs3"]["files"]),
             )
+
+    def test_stage_rejects_duplicate_download_verification_object_names(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            write_duplicate_json_field(verification, "status", "failed")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in download verification: status",
+            ):
+                STAGE.stage(source, verification, root / "staged", "sigprofiler_sbs3")
+
+            self.assertFalse((root / "staged").exists())
+
+    def test_stage_rejects_duplicate_route_manifest_object_names(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            write_duplicate_json_field(
+                source / "report_manifest.json",
+                "route",
+                "stale_route",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in route report manifest: route",
+            ):
+                STAGE.stage(source, verification, root / "staged", "sigprofiler_sbs3")
+
+            self.assertFalse((root / "staged").exists())
 
     def test_stage_rehashes_method_spec_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
