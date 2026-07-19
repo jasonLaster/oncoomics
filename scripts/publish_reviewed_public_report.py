@@ -262,9 +262,10 @@ def write_private_atomic(path: Path, value: dict[str, Any], *, create: bool) -> 
     temporary = Path(raw)
     linked = False
     try:
-        if not create:
-            if not path.is_file() or (path.stat().st_mode & 0o777) != 0o600:
-                raise ValueError("reserved receipt output is missing or not mode 0600")
+        if not create and (
+            not path.is_file() or (path.stat().st_mode & 0o777) != 0o600
+        ):
+            raise ValueError("reserved receipt output is missing or not mode 0600")
         with os.fdopen(descriptor, "wb") as handle:
             descriptor = -1
             handle.write(data)
@@ -546,6 +547,16 @@ def exact_source_checks(
     }
 
 
+def require_public_destination_checks_exact(
+    checks: dict[str, bool],
+    relative_path: str,
+) -> None:
+    if checks != PUBLIC_DESTINATION_OBJECT_CHECKS:
+        raise ValueError(
+            f"public destination verification failed for {relative_path}: {checks}"
+        )
+
+
 def scan_text(path: Path, tokens: tuple[str, ...]) -> None:
     try:
         text = path.read_text(encoding="utf-8")
@@ -713,10 +724,7 @@ def upload_public(
         == current.get("ContentType")
         == content_type(row["relative_path"]),
     }
-    if not all(checks.values()):
-        raise ValueError(
-            f"public destination verification failed for {row['relative_path']}: {checks}"
-        )
+    require_public_destination_checks_exact(checks, str(row["relative_path"]))
     return {
         "relative_path": row["relative_path"],
         "bucket": PUBLIC_BUCKET,

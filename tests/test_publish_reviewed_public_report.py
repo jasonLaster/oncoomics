@@ -868,6 +868,49 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "destination verification failed"):
                 self.execute(fixture, fake, apply=True)
 
+    def test_public_destination_object_checks_must_be_exact(self) -> None:
+        cases = (
+            {"version_exact": True},
+            {
+                **MODULE.PUBLIC_DESTINATION_OBJECT_CHECKS,
+                "unexpected_late_check": True,
+            },
+        )
+
+        for checks in cases:
+            with self.subTest(checks=checks):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "public destination verification failed",
+                ):
+                    MODULE.require_public_destination_checks_exact(
+                        checks,
+                        "report.md",
+                    )
+
+    def test_apply_rejects_outdated_public_destination_object_check_set(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "PUBLIC_DESTINATION_OBJECT_CHECKS",
+                    {
+                        **MODULE.PUBLIC_DESTINATION_OBJECT_CHECKS,
+                        "unexpected_late_check": True,
+                    },
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "public destination verification failed",
+                ),
+            ):
+                self.execute(fixture, fake, apply=True)
+
     def test_apply_rejects_delete_marker_in_final_history(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
