@@ -6,8 +6,8 @@ import shutil
 import sys
 import tempfile
 import unittest
-from unittest import mock
 from pathlib import Path
+from unittest import mock
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
@@ -79,7 +79,12 @@ def write_route_report(source: Path, route: str = "sigprofiler_sbs3") -> Path:
         {
             "schema_version": 1,
             "status": "passed",
+            "publication_receipt_sha256": "a" * 64,
+            "publication_receipt_uri": "s3://diana-omics-private-results-unit/receipt.json",
+            "route_output_uri": "s3://diana-omics-private-results-unit/route/",
+            "expected_kms_key_arn": "arn:aws:kms:us-east-1:172630973301:key/unit",
             "live_history_checks": dict(STAGE.EXPECTED_DOWNLOAD_LIVE_HISTORY_CHECKS),
+            "output_dir": str(source),
             "object_count": len(rows),
             "objects": rows,
         },
@@ -106,7 +111,12 @@ def refresh_download_verification(source: Path, verification: Path) -> None:
         {
             "schema_version": 1,
             "status": "passed",
+            "publication_receipt_sha256": "a" * 64,
+            "publication_receipt_uri": "s3://diana-omics-private-results-unit/receipt.json",
+            "route_output_uri": "s3://diana-omics-private-results-unit/route/",
+            "expected_kms_key_arn": "arn:aws:kms:us-east-1:172630973301:key/unit",
             "live_history_checks": dict(STAGE.EXPECTED_DOWNLOAD_LIVE_HISTORY_CHECKS),
+            "output_dir": str(source),
             "object_count": len(rows),
             "objects": rows,
         },
@@ -415,6 +425,41 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
                 self.assertFalse((root / "staged").exists())
 
+    def test_stage_rejects_inexact_download_verification_envelopes(self) -> None:
+        cases = (
+            (
+                "verification",
+                lambda payload: payload.__setitem__("legacy_note", "accepted"),
+                "download verification envelope is not exact",
+            ),
+            (
+                "object",
+                lambda payload: payload["objects"][0].__setitem__(
+                    "legacy_note",
+                    "accepted",
+                ),
+                "download verification object row is not exact",
+            ),
+        )
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "exact"
+                verification = write_route_report(source)
+                payload = json.loads(verification.read_text(encoding="utf-8"))
+                mutate(payload)
+                write_json(verification, payload)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    STAGE.stage(
+                        source,
+                        verification,
+                        root / "staged",
+                        "sigprofiler_sbs3",
+                    )
+
+                self.assertFalse((root / "staged").exists())
+
     def test_stage_rejects_download_verification_row_without_version_id(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -535,10 +580,19 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 {
                     "schema_version": 1,
                     "status": "passed",
+                    "publication_receipt_sha256": "a" * 64,
+                    "publication_receipt_uri": (
+                        "s3://diana-omics-private-results-unit/receipt.json"
+                    ),
+                    "route_output_uri": "s3://diana-omics-private-results-unit/route/",
+                    "expected_kms_key_arn": (
+                        "arn:aws:kms:us-east-1:172630973301:key/unit"
+                    ),
                     "object_count": 3,
                     "live_history_checks": dict(
                         STAGE.EXPECTED_DOWNLOAD_LIVE_HISTORY_CHECKS
                     ),
+                    "output_dir": str(source),
                     "objects": [
                         {
                             "relative_path": relative,

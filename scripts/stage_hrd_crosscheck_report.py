@@ -63,6 +63,31 @@ EXPECTED_DOWNLOAD_OBJECT_CHECKS = {
     "checksum_type_full_object": True,
     "exact_kms": True,
 }
+DOWNLOAD_VERIFICATION_REQUIRED_KEYS = {
+    "schema_version",
+    "status",
+    "publication_receipt_sha256",
+    "publication_receipt_uri",
+    "route_output_uri",
+    "expected_kms_key_arn",
+    "live_history_checks",
+    "output_dir",
+    "objects",
+    "object_count",
+}
+DOWNLOAD_VERIFICATION_OPTIONAL_KEYS = {
+    "recovered_from_status",
+    "prior_verification_sha256",
+    "prior_error",
+    "recovered_prepared_cutover",
+}
+DOWNLOAD_VERIFICATION_OBJECT_KEYS = {
+    "relative_path",
+    "version_id",
+    "bytes",
+    "sha256",
+    "checks",
+}
 
 
 def sha256(path: Path) -> str:
@@ -150,9 +175,34 @@ def require_download_verification(
 ) -> dict[str, str | int]:
     verification = load_json(verification_path, "download verification")
     rows = verification.get("objects")
+    keys = set(verification)
+    if (
+        not DOWNLOAD_VERIFICATION_REQUIRED_KEYS.issubset(keys)
+        or keys - DOWNLOAD_VERIFICATION_REQUIRED_KEYS - DOWNLOAD_VERIFICATION_OPTIONAL_KEYS
+    ):
+        raise ValueError("download verification envelope is not exact")
+    if "recovered_prepared_cutover" in verification and verification.get(
+        "recovered_prepared_cutover"
+    ) is not True:
+        raise ValueError("download verification envelope is not exact")
+    if "prior_verification_sha256" in verification:
+        require_sha(
+            verification.get("prior_verification_sha256"),
+            "download verification prior_verification_sha256",
+        )
+    if "prior_error" in verification and not str(verification.get("prior_error", "")):
+        raise ValueError("download verification envelope is not exact")
     if (
         verification.get("schema_version") != 1
         or verification.get("status") != "passed"
+        or not require_sha(
+            verification.get("publication_receipt_sha256"),
+            "download verification publication receipt SHA-256",
+        )
+        or not str(verification.get("publication_receipt_uri", "")).startswith("s3://")
+        or not str(verification.get("route_output_uri", "")).startswith("s3://")
+        or not str(verification.get("expected_kms_key_arn", "")).startswith("arn:aws:kms:")
+        or not str(verification.get("output_dir", ""))
         or not isinstance(rows, list)
         or not rows
         or int(verification.get("object_count", -1)) != len(rows)
@@ -168,6 +218,8 @@ def require_download_verification(
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError("download verification contains a malformed row")
+        if set(row) != DOWNLOAD_VERIFICATION_OBJECT_KEYS:
+            raise ValueError("download verification object row is not exact")
         relative = str(row.get("relative_path", ""))
         require_safe_relative_path(relative, "download verification path")
         if relative in expected:
