@@ -69,6 +69,12 @@ def exact_s3_size(value: Any, label: str) -> int:
     return value
 
 
+def exact_s3_key(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} is not an exact nonempty S3 key")
+    return value
+
+
 def exact_version_id(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value or value == "null":
         raise ValueError(f"{label} is not a non-null S3 VersionId")
@@ -84,7 +90,7 @@ def exact_crc64nvme(value: Any, label: str) -> str:
 def inventory_total_bytes(rows: list[dict[str, Any]], label: str) -> int:
     total = 0
     for index, row in enumerate(rows, 1):
-        key = str(row.get("Key", f"object {index}"))
+        key = exact_s3_key(row.get("Key"), f"{label} object {index} Key")
         total += exact_s3_size(row.get("Size"), f"{label} {key} Size")
     return total
 
@@ -238,7 +244,10 @@ def list_objects(bucket: str, prefix: str) -> list[dict[str, Any]]:
     rows = payload.get("Contents", [])
     if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
         raise ValueError(f"malformed object listing for s3://{bucket}/{prefix}")
-    return sorted(rows, key=lambda row: str(row.get("Key", "")))
+    for index, row in enumerate(rows, 1):
+        key = exact_s3_key(row.get("Key"), f"listed object {index} Key")
+        exact_s3_size(row.get("Size"), f"listed object {key} Size")
+    return sorted(rows, key=lambda row: row["Key"])
 
 
 def list_destination_history() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -271,7 +280,7 @@ def head(bucket: str, key: str) -> dict[str, Any]:
 
 
 def source_evidence(bucket: str, row: dict[str, Any]) -> dict[str, Any]:
-    key = str(row["Key"])
+    key = exact_s3_key(row.get("Key"), "source listing Key")
     listed_size = exact_s3_size(row.get("Size"), f"source listing {key} Size")
     evidence = head(bucket, key)
     head_size = exact_s3_size(

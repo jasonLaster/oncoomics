@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import gzip
 import importlib.util
 import json
@@ -205,6 +206,67 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                         "preserved early-look",
                     )
 
+    def test_object_inventory_requires_exact_s3_keys(self) -> None:
+        self.assertEqual(
+            MODULE.inventory_total_bytes(
+                [{"Key": MODULE.WORK_PREFIX + "a.json", "Size": 42}],
+                "preserved early-look",
+            ),
+            42,
+        )
+        for value in (True, 1, 1.0, "", None):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "exact nonempty S3 key"):
+                    MODULE.inventory_total_bytes(
+                        [{"Key": value, "Size": 42}],
+                        "preserved early-look",
+                    )
+
+    def test_list_objects_rejects_malformed_rows_without_sort_coercion(self) -> None:
+        cases = (
+            ("boolean Key", {"Contents": [{"Key": True, "Size": 1}]}, "S3 key"),
+            ("empty Key", {"Contents": [{"Key": "", "Size": 1}]}, "S3 key"),
+            (
+                "float Size",
+                {"Contents": [{"Key": MODULE.WORK_PREFIX + "a.json", "Size": 1.0}]},
+                "S3 size",
+            ),
+        )
+        for label, payload, expected_error in cases:
+            with self.subTest(label=label):
+                with (
+                    mock.patch.object(MODULE, "aws_json", return_value=payload),
+                    self.assertRaisesRegex(ValueError, expected_error),
+                ):
+                    MODULE.list_objects(MODULE.WORK_BUCKET, MODULE.WORK_PREFIX)
+
+    def test_list_objects_sort_avoids_raw_string_coercion(self) -> None:
+        module = ast.parse(SCRIPT.read_text(encoding="utf-8"))
+        parent_by_child = {
+            child: parent
+            for parent in ast.walk(module)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def in_list_objects(node: ast.AST) -> bool:
+            parent = parent_by_child.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef):
+                    return parent.name == "list_objects"
+                parent = parent_by_child.get(parent)
+            return False
+
+        raw_string_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and in_list_objects(node)
+        ]
+
+        self.assertEqual(raw_string_coercions, [])
+
     def test_exact_version_id_rejects_non_string_or_null_versions(self) -> None:
         self.assertEqual(
             MODULE.exact_version_id("version-1", "upload VersionId"),
@@ -295,6 +357,19 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                 self.assertRaisesRegex(ValueError, "exact nonnegative S3 size"),
             ):
                 MODULE.source_evidence("source-bucket", row)
+
+    def test_source_evidence_requires_exact_s3_key(self) -> None:
+        for value in (True, 1, 1.0, "", None):
+            with (
+                self.subTest(value=value),
+                mock.patch.object(
+                    MODULE,
+                    "head",
+                    side_effect=AssertionError("HEAD called"),
+                ),
+                self.assertRaisesRegex(ValueError, "exact nonempty S3 key"),
+            ):
+                MODULE.source_evidence("source-bucket", {"Key": value, "Size": 42})
 
     def test_source_evidence_requires_exact_crc64nvme_checksum(self) -> None:
         head = {
