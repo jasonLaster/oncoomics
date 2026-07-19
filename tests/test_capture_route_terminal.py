@@ -75,7 +75,7 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                     "server_side_encryption": "aws:kms",
                     "ssekms_key_id": kms,
                     "checksum_sha256": checksum,
-                    "checks": {name: True for name in MODULE.OBJECT_CHECKS},
+                    "checks": dict(MODULE.EXPECTED_OBJECT_CHECKS),
                 }
             )
             history_audit.append(
@@ -83,7 +83,7 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                     "key": key,
                     "version_id": version_id,
                     "sha256": sha,
-                    "checks": {name: True for name in MODULE.HISTORY_AUDIT_CHECKS},
+                    "checks": dict(MODULE.EXPECTED_HISTORY_AUDIT_CHECKS),
                 }
             )
         receipt = {
@@ -102,7 +102,7 @@ class CaptureRouteTerminalTests(unittest.TestCase):
             "publication_strategy": ("one_shot_create_only_exact_version_history"),
             "objects": object_rows,
             "history_audit": history_audit,
-            "checks": {name: True for name in MODULE.RECEIPT_CHECKS},
+            "checks": dict(MODULE.EXPECTED_RECEIPT_CHECKS),
         }
         receipt_bytes = (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode("utf-8")
         receipt_sha = hashlib.sha256(receipt_bytes).hexdigest()
@@ -128,7 +128,7 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                 "receipt_uri": receipt_uri,
                 "receipt_version_id": receipt_version,
                 "route_output_uri": route_output,
-                "checks": {name: True for name in MODULE.ANCHOR_CHECKS},
+                "checks": dict(MODULE.EXPECTED_PUBLICATION_ANCHOR_CHECKS),
             }
         }
         log_stream = "hrd-crosscheck/default/exact-route-task"
@@ -806,6 +806,33 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                         aws=self.aws_side_effect(fixture, events=self.events(fixture, terminal)),
                     )
 
+    def test_rejects_logged_anchor_with_missing_unexpected_or_failed_check(self):
+        fixture = self.fixture()
+        cases = {}
+        for label, mutate in (
+            ("missing", lambda checks: checks.pop("sha256_exact")),
+            ("unexpected", lambda checks: checks.__setitem__("forged_extra", True)),
+            ("failed", lambda checks: checks.__setitem__("exact_kms", False)),
+        ):
+            terminal = copy.deepcopy(fixture["terminal"])
+            mutate(terminal["publication_anchor"]["checks"])
+            cases[label] = terminal
+
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, terminal in cases.items():
+                with self.subTest(label=label), self.assertRaisesRegex(
+                    ValueError,
+                    "anchor failed",
+                ):
+                    self.run_capture(
+                        self.args(Path(temporary) / label, fixture),
+                        fixture,
+                        aws=self.aws_side_effect(
+                            fixture,
+                            events=self.events(fixture, terminal),
+                        ),
+                    )
+
     def test_receipt_rejects_contract_route_submission_and_inventory_tampering(self):
         fixture = self.fixture()
         receipts = []
@@ -861,6 +888,112 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                     metadata,
                     history,
                     local_location,
+                    args,
+                    fixture["submission_environment"],
+                )
+
+    def test_receipt_rejects_missing_unexpected_or_failed_check_maps(self):
+        fixture = self.fixture()
+        cases = {}
+        for location, label, mutate in (
+            (
+                "receipt",
+                "missing",
+                lambda receipt: receipt["checks"].pop("all_outputs_create_only"),
+            ),
+            (
+                "receipt",
+                "unexpected",
+                lambda receipt: receipt["checks"].__setitem__("forged_extra", True),
+            ),
+            (
+                "receipt",
+                "failed",
+                lambda receipt: receipt["checks"].__setitem__(
+                    "all_output_versions_exact",
+                    False,
+                ),
+            ),
+            (
+                "object",
+                "missing",
+                lambda receipt: receipt["objects"][0]["checks"].pop("create_only_put"),
+            ),
+            (
+                "object",
+                "unexpected",
+                lambda receipt: receipt["objects"][0]["checks"].__setitem__(
+                    "forged_extra",
+                    True,
+                ),
+            ),
+            (
+                "object",
+                "failed",
+                lambda receipt: receipt["objects"][0]["checks"].__setitem__(
+                    "version_exact",
+                    False,
+                ),
+            ),
+            (
+                "history",
+                "missing",
+                lambda receipt: receipt["history_audit"][0]["checks"].pop(
+                    "checksum_sha256_exact"
+                ),
+            ),
+            (
+                "history",
+                "unexpected",
+                lambda receipt: receipt["history_audit"][0]["checks"].__setitem__(
+                    "forged_extra",
+                    True,
+                ),
+            ),
+            (
+                "history",
+                "failed",
+                lambda receipt: receipt["history_audit"][0]["checks"].__setitem__(
+                    "exact_kms",
+                    False,
+                ),
+            ),
+        ):
+            receipt = copy.deepcopy(fixture["receipt"])
+            mutate(receipt)
+            cases[f"{location}-{label}"] = receipt
+
+        location = {
+            "key": fixture["receipt_key"],
+            "version_id": fixture["receipt_version"],
+            "bytes": len(fixture["receipt_bytes"]),
+        }
+        args = self.args(Path("unused"), fixture)
+        history = [
+            {
+                "history_kind": "version",
+                "Key": fixture["receipt_key"],
+                "VersionId": fixture["receipt_version"],
+                "IsLatest": True,
+            }
+        ]
+        for label, receipt_value in cases.items():
+            content = (json.dumps(receipt_value, indent=2, sort_keys=True) + "\n").encode()
+            local_sha = hashlib.sha256(content).hexdigest()
+            checksum = base64.b64encode(bytes.fromhex(local_sha)).decode()
+            metadata = {
+                **fixture["metadata"],
+                "ContentLength": len(content),
+                "ChecksumSHA256": checksum,
+                "Metadata": {"sha256": local_sha},
+            }
+            with self.subTest(label=label), self.assertRaises(ValueError):
+                MODULE.validate_exact_receipt(
+                    content,
+                    metadata,
+                    metadata,
+                    history,
+                    {**location, "sha256": local_sha},
                     args,
                     fixture["submission_environment"],
                 )

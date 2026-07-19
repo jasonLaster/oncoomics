@@ -95,35 +95,35 @@ SUBMISSION_ENVIRONMENT_NAMES = (
     "HRD_CROSSCHECK_PUBLICATION_RECEIPT_PREFIX",
     "HRD_CROSSCHECK_SUBMISSION_ID",
 )
-ANCHOR_CHECKS = {
-    "version_exact",
-    "bytes_exact",
-    "sha256_exact",
-    "sha256_checksum_exact",
-    "metadata_sha256_exact",
-    "exact_kms",
-    "single_create_only_version",
+EXPECTED_PUBLICATION_ANCHOR_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_create_only_version": True,
 }
-RECEIPT_CHECKS = {
-    "exact_contract_version_bound",
-    "route_prefix_initially_empty",
-    "all_outputs_create_only",
-    "all_output_versions_exact",
-    "no_extra_versions_or_delete_markers",
+EXPECTED_RECEIPT_CHECKS = {
+    "exact_contract_version_bound": True,
+    "route_prefix_initially_empty": True,
+    "all_outputs_create_only": True,
+    "all_output_versions_exact": True,
+    "no_extra_versions_or_delete_markers": True,
 }
-OBJECT_CHECKS = {
-    "create_only_put",
-    "version_exact",
-    "bytes_exact",
-    "metadata_sha256_exact",
-    "exact_kms",
+EXPECTED_OBJECT_CHECKS = {
+    "create_only_put": True,
+    "version_exact": True,
+    "bytes_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
 }
-HISTORY_AUDIT_CHECKS = {
-    "version_exact",
-    "bytes_exact",
-    "metadata_sha256_exact",
-    "checksum_sha256_exact",
-    "exact_kms",
+EXPECTED_HISTORY_AUDIT_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "metadata_sha256_exact": True,
+    "checksum_sha256_exact": True,
+    "exact_kms": True,
 }
 
 
@@ -597,11 +597,7 @@ def validate_logged_anchor(
     checks = {
         "anchor_keys_exact": set(anchor) == expected_anchor_keys,
         "anchor_schema_status": (anchor.get("schema_version") == 1 and anchor.get("status") == "passed"),
-        "anchor_checks_exact": (
-            isinstance(anchor_checks, dict)
-            and set(anchor_checks) == ANCHOR_CHECKS
-            and all(value is True for value in anchor_checks.values())
-        ),
+        "anchor_checks_exact": anchor_checks == EXPECTED_PUBLICATION_ANCHOR_CHECKS,
         "receipt_sha256_well_formed": bool(re.fullmatch(r"[0-9a-f]{64}", receipt_sha)),
         "receipt_bytes_positive": (isinstance(receipt_bytes, int) and not isinstance(receipt_bytes, bool) and receipt_bytes > 0),
         "receipt_version_nonempty": valid_version_id(receipt_version),
@@ -684,9 +680,7 @@ def validate_output_rows(
             and row["content_length"] > 0
             and row.get("server_side_encryption") == "aws:kms"
             and row.get("ssekms_key_id") == expected_kms_key_arn
-            and isinstance(row_checks, dict)
-            and set(row_checks) == OBJECT_CHECKS
-            and all(value is True for value in row_checks.values())
+            and row_checks == EXPECTED_OBJECT_CHECKS
         )
         if valid:
             try:
@@ -717,9 +711,7 @@ def validate_output_rows(
         )
         if (
             set(row) != {"key", "version_id", "sha256", "checks"}
-            or not isinstance(row_checks, dict)
-            or set(row_checks) != HISTORY_AUDIT_CHECKS
-            or any(value is not True for value in row_checks.values())
+            or row_checks != EXPECTED_HISTORY_AUDIT_CHECKS
             or binding in audit_bindings
         ):
             raise ValueError("route receipt history audit row failed")
@@ -825,11 +817,7 @@ def validate_exact_receipt(
             and receipt.get("route_output_bucket_versioning") == "Enabled"
             and receipt.get("publication_strategy") == "one_shot_create_only_exact_version_history"
         ),
-        "receipt_checks_exact": (
-            isinstance(receipt_checks, dict)
-            and set(receipt_checks) == RECEIPT_CHECKS
-            and all(value is True for value in receipt_checks.values())
-        ),
+        "receipt_checks_exact": receipt_checks == EXPECTED_RECEIPT_CHECKS,
         "output_inventory_exact": all(output_checks.values()),
     }
     if not all(checks.values()):
