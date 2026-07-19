@@ -384,6 +384,40 @@ class FinalizeAiReviewTests(unittest.TestCase):
 
             self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_rejects_stale_source_after_final_manifest_write(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            real_write_create_only = FINALIZE.write_create_only
+
+            def tamper_after_manifest_write(path: Path, value: dict) -> str:
+                digest = real_write_create_only(path, value)
+                (fixture.bundle_dir / "reviewer-a.prompt.md").write_text(
+                    "stale reviewer prompt\n",
+                    encoding="utf-8",
+                )
+                return digest
+
+            with (
+                mock.patch.object(
+                    FINALIZE,
+                    "write_create_only",
+                    side_effect=tamper_after_manifest_write,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "AI review source hashes are not exact",
+                ),
+            ):
+                FINALIZE.finalize(
+                    fixture.bundle_dir,
+                    review,
+                    "A",
+                    fixture.catalog_receipt,
+                    review / "report_manifest.json",
+                )
+
+            self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_stale_final_manifest_after_support_validation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)

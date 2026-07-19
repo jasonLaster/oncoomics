@@ -662,6 +662,28 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.require_synthesis_report_manifest(staging)
 
+    def test_synthesis_rejects_stale_expected_external_source_hash(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            write_synthesis_agreement(agreement)
+            payload = write_synthesis_manifest(manifest, report, agreement)
+            expected_source_hashes = dict(payload["source_sha256"])
+            payload["source_sha256"]["review_bundle.json"] = "0" * 64
+            write_json(manifest, payload)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis source hashes are stale",
+            ):
+                GENERATE.require_synthesis_report_manifest(
+                    staging,
+                    expected_source_hashes=expected_source_hashes,
+                )
+
     def test_synthesis_rejects_stale_readiness_summary(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             staging = Path(temporary)

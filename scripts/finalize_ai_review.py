@@ -8,7 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from build_ai_review_bundle import (
     require_bundle_manifest,
@@ -117,36 +117,68 @@ def require_exact_review_dir(review_dir: Path, expected: set[str]) -> None:
         raise ValueError("review directory contains invalid paths: " + ",".join(invalid))
 
 
+def review_source_paths(
+    bundle_dir: Path,
+    review_dir: Path,
+    reviewer: str,
+    model_catalog_receipt: Path,
+) -> dict[str, Path]:
+    if reviewer not in REVIEWER_METHODS:
+        raise ValueError("reviewer must be A or B")
+    return {
+        "report.md": review_dir / "report.md",
+        "claims.csv": review_dir / "claims.csv",
+        "review_manifest.json": review_dir / "review_manifest.json",
+        "validation.json": review_dir / "validation.json",
+        "review_bundle.json": bundle_dir / "review_bundle.json",
+        "bundle_manifest.json": bundle_dir / "bundle_manifest.json",
+        f"reviewer-{reviewer.lower()}.prompt.md": (
+            bundle_dir / f"reviewer-{reviewer.lower()}.prompt.md"
+        ),
+        "model_catalog_receipt.json": model_catalog_receipt,
+    }
+
+
+def expected_source_sha256(paths: Mapping[str, Path]) -> dict[str, str]:
+    hashes = {}
+    for name, path in sorted(paths.items()):
+        require_file(path, name)
+        if name != "report.md":
+            hashes[name] = sha256(path)
+    return hashes
+
+
+def require_exact_source_sha256(
+    paths: Mapping[str, Path],
+    manifest: Mapping[str, Any],
+) -> None:
+    if manifest.get("source_sha256") != expected_source_sha256(paths):
+        raise ValueError("AI review source hashes are not exact")
+
+
 def build_manifest(
     bundle_dir: Path,
     review_dir: Path,
     reviewer: str,
     model_catalog_receipt: Path,
 ) -> dict[str, Any]:
-    if reviewer not in REVIEWER_METHODS:
-        raise ValueError("reviewer must be A or B")
-
-    report_path = review_dir / "report.md"
-    claims_path = review_dir / "claims.csv"
-    review_manifest_path = review_dir / "review_manifest.json"
-    validation_path = review_dir / "validation.json"
-    bundle_path = bundle_dir / "review_bundle.json"
-    bundle_manifest_path = bundle_dir / "bundle_manifest.json"
-    prompt_path = bundle_dir / f"reviewer-{reviewer.lower()}.prompt.md"
-    paths = {
-        "report.md": report_path,
-        "claims.csv": claims_path,
-        "review_manifest.json": review_manifest_path,
-        "validation.json": validation_path,
-        "review_bundle.json": bundle_path,
-        "bundle_manifest.json": bundle_manifest_path,
-        prompt_path.name: prompt_path,
-        "model_catalog_receipt.json": model_catalog_receipt,
-    }
+    paths = review_source_paths(
+        bundle_dir,
+        review_dir,
+        reviewer,
+        model_catalog_receipt,
+    )
     for name, path in paths.items():
         require_file(path, name)
     require_bundle_manifest(bundle_dir)
 
+    report_path = paths["report.md"]
+    claims_path = paths["claims.csv"]
+    review_manifest_path = paths["review_manifest.json"]
+    validation_path = paths["validation.json"]
+    bundle_path = paths["review_bundle.json"]
+    bundle_manifest_path = paths["bundle_manifest.json"]
+    prompt_path = paths[f"reviewer-{reviewer.lower()}.prompt.md"]
     review_manifest = load_object(review_manifest_path, "review manifest")
     validation = load_object(validation_path, "validation")
     bundle = load_object(bundle_path, "review bundle")
@@ -285,11 +317,7 @@ def build_manifest(
             "review_manifest.json": review_manifest_hash,
             "validation.json": sha256(validation_path),
         },
-        "source_sha256": {
-            name: sha256(path)
-            for name, path in sorted(paths.items())
-            if name != "report.md"
-        },
+        "source_sha256": expected_source_sha256(paths),
         "review_summary": {
             "overall": {
                 "evidence_status": "partial_evidence",
@@ -405,12 +433,19 @@ def finalize(
     )
     manifest_sha256 = write_create_only(output, manifest)
     try:
+        source_paths = review_source_paths(
+            bundle_dir,
+            review_dir,
+            reviewer,
+            model_catalog_receipt,
+        )
         require_exact_review_dir(review_dir, REVIEW_PACKET_FILES)
         validate_report_manifest_support(
             review_dir,
             manifest,
             REVIEWER_METHODS[reviewer],
         )
+        require_exact_source_sha256(source_paths, manifest)
         require_installed_manifest(output, manifest_sha256)
     except ValueError:
         output.unlink(missing_ok=True)

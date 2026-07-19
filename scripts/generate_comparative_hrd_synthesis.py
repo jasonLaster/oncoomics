@@ -18,7 +18,7 @@ import re
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
 from build_ai_review_bundle import validate_report_manifest_support
 from forbidden_text import has_unauthorized_hrd_classification
@@ -957,6 +957,7 @@ def require_synthesis_source_hashes(
     manifest: Dict[str, Any],
     agreement_sha256: str,
     required_methods: Sequence[str],
+    expected_source_hashes: Mapping[str, str] | None = None,
 ) -> None:
     source_hashes = manifest.get("source_sha256")
     if (
@@ -972,6 +973,11 @@ def require_synthesis_source_hashes(
         )
     if source_hashes["generator"] != sha256(Path(__file__).resolve()):
         raise ValueError("comparative synthesis generator hash is stale")
+    if (
+        expected_source_hashes is not None
+        and source_hashes != dict(expected_source_hashes)
+    ):
+        raise ValueError("comparative synthesis source hashes are stale")
 
 
 def require_string_list(value: Any, label: str) -> List[str]:
@@ -1142,7 +1148,11 @@ def require_synthesis_review_summary(
     return required_methods
 
 
-def require_synthesis_report_manifest(packet_dir: Path) -> None:
+def require_synthesis_report_manifest(
+    packet_dir: Path,
+    *,
+    expected_source_hashes: Mapping[str, str] | None = None,
+) -> None:
     observed = {path.name for path in packet_dir.iterdir()}
     if observed != OUTPUT_FILES:
         missing = sorted(OUTPUT_FILES - observed)
@@ -1213,7 +1223,12 @@ def require_synthesis_report_manifest(packet_dir: Path) -> None:
     agreement_sha256 = sha256(agreement_path)
     agreement_rows = read_agreement(agreement_path)
     required_methods = require_synthesis_review_summary(manifest, agreement_rows)
-    require_synthesis_source_hashes(manifest, agreement_sha256, required_methods)
+    require_synthesis_source_hashes(
+        manifest,
+        agreement_sha256,
+        required_methods,
+        expected_source_hashes=expected_source_hashes,
+    )
 
 
 def copy_create_only(source: Path, destination: Path) -> None:
@@ -1462,7 +1477,10 @@ def main() -> None:
         }
         manifest_path = staging / "report_manifest.json"
         write_staged_bytes(manifest_path, canonical_json_bytes(manifest))
-        require_synthesis_report_manifest(staging)
+        require_synthesis_report_manifest(
+            staging,
+            expected_source_hashes=source_hashes,
+        )
         try:
             install_packet_create_only(
                 (report_path, agreement_path, manifest_path),
