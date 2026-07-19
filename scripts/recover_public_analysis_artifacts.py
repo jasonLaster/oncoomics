@@ -189,6 +189,22 @@ def require_safe_private_output_parent(path: pathlib.Path) -> None:
             raise ValueError(f"receipt output parent is not a directory: {parent}")
 
 
+def require_safe_staging_path(path: pathlib.Path, label: str) -> None:
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink: {path}")
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
+def require_real_staging_file(path: pathlib.Path, label: str) -> None:
+    require_safe_staging_path(path, label)
+    if not path.is_file():
+        raise ValueError(f"{label} is missing: {path}")
+
+
 def is_platform_root_alias(path: pathlib.Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
@@ -310,6 +326,7 @@ def source_evidence(bucket: str, row: dict[str, Any]) -> dict[str, Any]:
 
 
 def download(source: dict[str, Any], path: pathlib.Path) -> bytes:
+    require_safe_staging_path(path, "download output")
     path.parent.mkdir(parents=True, exist_ok=True)
     completed = subprocess.run(
         [
@@ -336,6 +353,7 @@ def download(source: dict[str, Any], path: pathlib.Path) -> bytes:
     response = json.loads(completed.stdout) if completed.stdout.strip() else {}
     if response.get("ChecksumCRC64NVME") != source["checksum_crc64nvme"]:
         raise ValueError(f"download checksum response mismatch for {source['key']}")
+    require_real_staging_file(path, "download output")
     data = path.read_bytes()
     if len(data) != source["bytes"]:
         raise ValueError(f"download byte count mismatch for {source['key']}")
@@ -423,6 +441,7 @@ def materialize_source(
     destination_path = staging / "public" / destination_relative(destination_key)
     raw_path = staging / "downloads" / hashlib.sha256(source["key"].encode()).hexdigest()
     raw = download(source, raw_path)
+    require_safe_staging_path(destination_path, "public recovery output")
     destination_path.parent.mkdir(parents=True, exist_ok=True)
     transformed = False
     if destination_key.endswith(".vcf.gz"):
@@ -469,6 +488,7 @@ def generated_object(staging: pathlib.Path, relative: str, data: bytes) -> dict[
     key = f"{DESTINATION_PREFIX}{relative}"
     scan_public_bytes(key, data)
     path = staging / "public" / relative
+    require_safe_staging_path(path, "public recovery output")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
     return {

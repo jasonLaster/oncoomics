@@ -348,7 +348,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local strict deterministic explicit tokens</li>
+          <li class="pill">Latest milestone = local exact cross-check and public recovery custody</li>
+          <li class="pill">Cross-check FASTQ lanes = exact</li>
+          <li class="pill">Public recovery staging paths = real</li>
           <li class="pill">Deterministic explicit tokens = strict</li>
           <li class="pill">AI bundle explicit tokens = strict</li>
           <li class="pill">Explicit forbidden tokens = strict</li>
@@ -536,6 +538,7 @@
           <li class="pill">Private-publication hashes = exact</li>
           <li class="pill">Blocked cross-check hashes = exact</li>
           <li class="pill">Cross-check contract hashes = exact</li>
+          <li class="pill">Cross-check FASTQ lanes = exact</li>
           <li class="pill">Public-index hashes = exact</li>
           <li class="pill">Synthesis bundle hashes = exact</li>
           <li class="pill">AI source digests = exact</li>
@@ -570,6 +573,7 @@
           <li class="pill">HRD method inventory = exact</li>
           <li class="pill">Phase 3 packet rows = exact</li>
           <li class="pill">Public recovery CRC = exact</li>
+          <li class="pill">Public recovery staging paths = real</li>
           <li class="pill">Public recovery source metadata = private</li>
           <li class="pill">Public recovery final history = exact</li>
           <li class="pill">Public recovery S3 sizes = exact</li>
@@ -1306,6 +1310,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact cross-check FASTQ lanes</strong>
+              <span>Executable cross-check input contracts now reject malformed FASTQ lane collections instead of crashing or reporting a misleading missing-role reason before cross-check inputs can be accepted.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · normalize explicit forbidden tokens strictly</strong>
               <span>Explicit <code>--forbidden-token</code> values now share the same strict forbidden-token normalization policy as run-scoped JSON inventories before packet public-safety scans consume them.</span>
@@ -2063,6 +2071,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real public recovery staging paths</strong>
+              <span>Reviewed-public recovery now rejects symlinked local download or public staging paths before reading or writing recovered alias-tree artifacts.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require reviewed-public dry-run checklists</strong>
               <span>Reviewed-public runbook rendering now adds concrete dry-run review checklists before each reviewed report apply and the final public-index apply, making method identity, destination prefix, source receipt binding, content/no-call scans, empty destinations, index custody, reviewed-public receipt counts, and public-index checks explicit before publication.</span>
             </li>
@@ -2296,6 +2308,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T15:23:55-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Tighten cross-check lanes and public recovery paths:</strong>
+                Executable cross-check input contracts now reject malformed
+                FASTQ lane collections, and reviewed-public recovery now
+                rejects symlinked local download or public staging paths before
+                recovered alias-tree artifacts can be read or written.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T15:18:34-07:00">Jul 19 · local</time>
               <span>

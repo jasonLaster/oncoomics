@@ -4,6 +4,7 @@ import ast
 import gzip
 import importlib.util
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -110,6 +111,52 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
 
             download.assert_not_called()
             self.assertFalse((Path(temporary) / "escaped.txt").exists())
+
+    def test_materialize_source_rejects_symlinked_public_output_parent(
+        self,
+    ) -> None:
+        source = {
+            "bucket": "source-bucket",
+            "key": "preserved/artifacts/qc/tumor.flagstat.txt",
+            "bytes": len(b"public\n"),
+            "checksum_crc64nvme": "crc64",
+        }
+
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+            MODULE, "download", return_value=b"public\n"
+        ):
+            root = Path(temporary)
+            real_public = root / "real-public"
+            real_public.mkdir()
+            (root / "public").symlink_to(real_public, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.materialize_source(
+                    source,
+                    MODULE.DESTINATION_PREFIX
+                    + "early-look/artifacts/qc/tumor.flagstat.txt",
+                    root,
+                )
+
+            self.assertFalse(
+                (real_public / "early-look/artifacts/qc/tumor.flagstat.txt").exists()
+            )
+
+    def test_generated_object_rejects_symlinked_public_output_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_public = root / "real-public"
+            real_public.mkdir()
+            (root / "public").symlink_to(real_public, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.generated_object(
+                    root,
+                    "publication_manifest.json",
+                    b'{"status": "public"}\n',
+                )
+
+            self.assertFalse((real_public / "publication_manifest.json").exists())
 
     def test_materialize_source_rejects_forbidden_text_identifiers(self) -> None:
         raw = b"# Personalis Echo handoff\n"
@@ -395,6 +442,83 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                     "source-bucket",
                     {"Key": MODULE.WORK_PREFIX + "a.json", "Size": 42},
                 )
+
+    def test_download_rejects_symlinked_output_before_aws(self) -> None:
+        source = {
+            "bucket": "source-bucket",
+            "key": "preserved/artifacts/README.md",
+            "bytes": len(b"public\n"),
+            "checksum_crc64nvme": "crc64",
+        }
+
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+            MODULE.subprocess, "run"
+        ) as run:
+            root = Path(temporary)
+            target = root / "redirected.txt"
+            target.write_text("private\n", encoding="utf-8")
+            output = root / "download.txt"
+            output.symlink_to(target)
+
+            with self.assertRaisesRegex(ValueError, "may not be a symlink"):
+                MODULE.download(source, output)
+
+            run.assert_not_called()
+            self.assertEqual(target.read_text(encoding="utf-8"), "private\n")
+
+    def test_download_rejects_symlinked_output_parent_before_aws(self) -> None:
+        source = {
+            "bucket": "source-bucket",
+            "key": "preserved/artifacts/README.md",
+            "bytes": len(b"public\n"),
+            "checksum_crc64nvme": "crc64",
+        }
+
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+            MODULE.subprocess, "run"
+        ) as run:
+            root = Path(temporary)
+            real_parent = root / "real-downloads"
+            real_parent.mkdir()
+            linked_parent = root / "downloads"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                MODULE.download(source, linked_parent / "download.txt")
+
+            run.assert_not_called()
+            self.assertFalse((real_parent / "download.txt").exists())
+
+    def test_download_rejects_symlink_swap_before_readback(self) -> None:
+        source = {
+            "bucket": "source-bucket",
+            "key": "preserved/artifacts/README.md",
+            "bytes": len(b"public\n"),
+            "checksum_crc64nvme": "crc64",
+        }
+
+        def create_symlink(
+            command: list[str],
+            **_: object,
+        ) -> subprocess.CompletedProcess[str]:
+            output = Path(command[-1])
+            redirected = output.with_name("redirected.txt")
+            redirected.write_bytes(b"public\n")
+            output.symlink_to(redirected)
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                stdout='{"ChecksumCRC64NVME": "crc64"}\n',
+                stderr="",
+            )
+
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+            MODULE.subprocess,
+            "run",
+            side_effect=create_symlink,
+        ):
+            with self.assertRaisesRegex(ValueError, "may not be a symlink"):
+                MODULE.download(source, Path(temporary) / "download.txt")
 
     def test_public_upload_pins_exact_checksum(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

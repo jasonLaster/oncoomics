@@ -104,6 +104,20 @@ def private_output(uri: str) -> bool:
     )
 
 
+def fastq_lane_objects(contract: dict, reasons: list[str]) -> list[dict]:
+    lanes = contract.get("fastq_lanes", [])
+    if not isinstance(lanes, list):
+        reasons.append("fastq_lanes must be a list of lane objects")
+        return []
+    objects: list[dict] = []
+    for index, lane in enumerate(lanes):
+        if not isinstance(lane, dict):
+            reasons.append(f"fastq_lanes[{index}] must be an object")
+        else:
+            objects.append(lane)
+    return objects
+
+
 def validate(contract: dict) -> dict:
     shared: list[str] = []
     alias = str(contract.get("run_alias", ""))
@@ -210,8 +224,8 @@ def validate(contract: dict) -> dict:
                         "method_parameters.sequenza.female must explicitly declare the Sequenza sex model"
                     )
         elif route == "oncoanalyser_chord":
-            lanes = contract.get("fastq_lanes", [])
-            roles = {x.get("role") for x in lanes if isinstance(x, dict)}
+            lanes = fastq_lane_objects(contract, reasons)
+            roles = {lane.get("role") for lane in lanes}
             if not {"tumor", "normal"}.issubset(roles):
                 reasons.append("at least one tumor and one normal FASTQ lane are required")
             for index, lane in enumerate(lanes):

@@ -899,6 +899,63 @@ class CustodyHandoffTests(unittest.TestCase):
         self.assertFalse(checker.valid_sha256("A" * 64))
         self.assertFalse(checker.valid_sha256(int("1" * 64)))
 
+    def test_contract_check_blocks_malformed_chord_fastq_lane_objects(self):
+        contract = CustodyFixture().finalize()
+        contract["routes"] = ["oncoanalyser_chord"]
+        contract["attestations"]["fastq_checksums_match_delivery_manifest"] = True
+        contract["fastq_lanes"] = [
+            {
+                "role": "tumor",
+                "r1": private_blob(
+                    "deterministic/fastq/tumor_R1.fastq.gz",
+                    "b" * 64,
+                    "tumor-r1-version",
+                ),
+                "r2": private_blob(
+                    "deterministic/fastq/tumor_R2.fastq.gz",
+                    "c" * 64,
+                    "tumor-r2-version",
+                ),
+            },
+            "not-a-lane-object",
+            {
+                "role": "normal",
+                "r1": private_blob(
+                    "deterministic/fastq/normal_R1.fastq.gz",
+                    "d" * 64,
+                    "normal-r1-version",
+                ),
+                "r2": private_blob(
+                    "deterministic/fastq/normal_R2.fastq.gz",
+                    "e" * 64,
+                    "normal-r2-version",
+                ),
+            },
+        ]
+
+        result = checker.validate(contract)
+        reasons = result["routes"]["oncoanalyser_chord"]["reasons"]
+
+        self.assertEqual(result["overall_status"], "blocked")
+        self.assertIn("fastq_lanes[1] must be an object", reasons)
+        self.assertNotIn(
+            "at least one tumor and one normal FASTQ lane are required",
+            reasons,
+        )
+
+    def test_contract_check_blocks_non_list_chord_fastq_lanes(self):
+        contract = CustodyFixture().finalize()
+        contract["routes"] = ["oncoanalyser_chord"]
+        contract["attestations"]["fastq_checksums_match_delivery_manifest"] = True
+        contract["fastq_lanes"] = {"role": "tumor"}
+
+        result = checker.validate(contract)
+        reasons = result["routes"]["oncoanalyser_chord"]["reasons"]
+
+        self.assertEqual(result["overall_status"], "blocked")
+        self.assertIn("fastq_lanes must be a list of lane objects", reasons)
+        self.assertIn("at least one tumor and one normal FASTQ lane are required", reasons)
+
     def test_contract_check_rejects_non_integer_custody_schema_version(self):
         contract = CustodyFixture().finalize()
         contract["custody"]["schema_version"] = 1.0
