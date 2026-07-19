@@ -25,6 +25,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+VERSION_ID = re.compile(r"^\S+$")
 
 EXPECTED_PUBLICATION_RECEIPT_CHECKS = {
     "exact_contract_version_bound": True,
@@ -144,6 +145,14 @@ def require_sha256(value: Any, label: str) -> str:
     if not isinstance(value, str) or not SHA256_HEX.fullmatch(value):
         raise ValueError(f"{label} must be a lowercase SHA-256")
     return value
+
+
+def non_null_version_id(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and value.lower() not in {"none", "null"}
+        and VERSION_ID.fullmatch(value) is not None
+    )
 
 
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
@@ -496,7 +505,7 @@ def validate_publication(
         not isinstance(contract, dict)
         or set(contract) != PUBLICATION_CONTRACT_KEYS
         or not str(contract.get("uri", "")).startswith("s3://")
-        or not str(contract.get("version_id", ""))
+        or not non_null_version_id(contract.get("version_id"))
     ):
         raise ValueError("publication receipt contract is not exact")
     require_sha256(contract.get("sha256"), "publication contract SHA-256")
@@ -526,7 +535,7 @@ def validate_publication(
         or not str(anchor.get("receipt_uri", "")).startswith(
             "s3://diana-omics-private-results-"
         )
-        or not str(anchor.get("receipt_version_id", ""))
+        or not non_null_version_id(anchor.get("receipt_version_id"))
         or anchor_checks != EXPECTED_PUBLICATION_ANCHOR_CHECKS
     ):
         raise ValueError("publication anchor does not bind the exact receipt")
@@ -545,17 +554,8 @@ def validate_publication(
         if relative in seen:
             raise ValueError(f"duplicate report relative path: {relative}")
         seen.add(relative)
-        row_sha256 = require_sha256(
-            row.get("sha256"),
-            "publication object SHA-256",
-        )
-        row_bindings.add(
-            (
-                str(row.get("key", "")),
-                str(row.get("version_id", "")),
-                row_sha256,
-            )
-        )
+        row_sha256 = require_sha256(row.get("sha256"), "publication object SHA-256")
+        version_id = row.get("version_id")
 
         expected_uri = f"s3://{bucket}/{prefix}{relative}"
         if row.get("uri") != expected_uri or row.get("key") != prefix + relative:
@@ -563,8 +563,7 @@ def validate_publication(
                 f"report row is outside the declared route prefix: {relative}"
             )
         if (
-            not str(row.get("version_id", ""))
-            or str(row.get("version_id", "")).lower() in {"none", "null"}
+            not non_null_version_id(version_id)
             or type(row.get("content_length")) is not int
             or row.get("content_length") <= 0
             or row.get("server_side_encryption") != "aws:kms"
@@ -572,6 +571,7 @@ def validate_publication(
             or row.get("checks") != EXPECTED_PUBLICATION_OBJECT_CHECKS
         ):
             raise ValueError(f"report row lacks exact custody: {relative}")
+        row_bindings.add((row["key"], version_id, row_sha256))
 
     audit_bindings: set[tuple[str, str, str]] = set()
     for row in history_audit:
@@ -581,12 +581,16 @@ def validate_publication(
             row.get("sha256"),
             "publication history SHA-256",
         )
-        binding = (
-            str(row.get("key", "")),
-            str(row.get("version_id", "")),
-            history_sha256,
-        )
-        if row.get("checks") != EXPECTED_HISTORY_AUDIT_CHECKS or binding in audit_bindings:
+        key = row.get("key")
+        version_id = row.get("version_id")
+        if (
+            not isinstance(key, str)
+            or not non_null_version_id(version_id)
+            or row.get("checks") != EXPECTED_HISTORY_AUDIT_CHECKS
+        ):
+            raise ValueError("publication receipt history audit is not exact")
+        binding = (key, version_id, history_sha256)
+        if binding in audit_bindings:
             raise ValueError("publication receipt history audit is not exact")
         audit_bindings.add(binding)
     if audit_bindings != row_bindings:

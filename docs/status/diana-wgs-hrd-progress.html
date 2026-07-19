@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact publication VersionIds</li>
+          <li class="pill">Latest milestone = local exact report-tree VersionIds</li>
+          <li class="pill">Report-tree VersionIds = exact</li>
           <li class="pill">Publication VersionIds = exact</li>
           <li class="pill">Materializer staged validation = exact</li>
           <li class="pill">Materializer submit hashes = exact</li>
@@ -894,6 +895,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact report-tree VersionIds</strong>
+              <span>The exact report-tree downloader now rejects coerced VersionId values in publication contracts, receipt anchors, report object rows, and history-audit rows before replaying private cross-check report packets for AI review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer staged-validation custody</strong>
               <span>The materializer staged-validation downloader now rejects coerced VersionId and SHA-256 values in the exact <code>staged_input_validation.json</code> custody row before exact-version cross-check report replay.</span>
@@ -1460,6 +1465,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T15:15:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact report-tree VersionIds:</strong>
+                the exact report-tree downloader now rejects coerced VersionId
+                values in publication contracts, receipt anchors, report object
+                rows, and history-audit rows before replaying private
+                cross-check report packets for AI review.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T15:00:00-07:00">Jul 19 · local</time>
               <span>

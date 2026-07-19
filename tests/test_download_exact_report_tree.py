@@ -582,6 +582,59 @@ class ExactReportDownloadTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, error):
                     MODULE.validate_publication(receipt, anchor, KMS)
 
+    def test_rejects_coerced_publication_receipt_version_ids(self) -> None:
+        receipt_cases = (
+            (
+                "numeric_contract",
+                lambda payload: payload["contract"].__setitem__(
+                    "version_id",
+                    1234567890,
+                ),
+                "publication receipt contract",
+            ),
+            (
+                "numeric_object",
+                lambda payload: (
+                    payload["objects"][0].__setitem__("version_id", 1234567890),
+                    payload["history_audit"][0].__setitem__(
+                        "version_id",
+                        1234567890,
+                    ),
+                ),
+                "exact custody",
+            ),
+            (
+                "numeric_history",
+                lambda payload: payload["history_audit"][0].__setitem__(
+                    "version_id",
+                    1234567890,
+                ),
+                "history audit",
+            ),
+        )
+
+        for name, mutate, error in receipt_cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                receipt, anchor, _, _ = self.fixture(root)
+                payload = json.loads(receipt.read_text(encoding="utf-8"))
+                mutate(payload)
+                write_json(receipt, payload)
+                self.reanchor(receipt, anchor)
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_publication(receipt, anchor, KMS)
+
+        with self.subTest(name="numeric_anchor"), tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, _, _ = self.fixture(root)
+            payload = json.loads(anchor.read_text(encoding="utf-8"))
+            payload["receipt_version_id"] = 1234567890
+            write_json(anchor, payload)
+
+            with self.assertRaisesRegex(ValueError, "publication anchor"):
+                MODULE.validate_publication(receipt, anchor, KMS)
+
     def test_rejects_inexact_publication_receipt_counts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
