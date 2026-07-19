@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local materialized-final schema exactness</li>
+          <li class="pill">Latest milestone = local final-freeze schema exactness</li>
+          <li class="pill">Final-freeze schemas = exact</li>
           <li class="pill">Materialized-final schemas = exact</li>
           <li class="pill">Comparative synthesis custody schemas = exact</li>
           <li class="pill">AI validator custody schemas = exact</li>
@@ -555,6 +556,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact final-freeze schemas</strong>
+              <span>Final artifact freezing now rejects JSON floats or booleans in apply-time dry-run receipts and Batch execution receipts before a successful WGS job can be snapshotted into the immutable private final tree.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materialized-final schemas</strong>
               <span>Exact local materialization now rejects JSON floats or booleans in final-freeze receipts and prepared recovery receipts before downloading frozen private objects or recovering the alias-only <code>materialized-final</code> tree.</span>
@@ -965,6 +970,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:42:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact final-freeze schemas:</strong>
+                final artifact freezing now rejects non-exact
+                <code>schema_version</code> values in apply-time dry-run
+                receipts and Batch execution receipts before a successful WGS
+                job can be snapshotted into the immutable private final tree.
+                No S3, Batch, route, GPU, quota, or replacement compute was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:41:00-07:00">Jul 19 · local</time>
               <span>

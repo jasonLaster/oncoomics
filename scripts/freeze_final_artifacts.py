@@ -90,6 +90,10 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -505,7 +509,7 @@ def validate_dry_run_receipt(path: Path, expected: dict[str, Any]) -> None:
             f"unexpected={sorted(observed_keys - EXPECTED_DRY_RUN_RECEIPT_KEYS)}"
         )
     if (
-        receipt.get("schema_version") != 1
+        not exact_schema_version(receipt, 1)
         or receipt.get("status") != "dry_run"
         or receipt.get("batch_status") != "SUCCEEDED"
         or receipt.get("passed_count") != 0
@@ -696,7 +700,7 @@ def validate_execution_binding(
         )
     worker_checks = worker.get("checks")
     if (
-        receipt.get("schema_version") != 1
+        not exact_schema_version(receipt, 1)
         or receipt.get("run_id") != run_id
         or receipt.get("region") != region
         or batch.get("job_id") != job_id
