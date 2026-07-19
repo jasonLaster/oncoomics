@@ -307,13 +307,12 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>bca5f386b55684a7650326ebd1e612848e4a183f</strong>.
-          The latest work is exact terminal cross-check capture hardening:
+          <strong>ceee52db6c620b632aa8713e9a621418282f0031</strong>.
+          The latest work is exact terminal final-freeze hardening:
           <code>stage_deterministic_wgs_report.py</code> now names and requires
-          the complete Batch identity, CloudWatch capture, receipt-anchor,
-          downloaded-receipt, and staged-validation download check maps before
-          materializer terminal evidence can support the staged WGS report
-          packet.
+          the complete final-freeze row, receipt, and anchor check maps before
+          immutable final-artifact freeze evidence can support the staged WGS
+          report packet.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -321,7 +320,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = bca5f38</li>
+          <li class="pill">Latest hardening = ceee52d</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -403,8 +402,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve bca5f38</strong>
-              <span>Deterministic report staging now rejects incomplete or widened terminal materializer capture, receipt-download, Batch, anchor, and staged-validation download check maps.</span>
+              <strong>Preserve ceee52d</strong>
+              <span>Deterministic report staging now rejects incomplete or widened final-freeze row, receipt, and anchor check maps before final artifacts can support a WGS report packet.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -452,6 +451,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>ceee52d Require exact final freeze report checks:</strong>
+                <code>stage_deterministic_wgs_report.py</code> now defines
+                <code>EXPECTED_FINAL_FREEZE_ROW_CHECKS</code>,
+                <code>EXPECTED_FINAL_FREEZE_CHECKS</code>, and
+                <code>EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS</code>. The WGS report
+                stage now rejects a terminal final-artifact freeze receipt
+                whose row, receipt-level, or anchor checks are missing, widened,
+                or false, and the synthetic report tests prove those drifts
+                fail before report publication.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
