@@ -360,16 +360,26 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
             rows.extend({"history_type": field, **row} for row in value)
         if payload.get("IsTruncated") is not True:
             return rows
-        key_marker = str(payload.get("NextKeyMarker", ""))
-        version_id_marker = str(payload.get("NextVersionIdMarker", ""))
-        if not key_marker or not version_id_marker:
-            raise RuntimeError(
-                "truncated version history omitted its next key/version markers"
-            )
+        key_marker, version_id_marker = require_next_version_history_markers(payload)
         marker = (key_marker, version_id_marker)
         if marker in seen_markers:
             raise RuntimeError("destination version history pagination did not advance")
         seen_markers.add(marker)
+
+
+def require_next_version_history_markers(payload: dict[str, Any]) -> tuple[str, str]:
+    key_marker = payload.get("NextKeyMarker")
+    version_id_marker = payload.get("NextVersionIdMarker")
+    if (
+        not isinstance(key_marker, str)
+        or not isinstance(version_id_marker, str)
+        or not key_marker
+        or not version_id_marker
+    ):
+        raise RuntimeError(
+            "truncated version history omitted its next key/version markers"
+        )
+    return key_marker, version_id_marker
 
 
 def bucket_versioning(bucket: str, region: str) -> str:

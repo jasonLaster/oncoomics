@@ -618,6 +618,22 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         with patch.object(MODULE, "aws_json", return_value={"Versions": {}}):
             with self.assertRaisesRegex(RuntimeError, "malformed"):
                 MODULE.version_history("bucket", "prefix", REGION)
+        cases = (
+            {"NextKeyMarker": "next-key"},
+            {"NextKeyMarker": True, "NextVersionIdMarker": "next-version"},
+            {"NextKeyMarker": "next-key", "NextVersionIdMarker": True},
+        )
+        for case in cases:
+            with self.subTest(case=case):
+                page = {
+                    "IsTruncated": True,
+                    "Versions": [],
+                    "DeleteMarkers": [],
+                    **case,
+                }
+                with patch.object(MODULE, "aws_json", return_value=page):
+                    with self.assertRaisesRegex(RuntimeError, "key/version markers"):
+                        MODULE.version_history("bucket", "prefix", REGION)
         stalled = {
             "IsTruncated": True,
             "NextKeyMarker": "same",
