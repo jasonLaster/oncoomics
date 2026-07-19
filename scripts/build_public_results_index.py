@@ -30,6 +30,7 @@ from publish_reviewed_public_report import (
     SOURCE_PREFLIGHT_CHECKS,
     SUBJECT_ALIAS,
     checksum_sha256,
+    exact_schema_version,
     non_null_version_id,
     private_report_prefix,
 )
@@ -302,7 +303,7 @@ def validate_reviewed_public_receipts(
         forbidden_token_sha256 = receipt.get("forbidden_token_sha256")
         if (
             set(receipt) != REVIEWED_PUBLIC_APPLY_RECEIPT_KEYS
-            or receipt.get("schema_version") != 1
+            or not exact_schema_version(receipt)
             or receipt.get("status") != "passed"
             or receipt.get("apply") is not True
             or receipt.get("method_id") != method_id

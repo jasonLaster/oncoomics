@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import hashlib
 import importlib.util
@@ -86,6 +87,30 @@ class FakeAws:
 
 
 class PublishPublicResultsIndexTests(unittest.TestCase):
+    def test_schema_versions_are_exact_json_integers(self) -> None:
+        for value in (True, 1.0, "1", 2, None):
+            with self.subTest(value=value):
+                self.assertFalse(
+                    MODULE.exact_schema_version({"schema_version": value})
+                )
+
+        self.assertTrue(MODULE.exact_schema_version({"schema_version": 1}))
+
+    def test_schema_guards_use_exact_integer_helper(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(SCRIPT))
+
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "schema_version" not in segment:
+                continue
+            raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_comparisons, [])
+
     def write_index(self, root: Path, **updates: object) -> Path:
         payload = {
             "schema_version": 1,
@@ -376,6 +401,10 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             ),
             (
                 lambda payload: payload.__setitem__("object_count", True),
+                "public index contract is malformed",
+            ),
+            (
+                lambda payload: payload.__setitem__("schema_version", 1.0),
                 "public index contract is malformed",
             ),
             (
@@ -694,6 +723,11 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 lambda payload: payload.update(
                     {"stale_reviewed_public_receipt_count": 9}
                 ),
+                "contract is malformed",
+            ),
+            (
+                "float schema_version",
+                lambda payload: payload.__setitem__("schema_version", 1.0),
                 "contract is malformed",
             ),
             (

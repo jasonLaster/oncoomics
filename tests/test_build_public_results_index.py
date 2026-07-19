@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import importlib.util
 import io
@@ -166,6 +167,30 @@ def fake_reviewed_public_receipt_args(root: Path) -> list[str]:
 
 
 class PublicIndexTests(unittest.TestCase):
+    def test_schema_versions_are_exact_json_integers(self) -> None:
+        for value in (True, 1.0, "1", 2, None):
+            with self.subTest(value=value):
+                self.assertFalse(
+                    MODULE.exact_schema_version({"schema_version": value})
+                )
+
+        self.assertTrue(MODULE.exact_schema_version({"schema_version": 1}))
+
+    def test_schema_guards_use_exact_integer_helper(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(SCRIPT))
+
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "schema_version" not in segment:
+                continue
+            raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_comparisons, [])
+
     def test_diana_public_prefixes_are_exact_reviewed_report_destinations(self) -> None:
         expected = tuple(
             PUBLISH.PUBLIC_ROOT + str(contract["destination"])
@@ -460,6 +485,10 @@ class PublicIndexTests(unittest.TestCase):
             ),
             (
                 lambda receipt: receipt.pop("dry_run_receipt"),
+                "reviewed-public receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt.__setitem__("schema_version", 1.0),
                 "reviewed-public receipt is not exact",
             ),
             (

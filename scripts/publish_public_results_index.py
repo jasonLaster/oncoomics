@@ -23,6 +23,7 @@ from build_public_results_index import (
     validate_reviewed_public_receipts,
     validate_reviewed_public_s3_state,
 )
+from publish_reviewed_public_report import exact_schema_version
 
 REGION = "us-east-1"
 INDEX_KEY = "public-index/objects.json"
@@ -234,7 +235,7 @@ def validate_public_index(
     total_size = payload.get("total_size")
     if (
         set(payload) != PUBLIC_INDEX_KEYS
-        or payload.get("schema_version") != 1
+        or not exact_schema_version(payload)
         or payload.get("bucket") != BUCKET
         or payload.get("classification")
         != "reviewed_public_validation_and_alias_only_analysis_outputs"
@@ -379,7 +380,7 @@ def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, A
     destination = receipt.get("destination")
     checks = receipt.get("checks")
     if (
-        receipt.get("schema_version") != 1
+        not exact_schema_version(receipt)
         or receipt.get("status") != "dry_run"
         or receipt.get("apply") is not False
         or set(receipt) != PUBLIC_INDEX_DRY_RUN_RECEIPT_KEYS
