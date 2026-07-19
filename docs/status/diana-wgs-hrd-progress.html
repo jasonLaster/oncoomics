@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real public-index hash inputs</li>
+          <li class="pill">Latest milestone = local real public-index build hashes</li>
+          <li class="pill">Public-index build hashes = real</li>
           <li class="pill">Public-index hash inputs = real</li>
           <li class="pill">Reviewed-public hash inputs = real</li>
           <li class="pill">AI-finalizer hash inputs = real</li>
@@ -1900,6 +1901,10 @@
               <span>Public results index building now rejects duplicate JSON object names before exact-validating reviewed-publication receipts and binding them into <code>public-index/objects.json</code>.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real public-index build hashes</strong>
+              <span>Public results index building now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before reviewed-public receipts are bound into the static public index.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact runbook JSON loading</strong>
               <span>Shared runbook JSON loading now rejects duplicate JSON object names before source-freeze, AI-synthesis, or reviewed-publication handoff renderers can consume receipt or manifest inputs.</span>
             </li>
@@ -2085,6 +2090,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:14-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real public-index build hashes:</strong>
+                Public results index building now rejects symlinked local
+                SHA-256 inputs and hash-input ancestors before reviewed-public
+                receipts are bound into the static public index.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:13-07:00">Jul 19 · local</time>
               <span>

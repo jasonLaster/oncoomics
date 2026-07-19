@@ -230,6 +230,36 @@ class PublicIndexTests(unittest.TestCase):
 
         self.assertEqual(unsafe_aliases, [])
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.txt"
+            real_source.write_text("real source\n", encoding="utf-8")
+            source_link = root / "source-link.txt"
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "source-link.txt SHA-256 input must be a real file",
+            ):
+                MODULE.sha256(source_link)
+
+            real_inputs = root / "real-inputs"
+            real_inputs.mkdir()
+            receipt = real_inputs / "reviewed-public.json"
+            receipt.write_text(
+                '{"status": "passed"}\n',
+                encoding="utf-8",
+            )
+            linked_inputs = root / "linked-inputs"
+            linked_inputs.symlink_to(real_inputs, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "reviewed-public.json SHA-256 input parent may not be a symlink",
+            ):
+                MODULE.sha256(linked_inputs / "reviewed-public.json")
+
     def test_diana_public_prefixes_are_exact_reviewed_report_destinations(self) -> None:
         expected = tuple(
             PUBLISH.PUBLIC_ROOT + str(contract["destination"])
@@ -511,6 +541,38 @@ class PublicIndexTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "parent may not be a symlink"):
                 MODULE.validate_reviewed_public_receipts(receipts)
+
+    def test_reviewed_public_receipt_hash_rejects_symlink_after_load(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipts = write_public_receipts(root)
+            real_load_json_object = MODULE.load_json_object
+            swapped = False
+
+            def swap_receipt_after_load(path: Path, label: str) -> dict:
+                nonlocal swapped
+                receipt = real_load_json_object(path, label)
+                if not swapped:
+                    moved = root / "reviewed-public.real.json"
+                    path.rename(moved)
+                    path.symlink_to(moved)
+                    swapped = True
+                return receipt
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "load_json_object",
+                    side_effect=swap_receipt_after_load,
+                ),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "SHA-256 input must be a real file",
+                ),
+            ):
+                MODULE.validate_reviewed_public_receipts(receipts)
+
+            self.assertTrue(swapped)
 
     def test_reviewed_public_receipts_reject_invalid_json_objects(self) -> None:
         cases = (

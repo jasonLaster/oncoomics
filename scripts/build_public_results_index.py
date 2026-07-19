@@ -288,6 +288,7 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def sha256(path: pathlib.Path) -> str:
+    require_real_hash_input(path)
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
@@ -635,6 +636,10 @@ def require_real_input_file(path: pathlib.Path, label: str) -> None:
             raise RuntimeError(f"{label} parent is not a directory: {parent}")
     if path.is_symlink() or not path.is_file():
         raise RuntimeError(f"{label} must be a real file: {path}")
+
+
+def require_real_hash_input(path: pathlib.Path) -> None:
+    require_real_input_file(path, f"{path.name} SHA-256 input")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
