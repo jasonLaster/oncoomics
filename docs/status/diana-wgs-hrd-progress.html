@@ -343,8 +343,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = c3b7b56</li>
-          <li class="pill">Source hardening = 4a8983a</li>
+          <li class="pill">Latest milestone = d157281</li>
+          <li class="pill">Source hardening = blocked reports</li>
           <li class="pill">In flight = dry post-deterministic chain</li>
           <li class="pill">Reviewer identities = explicit</li>
           <li class="pill">Catalog timestamps = in synthesis</li>
@@ -490,6 +490,10 @@
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact terminal source hashes in blocked reports</strong>
+              <span>Source-freeze now rejects blocked FACETS, CHORD, and HRDetect packets whose human reports carry extra stale upstream <code>report_manifest_sha256</code> lines before those packets can enter the AI bundle.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · enforce the pre-route / terminal packet split</strong>
               <span>Fast-DAG validation now requires <code>pre_route_deterministic_rosalind</code> on blocked packets, terminal source-freeze independently requires <code>terminal_source_reports</code>, and the terminal runbook no longer sends terminal packets through the pre-route gate.</span>
             </li>
@@ -579,6 +583,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T23:12:59-07:00">Jul 18 · 11:12 PM</time>
+              <span>
+                <strong>d157281 Require exact blocked report source hashes:</strong>
+                source-freeze validation now requires FACETS, CHORD, and
+                HRDetect <code>report.md</code> files to carry exactly the
+                current ordered terminal upstream
+                <code>report_manifest_sha256</code> lines. Stale duplicate
+                upstream hashes fail before blocked packets can enter the
+                AI-review bundle. Validation passed: 29 focused source-freeze
+                tests, 131 broad handoff tests + 114 subtests, and the full
+                1689-test suite + 723 subtests. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T23:05:53-07:00">Jul 18 · 11:05 PM</time>
               <span>
