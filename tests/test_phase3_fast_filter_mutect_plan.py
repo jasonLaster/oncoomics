@@ -195,6 +195,19 @@ class Phase3FastFilterMutectPlanTests(unittest.TestCase):
                 mutect_plan_sha256=SHA_2,
             )
 
+    def test_rejects_non_exact_staged_source_bytes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            staged, mutect = parabricks_plan(Path(tmp))
+        staged["caller_resources"]["gatk_jar"]["bytes"] = True
+
+        with self.assertRaisesRegex(filter_mutect.ManifestError, "gatk_jar bytes"):
+            filter_mutect.build_phase3_fast_filter_mutect_plan(
+                staged,
+                mutect,
+                staged_inputs_manifest_sha256=SHA_1,
+                mutect_plan_sha256=SHA_2,
+            )
+
     def test_rejects_unpaired_common_sites_index(self) -> None:
         with TemporaryDirectory() as tmp:
             staged, mutect = parabricks_plan(Path(tmp))

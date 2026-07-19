@@ -100,6 +100,12 @@ def _require_hex(value: Any, label: str) -> str:
     return value.lower()
 
 
+def _require_positive_int(value: Any, label: str) -> int:
+    if type(value) is not int or value <= 0:
+        raise ManifestError(f"{label} must be a positive integer")
+    return value
+
+
 def _require_absolute_path(value: Any, label: str) -> Path:
     path = Path(_require_string(value, label))
     if not path.is_absolute():
@@ -528,10 +534,12 @@ def _verify_parabricks_receipt(
         observed_path = _require_absolute_path(observed.get("local_path"), f"{key} materialized local_path")
         if observed_path != expected_path:
             raise ManifestError(f"Parabricks receipt {key} local_path must match the FilterMutect input")
+        observed_bytes = _require_positive_int(observed.get("bytes"), f"Parabricks receipt {key} bytes")
+        observed_sha = _require_hex(observed.get("sha256"), f"Parabricks receipt {key} sha256")
         if _hash_materialized(observed_path, key, producer="Parabricks Mutect") != {
             "local_path": str(observed_path),
-            "bytes": observed.get("bytes"),
-            "sha256": observed.get("sha256"),
+            "bytes": observed_bytes,
+            "sha256": observed_sha,
         }:
             raise ManifestError(f"Parabricks receipt {key} bytes and sha256 must match the local file")
 

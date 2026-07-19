@@ -167,6 +167,44 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
 
             self.assertFalse((root / "exported").exists())
 
+    def test_rejects_non_exact_input_source_bytes_before_exporting_artifacts(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            parabricks_receipt, filter_receipt = _receipts(root)
+            parabricks_receipt["inputs"]["reference_fasta"]["source"]["bytes"] = True
+            filter_receipt["inputs"]["reference_fasta"]["source"]["bytes"] = True
+
+            with self.assertRaisesRegex(export_small_variants.ManifestError, "reference_fasta source bytes"):
+                export_small_variants.export_phase3_fast_small_variant_artifacts(
+                    parabricks_receipt,
+                    filter_receipt,
+                    parabricks_mutect_receipt_sha256=SHA_2,
+                    filter_mutect_receipt_sha256=SHA_3,
+                    output_root=root / "exported",
+                )
+
+            self.assertFalse((root / "exported").exists())
+
+    def test_rejects_non_exact_materialized_output_bytes_before_exporting_artifacts(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            parabricks_receipt, filter_receipt = _receipts(root)
+            raw_vcf = parabricks_receipt["materialized_outputs"]["raw_vcf"]
+            Path(raw_vcf["local_path"]).write_bytes(b"x")
+            raw_vcf["bytes"] = True
+            raw_vcf["sha256"] = hashlib.sha256(b"x").hexdigest()
+
+            with self.assertRaisesRegex(export_small_variants.ManifestError, "raw_vcf.bytes"):
+                export_small_variants.export_phase3_fast_small_variant_artifacts(
+                    parabricks_receipt,
+                    filter_receipt,
+                    parabricks_mutect_receipt_sha256=SHA_2,
+                    filter_mutect_receipt_sha256=SHA_3,
+                    output_root=root / "exported",
+                )
+
+            self.assertFalse((root / "exported").exists())
+
     def test_rejects_symlinked_source_before_exporting_artifact(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

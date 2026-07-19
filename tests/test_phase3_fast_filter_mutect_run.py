@@ -336,6 +336,26 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
                     parabricks_mutect_receipt_sha256=SHA_3,
                 )
 
+    def test_rejects_non_exact_parabricks_receipt_bytes_before_running_commands(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
+            raw_vcf = parabricks_receipt["materialized_outputs"]["raw_vcf"]
+            Path(raw_vcf["local_path"]).write_bytes(b"x")
+            raw_vcf["bytes"] = True
+            raw_vcf["sha256"] = hashlib.sha256(b"x").hexdigest()
+            runner = FilterMutectRunner()
+
+            with self.assertRaisesRegex(run_filter.ManifestError, "raw_vcf bytes"):
+                run_filter.run_phase3_fast_filter_mutect(
+                    plan,
+                    parabricks_receipt,
+                    runner=runner,
+                    filter_mutect_plan_sha256=SHA_1,
+                    parabricks_mutect_receipt_sha256=SHA_3,
+                )
+
+        self.assertEqual([], runner.commands)
+
     def test_rejects_missing_planned_command(self) -> None:
         with TemporaryDirectory() as tmp:
             plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
