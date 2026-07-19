@@ -15,13 +15,14 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
+from forbidden_text import merge_forbidden_tokens
 from hrd_report_inventory import (
     HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID,
     HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS,
     inventory_payload,
     inventory_sha256,
 )
-from forbidden_text import merge_forbidden_tokens
+from prepare_ai_review_run import MANIFEST_ARGUMENTS
 
 from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as rosalind
 
@@ -406,20 +407,31 @@ def build_method_packet(
     return manifest_path
 
 
-def run_bundle_builder(
+def run_ai_review_prepare(
     manifests: Sequence[Path],
     output: Path,
     args: argparse.Namespace,
 ) -> None:
-    command = [sys.executable, str(Path(__file__).resolve().parent / "build_ai_review_bundle.py")]
-    for manifest in manifests:
-        command.extend(["--manifest", str(manifest)])
-    for method_id in HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS:
-        command.extend(["--require-method", method_id])
+    command = [
+        sys.executable,
+        str(Path(__file__).resolve().parent / "prepare_ai_review_run.py"),
+        "--inventory-id",
+        HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID,
+    ]
+    for argument, manifest in zip(MANIFEST_ARGUMENTS, manifests):
+        command.extend(["--" + argument.replace("_", "-"), str(manifest)])
     command.extend(
         [
-            "--inventory-id",
-            HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID,
+            token
+            for method_id, manifest in zip(HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS, manifests)
+            for token in (
+                "--expected-source-manifest-sha256",
+                f"{method_id}={sha256(manifest)}",
+            )
+        ]
+    )
+    command.extend(
+        [
             "--output-dir",
             str(output),
             "--subject-alias",
@@ -436,7 +448,6 @@ def run_bundle_builder(
             args.model_catalog_verified_at,
             "--model-catalog-receipt",
             str(args.model_catalog_receipt),
-            "--attest-models-latest",
         ]
     )
     for token in merge_forbidden_tokens(("DirectIdentifier", *args.forbidden_token)):
@@ -495,7 +506,8 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             for spec in METHOD_SPECS
         ]
         manifests = [deterministic_manifest, rosalind_manifest, *method_manifests]
-        run_bundle_builder(manifests, staging / "ai-review-bundle", args)
+        ai_review = staging / "ai-review"
+        run_ai_review_prepare(manifests, ai_review, args)
 
         stack_manifest = {
             "schema_version": 1,
@@ -513,8 +525,16 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
                 for method_id, manifest in zip(HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS, manifests)
             },
             "ai_review_bundle_manifest": {
-                "path": "ai-review-bundle/bundle_manifest.json",
-                "sha256": sha256(staging / "ai-review-bundle/bundle_manifest.json"),
+                "path": "ai-review/bundle/bundle_manifest.json",
+                "sha256": sha256(ai_review / "bundle/bundle_manifest.json"),
+            },
+            "ai_review_prepare_receipt": {
+                "path": "ai-review/prepare_ai_review_run_receipt.json",
+                "sha256": sha256(ai_review / "prepare_ai_review_run_receipt.json"),
+            },
+            "ai_review_stage_receipt": {
+                "path": "ai-review/stage_ai_review_inputs_receipt.json",
+                "sha256": sha256(ai_review / "stage_ai_review_inputs_receipt.json"),
             },
             "model_catalog_receipt_sha256": sha256(catalog),
             "models_invoked": False,

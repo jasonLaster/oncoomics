@@ -52,12 +52,13 @@ The stack emits seven schema-1 source report packets before any AI review:
 | `oncoanalyser_chord_blocked` | Descriptive blocked packet; no CHORD feature extraction or call |
 | `hrdetect_blocked` | Descriptive blocked packet; no HRDetect feature execution or call |
 
-The same bundle, isolated reviewer-input, validation, finalization, and
-comparative-synthesis commands used by the Diana post-terminal chain can then
-exercise two independent narrative reviewers and a final agreement table. Those
-AI reports stay qualitative: they can audit wording and evidence coverage, but
-they cannot promote the deterministic `no_call` ceiling or synthesize missing
-assay-derived method outputs.
+The stack now runs `prepare_ai_review_run.py`, so the same bundle,
+isolated reviewer-input, source-manifest SHA-256, validation, finalization,
+and comparative-synthesis contracts used by the Diana post-terminal chain can
+then exercise two independent narrative reviewers and a final agreement table.
+Those AI reports stay qualitative: they can audit wording and evidence
+coverage, but they cannot promote the deterministic `no_call` ceiling or
+synthesize missing assay-derived method outputs.
 
 ## Frozen evidence contract
 

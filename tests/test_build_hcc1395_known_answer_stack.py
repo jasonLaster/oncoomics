@@ -117,14 +117,19 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
                 self.assertEqual(source_manifests[method_id]["execution_status"], "not_run")
 
             bundle = json.loads(
-                (output / "ai-review-bundle/review_bundle.json").read_text(
+                (output / "ai-review/bundle/review_bundle.json").read_text(
                     encoding="utf-8"
                 )
             )
             bundle_manifest = json.loads(
-                (output / "ai-review-bundle/bundle_manifest.json").read_text(
+                (output / "ai-review/bundle/bundle_manifest.json").read_text(
                     encoding="utf-8"
                 )
+            )
+            prepare_receipt = json.loads(
+                (
+                    output / "ai-review/prepare_ai_review_run_receipt.json"
+                ).read_text(encoding="utf-8")
             )
             self.assertEqual(bundle["subject_alias"], "subject99")
             self.assertEqual(
@@ -139,6 +144,36 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
             self.assertNotIn("rosalind_diana_wgs", serialized_bundle)
             self.assertNotIn("subject01", serialized_bundle)
             self.assertEqual(len(bundle_manifest["forbidden_token_sha256"]), 1)
+            self.assertEqual(
+                prepare_receipt["method_inventory"]["inventory_id"],
+                STACK.HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID,
+            )
+            for key in (
+                "ai_review_bundle_manifest",
+                "ai_review_prepare_receipt",
+                "ai_review_stage_receipt",
+            ):
+                path = output / manifest[key]["path"]
+                self.assertTrue(path.is_file(), key)
+                self.assertEqual(manifest[key]["sha256"], STACK.sha256(path))
+            self.assertEqual(
+                sorted(
+                    path.name
+                    for path in (
+                        output / "ai-review/reviewer-inputs/reviewer-a-input"
+                    ).iterdir()
+                ),
+                ["review_bundle.json", "reviewer-a.prompt.md"],
+            )
+            self.assertEqual(
+                sorted(
+                    path.name
+                    for path in (
+                        output / "ai-review/reviewer-inputs/reviewer-b-input"
+                    ).iterdir()
+                ),
+                ["review_bundle.json", "reviewer-b.prompt.md"],
+            )
 
     def test_regenerates_current_gap_aware_rosalind_packet_outside_results(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
