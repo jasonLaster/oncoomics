@@ -13,6 +13,12 @@ from urllib.parse import unquote
 
 FORBIDDEN_TOKEN_FINGERPRINT_DOMAIN = "diana-ai-review-forbidden-v1\0"
 MIN_TOKEN_LENGTH = 3
+DEFAULT_FORBIDDEN_TOKENS = (
+    "DRF-PSN49561",
+    "E019_S01",
+    "echo-personalis",
+    "personalis",
+)
 UNAUTHORIZED_HRD_CLASSIFICATION = re.compile(
     r"\bHRD\s*[+-](?![A-Za-z0-9])|"
     r"\bHRD[-_ ]*(?:status|classification|call)?\s*(?:is|:|=)?\s*"

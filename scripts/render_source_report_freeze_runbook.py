@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Iterable
 
+from forbidden_text import DEFAULT_FORBIDDEN_TOKENS
 from generate_blocked_hrd_crosscheck_reports import (
     TERMINAL_SOURCE_REPORT_BINDING_SCOPE,
 )
@@ -20,9 +21,6 @@ from hrd_report_inventory import (
 )
 from publish_private_report import validate_packet_dir as validate_private_packet_dir
 from publish_reviewed_public_report import METHOD_CONTRACTS, REGION, RUN_ID
-from render_ai_synthesis_runbook import (
-    FORBIDDEN_TOKENS,
-)
 from render_ai_synthesis_runbook import (
     required_absent as ai_required_absent,
 )
@@ -65,7 +63,7 @@ BLOCKED_SOURCE_METHOD_IDS = (
 
 
 def forbidden_flags() -> list[str]:
-    return [token for value in FORBIDDEN_TOKENS for token in ("--forbidden-token", value)]
+    return [token for value in DEFAULT_FORBIDDEN_TOKENS for token in ("--forbidden-token", value)]
 
 
 def sha256(path: Path) -> str:
@@ -109,7 +107,7 @@ def validate_packet_dirs(
             "Phase 3 fast report validation requires the forbidden-token file"
         )
 
-    forbidden_tokens = tuple(FORBIDDEN_TOKENS)
+    forbidden_tokens = tuple(DEFAULT_FORBIDDEN_TOKENS)
     expected_forbidden_tokens_sha256 = None
     if phase3_fast_forbidden_tokens_file is not None:
         require_real_input_file(

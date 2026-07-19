@@ -23,6 +23,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from forbidden_text import (
+    DEFAULT_FORBIDDEN_TOKENS,
     forbidden_token_fingerprints,
     has_unauthorized_hrd_classification,
     merge_forbidden_tokens,
@@ -126,12 +127,6 @@ METHOD_CONTRACTS: dict[str, dict[str, Any]] = {
     },
 }
 require_report_methods(tuple(METHOD_CONTRACTS), "reviewed public report method contracts")
-DEFAULT_FORBIDDEN_TOKENS = (
-    "DRF-PSN49561",
-    "E019_S01",
-    "echo-personalis",
-    "personalis",
-)
 SOURCE_PREFLIGHT_CHECKS = {
     "exact_version_head": True,
     "exact_version_get": True,

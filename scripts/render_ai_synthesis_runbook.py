@@ -15,6 +15,7 @@ from ai_model_catalog import (
     REVIEWER_A,
     REVIEWER_B,
 )
+from forbidden_text import DEFAULT_FORBIDDEN_TOKENS
 from hrd_report_inventory import (
     AI_REVIEW_METHOD_IDS,
     COMPARATIVE_METHOD_IDS,
@@ -53,7 +54,7 @@ from runbook_io import (
     write_once,
 )
 
-FORBIDDEN_TOKENS = ("E019_S01", "DRF-PSN49561", "echo-personalis", "personalis")
+FORBIDDEN_TOKENS = DEFAULT_FORBIDDEN_TOKENS
 AI_PRIVATE_RECEIPT_STEMS = (
     (AI_REVIEW_METHOD_IDS[0], "ai-reviewer-a"),
     (AI_REVIEW_METHOD_IDS[1], "ai-reviewer-b"),

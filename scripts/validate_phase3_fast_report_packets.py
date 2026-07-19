@@ -12,15 +12,16 @@ import re
 from pathlib import Path
 from typing import Any, Mapping
 
-from forbidden_text import normalize_forbidden_tokens_json
+from forbidden_text import DEFAULT_FORBIDDEN_TOKENS, normalize_forbidden_tokens_json
 from generate_blocked_hrd_crosscheck_reports import (
     PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE,
     PRE_ROUTE_SOURCE_REPORT_METHOD_IDS,
 )
 from hrd_report_inventory import BLOCKED_CROSSCHECK_METHOD_IDS
 from publish_private_report import canonical_packet_digest, validate_packet_dir
-from render_ai_synthesis_runbook import FORBIDDEN_TOKENS
 from runbook_io import require_real_input_file, require_safe_output_path
+
+FORBIDDEN_TOKENS = DEFAULT_FORBIDDEN_TOKENS
 
 PACKET_ARG_TO_METHOD = (
     ("deterministic_report_dir", "deterministic_full_wgs"),

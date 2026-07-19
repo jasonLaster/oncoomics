@@ -9,9 +9,12 @@ import subprocess
 from pathlib import Path
 from typing import Any, Sequence
 
-from forbidden_text import forbidden_token_fingerprints, merge_forbidden_tokens
-from publish_reviewed_public_report import (
+from forbidden_text import (
     DEFAULT_FORBIDDEN_TOKENS,
+    forbidden_token_fingerprints,
+    merge_forbidden_tokens,
+)
+from publish_reviewed_public_report import (
     MAX_FILE_BYTES,
     MAX_PACKET_BYTES,
     METHOD_CONTRACTS,

@@ -7,10 +7,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+import publish_private_report as PRIVATE_PUBLISHER  # noqa: E402
+import publish_reviewed_public_report as PUBLIC_PUBLISHER  # noqa: E402
+import render_ai_synthesis_runbook as AI_RUNBOOK  # noqa: E402
+import render_post_success_runbook as POST_SUCCESS_RUNBOOK  # noqa: E402
+import render_source_report_freeze_runbook as SOURCE_FREEZE_RUNBOOK  # noqa: E402
+import validate_phase3_fast_report_packets as PHASE3_PACKET_VALIDATOR  # noqa: E402
 
 SPEC = importlib.util.spec_from_file_location(
     "forbidden_text", SCRIPT_DIR / "forbidden_text.py"
@@ -21,6 +26,29 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ForbiddenTextTests(unittest.TestCase):
+    def test_static_forbidden_tokens_have_one_source_of_truth(self) -> None:
+        self.assertEqual(
+            MODULE.DEFAULT_FORBIDDEN_TOKENS,
+            PUBLIC_PUBLISHER.DEFAULT_FORBIDDEN_TOKENS,
+        )
+        self.assertEqual(
+            MODULE.DEFAULT_FORBIDDEN_TOKENS,
+            PRIVATE_PUBLISHER.DEFAULT_FORBIDDEN_TOKENS,
+        )
+        self.assertEqual(MODULE.DEFAULT_FORBIDDEN_TOKENS, AI_RUNBOOK.FORBIDDEN_TOKENS)
+        self.assertEqual(
+            MODULE.DEFAULT_FORBIDDEN_TOKENS,
+            PHASE3_PACKET_VALIDATOR.FORBIDDEN_TOKENS,
+        )
+        self.assertEqual(
+            POST_SUCCESS_RUNBOOK.forbidden_flags(),
+            AI_RUNBOOK.forbidden_flags(),
+        )
+        self.assertEqual(
+            SOURCE_FREEZE_RUNBOOK.forbidden_flags(),
+            AI_RUNBOOK.forbidden_flags(),
+        )
+
     def test_normalized_scan_text_decodes_identifier_obfuscation(self) -> None:
         for value in (
             "p&#101;rsonalis",

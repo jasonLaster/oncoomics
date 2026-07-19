@@ -9,6 +9,7 @@ import shlex
 from datetime import datetime, timezone
 from pathlib import Path
 
+from forbidden_text import DEFAULT_FORBIDDEN_TOKENS
 from hrd_report_inventory import (
     BLOCKED_CROSSCHECK_REPORT_DIRS,
     EXECUTABLE_CROSSCHECK_METHOD_IDS,
@@ -22,9 +23,10 @@ from publish_reviewed_public_report import (
     RUN_ID,
     SUBJECT_ALIAS,
 )
-from render_ai_synthesis_runbook import FORBIDDEN_TOKENS
 from render_source_report_freeze_runbook import (
     required_absent as source_required_absent,
+)
+from render_source_report_freeze_runbook import (
     required_existing as source_required_existing,
 )
 from runbook_io import (
@@ -38,7 +40,6 @@ from runbook_io import (
     unique_paths,
     write_once,
 )
-
 
 WORK_BUCKET = f"diana-omics-work-{ACCOUNT_ID}-{REGION}"
 PRIVATE_RUN_ROOT = f"s3://{PRIVATE_BUCKET}/runs/{SUBJECT_ALIAS}/{RUN_ID}/"
@@ -99,7 +100,7 @@ RUN_GENERATED_AT = generated_at_from_run_id(RUN_ID)
 def forbidden_flags() -> list[str]:
     return [
         token
-        for value in FORBIDDEN_TOKENS
+        for value in DEFAULT_FORBIDDEN_TOKENS
         for token in ("--forbidden-token", value)
     ]
 
