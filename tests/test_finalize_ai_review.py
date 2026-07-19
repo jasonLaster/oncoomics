@@ -343,6 +343,27 @@ class FinalizeAiReviewTests(unittest.TestCase):
             self.assertIn("output must be report_manifest", outside.stderr)
             self.assertEqual(outside_report.read_text(encoding="utf-8"), "keep me\n")
 
+    def test_rejects_malformed_validation_counts(self) -> None:
+        cases = (
+            ("claim_count", True),
+            ("disagreement_claim_count", False),
+            ("disagreement_claim_count", 999),
+        )
+
+        for field, value in cases:
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                fixture, review = self.validated_review(temporary)
+                validation_path = review / "validation.json"
+                validation = load_json(validation_path)
+                validation[field] = value
+                write_json(validation_path, validation)
+
+                finalized = self.execute(fixture, review)
+
+                self.assertNotEqual(finalized.returncode, 0)
+                self.assertIn("review validation counts are not exact", finalized.stderr)
+                self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_extra_review_file_before_final_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)

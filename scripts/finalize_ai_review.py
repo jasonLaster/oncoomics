@@ -161,6 +161,14 @@ def require_exact_source_sha256(
         raise ValueError("AI review source hashes are not exact")
 
 
+def is_nonnegative_exact_int(value: Any) -> bool:
+    return type(value) is int and value >= 0
+
+
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
 def build_manifest(
     bundle_dir: Path,
     review_dir: Path,
@@ -305,6 +313,14 @@ def build_manifest(
         )
     if review_manifest.get("independence_attestation") != REQUIRED_ATTESTATION:
         raise ValueError("independence attestation is missing or altered")
+    claim_count = validation.get("claim_count")
+    disagreement_claim_count = validation.get("disagreement_claim_count")
+    if (
+        not is_positive_exact_int(claim_count)
+        or not is_nonnegative_exact_int(disagreement_claim_count)
+        or disagreement_claim_count > claim_count
+    ):
+        raise ValueError("review validation counts are not exact")
     evidence_sources = bundle.get("evidence_sources")
     if not isinstance(evidence_sources, list) or not evidence_sources:
         raise ValueError("review bundle has no evidence sources")
@@ -343,9 +359,9 @@ def build_manifest(
             "required_method_ids": required_methods,
             "method_inventory": inventory_payload(inventory_id),
             "method_inventory_sha256": inventory_sha256(inventory_id),
-            "claim_count": validation.get("claim_count"),
+            "claim_count": claim_count,
             "covered_evidence_ids": validation.get("covered_evidence_ids"),
-            "disagreement_claim_count": validation.get("disagreement_claim_count"),
+            "disagreement_claim_count": disagreement_claim_count,
             "limitations": [
                 "Narrative AI cross-check only; not an HRD algorithm or clinical interpretation.",
                 "The review cannot promote the deterministic authorization ceiling.",
