@@ -473,6 +473,29 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertFalse(fixture.output_path.exists())
 
+    def test_apply_rejects_dry_run_receipt_with_extra_failed_check_before_s3(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            dry_receipt = fixture.write_dry_run_receipt()
+            payload = json.loads(dry_receipt.read_text(encoding="utf-8"))
+            payload["checks"]["unexpected_late_check"] = False
+            dry_receipt.write_text(
+                json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with (
+                mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ),
+                self.assertRaisesRegex(ValueError, "did not pass preflight checks"),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_receipt))
+
+            self.assertFalse(fixture.output_path.exists())
+
     def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_s3(
         self,
     ) -> None:

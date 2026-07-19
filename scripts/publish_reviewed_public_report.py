@@ -790,9 +790,7 @@ def validate_dry_run_receipt(
             "reviewed-public report dry-run private receipt does not match this apply"
         )
 
-    if any(
-        checks.get(check) is not True for check in REVIEWED_PUBLIC_PREFLIGHT_CHECKS
-    ):
+    if checks != dict.fromkeys(REVIEWED_PUBLIC_PREFLIGHT_CHECKS, True):
         raise ValueError(
             "reviewed-public report dry-run receipt did not pass preflight checks"
         )

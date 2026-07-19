@@ -216,14 +216,12 @@ def validate_dry_run_receipt(
         raise ValueError("private report dry-run receipt does not match this apply")
 
     checks = dry_run.get("checks")
-    required_checks = (
-        "packet_inventory_exact",
-        "packet_manifest_no_call_boundary",
-        "packet_forbidden_token_scan",
-    )
-    if not isinstance(checks, dict) or any(
-        checks.get(check) is not True for check in required_checks
-    ):
+    required_checks = {
+        "packet_inventory_exact": True,
+        "packet_manifest_no_call_boundary": True,
+        "packet_forbidden_token_scan": True,
+    }
+    if checks != required_checks:
         raise ValueError("private report dry-run receipt did not pass packet checks")
 
     return {
