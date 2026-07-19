@@ -307,11 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>05a2dd71bb9f255fcecf55680de823621d2d6acc</strong>.
-          The latest work is AI model-catalog receipt mode hardening:
-          <code>write_ai_model_catalog_receipt.py</code> now rechecks that the
-          installed model-catalog receipt remains mode <code>0600</code> after
-          parent-directory fsync.
+          <strong>6942a0cc192a44bff4e4965c2928e0a6dce0b414</strong>.
+          The latest work is exact Batch host and SSM hardening:
+          <code>capture_batch_provenance.py</code> now requires exact
+          task-host, hash-command, freeze-command, and final Batch worker maps
+          before execution capture can pass.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 05a2dd7</li>
+          <li class="pill">Latest hardening = 6942a0c</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -401,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 05a2dd7</strong>
-              <span>AI model-catalog receipt creation now rechecks post-fsync mode and content before accepting the installed private receipt.</span>
+              <strong>Preserve 6942a0c</strong>
+              <span>Batch execution capture now rejects missing, unexpected, or failed nested host, hash SSM, and freeze SSM maps before accepting worker execution evidence.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +450,22 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>6942a0c Require exact Batch host SSM checks:</strong>
+                <code>capture_batch_provenance.py</code> now defines
+                <code>EXPECTED_TASK_HOST_BINDING_CHECKS</code>,
+                <code>EXPECTED_SSM_COMMAND_BINDING_CHECKS</code>, and
+                <code>EXPECTED_BATCH_WORKER_CHECKS</code> for Batch task host
+                mapping, hash-command SSM evidence, freeze-command SSM
+                evidence, and final Batch worker custody. The Batch worker
+                tests now reject missing, unexpected, and failed nested
+                host/hash/freeze maps before the task-host mapping,
+                hash-command definition, or freeze-command definition gates can
+                pass.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
