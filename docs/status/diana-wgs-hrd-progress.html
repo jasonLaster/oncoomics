@@ -306,22 +306,23 @@
         <p class="eyebrow">Diana WGS HRD ops tracker</p>
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
-          Latest HRD source-hardening frontier:
-          <strong>70733ca69e44b7c5ff6cb8db09f158934d1c8ada</strong>.
-          The latest work requires upstream manifests for blocked HRD packets:
-          <code>generate_blocked_hrd_crosscheck_reports.py</code> now binds
-          exact ordered source report manifests before rendering FACETS, CHORD,
-          and HRDetect blocked packets.
-          This is still source/test/dashboard work only. No deterministic final
-          artifacts yet; no real Diana WGS Rosalind packet, executable
-          cross-check packets, AI-review inputs, model-review outputs, or
-          comparative synthesis have been produced.
+          Current verified compute state:
+          <strong>legacy Batch v2 failed after FilterMutectCalls</strong>.
+          The S3-only worker cleared somatic filtering and then crashed while
+          strictly UTF-8-decoding <code>samtools --version</code>; no
+          <code>deterministic/final</code> artifacts exist. The later patched
+          v4 retry passed that UTF-8 failure, restored all 23 Mutect2 shards,
+          and was intentionally stopped during paired contamination pileups.
+          Selected next compute is the checked-in
+          <code>phase3_wgs_fast</code> P5en/Parabricks path or distributed CPU
+          only; the monolithic CPU topology should not be restarted.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 70733ca</li>
-          <li class="pill">Legacy CPU run stopped</li>
-          <li class="pill">GPU/distributed rerun pending</li>
+          <li class="pill">Latest source hardening = 70733ca</li>
+          <li class="pill">Legacy v2 = FAILED</li>
+          <li class="pill">Patched v4 = stopped</li>
+          <li class="pill">east-2 P quota = 8 / 384 vCPUs</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
         </ul>
       </section>
@@ -369,7 +370,7 @@
           <div class="flow" aria-label="Ordered terminal-to-public flow">
             <div class="stage" style="--tone: var(--blocked)">
               <strong>1. Rerun deterministic WGS</strong>
-              <p>Wait for the selected GPU or distributed CPU architecture.</p>
+              <p>Use checked-in phase3_wgs_fast P5en/Parabricks or distributed CPU only.</p>
               <span class="badge">blocked</span>
             </div>
             <div class="stage" style="--tone: var(--queued)">
@@ -413,8 +414,12 @@
           <h3>Deterministic terminal outputs</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--blocked)">
-              <strong>Do not restart the legacy CPU job</strong>
-              <span>Use the GPU lane or distributed CPU architecture for the next significant rerun.</span>
+              <strong>Do not restart the monolithic CPU topology</strong>
+              <span>Legacy v2 failed after FilterMutectCalls in the strict UTF-8 <code>samtools --version</code> check; patched v4 restored 23 Mutect2 shards and was intentionally stopped at paired contamination pileups.</span>
+            </li>
+            <li class="item" style="--tone: var(--blocked)">
+              <strong>Wait for east-2 P quota</strong>
+              <span>Running On-Demand P quota is 8 vCPUs; the 384-vCPU P5en increase request remains <code>CASE_OPENED</code> under AWS case <code>178431287900370</code>.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Freeze final WGS artifacts</strong>
@@ -450,6 +455,32 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>Verified failed v2 and stopped v4 compute state:</strong>
+                the legacy Batch v2 job is <code>FAILED</code> after
+                FilterMutectCalls because the S3-only worker crashed while
+                strictly UTF-8-decoding <code>samtools --version</code>. No
+                <code>deterministic/final</code> artifacts exist. The later
+                patched v4 retry passed that failure, restored all 23 Mutect2
+                shards, and was intentionally stopped during paired
+                contamination pileups; it is not terminal evidence and should
+                not be conflated with the failed v2 job.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>Kept the next rerun off the legacy CPU topology:</strong>
+                the selected next compute path is checked-in
+                <code>phase3_wgs_fast</code> on P5en/Parabricks or distributed
+                CPU only. The live us-east-2 Running On-Demand P quota is
+                8 vCPUs, and the 384-vCPU increase request remains
+                <code>CASE_OPENED</code> under AWS case
+                <code>178431287900370</code>.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
