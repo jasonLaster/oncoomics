@@ -991,6 +991,23 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         self.assertEqual(MODULE.preferred_checksum_algorithm(head), "CRC64NVME")
         with self.assertRaisesRegex(ValueError, "no supported checksum"):
             MODULE.preferred_checksum_algorithm({"ChecksumSHA256": True})
+        for value in (True, None, "", "COMPOSITE"):
+            with self.subTest(checksum_type=value):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "exact full-object checksum type",
+                ):
+                    MODULE.exact_full_object_checksum_type(
+                        value,
+                        "stage destination",
+                    )
+        self.assertEqual(
+            MODULE.exact_full_object_checksum_type(
+                "FULL_OBJECT",
+                "stage destination",
+            ),
+            "FULL_OBJECT",
+        )
 
     def test_s3_byte_guards_avoid_raw_int_coercion(self) -> None:
         module = ast.parse(
@@ -1047,6 +1064,30 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             and node.func.id == "str"
             and node.args
             and any(field in ast.unparse(node.args[0]) for field in guarded_fields)
+        ]
+
+        self.assertEqual(raw_string_coercions, [])
+
+    def test_checksum_type_guards_avoid_raw_string_coercion(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "freeze_stage_provenance.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        raw_string_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "destination.get('ChecksumType'",
+                    'destination.get("ChecksumType"',
+                )
+            )
         ]
 
         self.assertEqual(raw_string_coercions, [])

@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact final-freeze checksum maps</li>
+          <li class="pill">Latest milestone = local exact stage-freeze checksum types</li>
+          <li class="pill">Stage-freeze checksum types = exact</li>
           <li class="pill">Final-freeze checksum maps = exact</li>
           <li class="pill">Staged-validation checksum maps = exact</li>
           <li class="pill">S3 checksum maps = exact</li>
@@ -736,6 +737,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact stage-freeze checksum types</strong>
+              <span><code>freeze_stage_provenance.py</code> now requires stage/final-freeze provenance destination rows to carry an exact string <code>FULL_OBJECT</code> checksum type before recording destination checksum metadata.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final-freeze checksum maps</strong>
               <span><code>freeze_final_artifacts.py</code> now requires dry-run receipt checksum maps to contain exact string S3 checksums and source/destination snapshots to carry exact <code>FULL_OBJECT</code> checksum types before final artifact freeze custody can pass.</span>
@@ -1650,6 +1655,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T21:50:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact stage-freeze checksum types:</strong>
+                <code>freeze_stage_provenance.py</code> now requires
+                destination HEAD checksum types to be exact
+                <code>FULL_OBJECT</code> strings before stage/final-freeze
+                provenance rows can record destination checksum metadata,
+                closing the remaining destination checksum-type
+                string-coercion seam.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T21:40:00-07:00">Jul 19 · local</time>
               <span>

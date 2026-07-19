@@ -138,6 +138,12 @@ def valid_sha256(value: Any) -> bool:
     return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
 
 
+def exact_full_object_checksum_type(value: Any, label: str) -> str:
+    if not isinstance(value, str) or value != "FULL_OBJECT":
+        raise RuntimeError(f"{label} omitted an exact full-object checksum type")
+    return value
+
+
 def exact_version_id(value: Any, label: str) -> str:
     if not valid_version_id(value):
         raise RuntimeError(f"{label} omitted an exact S3 VersionId")
@@ -966,6 +972,10 @@ def main() -> int:
                         version_id,
                     )
                     destination_size = destination.get("ContentLength")
+                    destination_checksum_type = exact_full_object_checksum_type(
+                        destination.get("ChecksumType"),
+                        f"destination {source_name}",
+                    )
                     if not is_positive_exact_int(destination_size):
                         raise RuntimeError(
                             "destination ContentLength is not an exact positive "
@@ -990,7 +1000,7 @@ def main() -> int:
                             "bytes": destination_size,
                             "etag": str(destination.get("ETag", "")),
                             "checksums": checksums(destination),
-                            "checksum_type": str(destination.get("ChecksumType", "")),
+                            "checksum_type": destination_checksum_type,
                             "sha256": destination_sha,
                             "kms_key_id": str(destination.get("SSEKMSKeyId", "")),
                             "get_response": downloaded,
