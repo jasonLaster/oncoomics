@@ -345,9 +345,10 @@
           <code>partial_evidence</code> / <code>no_call</code>.
         </p>
         <ul class="pills" aria-label="Current state">
-          <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = ef0884a</li>
-          <li class="pill">Prior dashboard = 4de1f21</li>
+          <li class="pill">Updated 2026-07-19</li>
+          <li class="pill">Latest milestone = 6a5b32b</li>
+          <li class="pill">Prior dashboard = 7cbc6de</li>
+          <li class="pill">Input contract dry-run = exact</li>
           <li class="pill">AI validation method inventory = exact</li>
           <li class="pill">Terminal cross-check inputs = absent</li>
           <li class="pill">AI bundle staging = exact</li>
@@ -398,8 +399,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana Rosalind packet</strong>
-              <span>50% · pre-route digests guarded</span>
-              <div class="bar" aria-hidden="true" style="--pct: 50%"><span></span></div>
+              <span>55% · input-contract apply bound</span>
+              <div class="bar" aria-hidden="true" style="--pct: 55%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
@@ -510,6 +511,10 @@
             <li class="item" style="--tone: var(--queued)">
               <strong>In progress · prepare the no-expensive-compute handoff chain</strong>
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind input-contract apply to its dry-run receipt</strong>
+              <span>Live input-contract publication now requires the matching dry-run receipt and rejects stale metadata, failed preflight checks, or contract SHA-256, byte-size, URI, and KMS drift before create-only publication.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind pre-route blocked report digests</strong>
@@ -645,6 +650,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:04:25-07:00">Jul 19 · 12:04 AM</time>
+              <span>
+                <strong>6a5b32b Bind input contract apply to dry-run receipt:</strong>
+                live input-contract apply now requires the matching dry-run
+                receipt with exact ready-contract, finalized-custody, prefix,
+                bucket-versioning, and empty-destination-history checks, and
+                rejects contract SHA-256, byte-size, URI, or KMS drift before
+                create-only publication. Validation passed: 84 focused tests +
+                7 subtests, then 1,708 full-suite tests + 740 subtests. No
+                publication or compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T23:58:02-07:00">Jul 18 · 11:58 PM</time>
               <span>
