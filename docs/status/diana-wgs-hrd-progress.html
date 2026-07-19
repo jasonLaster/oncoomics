@@ -307,12 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>b5187bc7fc2189557e44ac23affb926e6bf556ff</strong>.
-          The latest work is staged-input-validation replay hardening:
-          <code>download_materializer_staged_validation.py</code> now requires
-          the current six-key materializer receipt map and seven-key output
-          upload map before <code>staged_input_validation.json</code> can be
-          downloaded by exact version.
+          <strong>cc436943741c4efcfa6e08d8d5dc12e82aae29da</strong>.
+          The latest work is Batch execution capture hardening:
+          <code>capture_batch_provenance.py</code> now requires exact
+          executed-worker freeze-receipt and freeze-receipt-upload maps before
+          those worker gates can pass.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -320,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = b5187bc</li>
+          <li class="pill">Latest hardening = cc43694</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -402,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve b5187bc</strong>
-              <span>Staged-input-validation replay now rejects missing, unexpected, or failed materializer receipt and output-upload maps before downloading staged input validation by exact version.</span>
+              <strong>Preserve cc43694</strong>
+              <span>Batch execution capture now rejects missing, unexpected, or failed executed-worker freeze-receipt and freeze-receipt-upload maps before those worker gates can pass.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -451,6 +450,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>cc43694 Require exact Batch worker receipt checks:</strong>
+                <code>capture_batch_provenance.py</code> now defines
+                <code>EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS</code> and
+                <code>EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS</code> for
+                executed-worker freeze receipts and freeze receipt uploads.
+                Batch execution capture now uses
+                <code>exact_executed_worker_check_maps()</code> to require
+                exact expected maps before those worker gates can pass, and
+                <code>test_capture_batch_provenance.py</code> rejects missing,
+                unexpected, and failed keys in both maps.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
