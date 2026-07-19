@@ -539,11 +539,102 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
         evidence = MODULE.validate_host_binding(
             task, container_instance, source, "cluster-1"
         )
-        self.assertTrue(all(evidence["checks"].values()))
+        self.assertEqual(
+            evidence["checks"],
+            MODULE.EXPECTED_TASK_HOST_BINDING_CHECKS,
+        )
 
         wrong_host = dict(container_instance, ec2InstanceId="i-other-host")
         with self.assertRaisesRegex(ValueError, "ec2_instance"):
             MODULE.validate_host_binding(task, wrong_host, source, "cluster-1")
+
+    def test_batch_worker_nested_check_maps_are_exact(self) -> None:
+        self.assertEqual(
+            MODULE.exact_batch_worker_nested_check_maps(
+                dict(MODULE.EXPECTED_TASK_HOST_BINDING_CHECKS),
+                dict(MODULE.EXPECTED_SSM_COMMAND_BINDING_CHECKS),
+                dict(MODULE.EXPECTED_SSM_COMMAND_BINDING_CHECKS),
+            ),
+            {
+                "task_host_mapping": True,
+                "hash_command_definition": True,
+                "freeze_command_definition": True,
+            },
+        )
+
+        for location, label, mutate, failed_check in (
+            (
+                "host",
+                "missing",
+                lambda checks: checks.pop("receipt_cluster_matches_task"),
+                "task_host_mapping",
+            ),
+            (
+                "host",
+                "unexpected",
+                lambda checks: checks.__setitem__("forged_extra", True),
+                "task_host_mapping",
+            ),
+            (
+                "host",
+                "failed",
+                lambda checks: checks.__setitem__("ecs_container_instance_matches_task", False),
+                "task_host_mapping",
+            ),
+            (
+                "hash",
+                "missing",
+                lambda checks: checks.pop("exact_command_bodies"),
+                "hash_command_definition",
+            ),
+            (
+                "hash",
+                "unexpected",
+                lambda checks: checks.__setitem__("forged_extra", True),
+                "hash_command_definition",
+            ),
+            (
+                "hash",
+                "failed",
+                lambda checks: checks.__setitem__("invocation_response_code", False),
+                "hash_command_definition",
+            ),
+            (
+                "freeze",
+                "missing",
+                lambda checks: checks.pop("invocation_instance_id"),
+                "freeze_command_definition",
+            ),
+            (
+                "freeze",
+                "unexpected",
+                lambda checks: checks.__setitem__("forged_extra", True),
+                "freeze_command_definition",
+            ),
+            (
+                "freeze",
+                "failed",
+                lambda checks: checks.__setitem__("command_status", False),
+                "freeze_command_definition",
+            ),
+        ):
+            host_checks = dict(MODULE.EXPECTED_TASK_HOST_BINDING_CHECKS)
+            hash_checks = dict(MODULE.EXPECTED_SSM_COMMAND_BINDING_CHECKS)
+            freeze_checks = dict(MODULE.EXPECTED_SSM_COMMAND_BINDING_CHECKS)
+            checks_by_location = {
+                "host": host_checks,
+                "hash": hash_checks,
+                "freeze": freeze_checks,
+            }
+            mutate(checks_by_location[location])
+
+            with self.subTest(location=location, label=label):
+                result = MODULE.exact_batch_worker_nested_check_maps(
+                    host_checks,
+                    hash_checks,
+                    freeze_checks,
+                )
+                self.assertFalse(result[failed_check])
 
     def test_executed_worker_receipt_check_maps_are_exact(self) -> None:
         self.assertEqual(

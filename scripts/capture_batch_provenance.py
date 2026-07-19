@@ -38,6 +38,39 @@ EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS = {
     "local_sha256_matches_s3_checksum": True,
     "metadata": True,
 }
+EXPECTED_TASK_HOST_BINDING_CHECKS = {
+    "receipt_cluster_matches_task": True,
+    "receipt_container_instance_matches_task": True,
+    "ecs_container_instance_matches_task": True,
+    "receipt_ec2_instance_matches_ecs_mapping": True,
+}
+EXPECTED_SSM_COMMAND_BINDING_CHECKS = {
+    "command_id": True,
+    "document": True,
+    "command_status": True,
+    "single_exact_instance": True,
+    "exact_command_bodies": True,
+    "invocation_command_id": True,
+    "invocation_instance_id": True,
+    "invocation_status": True,
+    "invocation_response_code": True,
+}
+EXPECTED_BATCH_WORKER_CHECKS = {
+    "receipt_status": True,
+    "receipt_checks": True,
+    "receipt_upload": True,
+    "task_identity": True,
+    "task_host_mapping": True,
+    "hash_command_definition": True,
+    "freeze_command_definition": True,
+    "live_hash_command": True,
+    "live_freeze_command": True,
+    "exact_version": True,
+    "bytes": True,
+    "sha256": True,
+    "full_object_checksum": True,
+    "kms": True,
+}
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -417,7 +450,7 @@ def validate_host_binding(
             and worker_source.get("ec2_instance_id") == mapped_ec2_instance_id
         ),
     }
-    if not all(checks.values()):
+    if checks != EXPECTED_TASK_HOST_BINDING_CHECKS:
         raise ValueError(f"Batch task host binding failed: {checks}")
     return {
         "ecs_cluster": cluster,
@@ -440,6 +473,24 @@ def exact_executed_worker_check_maps(
         "freeze_receipt_upload": (
             worker_receipt_upload_checks
             == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS
+        ),
+    }
+
+
+def exact_batch_worker_nested_check_maps(
+    host_binding_checks: Any,
+    hash_command_checks: Any,
+    freeze_command_checks: Any,
+) -> dict[str, bool]:
+    return {
+        "task_host_mapping": (
+            host_binding_checks == EXPECTED_TASK_HOST_BINDING_CHECKS
+        ),
+        "hash_command_definition": (
+            hash_command_checks == EXPECTED_SSM_COMMAND_BINDING_CHECKS
+        ),
+        "freeze_command_definition": (
+            freeze_command_checks == EXPECTED_SSM_COMMAND_BINDING_CHECKS
         ),
     }
 
@@ -484,7 +535,7 @@ def validate_ssm_command(
         "invocation_status": invocation.get("Status") == "Success",
         "invocation_response_code": response_code == 0,
     }
-    if not all(checks.values()):
+    if checks != EXPECTED_SSM_COMMAND_BINDING_CHECKS:
         raise ValueError(f"{label} SSM command binding failed: {checks}")
     stdout = str(invocation.get("StandardOutputContent", ""))
     stderr = str(invocation.get("StandardErrorContent", ""))
@@ -870,12 +921,10 @@ def main() -> None:
             worker_source.get("task_arn") == task_arn
             and worker_source.get("container_runtime_id") in runtime_ids
         ),
-        "task_host_mapping": all(host_binding["checks"].values()),
-        "hash_command_definition": all(
-            hash_command_evidence["checks"].values()
-        ),
-        "freeze_command_definition": all(
-            freeze_command_evidence["checks"].values()
+        **exact_batch_worker_nested_check_maps(
+            host_binding["checks"],
+            hash_command_evidence["checks"],
+            freeze_command_evidence["checks"],
         ),
         "live_hash_command": (
             hash_invocation.get("Status") == "Success"
@@ -923,7 +972,7 @@ def main() -> None:
             == worker_freeze.get("kms_key_id")
         ),
     }
-    if not all(worker_checks.values()):
+    if worker_checks != EXPECTED_BATCH_WORKER_CHECKS:
         raise SystemExit(f"Fail-closed: executed worker verification failed: {worker_checks}")
 
     resource_requirements = container.get("resourceRequirements")
@@ -1021,7 +1070,7 @@ def main() -> None:
     if (
         result["worker"]["bytes"] <= 0
         or len(result["worker"]["sha256"]) != 64
-        or not all(result["worker"]["checks"].values())
+        or result["worker"]["checks"] != EXPECTED_BATCH_WORKER_CHECKS
     ):
         raise SystemExit("Fail-closed: incomplete worker provenance")
     write_json_atomic(args.output, result)
