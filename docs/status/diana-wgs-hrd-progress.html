@@ -307,11 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>6e658a67e34c75805ca16024ba16f2ca675b0083</strong>.
-          The latest work keeps fast WGS planning off the GPU queue:
-          <code>FAST_PARABRICKS_MUTECT_PLAN</code> is CPU-only, while the
-          Parabricks GPU reservation stays isolated to
-          <code>FAST_MUTECT_PARABRICKS_FILTER</code>.
+          <strong>56af975d6ca3c67b65a79e56afdd05cebcceec39</strong>.
+          The latest work parallelizes the fast WGS FilterMutect tail
+          prerequisites: <code>run_phase3_fast_filter_mutect.py</code> now runs
+          independent pileups, orientation modeling, and PoN indexing as one
+          bounded wave before the serial filtering tail.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 6e658a6</li>
+          <li class="pill">Latest hardening = 56af975</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -401,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 6e658a6</strong>
-              <span>Fast WGS plan mode now stays on CPU I/O and cannot reserve GPU capacity until execution enters the Parabricks filter process.</span>
+              <strong>Preserve 56af975</strong>
+              <span>Fast FilterMutect tail prerequisites now run as a bounded parallel wave before contamination, filtering, and final indexing remain serial.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +450,24 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>56af975 Parallelize fast WGS FilterMutect prerequisites:</strong>
+                <code>run_phase3_fast_filter_mutect.py</code> now starts the two
+                independent <code>GetPileupSummaries</code> commands,
+                <code>LearnReadOrientationModel</code>, and the PoN VCF
+                <code>bcftools index</code> in one bounded
+                <code>ThreadPoolExecutor</code> prerequisite wave before
+                running <code>CalculateContamination</code>,
+                <code>FilterMutectCalls</code>, and the final filtered VCF
+                index serially. <code>test_phase3_fast_filter_mutect_run.py</code>
+                adds <code>BlockingPrerequisiteFilterMutectRunner</code> to
+                prove the prerequisites start together before contamination,
+                keeps the planned command set exact, and preserves serial
+                ordering for the final three dependent tail commands.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
