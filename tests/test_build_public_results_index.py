@@ -557,8 +557,30 @@ class PublicIndexTests(unittest.TestCase):
                 "reviewed-public dry-run receipt is not exact",
             ),
             (
+                lambda receipt: receipt["dry_run_receipt"].update({"path": True}),
+                "reviewed-public dry-run receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt["dry_run_receipt"].update(
+                    {"path": " dry-run.json"}
+                ),
+                "reviewed-public dry-run receipt is not exact",
+            ),
+            (
                 lambda receipt: receipt["private_publication_receipt"].update(
                     {"legacy_destination": "s3://old-bucket/old-prefix/"}
+                ),
+                "reviewed-public private receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt["private_publication_receipt"].update(
+                    {"path": False}
+                ),
+                "reviewed-public private receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt["private_publication_receipt"].update(
+                    {"path": "private.json\n"}
                 ),
                 "reviewed-public private receipt is not exact",
             ),

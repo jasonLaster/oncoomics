@@ -317,6 +317,18 @@ def is_sha256(value: Any) -> bool:
     return isinstance(value, str) and SHA256_HEX.fullmatch(value) is not None
 
 
+def is_exact_receipt_path(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and value.strip() == value
+        and "\n" not in value
+        and "\r" not in value
+        and "\0" not in value
+        and value.lower() not in {"null", "none"}
+    )
+
+
 def validate_reviewed_public_receipts(
     paths: Sequence[pathlib.Path],
 ) -> tuple[dict[str, ReviewedPublicObject], list[dict[str, Any]]]:
@@ -381,13 +393,15 @@ def validate_reviewed_public_receipts(
             set(dry_run_receipt) != REVIEWED_PUBLIC_DRY_RUN_RECEIPT_KEYS
             or dry_run_receipt.get("status") != "dry_run"
             or dry_run_receipt.get("method_id") != method_id
-            or not str(dry_run_receipt.get("path", ""))
+            or not is_exact_receipt_path(dry_run_receipt.get("path"))
             or not is_sha256(dry_run_receipt.get("sha256"))
         ):
             raise RuntimeError(
                 f"{method_id} reviewed-public dry-run receipt is not exact"
             )
         if set(private_publication_receipt) != REVIEWED_PUBLIC_PRIVATE_RECEIPT_KEYS:
+            raise RuntimeError(f"{method_id} reviewed-public private receipt is not exact")
+        if not is_exact_receipt_path(private_publication_receipt.get("path")):
             raise RuntimeError(f"{method_id} reviewed-public private receipt is not exact")
         if checks != REVIEWED_PUBLIC_APPLY_CHECKS:
             raise RuntimeError(f"{method_id} reviewed-public receipt failed required checks")
