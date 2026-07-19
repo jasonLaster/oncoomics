@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real materialized-final hash inputs</li>
+          <li class="pill">Latest milestone = local real input-contract hash inputs</li>
+          <li class="pill">Input-contract hash inputs = real</li>
           <li class="pill">Materialized-final hash inputs = real</li>
           <li class="pill">Freeze hash inputs = real</li>
           <li class="pill">Staged-validation hash inputs = real</li>
@@ -885,6 +886,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact input-contract JSON</strong>
               <span>Input-contract finalization and publication now reject duplicate JSON object names while loading pending contracts, custody receipts, finalized contracts, dry-run receipts, verification copies, and recovery anchors before binding or publishing alias-only cross-check inputs.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real input-contract hash inputs</strong>
+              <span>Input-contract finalization and publication now reject symlinked local SHA-256 inputs and symlinked hash-input ancestors before alias-only contracts or publication anchors can bind exact materialization and cross-check receipts.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact executed-worker ETags</strong>
@@ -2040,6 +2045,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:05-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real input-contract hash inputs:</strong>
+                Input-contract finalization and publication now reject symlinked
+                local SHA-256 inputs and hash-input ancestors before alias-only
+                contracts or publication anchors can bind exact receipts.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:04-07:00">Jul 19 · local</time>
               <span>

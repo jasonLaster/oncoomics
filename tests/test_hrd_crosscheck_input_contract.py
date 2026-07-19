@@ -1654,6 +1654,35 @@ class CustodyHandoffTests(unittest.TestCase):
                     finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
                 )
 
+    def test_finalizer_sha256_rejects_symlinked_hash_inputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_input = root / "real-contract.json"
+            linked_input = root / "contract-link.json"
+            real_input.write_text("{}\n", encoding="utf-8")
+            linked_input.symlink_to(real_input)
+
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            (real_parent / "contract.json").write_text("{}\n", encoding="utf-8")
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            cases = (
+                (
+                    linked_input,
+                    "contract-link.json SHA-256 input must be a real file",
+                ),
+                (
+                    linked_parent / "contract.json",
+                    "contract.json SHA-256 input parent may not be a symlink",
+                ),
+            )
+            for path, message in cases:
+                with self.subTest(path=path):
+                    with self.assertRaisesRegex(ValueError, message):
+                        finalizer.sha256(path)
+
     def test_finalizer_rejects_duplicate_input_json_object_names(self):
         for label, payload, key, stale in (
             (
@@ -2826,6 +2855,35 @@ class CustodyHandoffTests(unittest.TestCase):
                 ),
             ):
                 publisher.write_json_atomic(anchor_path, {"status": "passed"})
+
+    def test_contract_publication_sha256_rejects_symlinked_hash_inputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_input = root / "real-anchor.json"
+            linked_input = root / "anchor-link.json"
+            real_input.write_text("{}\n", encoding="utf-8")
+            linked_input.symlink_to(real_input)
+
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            (real_parent / "anchor.json").write_text("{}\n", encoding="utf-8")
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            cases = (
+                (
+                    linked_input,
+                    "anchor-link.json SHA-256 input must be a real file",
+                ),
+                (
+                    linked_parent / "anchor.json",
+                    "anchor.json SHA-256 input parent may not be a symlink",
+                ),
+            )
+            for path, message in cases:
+                with self.subTest(path=path):
+                    with self.assertRaisesRegex(ValueError, message):
+                        publisher.sha256(path)
 
     def test_contract_publication_rejects_symlinked_anchor_parent_without_writing_target(self):
         with tempfile.TemporaryDirectory() as temporary:
