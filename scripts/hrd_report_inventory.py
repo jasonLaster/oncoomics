@@ -19,6 +19,16 @@ REQUIRED_METHOD_IDS = (
     "oncoanalyser_chord_blocked",
     "hrdetect_blocked",
 )
+HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID = "hcc1395_wgs_known_answer_v1"
+HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS = (
+    "deterministic_full_wgs",
+    "rosalind_hcc1395_wgs",
+    *REQUIRED_METHOD_IDS[2:],
+)
+INVENTORY_METHODS = {
+    INVENTORY_ID: REQUIRED_METHOD_IDS,
+    HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID: HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS,
+}
 EXECUTABLE_CROSSCHECK_METHOD_IDS = REQUIRED_METHOD_IDS[2:4]
 BLOCKED_CROSSCHECK_METHOD_IDS = REQUIRED_METHOD_IDS[4:]
 BLOCKED_CROSSCHECK_REPORT_DIRS = {method_id: method_id for method_id in BLOCKED_CROSSCHECK_METHOD_IDS}
@@ -30,25 +40,41 @@ COMPARATIVE_METHOD_IDS = ("comparative_hrd_synthesis",)
 REPORT_METHOD_IDS = REQUIRED_METHOD_IDS + AI_REVIEW_METHOD_IDS + COMPARATIVE_METHOD_IDS
 
 
-def inventory_payload() -> dict[str, Any]:
+def required_method_ids(inventory_id: str = INVENTORY_ID) -> tuple[str, ...]:
+    try:
+        return INVENTORY_METHODS[inventory_id]
+    except KeyError as error:
+        raise ValueError(f"unknown HRD report inventory: {inventory_id}") from error
+
+
+def inventory_payload(inventory_id: str = INVENTORY_ID) -> dict[str, Any]:
     return {
         "schema_version": INVENTORY_SCHEMA_VERSION,
-        "inventory_id": INVENTORY_ID,
-        "ordered_method_ids": list(REQUIRED_METHOD_IDS),
+        "inventory_id": inventory_id,
+        "ordered_method_ids": list(required_method_ids(inventory_id)),
     }
 
 
-def inventory_sha256() -> str:
-    encoded = json.dumps(inventory_payload(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+def inventory_sha256(inventory_id: str = INVENTORY_ID) -> str:
+    encoded = json.dumps(
+        inventory_payload(inventory_id),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
-def require_pinned_methods(values: Sequence[str], label: str) -> list[str]:
+def require_pinned_methods(
+    values: Sequence[str],
+    label: str,
+    inventory_id: str = INVENTORY_ID,
+) -> list[str]:
     observed = [str(value) for value in values]
-    expected = list(REQUIRED_METHOD_IDS)
+    expected = list(required_method_ids(inventory_id))
     if observed != expected:
         raise ValueError(
-            f"{label} must equal the pinned seven-method inventory in exact order; expected={expected!r} observed={observed!r}"
+            f"{label} must equal the pinned seven-method inventory {inventory_id} "
+            f"in exact order; expected={expected!r} observed={observed!r}"
         )
     return observed
 
@@ -61,9 +87,25 @@ def require_report_methods(values: Sequence[str], label: str) -> list[str]:
     return observed
 
 
-def require_inventory_binding(payload: Any, digest: Any, label: str) -> None:
-    if payload != inventory_payload() or str(digest).lower() != inventory_sha256():
-        raise ValueError(f"{label} differs from the pinned seven-method inventory")
+def require_inventory_binding(
+    payload: Any,
+    digest: Any,
+    label: str,
+    inventory_id: str | None = INVENTORY_ID,
+) -> str:
+    if inventory_id is None:
+        if not isinstance(payload, dict):
+            raise ValueError(f"{label} is not a report inventory object")
+        inventory_id = str(payload.get("inventory_id", ""))
+        required_method_ids(inventory_id)
+    if (
+        payload != inventory_payload(inventory_id)
+        or str(digest).lower() != inventory_sha256(inventory_id)
+    ):
+        raise ValueError(
+            f"{label} differs from the pinned seven-method inventory {inventory_id}"
+        )
+    return inventory_id
 
 
 def source_report_packet_dirs(

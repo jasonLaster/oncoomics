@@ -16,6 +16,7 @@ from typing import Any, Iterable, Sequence
 
 from forbidden_text import forbidden_token_fingerprints, normalized_scan_text
 from hrd_report_inventory import (
+    INVENTORY_ID,
     inventory_payload,
     inventory_sha256,
     require_pinned_methods,
@@ -275,6 +276,7 @@ def prompt(
     bundle_hash: str,
     subject_alias: str,
     model: dict[str, Any],
+    method_inventory_sha256: str,
 ) -> str:
     common = f"""# Independent HRD evidence reviewer {role}
 
@@ -293,7 +295,7 @@ Produce exactly:
 1. `report.md`, with these headings in order: `# Independent HRD evidence review`, `## Methods and evidence`, `## Findings`, `## Disagreements`, `## Limitations`, `## Authorized conclusion`. Before the first section, state the exact authorization line `Authorized HRD state: <state>` and exact alias line `Subject alias: <alias>`, using backticks around the values. Cite every substantive paragraph or table with `[C###|E###]`; for multiple evidence sources use semicolons and make the cited evidence list exactly match that claim row.
 2. `claims.csv` with the exact header:
    `claim_id,claim,evidence_ids,source_methods,evidence_states,support_level,caveat,disposition,proposed_hrd_state,quantitative_fact_ids,disagreement_status,disagreement_evidence_ids,resolution_needed`
-3. `review_manifest.json` with reviewer ID, the exact pinned model contract, invocation ID/interface/start/end timestamps, subject alias, prompt SHA-256, input-bundle SHA-256, the pinned method-inventory SHA-256 `{inventory_sha256()}`, an exact two-file input-artifact hash inventory, the required independence/isolation attestation, and SHA-256 for `report.md` and `claims.csv`.
+3. `review_manifest.json` with reviewer ID, the exact pinned model contract, invocation ID/interface/start/end timestamps, subject alias, prompt SHA-256, input-bundle SHA-256, the pinned method-inventory SHA-256 `{method_inventory_sha256}`, an exact two-file input-artifact hash inventory, the required independence/isolation attestation, and SHA-256 for `report.md` and `claims.csv`.
 
 The exact input-artifact inventory is `review_bundle.json` plus this reviewer-specific prompt only. Attest that no other reviewer output, external research, or raw input was received.
 
@@ -676,6 +678,11 @@ def main() -> None:
         required=True,
         help="Expected method ID, repeated in the exact manifest order.",
     )
+    parser.add_argument(
+        "--inventory-id",
+        default=INVENTORY_ID,
+        help="Pinned HRD report inventory ID. Defaults to the Diana WGS inventory.",
+    )
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--forbidden-token", action="append", default=[])
     parser.add_argument("--subject-alias", default="subject01")
@@ -713,9 +720,15 @@ def main() -> None:
             "Fail-closed: required method inventory is empty, invalid, or duplicated"
         )
     try:
-        require_pinned_methods(required_methods, "required method arguments")
+        require_pinned_methods(
+            required_methods,
+            "required method arguments",
+            args.inventory_id,
+        )
     except ValueError as error:
         raise SystemExit(f"Fail-closed: {error}") from error
+    method_inventory = inventory_payload(args.inventory_id)
+    method_inventory_sha256 = inventory_sha256(args.inventory_id)
 
     try:
         catalog_verified = parse_catalog_time(
@@ -872,8 +885,8 @@ def main() -> None:
         "subject_alias": args.subject_alias,
         "authorized_hrd_state": ceiling,
         "required_method_ids": required_methods,
-        "method_inventory": inventory_payload(),
-        "method_inventory_sha256": inventory_sha256(),
+        "method_inventory": method_inventory,
+        "method_inventory_sha256": method_inventory_sha256,
         "evidence_sources": evidence,
         "quantitative_facts": facts,
         "model_execution_contracts": model_contracts,
@@ -910,6 +923,7 @@ def main() -> None:
                     bundle_hash,
                     args.subject_alias,
                     model_contracts[role],
+                    method_inventory_sha256,
                 ).encode("utf-8"),
             )
             prompt_paths[role] = path
@@ -920,8 +934,8 @@ def main() -> None:
             "subject_alias": args.subject_alias,
             "authorized_hrd_state": ceiling,
             "required_method_ids": required_methods,
-            "method_inventory": inventory_payload(),
-            "method_inventory_sha256": inventory_sha256(),
+            "method_inventory": method_inventory,
+            "method_inventory_sha256": method_inventory_sha256,
             "input_manifest_sha256": input_hashes,
             "forbidden_token_sha256": forbidden_token_fingerprints(forbidden),
             "review_bundle_sha256": bundle_hash,

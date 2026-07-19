@@ -83,6 +83,37 @@ class HrdReportInventoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "differs"):
             INVENTORY.require_inventory_binding(payload, "0" * 64, "test binding")
 
+    def test_hcc1395_known_answer_inventory_is_distinct_and_exact(self) -> None:
+        inventory_id = INVENTORY.HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID
+        methods = INVENTORY.HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS
+        payload = INVENTORY.inventory_payload(inventory_id)
+        digest = INVENTORY.inventory_sha256(inventory_id)
+
+        self.assertEqual(payload["inventory_id"], "hcc1395_wgs_known_answer_v1")
+        self.assertEqual(tuple(payload["ordered_method_ids"]), methods)
+        self.assertEqual(methods[0], "deterministic_full_wgs")
+        self.assertEqual(methods[1], "rosalind_hcc1395_wgs")
+        self.assertNotIn("rosalind_diana_wgs", methods)
+        self.assertNotEqual(digest, INVENTORY.inventory_sha256())
+
+        INVENTORY.require_pinned_methods(methods, "HCC inventory", inventory_id)
+        INVENTORY.require_inventory_binding(
+            payload,
+            digest,
+            "HCC inventory binding",
+            inventory_id,
+        )
+        with self.assertRaisesRegex(ValueError, "hcc1395_wgs_known_answer_v1"):
+            INVENTORY.require_pinned_methods(
+                INVENTORY.REQUIRED_METHOD_IDS,
+                "HCC inventory",
+                inventory_id,
+            )
+
+    def test_unknown_inventory_fails_closed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unknown HRD report inventory"):
+            INVENTORY.inventory_payload("unknown_inventory")
+
     def test_source_report_paths_follow_pinned_method_order(self) -> None:
         root = Path("/repo")
 

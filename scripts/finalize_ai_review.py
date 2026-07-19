@@ -215,16 +215,22 @@ def build_manifest(
     required_methods = bundle.get("required_method_ids")
     if not isinstance(required_methods, list) or not required_methods:
         raise ValueError("required method inventory is missing")
-    require_pinned_methods(required_methods, "review bundle method inventory")
-    require_inventory_binding(
+    inventory_id = require_inventory_binding(
         bundle.get("method_inventory"),
         bundle.get("method_inventory_sha256"),
         "review bundle method inventory binding",
+        None,
+    )
+    require_pinned_methods(
+        required_methods,
+        "review bundle method inventory",
+        inventory_id,
     )
     require_inventory_binding(
         bundle_manifest.get("method_inventory"),
         bundle_manifest.get("method_inventory_sha256"),
         "bundle manifest method inventory binding",
+        inventory_id,
     )
     if bundle.get("method_inventory_sha256") != bundle_manifest.get(
         "method_inventory_sha256"
@@ -236,8 +242,8 @@ def build_manifest(
     ):
         raise ValueError("required method inventory differs across artifacts")
     if not (
-        review_manifest.get("method_inventory_sha256") == inventory_sha256()
-        and validation.get("method_inventory_sha256") == inventory_sha256()
+        review_manifest.get("method_inventory_sha256") == inventory_sha256(inventory_id)
+        and validation.get("method_inventory_sha256") == inventory_sha256(inventory_id)
     ):
         raise ValueError("review method inventory binding is missing or altered")
 
@@ -289,8 +295,8 @@ def build_manifest(
             "model": review_manifest["model"],
             "invocation_id": invocation["invocation_id"],
             "required_method_ids": required_methods,
-            "method_inventory": inventory_payload(),
-            "method_inventory_sha256": inventory_sha256(),
+            "method_inventory": inventory_payload(inventory_id),
+            "method_inventory_sha256": inventory_sha256(inventory_id),
             "claim_count": validation.get("claim_count"),
             "covered_evidence_ids": validation.get("covered_evidence_ids"),
             "disagreement_claim_count": validation.get("disagreement_claim_count"),

@@ -658,6 +658,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
     def test_artifact_root_override_reads_materialized_inputs(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
             output_root = Path(tmp)
+            packet_root = output_root / "isolated-rosalind"
             artifact_root = Path(artifacts)
             utils.write_json(
                 artifact_root / "results/full_wes_benchmark/full_wes_benchmark_summary.json",
@@ -687,14 +688,24 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
             with (
                 patch.object(packet, "path_from_root", lambda relative: output_root / relative),
-                patch.dict("os.environ", {"ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root)}),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_OUTPUT_ROOT": str(packet_root),
+                    },
+                ),
             ):
                 summary = packet.write_packet(packet.PACKET_SPECS["hcc1395_wes"], "unit")
 
             self.assertEqual(summary["missingArtifacts"], [])
-            evidence_rows = utils.parse_csv(utils.read_text(output_root / "results/rosalind_hrd/hcc1395_wes/unit/sample_validation_summary.csv"))
+            self.assertEqual(
+                summary["outputDir"],
+                str(packet_root.resolve() / "hcc1395_wes/unit"),
+            )
+            evidence_rows = utils.parse_csv(utils.read_text(packet_root / "hcc1395_wes/unit/sample_validation_summary.csv"))
             self.assertIn("4/4 FASTQ rows passed", evidence_rows[0]["detail"])
-            artifact_index = utils.read_json(output_root / "results/rosalind_hrd/hcc1395_wes/unit/input_evidence_index.json")
+            artifact_index = utils.read_json(packet_root / "hcc1395_wes/unit/input_evidence_index.json")
             self.assertTrue(str(artifact_root) in artifact_index["artifacts"][0]["resolved_path"])
 
     def test_diana_wgs_packet_consumes_worker_artifact_root_without_exposing_input_labels(self):

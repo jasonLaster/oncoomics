@@ -19,6 +19,9 @@ if str(SCRIPT_DIR) not in sys.path:
 import generate_comparative_hrd_synthesis as GENERATE  # noqa: E402
 import publish_private_report as PUBLISH_PRIVATE  # noqa: E402
 from hrd_report_inventory import (  # noqa: E402
+    HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID,
+    HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS,
+    INVENTORY_ID,
     REQUIRED_METHOD_IDS,
     inventory_payload,
     inventory_sha256,
@@ -135,13 +138,22 @@ def write_synthesis_manifest(path: Path, report: Path, agreement: Path) -> Dict[
 
 
 class SynthesisFixture:
-    def __init__(self, root: Path):
+    def __init__(
+        self,
+        root: Path,
+        *,
+        inventory_id: str = INVENTORY_ID,
+        methods: Optional[List[str]] = None,
+        subject_alias: str = "subject01",
+    ):
         self.root = root
+        self.inventory_id = inventory_id
+        self.subject_alias = subject_alias
         self.bundle_dir = root / "bundle"
         self.output_dir = root / "synthesis"
         self.review_a = root / "review-a"
         self.review_b = root / "review-b"
-        self.methods = list(REQUIRED_METHOD_IDS)
+        self.methods = list(methods or REQUIRED_METHOD_IDS)
         self.source_manifests: List[Path] = []
         for index, method_id in enumerate(self.methods):
             blocked = index >= 4
@@ -230,11 +242,11 @@ class SynthesisFixture:
             "schema_version": 2,
             "generated_at": "2026-07-17T00:00:00+00:00",
             "purpose": "deidentified_independent_narrative_crosscheck",
-            "subject_alias": "subject01",
+            "subject_alias": self.subject_alias,
             "authorized_hrd_state": "no_call",
             "required_method_ids": self.methods,
-            "method_inventory": inventory_payload(),
-            "method_inventory_sha256": inventory_sha256(),
+            "method_inventory": inventory_payload(self.inventory_id),
+            "method_inventory_sha256": inventory_sha256(self.inventory_id),
             "evidence_sources": [
                 self._evidence_row(index, path) for index, path in enumerate(self.source_manifests, 1)
             ],
@@ -258,11 +270,11 @@ class SynthesisFixture:
             {
                 "schema_version": 2,
                 "generated_at": "2026-07-17T00:00:00+00:00",
-                "subject_alias": "subject01",
+                "subject_alias": self.subject_alias,
                 "authorized_hrd_state": "no_call",
                 "required_method_ids": self.methods,
-                "method_inventory": inventory_payload(),
-                "method_inventory_sha256": inventory_sha256(),
+                "method_inventory": inventory_payload(self.inventory_id),
+                "method_inventory_sha256": inventory_sha256(self.inventory_id),
                 "input_manifest_sha256": {
                     "E{0:03d}".format(index): sha256(path)
                     for index, path in enumerate(self.source_manifests, 1)
@@ -321,8 +333,8 @@ class SynthesisFixture:
         report.write_text(
             "# Independent HRD evidence review\n\n"
             "Authorized HRD state: `no_call`\n\n"
-            "Subject alias: `subject01`\n\n"
-            "## Findings\n\nSynthetic reviewer {0} retained no_call.\n".format(reviewer),
+            f"Subject alias: `{self.subject_alias}`\n\n"
+            f"## Findings\n\nSynthetic reviewer {reviewer} retained no_call.\n",
             encoding="utf-8",
         )
         claims = directory / "claims.csv"
@@ -338,7 +350,7 @@ class SynthesisFixture:
         review_manifest = {
             "schema_version": 2,
             "reviewer_id": reviewer,
-            "subject_alias": "subject01",
+            "subject_alias": self.subject_alias,
             "model": bundle["model_execution_contracts"][reviewer],
             "invocation": {
                 "invocation_id": "synthetic-invocation-" + reviewer.lower(),
@@ -348,7 +360,7 @@ class SynthesisFixture:
             },
             "prompt_sha256": bundle_manifest["prompt_sha256"][reviewer],
             "input_bundle_sha256": bundle_manifest["review_bundle_sha256"],
-            "method_inventory_sha256": inventory_sha256(),
+            "method_inventory_sha256": inventory_sha256(self.inventory_id),
             "input_artifact_sha256": {
                 "review_bundle.json": bundle_manifest["review_bundle_sha256"],
                 "reviewer-{0}.prompt.md".format(reviewer.lower()): bundle_manifest["prompt_sha256"][
@@ -373,12 +385,12 @@ class SynthesisFixture:
                 "schema_version": 2,
                 "status": "passed",
                 "reviewer_id": reviewer,
-                "subject_alias": "subject01",
+                "subject_alias": self.subject_alias,
                 "model": bundle["model_execution_contracts"][reviewer],
                 "authorized_hrd_state": "no_call",
                 "required_method_ids": self.methods,
-                "method_inventory": inventory_payload(),
-                "method_inventory_sha256": inventory_sha256(),
+                "method_inventory": inventory_payload(self.inventory_id),
+                "method_inventory_sha256": inventory_sha256(self.inventory_id),
                 "model_catalog_receipt_sha256": "c" * 64,
                 "claim_count": 7,
                 "covered_evidence_ids": [f"E{index:03d}" for index in range(1, 8)],
@@ -941,6 +953,31 @@ class GenerateSynthesisTests(unittest.TestCase):
                 [f"E{index:03d}" for index in range(1, 8)],
             )
             self.assertIn("source_not_comparable", rows[4]["structured_disagreement_types"])
+
+    def test_hcc1395_inventory_generates_hcc_bound_synthesis(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-hcc-") as temporary:
+            fixture = SynthesisFixture(
+                Path(temporary),
+                inventory_id=HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID,
+                methods=list(HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS),
+                subject_alias="subject99",
+            )
+
+            result = fixture.run()
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            report = (fixture.output_dir / "report.md").read_text(encoding="utf-8")
+            manifest = json.loads((fixture.output_dir / "report_manifest.json").read_text())
+            self.assertEqual(
+                manifest["review_summary"]["process"]["method_inventory"],
+                inventory_payload(HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID),
+            )
+            self.assertEqual(
+                [row["method_id"] for row in manifest["review_summary"]["methods"]],
+                list(HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS),
+            )
+            self.assertNotIn("rosalind_diana_wgs", report)
+            self.assertNotIn("subject01", report)
 
     def test_existing_packet_files_fail_create_only_and_remain_unchanged(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:

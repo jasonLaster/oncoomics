@@ -24,6 +24,41 @@ feature inputs and validated method-specific implementations. `gpt-5.6-sol`
 and `gpt-5.6-terra` reviewed the evidence contract and reporting language; they
 did not run, reproduce, or replace any of those analytical methods.
 
+## Current machine-readable rehearsal
+
+The reusable rehearsal path is now `scripts/build_hcc1395_known_answer_stack.py`.
+It builds an isolated, create-only stack from `artifacts/phase3_wgs_selective5`
+and binds it to a separate report inventory:
+
+```text
+hcc1395_wgs_known_answer_v1
+41d6ec28359d5194dcbd1100be7fc100304e16748914549e3922172b6f71256a
+```
+
+That HCC inventory is intentionally distinct from the Diana inventory. The
+Rosalind row is `rosalind_hcc1395_wgs`, the subject alias defaults to
+`subject99`, and generated review bundles must not contain `rosalind_diana_wgs`
+or `subject01`.
+
+The stack emits seven schema-1 source report packets before any AI review:
+
+| Method ID | Rehearsed result |
+| --- | --- |
+| `deterministic_full_wgs` | Public HCC1395 WGS mechanics summarized as `partial_evidence` / `no_call` |
+| `rosalind_hcc1395_wgs` | Gap-aware Rosalind packet regenerated as `partial_evidence` / `no_call` |
+| `sequenza_scarhrd` | Descriptive blocked packet; no scarHRD score |
+| `sigprofiler_sbs3` | Descriptive partial-evidence packet; matrix exists, assignment not run |
+| `facets_scarhrd_blocked` | Descriptive blocked packet; no FACETS fit or scarHRD score |
+| `oncoanalyser_chord_blocked` | Descriptive blocked packet; no CHORD feature extraction or call |
+| `hrdetect_blocked` | Descriptive blocked packet; no HRDetect feature execution or call |
+
+The same bundle, isolated reviewer-input, validation, finalization, and
+comparative-synthesis commands used by the Diana post-terminal chain can then
+exercise two independent narrative reviewers and a final agreement table. Those
+AI reports stay qualitative: they can audit wording and evidence coverage, but
+they cannot promote the deterministic `no_call` ceiling or synthesize missing
+assay-derived method outputs.
+
 ## Frozen evidence contract
 
 The source is the committed

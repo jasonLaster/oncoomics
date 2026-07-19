@@ -7,6 +7,10 @@ Current shell utilities:
 - `build_ai_review_bundle.py`: build a de-identified, hash-bound model review
   bundle from the frozen seven-source HRD report inventory without invoking a
   model.
+- `build_hcc1395_known_answer_stack.py`: build an isolated public HCC1395 WGS
+  known-answer stack with a regenerated Rosalind packet, seven descriptive
+  source reports, and an HCC-bound AI-review bundle for offline reviewer
+  rehearsal.
 - `build_public_results_index.py`: build the reviewed static S3 object index
   from the ten passed reviewed-public report publication receipts that power
   `data.diana-tnbc.com`.

@@ -23,9 +23,9 @@ from typing import Any, Dict, Iterable, List, Sequence, Tuple
 from build_ai_review_bundle import validate_report_manifest_support
 from forbidden_text import has_unauthorized_hrd_classification
 from hrd_report_inventory import (
-    REQUIRED_METHOD_IDS,
     inventory_payload,
     inventory_sha256,
+    required_method_ids,
     require_inventory_binding,
     require_pinned_methods,
 )
@@ -233,7 +233,7 @@ def verify_bundle(
     bundle_path: Path,
     bundle_manifest_path: Path,
     required_methods: Sequence[str],
-) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
+) -> Tuple[Dict[str, Any], Dict[str, Any], str, str]:
     bundle = load_object(bundle_path, "review_bundle.json")
     manifest = load_object(bundle_manifest_path, "bundle_manifest.json")
     if bundle.get("schema_version") != 2 or manifest.get("schema_version") != 2:
@@ -248,20 +248,26 @@ def verify_bundle(
     subject_alias = str(bundle.get("subject_alias", ""))
     if not SUBJECT_ALIAS.fullmatch(subject_alias) or manifest.get("subject_alias") != subject_alias:
         raise ValueError("AI bundle subject alias is missing, malformed, or altered")
+    inventory_id = require_inventory_binding(
+        bundle.get("method_inventory"),
+        bundle.get("method_inventory_sha256"),
+        "review bundle method inventory binding",
+        None,
+    )
+    require_pinned_methods(
+        required_methods,
+        "synthesis required method inventory",
+        inventory_id,
+    )
     if bundle.get("required_method_ids") != list(required_methods):
         raise ValueError("AI bundle method inventory does not match the ordered required inventory")
     if manifest.get("required_method_ids") != list(required_methods):
         raise ValueError("bundle manifest method inventory does not match the ordered required inventory")
-    require_pinned_methods(required_methods, "synthesis required method inventory")
-    require_inventory_binding(
-        bundle.get("method_inventory"),
-        bundle.get("method_inventory_sha256"),
-        "review bundle method inventory binding",
-    )
     require_inventory_binding(
         manifest.get("method_inventory"),
         manifest.get("method_inventory_sha256"),
         "bundle manifest method inventory binding",
+        inventory_id,
     )
     if bundle.get("method_inventory_sha256") != manifest.get(
         "method_inventory_sha256"
@@ -310,7 +316,7 @@ def verify_bundle(
         raise ValueError("source-manifest hash inventory is missing or altered")
     for evidence_id in expected_ids:
         checked_hash(input_hashes[evidence_id], evidence_id + " source manifest")
-    return bundle, manifest, bundle_hash
+    return bundle, manifest, bundle_hash, inventory_id
 
 
 def verify_sources(
@@ -432,6 +438,7 @@ def verify_review(
     bundle: Dict[str, Any],
     bundle_manifest: Dict[str, Any],
     bundle_hash: str,
+    inventory_id: str,
 ) -> Dict[str, Any]:
     directory = require_real_directory(directory, "reviewer " + reviewer)
     observed = {path.name for path in directory.iterdir()}
@@ -460,8 +467,8 @@ def verify_review(
     if validation.get("required_method_ids") != bundle["required_method_ids"]:
         raise ValueError("reviewer " + reviewer + " ordered method inventory changed")
     if (
-        validation.get("method_inventory_sha256") != inventory_sha256()
-        or manifest.get("method_inventory_sha256") != inventory_sha256()
+        validation.get("method_inventory_sha256") != inventory_sha256(inventory_id)
+        or manifest.get("method_inventory_sha256") != inventory_sha256(inventory_id)
     ):
         raise ValueError("reviewer " + reviewer + " method inventory binding changed")
     if validation.get("model_catalog_receipt_sha256") != bundle.get(
@@ -860,7 +867,10 @@ def write_staged_text(path: Path, text: str) -> None:
     write_staged_bytes(path, text.encode("utf-8"))
 
 
-def expected_synthesis_source_hash_keys() -> set[str]:
+def expected_synthesis_source_hash_keys(
+    required_methods: Sequence[str] | None = None,
+) -> set[str]:
+    method_ids = required_method_ids() if required_methods is None else required_methods
     return {
         "generator",
         "review_bundle.json",
@@ -868,7 +878,7 @@ def expected_synthesis_source_hash_keys() -> set[str]:
         "agreement_disagreement.csv",
         *(
             "E{0:03d}_report_manifest.json".format(index)
-            for index in range(1, len(REQUIRED_METHOD_IDS) + 1)
+            for index in range(1, len(method_ids) + 1)
         ),
         *(
             f"reviewer_{reviewer}_{filename}"
@@ -879,12 +889,14 @@ def expected_synthesis_source_hash_keys() -> set[str]:
 
 
 def require_synthesis_source_hashes(
-    manifest: Dict[str, Any], agreement_sha256: str
+    manifest: Dict[str, Any],
+    agreement_sha256: str,
+    required_methods: Sequence[str],
 ) -> None:
     source_hashes = manifest.get("source_sha256")
     if (
         not isinstance(source_hashes, dict)
-        or set(source_hashes) != expected_synthesis_source_hash_keys()
+        or set(source_hashes) != expected_synthesis_source_hash_keys(required_methods)
     ):
         raise ValueError("comparative synthesis source hashes are not exact")
     for key, digest in source_hashes.items():
@@ -905,7 +917,7 @@ def require_string_list(value: Any, label: str) -> List[str]:
     return value
 
 
-def require_synthesis_review_summary(manifest: Dict[str, Any]) -> None:
+def require_synthesis_review_summary(manifest: Dict[str, Any]) -> Tuple[str, ...]:
     summary = manifest.get("review_summary")
     if not isinstance(summary, dict) or not summary:
         raise ValueError("comparative synthesis review summary is missing")
@@ -924,11 +936,13 @@ def require_synthesis_review_summary(manifest: Dict[str, Any]) -> None:
         )
     ):
         raise ValueError("comparative synthesis process summary is not exact")
-    require_inventory_binding(
+    inventory_id = require_inventory_binding(
         process.get("method_inventory"),
         process.get("method_inventory_sha256"),
         "comparative synthesis process method inventory",
+        None,
     )
+    required_methods = required_method_ids(inventory_id)
 
     readiness = summary.get("readiness")
     if readiness != {
@@ -939,10 +953,10 @@ def require_synthesis_review_summary(manifest: Dict[str, Any]) -> None:
         raise ValueError("comparative synthesis readiness summary is stale")
 
     methods = summary.get("methods")
-    if not isinstance(methods, list) or len(methods) != len(REQUIRED_METHOD_IDS):
+    if not isinstance(methods, list) or len(methods) != len(required_methods):
         raise ValueError("comparative synthesis method summary is not exact")
     method_by_evidence: Dict[str, str] = {}
-    for index, (row, method_id) in enumerate(zip(methods, REQUIRED_METHOD_IDS), 1):
+    for index, (row, method_id) in enumerate(zip(methods, required_methods), 1):
         evidence_id = "E{0:03d}".format(index)
         if (
             not isinstance(row, dict)
@@ -985,7 +999,7 @@ def require_synthesis_review_summary(manifest: Dict[str, Any]) -> None:
             not isinstance(value, int) or value < 0
             for value in status_counts.values()
         )
-        or sum(status_counts.values()) != len(REQUIRED_METHOD_IDS)
+        or sum(status_counts.values()) != len(required_methods)
     ):
         raise ValueError("comparative synthesis agreement counts are not exact")
 
@@ -1012,6 +1026,7 @@ def require_synthesis_review_summary(manifest: Dict[str, Any]) -> None:
     require_string_list(summary.get("unresolved_observations"), "unresolved observations")
     if summary.get("authorized_conclusion") != manifest.get("authorized_hrd_state"):
         raise ValueError("comparative synthesis authorized conclusion is stale")
+    return required_methods
 
 
 def require_synthesis_report_manifest(packet_dir: Path) -> None:
@@ -1081,8 +1096,8 @@ def require_synthesis_report_manifest(packet_dir: Path) -> None:
             "synthesis packet",
         )
     )
-    require_synthesis_source_hashes(manifest, agreement_sha256)
-    require_synthesis_review_summary(manifest)
+    required_methods = require_synthesis_review_summary(manifest)
+    require_synthesis_source_hashes(manifest, agreement_sha256, required_methods)
 
 
 def copy_create_only(source: Path, destination: Path) -> None:
@@ -1194,11 +1209,7 @@ def main() -> None:
     ):
         raise SystemExit("Fail-closed: required method inventory is empty, malformed, or duplicated")
     try:
-        require_pinned_methods(required_methods, "synthesis method arguments")
-    except ValueError as error:
-        raise SystemExit("Fail-closed: " + str(error)) from error
-    try:
-        bundle, bundle_manifest, bundle_hash = verify_bundle(
+        bundle, bundle_manifest, bundle_hash, inventory_id = verify_bundle(
             args.review_bundle, args.bundle_manifest, required_methods
         )
         evidence_rows = verify_sources(
@@ -1208,10 +1219,20 @@ def main() -> None:
             bundle_manifest,
         )
         review_a = verify_review(
-            args.reviewer_a_dir, "A", bundle, bundle_manifest, bundle_hash
+            args.reviewer_a_dir,
+            "A",
+            bundle,
+            bundle_manifest,
+            bundle_hash,
+            inventory_id,
         )
         review_b = verify_review(
-            args.reviewer_b_dir, "B", bundle, bundle_manifest, bundle_hash
+            args.reviewer_b_dir,
+            "B",
+            bundle,
+            bundle_manifest,
+            bundle_hash,
+            inventory_id,
         )
         verify_pair(review_a, review_b)
         ceiling = derive_authorized_state(evidence_rows)
@@ -1299,8 +1320,8 @@ def main() -> None:
                     "same_ai_bundle_verified": True,
                     "raw_inputs_used": False,
                     "external_research_used": False,
-                    "method_inventory": inventory_payload(),
-                    "method_inventory_sha256": inventory_sha256(),
+                    "method_inventory": inventory_payload(inventory_id),
+                    "method_inventory_sha256": inventory_sha256(inventory_id),
                 },
                 "readiness": {
                     "evidence_status": evidence_state,

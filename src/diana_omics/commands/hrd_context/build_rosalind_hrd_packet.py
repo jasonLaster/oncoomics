@@ -15,6 +15,7 @@ from ...paths import path_from_root
 from ...utils import ensure_dir, iso_now, parse_csv, read_json, read_text
 
 RESULT_ROOT = "results/rosalind_hrd"
+OUTPUT_ROOT_ENV = "ROSALIND_HRD_OUTPUT_ROOT"
 DEFAULT_SAMPLE_SETS = ("hcc1395_wes", "hcc1395_wgs", "hg008", "colo829", "diana_raw_intake")
 
 
@@ -340,6 +341,29 @@ def as_int(value: Any) -> int:
 
 def has_value(value: Any) -> bool:
     return value not in (None, "")
+
+
+def packet_output_root() -> Path:
+    override = os.environ.get(OUTPUT_ROOT_ENV, "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+    return path_from_root(RESULT_ROOT)
+
+
+def packet_output_path(*parts: str) -> Path:
+    return packet_output_root().joinpath(*parts)
+
+
+def packet_output_label(*parts: str) -> str:
+    if os.environ.get(OUTPUT_ROOT_ENV, "").strip():
+        return str(packet_output_path(*parts))
+    return str(Path(RESULT_ROOT).joinpath(*parts))
+
+
+def packet_root_label() -> str:
+    if os.environ.get(OUTPUT_ROOT_ENV, "").strip():
+        return str(packet_output_root())
+    return RESULT_ROOT
 
 
 def evidence_row(evidence_id: str, status: str, detail: str, artifact: str, caveat: str = "") -> dict[str, str]:
@@ -2197,8 +2221,8 @@ def install_diana_wgs_packet(staged_paths: Sequence[Path], output: Path) -> None
 
 
 def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
-    output_dir = f"{RESULT_ROOT}/{spec.sample_set}/{packet_run_id}"
-    output_path = path_from_root(output_dir)
+    output_dir = packet_output_label(spec.sample_set, packet_run_id)
+    output_path = packet_output_path(spec.sample_set, packet_run_id)
     forbidden_tokens = (
         diana_wgs_forbidden_tokens() if spec.sample_set == "diana_wgs" else []
     )
@@ -2483,7 +2507,10 @@ def write_packet_to_dir(
     }
 
 
-def write_cloud_materialization_plan(root: str, packet_run_id: str, packet_summaries: Sequence[Mapping[str, Any]]) -> None:
+def write_cloud_materialization_plan(root: str | Path, packet_run_id: str, packet_summaries: Sequence[Mapping[str, Any]]) -> None:
+    root_path = Path(root)
+    if not root_path.is_absolute():
+        root_path = path_from_root(str(root_path))
     sample_sets = ",".join(str(packet.get("sampleSet", "")) for packet in packet_summaries if packet.get("sampleSet"))
     includes_diana_wgs = any(packet.get("sampleSet") == "diana_wgs" for packet in packet_summaries)
     required_prefixes = sorted(
@@ -2495,7 +2522,7 @@ def write_cloud_materialization_plan(root: str, packet_run_id: str, packet_summa
         }
     )
     write_text_create_only(
-        path_from_root(f"{root}/cloud_materialization_plan.md"),
+        root_path / "cloud_materialization_plan.md",
         "\n".join(
             [
                 "# Cloud Materialization Plan",
@@ -2539,7 +2566,7 @@ def write_cloud_materialization_plan(root: str, packet_run_id: str, packet_summa
                 *(f"- `{prefix}/`" for prefix in required_prefixes),
                 *(["- None."] if not required_prefixes else []),
                 "",
-                "The packet builder writes new output to the repo checkout, but reads source evidence from `$ROSALIND_HRD_ARTIFACT_ROOT` when that variable is set.",
+                "The packet builder writes new output under `$ROSALIND_HRD_OUTPUT_ROOT` when set, and reads source evidence from `$ROSALIND_HRD_ARTIFACT_ROOT` when that variable is set.",
             ]
         ),
     )
@@ -2549,13 +2576,13 @@ def main() -> None:
     packet_run_id = run_id()
     sample_sets = selected_sample_sets()
     packet_summaries = [write_packet(PACKET_SPECS[sample_set], packet_run_id) for sample_set in sample_sets]
-    root = f"{RESULT_ROOT}/{packet_run_id}"
-    ensure_dir(path_from_root(root))
+    root = packet_output_path(packet_run_id)
+    ensure_dir(root)
     manifest = {
         "generatedAt": iso_now(),
         "runId": packet_run_id,
         "sampleSets": list(sample_sets),
-        "packetRoot": RESULT_ROOT,
+        "packetRoot": packet_root_label(),
         "artifactRoot": artifact_root_label(),
         "artifactRootMode": artifact_root_mode(),
         "packets": packet_summaries,
@@ -2564,9 +2591,9 @@ def main() -> None:
             "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats.",
         },
     }
-    write_json_create_only(path_from_root(f"{root}/run_manifest.json"), manifest)
+    write_json_create_only(root / "run_manifest.json", manifest)
     write_text_create_only(
-        path_from_root(f"{root}/packet_index.md"),
+        root / "packet_index.md",
         "\n".join(
             [
                 "# Rosalind HRD Packet Index",

@@ -751,6 +751,44 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertIn("3", exact_text)
             self.assertIn("1.5%", exact_text)
 
+    def test_accepts_hcc1395_known_answer_inventory_without_diana_relabeling(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            fixture.update_manifest(1, {"method_id": "rosalind_hcc1395_wgs"})
+
+            built = fixture.run(
+                methods=INVENTORY.HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS,
+                extra_args=[
+                    "--inventory-id",
+                    INVENTORY.HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID,
+                ],
+            )
+
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            bundle = json.loads(
+                (fixture.bundle_dir / "review_bundle.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                bundle["method_inventory"]["inventory_id"],
+                INVENTORY.HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID,
+            )
+            self.assertEqual(
+                bundle["required_method_ids"],
+                list(INVENTORY.HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS),
+            )
+            self.assertIn("rosalind_hcc1395_wgs", bundle["required_method_ids"])
+            self.assertNotIn("rosalind_diana_wgs", bundle["required_method_ids"])
+            self.assertIn(
+                INVENTORY.inventory_sha256(
+                    INVENTORY.HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID
+                ),
+                (fixture.bundle_dir / "reviewer-a.prompt.md").read_text(
+                    encoding="utf-8"
+                ),
+            )
+
     def test_rejects_missing_duplicate_or_reordered_method_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))

@@ -472,6 +472,7 @@ def validate_bundle(
     list[dict[str, Any]],
     dict[str, dict[str, Any]],
     str,
+    str,
 ]:
     if bundle.get("schema_version") != 2 or bundle_manifest.get("schema_version") != 2:
         raise ValueError("unsupported bundle or bundle-manifest schema")
@@ -543,16 +544,22 @@ def validate_bundle(
     required_methods = bundle.get("required_method_ids")
     if not isinstance(required_methods, list) or bundle_manifest.get("required_method_ids") != required_methods:
         raise ValueError("required method inventory is missing or altered")
-    require_pinned_methods(required_methods, "review bundle method inventory")
-    require_inventory_binding(
+    inventory_id = require_inventory_binding(
         bundle.get("method_inventory"),
         bundle.get("method_inventory_sha256"),
         "review bundle method inventory binding",
+        None,
+    )
+    require_pinned_methods(
+        required_methods,
+        "review bundle method inventory",
+        inventory_id,
     )
     require_inventory_binding(
         bundle_manifest.get("method_inventory"),
         bundle_manifest.get("method_inventory_sha256"),
         "bundle manifest method inventory binding",
+        inventory_id,
     )
     if bundle.get("method_inventory_sha256") != bundle_manifest.get("method_inventory_sha256"):
         raise ValueError("bundle method inventory hashes disagree")
@@ -633,6 +640,7 @@ def validate_bundle(
         evidence_rows,
         facts,
         catalog_receipt_hash,
+        inventory_id,
     )
 
 
@@ -845,6 +853,7 @@ def validate_review_manifest(
     bundle_hash: str,
     report_path: Path,
     claims_path: Path,
+    inventory_id: str,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     if review_manifest.get("schema_version") != 2 or review_manifest.get("reviewer_id") != reviewer:
         raise ValueError("review manifest schema or reviewer ID mismatch")
@@ -868,7 +877,7 @@ def validate_review_manifest(
         raise ValueError("review prompt hash mismatch")
     if review_manifest.get("input_bundle_sha256") != bundle_hash:
         raise ValueError("review input-bundle hash mismatch")
-    if review_manifest.get("method_inventory_sha256") != inventory_sha256():
+    if review_manifest.get("method_inventory_sha256") != inventory_sha256(inventory_id):
         raise ValueError("review method inventory hash mismatch")
 
     expected_inputs = {
@@ -1031,6 +1040,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             evidence_rows,
             quantitative_facts,
             catalog_receipt_hash,
+            inventory_id,
         ) = validate_bundle(
             bundle,
             bundle_manifest,
@@ -1072,6 +1082,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             bundle_hash,
             report_path,
             claims_path,
+            inventory_id,
         )
 
         scan_output(
@@ -1109,8 +1120,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "model": model_contracts[args.reviewer],
         "authorized_hrd_state": authorized,
         "required_method_ids": required_methods,
-        "method_inventory": inventory_payload(),
-        "method_inventory_sha256": inventory_sha256(),
+        "method_inventory": inventory_payload(inventory_id),
+        "method_inventory_sha256": inventory_sha256(inventory_id),
         "model_catalog_receipt_sha256": catalog_receipt_hash,
         "claim_count": len(claims),
         "covered_evidence_ids": sorted(covered_evidence),

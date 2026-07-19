@@ -1,0 +1,196 @@
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_DIR = ROOT / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+SCRIPT = SCRIPT_DIR / "build_hcc1395_known_answer_stack.py"
+SPEC = importlib.util.spec_from_file_location("build_hcc1395_known_answer_stack", SCRIPT)
+assert SPEC and SPEC.loader
+STACK = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(STACK)
+
+ARTIFACT_ROOT = ROOT / "artifacts/phase3_wgs_selective5"
+
+
+def write_catalog(path: Path) -> None:
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "provider_catalog": "synthetic-test-catalog",
+                "catalog_source": "offline-known-answer-test",
+                "catalog_verified_at": "2026-07-18T00:00:00+00:00",
+                "models": [
+                    {
+                        "provider": "synthetic-provider-a",
+                        "model_id": "synthetic-model-a-current",
+                        "available": True,
+                        "latest_available": True,
+                    },
+                    {
+                        "provider": "synthetic-provider-b",
+                        "model_id": "synthetic-model-b-current",
+                        "available": True,
+                        "latest_available": True,
+                    },
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def args_for(root: Path, output: Path) -> argparse.Namespace:
+    catalog = root / "model-catalog.json"
+    write_catalog(catalog)
+    return argparse.Namespace(
+        artifact_root=ARTIFACT_ROOT,
+        output_dir=output,
+        run_id="hcc1395-known-answer-unit",
+        generated_at="2026-07-18T00:00:00+00:00",
+        model_catalog_receipt=catalog,
+        model_catalog_verified_at="2026-07-18T00:00:00+00:00",
+        reviewer_a_provider="synthetic-provider-a",
+        reviewer_a_model_id="synthetic-model-a-current",
+        reviewer_b_provider="synthetic-provider-b",
+        reviewer_b_model_id="synthetic-model-b-current",
+        subject_alias="subject99",
+        forbidden_token=["DirectIdentifier"],
+    )
+
+
+class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
+    def test_builds_exact_machine_readable_seven_method_stack(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            manifest = STACK.build(args_for(root, output))
+
+            self.assertEqual(manifest["status"], "passed")
+            self.assertEqual(manifest["authorized_hrd_state"], "no_call")
+            self.assertFalse(manifest["models_invoked"])
+            self.assertEqual(
+                tuple(manifest["source_reports"]),
+                STACK.HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS,
+            )
+
+            source_manifests = {}
+            for method_id, details in manifest["source_reports"].items():
+                path = output / details["manifest"]
+                self.assertTrue(path.is_file(), method_id)
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                self.assertEqual(payload["method_id"], method_id)
+                self.assertEqual(payload["authorized_hrd_state"], "no_call")
+                self.assertFalse(payload["classification_authorized"])
+                self.assertEqual(payload["classification_qc_status"], "not_applicable")
+                source_manifests[method_id] = payload
+
+            self.assertEqual(
+                source_manifests["deterministic_full_wgs"]["report_kind"],
+                "hcc1395_wgs_known_answer",
+            )
+            self.assertEqual(
+                source_manifests["sigprofiler_sbs3"]["evidence_status"],
+                "partial_evidence",
+            )
+            for method_id in (
+                "sequenza_scarhrd",
+                "facets_scarhrd_blocked",
+                "oncoanalyser_chord_blocked",
+                "hrdetect_blocked",
+            ):
+                self.assertEqual(source_manifests[method_id]["evidence_status"], "blocked")
+                self.assertEqual(source_manifests[method_id]["execution_status"], "not_run")
+
+            bundle = json.loads(
+                (output / "ai-review-bundle/review_bundle.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            bundle_manifest = json.loads(
+                (output / "ai-review-bundle/bundle_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(bundle["subject_alias"], "subject99")
+            self.assertEqual(
+                bundle["method_inventory"]["inventory_id"],
+                STACK.HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID,
+            )
+            self.assertEqual(
+                bundle["required_method_ids"],
+                list(STACK.HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS),
+            )
+            serialized_bundle = json.dumps(bundle)
+            self.assertNotIn("rosalind_diana_wgs", serialized_bundle)
+            self.assertNotIn("subject01", serialized_bundle)
+            self.assertEqual(len(bundle_manifest["forbidden_token_sha256"]), 1)
+
+    def test_regenerates_current_gap_aware_rosalind_packet_outside_results(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            manifest = STACK.build(args_for(root, output))
+            rosalind_manifest_path = (
+                output
+                / manifest["source_reports"]["rosalind_hcc1395_wgs"]["manifest"]
+            )
+            packet_dir = rosalind_manifest_path.parent
+            rosalind_manifest = json.loads(
+                rosalind_manifest_path.read_text(encoding="utf-8")
+            )
+            adapter_text = (packet_dir / "hrd_adapter_status.csv").read_text(
+                encoding="utf-8"
+            )
+
+            self.assertNotIn("input_ready_threshold_met", adapter_text)
+            self.assertIn("input_matrix_ready_assignment_not_run", adapter_text)
+            gaps = rosalind_manifest["review_summary"]["interpretation_gaps"]
+            self.assertEqual(len(gaps), 5)
+            self.assertEqual(rosalind_manifest["review_summary"]["blockers"], [])
+            self.assertFalse(str(rosalind_manifest_path).startswith(str(ROOT / "results")))
+
+    def test_each_method_report_describes_process_result_and_no_call_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            manifest = STACK.build(args_for(root, output))
+
+            for method_id in STACK.HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS[2:]:
+                report = (
+                    output
+                    / manifest["source_reports"][method_id]["manifest"]
+                ).parent / "report.md"
+                text = report.read_text(encoding="utf-8")
+                self.assertIn("## Process", text)
+                self.assertIn("## Result", text)
+                self.assertIn("## Authorized conclusion", text)
+                self.assertIn("`no_call`", text)
+                self.assertIn("not run", text.lower())
+
+    def test_output_is_create_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            args = args_for(root, output)
+            STACK.build(args)
+            with self.assertRaisesRegex(FileExistsError, "output already exists"):
+                STACK.build(args)
+
+
+if __name__ == "__main__":
+    unittest.main()
