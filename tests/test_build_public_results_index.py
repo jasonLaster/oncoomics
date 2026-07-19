@@ -48,16 +48,20 @@ def write_public_receipts(root: Path) -> list[Path]:
         receipt = {
             "schema_version": 1,
             "status": "passed",
+            "generated_at_utc": "2026-07-18T00:00:00+00:00",
             "apply": True,
             "method_id": method_id,
             "subject_alias": PUBLISH.SUBJECT_ALIAS,
             "run_id": PUBLISH.RUN_ID,
             "classification": PUBLISH.CLASSIFICATION,
+            "script_sha256": PUBLISH.sha256(PUBLISH_SCRIPT),
             "destination_prefix": (
                 f"s3://{MODULE.BUCKET}/"
                 f"{PUBLISH.PUBLIC_ROOT}{contract['destination']}"
             ),
             "expected_files": list(expected_files),
+            "forbidden_token_count": 1,
+            "forbidden_token_sha256": ["f" * 64],
             "checks": dict(MODULE.REVIEWED_PUBLIC_APPLY_CHECKS),
             "private_publication_receipt": {
                 "path": str(receipt_root / f"{method_id}.private.json"),
@@ -68,6 +72,17 @@ def write_public_receipts(root: Path) -> list[Path]:
             },
             "source_objects": [],
             "destination_objects": [],
+            "destination_initial_history_count": 0,
+            "dry_run_receipt": {
+                "path": str(receipt_root / f"{method_id}.dry-run.json"),
+                "sha256": hashlib.sha256(
+                    f"dry-run/{method_id}".encode()
+                ).hexdigest(),
+                "method_id": method_id,
+                "status": "dry_run",
+            },
+            "destination_final_history_count": len(expected_files),
+            "completed_at_utc": "2026-07-18T00:01:00+00:00",
         }
         for index, relative in enumerate(expected_files, 1):
             digest = hashlib.sha256(f"{method_id}/{relative}".encode()).hexdigest()
@@ -437,6 +452,36 @@ class PublicIndexTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "failed required checks"):
                 MODULE.validate_reviewed_public_receipts(receipts)
 
+    def test_reviewed_public_receipts_require_exact_apply_envelope(self) -> None:
+        cases = (
+            (
+                lambda receipt: receipt.update({"legacy_apply_receipt": True}),
+                "reviewed-public receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt.pop("dry_run_receipt"),
+                "reviewed-public receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt["dry_run_receipt"].update(
+                    {"method_id": "ai_review_reviewer_b"}
+                ),
+                "reviewed-public dry-run receipt is not exact",
+            ),
+        )
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                receipts = write_public_receipts(Path(temporary))
+                receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+                mutate(receipt)
+                receipts[0].write_text(
+                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(RuntimeError, message):
+                    MODULE.validate_reviewed_public_receipts(receipts)
+
     def test_reviewed_public_destination_rows_must_be_exact(self) -> None:
         cases = (
             (
@@ -485,7 +530,7 @@ class PublicIndexTests(unittest.TestCase):
             _, original_binding = MODULE.validate_reviewed_public_receipts(receipts)
 
             receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
-            receipt["extra_review_note"] = "hash-current-receipt-bytes"
+            receipt["completed_at_utc"] = "2026-07-18T00:02:00+00:00"
             receipts[0].write_text(
                 json.dumps(receipt, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",

@@ -71,6 +71,35 @@ REVIEWED_PUBLIC_APPLY_CHECKS = {
     "destination_non_null_versions": True,
     "destination_exact_one_version_no_delete_history": True,
 }
+REVIEWED_PUBLIC_APPLY_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "generated_at_utc",
+    "apply",
+    "method_id",
+    "subject_alias",
+    "run_id",
+    "classification",
+    "script_sha256",
+    "private_publication_receipt",
+    "destination_prefix",
+    "expected_files",
+    "forbidden_token_count",
+    "forbidden_token_sha256",
+    "source_objects",
+    "destination_objects",
+    "destination_initial_history_count",
+    "dry_run_receipt",
+    "destination_final_history_count",
+    "checks",
+    "completed_at_utc",
+}
+REVIEWED_PUBLIC_DRY_RUN_RECEIPT_KEYS = {
+    "path",
+    "sha256",
+    "method_id",
+    "status",
+}
 
 
 ReviewedPublicObject = dict[str, int | str]
@@ -237,16 +266,33 @@ def validate_reviewed_public_receipts(
         contract = METHOD_CONTRACTS[method_id]
         expected_files = tuple(sorted(contract["files"]))
         expected_prefix = f"s3://{BUCKET}/{PUBLIC_ROOT}{contract['destination']}"
+        forbidden_token_sha256 = receipt.get("forbidden_token_sha256")
         if (
-            receipt.get("schema_version") != 1
+            set(receipt) != REVIEWED_PUBLIC_APPLY_RECEIPT_KEYS
+            or receipt.get("schema_version") != 1
             or receipt.get("status") != "passed"
             or receipt.get("apply") is not True
             or receipt.get("method_id") != method_id
             or receipt.get("subject_alias") != SUBJECT_ALIAS
             or receipt.get("run_id") != RUN_ID
             or receipt.get("classification") != REVIEWED_PUBLIC_CLASSIFICATION
+            or not isinstance(receipt.get("generated_at_utc"), str)
+            or not receipt.get("generated_at_utc")
+            or not isinstance(receipt.get("completed_at_utc"), str)
+            or not receipt.get("completed_at_utc")
+            or not SHA256_HEX.fullmatch(str(receipt.get("script_sha256", "")))
             or receipt.get("destination_prefix") != expected_prefix
             or tuple(receipt.get("expected_files", ())) != expected_files
+            or not isinstance(receipt.get("forbidden_token_count"), int)
+            or int(receipt.get("forbidden_token_count", 0)) <= 0
+            or not isinstance(forbidden_token_sha256, list)
+            or not forbidden_token_sha256
+            or any(
+                not isinstance(digest, str) or not SHA256_HEX.fullmatch(digest)
+                for digest in forbidden_token_sha256
+            )
+            or receipt.get("destination_initial_history_count") != 0
+            or receipt.get("destination_final_history_count") != len(expected_files)
         ):
             raise RuntimeError(f"{method_id} reviewed-public receipt is not exact")
 
@@ -254,13 +300,25 @@ def validate_reviewed_public_receipts(
         private_publication_receipt = receipt.get("private_publication_receipt")
         source_objects = receipt.get("source_objects")
         destination_objects = receipt.get("destination_objects")
+        dry_run_receipt = receipt.get("dry_run_receipt")
         if (
             not isinstance(checks, dict)
             or not isinstance(private_publication_receipt, dict)
             or not isinstance(source_objects, list)
             or not isinstance(destination_objects, list)
+            or not isinstance(dry_run_receipt, dict)
         ):
             raise RuntimeError(f"{method_id} reviewed-public receipt is incomplete")
+        if (
+            set(dry_run_receipt) != REVIEWED_PUBLIC_DRY_RUN_RECEIPT_KEYS
+            or dry_run_receipt.get("status") != "dry_run"
+            or dry_run_receipt.get("method_id") != method_id
+            or not str(dry_run_receipt.get("path", ""))
+            or not SHA256_HEX.fullmatch(str(dry_run_receipt.get("sha256", "")))
+        ):
+            raise RuntimeError(
+                f"{method_id} reviewed-public dry-run receipt is not exact"
+            )
         if checks != REVIEWED_PUBLIC_APPLY_CHECKS:
             raise RuntimeError(f"{method_id} reviewed-public receipt failed required checks")
         if len(source_objects) != len(expected_files) or len(destination_objects) != len(expected_files):
