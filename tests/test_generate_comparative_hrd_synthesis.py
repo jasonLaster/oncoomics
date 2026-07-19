@@ -1035,6 +1035,40 @@ class GenerateSynthesisTests(unittest.TestCase):
                 ],
             )
 
+    def test_synthesis_manifest_rejects_reviewer_model_summary_drift(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            manifest_path = fixture.output_dir / "report_manifest.json"
+
+            for label, mutate_summary in (
+                (
+                    "duplicate reviewer model",
+                    lambda summary: summary["reviewers"][1].__setitem__(
+                        "model", dict(summary["reviewers"][0]["model"])
+                    ),
+                ),
+                (
+                    "split catalog timestamp",
+                    lambda summary: summary["reviewers"][1]["model"].__setitem__(
+                        "catalog_verified_at", "2026-07-18T00:00:00+00:00"
+                    ),
+                ),
+            ):
+                with self.subTest(label):
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    mutate_summary(manifest["review_summary"])
+                    write_json(manifest_path, manifest)
+
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "comparative synthesis reviewer summary is not exact",
+                    ):
+                        GENERATE.require_synthesis_report_manifest(
+                            fixture.output_dir
+                        )
+
     def test_hcc1395_inventory_generates_hcc_bound_synthesis(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-hcc-") as temporary:
             fixture = SynthesisFixture(

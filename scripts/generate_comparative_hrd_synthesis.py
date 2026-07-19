@@ -920,7 +920,7 @@ def require_string_list(value: Any, label: str) -> List[str]:
     return value
 
 
-def require_reviewer_model_summary(model: Any, reviewer: str) -> None:
+def require_reviewer_model_summary(model: Any, reviewer: str) -> Tuple[str, str, str]:
     if (
         not isinstance(model, dict)
         or set(model) != {
@@ -948,6 +948,11 @@ def require_reviewer_model_summary(model: Any, reviewer: str) -> None:
         raise ValueError(
             f"comparative synthesis reviewer {reviewer} model summary is not exact"
         )
+    return (
+        str(model["provider"]).strip(),
+        str(model["model_id"]).strip(),
+        str(model["catalog_verified_at"]).strip(),
+    )
 
 
 def require_synthesis_review_summary(manifest: Dict[str, Any]) -> Tuple[str, ...]:
@@ -1005,13 +1010,19 @@ def require_synthesis_review_summary(manifest: Dict[str, Any]) -> Tuple[str, ...
     reviewers = summary.get("reviewers")
     if not isinstance(reviewers, list) or len(reviewers) != 2:
         raise ValueError("comparative synthesis reviewer summary is not exact")
+    model_identities: set[Tuple[str, str]] = set()
+    catalog_timestamps: set[str] = set()
     for row, reviewer in zip(reviewers, ("A", "B")):
         if not isinstance(row, dict) or row.get("reviewer_id") != reviewer:
             raise ValueError("comparative synthesis reviewer summary is not exact")
         model = row.get("model")
         claim_count = row.get("claim_count")
         disagreement_count = row.get("disagreement_claim_count")
-        require_reviewer_model_summary(model, reviewer)
+        provider, model_id, catalog_verified_at = require_reviewer_model_summary(
+            model, reviewer
+        )
+        model_identities.add((provider, model_id))
+        catalog_timestamps.add(catalog_verified_at)
         if (
             not isinstance(claim_count, int)
             or claim_count < 1
@@ -1020,6 +1031,8 @@ def require_synthesis_review_summary(manifest: Dict[str, Any]) -> Tuple[str, ...
             or disagreement_count > claim_count
         ):
             raise ValueError("comparative synthesis reviewer summary is not exact")
+    if len(model_identities) != 2 or len(catalog_timestamps) != 1:
+        raise ValueError("comparative synthesis reviewer summary is not exact")
 
     status_counts = summary.get("agreement_status_counts")
     if (
