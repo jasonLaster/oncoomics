@@ -34,6 +34,20 @@ SOURCE_ROLES = {
     "matrix": "sbs96_matrix",
 }
 REFERENCE_ROLES = {"fasta": "fasta", "fai": "fai"}
+EXPECTED_FINAL_FREEZE_CHECKS = {
+    "execution_receipt_bound": True,
+    "complete_source_inventory_unchanged": True,
+    "destination_exact_history_and_receipt_match": True,
+}
+EXPECTED_FINAL_ROW_CHECKS = {
+    "listed_inventory_stable": True,
+    "source_stable": True,
+    "size_matches": True,
+    "common_checksum_matches": True,
+    "exact_kms_matches": True,
+    "destination_versioned": True,
+    "copy_response_version_matches": True,
+}
 EXPECTED_MATERIALIZATION_CHECKS = {
     "version_id": True,
     "content_length": True,
@@ -165,14 +179,19 @@ def validate_freeze(
         != receipt.get("final_inventory_identity")
     ):
         raise ValueError("final artifact freeze receipt is not a complete one-shot freeze")
-    require_all_true(checks, "final artifact freeze")
+    require_exact_true(checks, EXPECTED_FINAL_FREEZE_CHECKS, "final artifact freeze")
     if anchor.get("receipt_sha256") != receipt_sha256:
         raise ValueError("final freeze anchor hash changed after validation")
+    kms_key_arn = receipt.get("kms_key_arn")
     by_uri: dict[str, dict[str, Any]] = {}
     for row in rows:
         if not isinstance(row, dict) or row.get("status") != "passed":
             raise ValueError("final artifact freeze contains a non-passed row")
-        require_all_true(row.get("checks"), "final artifact freeze row")
+        require_exact_true(
+            row.get("checks"),
+            EXPECTED_FINAL_ROW_CHECKS,
+            "final artifact freeze row",
+        )
         destination = row.get("destination")
         if not isinstance(destination, dict):
             raise ValueError("final artifact freeze row lacks a destination")
@@ -180,6 +199,17 @@ def validate_freeze(
         if not uri.startswith("s3://diana-omics-private-results-"):
             raise ValueError("final artifact freeze destination is not private")
         require_version(destination.get("version_id"), "frozen destination")
+        if (
+            not isinstance(destination.get("bytes"), int)
+            or isinstance(destination.get("bytes"), bool)
+            or int(destination.get("bytes")) <= 0
+            or destination.get("checksum_type") != "FULL_OBJECT"
+            or not isinstance(destination.get("checksums"), dict)
+            or not destination.get("checksums")
+            or destination.get("server_side_encryption") != "aws:kms"
+            or destination.get("kms_key_id") != kms_key_arn
+        ):
+            raise ValueError("final artifact freeze destination is not exact")
         if uri in by_uri:
             raise ValueError("duplicate final artifact freeze destination URI")
         by_uri[uri] = destination

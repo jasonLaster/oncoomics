@@ -155,6 +155,7 @@ class CustodyFixture:
                     "ChecksumSHA256": checksum,
                 },
                 "checksum_type": "FULL_OBJECT",
+                "server_side_encryption": "aws:kms",
                 "kms_key_id": KMS,
             }
             self.freeze_rows.append(
@@ -162,7 +163,7 @@ class CustodyFixture:
                     "relative_key": relative,
                     "status": "passed",
                     "destination": destination,
-                    "checks": {"copy": True},
+                    "checks": dict(finalizer.EXPECTED_FINAL_ROW_CHECKS),
                 }
             )
             self.exact_rows.append(
@@ -200,6 +201,7 @@ class CustodyFixture:
             "schema_version": 1,
             "status": "passed",
             "batch_status": "SUCCEEDED",
+            "kms_key_arn": KMS,
             "destination_bucket_versioning": "Enabled",
             "destination_initial_version_history_count": 0,
             "receipt_anchor_strategy": "sha256_content_addressed_create_only",
@@ -207,7 +209,7 @@ class CustodyFixture:
             "passed_count": len(self.freeze_rows),
             "initial_inventory_identity": [{"x": 1}],
             "final_inventory_identity": [{"x": 1}],
-            "checks": {"complete": True},
+            "checks": dict(finalizer.EXPECTED_FINAL_FREEZE_CHECKS),
             "objects": self.freeze_rows,
         }
         self.freeze_sha = "a" * 64
@@ -687,6 +689,40 @@ class CustodyHandoffTests(unittest.TestCase):
         fixture.freeze["destination_initial_version_history_count"] = 1
         with self.assertRaisesRegex(ValueError, "one-shot freeze"):
             fixture.finalize()
+
+    def test_finalizer_rejects_incomplete_final_freeze_checks(self):
+        fixture = CustodyFixture()
+        fixture.freeze["checks"].pop("execution_receipt_bound")
+        with self.assertRaisesRegex(ValueError, "exact custody checks"):
+            fixture.finalize()
+
+    def test_finalizer_rejects_unexpected_final_freeze_row_checks(self):
+        fixture = CustodyFixture()
+        fixture.freeze["objects"][0]["checks"]["future_check"] = True
+        with self.assertRaisesRegex(ValueError, "exact custody checks"):
+            fixture.finalize()
+
+    def test_finalizer_rejects_failed_final_freeze_row_checks(self):
+        fixture = CustodyFixture()
+        fixture.freeze["objects"][0]["checks"]["exact_kms_matches"] = False
+        with self.assertRaisesRegex(ValueError, "exact custody checks"):
+            fixture.finalize()
+
+    def test_finalizer_rejects_final_freeze_rows_without_sse_kms(self):
+        fixture = CustodyFixture()
+        fixture.freeze["objects"][0]["destination"].pop("server_side_encryption")
+        with self.assertRaisesRegex(ValueError, "destination is not exact"):
+            fixture.finalize()
+
+    def test_finalizer_final_freeze_check_inventory_matches_submitter(self):
+        self.assertEqual(
+            set(finalizer.EXPECTED_FINAL_FREEZE_CHECKS),
+            submitter.EXPECTED_FINAL_FREEZE_CHECKS,
+        )
+        self.assertEqual(
+            set(finalizer.EXPECTED_FINAL_ROW_CHECKS),
+            submitter.EXPECTED_FINAL_ROW_CHECKS,
+        )
 
     def test_anchor_validation_binds_exact_local_receipt(self):
         with tempfile.TemporaryDirectory() as temporary:
