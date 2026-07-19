@@ -84,6 +84,7 @@ def forbidden_flags() -> list[str]:
 
 
 def sha256(path: Path) -> str:
+    require_real_input_file(path, f"{path.name} SHA-256 input")
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):

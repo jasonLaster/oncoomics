@@ -420,6 +420,20 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
                 MODULE.validate_private_report_receipts(receipts)
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_input = root / "real-receipt.json"
+            linked_input = root / "receipt.json"
+            real_input.write_text("{}\n", encoding="utf-8")
+            linked_input.symlink_to(real_input)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "receipt.json SHA-256 input is missing or a symlink",
+            ):
+                MODULE.sha256(linked_input)
+
     def test_receipt_gate_pins_every_public_publish_command(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             receipts = write_receipts(Path(temporary))

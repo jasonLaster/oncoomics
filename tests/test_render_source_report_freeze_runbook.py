@@ -1009,6 +1009,20 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 MODULE.write_once(output, "two\n")
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_input = root / "real-report-manifest.json"
+            linked_input = root / "report_manifest.json"
+            real_input.write_text("{}\n", encoding="utf-8")
+            linked_input.symlink_to(real_input)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report_manifest.json SHA-256 input is missing or a symlink",
+            ):
+                MODULE.sha256(linked_input)
+
     def test_write_once_rejects_existing_child_below_symlinked_parent(self) -> None:
         self.assertFalse(RUNBOOK_IO.is_platform_root_alias(Path("runbook-link")))
 

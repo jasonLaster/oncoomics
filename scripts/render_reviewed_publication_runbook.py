@@ -22,6 +22,7 @@ from runbook_io import (
     load_json_object,
     missing_required_files,
     preexisting_create_only_paths,
+    require_real_input_file,
     write_once,
 )
 
@@ -43,6 +44,7 @@ PRIVATE_RECEIPT_SUMMARY_KEYS = {
 
 
 def sha256(path: Path) -> str:
+    require_real_input_file(path, f"{path.name} SHA-256 input")
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
