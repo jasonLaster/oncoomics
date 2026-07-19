@@ -92,6 +92,18 @@ EXPECTED_FINAL_DESTINATION_KEYS = frozenset(
         "kms_key_id",
     }
 )
+EXPECTED_FINAL_DESTINATION_INVENTORY_KEYS = frozenset(
+    {
+        "relative_key",
+        "key",
+        "version_id",
+        "bytes",
+        "etag",
+        "checksums",
+        "checksum_type",
+        "kms_key_id",
+    }
+)
 EXPECTED_FINAL_ROW_CHECKS = {
     "listed_inventory_stable": True,
     "source_stable": True,
@@ -320,6 +332,52 @@ def require_exact_keys(
     return value
 
 
+def require_final_destination_inventory(
+    receipt: dict[str, Any],
+    destination_by_relative: dict[str, dict[str, Any]],
+) -> None:
+    destination_inventory = receipt.get("destination_inventory")
+    if (
+        not isinstance(destination_inventory, list)
+        or len(destination_inventory) != len(destination_by_relative)
+    ):
+        raise ValueError("final artifact freeze destination inventory is not exact")
+
+    inventory_by_relative: dict[str, dict[str, Any]] = {}
+    for raw in destination_inventory:
+        row = require_exact_keys(
+            raw,
+            EXPECTED_FINAL_DESTINATION_INVENTORY_KEYS,
+            "final artifact freeze destination inventory",
+        )
+        relative = str(row.get("relative_key", ""))
+        if not relative:
+            raise ValueError("final artifact freeze destination inventory is not exact")
+        if relative in inventory_by_relative:
+            raise ValueError("duplicate final artifact freeze destination inventory row")
+        inventory_by_relative[relative] = row
+
+    if set(inventory_by_relative) != set(destination_by_relative):
+        raise ValueError(
+            "final artifact freeze destination inventory differs from object rows"
+        )
+
+    for relative, destination in destination_by_relative.items():
+        inventory = inventory_by_relative[relative]
+        if (
+            inventory.get("key") != destination.get("key")
+            or inventory.get("version_id") != destination.get("version_id")
+            or inventory.get("bytes") != destination.get("bytes")
+            or inventory.get("etag") != destination.get("etag")
+            or inventory.get("checksums") != destination.get("checksums")
+            or inventory.get("checksum_type") != destination.get("checksum_type")
+            or inventory.get("kms_key_id") != destination.get("kms_key_id")
+        ):
+            raise ValueError(
+                "final artifact freeze destination inventory differs from object rows"
+            )
+
+
 def validate_anchor(
     receipt_path: Path,
     anchor_path: Path,
@@ -375,6 +433,7 @@ def validate_freeze(
         raise ValueError("final freeze anchor hash changed after validation")
     kms_key_arn = receipt.get("kms_key_arn")
     by_uri: dict[str, dict[str, Any]] = {}
+    destination_by_relative: dict[str, dict[str, Any]] = {}
     for row in rows:
         row = require_exact_keys(
             row,
@@ -416,7 +475,14 @@ def validate_freeze(
             raise ValueError("final artifact freeze destination is not exact")
         if uri in by_uri:
             raise ValueError("duplicate final artifact freeze destination URI")
+        relative = str(row.get("relative_key", ""))
+        if not relative:
+            raise ValueError("final artifact freeze row is missing its relative key")
+        if relative in destination_by_relative:
+            raise ValueError("duplicate final artifact freeze relative key")
         by_uri[uri] = destination
+        destination_by_relative[relative] = destination
+    require_final_destination_inventory(receipt, destination_by_relative)
     return by_uri
 
 

@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = exact final-freeze materializer</li>
+          <li class="pill">Latest milestone = local final-freeze inventory</li>
+          <li class="pill">Final freeze destination inventory = exact</li>
           <li class="pill">Final freeze materializer = exact</li>
           <li class="pill">Exact materialization = envelope-bound</li>
           <li class="pill">Freeze worker checks = shared</li>
@@ -363,7 +364,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 25026ea</li>
+          <li class="pill">Prior dashboard = 118334d</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -528,6 +529,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact final-freeze destination inventory</strong>
+              <span>Exact local materialization and HRD input-contract finalization now reject final-freeze receipts whose <code>destination_inventory</code> rows are missing, stale, extra, or diverge from the frozen destination rows before the materialized-final tree or alias-only cross-check contract can be trusted.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final-freeze receipts before local materialization</strong>
               <span>Exact local materialization now shares the final-freeze receipt contract from input-contract finalization and rejects stale top-level, row, source, destination, or row-check metadata before downloading frozen objects into <code>materialized-final</code>.</span>
@@ -830,6 +835,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T01:51:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact final-freeze destination inventory:</strong>
+                exact local materialization and HRD input-contract
+                finalization now validate final-freeze
+                <code>destination_inventory</code> rows against the frozen
+                destinations before the materialized-final tree or alias-only
+                cross-check contract can proceed. No S3, Batch, route, GPU,
+                quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T01:50:00-07:00">Jul 19 · local</time>
               <span>

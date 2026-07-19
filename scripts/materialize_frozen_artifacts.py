@@ -353,6 +353,7 @@ def require_exact_final_freeze(
     ):
         raise ValueError("private freeze receipt is incomplete or not exact")
 
+    destination_by_relative: dict[str, dict[str, Any]] = {}
     for row in rows:
         if (
             not isinstance(row, dict)
@@ -372,6 +373,14 @@ def require_exact_final_freeze(
             or destination.get("kms_key_id") != expected_kms_key_arn
         ):
             raise ValueError("private freeze receipt source/destination is not exact")
+        relative = str(row.get("relative_key", ""))
+        if not relative:
+            raise ValueError("private freeze receipt object row is not exact")
+        if relative in destination_by_relative:
+            raise ValueError("duplicate final artifact freeze relative key")
+        destination_by_relative[relative] = destination
+
+    INPUT_CONTRACT.require_final_destination_inventory(freeze, destination_by_relative)
 
     return rows
 

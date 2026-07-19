@@ -294,6 +294,12 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                         "legacy_note", "accepted"
                     ),
                 ),
+                (
+                    "stale-destination-inventory",
+                    lambda receipt: receipt["destination_inventory"][0].__setitem__(
+                        "version_id", "stale-version"
+                    ),
+                ),
             ):
                 with self.subTest(label=label):
                     candidate = json.loads(json.dumps(base))
@@ -313,7 +319,7 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                         ) as get_exact,
                         self.assertRaisesRegex(
                             SystemExit,
-                            "private freeze receipt.*not exact",
+                            "private freeze receipt.*not exact|destination inventory differs",
                         ),
                     ):
                         MODULE.main(self.args(freeze, output, receipt, kms))

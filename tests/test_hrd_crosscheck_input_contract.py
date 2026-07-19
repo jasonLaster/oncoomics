@@ -246,7 +246,19 @@ class CustodyFixture:
             "passed_count": len(self.freeze_rows),
             "initial_inventory_identity": [{"x": 1}],
             "final_inventory_identity": [{"x": 1}],
-            "destination_inventory": [{"x": 1}],
+            "destination_inventory": [
+                {
+                    "relative_key": row["relative_key"],
+                    "key": row["destination"]["key"],
+                    "version_id": row["destination"]["version_id"],
+                    "bytes": row["destination"]["bytes"],
+                    "etag": row["destination"]["etag"],
+                    "checksums": row["destination"]["checksums"],
+                    "checksum_type": row["destination"]["checksum_type"],
+                    "kms_key_id": row["destination"]["kms_key_id"],
+                }
+                for row in self.freeze_rows
+            ],
             "checks": dict(finalizer.EXPECTED_FINAL_FREEZE_CHECKS),
             "completed_at": "2026-07-19T01:01:00+00:00",
             "objects": self.freeze_rows,
@@ -965,6 +977,12 @@ class CustodyHandoffTests(unittest.TestCase):
                 ),
             ),
             (
+                "freeze destination inventory row",
+                lambda fixture: fixture.freeze["destination_inventory"][0].update(
+                    legacy=True
+                ),
+            ),
+            (
                 "exact materialization top-level",
                 lambda fixture: fixture.exact.update(legacy=True),
             ),
@@ -1004,6 +1022,16 @@ class CustodyHandoffTests(unittest.TestCase):
                     "stale or missing metadata",
                 ):
                     fixture.finalize()
+
+    def test_finalizer_rejects_final_freeze_inventory_drift(self):
+        fixture = CustodyFixture()
+        fixture.freeze["destination_inventory"][0]["version_id"] = "stale-version"
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "destination inventory differs",
+        ):
+            fixture.finalize()
 
     def test_finalizer_accepts_exact_materialization_recovery_metadata(self):
         fixture = CustodyFixture()
