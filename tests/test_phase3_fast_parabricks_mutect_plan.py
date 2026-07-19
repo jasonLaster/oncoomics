@@ -247,7 +247,7 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
             )
 
     def test_requires_exact_p5en_gpu_count(self) -> None:
-        for num_gpus in (0, 4):
+        for num_gpus in (True, 0, 4):
             with self.subTest(num_gpus=num_gpus), TemporaryDirectory() as tmp:
                 manifest = staged_inputs_manifest(Path(tmp))
 
@@ -257,6 +257,18 @@ class Phase3FastParabricksMutectPlanTests(unittest.TestCase):
                         staged_inputs_manifest_sha256=SHA_1,
                         num_gpus=num_gpus,
                     )
+
+    def test_staged_input_bytes_must_be_exact_positive_integers(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = staged_inputs_manifest(Path(tmp))
+
+        manifest["bam_pair"]["tumor"]["bam"]["bytes"] = True
+
+        with self.assertRaisesRegex(parabricks.ManifestError, "positive integer"):
+            parabricks.build_phase3_fast_parabricks_mutect_plan(
+                manifest,
+                staged_inputs_manifest_sha256=SHA_1,
+            )
 
     def test_environment_command_writes_plan(self) -> None:
         with TemporaryDirectory() as tmp:
