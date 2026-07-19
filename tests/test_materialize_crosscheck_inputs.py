@@ -155,6 +155,10 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
             module.require_private_versioned_kms(
                 uri, metadata, kms, "different-version"
             )
+        with self.assertRaisesRegex(ValueError, "exact VersionId"):
+            module.require_private_versioned_kms(
+                uri, {**metadata, "VersionId": True}, kms, "True"
+            )
 
         for content_length in (True, 10.0, "10", 0):
             with self.subTest(content_length=content_length):
@@ -189,6 +193,34 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 if "ContentLength" in segment:
                     raw_calls.append(f"{node.lineno}: {segment}")
 
+        self.assertEqual(raw_calls, [])
+
+    def test_version_and_hash_guards_avoid_raw_string_coercion(self):
+        source = (SCRIPT_DIR / "materialize_crosscheck_inputs.py").read_text(
+            encoding="utf-8"
+        )
+        tree = ast.parse(source)
+        guarded_fields = (
+            "metadata.get('VersionId'",
+            'metadata.get("VersionId"',
+            "response.get('VersionId'",
+            'response.get("VersionId"',
+            "output.get('version_id'",
+            'output.get("version_id"',
+            "output.get('sha256'",
+            'output.get("sha256"',
+            "metadata['VersionId']",
+            'metadata["VersionId"]',
+        )
+        raw_calls = [
+            ast.unparse(node)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(field in ast.unparse(node.args[0]) for field in guarded_fields)
+        ]
         self.assertEqual(raw_calls, [])
 
     def test_versioned_head_and_download_bind_the_same_object_version(self):
@@ -238,13 +270,38 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
             ],
         )
 
+    def test_version_history_rejects_non_string_pagination_markers(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "NextVersionIdMarker.*non-empty string",
+        ), patch.object(
+            module,
+            "aws_json",
+            return_value={
+                "Versions": [
+                    {
+                        "Key": "runs/subject01/materialized/sbs96.csv",
+                        "VersionId": "output-version",
+                    }
+                ],
+                "IsTruncated": True,
+                "NextKeyMarker": "runs/subject01/materialized/sbs96.csv",
+                "NextVersionIdMarker": True,
+            },
+        ):
+            module.version_history(
+                "diana-omics-private-results-000000000000-us-east-1",
+                "runs/subject01/materialized/",
+                "us-east-1",
+            )
+
     def test_script_bytes_match_reviewed_next_materializer_revision(self):
         # Batch materializer v4 remains pinned by submit/capture tests to its
         # frozen registered script. This hash pins the reviewed local source
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "cae4dad3be1c2e7c8476964531e1c14dc6359a51ac2561f14218140ed5b9d2a3",
+            "584ec78f8e2f7871360611b85c0bbaa4fee30dd86da3a31eb851e28e0738f91c",
         )
 
     def test_json_output_removes_partial_file_after_file_fsync_failure(self):
@@ -386,6 +443,28 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         )
         self.assertEqual(receipt["checksums"]["ChecksumCRC64NVME"], "unit-crc")
         self.assertTrue(all(receipt["checks"].values()))
+
+    def test_upload_rejects_non_string_put_version_id(self):
+        uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "output.json"
+            source.write_text('{"ok": true}\n', encoding="utf-8")
+            with (
+                patch.object(module, "version_history", return_value=[]),
+                patch.object(
+                    module,
+                    "aws_json",
+                    return_value={"VersionId": True},
+                ),
+                self.assertRaisesRegex(ValueError, "exact VersionId"),
+            ):
+                module.upload(
+                    source,
+                    uri,
+                    "arn:aws:kms:us-east-1:000000000000:key/test",
+                    "us-east-1",
+                )
 
     def test_upload_rejects_non_exact_content_length(self):
         uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
@@ -649,6 +728,59 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                         kms,
                         "us-east-1",
                     )
+
+    def test_audit_output_history_rejects_malformed_version_and_sha_before_head(self):
+        digest = "a" * 64
+        kms = "arn:aws:kms:us-east-1:000000000000:key/test"
+        base = {
+            "sbs96.csv": {
+                "uri": (
+                    "s3://diana-omics-private-results-000000000000-us-east-1/"
+                    "runs/subject01/materialized/sbs96.csv"
+                ),
+                "version_id": "output-version",
+                "bytes": 10,
+                "sha256": digest,
+                "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": module.checksum_sha256(digest),
+                },
+            }
+        }
+        cases = (
+            ("coerced_version", {"version_id": True}, "exact VersionId"),
+            ("coerced_sha", {"sha256": int("a" * 64, 16)}, "exact SHA-256"),
+        )
+        for label, updates, message in cases:
+            with (
+                self.subTest(label=label),
+                patch.object(
+                    module,
+                    "version_history",
+                    return_value=[
+                        {
+                            "history_kind": "version",
+                            "Key": "runs/subject01/materialized/sbs96.csv",
+                            "VersionId": "output-version",
+                            "IsLatest": True,
+                            "Size": 10,
+                        }
+                    ],
+                ),
+                patch.object(module, "head") as head,
+                self.assertRaisesRegex(ValueError, message),
+            ):
+                outputs = {"sbs96.csv": {**base["sbs96.csv"], **updates}}
+                module.audit_output_history(
+                    (
+                        "s3://diana-omics-private-results-000000000000-us-east-1/"
+                        "runs/subject01/materialized/"
+                    ),
+                    outputs,
+                    kms,
+                    "us-east-1",
+                )
+            head.assert_not_called()
 
     def test_main_rejects_receipt_anchor_below_symlinked_parent_before_aws(self):
         bucket = "diana-omics-private-results-000000000000-us-east-1"

@@ -59,6 +59,17 @@ EXPECTED_RECEIPT_ANCHOR_CHECKS = {
     "exact_kms": True,
     "single_create_only_version": True,
 }
+CHECKSUM_FIELDS = frozenset(
+    {
+        "ChecksumCRC64NVME",
+        "ChecksumSHA256",
+        "ChecksumSHA1",
+        "ChecksumCRC32C",
+        "ChecksumCRC32",
+        "ChecksumType",
+    }
+)
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
 
 def now() -> str:
@@ -75,6 +86,41 @@ def sha256(path: Path) -> str:
 
 def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
+
+
+def valid_version_id(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and value
+        and value.lower() not in {"null", "none"}
+        and not any(character.isspace() for character in value)
+    )
+
+
+def exact_version_id(value: Any, label: str) -> str:
+    if not valid_version_id(value):
+        raise ValueError(f"{label} omitted an exact VersionId")
+    return value
+
+
+def exact_sha256(value: Any, label: str) -> str:
+    if not isinstance(value, str) or HEX64.fullmatch(value) is None:
+        raise ValueError(f"{label} omitted an exact SHA-256")
+    return value
+
+
+def exact_nonempty_marker(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} must be a non-empty string")
+    return value
+
+
+def s3_checksums(metadata: dict[str, Any]) -> dict[str, str]:
+    return {
+        key: value
+        for key, value in metadata.items()
+        if key in CHECKSUM_FIELDS and isinstance(value, str) and value
+    }
 
 
 def is_positive_exact_int(value: Any) -> bool:
@@ -445,10 +491,14 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
             rows.extend({**row, "history_kind": kind} for row in values)
         if page.get("IsTruncated") is not True:
             return rows
-        key_marker = str(page.get("NextKeyMarker", ""))
-        version_marker = str(page.get("NextVersionIdMarker", ""))
-        if not key_marker:
-            raise ValueError("truncated S3 history omitted NextKeyMarker")
+        key_marker = exact_nonempty_marker(
+            page.get("NextKeyMarker"),
+            "truncated S3 history NextKeyMarker",
+        )
+        version_marker = exact_nonempty_marker(
+            page.get("NextVersionIdMarker"),
+            "truncated S3 history NextVersionIdMarker",
+        )
 
 
 def require_bucket_versioning(bucket: str, region: str) -> None:
@@ -472,19 +522,18 @@ def require_private_versioned_kms(
     metadata: dict[str, Any],
     kms_key_arn: str,
     expected_version_id: Optional[str] = None,
-) -> None:
+) -> str:
     bucket, _ = s3_parts(uri)
     if not bucket.startswith("diana-omics-private-results-"):
         raise ValueError(f"object is outside the private-results bucket: {uri}")
     if metadata.get("ServerSideEncryption") != "aws:kms" or metadata.get("SSEKMSKeyId") != kms_key_arn:
         raise ValueError(f"object lacks the exact KMS key: {uri}")
-    observed_version_id = str(metadata.get("VersionId", ""))
-    if observed_version_id in {"", "null", "None"}:
-        raise ValueError(f"object is not versioned: {uri}")
+    observed_version_id = exact_version_id(metadata.get("VersionId"), uri)
     if expected_version_id is not None and observed_version_id != expected_version_id:
         raise ValueError(f"object VersionId differs from the frozen input contract: {uri}")
     if not is_positive_exact_int(metadata.get("ContentLength")):
         raise ValueError(f"object ContentLength is not an exact positive integer: {uri}")
+    return observed_version_id
 
 
 def download(uri: str, path: Path, region: str, version_id: str) -> None:
@@ -525,15 +574,15 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
         "--checksum-algorithm", "SHA256", "--checksum-sha256", expected_checksum,
         "--metadata", f"sha256={local_sha256}",
     ], region)
-    version_id = str(response.get("VersionId", ""))
-    if not version_id or version_id.lower() in {"none", "null"}:
-        raise ValueError(f"create-only put omitted VersionId: {uri}")
+    version_id = exact_version_id(response.get("VersionId"), f"create-only put {uri}")
     metadata = head(uri, region, version_id)
-    require_private_versioned_kms(uri, metadata, kms_key_arn, version_id)
+    observed_version_id = require_private_versioned_kms(
+        uri, metadata, kms_key_arn, version_id
+    )
     metadata_bytes = metadata.get("ContentLength")
     if not exact_int(metadata_bytes, path.stat().st_size):
         raise ValueError(f"uploaded object size mismatch: {uri}")
-    if str(metadata.get("Metadata", {}).get("sha256", "")) != local_sha256:
+    if metadata.get("Metadata", {}).get("sha256") != local_sha256:
         raise ValueError(f"uploaded object SHA-256 metadata mismatch: {uri}")
     if (
         metadata.get("ChecksumType") != "FULL_OBJECT"
@@ -553,14 +602,10 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
         raise ValueError(f"uploaded object lacks exact single-version history: {uri}")
     return {
         "uri": uri,
-        "version_id": str(metadata["VersionId"]),
+        "version_id": observed_version_id,
         "bytes": metadata_bytes,
         "etag": str(metadata.get("ETag", "")),
-        "checksums": {
-            key: str(value)
-            for key, value in metadata.items()
-            if key.startswith("Checksum") and str(value)
-        },
+        "checksums": s3_checksums(metadata),
         "sha256": local_sha256,
         "kms_key_arn": str(metadata.get("SSEKMSKeyId", "")),
         "checks": dict(EXPECTED_UPLOAD_CHECKS),
@@ -586,23 +631,31 @@ def audit_output_history(
     for filename, output in sorted(outputs.items()):
         _, key = s3_parts(output["uri"])
         history_row = by_key[key]
+        output_version_id = exact_version_id(
+            output.get("version_id"),
+            f"cross-check output {filename}",
+        )
+        output_sha256 = exact_sha256(
+            output.get("sha256"),
+            f"cross-check output {filename}",
+        )
         if (
-            history_row.get("VersionId") != output.get("version_id")
+            history_row.get("VersionId") != output_version_id
             or history_row.get("IsLatest") is not True
         ):
             raise ValueError(f"cross-check output history VersionId differs: {filename}")
-        metadata = head(output["uri"], region, str(output["version_id"]))
+        metadata = head(output["uri"], region, output_version_id)
         require_private_versioned_kms(
-            output["uri"], metadata, kms_key_arn, str(output["version_id"])
+            output["uri"], metadata, kms_key_arn, output_version_id
         )
-        expected_checksum = checksum_sha256(str(output.get("sha256", "")))
+        expected_checksum = checksum_sha256(output_sha256)
         checksums = output.get("checksums") if isinstance(output.get("checksums"), dict) else {}
         expected_bytes = output.get("bytes")
         if (
             not is_positive_exact_int(expected_bytes)
             or not exact_int(history_row.get("Size"), expected_bytes)
             or not exact_int(metadata.get("ContentLength"), expected_bytes)
-            or metadata.get("Metadata", {}).get("sha256") != output.get("sha256")
+            or metadata.get("Metadata", {}).get("sha256") != output_sha256
             or metadata.get("ChecksumType") != "FULL_OBJECT"
             or metadata.get("ChecksumSHA256") != expected_checksum
             or checksums.get("ChecksumType") != "FULL_OBJECT"
@@ -612,9 +665,9 @@ def audit_output_history(
         audited.append({
             "filename": filename,
             "key": key,
-            "version_id": output["version_id"],
+            "version_id": output_version_id,
             "bytes": output["bytes"],
-            "sha256": output["sha256"],
+            "sha256": output_sha256,
             "checksums": output["checksums"],
         })
     return audited
@@ -739,7 +792,7 @@ def main() -> int:
             "fasta": args.reference_fasta_sha256,
             "fai": args.reference_fai_sha256,
         }
-        if any(not value or value in {"null", "None"} for value in version_ids.values()):
+        if any(not valid_version_id(value) for value in version_ids.values()):
             raise ValueError("every input must have an exact frozen S3 VersionId")
         for name, expected in expected_sha256.items():
             if expected is not None and not re.fullmatch(r"[0-9a-f]{64}", expected):
@@ -747,7 +800,7 @@ def main() -> int:
         source_custody: dict[str, Any] = {}
         for name, uri in uris.items():
             metadata = head(uri, args.region, version_ids[name])
-            require_private_versioned_kms(
+            observed_version_id = require_private_versioned_kms(
                 uri,
                 metadata,
                 args.kms_key_arn,
@@ -766,14 +819,10 @@ def main() -> int:
                 raise ValueError(f"downloaded object SHA-256 mismatch: {name}")
             source_custody[name] = {
                 "uri": uri,
-                "version_id": str(metadata["VersionId"]),
+                "version_id": observed_version_id,
                 "bytes": expected_bytes,
                 "etag": str(metadata.get("ETag", "")),
-                "checksums": {
-                    key: str(value)
-                    for key, value in metadata.items()
-                    if key.startswith("Checksum") and str(value)
-                },
+                "checksums": s3_checksums(metadata),
                 "sha256": observed_sha256,
                 "expected_sha256": expected_sha256[name],
                 "kms_key_arn": str(metadata.get("SSEKMSKeyId", "")),
