@@ -963,6 +963,20 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                 fixture["submission_environment"],
             )
 
+    def test_logged_anchor_receipt_bytes_must_be_exact_int(self):
+        fixture = self.fixture()
+        terminal = copy.deepcopy(fixture["terminal"])
+        terminal["publication_anchor"]["receipt_bytes"] = float(
+            terminal["publication_anchor"]["receipt_bytes"]
+        )
+
+        with self.assertRaisesRegex(ValueError, "failed receipt_bytes_positive"):
+            MODULE.validate_logged_anchor(
+                terminal,
+                self.args(Path("unused"), fixture),
+                fixture["submission_environment"],
+            )
+
     def test_receipt_rejects_contract_route_submission_and_inventory_tampering(self):
         fixture = self.fixture()
         receipts = []
@@ -1305,6 +1319,42 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                 args,
                 fixture["submission_environment"],
             )
+
+    def test_route_receipt_initial_version_count_must_be_exact_int(self):
+        fixture = self.fixture()
+        args = self.args(Path("unused"), fixture)
+        receipt = copy.deepcopy(fixture["receipt"])
+        receipt["route_output_initial_version_history_count"] = 0.0
+        content = (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode()
+        local_sha = hashlib.sha256(content).hexdigest()
+        checksum = base64.b64encode(bytes.fromhex(local_sha)).decode()
+        metadata = {
+            **fixture["metadata"],
+            "ContentLength": len(content),
+            "ChecksumSHA256": checksum,
+            "Metadata": {"sha256": local_sha},
+        }
+
+        with self.assertRaisesRegex(ValueError, "failed receipt_output_exact"):
+            MODULE.validate_exact_receipt(
+                content,
+                metadata,
+                metadata,
+                self.receipt_history_rows(fixture),
+                {
+                    **self.receipt_location(fixture),
+                    "sha256": local_sha,
+                    "bytes": len(content),
+                },
+                args,
+                fixture["submission_environment"],
+            )
+
+    def test_exact_int_rejects_coercible_values(self):
+        self.assertTrue(MODULE.exact_int(7, 7))
+        for value in (True, 7.0, "7", 0, None):
+            with self.subTest(value=value):
+                self.assertFalse(MODULE.exact_int(value, 7))
 
     def test_schema_version_checks_use_exact_integer_helper(self):
         cases = (

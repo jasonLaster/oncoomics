@@ -708,7 +708,7 @@ def validate_logged_anchor(
         "uri": receipt_uri,
         "version_id": receipt_version,
         "sha256": receipt_sha,
-        "bytes": int(receipt_bytes),
+        "bytes": receipt_bytes,
         "kms_key_arn": args.expected_kms_key_arn,
         "checks": checks,
     }
@@ -919,7 +919,7 @@ def validate_exact_receipt(
         "receipt_contract_exact": receipt.get("contract") == expected_contract,
         "receipt_output_exact": (
             receipt.get("route_output_uri") == submission_environment["HRD_CROSSCHECK_ROUTE_OUTPUT_URI"]
-            and receipt.get("route_output_initial_version_history_count") == 0
+            and exact_int(receipt.get("route_output_initial_version_history_count"), 0)
             and receipt.get("route_output_bucket_versioning") == "Enabled"
             and receipt.get("publication_strategy") == "one_shot_create_only_exact_version_history"
         ),
