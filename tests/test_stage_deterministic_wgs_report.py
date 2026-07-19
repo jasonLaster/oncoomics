@@ -184,8 +184,20 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                     'input_snapshot.get("file_count"',
                     "materialized.get('bytes'",
                     'materialized.get("bytes"',
+                    "exact_materialization.get('object_count'",
+                    'exact_materialization.get("object_count"',
+                    "exact_materialization.get('passed_count'",
+                    'exact_materialization.get("passed_count"',
+                    "final_freeze.get('object_count'",
+                    'final_freeze.get("object_count"',
+                    "final_freeze.get('passed_count'",
+                    'final_freeze.get("passed_count"',
                     "preflight.get('wgs_bytes'",
                     'preflight.get("wgs_bytes"',
+                    "receipt.get('object_count'",
+                    'receipt.get("object_count"',
+                    "receipt.get('passed_count'",
+                    'receipt.get("passed_count"',
                     "row.get('actual_size_bytes'",
                     'row.get("actual_size_bytes"',
                     "row.get('bytes'",
@@ -1959,6 +1971,66 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("exact_version_materialization", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_final_freeze_counts_must_be_exact_integers(self) -> None:
+        for field, value in (
+            ("object_count", True),
+            ("object_count", 3.0),
+            ("object_count", "3"),
+            ("passed_count", True),
+            ("passed_count", 3.0),
+            ("passed_count", "3"),
+        ):
+            with self.subTest(field=field, value=value), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                receipt = load_json(fixture.aux / "final-freeze.json")
+                receipt[field] = value
+                write_json(fixture.aux / "final-freeze.json", receipt)
+
+                result = subprocess.run(
+                    fixture.command(), text=True, capture_output=True
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "final_artifact_freeze", result.stdout + result.stderr
+                )
+                self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_exact_materialization_counts_must_be_exact_integers(self) -> None:
+        for field, value in (
+            ("object_count", True),
+            ("object_count", 3.0),
+            ("object_count", "3"),
+            ("passed_count", True),
+            ("passed_count", 3.0),
+            ("passed_count", "3"),
+        ):
+            with self.subTest(field=field, value=value), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                materialization = load_json(
+                    fixture.aux / "exact-materialization.json"
+                )
+                materialization[field] = value
+                write_json(
+                    fixture.aux / "exact-materialization.json",
+                    materialization,
+                )
+
+                result = subprocess.run(
+                    fixture.command(), text=True, capture_output=True
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "exact_version_materialization",
+                    result.stdout + result.stderr,
+                )
+                self.assertFalse((fixture.output / "report.md").exists())
 
     def test_terminal_capture_validators_require_exact_schema_integers(self) -> None:
         cases = (

@@ -1090,8 +1090,8 @@ def validate_final_freeze_provenance(
         == len(destination_inventory)
         == len(initial_identity)
         == len(final_identity)
-        == int(receipt.get("object_count", -1))
-        == int(receipt.get("passed_count", -2))
+        and integer_equals(receipt.get("object_count"), len(rows))
+        and integer_equals(receipt.get("passed_count"), len(rows))
         and set(by_relative) == set(inventory_by_relative),
         "source_inventory_unchanged": initial_identity == final_identity,
         "receipt_checks": receipt_checks == EXPECTED_FINAL_FREEZE_CHECKS,
@@ -2098,7 +2098,7 @@ def main() -> None:
         and final_freeze.get("batch_status") == "SUCCEEDED"
         and final_freeze.get("kms_key_arn") == args.expected_kms_key_arn
         and final_freeze_evidence["status"] == "passed"
-        and len(freeze_rows) == int(final_freeze.get("object_count", -1))
+        and integer_equals(final_freeze.get("object_count"), len(freeze_rows))
         and all(isinstance(row, dict) and row.get("status") == "passed" for row in freeze_rows)
         and freeze_consumed_valid,
         "Every frozen final artifact is present locally and bound to a passed private freeze row with matching bytes, non-null VersionId, checksum, exact KMS key, successful Batch job, and run ID.",
@@ -2161,8 +2161,14 @@ def main() -> None:
         and exact_materialization.get("batch_job_id") == execution_batch.get("job_id")
         and exact_materialization.get("freeze_receipt_sha256") == sha256(paths["final_freeze"])
         and exact_materialization.get("expected_kms_key_arn") == args.expected_kms_key_arn
-        and len(materialized_rows) == int(exact_materialization.get("object_count", -1))
-        and len(materialized_rows) == int(exact_materialization.get("passed_count", -2))
+        and integer_equals(
+            exact_materialization.get("object_count"),
+            len(materialized_rows),
+        )
+        and integer_equals(
+            exact_materialization.get("passed_count"),
+            len(materialized_rows),
+        )
         and len(materialized_rows) == len(freeze_rows)
         and exact_materialization_valid,
         "Every frozen artifact was downloaded from its exact S3 VersionId and re-bound to the returned checksum, byte count, KMS key, and local SHA-256.",

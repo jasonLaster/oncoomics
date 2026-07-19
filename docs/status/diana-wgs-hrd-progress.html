@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local input-contract publication byte exactness</li>
+          <li class="pill">Latest milestone = local deterministic terminal count exactness</li>
+          <li class="pill">Deterministic terminal counts = exact</li>
           <li class="pill">Input-contract publication bytes = exact</li>
           <li class="pill">Cross-check materializer bytes = exact</li>
           <li class="pill">Route terminal bytes = exact</li>
@@ -640,6 +641,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact deterministic terminal counts</strong>
+              <span>No-compute deterministic report staging now rejects non-exact final-freeze <code>object_count</code>/<code>passed_count</code> values and exact-materialization <code>object_count</code>/<code>passed_count</code> values before a terminal deterministic report can summarize frozen WGS artifacts for Rosalind, source-freeze, route, or AI/freeform handoffs.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact input-contract publication bytes</strong>
               <span>HRD input-contract publication now rejects non-exact post-upload HEAD/GET <code>ContentLength</code> values and exact-version destination history <code>Size</code> values before the content-addressed contract anchor can be marked passed for SigProfiler, Sequenza, Rosalind, or AI/freeform consumers.</span>
@@ -1170,6 +1175,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:23:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact deterministic terminal counts:</strong>
+                no-compute deterministic report staging now rejects non-exact
+                final-freeze <code>object_count</code>/<code>passed_count</code>
+                values and exact-materialization
+                <code>object_count</code>/<code>passed_count</code> values
+                before a terminal deterministic report can summarize frozen WGS
+                artifacts for Rosalind, source-freeze, route, or AI/freeform
+                handoffs. No S3, Batch, route, GPU, quota, replacement compute,
+                or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:22:00-07:00">Jul 19 · local</time>
               <span>
