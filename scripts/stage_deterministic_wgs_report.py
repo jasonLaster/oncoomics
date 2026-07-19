@@ -68,6 +68,29 @@ EXPECTED_SBS96 = {
     for left in SBS_BASES
     for right in SBS_BASES
 }
+EXPECTED_STAGE_PROVENANCE_OBJECT_CHECKS: dict[str, bool] = {
+    "get_matches_head": True,
+    "local_bytes_exact": True,
+    "semantic_binding": True,
+    "source_kms_exact": True,
+    "source_unchanged": True,
+    "copy_version_exact": True,
+    "destination_get_matches_head": True,
+    "bytes_equal": True,
+    "sha256_equal": True,
+    "full_object_checksum": True,
+    "exact_kms": True,
+}
+EXPECTED_STAGE_PROVENANCE_ANCHOR_CHECKS: dict[str, bool] = {
+    "version_exact": True,
+    "get_matches_head": True,
+    "bytes_exact": True,
+    "local_sha256_exact": True,
+    "sha256_checksum_exact": True,
+    "exact_kms": True,
+    "content_type_exact": True,
+    "history_exact": True,
+}
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 S3_CHECKSUM_FIELDS = {
     "ChecksumCRC64NVME",
@@ -511,8 +534,7 @@ def validate_stage_provenance(
         local_sha = sha256(local_path)
         object_checks[name] = bool(
             row.get("status") == "passed"
-            and row_checks
-            and all(value is True for value in row_checks.values())
+            and row_checks == EXPECTED_STAGE_PROVENANCE_OBJECT_CHECKS
             and source.get("bucket") == source_bucket
             and source.get("key") == source_key_prefix + name
             and source.get("version_id") == "null"
@@ -581,7 +603,7 @@ def validate_stage_provenance(
             and valid_version_id(anchor.get("receipt_version_id"))
         ),
         "anchor_checks": bool(anchor_checks)
-        and all(value is True for value in anchor_checks.values()),
+        and anchor_checks == EXPECTED_STAGE_PROVENANCE_ANCHOR_CHECKS,
     }
     return {
         "status": "passed" if all(checks.values()) else "failed",

@@ -938,8 +938,13 @@ class SyntheticFixture:
                         "kms_key_id": KMS_ARN,
                     },
                     "checks": {
+                        "get_matches_head": True,
+                        "local_bytes_exact": True,
+                        "semantic_binding": True,
+                        "source_kms_exact": True,
                         "source_unchanged": True,
                         "copy_version_exact": True,
+                        "destination_get_matches_head": True,
                         "bytes_equal": True,
                         "sha256_equal": True,
                         "full_object_checksum": True,
@@ -991,9 +996,13 @@ class SyntheticFixture:
                 "receipt_version_id": "stage-receipt-version",
                 "checks": {
                     "version_exact": True,
+                    "get_matches_head": True,
                     "bytes_exact": True,
+                    "local_sha256_exact": True,
                     "sha256_checksum_exact": True,
                     "exact_kms": True,
+                    "content_type_exact": True,
+                    "history_exact": True,
                 },
             },
         )
@@ -2133,6 +2142,34 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             anchor["receipt_sha256"] = "0" * 64
             write_json(anchor_path, anchor)
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("stage_provenance_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_incomplete_stage_row_checks_fail_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "stage-provenance.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["objects"][0]["checks"].pop("semantic_binding")
+            write_json(receipt_path, receipt)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("stage_provenance_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_unexpected_stage_anchor_checks_fail_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            anchor_path = fixture.aux / "stage-provenance-anchor.json"
+            anchor = json.loads(anchor_path.read_text(encoding="utf-8"))
+            anchor["checks"]["future_check"] = True
+            write_json(anchor_path, anchor)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("stage_provenance_custody", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
