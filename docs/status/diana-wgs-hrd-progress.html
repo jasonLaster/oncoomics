@@ -307,12 +307,13 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>c59b4691a66399416154981995f8f8465ebd41b9</strong>.
-          The latest work is exact comparative-synthesis packet inventory
-          hardening: <code>generate_comparative_hrd_synthesis.py</code> now
-          requires staged and final synthesis packets to contain exactly
-          <code>report.md</code>, <code>agreement_disagreement.csv</code>, and
-          <code>report_manifest.json</code> before manifest validation can pass.
+          <strong>4175e2401a406748ae72849d6e8466cc90dc1988</strong>.
+          The latest work is exact private-publication object-check hardening:
+          <code>publish_private_report.py</code> now reuses the downstream
+          <code>PRIVATE_RECEIPT_OBJECT_CHECKS</code> contract and fails each
+          private destination upload unless the live verification map exactly
+          matches the seven required version, byte count, checksum, SSE, KMS,
+          and metadata checks before a passed object receipt can be serialized.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -320,7 +321,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = c59b469</li>
+          <li class="pill">Latest hardening = 4175e24</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -402,8 +403,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve c59b469</strong>
-              <span>Comparative synthesis validation now rejects staged or final synthesis packets unless they contain exactly the three expected report files.</span>
+              <strong>Preserve 4175e24</strong>
+              <span>Private publication now rejects missing, unexpected, or lagging per-object verification maps before any passed private object receipt can be trusted downstream.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -451,6 +452,24 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>4175e24 Require exact private publication object checks:</strong>
+                <code>publish_private_report.py</code> now imports
+                <code>PRIVATE_RECEIPT_OBJECT_CHECKS</code> from
+                <code>publish_reviewed_public_report.py</code> and calls
+                <code>require_private_object_checks_exact()</code> before it
+                serializes a passed private object receipt. Each upload must
+                now prove its live verification map exactly equals the seven
+                downstream-required booleans for <code>version_id</code>,
+                <code>bytes</code>, <code>checksum_type</code>,
+                <code>checksum_sha256</code>, <code>sse</code>,
+                <code>kms</code>, and <code>metadata_sha256</code>; the new
+                private-publication tests cover missing checks, unexpected
+                checks, and apply code that lags a newly added expected check.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
