@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local reviewed-public publisher integers</li>
+          <li class="pill">Latest milestone = local public index upload integers</li>
+          <li class="pill">Public index integers = exact</li>
           <li class="pill">Private report integers = exact</li>
           <li class="pill">Reviewed-public integers = exact</li>
           <li class="pill">AI stage receipts = exact</li>
@@ -370,7 +371,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 9c8a05d</li>
+          <li class="pill">Prior dashboard = 144a409</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -796,6 +797,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact public index upload integers</strong>
+              <span>Public index dry-run and apply now reject <code>objects.json</code> payloads whose top-level object count, top-level total size, or per-object sizes are JSON booleans or otherwise non-exact nonnegative integers before public-index upload.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact private publication integers</strong>
               <span>The reviewed-public publisher now rejects private publication receipts whose forbidden-token count or per-object byte counts are JSON booleans or otherwise non-exact positive integers before reviewed-public copy planning.</span>
             </li>
@@ -865,6 +870,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:22:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact public index upload integers:</strong>
+                public-index upload now rejects JSON booleans and other
+                non-exact nonnegative integers in <code>objects.json</code>
+                <code>object_count</code>, <code>total_size</code>, and
+                <code>objects[].size</code> before dry-run or apply can
+                publish the final index. No S3, Batch, route, GPU, quota, or
+                replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:21:00-07:00">Jul 19 · local</time>
               <span>

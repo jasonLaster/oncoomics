@@ -374,6 +374,36 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 ),
                 "public index object envelope is not exact",
             ),
+            (
+                lambda payload: payload.__setitem__("object_count", True),
+                "public index contract is malformed",
+            ),
+            (
+                lambda payload: (
+                    payload["objects"].__setitem__(
+                        0,
+                        {
+                            "key": MODULE.PUBLIC_PREFIXES[-1] + "one-byte.json",
+                            "size": True,
+                            "last_modified": "2026-07-17T00:00:00+00:00",
+                        },
+                    ),
+                    payload.__setitem__("objects", payload["objects"][:1]),
+                    payload.__setitem__("object_count", 1),
+                    payload.__setitem__("total_size", 1),
+                    payload.__setitem__("reviewed_public_receipts", []),
+                ),
+                "public index object is not allowlisted",
+            ),
+            (
+                lambda payload: (
+                    payload.__setitem__("objects", []),
+                    payload.__setitem__("object_count", 0),
+                    payload.__setitem__("total_size", False),
+                    payload.__setitem__("reviewed_public_receipts", []),
+                ),
+                "public index contract is malformed",
+            ),
         )
         for mutate, message in cases:
             with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:

@@ -99,6 +99,10 @@ def non_null_version_id(value: str) -> bool:
     return value != "null" and VERSION_ID.fullmatch(value) is not None
 
 
+def is_nonnegative_exact_int(value: Any) -> bool:
+    return type(value) is int and value >= 0
+
+
 def load_json(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -205,8 +209,7 @@ def public_index_object(row: Any) -> dict[str, Any]:
         or key.endswith("/")
         or any(key.startswith(blocked) for blocked in FORBIDDEN_PREFIXES)
         or not any(key.startswith(prefix) for prefix in PUBLIC_PREFIXES)
-        or not isinstance(size, int)
-        or size < 0
+        or not is_nonnegative_exact_int(size)
         or not isinstance(last_modified, str)
         or not last_modified
     ):
@@ -227,6 +230,8 @@ def validate_public_index(
         raise ValueError("public index SHA-256 is malformed")
     payload = load_json(path)
     objects = payload.get("objects")
+    object_count = payload.get("object_count")
+    total_size = payload.get("total_size")
     if (
         set(payload) != PUBLIC_INDEX_KEYS
         or payload.get("schema_version") != 1
@@ -235,6 +240,8 @@ def validate_public_index(
         != "reviewed_public_validation_and_alias_only_analysis_outputs"
         or payload.get("prefixes") != list(PUBLIC_PREFIXES)
         or not isinstance(objects, list)
+        or not is_nonnegative_exact_int(object_count)
+        or not is_nonnegative_exact_int(total_size)
     ):
         raise ValueError("public index contract is malformed")
     normalized = [public_index_object(row) for row in objects]
@@ -242,8 +249,8 @@ def validate_public_index(
     if (
         len(keys) != len(set(keys))
         or keys != sorted(keys)
-        or payload.get("object_count") != len(normalized)
-        or payload.get("total_size") != sum(row["size"] for row in normalized)
+        or object_count != len(normalized)
+        or total_size != sum(row["size"] for row in normalized)
     ):
         raise ValueError("public index inventory is not exact")
     if payload.get("reviewed_public_receipts") != reviewed_public_binding:
