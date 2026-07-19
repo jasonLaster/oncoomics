@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact blocked packet inputs</li>
+          <li class="pill">Latest milestone = local exact AI review prep inputs</li>
+          <li class="pill">AI review prep inputs = exact</li>
           <li class="pill">Blocked packet inputs = exact</li>
           <li class="pill">AI validation CSV fields = exact</li>
           <li class="pill">AI synthesis CSV fields = exact</li>
@@ -1688,6 +1689,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI review prep inputs</strong>
+              <span>AI review prep now requires exact source packet envelopes and support before building the AI review bundle or staging reviewer inputs.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI validation CSV fields</strong>
               <span><code>validate_ai_review.py</code> now rejects padded, multiline, NUL-containing, or semicolon-list-padded reviewer <code>claims.csv</code> fields before a claims table can receive <code>validation.json</code> and feed reviewer finalization or comparative synthesis.</span>
             </li>
@@ -2225,6 +2230,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:45:14-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI review prep inputs:</strong>
+                AI review prep now requires exact source packet envelopes and
+                support before building the AI review bundle or staging
+                reviewer inputs.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T14:41:37-07:00">Jul 19 · local</time>
               <span>

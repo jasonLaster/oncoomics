@@ -411,6 +411,43 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 )
                 self.assertFalse(output.exists())
 
+    def test_rejects_inexact_source_manifest_envelope_before_building_bundle(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "extra_legacy_key",
+                {"legacy_support": {}},
+                "report manifest envelope is not exact for deterministic_full_wgs",
+            ),
+            (
+                "unknown_report_kind",
+                {"report_kind": "legacy_packet"},
+                "report manifest envelope is not exact for deterministic_full_wgs",
+            ),
+            (
+                "stale_support_hash",
+                {"support_sha256": {"support.json": "0" * 64}},
+                "support hash mismatch for deterministic_full_wgs: support.json",
+            ),
+        )
+
+        for name, patch, message in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = AiReviewBundleFixture(root)
+                fixture.update_manifest(0, patch)
+                output = root / "ai-review"
+
+                with (
+                    mock.patch.object(PREPARE, "build_bundle") as build_bundle,
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    PREPARE.prepare(namespace(fixture, output))
+
+                build_bundle.assert_not_called()
+                self.assertFalse(output.exists())
+
     def test_rejects_duplicate_source_manifest_hash_ids(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

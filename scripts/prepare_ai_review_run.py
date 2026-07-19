@@ -22,6 +22,7 @@ from build_ai_review_bundle import (
     DuplicateJsonKeyError,
     checked_source_artifact_id,
     reject_duplicate_json_object_names,
+    validate_report_manifest_support,
 )
 from forbidden_text import merge_forbidden_tokens
 from hrd_report_inventory import (
@@ -225,6 +226,11 @@ def require_manifest(path: Path, expected_method: str) -> dict[str, Any]:
     for key, digest in source_sha256.items():
         checked_source_artifact_id(key, expected_method)
         require_sha256(digest, f"{expected_method} source_sha256.{key}")
+    validate_report_manifest_support(
+        manifest_path.parent,
+        manifest,
+        expected_method,
+    )
     return manifest
 
 
