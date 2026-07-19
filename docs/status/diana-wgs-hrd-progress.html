@@ -348,11 +348,12 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = b61de01</li>
-          <li class="pill">Prior dashboard = 07ec0a5</li>
+          <li class="pill">Latest milestone = fa19377</li>
+          <li class="pill">Prior dashboard = 343fe1d</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
           <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
+          <li class="pill">Deterministic staging receipts = exact</li>
           <li class="pill">Materializer receipts = alias-exact</li>
           <li class="pill">Private handoff dry-runs = required</li>
           <li class="pill">Stage freeze dry-run = exact</li>
@@ -504,6 +505,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind deterministic staging to materializer checks</strong>
+              <span>Deterministic WGS staging now consumes the schema-2 materializer receipt custody checks and rejects non-exact <code>report_manifest.json</code> envelopes or support inventories while preserving <code>partial_evidence</code> / <code>no_call</code> identity fields.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · scan deterministic packets before install</strong>
               <span>Deterministic staging now merges the run-specific file with derived and explicit forbidden tokens, preserves longest-token-first scan ranking, and checks packet outputs before installation.</span>
@@ -702,6 +707,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:56:07-07:00">Jul 19 · 12:56 AM</time>
+              <span>
+                <strong>fa19377 Bind deterministic staging to materializer capture checks:</strong>
+                deterministic WGS staging now imports the exact schema-2
+                terminal materializer receipt-download check map, replacing the
+                stale local receipt-check copy, and report installation rejects
+                non-exact <code>report_manifest.json</code> envelopes or support
+                inventories while preserving <code>partial_evidence</code> /
+                <code>no_call</code> identity fields. No S3, Batch, route, GPU,
+                or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:51:47-07:00">Jul 19 · 12:51 AM</time>
               <span>
