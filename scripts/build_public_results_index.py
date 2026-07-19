@@ -13,6 +13,10 @@ import subprocess
 import tempfile
 from typing import Any, Sequence, Union
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 from hrd_report_inventory import REPORT_METHOD_IDS
 from publish_reviewed_public_report import (
     CLASSIFICATION as REVIEWED_PUBLIC_CLASSIFICATION,
@@ -301,7 +305,15 @@ def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
     require_real_input_file(path, label)
     if path.stat().st_size <= 0:
         raise RuntimeError(f"{label} must be a real non-empty file: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise RuntimeError(f"duplicate JSON object name in {label}: {error}") from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"invalid JSON in {label}: {path}") from error
     if not isinstance(value, dict):
         raise RuntimeError(f"{label} must be a JSON object: {path}")
     return value

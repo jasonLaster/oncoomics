@@ -512,6 +512,32 @@ class PublicIndexTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "parent may not be a symlink"):
                 MODULE.validate_reviewed_public_receipts(receipts)
 
+    def test_reviewed_public_receipts_reject_invalid_json_objects(self) -> None:
+        cases = (
+            (
+                "duplicate.json",
+                '{"status":"passed","status":"passed"}\n',
+                "duplicate JSON object name",
+            ),
+            (
+                "array.json",
+                '["not", "an", "object"]\n',
+                "must be a JSON object",
+            ),
+            (
+                "invalid.json",
+                '{"status":\n',
+                "invalid JSON",
+            ),
+        )
+        for filename, text, message in cases:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as temporary:
+                receipt = Path(temporary) / filename
+                receipt.write_text(text, encoding="utf-8")
+
+                with self.assertRaisesRegex(RuntimeError, message):
+                    MODULE.load_json_object(receipt, "reviewed-public receipt")
+
     def test_reviewed_public_receipts_require_full_source_preflight_checks(
         self,
     ) -> None:
