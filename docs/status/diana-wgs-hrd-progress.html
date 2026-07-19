@@ -307,15 +307,15 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>fdf1aa15ecfd045fa2e3ea777c9485cea6937945</strong>.
-          The latest work is still custody/report-packet hardening, not
+          <strong>65953238e0231c61bafd23525dfeea57b13ba76f</strong>.
+          The latest work is still custody/local materialization hardening, not
           terminal HRD evidence. No deterministic final artifacts yet; no real
           Diana WGS Rosalind packet, executable cross-check packets,
           model-review outputs, or comparative synthesis have been produced.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = fdf1aa1</li>
+          <li class="pill">Latest hardening = 6595323</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -397,8 +397,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve fdf1aa1</strong>
-              <span>Cross-check packet installs now rehash final bytes and revalidate the installed manifest.</span>
+              <strong>Preserve 6595323</strong>
+              <span>Exact local materializers now validate the staged tree, cut over atomically, fsync the output parent, and revalidate the final output tree.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Audit the next report-packet seam</strong>
@@ -446,6 +446,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>6595323 Harden exact materializer cutovers:</strong>
+                validate deterministic final artifact materializations and
+                exact private report-tree replays before atomic cutover, fsync
+                the output parent, revalidate the final local tree, and remove
+                newly cut-over outputs when final validation fails.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
