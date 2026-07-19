@@ -17,6 +17,7 @@ from ai_model_catalog import MODEL_CATALOG_MODEL_KEYS, MODEL_CATALOG_RECEIPT_KEY
 from build_ai_review_bundle import (
     BUNDLE_MANIFEST_KEYS,
     BUNDLE_REVIEW_BUNDLE_KEYS,
+    is_exact_int,
     require_bundle_manifest,
     validate_report_manifest_support,
 )
@@ -218,7 +219,7 @@ def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str
     receipt = load_object(path)
     if set(receipt) != MODEL_CATALOG_RECEIPT_KEYS:
         raise ValueError("model catalog receipt envelope is not exact")
-    if receipt.get("schema_version") != 1:
+    if not is_exact_int(receipt.get("schema_version"), 1):
         raise ValueError("model catalog receipt schema is unsupported")
     if not str(receipt.get("provider_catalog", "")).strip() or not str(receipt.get("catalog_source", "")).strip():
         raise ValueError("model catalog receipt lacks provider catalog provenance")
@@ -527,7 +528,10 @@ def validate_bundle(
         raise ValueError("AI review bundle envelope is not exact")
     if set(bundle_manifest) != BUNDLE_MANIFEST_KEYS:
         raise ValueError("AI review bundle manifest envelope is not exact")
-    if bundle.get("schema_version") != 2 or bundle_manifest.get("schema_version") != 2:
+    if not is_exact_int(bundle.get("schema_version"), 2) or not is_exact_int(
+        bundle_manifest.get("schema_version"),
+        2,
+    ):
         raise ValueError("unsupported bundle or bundle-manifest schema")
     if bundle_manifest.get("forbidden_token_sha256") != forbidden_token_fingerprints(forbidden_tokens):
         raise ValueError("forbidden-token inventory differs from bundle construction")

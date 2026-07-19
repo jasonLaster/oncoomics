@@ -263,6 +263,23 @@ class ValidateAiReviewTests(unittest.TestCase):
                 self.assertIn("model catalog receipt", result.stderr)
                 self.assertIn("envelope is not exact", result.stderr)
 
+    def test_rejects_non_integer_model_catalog_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = ValidateReviewFixture(root)
+            fixture.build()
+            review = root / "review-a"
+            fixture.write_review(review)
+            receipt = json.loads(fixture.catalog_receipt.read_text(encoding="utf-8"))
+            receipt["schema_version"] = 1.0
+            write_json(fixture.catalog_receipt, receipt)
+
+            result = fixture.validate(review)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("model catalog receipt schema is unsupported", result.stderr)
+            self.assertFalse((review / "validation.json").exists())
+
     def test_validation_receipt_is_born_private_create_only_and_fsynced(
         self,
     ) -> None:

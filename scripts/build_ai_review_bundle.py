@@ -159,6 +159,10 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def is_exact_int(value: Any, expected: int) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value == expected
+
+
 def load_object(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -294,7 +298,7 @@ def validate_catalog_receipt(
     receipt = load_object(resolved)
     if set(receipt) != MODEL_CATALOG_RECEIPT_KEYS:
         raise ValueError("model catalog receipt envelope is not exact")
-    if receipt.get("schema_version") != 1:
+    if not is_exact_int(receipt.get("schema_version"), 1):
         raise ValueError("model catalog receipt schema is unsupported")
     receipt_time = parse_catalog_time(
         str(receipt.get("catalog_verified_at", ""))
@@ -448,9 +452,7 @@ def validate_report_manifest_support(
     expected_extra = REPORT_KIND_EXTRA_KEYS.get(report_kind)
     schema_version = manifest.get("schema_version")
     if (
-        isinstance(schema_version, bool)
-        or not isinstance(schema_version, int)
-        or schema_version != 1
+        not is_exact_int(schema_version, 1)
         or manifest.get("method_id") != method
         or expected_extra is None
         or set(manifest) != CORE_REPORT_MANIFEST_KEYS | set(expected_extra)
@@ -597,9 +599,15 @@ def require_bundle_manifest(bundle_dir: Path) -> None:
             "AI review bundle manifest",
         )
     )
-    if set(bundle) != BUNDLE_REVIEW_BUNDLE_KEYS or bundle.get("schema_version") != 2:
+    if set(bundle) != BUNDLE_REVIEW_BUNDLE_KEYS or not is_exact_int(
+        bundle.get("schema_version"),
+        2,
+    ):
         raise ValueError("AI review bundle envelope is not exact")
-    if set(manifest) != BUNDLE_MANIFEST_KEYS or manifest.get("schema_version") != 2:
+    if set(manifest) != BUNDLE_MANIFEST_KEYS or not is_exact_int(
+        manifest.get("schema_version"),
+        2,
+    ):
         raise ValueError("AI review bundle manifest envelope is not exact")
     for field in BUNDLE_REVIEW_BUNDLE_BOUND_FIELDS:
         if manifest.get(field) != bundle.get(field):

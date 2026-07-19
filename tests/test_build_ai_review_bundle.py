@@ -246,6 +246,19 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 self.assertIn("model catalog receipt", result.stderr)
                 self.assertIn("envelope is not exact", result.stderr)
 
+    def test_rejects_non_integer_model_catalog_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            receipt = json.loads(fixture.catalog_receipt.read_text(encoding="utf-8"))
+            receipt["schema_version"] = 1.0
+            write_json(fixture.catalog_receipt, receipt)
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("model catalog receipt schema is unsupported", result.stderr)
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
     def test_bundle_file_install_is_create_only_and_fsynced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -482,24 +495,38 @@ class BuildAiReviewBundleTests(unittest.TestCase):
     def test_bundle_rejects_non_exact_staged_envelopes(self) -> None:
         cases = (
             (
-                "review bundle",
+                "review bundle extra",
                 "review_bundle.json",
+                lambda payload: payload.update(legacy_note="accepted"),
                 "AI review bundle envelope is not exact",
             ),
             (
-                "bundle manifest",
+                "bundle manifest extra",
                 "bundle_manifest.json",
+                lambda payload: payload.update(legacy_note="accepted"),
+                "AI review bundle manifest envelope is not exact",
+            ),
+            (
+                "review bundle float schema",
+                "review_bundle.json",
+                lambda payload: payload.update(schema_version=2.0),
+                "AI review bundle envelope is not exact",
+            ),
+            (
+                "bundle manifest float schema",
+                "bundle_manifest.json",
+                lambda payload: payload.update(schema_version=2.0),
                 "AI review bundle manifest envelope is not exact",
             ),
         )
-        for label, relative, message in cases:
+        for label, relative, mutate, message in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
                 staging = Path(temporary)
                 write_staged_bundle(staging)
 
                 path = staging / relative
                 payload = json.loads(path.read_text(encoding="utf-8"))
-                payload["legacy_note"] = "accepted"
+                mutate(payload)
                 write_json(path, payload)
 
                 if relative == "review_bundle.json":
