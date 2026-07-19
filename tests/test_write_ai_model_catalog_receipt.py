@@ -217,6 +217,11 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
             self.assertIn("--attest-models-latest", result.stderr)
             self.assertFalse(output.exists())
 
+    def test_model_catalog_requires_distinct_reviewer_models(self) -> None:
+        with mock.patch.object(CATALOG, "REVIEWER_B", CATALOG.REVIEWER_A):
+            with self.assertRaisesRegex(ValueError, "distinct reviewer model"):
+                CATALOG.model_catalog_receipt()
+
 
 if __name__ == "__main__":
     unittest.main()

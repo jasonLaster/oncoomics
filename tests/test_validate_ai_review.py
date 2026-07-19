@@ -393,6 +393,28 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertEqual(validated.returncode, 0, validated.stdout + validated.stderr)
             self.assertTrue((review / "validation.json").exists())
 
+    def test_rejects_bundle_with_duplicate_reviewer_model_contracts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+
+            for filename in ("review_bundle.json", "bundle_manifest.json"):
+                path = fixture.bundle_dir / filename
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload["model_execution_contracts"]["B"] = dict(
+                    payload["model_execution_contracts"]["A"]
+                )
+                write_json(path, payload)
+
+            review = Path(temporary) / "review-a"
+            fixture.write_review(review)
+
+            validated = fixture.validate(review)
+
+            self.assertNotEqual(validated.returncode, 0)
+            self.assertIn("distinct pinned models", validated.stderr)
+            self.assertFalse((review / "validation.json").exists())
+
     def test_rejects_existing_validation_create_only_and_preserves_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))

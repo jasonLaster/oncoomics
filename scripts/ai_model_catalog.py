@@ -13,6 +13,15 @@ REVIEWER_A = ("openai-codex", "gpt-5.6-sol")
 REVIEWER_B = ("openai-codex", "gpt-5.6-terra")
 
 
+def reviewer_models() -> tuple[tuple[str, str], tuple[str, str]]:
+    models = (REVIEWER_A, REVIEWER_B)
+    if len(set(models)) != len(models):
+        raise ValueError(
+            "model catalog receipt requires distinct reviewer model identities"
+        )
+    return models
+
+
 def model_catalog_receipt() -> dict[str, Any]:
     return {
         "schema_version": 1,
@@ -26,6 +35,6 @@ def model_catalog_receipt() -> dict[str, Any]:
                 "available": True,
                 "latest_available": True,
             }
-            for provider, model_id in (REVIEWER_A, REVIEWER_B)
+            for provider, model_id in reviewer_models()
         ],
     }
