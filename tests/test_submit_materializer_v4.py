@@ -20,6 +20,18 @@ if str(SCRIPT_DIR) not in sys.path:
 import submit_materializer_v4 as MODULE  # noqa: E402
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    if key not in payload:
+        raise AssertionError(f"missing top-level JSON field {key}")
+    current = f'  "{key}": '
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 class SubmitMaterializerV4Tests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -749,6 +761,51 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
 
         aws.assert_not_called()
 
+    def test_rejects_duplicate_custody_receipts_before_aws(self) -> None:
+        cases = (
+            ("final freeze receipt", self.final_freeze, "schema_version"),
+            ("freeze anchor", self.final_anchor, "schema_version"),
+            (
+                "exact local materialization receipt",
+                self.exact_materialization,
+                "schema_version",
+            ),
+            ("reference freeze receipt", self.reference_freeze, "schema_version"),
+            ("reference SHA-256 receipt", self.reference_sha, "schema_version"),
+            (
+                "materializer script freeze anchor",
+                self.script_anchor,
+                "schema_version",
+            ),
+            (
+                "materializer registration receipt v4",
+                self.registration,
+                "schema_version",
+            ),
+            (
+                "materializer job definition payload",
+                self.job_definition,
+                "containerProperties",
+            ),
+        )
+        for label, path, duplicate_key in cases:
+            with self.subTest(label=label):
+                self._write_final_receipts()
+                self._write_reference_receipts()
+                self._write_registration_receipts()
+                write_duplicate_json_field(path, duplicate_key, 0)
+
+                with (
+                    mock.patch.object(MODULE, "aws_json") as aws,
+                    self.assertRaisesRegex(
+                        ValueError,
+                        f"duplicate JSON object name in {label}: {duplicate_key}",
+                    ),
+                ):
+                    MODULE.preflight(self.args())
+
+                aws.assert_not_called()
+
     def test_reference_sha_receipt_must_cross_bind_freeze_hash(self) -> None:
         tampered = self.root / "reference-sha.json"
         value = json.loads(self.reference_sha.read_text(encoding="utf-8"))
@@ -1385,6 +1442,18 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "refusing to overwrite"):
                 MODULE.main()
         untouched.assert_not_called()
+
+    def test_submit_rejects_duplicate_dry_run_receipt_before_submit(self) -> None:
+        expected = self.preflight_receipt()
+        dry_run = self.write_dry_run_receipt(expected)
+        write_duplicate_json_field(dry_run, "schema_version", 0)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate JSON object name in "
+            "materializer dry-run request receipt: schema_version",
+        ):
+            MODULE.validate_dry_run_receipt(dry_run, expected)
 
     def test_request_receipt_fsyncs_parent_directory(self) -> None:
         with mock.patch.object(

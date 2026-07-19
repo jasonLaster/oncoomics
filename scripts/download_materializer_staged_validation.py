@@ -15,6 +15,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 from capture_materializer_terminal import (
     EXPECTED_MATERIALIZER_RECEIPT_KEYS,
     EXPECTED_OUTPUT_CUSTODY_KEYS,
@@ -68,7 +72,13 @@ def checksum_sha256(digest: str) -> str:
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(payload, dict):
         raise ValueError(f"{label} is not a JSON object")
     return payload
@@ -453,7 +463,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
         get = get_object(row["bucket"], row["key"], row["version_id"], staging, args.region)
         resolve_real_file(staging, f"downloaded {OUTPUT_NAME}")
         local_sha = sha256_path(staging)
-        downloaded = json.loads(staging.read_text(encoding="utf-8"))
+        downloaded = load_json(staging, OUTPUT_NAME)
         if not isinstance(downloaded, dict) or not exact_schema_version(downloaded, 1):
             raise ValueError(f"{OUTPUT_NAME} is not a schema-1 JSON object")
         checks = validate_download(

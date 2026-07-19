@@ -273,6 +273,18 @@ def write_stage_dry_run_receipt(
     return path, payloads
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    if key not in payload:
+        raise AssertionError(f"missing top-level JSON field {key}")
+    current = f'  "{key}": '
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 class FreezeStageProvenanceTests(unittest.TestCase):
     def test_validate_execution_requires_exact_job_command_worker_and_kms(self) -> None:
         receipt, job = execution_fixture()
@@ -899,6 +911,20 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "parent must not be a symlink"):
                 MODULE.load_json(linked_parent / "input.json")
 
+    def test_load_json_rejects_duplicate_object_names(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            receipt = Path(value) / "stage.dry.json"
+            receipt.write_text(
+                '{"schema_version":0,"schema_version":1}\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in JSON document: schema_version",
+            ):
+                MODULE.load_json(receipt)
+
     def test_apply_requires_dry_run_receipt_before_aws(self) -> None:
         with (
             patch.object(
@@ -1010,6 +1036,26 @@ class FreezeStageProvenanceTests(unittest.TestCase):
 
                     with self.assertRaisesRegex(ValueError, message):
                         MODULE.validate_dry_run_receipt(path, receipt)
+
+    def test_validate_dry_run_receipt_rejects_duplicate_object_names(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            execution = root / "execution.json"
+            execution.write_text("{}\n", encoding="utf-8")
+            payloads = stage_payload_bytes()
+            receipt = stage_dry_run_receipt(execution, payloads)
+            path = root / "stage.dry.json"
+            path.write_text(
+                json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            write_duplicate_json_field(path, "schema_version", 0)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in JSON document: schema_version",
+            ):
+                MODULE.validate_dry_run_receipt(path, receipt)
 
     def test_schema_version_checks_use_exact_integer_helper(self) -> None:
         cases = (

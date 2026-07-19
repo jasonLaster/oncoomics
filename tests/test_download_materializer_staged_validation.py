@@ -33,6 +33,18 @@ def sha(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    if key not in payload:
+        raise AssertionError(f"missing top-level JSON field {key}")
+    current = f'  "{key}": '
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 def receipt(payload: bytes) -> dict:
     return {
         "schema_version": 2,
@@ -565,6 +577,75 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                 failed["error"],
             )
 
+    def test_downloaded_staged_validation_rejects_duplicate_object_names(self) -> None:
+        payload = b'{"schema_version":0,"schema_version":1}\n'
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            output = root / "staged_input_validation.json"
+            verification = root / "verification.json"
+            receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            def get_object(
+                _bucket: str,
+                _key: str,
+                _version_id: str,
+                destination: Path,
+                _region: str,
+            ) -> dict:
+                destination.write_bytes(payload)
+                return {
+                    "VersionId": "version-1",
+                    "ContentLength": len(payload),
+                    "ChecksumSHA256": checksum(payload),
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                }
+
+            with (
+                patch.object(
+                    MODULE,
+                    "head_object",
+                    return_value={
+                        "VersionId": "version-1",
+                        "ContentLength": len(payload),
+                        "ChecksumSHA256": checksum(payload),
+                        "ChecksumType": "FULL_OBJECT",
+                        "ServerSideEncryption": "aws:kms",
+                        "SSEKMSKeyId": KMS,
+                    },
+                ),
+                patch.object(MODULE, "get_object", side_effect=get_object),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "duplicate JSON object name in "
+                    f"{MODULE.OUTPUT_NAME}: schema_version",
+                ),
+            ):
+                MODULE.materialize(
+                    argparse.Namespace(
+                        materializer_receipt=receipt_path,
+                        output=output,
+                        verification_output=verification,
+                        expected_kms_key_arn=KMS,
+                        region="us-east-1",
+                    )
+                )
+
+            self.assertFalse(output.exists())
+            failed = json.loads(verification.read_text(encoding="utf-8"))
+            self.assertEqual(failed["status"], "failed")
+            self.assertIn(
+                "duplicate JSON object name in "
+                f"{MODULE.OUTPUT_NAME}: schema_version",
+                failed["error"],
+            )
+
     def test_download_mismatch_records_failed_receipt(self) -> None:
         good = json.dumps({"schema_version": 1}).encode()
         bad = json.dumps({"schema_version": 1, "changed": True}).encode()
@@ -998,6 +1079,52 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                         )
                     )
 
+            self.assertFalse(output.exists())
+            self.assertFalse(verification.exists())
+
+    def test_rejects_duplicate_materializer_receipt_before_aws(self) -> None:
+        payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            write_duplicate_json_field(receipt_path, "schema_version", 0)
+            output = root / "staged_input_validation.json"
+            verification = root / "verification.json"
+
+            with (
+                patch.object(
+                    MODULE,
+                    "head_object",
+                    side_effect=AssertionError("AWS called"),
+                ) as head_object,
+                patch.object(
+                    MODULE,
+                    "get_object",
+                    side_effect=AssertionError("AWS called"),
+                ) as get_object,
+                self.assertRaisesRegex(
+                    ValueError,
+                    "duplicate JSON object name in "
+                    "materializer receipt: schema_version",
+                ),
+            ):
+                MODULE.materialize(
+                    argparse.Namespace(
+                        materializer_receipt=receipt_path,
+                        output=output,
+                        verification_output=verification,
+                        expected_kms_key_arn=KMS,
+                        region="us-east-1",
+                    )
+                )
+
+            head_object.assert_not_called()
+            get_object.assert_not_called()
             self.assertFalse(output.exists())
             self.assertFalse(verification.exists())
 

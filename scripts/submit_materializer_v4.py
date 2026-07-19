@@ -20,6 +20,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
+
 REGION = "us-east-1"
 ACCOUNT_ID = "172630973301"
 QUEUE_NAME = "diana-omics-prod-use1-ondemand"
@@ -230,7 +235,13 @@ def sha256_path(path: Path) -> str:
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
     require_no_symlinked_ancestors(path, label)
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value
@@ -1358,9 +1369,7 @@ def validate_dry_run_receipt(
     expected: dict[str, Any],
 ) -> dict[str, str]:
     path = require_real_input_file(path, "materializer dry-run request receipt")
-    dry_run = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(dry_run, dict):
-        raise ValueError("materializer dry-run request receipt must be a JSON object")
+    dry_run = load_object(path, "materializer dry-run request receipt")
     if (
         set(dry_run) != REQUEST_DRY_RUN_RECEIPT_KEYS
         or not exact_schema_version(dry_run, 1)
