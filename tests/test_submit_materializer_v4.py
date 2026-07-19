@@ -665,6 +665,131 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                 MODULE.preflight(args)
         aws.assert_not_called()
 
+    def test_registration_command_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                {*MODULE.EXPECTED_BASE_COMMAND_CHECKS, "future_command_check"},
+                "missing future_command_check",
+            ),
+            (
+                {
+                    name
+                    for name in MODULE.EXPECTED_BASE_COMMAND_CHECKS
+                    if name != "script_sha"
+                },
+                "unexpected script_sha",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(MODULE, "EXPECTED_BASE_COMMAND_CHECKS", expected),
+                mock.patch.object(MODULE, "aws_json") as aws,
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.preflight(self.args())
+            aws.assert_not_called()
+
+    def test_registration_shell_value_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                {*MODULE.EXPECTED_SHELL_VALUES, "future_shell_value"},
+                "missing future_shell_value",
+            ),
+            (
+                {
+                    name
+                    for name in MODULE.EXPECTED_SHELL_VALUES
+                    if name != "kms_key_arn"
+                },
+                "unexpected kms_key_arn",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(MODULE, "EXPECTED_SHELL_VALUES", expected),
+                mock.patch.object(MODULE, "aws_json") as aws,
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.preflight(self.args())
+            aws.assert_not_called()
+
+    def test_registration_definition_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                {
+                    *MODULE.EXPECTED_REGISTRATION_DEFINITION_CHECKS,
+                    "future_definition_check",
+                },
+                "missing future_definition_check",
+            ),
+            (
+                {
+                    name
+                    for name in MODULE.EXPECTED_REGISTRATION_DEFINITION_CHECKS
+                    if name != "normalized_definition"
+                },
+                "unexpected normalized_definition",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(
+                    MODULE,
+                    "EXPECTED_REGISTRATION_DEFINITION_CHECKS",
+                    expected,
+                ),
+                mock.patch.object(MODULE, "aws_json") as aws,
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.preflight(self.args())
+            aws.assert_not_called()
+
+    def test_failed_registration_shell_literal_is_rejected_by_exact_map(self) -> None:
+        definition = json.loads(self.job_definition.read_text(encoding="utf-8"))
+        shell = definition["containerProperties"]["command"][2]
+        source_uri = (
+            f"s3://{self.private_bucket}/{self.final_prefix}"
+            f"{MODULE.SOURCE_RELATIVES['source_vcf']}"
+        )
+        definition["containerProperties"]["command"][2] = shell.replace(
+            f"--source-vcf-uri {source_uri} ",
+            "",
+        )
+        self._write(self.job_definition, definition)
+
+        registration = json.loads(self.registration.read_text(encoding="utf-8"))
+        registration["batch"]["definition_sha256"] = MODULE.sha256_path(
+            self.job_definition
+        )
+        self._write(self.registration, registration)
+
+        with (
+            mock.patch.object(MODULE, "aws_json") as aws,
+            self.assertRaisesRegex(ValueError, "shell_source_vcf_uri"),
+        ):
+            MODULE.preflight(self.args())
+
+        aws.assert_not_called()
+
+    def test_failed_registration_definition_check_is_rejected_by_exact_map(self) -> None:
+        registration = json.loads(self.registration.read_text(encoding="utf-8"))
+        registration["authorized_hrd_state"] = "partial_evidence"
+        self._write(self.registration, registration)
+
+        with (
+            mock.patch.object(MODULE, "aws_json") as aws,
+            self.assertRaisesRegex(ValueError, "failed no_call_boundary"),
+        ):
+            MODULE.preflight(self.args())
+
+        aws.assert_not_called()
+
     def test_live_definition_drift_is_rejected(self) -> None:
         definition = self.live_definition()
         definition["containerProperties"]["memory"] += 1

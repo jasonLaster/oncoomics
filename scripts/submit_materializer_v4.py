@@ -128,6 +128,45 @@ EXPECTED_REGISTRATION_CHECKS = {
     "eight_runtime_substitutions",
     "no_job_submitted",
 }
+EXPECTED_SHELL_VALUES = {
+    "source_vcf_uri",
+    "source_vcf_index_uri",
+    "source_matrix_uri",
+    "reference_fasta_uri",
+    "reference_fai_uri",
+    "reference_fasta_sha256",
+    "reference_fai_sha256",
+    "destination_prefix",
+    "receipt_prefix",
+    "kms_key_arn",
+}
+EXPECTED_BASE_COMMAND_CHECKS = {
+    "command_shape",
+    "strict_shell",
+    "script_uri",
+    "script_version",
+    "script_sha",
+}
+EXPECTED_REGISTRATION_DEFINITION_CHECKS = {
+    "schema_status",
+    "no_call_boundary",
+    "receipt_checks",
+    "script_anchor_hash",
+    "script_status",
+    "script_sha",
+    "script_object_version",
+    "script_checks",
+    "script_receipt_binding",
+    "definition_hash",
+    "definition_arn",
+    "definition_revision",
+    "definition_runtime",
+    "image",
+    "substitutions",
+    "shell_argument_binding",
+    "command",
+    "normalized_definition",
+}
 
 
 def now() -> str:
@@ -164,6 +203,32 @@ def passed_checks(value: Any, *, exact: set[str] | None = None) -> bool:
     if exact is not None and set(value) != exact:
         return False
     return all(item is True for item in value.values())
+
+
+def check_map_mismatches(value: dict[str, Any], expected: set[str]) -> list[str]:
+    missing = sorted(expected - set(value))
+    unexpected = sorted(set(value) - expected)
+    failed = sorted(key for key in expected & set(value) if value[key] is not True)
+    errors: list[str] = []
+    if missing:
+        errors.append("missing " + ",".join(missing))
+    if unexpected:
+        errors.append("unexpected " + ",".join(unexpected))
+    if failed:
+        errors.append("failed " + ",".join(failed))
+    return errors
+
+
+def require_exact_keys(value: dict[str, Any], expected: set[str], label: str) -> None:
+    mismatches = check_map_mismatches({key: True for key in value}, expected)
+    if mismatches:
+        raise ValueError(f"{label} is not exact: {'; '.join(mismatches)}")
+
+
+def expected_command_checks() -> set[str]:
+    return EXPECTED_BASE_COMMAND_CHECKS | {
+        f"shell_{name}" for name in EXPECTED_SHELL_VALUES
+    }
 
 
 def valid_version(value: Any) -> bool:
@@ -564,6 +629,11 @@ def validate_registration(
     definition_path: Path,
     expected_shell_values: dict[str, str],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    require_exact_keys(
+        expected_shell_values,
+        EXPECTED_SHELL_VALUES,
+        "expected materializer shell value map",
+    )
     receipt = load_object(receipt_path, "materializer registration receipt v4")
     script_anchor = load_object(script_anchor_path, "materializer script freeze anchor")
     definition = load_object(definition_path, "materializer job definition payload")
@@ -591,6 +661,10 @@ def validate_registration(
     }
     for name, value in expected_shell_values.items():
         command_checks[f"shell_{name}"] = f"--{name.replace('_', '-')} {value}" in shell
+    command_errors = check_map_mismatches(
+        command_checks,
+        expected_command_checks(),
+    )
     expected_binding = {f"${index}": name for index, name in enumerate(expected_refs, start=1)}
     checks = {
         "schema_status": receipt.get("schema_version") == 3 and receipt.get("status") == "registered_not_submitted",
@@ -615,11 +689,16 @@ def validate_registration(
         "image": batch.get("image") == EXPECTED_IMAGE,
         "substitutions": batch.get("parameter_substitution") == expected_refs,
         "shell_argument_binding": batch.get("shell_argument_binding") == expected_binding,
-        "command": all(command_checks.values()),
+        "command": not command_errors,
         "normalized_definition": normalize_definition(definition) == definition,
     }
-    if not all(checks.values()):
-        raise ValueError(f"materializer registration receipt/definition is not exact: {checks}; command={command_checks}")
+    check_errors = check_map_mismatches(checks, EXPECTED_REGISTRATION_DEFINITION_CHECKS)
+    if check_errors or command_errors:
+        raise ValueError(
+            "materializer registration receipt/definition is not exact: "
+            f"{checks}; errors={check_errors}; command={command_checks}; "
+            f"command_errors={command_errors}"
+        )
     return receipt, definition
 
 
