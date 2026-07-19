@@ -205,12 +205,27 @@ def require_no_symlinked_ancestors(path: Path, label: str) -> None:
 
 def parse_time(value: Any, label: str) -> datetime:
     try:
-        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as error:
         raise ValueError(f"invalid {label} timestamp") from error
     if parsed.tzinfo is None:
         raise ValueError(f"{label} timestamp must include timezone")
     return parsed
+
+
+def exact_invocation_string(value: Any) -> bool:
+    return isinstance(value, str) and bool(value) and value == value.strip()
+
+
+def require_exact_review_invocation(invocation: Any) -> dict[str, str]:
+    if not isinstance(invocation, dict) or set(invocation) != REVIEW_INVOCATION_KEYS:
+        raise ValueError("review invocation envelope is not exact")
+    if not all(
+        exact_invocation_string(invocation.get(key))
+        for key in REVIEW_INVOCATION_KEYS
+    ):
+        raise ValueError("complete invocation metadata is required")
+    return dict(invocation)
 
 
 def exact_nonempty_string(value: Any) -> str:
@@ -523,9 +538,13 @@ def validate_other_reviewer(
     ):
         raise ValueError("reviewer A manifest is not bound to this review bundle")
 
-    current_invocation = current_manifest.get("invocation", {})
-    other_invocation = other_manifest.get("invocation", {})
-    if str(current_invocation.get("invocation_id", "")) == str(other_invocation.get("invocation_id", "")):
+    current_invocation = require_exact_review_invocation(
+        current_manifest.get("invocation", {}),
+    )
+    other_invocation = require_exact_review_invocation(
+        other_manifest.get("invocation", {}),
+    )
+    if current_invocation["invocation_id"] == other_invocation["invocation_id"]:
         raise ValueError("reviewer A and B share an invocation ID")
     if current_outputs["report.md"] == other_outputs["report.md"] or current_outputs["claims.csv"] == other_outputs["claims.csv"]:
         raise ValueError("reviewer B duplicates a reviewer A output")
@@ -960,18 +979,13 @@ def validate_review_manifest(
     ):
         raise ValueError("review manifest schema or reviewer ID mismatch")
 
-    invocation = review_manifest.get("invocation", {})
-    if not isinstance(invocation, dict) or set(invocation) != REVIEW_INVOCATION_KEYS:
-        raise ValueError("review invocation envelope is not exact")
+    invocation = require_exact_review_invocation(
+        review_manifest.get("invocation", {}),
+    )
     if review_manifest.get("model") != model_contract:
         raise ValueError("review did not use its pinned latest-model contract")
     if review_manifest.get("subject_alias") != subject_alias:
         raise ValueError("review manifest subject alias mismatch")
-    if not isinstance(invocation, dict) or not all(
-        str(invocation.get(key, "")).strip() for key in ("invocation_id", "interface", "started_at", "completed_at")
-    ):
-        raise ValueError("complete invocation metadata is required")
-
     started = parse_time(invocation["started_at"], "started_at")
     completed = parse_time(invocation["completed_at"], "completed_at")
     if completed < started:

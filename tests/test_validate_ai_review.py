@@ -656,6 +656,22 @@ class ValidateAiReviewTests(unittest.TestCase):
                 "review invocation envelope is not exact",
             ),
             (
+                "boolean invocation ID",
+                lambda manifest: manifest["invocation"].__setitem__(
+                    "invocation_id",
+                    True,
+                ),
+                "complete invocation metadata is required",
+            ),
+            (
+                "padded interface",
+                lambda manifest: manifest["invocation"].__setitem__(
+                    "interface",
+                    " offline-test-fixture",
+                ),
+                "complete invocation metadata is required",
+            ),
+            (
                 "non-exact schema",
                 lambda manifest: manifest.__setitem__("schema_version", 2.0),
                 "review manifest schema or reviewer ID mismatch",
@@ -1263,6 +1279,43 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertIn(
                 "other review is not a passed reviewer A validation",
                 non_exact_other.stderr,
+            )
+            self.assertFalse((review_b / "validation.json").exists())
+
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review_a = Path(temporary) / "review-a"
+            fixture.write_review(review_a, reviewer="A")
+            self.assertEqual(fixture.validate(review_a).returncode, 0)
+
+            a_manifest_path = review_a / "review_manifest.json"
+            a_manifest = json.loads(a_manifest_path.read_text(encoding="utf-8"))
+            a_manifest["invocation"]["interface"] = True
+            write_json(a_manifest_path, a_manifest)
+            a_validation_path = review_a / "validation.json"
+            a_validation = json.loads(a_validation_path.read_text(encoding="utf-8"))
+            a_validation["review_manifest_sha256"] = sha256(a_manifest_path)
+            write_json(a_validation_path, a_validation)
+
+            review_b = Path(temporary) / "review-b"
+            fixture.write_review(
+                review_b,
+                reviewer="B",
+                body="The missing allele-specific copy-number gate remains unresolved [C001|E001].",
+                claim="The missing allele-specific copy number prevents a categorical conclusion.",
+            )
+
+            malformed_other = fixture.validate(
+                review_b,
+                reviewer="B",
+                other_review_dir=review_a,
+            )
+
+            self.assertNotEqual(malformed_other.returncode, 0)
+            self.assertIn(
+                "complete invocation metadata is required",
+                malformed_other.stderr,
             )
             self.assertFalse((review_b / "validation.json").exists())
 

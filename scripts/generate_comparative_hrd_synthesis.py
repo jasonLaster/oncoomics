@@ -502,6 +502,23 @@ def verify_sources(
     return rows
 
 
+def require_exact_review_invocation(invocation: Any, reviewer: str) -> Dict[str, str]:
+    if (
+        not isinstance(invocation, dict)
+        or set(invocation) != REVIEW_INVOCATION_KEYS
+        or any(
+            not isinstance(invocation.get(key), str)
+            or not invocation[key]
+            or invocation[key] != invocation[key].strip()
+            for key in REVIEW_INVOCATION_KEYS
+        )
+    ):
+        raise ValueError(
+            "reviewer " + reviewer + " invocation metadata is incomplete"
+        )
+    return dict(invocation)
+
+
 def read_claims(path: Path, evidence_by_id: Dict[str, Dict[str, Any]], ceiling: str) -> List[Dict[str, str]]:
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
@@ -623,16 +640,7 @@ def verify_review(
         raise ValueError("reviewer " + reviewer + " report changed after validation")
     if validation.get("claims_sha256") != current_outputs["claims.csv"]:
         raise ValueError("reviewer " + reviewer + " claims changed after validation")
-    invocation = manifest.get("invocation")
-    if (
-        not isinstance(invocation, dict)
-        or set(invocation) != REVIEW_INVOCATION_KEYS
-        or any(
-            not str(invocation.get(key, "")).strip()
-            for key in REVIEW_INVOCATION_KEYS
-        )
-    ):
-        raise ValueError("reviewer " + reviewer + " invocation metadata is incomplete")
+    require_exact_review_invocation(manifest.get("invocation"), reviewer)
     evidence_by_id = {str(row["evidence_id"]): row for row in bundle["evidence_sources"]}
     claims = read_claims(claims_path, evidence_by_id, str(bundle["authorized_hrd_state"]))
     claim_count = validation.get("claim_count")
@@ -672,8 +680,8 @@ def verify_pair(review_a: Dict[str, Any], review_b: Dict[str, Any]) -> None:
     model_b = review_b["manifest"]["model"]
     if (model_a["provider"], model_a["model_id"]) == (model_b["provider"], model_b["model_id"]):
         raise ValueError("reviewers used duplicate models")
-    invocation_a = str(review_a["manifest"]["invocation"]["invocation_id"])
-    invocation_b = str(review_b["manifest"]["invocation"]["invocation_id"])
+    invocation_a = review_a["manifest"]["invocation"]["invocation_id"]
+    invocation_b = review_b["manifest"]["invocation"]["invocation_id"]
     if invocation_a == invocation_b:
         raise ValueError("reviewers used a duplicate invocation ID")
     if review_a["hashes"]["report.md"] == review_b["hashes"]["report.md"]:
