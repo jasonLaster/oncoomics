@@ -38,6 +38,10 @@ def _require_string(value: Any, label: str) -> str:
     return value.strip()
 
 
+def _is_exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and value == expected
+
+
 def _require_digest(value: Any, label: str) -> str:
     value = _require_string(value, label)
     if DIGEST.fullmatch(value) is None:
@@ -54,7 +58,7 @@ def _require_pinned_image(value: Any, label: str) -> tuple[str, str]:
 
 
 def validate_mirror_receipt(receipt: Mapping[str, Any]) -> dict[str, str]:
-    if receipt.get("schema_version") != 1:
+    if not _is_exact_int(receipt.get("schema_version"), 1):
         raise MirrorReceiptError("schema_version must be 1")
     if receipt.get("manifest_type") != "parabricks_mirror_receipt":
         raise MirrorReceiptError("manifest_type must be parabricks_mirror_receipt")

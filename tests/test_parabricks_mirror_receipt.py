@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 import unittest
@@ -46,6 +47,37 @@ def ecr_response(*image_details: dict | str) -> str:
 
 
 class ParabricksMirrorReceiptTests(unittest.TestCase):
+    def test_schema_version_must_be_an_exact_json_integer(self) -> None:
+        for value in (True, 1.0, "1", 2, None):
+            malformed = receipt()
+            malformed["schema_version"] = value
+
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(verify.MirrorReceiptError, "schema_version"):
+                    verify.validate_mirror_receipt(malformed)
+
+        self.assertTrue(verify._is_exact_int(1, 1))
+        self.assertFalse(verify._is_exact_int(True, 1))
+        self.assertFalse(verify._is_exact_int(1.0, 1))
+
+    def test_schema_guards_use_exact_integer_helper(self) -> None:
+        source_path = Path(verify.__file__)
+        source = source_path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(source_path))
+
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "schema_version" not in segment:
+                continue
+            if segment in {"type(value) is int", "value == expected"}:
+                continue
+            raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual([], raw_comparisons)
+
     def test_validates_reviewed_use2_mirror_receipt(self) -> None:
         summary = verify.validate_mirror_receipt(receipt())
 
