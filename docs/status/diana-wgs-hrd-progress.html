@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact Phase 3 fast Rosalind workflow provenance</li>
+          <li class="pill">Latest milestone = local exact Phase 3 fast Rosalind run provenance</li>
+          <li class="pill">Phase 3 fast Rosalind run provenance = exact</li>
           <li class="pill">Phase 3 fast Rosalind workflow provenance = exact</li>
           <li class="pill">Terminal-worker Rosalind tool versions = exact</li>
           <li class="pill">Terminal-worker Rosalind VersionIds = exact</li>
@@ -1066,6 +1067,10 @@
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Phase 3 fast Rosalind run provenance</strong>
+              <span>Phase 3 fast Rosalind packet building now requires the run block to carry only exact single-line run ID, subject alias, and pair ID strings before Rosalind packet construction; AI-facing provenance then emits only the exact run ID.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 fast Rosalind workflow provenance</strong>
               <span>Phase 3 fast Rosalind packet building now requires the workflow block to carry only the exact workflow name, lowercase parameter SHA-256, and single-line source commit before Rosalind packet construction or AI-facing provenance emission.</span>
             </li>
@@ -1735,6 +1740,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:15:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact Phase 3 fast Rosalind run provenance:</strong>
+                Phase 3 fast Rosalind packet building now rejects extra run
+                keys, boolean run IDs, padded subject aliases, and multiline
+                pair IDs before carrying the exact run ID into AI-facing
+                summaries.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:10:00-07:00">Jul 20 · local</time>
               <span>

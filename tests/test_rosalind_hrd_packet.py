@@ -938,6 +938,10 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 "phase3_fast_final",
             )
             self.assertEqual(
+                {"run_id": "diana-wgs-hrd-20260716T033101Z"},
+                manifest["review_summary"]["provenance"]["phase3_fast"]["run"],
+            )
+            self.assertEqual(
                 {
                     "workflow_id": "phase3_wgs_fast",
                     "parameter_sha256": "2" * 64,
@@ -1128,6 +1132,84 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     )
                 )
                 mutate_phase3_fast_crosscheck_plans(deterministic_root, mutation)
+
+                with (
+                    patch.object(
+                        packet,
+                        "path_from_root",
+                        lambda relative: output_root / relative,
+                    ),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(
+                                deterministic_root
+                            ),
+                            "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": (
+                                PHASE3_FAST_FORBIDDEN_TOKENS_JSON
+                            ),
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(
+                        packet.PACKET_SPECS["diana_wgs"],
+                        "phase3-fast",
+                    )
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/phase3-fast/"
+                        "report_manifest.json"
+                    ).exists()
+                )
+
+    def test_diana_wgs_phase3_fast_packet_rejects_non_exact_run_provenance(self):
+        cases = (
+            (
+                "extra_field",
+                lambda manifest: manifest["review_summary"]["run"].__setitem__(
+                    "unexpected",
+                    "metadata",
+                ),
+                "Phase 3 fast run provenance is not exact",
+            ),
+            (
+                "boolean_run_id",
+                lambda manifest: manifest["review_summary"]["run"].__setitem__(
+                    "run_id",
+                    True,
+                ),
+                "Phase 3 fast run_id must be a non-empty unpadded single-line string",
+            ),
+            (
+                "padded_subject_alias",
+                lambda manifest: manifest["review_summary"]["run"].__setitem__(
+                    "subject_alias",
+                    " subject01 ",
+                ),
+                "Phase 3 fast subject_alias must be a non-empty unpadded single-line string",
+            ),
+            (
+                "multiline_pair_id",
+                lambda manifest: manifest["review_summary"]["run"].__setitem__(
+                    "pair_id",
+                    "tumor\nnormal",
+                ),
+                "Phase 3 fast pair_id must be a non-empty unpadded single-line string",
+            ),
+        )
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                deterministic_root, final_root = (
+                    write_phase3_fast_deterministic_report(
+                        output_root / "phase3_fast"
+                    )
+                )
+                mutate_phase3_fast_report_manifest(deterministic_root, mutation)
 
                 with (
                     patch.object(

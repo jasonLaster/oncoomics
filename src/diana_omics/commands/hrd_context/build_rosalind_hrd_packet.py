@@ -1321,7 +1321,9 @@ def diana_wgs_phase3_fast_deterministic_binding(
                 str(group): require_json_nonnegative_int(count, f"Phase 3 fast artifact group {group}")
                 for group, count in sorted(artifact_groups.items())
             },
-            "run": dict(review_summary.get("run", {})) if isinstance(review_summary.get("run"), dict) else {},
+            "run": phase3_fast_run_summary(
+                review_summary.get("run"),
+            ),
             "workflow": phase3_fast_workflow_summary(
                 review_summary.get("workflow"),
             ),
@@ -1344,6 +1346,29 @@ def phase3_fast_alias_source_summary(value: Any, label: str) -> dict[str, Any]:
         "version_id": require_version_id(
             value.get("version_id"),
             f"{label} version_id",
+        ),
+    }
+
+
+def phase3_fast_run_summary(value: Any) -> dict[str, str]:
+    if not isinstance(value, Mapping) or set(value) != {
+        "run_id",
+        "subject_alias",
+        "pair_id",
+    }:
+        raise ValueError("Phase 3 fast run provenance is not exact")
+    return {
+        "run_id": require_exact_nonempty_string(
+            value.get("run_id"),
+            "Phase 3 fast run_id",
+        ),
+        "subject_alias": require_exact_nonempty_string(
+            value.get("subject_alias"),
+            "Phase 3 fast subject_alias",
+        ),
+        "pair_id": require_exact_nonempty_string(
+            value.get("pair_id"),
+            "Phase 3 fast pair_id",
         ),
     }
 
@@ -1473,11 +1498,8 @@ def diana_wgs_report_provenance(deterministic_binding: Mapping[str, Any]) -> dic
     ):
         phase3_summary = dict(phase3_fast)
         run = phase3_summary.get("run")
-        phase3_summary["run"] = (
-            {"run_id": str(run.get("run_id", ""))}
-            if isinstance(run, Mapping)
-            else {}
-        )
+        run_summary = phase3_fast_run_summary(run)
+        phase3_summary["run"] = {"run_id": run_summary["run_id"]}
         workflow = phase3_summary.get("workflow")
         workflow_summary = phase3_fast_workflow_summary(workflow)
         phase3_summary["workflow"] = {
