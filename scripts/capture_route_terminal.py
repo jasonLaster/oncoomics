@@ -24,6 +24,11 @@ from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import urlparse
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
+
 REGION = "us-east-1"
 ACCOUNT_ID = "172630973301"
 LOG_GROUP = "/aws/batch/diana-omics-prod-use1"
@@ -495,7 +500,7 @@ def parse_terminal_payload(
             raise ValueError("CloudWatch event message is not text")
         messages.append(message.rstrip("\n"))
     text = "\n".join(messages)
-    decoder = json.JSONDecoder()
+    decoder = json.JSONDecoder(object_pairs_hook=reject_duplicate_json_object_names)
     candidates: list[tuple[int, int, dict[str, Any]]] = []
     for start, character in enumerate(text):
         if character != "{":
@@ -504,6 +509,10 @@ def parse_terminal_payload(
             value, end = decoder.raw_decode(text, start)
         except json.JSONDecodeError:
             continue
+        except DuplicateJsonKeyError as error:
+            raise ValueError(
+                f"duplicate JSON object name in terminal route payload: {error}"
+            ) from error
         if isinstance(value, dict) and set(value) == {"publication_anchor"} and isinstance(value.get("publication_anchor"), dict):
             candidates.append((start, end, value))
     if len(candidates) != 1:
@@ -930,7 +939,14 @@ def validate_exact_receipt(
 ) -> tuple[dict[str, Any], dict[str, bool]]:
     local_sha = sha256_bytes(receipt_bytes)
     try:
-        receipt = json.loads(receipt_bytes)
+        receipt = json.loads(
+            receipt_bytes,
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(
+            f"duplicate JSON object name in downloaded route receipt: {error}"
+        ) from error
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError(f"downloaded route receipt is not JSON: {error}") from error
     if not isinstance(receipt, dict):

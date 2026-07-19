@@ -22,6 +22,11 @@ from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import urlparse
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
+
 REGION = "us-east-1"
 ACCOUNT_ID = "172630973301"
 LOG_GROUP = "/aws/batch/job"
@@ -438,7 +443,7 @@ def parse_terminal_payload(events: list[dict[str, Any]]) -> tuple[dict[str, Any]
             raise ValueError("CloudWatch event message is not text")
         messages.append(message.rstrip("\n"))
     text = "\n".join(messages)
-    decoder = json.JSONDecoder()
+    decoder = json.JSONDecoder(object_pairs_hook=reject_duplicate_json_object_names)
     candidates: list[tuple[int, int, dict[str, Any]]] = []
     for start, character in enumerate(text):
         if character != "{":
@@ -447,6 +452,10 @@ def parse_terminal_payload(events: list[dict[str, Any]]) -> tuple[dict[str, Any]
             value, end = decoder.raw_decode(text, start)
         except json.JSONDecodeError:
             continue
+        except DuplicateJsonKeyError as error:
+            raise ValueError(
+                f"duplicate JSON object name in terminal materialization payload: {error}"
+            ) from error
         if (
             isinstance(value, dict)
             and value.get("status") == "passed"
@@ -856,7 +865,14 @@ def validate_exact_receipt(
 ) -> tuple[dict[str, Any], dict[str, bool]]:
     local_sha = sha256_bytes(receipt_bytes)
     try:
-        receipt = json.loads(receipt_bytes)
+        receipt = json.loads(
+            receipt_bytes,
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(
+            f"duplicate JSON object name in downloaded materialization receipt: {error}"
+        ) from error
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError(f"downloaded materialization receipt is not JSON: {error}") from error
     if not isinstance(receipt, dict):

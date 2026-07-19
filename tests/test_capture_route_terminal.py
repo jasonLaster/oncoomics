@@ -28,6 +28,15 @@ DOWNLOAD_MODULE = importlib.util.module_from_spec(DOWNLOAD_SPEC)
 DOWNLOAD_SPEC.loader.exec_module(DOWNLOAD_MODULE)
 
 
+def write_duplicate_json_field(payload: bytes, key: str, stale_value: object) -> bytes:
+    text = payload.decode("utf-8")
+    current = f'  "{key}": '
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    return text.replace(current, duplicate, 1).encode("utf-8")
+
+
 class CaptureRouteTerminalTests(unittest.TestCase):
     def test_collect_log_events_rejects_malformed_next_token(self) -> None:
         for value in (None, True):
@@ -997,6 +1006,34 @@ class CaptureRouteTerminalTests(unittest.TestCase):
             with self.subTest(label=label), self.assertRaises(ValueError):
                 MODULE.parse_terminal_payload(events)
 
+    def test_terminal_parser_rejects_duplicate_object_names(self):
+        fixture = self.fixture()
+        text = json.dumps(fixture["terminal"], indent=2, sort_keys=True)
+        current = '    "schema_version": '
+        if text.count(current) != 1:
+            raise AssertionError(
+                "expected exactly one terminal publication schema field"
+            )
+        duplicate = text.replace(
+            current,
+            f'{current}0,\n{current}',
+            1,
+        )
+        events = [
+            {
+                "timestamp": 1000 + index,
+                "ingestionTime": 2000 + index,
+                "message": line,
+            }
+            for index, line in enumerate(duplicate.splitlines())
+        ]
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate JSON object name in terminal route payload: schema_version",
+        ):
+            MODULE.parse_terminal_payload(events)
+
     def test_logged_anchor_cannot_redirect_receipt_or_route_output(self):
         fixture = self.fixture()
         redirects = []
@@ -1478,6 +1515,41 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                 fixture["metadata"],
                 self.receipt_history_rows(fixture),
                 self.receipt_location(fixture),
+                args,
+                fixture["submission_environment"],
+            )
+
+    def test_exact_receipt_rejects_duplicate_object_names(self):
+        fixture = self.fixture()
+        args = self.args(Path("unused"), fixture)
+        content = write_duplicate_json_field(
+            fixture["receipt_bytes"],
+            "schema_version",
+            0,
+        )
+        local_sha = hashlib.sha256(content).hexdigest()
+        checksum = base64.b64encode(bytes.fromhex(local_sha)).decode()
+        metadata = {
+            **fixture["metadata"],
+            "ContentLength": len(content),
+            "ChecksumSHA256": checksum,
+            "Metadata": {"sha256": local_sha},
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate JSON object name in downloaded route receipt: schema_version",
+        ):
+            MODULE.validate_exact_receipt(
+                content,
+                metadata,
+                metadata,
+                self.receipt_history_rows(fixture),
+                {
+                    **self.receipt_location(fixture),
+                    "sha256": local_sha,
+                    "bytes": len(content),
+                },
                 args,
                 fixture["submission_environment"],
             )

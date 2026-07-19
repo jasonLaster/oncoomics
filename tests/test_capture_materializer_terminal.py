@@ -21,6 +21,15 @@ if str(SCRIPT_DIR) not in sys.path:
 import capture_materializer_terminal as MODULE  # noqa: E402
 
 
+def write_duplicate_json_field(payload: bytes, key: str, stale_value: object) -> bytes:
+    text = payload.decode("utf-8")
+    current = f'  "{key}": '
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    return text.replace(current, duplicate, 1).encode("utf-8")
+
+
 class CaptureMaterializerTerminalTests(unittest.TestCase):
     def setUp(self) -> None:
         self.kms = "arn:aws:kms:us-east-1:172630973301:key/unit"
@@ -729,6 +738,32 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             with self.subTest(label=label), self.assertRaises(ValueError):
                 MODULE.parse_terminal_payload(events)
 
+    def test_terminal_parser_rejects_duplicate_object_names(self) -> None:
+        text = json.dumps(self.terminal, indent=2, sort_keys=True)
+        current = "{\n  \"outputs\": "
+        if text.count(current) != 1:
+            raise AssertionError("expected exactly one terminal root object")
+        duplicate = text.replace(
+            current,
+            "{\n  \"status\": \"forged\",\n  \"outputs\": ",
+            1,
+        )
+        events = [
+            {
+                "timestamp": 1000 + index,
+                "ingestionTime": 2000 + index,
+                "message": line,
+            }
+            for index, line in enumerate(duplicate.splitlines())
+        ]
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate JSON object name in "
+            "terminal materialization payload: status",
+        ):
+            MODULE.parse_terminal_payload(events)
+
     def test_logged_anchor_cannot_redirect_to_current_or_unexpected_key(self) -> None:
         terminal = copy.deepcopy(self.terminal)
         terminal["receipt_anchor"]["receipt_uri"] = self.prefix + "/latest.json"
@@ -1167,6 +1202,41 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 self.metadata,
                 self.receipt_history_rows(),
                 self.receipt_location(),
+                self.parameters,
+                self.destination_prefix,
+                self.kms,
+            )
+
+    def test_exact_receipt_rejects_duplicate_object_names(self) -> None:
+        receipt_bytes = write_duplicate_json_field(
+            self.receipt_bytes,
+            "authorized_hrd_state",
+            "forged",
+        )
+        local_sha = hashlib.sha256(receipt_bytes).hexdigest()
+        checksum = base64.b64encode(bytes.fromhex(local_sha)).decode()
+        metadata = {
+            **self.metadata,
+            "ContentLength": len(receipt_bytes),
+            "ChecksumSHA256": checksum,
+            "Metadata": {"sha256": local_sha},
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate JSON object name in "
+            "downloaded materialization receipt: authorized_hrd_state",
+        ):
+            MODULE.validate_exact_receipt(
+                receipt_bytes,
+                metadata,
+                metadata,
+                self.receipt_history_rows(),
+                {
+                    **self.receipt_location(),
+                    "sha256": local_sha,
+                    "bytes": len(receipt_bytes),
+                },
                 self.parameters,
                 self.destination_prefix,
                 self.kms,

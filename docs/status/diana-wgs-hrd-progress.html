@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact staged/materializer JSON</li>
+          <li class="pill">Latest milestone = local exact terminal-capture JSON</li>
+          <li class="pill">Terminal capture JSON = exact</li>
           <li class="pill">Staged/materializer JSON = exact</li>
           <li class="pill">Materializer/report custody = exact</li>
           <li class="pill">Final/materialized receipts = exact</li>
@@ -821,6 +822,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact terminal-capture JSON</strong>
+              <span>Terminal materializer and route-capture readers now reject duplicate JSON object names in terminal payloads and exact downloaded publication or materialization receipts before capture receipts can pass.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact staged/materializer JSON</strong>
               <span>Staged-evidence and materializer readers now reject duplicate JSON object names in execution, dry-run, custody, request, materializer, and staged-validation receipts before dry-run, submit, staged-download, or exact local-validation gates can pass.</span>
@@ -1915,6 +1920,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T03:15:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact terminal-capture JSON:</strong>
+                Terminal materializer and route capture now reject duplicate
+                JSON object names in terminal payloads and exact downloaded
+                publication/materialization receipts before capture receipts can pass.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T03:10:00-07:00">Jul 20 · local</time>
               <span>
