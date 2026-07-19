@@ -343,8 +343,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = 98047dc</li>
-          <li class="pill">Prior dashboard = 08c2e92</li>
+          <li class="pill">Latest milestone = 4a8983a</li>
+          <li class="pill">Prior source = 7c86c5b</li>
           <li class="pill">In flight = dry post-deterministic chain</li>
           <li class="pill">Reviewer identities = explicit</li>
           <li class="pill">Catalog timestamps = in synthesis</li>
@@ -510,6 +510,14 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · validate reviewer contracts at synthesis bundle ingress</strong>
+              <span>Bundle verification now reuses the exact reviewer-model summary validator, requires distinct A/B provider-model identities, and requires both catalog timestamps to come from one snapshot before rendering.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · enforce distinct reviewer models before review</strong>
+              <span>The model-catalog source now fails if reviewer identities collapse to the same provider/model pair, and review validation rejects a tampered duplicate-model bundle before writing its validation output.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind synthesis summaries to the agreement CSV</strong>
               <span>Final packet validation now re-derives agreement-status counts and structured disagreements from the exact agreement CSV, rejecting either summary when it becomes stale.</span>
             </li>
@@ -571,6 +579,41 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T23:04:56-07:00">Jul 18 · 11:04 PM</time>
+              <span>
+                <strong>4a8983a Validate synthesis bundle reviewer model contracts:</strong>
+                synthesis bundle ingress now reuses the exact reviewer-model
+                validator, requires distinct A/B identities, and requires both
+                catalog timestamps to come from one snapshot before report
+                rendering. Validation passed: 43 focused synthesis tests + 24
+                subtests, then 353 broad handoff tests + 210 subtests. No
+                compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T23:02:45-07:00">Jul 18 · 11:02 PM</time>
+              <span>
+                <strong>7c86c5b Require distinct AI reviewer catalog models:</strong>
+                model-catalog receipt construction now fails when reviewer A
+                and B collapse to the same provider/model identity, and review
+                validation rejects a tampered bundle that duplicates those
+                contracts before writing validation output. Validation passed:
+                33 focused tests + 8 subtests, then 353 broad handoff tests +
+                209 subtests. No compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T22:59:01-07:00">Jul 18 · 10:59 PM</time>
+              <span>
+                <strong>f8ada27 Refresh HRD dashboard for agreement CSV binding:</strong>
+                published the closed AI-synthesis self-check while preserving
+                dry post-deterministic preparation as the active next step,
+                terminal artifacts as absent, and Diana HRD as
+                <code>partial_evidence</code> / <code>no_call</code>. No compute
+                was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T22:57:55-07:00">Jul 18 · 10:57 PM</time>
               <span>
