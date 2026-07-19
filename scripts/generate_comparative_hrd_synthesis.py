@@ -509,10 +509,13 @@ def verify_review(
         raise ValueError("reviewer " + reviewer + " authorization binding changed")
     if validation.get("required_method_ids") != bundle["required_method_ids"]:
         raise ValueError("reviewer " + reviewer + " ordered method inventory changed")
-    if (
-        validation.get("method_inventory_sha256") != inventory_sha256(inventory_id)
-        or manifest.get("method_inventory_sha256") != inventory_sha256(inventory_id)
-    ):
+    require_inventory_binding(
+        validation.get("method_inventory"),
+        validation.get("method_inventory_sha256"),
+        "reviewer " + reviewer + " validation method inventory",
+        inventory_id,
+    )
+    if manifest.get("method_inventory_sha256") != inventory_sha256(inventory_id):
         raise ValueError("reviewer " + reviewer + " method inventory binding changed")
     if validation.get("model_catalog_receipt_sha256") != bundle.get(
         "model_catalog_receipt_sha256"

@@ -558,6 +558,21 @@ class FinalizeAiReviewTests(unittest.TestCase):
                 ),
                 "AI review bundle manifest is stale for reviewer-b.prompt.md",
             ),
+            (
+                lambda fixture, review: (
+                    write_json(
+                        review / "validation.json",
+                        {
+                            **load_json(review / "validation.json"),
+                            "method_inventory": {
+                                "inventory_id": "stale-reviewer-inventory",
+                                "ordered_method_ids": ["deterministic_full_wgs"],
+                            },
+                        },
+                    )
+                ),
+                "review validation method inventory binding",
+            ),
         ):
             with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
                 fixture, review = self.validated_review(temporary)

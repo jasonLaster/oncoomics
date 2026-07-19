@@ -232,6 +232,12 @@ def build_manifest(
         "bundle manifest method inventory binding",
         inventory_id,
     )
+    require_inventory_binding(
+        validation.get("method_inventory"),
+        validation.get("method_inventory_sha256"),
+        "review validation method inventory binding",
+        inventory_id,
+    )
     if bundle.get("method_inventory_sha256") != bundle_manifest.get(
         "method_inventory_sha256"
     ):
@@ -243,7 +249,6 @@ def build_manifest(
         raise ValueError("required method inventory differs across artifacts")
     if not (
         review_manifest.get("method_inventory_sha256") == inventory_sha256(inventory_id)
-        and validation.get("method_inventory_sha256") == inventory_sha256(inventory_id)
     ):
         raise ValueError("review method inventory binding is missing or altered")
 

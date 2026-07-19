@@ -1595,6 +1595,25 @@ class GenerateSynthesisTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("duplicate invocation ID", result.stdout + result.stderr)
 
+    def test_rejects_stale_reviewer_validation_inventory_payload(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-inventory-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            validation_path = fixture.review_a / "validation.json"
+            validation = json.loads(validation_path.read_text(encoding="utf-8"))
+            validation["method_inventory"] = {
+                "inventory_id": "stale-reviewer-inventory",
+                "ordered_method_ids": ["deterministic_full_wgs"],
+            }
+            write_json(validation_path, validation)
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "reviewer A validation method inventory",
+                result.stdout + result.stderr,
+            )
+
     def test_unauthorized_positive_and_negative_synthesis_fail_closed(self) -> None:
         for unauthorized in ("positive", "negative"):
             with self.subTest(state=unauthorized), tempfile.TemporaryDirectory(
