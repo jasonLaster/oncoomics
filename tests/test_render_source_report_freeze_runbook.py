@@ -67,6 +67,68 @@ def write_packet_dirs(paths: dict[str, Path]) -> None:
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+    bind_blocked_reports(paths)
+
+
+def source_report_manifests(paths: dict[str, Path]) -> dict[str, str]:
+    return {
+        method_id: MODULE.sha256(paths[method_id] / "report_manifest.json")
+        for method_id in MODULE.BLOCKED_SOURCE_METHOD_IDS
+        if method_id in paths
+    }
+
+
+def bind_blocked_reports(paths: dict[str, Path]) -> None:
+    manifests = source_report_manifests(paths)
+    if set(manifests) != set(MODULE.BLOCKED_SOURCE_METHOD_IDS):
+        return
+
+    for method_id in MODULE.BLOCKED_CROSSCHECK_METHOD_IDS:
+        if method_id not in paths:
+            continue
+        path = paths[method_id]
+        method_spec = json.loads((path / "method_spec.json").read_text(encoding="utf-8"))
+        method_spec["source_report_manifests"] = manifests
+        (path / "method_spec.json").write_text(
+            json.dumps(method_spec, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        report = "\n".join(
+            [
+                f"# {method_id}",
+                "",
+                "No-call support packet.",
+                "",
+                "## Upstream report context",
+                "",
+                *(
+                    f"- {source_id} report_manifest_sha256: `{digest}`"
+                    for source_id, digest in manifests.items()
+                ),
+                "",
+            ]
+        )
+        (path / "report.md").write_text(report, encoding="utf-8")
+
+        manifest = json.loads(
+            (path / "report_manifest.json").read_text(encoding="utf-8")
+        )
+        manifest["review_summary"]["source_report_manifests"] = manifests
+        manifest["source_sha256"].update(
+            {
+                f"{source_id}_report_manifest": digest
+                for source_id, digest in manifests.items()
+            }
+        )
+        manifest["support_sha256"]["method_spec.json"] = MODULE.sha256(
+            path / "method_spec.json"
+        )
+        manifest["report_sha256"] = MODULE.sha256(path / "report.md")
+        (path / "report_manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
 
 
 def write_phase3_fast_validation_receipt(
@@ -492,6 +554,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                 json.dumps(manifest, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
             )
+            bind_blocked_reports(paths)
 
             with self.assertRaisesRegex(ValueError, "does not match current packets"):
                 MODULE.validate_packet_dirs(
@@ -500,19 +563,41 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                     phase3_fast_forbidden_tokens_file=forbidden_tokens,
                 )
 
+    def test_validate_packet_dirs_rejects_unbound_blocked_reports(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            blocked_method_ids = set(MODULE.BLOCKED_CROSSCHECK_METHOD_IDS)
+            source_paths = {
+                method_id: path
+                for method_id, path in paths.items()
+                if method_id not in blocked_method_ids
+            }
+            write_packet_dirs(source_paths)
+            BLOCKED_GENERATOR.generate(
+                root / ".codex-tmp/hrd-reports/blocked-crosschecks",
+                generated_at="2026-07-17T00:00:00+00:00",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "not bound to current upstream report manifests",
+            ):
+                MODULE.validate_packet_dirs(paths)
+
     def test_current_blocked_generator_satisfies_renderer_packet_dirs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             blocked_root = root / ".codex-tmp/hrd-reports/blocked-crosschecks"
-            BLOCKED_GENERATOR.generate(
-                blocked_root,
-                generated_at="2026-07-17T00:00:00+00:00",
-            )
-
             paths = MODULE.source_packet_dirs(root)
             blocked_method_ids = {method["method_id"] for method in BLOCKED_GENERATOR.METHODS}
             source_paths = {method_id: path for method_id, path in paths.items() if method_id not in blocked_method_ids}
             write_packet_dirs(source_paths)
+            BLOCKED_GENERATOR.generate(
+                blocked_root,
+                generated_at="2026-07-17T00:00:00+00:00",
+                source_report_manifests=source_report_manifests(source_paths),
+            )
 
             MODULE.validate_packet_dirs(paths)
             text = MODULE.render(root, "terminal")

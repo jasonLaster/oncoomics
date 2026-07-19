@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Iterable
 
 from hrd_report_inventory import (
+    BLOCKED_CROSSCHECK_METHOD_IDS,
+    EXECUTABLE_CROSSCHECK_METHOD_IDS,
     REQUIRED_METHOD_IDS,
     source_report_packet_dirs,
 )
@@ -27,6 +30,7 @@ from runbook_io import (
     Raw,
     bash_block,
     block,
+    load_json_object,
     missing_required_files,
     preexisting_create_only_paths,
     require_real_input_file,
@@ -50,10 +54,23 @@ STALE_TOKENS = (
     "--source-dir",
     "--expected-file",
 )
+BLOCKED_SOURCE_METHOD_IDS = (
+    "deterministic_full_wgs",
+    "rosalind_diana_wgs",
+    *EXECUTABLE_CROSSCHECK_METHOD_IDS,
+)
 
 
 def forbidden_flags() -> list[str]:
     return [token for value in FORBIDDEN_TOKENS for token in ("--forbidden-token", value)]
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def source_packet_dirs(
@@ -120,6 +137,7 @@ def validate_packet_dirs(
             validate_private_packet_dir(path, method_id, forbidden_tokens)
         except ValueError as error:
             raise ValueError(f"{method_id} packet directory is invalid: {error}") from error
+    validate_blocked_source_bindings(paths)
     if phase3_fast_report_packet_validation is not None:
         assert expected_forbidden_tokens_sha256 is not None
         validate_validation_receipt_matches_packets(
@@ -128,6 +146,57 @@ def validate_packet_dirs(
             forbidden_tokens,
             expected_forbidden_tokens_sha256,
         )
+
+
+def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
+    expected = {
+        method_id: sha256(paths[method_id] / "report_manifest.json")
+        for method_id in BLOCKED_SOURCE_METHOD_IDS
+    }
+    expected_source_sha256 = {
+        f"{method_id}_report_manifest": digest
+        for method_id, digest in expected.items()
+    }
+    expected_lines = {
+        f"- {method_id} report_manifest_sha256: `{digest}`"
+        for method_id, digest in expected.items()
+    }
+
+    for blocked_method_id in BLOCKED_CROSSCHECK_METHOD_IDS:
+        packet_dir = paths[blocked_method_id]
+        manifest = load_json_object(
+            packet_dir / "report_manifest.json",
+            f"{blocked_method_id} blocked report manifest",
+        )
+        method_spec = load_json_object(
+            packet_dir / "method_spec.json",
+            f"{blocked_method_id} blocked method spec",
+        )
+        review_summary = manifest.get("review_summary")
+        source_sha256 = manifest.get("source_sha256")
+        report_path = packet_dir / "report.md"
+        require_real_input_file(
+            report_path,
+            f"{blocked_method_id} blocked report",
+        )
+        report = report_path.read_text(encoding="utf-8")
+        observed = {
+            key: value
+            for key, value in (source_sha256 or {}).items()
+            if key in expected_source_sha256
+        } if isinstance(source_sha256, dict) else {}
+        if (
+            method_spec.get("source_report_manifests") != expected
+            or not isinstance(review_summary, dict)
+            or review_summary.get("source_report_manifests") != expected
+            or observed != expected_source_sha256
+            or "source_report_manifests: `not_bound`" in report
+            or not expected_lines.issubset(set(report.splitlines()))
+        ):
+            raise ValueError(
+                f"{blocked_method_id} packet is not bound to current upstream "
+                "report manifests"
+            )
 
 
 def receipt_path(root: Path, receipt_stem: str, method_id: str) -> Path:
