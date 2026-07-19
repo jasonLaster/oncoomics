@@ -35,6 +35,22 @@ METHOD_ARGUMENTS = (
     ("oncoanalyser_chord_blocked", "oncoanalyser_blocked_manifest"),
     ("hrdetect_blocked", "hrdetect_blocked_manifest"),
 )
+STAGED_RUN_ENTRIES = (
+    "bundle",
+    "prepare_ai_review_run_receipt.json",
+    "reviewer-inputs",
+    "stage_ai_review_inputs_receipt.json",
+)
+STAGE_RECEIPT_CHECKS = {
+    "bundle_manifest_bound": True,
+    "reviewer_a_two_file_inventory": True,
+    "reviewer_b_two_file_inventory": True,
+    "no_cross_prompt": True,
+}
+REVIEWER_INPUTS = {
+    "A": ("reviewer-a-input", "reviewer-a.prompt.md"),
+    "B": ("reviewer-b-input", "reviewer-b.prompt.md"),
+}
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 
 
@@ -307,6 +323,7 @@ def validate_postconditions(
     reviewer_root: Path,
     stage_receipt_path: Path,
     source_manifests: dict[str, dict[str, str]],
+    output: Path,
 ) -> dict[str, Any]:
     bundle_manifest_path = bundle_dir / "bundle_manifest.json"
     bundle_manifest = load_object(bundle_manifest_path)
@@ -317,6 +334,11 @@ def validate_postconditions(
         "AI review bundle",
     )
     expected_inputs = {f"E{index:03d}": source_manifests[method]["sha256"] for index, method in enumerate(REQUIRED_METHOD_IDS, 1)}
+    stage_receipt_reviewers = require_rebased_stage_receipt(
+        stage_receipt,
+        output,
+        bundle_manifest,
+    )
     checks = {
         "pinned_seven_method_inventory": bundle_manifest.get("required_method_ids") == list(REQUIRED_METHOD_IDS),
         "source_report_hashes_match": bundle_manifest.get("input_manifest_sha256") == expected_inputs,
@@ -327,7 +349,7 @@ def validate_postconditions(
         == ["review_bundle.json", "reviewer-b.prompt.md"],
         "no_cross_prompt": not (reviewer_root / "reviewer-a-input" / "reviewer-b.prompt.md").exists()
         and not (reviewer_root / "reviewer-b-input" / "reviewer-a.prompt.md").exists(),
-        "stage_receipt_passed": stage_receipt.get("status") == "passed",
+        "stage_receipt_exact": True,
         "no_model_invoked": True,
     }
     expected_prompt_hashes = bundle_manifest.get("prompt_sha256", {})
@@ -339,9 +361,64 @@ def validate_postconditions(
         raise ValueError(f"AI review prep postcondition failed: {failed}")
     return {
         "bundle_manifest": bundle_manifest,
+        "stage_receipt_reviewers": stage_receipt_reviewers,
         "stage_receipt": stage_receipt,
         "checks": checks,
     }
+
+
+def require_sha256(value: Any, label: str) -> str:
+    digest = str(value).lower()
+    if SHA256_PATTERN.fullmatch(digest) is None:
+        raise ValueError(f"{label} is malformed")
+    return digest
+
+
+def require_rebased_stage_receipt(
+    receipt: dict[str, Any],
+    output: Path,
+    bundle_manifest: dict[str, Any],
+) -> dict[str, Any]:
+    review_bundle_sha256 = require_sha256(
+        bundle_manifest.get("review_bundle_sha256"),
+        "review_bundle.json SHA-256",
+    )
+    prompt_sha256 = bundle_manifest.get("prompt_sha256")
+    if not isinstance(prompt_sha256, dict) or set(prompt_sha256) != set(REVIEWER_INPUTS):
+        raise ValueError("AI review bundle manifest lacks exact prompt hashes")
+
+    expected_reviewers: dict[str, Any] = {}
+    for role, (directory, prompt) in REVIEWER_INPUTS.items():
+        expected_reviewers[role] = {
+            "directory": str(output / "reviewer-inputs" / directory),
+            "exact_two_file_inventory": ["review_bundle.json", prompt],
+            "files": {
+                "review_bundle.json": {
+                    "mode_0600": True,
+                    "sha256": review_bundle_sha256,
+                },
+                prompt: {
+                    "mode_0600": True,
+                    "sha256": require_sha256(
+                        prompt_sha256.get(role),
+                        f"{prompt} SHA-256",
+                    ),
+                },
+            },
+            "mode_0700": True,
+        }
+
+    if (
+        receipt.get("schema_version") != 1
+        or receipt.get("status") != "passed"
+        or receipt.get("bundle_dir") != str(output / "bundle")
+        or receipt.get("output_root") != str(output / "reviewer-inputs")
+        or receipt.get("reviewers") != expected_reviewers
+        or receipt.get("checks") != STAGE_RECEIPT_CHECKS
+    ):
+        raise ValueError("stage AI review input receipt is not exact")
+
+    return expected_reviewers
 
 
 def move_staged_entry(source: Path, destination: Path) -> None:
@@ -404,6 +481,15 @@ def require_new_output_entry(path: Path) -> Path:
     return path.resolve()
 
 
+def require_staged_run_inventory(path: Path) -> None:
+    observed = tuple(sorted(child.name for child in path.iterdir()))
+    if observed != STAGED_RUN_ENTRIES:
+        raise ValueError(
+            "staged AI review run inventory is not exact; "
+            f"expected={STAGED_RUN_ENTRIES!r} observed={observed!r}"
+        )
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -439,6 +525,7 @@ def install_staged_run(staging: Path, output: Path) -> None:
     expected_fingerprints: dict[Path, str] = {}
     try:
         fsync_directory(output.parent)
+        require_staged_run_inventory(staging)
         for child in sorted(staging.iterdir(), key=lambda path: path.name):
             destination = output / child.name
             require_new_output_entry(destination)
@@ -468,6 +555,7 @@ def install_staged_run(staging: Path, output: Path) -> None:
                     "staged AI review entry changed during install: "
                     + destination.name
                 )
+        require_staged_run_inventory(output)
     except Exception:
         for path in reversed(installed):
             if path.is_dir() and not path.is_symlink():
@@ -500,12 +588,13 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
 
         build_bundle(args, manifest_paths, bundle_dir)
         stage_inputs(bundle_dir, reviewer_root, stage_receipt)
-        stage_receipt_payload = rebase_stage_receipt(stage_receipt, staging, output)
+        rebase_stage_receipt(stage_receipt, staging, output)
         postconditions = validate_postconditions(
             bundle_dir,
             reviewer_root,
             stage_receipt,
             source_manifests,
+            output,
         )
 
         bundle_manifest = postconditions["bundle_manifest"]
@@ -528,7 +617,7 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
                     "directory": details["directory"],
                     "exact_two_file_inventory": details["exact_two_file_inventory"],
                 }
-                for role, details in sorted(stage_receipt_payload["reviewers"].items())
+                for role, details in sorted(postconditions["stage_receipt_reviewers"].items())
             },
             "checks": postconditions["checks"],
         }

@@ -23,6 +23,17 @@ import prepare_ai_review_run as PREPARE  # noqa: E402
 from tests.test_build_ai_review_bundle import AiReviewBundleFixture, write_json  # noqa: E402
 
 
+def write_staged_run(staging: Path) -> None:
+    staging.mkdir()
+    for name in PREPARE.STAGED_RUN_ENTRIES:
+        path = staging / name
+        if name in {"bundle", "reviewer-inputs"}:
+            path.mkdir()
+            (path / "payload.json").write_text("{}\n", encoding="utf-8")
+        else:
+            path.write_text("{}\n", encoding="utf-8")
+
+
 def namespace(fixture: AiReviewBundleFixture, output_dir: Path) -> SimpleNamespace:
     by_method = dict(zip(INVENTORY.REQUIRED_METHOD_IDS, fixture.manifests))
     args = {argument: by_method[method_id] for method_id, argument in PREPARE.METHOD_ARGUMENTS}
@@ -194,6 +205,117 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                     PREPARE.sha256(manifest),
                 )
             self.assertFalse((output / "reviewer-inputs" / "reviewer-a-input" / "prepare_ai_review_run_receipt.json").exists())
+
+    def test_rejects_stage_receipt_with_stale_reviewer_file_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+            real_stage_inputs = PREPARE.stage_inputs
+
+            def stage_then_stale_hash(
+                bundle_dir: Path,
+                output_root: Path,
+                receipt: Path,
+            ) -> None:
+                real_stage_inputs(bundle_dir, output_root, receipt)
+                payload = json.loads(receipt.read_text(encoding="utf-8"))
+                payload["reviewers"]["A"]["files"]["review_bundle.json"]["sha256"] = "0" * 64
+                write_json(receipt, payload)
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "stage_inputs",
+                    side_effect=stage_then_stale_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "stage AI review input receipt is not exact",
+                ),
+            ):
+                PREPARE.prepare(namespace(fixture, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".ai-review.*")))
+
+    def test_rejects_stage_receipt_with_failed_child_check(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+            real_stage_inputs = PREPARE.stage_inputs
+
+            def stage_then_failed_check(
+                bundle_dir: Path,
+                output_root: Path,
+                receipt: Path,
+            ) -> None:
+                real_stage_inputs(bundle_dir, output_root, receipt)
+                payload = json.loads(receipt.read_text(encoding="utf-8"))
+                payload["checks"]["bundle_manifest_bound"] = False
+                write_json(receipt, payload)
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "stage_inputs",
+                    side_effect=stage_then_failed_check,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "stage AI review input receipt is not exact",
+                ),
+            ):
+                PREPARE.prepare(namespace(fixture, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".ai-review.*")))
+
+    def test_rejects_stage_receipt_with_reviewer_inventory_drift(self) -> None:
+        cases = {
+            "missing_prompt": lambda payload, root: payload["reviewers"]["B"][
+                "files"
+            ].pop("reviewer-b.prompt.md"),
+            "misrebased_path": lambda payload, root: payload["reviewers"]["A"].update(
+                {"directory": str(root / "elsewhere")}
+            ),
+            "extra_reviewer": lambda payload, root: payload["reviewers"].update(
+                {"C": dict(payload["reviewers"]["A"])}
+            ),
+        }
+        for name, mutate in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = AiReviewBundleFixture(root)
+                output = root / "ai-review"
+                real_stage_inputs = PREPARE.stage_inputs
+
+                def stage_then_drift(
+                    bundle_dir: Path,
+                    output_root: Path,
+                    receipt: Path,
+                ) -> None:
+                    real_stage_inputs(bundle_dir, output_root, receipt)
+                    payload = json.loads(receipt.read_text(encoding="utf-8"))
+                    mutate(payload, root)
+                    write_json(receipt, payload)
+
+                with (
+                    mock.patch.object(
+                        PREPARE,
+                        "stage_inputs",
+                        side_effect=stage_then_drift,
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "stage AI review input receipt is not exact",
+                    ),
+                ):
+                    PREPARE.prepare(namespace(fixture, output))
+
+                self.assertFalse(output.exists())
+                self.assertFalse(any(root.glob(".ai-review.*")))
 
     def test_refuses_wrong_explicit_mapping_without_final_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -474,11 +596,7 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             root = Path(temporary)
             staging = root / "staging"
             output = root / "ai-review"
-            staging.mkdir()
-            for name in ("bundle", "reviewer-inputs"):
-                directory = staging / name
-                directory.mkdir()
-                (directory / "payload.json").write_text("{}\n", encoding="utf-8")
+            write_staged_run(staging)
 
             real_move = PREPARE.move_staged_entry
             moved: list[str] = []
@@ -503,8 +621,16 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             ):
                 PREPARE.install_staged_run(staging, output)
 
-            self.assertEqual(moved, ["bundle", "reviewer-inputs"])
+            self.assertEqual(
+                moved,
+                [
+                    "bundle",
+                    "prepare_ai_review_run_receipt.json",
+                    "reviewer-inputs",
+                ],
+            )
             self.assertFalse((output / "bundle").exists())
+            self.assertFalse((output / "prepare_ai_review_run_receipt.json").exists())
             self.assertFalse((output / "reviewer-inputs").exists())
             self.assertEqual(
                 (output / "unexpected.tmp").read_text(encoding="utf-8"),
@@ -515,12 +641,7 @@ class PrepareAiReviewRunTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             staging = root / "staging"
-            staging.mkdir()
-            (staging / "bundle").mkdir()
-            (staging / "bundle" / "payload.json").write_text(
-                "{}\n",
-                encoding="utf-8",
-            )
+            write_staged_run(staging)
             real_parent = root / "real-parent"
             real_parent.mkdir()
             linked_parent = root / "linked-parent"
@@ -531,14 +652,47 @@ class PrepareAiReviewRunTests(unittest.TestCase):
 
             self.assertFalse((real_parent / "ai-review").exists())
 
+    def test_install_rejects_incomplete_staged_run_inventory_without_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            write_staged_run(staging)
+            (staging / "stage_ai_review_inputs_receipt.json").unlink()
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged AI review run inventory is not exact",
+            ):
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertFalse(output.exists())
+
+    def test_install_rejects_unexpected_staged_run_inventory_without_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            write_staged_run(staging)
+            (staging / "raw.fastq").write_text("undeclared artifact\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged AI review run inventory is not exact",
+            ):
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertFalse(output.exists())
+
     def test_install_rejects_symlinked_staged_entry_without_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             staging = root / "staging"
-            staging.mkdir()
+            write_staged_run(staging)
             real_bundle = root / "real-bundle"
             real_bundle.mkdir()
             (real_bundle / "payload.json").write_text("{}\n", encoding="utf-8")
+            shutil.rmtree(staging / "bundle")
             (staging / "bundle").symlink_to(
                 real_bundle,
                 target_is_directory=True,
@@ -557,10 +711,9 @@ class PrepareAiReviewRunTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             staging = root / "staging"
+            write_staged_run(staging)
             bundle = staging / "bundle"
             outside = root / "outside.json"
-            bundle.mkdir(parents=True)
-            (bundle / "payload.json").write_text("{}\n", encoding="utf-8")
             outside.write_text("{}\n", encoding="utf-8")
             (bundle / "payload-link.json").symlink_to(outside)
             output = root / "ai-review"
@@ -578,11 +731,7 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             root = Path(temporary)
             staging = root / "staging"
             output = root / "ai-review"
-            staging.mkdir()
-            for name in ("bundle", "reviewer-inputs"):
-                directory = staging / name
-                directory.mkdir()
-                (directory / "payload.json").write_text("{}\n", encoding="utf-8")
+            write_staged_run(staging)
 
             real_move = PREPARE.move_staged_entry
 
@@ -614,11 +763,7 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             root = Path(temporary)
             staging = root / "staging"
             output = root / "ai-review"
-            staging.mkdir()
-            for name in ("bundle", "reviewer-inputs"):
-                directory = staging / name
-                directory.mkdir()
-                (directory / "payload.json").write_text("{}\n", encoding="utf-8")
+            write_staged_run(staging)
 
             with mock.patch.object(
                 PREPARE,
@@ -637,7 +782,7 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             root = Path(temporary)
             staging = root / "staging"
             output = root / "ai-review"
-            staging.mkdir()
+            write_staged_run(staging)
 
             with (
                 mock.patch.object(
@@ -656,8 +801,7 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             root = Path(temporary)
             staging = root / "staging"
             output = root / "ai-review"
-            staging.mkdir()
-            (staging / "bundle").mkdir()
+            write_staged_run(staging)
 
             with (
                 mock.patch.object(
@@ -676,11 +820,7 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             root = Path(temporary)
             staging = root / "staging"
             output = root / "ai-review"
-            staging.mkdir()
-            for name in ("bundle", "reviewer-inputs"):
-                directory = staging / name
-                directory.mkdir()
-                (directory / "payload.json").write_text("{}\n", encoding="utf-8")
+            write_staged_run(staging)
             real_fsync_directory = PREPARE.fsync_directory
 
             def tamper_after_output_fsync(path: Path) -> None:
