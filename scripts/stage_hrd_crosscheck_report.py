@@ -321,25 +321,109 @@ def copy_route_support_files(source_dir: Path, staging: Path) -> None:
         shutil.copyfile(source, destination)
 
 
+def require_staged_report_manifest(packet_dir: Path) -> None:
+    manifest = load_json(
+        packet_dir / "report_manifest.json",
+        "staged cross-check report manifest",
+    )
+    method_spec = load_json(
+        packet_dir / "method_spec.json",
+        "staged cross-check method spec",
+    )
+    report = require_real_file(packet_dir / "report.md", "staged cross-check report")
+
+    route = str(manifest.get("route", ""))
+    if (
+        manifest.get("schema_version") != 1
+        or manifest.get("method_id") != route
+        or manifest.get("report_kind") != "executable_crosscheck_method"
+        or route not in SUPPORTED_ROUTES
+        or manifest.get("authorized_hrd_state") != "no_call"
+        or manifest.get("classification_authorized") is not False
+        or manifest.get("classification_qc_status") != "not_applicable"
+        or str(manifest.get("evidence_status", ""))
+        not in {"partial_evidence", "no_call", "blocked"}
+        or not isinstance(manifest.get("review_summary"), dict)
+        or not manifest["review_summary"]
+    ):
+        raise ValueError("staged cross-check report manifest is not approved")
+
+    if (
+        method_spec.get("schema_version") != 1
+        or method_spec.get("method_id") != route
+        or method_spec.get("route") != route
+        or method_spec.get("report_kind") != "executable_crosscheck_method"
+        or method_spec.get("evidence_status") != manifest.get("evidence_status")
+        or method_spec.get("authorized_hrd_state") != "no_call"
+        or method_spec.get("classification_authorized") is not False
+        or method_spec.get("classification_qc_status") != "not_applicable"
+    ):
+        raise ValueError("staged cross-check method spec differs from the manifest")
+
+    support = manifest.get("support_sha256")
+    if not isinstance(support, dict) or set(support) != {"method_spec.json"}:
+        raise ValueError("staged cross-check report manifest support is not exact")
+
+    expected_method_spec_sha256 = require_sha(
+        support.get("method_spec.json"),
+        "staged cross-check method_spec.json SHA-256",
+    )
+    if sha256(packet_dir / "method_spec.json") != expected_method_spec_sha256:
+        raise ValueError(
+            "staged cross-check report manifest hash differs for method_spec.json"
+        )
+
+    expected_report_sha256 = require_sha(
+        manifest.get("report_sha256"),
+        "staged cross-check report SHA-256",
+    )
+    if sha256(report) != expected_report_sha256:
+        raise ValueError("staged cross-check report manifest hash differs for report.md")
+
+    source = manifest.get("source_sha256")
+    if (
+        not isinstance(source, dict)
+        or set(source)
+        != {"download_verification", "source_report", "source_report_manifest"}
+    ):
+        raise ValueError("staged cross-check report manifest source hashes are not exact")
+    for key, digest in source.items():
+        require_sha(digest, f"staged cross-check source SHA-256 {key}")
+
+
 def install_staged_packet(staging: Path, output_dir: Path) -> None:
     try:
         output_dir.mkdir(mode=0o700)
     except FileExistsError as error:
         raise ValueError(f"output already exists: {output_dir}") from error
 
+    expected_hashes: dict[Path, str] = {}
     installed: list[Path] = []
     try:
         for name in ("method_spec.json", "report.md", "report_manifest.json"):
+            staged = staging / name
             destination = output_dir / name
+            expected_hashes[destination] = sha256(
+                require_real_file(staged, "staged cross-check packet")
+            )
             destination_preexisted = destination.exists() or destination.is_symlink()
             try:
-                copy_create_only(staging / name, destination)
+                copy_create_only(staged, destination)
             except Exception:
                 if not destination_preexisted:
                     installed.append(destination)
                 raise
             installed.append(destination)
         fsync_directory(output_dir)
+        for path, expected_sha256 in expected_hashes.items():
+            if (
+                sha256(require_real_file(path, "installed cross-check packet"))
+                != expected_sha256
+            ):
+                raise ValueError(
+                    "staged cross-check packet changed during install: " + path.name
+                )
+        require_staged_report_manifest(output_dir)
     except Exception:
         for path in reversed(installed):
             path.unlink(missing_ok=True)

@@ -670,6 +670,67 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_stage_rejects_stale_installed_report_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            staging = root / "staging"
+            output = root / "staged"
+            STAGE.stage(source, verification, staging, "sigprofiler_sbs3")
+
+            manifest = json.loads(
+                (staging / "report_manifest.json").read_text(encoding="utf-8")
+            )
+            manifest["support_sha256"]["method_spec.json"] = "0" * 64
+            write_json(staging / "report_manifest.json", manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged cross-check report manifest hash differs for method_spec.json",
+            ):
+                STAGE.install_staged_packet(staging, output)
+
+            self.assertFalse(output.exists())
+
+    def test_stage_rehashes_packet_after_final_directory_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            staging = root / "staging"
+            output = root / "staged"
+            STAGE.stage(source, verification, staging, "sigprofiler_sbs3")
+            real_fsync_directory = STAGE.fsync_directory
+            resolved_output = output.resolve()
+            output_syncs = 0
+
+            def tamper_method_spec_after_final_directory_fsync(path: Path) -> None:
+                nonlocal output_syncs
+                real_fsync_directory(path)
+                if path.resolve() == resolved_output:
+                    output_syncs += 1
+                    if output_syncs == 4:
+                        (path / "method_spec.json").write_text(
+                            '{"tampered": true}\n',
+                            encoding="utf-8",
+                        )
+
+            with (
+                mock.patch.object(
+                    STAGE,
+                    "fsync_directory",
+                    side_effect=tamper_method_spec_after_final_directory_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged cross-check packet changed during install: method_spec.json",
+                ),
+            ):
+                STAGE.install_staged_packet(staging, output)
+
+            self.assertFalse(output.exists())
+
     def test_stage_rejects_output_inside_exact_replay(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
