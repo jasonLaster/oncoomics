@@ -91,6 +91,28 @@ EXPECTED_STAGE_PROVENANCE_ANCHOR_CHECKS: dict[str, bool] = {
     "content_type_exact": True,
     "history_exact": True,
 }
+EXPECTED_FINAL_FREEZE_ROW_CHECKS: dict[str, bool] = {
+    "listed_inventory_stable": True,
+    "source_stable": True,
+    "size_matches": True,
+    "common_checksum_matches": True,
+    "exact_kms_matches": True,
+    "destination_versioned": True,
+    "copy_response_version_matches": True,
+}
+EXPECTED_FINAL_FREEZE_CHECKS: dict[str, bool] = {
+    "execution_receipt_bound": True,
+    "complete_source_inventory_unchanged": True,
+    "destination_exact_history_and_receipt_match": True,
+}
+EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS: dict[str, bool] = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "sha256_checksum_exact": True,
+    "exact_kms": True,
+    "single_create_only_version": True,
+}
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 S3_CHECKSUM_FIELDS = {
     "ChecksumCRC64NVME",
@@ -939,8 +961,7 @@ def validate_final_freeze_provenance(
         inventory = inventory_by_relative.get(relative, {})
         if not (
             row.get("status") == "passed"
-            and row_checks
-            and all(value is True for value in row_checks.values())
+            and row_checks == EXPECTED_FINAL_FREEZE_ROW_CHECKS
             and source.get("bucket") == source_bucket
             and source.get("key") == source_key_prefix + relative
             and valid_version_id(source.get("version_id"))
@@ -999,8 +1020,7 @@ def validate_final_freeze_provenance(
         == int(receipt.get("passed_count", -2))
         and set(by_relative) == set(inventory_by_relative),
         "source_inventory_unchanged": initial_identity == final_identity,
-        "receipt_checks": bool(receipt_checks)
-        and all(value is True for value in receipt_checks.values()),
+        "receipt_checks": receipt_checks == EXPECTED_FINAL_FREEZE_CHECKS,
         "object_custody": object_custody,
         "anchor_schema_status": anchor.get("schema_version") == 1
         and anchor.get("status") == "passed"
@@ -1010,8 +1030,7 @@ def validate_final_freeze_provenance(
         and integer_equals(anchor.get("receipt_bytes"), receipt_path.stat().st_size)
         and anchor.get("receipt_uri") == expected_anchor_uri
         and valid_version_id(anchor.get("receipt_version_id")),
-        "anchor_checks": bool(anchor_checks)
-        and all(value is True for value in anchor_checks.values()),
+        "anchor_checks": anchor_checks == EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS,
     }
     return {
         "status": "passed" if all(checks.values()) else "failed",

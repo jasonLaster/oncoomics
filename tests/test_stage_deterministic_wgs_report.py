@@ -1082,11 +1082,13 @@ class SyntheticFixture:
                         "kms_key_id": KMS_ARN,
                     },
                     "checks": {
+                        "listed_inventory_stable": True,
                         "source_stable": True,
                         "size_matches": True,
                         "common_checksum_matches": True,
                         "exact_kms_matches": True,
                         "destination_versioned": True,
+                        "copy_response_version_matches": True,
                     },
                     "status": "passed",
                 }
@@ -1963,6 +1965,54 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             anchor["receipt_version_id"] = ""
             write_json(anchor_path, anchor)
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("final_artifact_freeze", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_incomplete_final_freeze_row_checks_fail_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "final-freeze.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["objects"][0]["checks"].pop("copy_response_version_matches")
+            write_json(receipt_path, receipt)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("final_artifact_freeze", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_unexpected_final_freeze_receipt_checks_fail_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "final-freeze.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["checks"]["future_check"] = True
+            write_json(receipt_path, receipt)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("final_artifact_freeze", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_unexpected_final_freeze_anchor_checks_fail_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            anchor_path = fixture.aux / "final-freeze-anchor.json"
+            anchor = json.loads(anchor_path.read_text(encoding="utf-8"))
+            anchor["checks"]["future_check"] = True
+            write_json(anchor_path, anchor)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("final_artifact_freeze", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
