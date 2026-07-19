@@ -189,6 +189,48 @@ def join_values(values: Iterable[str]) -> str:
     return ";".join(unique) if unique else "none"
 
 
+def summarize_agreement_status_counts(
+    agreement_rows: Sequence[Dict[str, str]],
+) -> Dict[str, int]:
+    status_counts: Dict[str, int] = {}
+    for row in agreement_rows:
+        agreement_status = row.get("agreement_status")
+        if agreement_status not in ALLOWED_AGREEMENT_STATUSES:
+            raise ValueError("comparative synthesis agreement rows are malformed")
+        status_counts[agreement_status] = status_counts.get(agreement_status, 0) + 1
+    return status_counts
+
+
+def summarize_structured_disagreements(
+    agreement_rows: Sequence[Dict[str, str]],
+) -> List[Dict[str, Any]]:
+    disagreements = []
+    for row in agreement_rows:
+        structured_types = row.get("structured_disagreement_types")
+        if structured_types == "none":
+            continue
+        types = split_semicolon(str(structured_types))
+        if (
+            not types
+            or any(item not in ALLOWED_STRUCTURED_DISAGREEMENT_TYPES for item in types)
+            or not str(row.get("evidence_id", "")).strip()
+            or not str(row.get("method_id", "")).strip()
+            or row.get("agreement_status") not in ALLOWED_AGREEMENT_STATUSES
+            or not str(row.get("resolution_needed", "")).strip()
+        ):
+            raise ValueError("comparative synthesis agreement rows are malformed")
+        disagreements.append(
+            {
+                "evidence_id": row["evidence_id"],
+                "method_id": row["method_id"],
+                "agreement_status": row["agreement_status"],
+                "types": list(types),
+                "resolution_needed": row["resolution_needed"],
+            }
+        )
+    return disagreements
+
+
 def markdown_text(value: Any) -> str:
     return " ".join(str(value).split()).replace("|", "\\|")
 
@@ -780,6 +822,22 @@ def write_agreement(path: Path, rows: Sequence[Dict[str, str]]) -> None:
     write_staged_text(path, handle.getvalue())
 
 
+def read_agreement(path: Path) -> List[Dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames != AGREEMENT_FIELDS:
+            raise ValueError("agreement_disagreement.csv header is missing or altered")
+        rows = list(reader)
+    if not rows:
+        raise ValueError("agreement_disagreement.csv contains no comparisons")
+    for row in rows:
+        if None in row or any(
+            not isinstance(row.get(field), str) for field in AGREEMENT_FIELDS
+        ):
+            raise ValueError("agreement_disagreement.csv contains a malformed row")
+    return rows
+
+
 def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
     expected = set(expected_files)
     if output.is_symlink():
@@ -955,7 +1013,10 @@ def require_reviewer_model_summary(model: Any, reviewer: str) -> Tuple[str, str,
     )
 
 
-def require_synthesis_review_summary(manifest: Dict[str, Any]) -> Tuple[str, ...]:
+def require_synthesis_review_summary(
+    manifest: Dict[str, Any],
+    agreement_rows: Sequence[Dict[str, str]],
+) -> Tuple[str, ...]:
     summary = manifest.get("review_summary")
     if not isinstance(summary, dict) or not summary:
         raise ValueError("comparative synthesis review summary is missing")
@@ -1046,6 +1107,8 @@ def require_synthesis_review_summary(manifest: Dict[str, Any]) -> Tuple[str, ...
         or sum(status_counts.values()) != len(required_methods)
     ):
         raise ValueError("comparative synthesis agreement counts are not exact")
+    if status_counts != summarize_agreement_status_counts(agreement_rows):
+        raise ValueError("comparative synthesis agreement counts are stale")
 
     disagreements = summary.get("structured_disagreements")
     if not isinstance(disagreements, list):
@@ -1065,6 +1128,8 @@ def require_synthesis_review_summary(manifest: Dict[str, Any]) -> Tuple[str, ...
             or not str(row.get("resolution_needed", "")).strip()
         ):
             raise ValueError("comparative synthesis structured disagreements are malformed")
+    if disagreements != summarize_structured_disagreements(agreement_rows):
+        raise ValueError("comparative synthesis structured disagreements are stale")
 
     require_string_list(summary.get("limitations"), "limitations")
     require_string_list(summary.get("unresolved_observations"), "unresolved observations")
@@ -1134,13 +1199,13 @@ def require_synthesis_report_manifest(packet_dir: Path) -> None:
         if observed_sha256 != expected_sha256:
             raise ValueError("comparative synthesis manifest is stale for " + filename)
 
-    agreement_sha256 = sha256(
-        require_real_nonempty_file(
-            packet_dir / "agreement_disagreement.csv",
-            "synthesis packet",
-        )
+    agreement_path = require_real_nonempty_file(
+        packet_dir / "agreement_disagreement.csv",
+        "synthesis packet",
     )
-    required_methods = require_synthesis_review_summary(manifest)
+    agreement_sha256 = sha256(agreement_path)
+    agreement_rows = read_agreement(agreement_path)
+    required_methods = require_synthesis_review_summary(manifest, agreement_rows)
     require_synthesis_source_hashes(manifest, agreement_sha256, required_methods)
 
 
@@ -1304,22 +1369,8 @@ def main() -> None:
         agreement_path = staging / "agreement_disagreement.csv"
         write_staged_text(report_path, report)
         write_agreement(agreement_path, agreement_rows)
-        status_counts: Dict[str, int] = {}
-        for row in agreement_rows:
-            status_counts[row["agreement_status"]] = status_counts.get(row["agreement_status"], 0) + 1
-        disagreements = [
-            {
-                "evidence_id": row["evidence_id"],
-                "method_id": row["method_id"],
-                "agreement_status": row["agreement_status"],
-                "types": split_semicolon(row["structured_disagreement_types"])
-                if row["structured_disagreement_types"] != "none"
-                else [],
-                "resolution_needed": row["resolution_needed"],
-            }
-            for row in agreement_rows
-            if row["structured_disagreement_types"] != "none"
-        ]
+        status_counts = summarize_agreement_status_counts(agreement_rows)
+        disagreements = summarize_structured_disagreements(agreement_rows)
         source_hashes = {
             "generator": sha256(Path(__file__).resolve()),
             "review_bundle.json": bundle_hash,

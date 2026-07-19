@@ -141,6 +141,33 @@ def write_synthesis_manifest(path: Path, report: Path, agreement: Path) -> Dict[
     return manifest
 
 
+def write_synthesis_agreement(path: Path) -> None:
+    rows = []
+    for index, method_id in enumerate(REQUIRED_METHOD_IDS, 1):
+        rows.append(
+            {
+                "comparison_id": "X{0:03d}".format(index),
+                "evidence_id": "E{0:03d}".format(index),
+                "method_id": method_id,
+                "report_kind": "statistical_method",
+                "source_evidence_status": "partial_evidence",
+                "source_authorized_hrd_state": "no_call",
+                "reviewer_a_claim_ids": "C{0:03d}".format(index),
+                "reviewer_b_claim_ids": "C{0:03d}".format(index),
+                "reviewer_a_proposed_states": "no_call",
+                "reviewer_b_proposed_states": "no_call",
+                "reviewer_a_dispositions": "aligned",
+                "reviewer_b_dispositions": "aligned",
+                "reviewer_a_disagreement_statuses": "none",
+                "reviewer_b_disagreement_statuses": "none",
+                "agreement_status": "concordant",
+                "structured_disagreement_types": "none",
+                "resolution_needed": "not_specified",
+            }
+        )
+    GENERATE.write_agreement(path, rows)
+
+
 class SynthesisFixture:
     def __init__(
         self,
@@ -558,7 +585,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             report = staging / "report.md"
             agreement = staging / "agreement_disagreement.csv"
             GENERATE.write_staged_text(report, "# Report\n")
-            GENERATE.write_agreement(agreement, [])
+            write_synthesis_agreement(agreement)
             write_synthesis_manifest(staging / "report_manifest.json", report, agreement)
 
             report.write_text("tampered\n", encoding="utf-8")
@@ -577,7 +604,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             report = staging / "report.md"
             agreement = staging / "agreement_disagreement.csv"
             GENERATE.write_staged_text(report, "# Report\n")
-            GENERATE.write_agreement(agreement, [])
+            write_synthesis_agreement(agreement)
             write_synthesis_manifest(staging / "report_manifest.json", report, agreement)
 
             agreement.write_text("tampered\n", encoding="utf-8")
@@ -595,7 +622,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             agreement = staging / "agreement_disagreement.csv"
             manifest = staging / "report_manifest.json"
             GENERATE.write_staged_text(report, "# Report\n")
-            GENERATE.write_agreement(agreement, [])
+            write_synthesis_agreement(agreement)
             payload = write_synthesis_manifest(manifest, report, agreement)
             del payload["source_sha256"]["reviewer_B_claims.csv"]
             write_json(manifest, payload)
@@ -613,7 +640,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             agreement = staging / "agreement_disagreement.csv"
             manifest = staging / "report_manifest.json"
             GENERATE.write_staged_text(report, "# Report\n")
-            GENERATE.write_agreement(agreement, [])
+            write_synthesis_agreement(agreement)
             payload = write_synthesis_manifest(manifest, report, agreement)
             payload["source_sha256"]["agreement_disagreement.csv"] = "0" * 64
             write_json(manifest, payload)
@@ -631,7 +658,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             agreement = staging / "agreement_disagreement.csv"
             manifest = staging / "report_manifest.json"
             GENERATE.write_staged_text(report, "# Report\n")
-            GENERATE.write_agreement(agreement, [])
+            write_synthesis_agreement(agreement)
             payload = write_synthesis_manifest(manifest, report, agreement)
             payload["review_summary"]["readiness"]["authorized_hrd_state"] = "positive"
             write_json(manifest, payload)
@@ -642,6 +669,52 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.require_synthesis_report_manifest(staging)
 
+    def test_synthesis_rejects_stale_agreement_count_summary(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            write_synthesis_agreement(agreement)
+            payload = write_synthesis_manifest(manifest, report, agreement)
+            payload["review_summary"]["agreement_status_counts"] = {
+                "partial_agreement": len(REQUIRED_METHOD_IDS),
+            }
+            write_json(manifest, payload)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis agreement counts are stale",
+            ):
+                GENERATE.require_synthesis_report_manifest(staging)
+
+    def test_synthesis_rejects_stale_structured_disagreement_summary(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            write_synthesis_agreement(agreement)
+            payload = write_synthesis_manifest(manifest, report, agreement)
+            payload["review_summary"]["structured_disagreements"] = [
+                {
+                    "evidence_id": "E001",
+                    "method_id": REQUIRED_METHOD_IDS[0],
+                    "agreement_status": "concordant",
+                    "types": ["source_partial_evidence"],
+                    "resolution_needed": "not_specified",
+                }
+            ]
+            write_json(manifest, payload)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis structured disagreements are stale",
+            ):
+                GENERATE.require_synthesis_report_manifest(staging)
+
     def test_synthesis_rejects_inexact_staged_inventory(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             staging = Path(temporary)
@@ -649,7 +722,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             agreement = staging / "agreement_disagreement.csv"
             manifest = staging / "report_manifest.json"
             GENERATE.write_staged_text(report, "# Report\n")
-            GENERATE.write_agreement(agreement, [])
+            write_synthesis_agreement(agreement)
             write_synthesis_manifest(manifest, report, agreement)
             (staging / "unexpected.tmp").write_text(
                 "unbound synthesis scratch\n",
@@ -804,7 +877,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             agreement = staging / "agreement_disagreement.csv"
             manifest = staging / "report_manifest.json"
             GENERATE.write_staged_text(report, "# Report\n")
-            GENERATE.write_agreement(agreement, [])
+            write_synthesis_agreement(agreement)
             payload = write_synthesis_manifest(manifest, report, agreement)
             payload["agreement_disagreement_sha256"] = "0" * 64
             payload["support_sha256"]["agreement_disagreement.csv"] = "0" * 64
@@ -883,7 +956,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             agreement = staging / "agreement_disagreement.csv"
             manifest = staging / "report_manifest.json"
             GENERATE.write_staged_text(report, "# Report\n")
-            GENERATE.write_agreement(agreement, [])
+            write_synthesis_agreement(agreement)
             write_synthesis_manifest(manifest, report, agreement)
             real_fsync_directory = GENERATE.fsync_directory
 
