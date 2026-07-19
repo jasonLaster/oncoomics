@@ -19,7 +19,11 @@ from generate_blocked_hrd_crosscheck_reports import (
 )
 from hrd_report_inventory import BLOCKED_CROSSCHECK_METHOD_IDS
 from publish_private_report import canonical_packet_digest, validate_packet_dir
-from runbook_io import require_real_input_file, require_safe_output_path
+from runbook_io import (
+    load_json_object,
+    require_real_input_file,
+    require_safe_output_path,
+)
 
 FORBIDDEN_TOKENS = DEFAULT_FORBIDDEN_TOKENS
 
@@ -220,9 +224,8 @@ def load_validation_receipt_packet_sha256s(
     path: Path,
     expected_forbidden_tokens_sha256: str | None = None,
 ) -> dict[str, str]:
-    require_real_input_file(path, "report packet validation receipt")
     return require_validation_receipt_packet_sha256s(
-        json.loads(path.read_text(encoding="utf-8")),
+        load_json_object(path, "report packet validation receipt"),
         expected_forbidden_tokens_sha256,
     )
 
@@ -254,12 +257,7 @@ def validate_validation_receipt_matches_packets(
 
 
 def load_packet_json(packet_dir: Path, name: str, label: str) -> dict[str, Any]:
-    path = packet_dir / name
-    require_real_input_file(path, label)
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError(f"{label} must be a JSON object")
-    return payload
+    return load_json_object(packet_dir / name, label)
 
 
 def pre_route_source_report_manifests(

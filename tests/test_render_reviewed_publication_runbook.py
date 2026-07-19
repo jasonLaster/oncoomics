@@ -503,6 +503,8 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             prerequisites,
             {
                 "/repo/scripts/hrd_report_inventory.py",
+                "/repo/scripts/ai_model_catalog.py",
+                "/repo/scripts/build_ai_review_bundle.py",
                 "/repo/scripts/runbook_io.py",
                 "/repo/scripts/forbidden_text.py",
                 "/repo/scripts/publish_reviewed_public_report.py",

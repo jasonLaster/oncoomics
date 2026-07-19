@@ -34,6 +34,17 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    current = f'  "{key}": {json.dumps(payload[key], sort_keys=True)}'
+    description = f"top-level JSON field {key}"
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one {description}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 def write_packet(
     directory: Path,
     method_id: str,
@@ -371,6 +382,47 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                         json.dumps(["Run-Private-Token"]),
                     )
 
+    def test_rejects_pre_route_blocked_packet_duplicate_json_object_names(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "report manifest",
+                "report_manifest.json",
+                "schema_version",
+                "facets_scarhrd_blocked blocked report manifest",
+            ),
+            (
+                "method spec",
+                "method_spec.json",
+                "method_id",
+                "facets_scarhrd_blocked blocked method spec",
+            ),
+        )
+
+        for label, name, key, input_label in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                packet_dirs = self.write_phase3_fast_packets(root)
+                source_report_manifests = VALIDATOR.pre_route_source_report_manifests(
+                    packet_dirs
+                )
+                write_duplicate_json_field(
+                    packet_dirs["facets_scarhrd_blocked"] / name,
+                    key,
+                    "legacy",
+                )
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"duplicate JSON object name in {input_label}: {key}",
+                ):
+                    VALIDATOR.validate_pre_route_blocked_packet(
+                        packet_dirs["facets_scarhrd_blocked"],
+                        "facets_scarhrd_blocked",
+                        source_report_manifests,
+                    )
+
     def test_rejects_pre_route_blocked_packet_extra_source_hash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -517,6 +569,32 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
             self.assertTrue(linked_receipt.is_file())
             with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
                 VALIDATOR.load_validation_receipt_packet_sha256s(linked_receipt)
+
+    def test_rejects_duplicate_validation_receipt_object_names(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            receipt = root / "report_packet_validation.json"
+            receipt.write_text(
+                json.dumps(
+                    VALIDATOR.validate_packets(
+                        packet_dirs,
+                        json.dumps(["Run-Private-Token"]),
+                    ),
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            write_duplicate_json_field(receipt, "schema_version", 0)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in "
+                "report packet validation receipt: schema_version",
+            ):
+                VALIDATOR.load_validation_receipt_packet_sha256s(receipt)
 
     def test_removes_partial_validation_receipt_after_fsync_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

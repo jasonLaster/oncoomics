@@ -207,6 +207,8 @@ def required_existing(root: Path) -> tuple[Path, ...]:
     scripts = root / "scripts"
     return (
         scripts / "hrd_report_inventory.py",
+        scripts / "ai_model_catalog.py",
+        scripts / "build_ai_review_bundle.py",
         scripts / "runbook_io.py",
         scripts / "forbidden_text.py",
         scripts / "publish_reviewed_public_report.py",
