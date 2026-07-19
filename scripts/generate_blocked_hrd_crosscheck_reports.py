@@ -21,6 +21,7 @@ from typing import Any, Mapping, Sequence
 from build_ai_review_bundle import (
     DuplicateJsonKeyError,
     reject_duplicate_json_object_names,
+    validate_report_manifest_support,
 )
 from hrd_report_inventory import (
     BLOCKED_CROSSCHECK_METHOD_IDS,
@@ -421,6 +422,7 @@ def load_source_report_manifest(path: Path, method_id: str) -> None:
     review_summary = manifest.get("review_summary")
     if not isinstance(review_summary, dict) or not review_summary:
         raise ValueError(f"source report manifest review_summary is required: {method_id}")
+    validate_report_manifest_support(path.parent, manifest, method_id)
 
 
 def source_report_binding_scope(method_ids: Sequence[str]) -> str:

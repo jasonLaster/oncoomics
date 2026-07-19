@@ -47,7 +47,20 @@ def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> Non
 def write_source_report_manifest(path: Path, **updates: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     report = path.parent / "report.md"
+    support = path.parent / "support.json"
     report.write_text("# Source report\n\nNo-call source packet.\n", encoding="utf-8")
+    support.write_text(
+        json.dumps(
+            {
+                "method_id": updates.get("method_id", "rosalind_diana_wgs"),
+                "status": "no_call",
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     payload = {
         "schema_version": 1,
         "method_id": "rosalind_diana_wgs",
@@ -62,6 +75,12 @@ def write_source_report_manifest(path: Path, **updates: object) -> None:
                 "evidence_status": "partial_evidence",
                 "authorized_hrd_state": "no_call",
             },
+        },
+        "source_sha256": {
+            "source_support": "b" * 64,
+        },
+        "support_sha256": {
+            "support.json": sha256(support),
         },
     }
     payload.update(updates)
@@ -939,6 +958,44 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 )
 
             self.assertFalse(output.exists())
+
+    def test_cli_rejects_inexact_source_report_manifest_envelope(self) -> None:
+        cases = (
+            (
+                "extra_legacy_key",
+                {"legacy_support": {}},
+                "report manifest envelope is not exact for rosalind_diana_wgs",
+            ),
+            (
+                "unknown_report_kind",
+                {"report_kind": "legacy_packet"},
+                "report manifest envelope is not exact for rosalind_diana_wgs",
+            ),
+            (
+                "stale_support_hash",
+                {"support_sha256": {"support.json": "0" * 64}},
+                "support hash mismatch for rosalind_diana_wgs: support.json",
+            ),
+        )
+
+        for name, updates, message in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                manifest = root / "source" / "report_manifest.json"
+                write_source_report_manifest(manifest, **updates)
+                output = root / "blocked"
+
+                with self.assertRaisesRegex(SystemExit, message):
+                    GENERATOR.main(
+                        [
+                            "--output-dir",
+                            str(output),
+                            "--source-report-manifest",
+                            f"rosalind_diana_wgs={manifest}",
+                        ]
+                    )
+
+                self.assertFalse(output.exists())
 
     def test_cli_rejects_classifying_source_report_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

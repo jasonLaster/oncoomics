@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact AI validation CSV fields</li>
+          <li class="pill">Latest milestone = local exact blocked packet inputs</li>
+          <li class="pill">Blocked packet inputs = exact</li>
           <li class="pill">AI validation CSV fields = exact</li>
           <li class="pill">AI synthesis CSV fields = exact</li>
           <li class="pill">Phase 3 manifest hash guards = real inputs</li>
@@ -1258,6 +1259,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact blocked packet inputs</strong>
+              <span>Blocked HRD cross-check generation now requires exact upstream source report packet envelopes and support before writing FACETS, CHORD, or HRDetect blocked packets.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require real input-contract checker hash inputs</strong>
               <span><code>check_contract.py</code> now passes contract-readiness SHA-256 rechecks through no-symlink leaf, no-symlink parent, and real-file guards before alias-only readiness receipts can prove their local bytes are unchanged.</span>
@@ -2220,6 +2225,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:41:37-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact blocked packet inputs:</strong>
+                Blocked HRD cross-check generation now requires exact
+                upstream source report packet envelopes and support before
+                writing FACETS, CHORD, or HRDetect blocked packets.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T14:37:53-07:00">Jul 19 · local</time>
               <span>
