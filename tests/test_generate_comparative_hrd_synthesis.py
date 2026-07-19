@@ -1757,6 +1757,53 @@ class GenerateSynthesisTests(unittest.TestCase):
                 self.assertIn(message, result.stdout + result.stderr)
                 self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
 
+    def test_rejects_non_exact_reviewer_envelopes(self) -> None:
+        cases = (
+            (
+                "validation extra field",
+                "validation.json",
+                lambda payload: payload.__setitem__("unexpected", True),
+                "reviewer A validation envelope is not exact",
+            ),
+            (
+                "manifest extra field",
+                "review_manifest.json",
+                lambda payload: payload.__setitem__("unexpected", True),
+                "reviewer A manifest envelope is not exact",
+            ),
+            (
+                "invocation extra field",
+                "review_manifest.json",
+                lambda payload: payload["invocation"].__setitem__(
+                    "unexpected",
+                    "leaked context",
+                ),
+                "reviewer A invocation metadata is incomplete",
+            ),
+        )
+        for label, filename, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-review-envelope-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                path = fixture.review_a / filename
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                mutate(payload)
+                write_json(path, payload)
+                if filename == "review_manifest.json" and "invocation" in label:
+                    validation_path = fixture.review_a / "validation.json"
+                    validation = json.loads(
+                        validation_path.read_text(encoding="utf-8")
+                    )
+                    validation["review_manifest_sha256"] = sha256(path)
+                    write_json(validation_path, validation)
+
+                result = fixture.run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stdout + result.stderr)
+                self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
     def test_rejects_non_integer_source_schema(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="hrd-synthesis-source-schema-"

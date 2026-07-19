@@ -34,6 +34,11 @@ from hrd_report_inventory import (
     require_pinned_methods,
     required_method_ids,
 )
+from validate_ai_review import (
+    REVIEW_INVOCATION_KEYS,
+    REVIEW_MANIFEST_KEYS,
+    VALIDATION_KEYS,
+)
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 METHOD_ID = re.compile(r"^[a-z0-9][a-z0-9_.-]{1,79}$")
@@ -561,6 +566,10 @@ def verify_review(
     claims_path = directory / "claims.csv"
     validation = load_object(validation_path, "reviewer " + reviewer + " validation")
     manifest = load_object(manifest_path, "reviewer " + reviewer + " manifest")
+    if set(validation) != VALIDATION_KEYS:
+        raise ValueError("reviewer " + reviewer + " validation envelope is not exact")
+    if set(manifest) != REVIEW_MANIFEST_KEYS:
+        raise ValueError("reviewer " + reviewer + " manifest envelope is not exact")
     if not is_exact_int(
         validation.get("schema_version"),
         2,
@@ -615,9 +624,13 @@ def verify_review(
     if validation.get("claims_sha256") != current_outputs["claims.csv"]:
         raise ValueError("reviewer " + reviewer + " claims changed after validation")
     invocation = manifest.get("invocation")
-    if not isinstance(invocation, dict) or any(
-        not str(invocation.get(key, "")).strip()
-        for key in ("invocation_id", "interface", "started_at", "completed_at")
+    if (
+        not isinstance(invocation, dict)
+        or set(invocation) != REVIEW_INVOCATION_KEYS
+        or any(
+            not str(invocation.get(key, "")).strip()
+            for key in REVIEW_INVOCATION_KEYS
+        )
     ):
         raise ValueError("reviewer " + reviewer + " invocation metadata is incomplete")
     evidence_by_id = {str(row["evidence_id"]): row for row in bundle["evidence_sources"]}
