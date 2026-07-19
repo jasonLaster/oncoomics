@@ -307,12 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>ceee52db6c620b632aa8713e9a621418282f0031</strong>.
-          The latest work is exact terminal final-freeze hardening:
+          <strong>15e1f4e6b880c3ce4a443b9a7551cc749f98278f</strong>.
+          The latest work is exact materialization report hardening:
           <code>stage_deterministic_wgs_report.py</code> now names and requires
-          the complete final-freeze row, receipt, and anchor check maps before
-          immutable final-artifact freeze evidence can support the staged WGS
-          report packet.
+          the seven exact-version materialization row checks before
+          exact-VersionId downloads can support the staged WGS report packet.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -320,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = ceee52d</li>
+          <li class="pill">Latest hardening = 15e1f4e</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -402,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve ceee52d</strong>
-              <span>Deterministic report staging now rejects incomplete or widened final-freeze row, receipt, and anchor check maps before final artifacts can support a WGS report packet.</span>
+              <strong>Preserve 15e1f4e</strong>
+              <span>Deterministic report staging now rejects missing, unexpected, or failed exact-materialization row checks before exact-VersionId downloads can support a WGS report packet.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -451,6 +450,23 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>15e1f4e Require exact materialization report checks:</strong>
+                <code>stage_deterministic_wgs_report.py</code> now defines
+                <code>EXPECTED_EXACT_MATERIALIZATION_ROW_CHECKS</code> for the
+                seven <code>version_id</code>, <code>content_length</code>,
+                <code>local_bytes</code>, <code>checksums</code>,
+                <code>checksum_type</code>, <code>sse</code>, and
+                <code>kms</code> checks. Report staging now requires that exact
+                map instead of arbitrary truthy per-row checks, the synthetic
+                fixture matches the real materializer's
+                <code>checksum_type</code> check, and tests prove missing,
+                unexpected, and failed exact-materialization maps fail before
+                <code>report.md</code> can be published.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
