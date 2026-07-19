@@ -12,15 +12,17 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
     is_exact_int,
     require_bundle_manifest,
+    reject_duplicate_json_object_names,
     validate_report_manifest_support,
 )
 from validate_ai_review import (
     CLAIMS_FIELDS,
-    REVIEW_INVOCATION_KEYS,
     REVIEW_MANIFEST_KEYS,
     VALIDATION_KEYS,
+    require_exact_review_invocation,
 )
 from hrd_report_inventory import (
     inventory_payload,
@@ -60,7 +62,15 @@ def sha256(path: Path) -> str:
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value
@@ -387,13 +397,7 @@ def build_manifest(
         for key, expected in expected_claim_summary.items()
     ):
         raise ValueError("review validation claim summary is stale")
-    invocation = review_manifest.get("invocation")
-    if (
-        not isinstance(invocation, dict)
-        or set(invocation) != REVIEW_INVOCATION_KEYS
-        or not invocation.get("invocation_id")
-    ):
-        raise ValueError("review invocation metadata is incomplete")
+    invocation = require_exact_review_invocation(review_manifest.get("invocation", {}))
 
     return {
         "schema_version": 1,

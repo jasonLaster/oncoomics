@@ -105,6 +105,15 @@ def write_hash_bound_catalog_schema(
     write_json(validation_path, validation)
 
 
+def refresh_review_manifest_validation_hash(review_dir: Path) -> None:
+    validation_path = review_dir / "validation.json"
+    validation = load_json(validation_path)
+    validation["review_manifest_sha256"] = FINALIZE.sha256(
+        review_dir / "review_manifest.json"
+    )
+    write_json(validation_path, validation)
+
+
 class FinalizeAiReviewTests(unittest.TestCase):
     def execute(
         self,
@@ -803,6 +812,93 @@ class FinalizeAiReviewTests(unittest.TestCase):
                 self.assertNotEqual(finalized.returncode, 0)
                 self.assertIn(message, finalized.stderr)
                 self.assertFalse((review / "report_manifest.json").exists())
+
+    def test_rejects_non_exact_invocation_metadata_after_validation(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "missing_field",
+                lambda invocation: {
+                    key: value
+                    for key, value in invocation.items()
+                    if key != "invocation_id"
+                },
+                "review invocation envelope is not exact",
+            ),
+            (
+                "extra_field",
+                lambda invocation: {
+                    **invocation,
+                    "legacy_invocation_id": invocation["invocation_id"],
+                },
+                "review invocation envelope is not exact",
+            ),
+            (
+                "empty_field",
+                lambda invocation: {
+                    **invocation,
+                    "invocation_id": "",
+                },
+                "complete invocation metadata is required",
+            ),
+            (
+                "padded_field",
+                lambda invocation: {
+                    **invocation,
+                    "invocation_id": f" {invocation['invocation_id']} ",
+                },
+                "complete invocation metadata is required",
+            ),
+            (
+                "non_string_field",
+                lambda invocation: {
+                    **invocation,
+                    "invocation_id": True,
+                },
+                "complete invocation metadata is required",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture, review = self.validated_review(temporary)
+                review_manifest_path = review / "review_manifest.json"
+                review_manifest = load_json(review_manifest_path)
+                review_manifest["invocation"] = mutate(review_manifest["invocation"])
+                write_json(review_manifest_path, review_manifest)
+                refresh_review_manifest_validation_hash(review)
+
+                finalized = self.execute(fixture, review)
+
+                self.assertNotEqual(finalized.returncode, 0)
+                self.assertIn(message, finalized.stderr)
+                self.assertFalse((review / "report_manifest.json").exists())
+
+    def test_rejects_duplicate_object_names_in_review_json_after_validation(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            review_manifest_path = review / "review_manifest.json"
+            raw = review_manifest_path.read_text(encoding="utf-8")
+            duplicate_schema = raw.replace(
+                "{\n",
+                '{\n  "schema_version": 2,\n',
+                1,
+            )
+            self.assertNotEqual(duplicate_schema, raw)
+            review_manifest_path.write_text(duplicate_schema, encoding="utf-8")
+            refresh_review_manifest_validation_hash(review)
+
+            finalized = self.execute(fixture, review)
+
+            self.assertNotEqual(finalized.returncode, 0)
+            self.assertIn(
+                "duplicate JSON object name in review manifest",
+                finalized.stderr,
+            )
+            self.assertFalse((review / "report_manifest.json").exists())
 
 
 if __name__ == "__main__":
