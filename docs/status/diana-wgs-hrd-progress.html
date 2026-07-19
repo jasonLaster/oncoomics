@@ -343,8 +343,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = 2c2a162</li>
-          <li class="pill">Prior dashboard = 52f7f22</li>
+          <li class="pill">Latest milestone = f6fda4d</li>
+          <li class="pill">Prior source = 2c2a162</li>
           <li class="pill">Public access foundation = ready</li>
           <li class="pill">HCC1395 seven-report stack = passed</li>
           <li class="pill">Forbidden scans = shared</li>
@@ -497,6 +497,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · expose source-frozen inventory hashes</strong>
+              <span>The AI/freeform handoff now lists every exact source <code>report_manifest.json</code> path, private VersionId, and SHA-256 before reviewer bundle preparation.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · rehearse isolated review on public known-answer data</strong>
               <span>Two independent reviewers and comparative synthesis passed without converting workflow readiness into a Diana biological claim.</span>
             </li>
@@ -534,6 +538,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T22:43:33-07:00">Jul 18 · 10:43 PM</time>
+              <span>
+                <strong>f6fda4d Harden reviewed HRD handoff indexes:</strong>
+                the AI handoff now prints exact local source manifests beside
+                their frozen private VersionIds and SHA-256 values; the final
+                reviewed-public gate prints each private receipt SHA-256; and
+                <code>build_public_results_index.py</code> now creates
+                <code>.codex-tmp/public-index/objects.json</code> with
+                link-based create-only installation instead of replacing a
+                prior index.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T22:36:02-07:00">Jul 18 · 10:36 PM</time>
               <span>
