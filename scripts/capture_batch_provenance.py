@@ -198,6 +198,10 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -1013,6 +1017,11 @@ def main() -> None:
         worker_receipt_checks,
         worker_receipt_upload_checks,
     )
+    worker_receipt_upload_bytes = worker_receipt_upload_object.get("bytes")
+    receipt_upload_size = receipt_upload_head.get("ContentLength")
+    freeze_receipt_bytes = args.executed_worker_freeze_receipt.stat().st_size
+    worker_head_size = worker_head.get("ContentLength")
+    worker_get_size = worker_get.get("ContentLength")
     worker_checks = {
         "receipt_status": (
             exact_schema_version(worker_receipt, 1)
@@ -1035,9 +1044,8 @@ def main() -> None:
             == sha256(args.executed_worker_freeze_receipt)
             and receipt_upload_head.get("VersionId")
             == worker_receipt_upload_object.get("version_id")
-            and int(receipt_upload_head.get("ContentLength", -1))
-            == args.executed_worker_freeze_receipt.stat().st_size
-            == int(worker_receipt_upload_object.get("bytes", -2))
+            and exact_int(receipt_upload_size, freeze_receipt_bytes)
+            and exact_int(worker_receipt_upload_bytes, freeze_receipt_bytes)
             and receipt_upload_head.get("ChecksumType") == "FULL_OBJECT"
             and base64.b64decode(
                 str(receipt_upload_head.get("ChecksumSHA256", "")), validate=True
@@ -1061,7 +1069,7 @@ def main() -> None:
             hash_invocation.get("Status") == "Success"
             and int(hash_invocation.get("ResponseCode", -1)) == 0
             and command_sha256 == worker_source.get("sha256")
-            and command_bytes == int(worker_source.get("bytes", -1))
+            and exact_int(worker_source.get("bytes"), command_bytes)
         ),
         "live_freeze_command": (
             freeze_invocation.get("Status") == "Success"
@@ -1074,11 +1082,10 @@ def main() -> None:
             worker_head.get("VersionId") == worker_get.get("VersionId") == worker_version
         ),
         "bytes": (
-            int(worker_head.get("ContentLength", -1))
-            == int(worker_get.get("ContentLength", -2))
-            == worker_bytes
-            == command_bytes
-            == int(worker_freeze.get("bytes", -3))
+            exact_int(worker_head_size, worker_bytes)
+            and exact_int(worker_get_size, worker_bytes)
+            and exact_int(command_bytes, worker_bytes)
+            and exact_int(worker_freeze.get("bytes"), worker_bytes)
         ),
         "sha256": (
             worker_sha256

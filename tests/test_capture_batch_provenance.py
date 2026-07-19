@@ -875,6 +875,43 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                     accepted,
                 )
 
+    def test_exact_int_rejects_coercible_byte_values(self) -> None:
+        for value in (1, 7):
+            with self.subTest(value=value):
+                self.assertTrue(MODULE.exact_int(value, value))
+        for value in (True, 1.0, "1", 0, -1, None):
+            with self.subTest(value=value):
+                self.assertFalse(MODULE.exact_int(value, 1))
+
+    def test_worker_byte_guards_avoid_raw_int_coercion(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "capture_batch_provenance.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        raw_byte_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "ContentLength",
+                    "worker_source.get('bytes'",
+                    'worker_source.get("bytes"',
+                    "worker_freeze.get('bytes'",
+                    'worker_freeze.get("bytes"',
+                    "worker_receipt_upload_object.get('bytes'",
+                    'worker_receipt_upload_object.get("bytes"',
+                )
+            )
+        ]
+
+        self.assertEqual(raw_byte_coercions, [])
+
     def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
         module = ast.parse(
             (SCRIPT_DIR / "capture_batch_provenance.py").read_text(
