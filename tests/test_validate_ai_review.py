@@ -484,6 +484,42 @@ class ValidateAiReviewTests(unittest.TestCase):
                 self.assertIn(message, validated.stderr)
                 self.assertFalse((review / "validation.json").exists())
 
+    def test_rejects_review_manifest_with_non_exact_envelope(self) -> None:
+        cases = (
+            (
+                "top-level",
+                lambda manifest: manifest.__setitem__("legacy_note", "accepted"),
+                "review manifest envelope is not exact",
+            ),
+            (
+                "invocation",
+                lambda manifest: manifest["invocation"].__setitem__(
+                    "legacy_note",
+                    "accepted",
+                ),
+                "review invocation envelope is not exact",
+            ),
+        )
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = ValidateReviewFixture(Path(temporary))
+                fixture.build()
+                review = Path(temporary) / "review-a"
+                fixture.write_review(review)
+
+                review_manifest_path = review / "review_manifest.json"
+                review_manifest = json.loads(
+                    review_manifest_path.read_text(encoding="utf-8")
+                )
+                mutate(review_manifest)
+                write_json(review_manifest_path, review_manifest)
+
+                validated = fixture.validate(review)
+
+                self.assertNotEqual(validated.returncode, 0)
+                self.assertIn(message, validated.stderr)
+                self.assertFalse((review / "validation.json").exists())
+
     def test_rejects_existing_validation_create_only_and_preserves_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))

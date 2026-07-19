@@ -83,6 +83,46 @@ REQUIRED_REPORT_HEADINGS = (
 )
 REVIEW_OUTPUT_FILES = {"claims.csv", "report.md", "review_manifest.json"}
 VALIDATED_REVIEW_OUTPUT_FILES = REVIEW_OUTPUT_FILES | {"validation.json"}
+REVIEW_MANIFEST_KEYS = {
+    "schema_version",
+    "reviewer_id",
+    "subject_alias",
+    "model",
+    "invocation",
+    "prompt_sha256",
+    "input_bundle_sha256",
+    "method_inventory_sha256",
+    "input_artifact_sha256",
+    "independence_attestation",
+    "output_sha256",
+}
+REVIEW_INVOCATION_KEYS = {
+    "invocation_id",
+    "interface",
+    "started_at",
+    "completed_at",
+}
+VALIDATION_KEYS = {
+    "schema_version",
+    "status",
+    "reviewer_id",
+    "subject_alias",
+    "model",
+    "authorized_hrd_state",
+    "required_method_ids",
+    "method_inventory",
+    "method_inventory_sha256",
+    "model_catalog_receipt_sha256",
+    "claim_count",
+    "covered_evidence_ids",
+    "disagreement_claim_count",
+    "review_bundle_sha256",
+    "prompt_sha256",
+    "report_sha256",
+    "claims_sha256",
+    "review_manifest_sha256",
+    "forbidden_token_count",
+}
 
 CLAIM_ID = re.compile(r"^C[0-9]{3,}$")
 CITATION = re.compile(r"(?<!!)\[(C[0-9]{3,})\|((?:E[0-9]{3,})(?:;E[0-9]{3,})*)\](?!\()")
@@ -864,10 +904,14 @@ def validate_review_manifest(
     claims_path: Path,
     inventory_id: str,
 ) -> tuple[dict[str, str], dict[str, Any]]:
+    if set(review_manifest) != REVIEW_MANIFEST_KEYS:
+        raise ValueError("review manifest envelope is not exact")
     if review_manifest.get("schema_version") != 2 or review_manifest.get("reviewer_id") != reviewer:
         raise ValueError("review manifest schema or reviewer ID mismatch")
 
     invocation = review_manifest.get("invocation", {})
+    if not isinstance(invocation, dict) or set(invocation) != REVIEW_INVOCATION_KEYS:
+        raise ValueError("review invocation envelope is not exact")
     if review_manifest.get("model") != model_contract:
         raise ValueError("review did not use its pinned latest-model contract")
     if review_manifest.get("subject_alias") != subject_alias:

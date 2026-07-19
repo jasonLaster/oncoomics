@@ -617,6 +617,42 @@ class FinalizeAiReviewTests(unittest.TestCase):
                 self.assertNotEqual(finalized.returncode, 0)
                 self.assertIn(message, finalized.stderr)
 
+    def test_rejects_non_exact_review_manifest_or_validation_envelope(self) -> None:
+        cases = (
+            (
+                "review_manifest",
+                lambda review: write_json(
+                    review / "review_manifest.json",
+                    {
+                        **load_json(review / "review_manifest.json"),
+                        "legacy_note": "accepted",
+                    },
+                ),
+                "review manifest envelope is not exact",
+            ),
+            (
+                "validation",
+                lambda review: write_json(
+                    review / "validation.json",
+                    {
+                        **load_json(review / "validation.json"),
+                        "legacy_note": "accepted",
+                    },
+                ),
+                "validation envelope is not exact",
+            ),
+        )
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture, review = self.validated_review(temporary)
+                mutate(review)
+
+                finalized = self.execute(fixture, review)
+
+                self.assertNotEqual(finalized.returncode, 0)
+                self.assertIn(message, finalized.stderr)
+                self.assertFalse((review / "report_manifest.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

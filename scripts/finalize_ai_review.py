@@ -14,6 +14,11 @@ from build_ai_review_bundle import (
     require_bundle_manifest,
     validate_report_manifest_support,
 )
+from validate_ai_review import (
+    REVIEW_INVOCATION_KEYS,
+    REVIEW_MANIFEST_KEYS,
+    VALIDATION_KEYS,
+)
 from hrd_report_inventory import (
     inventory_payload,
     inventory_sha256,
@@ -184,6 +189,10 @@ def build_manifest(
     bundle = load_object(bundle_path, "review bundle")
     bundle_manifest = load_object(bundle_manifest_path, "bundle manifest")
     catalog = load_object(model_catalog_receipt, "model catalog receipt")
+    if set(review_manifest) != REVIEW_MANIFEST_KEYS:
+        raise ValueError("review manifest envelope is not exact")
+    if set(validation) != VALIDATION_KEYS:
+        raise ValueError("validation envelope is not exact")
     if review_manifest.get("schema_version") != 2 or validation.get("schema_version") != 2:
         raise ValueError("review and validation schemas must both be version 2")
     if validation.get("status") != "passed":
@@ -300,7 +309,11 @@ def build_manifest(
     if not isinstance(evidence_sources, list) or not evidence_sources:
         raise ValueError("review bundle has no evidence sources")
     invocation = review_manifest.get("invocation")
-    if not isinstance(invocation, dict) or not invocation.get("invocation_id"):
+    if (
+        not isinstance(invocation, dict)
+        or set(invocation) != REVIEW_INVOCATION_KEYS
+        or not invocation.get("invocation_id")
+    ):
         raise ValueError("review invocation metadata is incomplete")
 
     return {
