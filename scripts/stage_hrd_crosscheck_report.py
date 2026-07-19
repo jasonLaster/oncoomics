@@ -19,6 +19,21 @@ from hrd_report_inventory import EXECUTABLE_CROSSCHECK_METHOD_IDS
 SUPPORTED_ROUTES = set(EXECUTABLE_CROSSCHECK_METHOD_IDS)
 SHA256_HEX = set("0123456789abcdef")
 CORE_REPORT_FILES = {"report.md", "report_manifest.json"}
+EXPECTED_DOWNLOAD_LIVE_HISTORY_CHECKS = {
+    "version_count_exact": True,
+    "all_entries_are_versions": True,
+    "key_inventory_exact": True,
+    "all_version_ids_exact": True,
+    "all_versions_latest": True,
+}
+EXPECTED_DOWNLOAD_OBJECT_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "checksum_sha256_exact": True,
+    "checksum_type_full_object": True,
+    "exact_kms": True,
+}
 
 
 def sha256(path: Path) -> str:
@@ -87,6 +102,13 @@ def require_source_file(root: Path, relative: str) -> Path:
     return path
 
 
+def require_exact_check_map(
+    value: Any, expected: dict[str, bool], label: str
+) -> None:
+    if value != expected:
+        raise ValueError(f"{label} check map is not exact")
+
+
 def require_real_file(path: Path, label: str) -> Path:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
@@ -107,6 +129,11 @@ def require_download_verification(
         or int(verification.get("object_count", -1)) != len(rows)
     ):
         raise ValueError("download verification is not passed and exact")
+    require_exact_check_map(
+        verification.get("live_history_checks"),
+        EXPECTED_DOWNLOAD_LIVE_HISTORY_CHECKS,
+        "download verification live history",
+    )
 
     expected: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -116,6 +143,13 @@ def require_download_verification(
         require_safe_relative_path(relative, "download verification path")
         if relative in expected:
             raise ValueError(f"download verification repeats {relative}")
+        if not str(row.get("version_id", "")):
+            raise ValueError(f"download verification lacks a VersionId for {relative}")
+        require_exact_check_map(
+            row.get("checks"),
+            EXPECTED_DOWNLOAD_OBJECT_CHECKS,
+            f"download verification object {relative}",
+        )
         expected[relative] = row
 
     for relative in ("report.md", "report_manifest.json"):

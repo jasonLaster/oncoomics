@@ -68,8 +68,10 @@ def write_route_report(source: Path, route: str = "sigprofiler_sbs3") -> Path:
         rows.append(
             {
                 "relative_path": relative,
+                "version_id": f"{relative}-version",
                 "bytes": path.stat().st_size,
                 "sha256": STAGE.sha256(path),
+                "checks": dict(STAGE.EXPECTED_DOWNLOAD_OBJECT_CHECKS),
             }
         )
     write_json(
@@ -77,6 +79,7 @@ def write_route_report(source: Path, route: str = "sigprofiler_sbs3") -> Path:
         {
             "schema_version": 1,
             "status": "passed",
+            "live_history_checks": dict(STAGE.EXPECTED_DOWNLOAD_LIVE_HISTORY_CHECKS),
             "object_count": len(rows),
             "objects": rows,
         },
@@ -92,8 +95,10 @@ def refresh_download_verification(source: Path, verification: Path) -> None:
         rows.append(
             {
                 "relative_path": path.name,
+                "version_id": f"{path.name}-version",
                 "bytes": path.stat().st_size,
                 "sha256": STAGE.sha256(path),
+                "checks": dict(STAGE.EXPECTED_DOWNLOAD_OBJECT_CHECKS),
             }
         )
     write_json(
@@ -101,6 +106,7 @@ def refresh_download_verification(source: Path, verification: Path) -> None:
         {
             "schema_version": 1,
             "status": "passed",
+            "live_history_checks": dict(STAGE.EXPECTED_DOWNLOAD_LIVE_HISTORY_CHECKS),
             "object_count": len(rows),
             "objects": rows,
         },
@@ -339,6 +345,95 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     "sigprofiler_sbs3",
                 )
 
+    def test_stage_rejects_missing_unexpected_or_failed_download_check_maps(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "missing live history check",
+                lambda payload: payload["live_history_checks"].pop(
+                    "all_versions_latest"
+                ),
+                "live history check map is not exact",
+            ),
+            (
+                "unexpected live history check",
+                lambda payload: payload["live_history_checks"].__setitem__(
+                    "forged_extra",
+                    True,
+                ),
+                "live history check map is not exact",
+            ),
+            (
+                "failed live history check",
+                lambda payload: payload["live_history_checks"].__setitem__(
+                    "version_count_exact",
+                    False,
+                ),
+                "live history check map is not exact",
+            ),
+            (
+                "missing object check",
+                lambda payload: payload["objects"][0]["checks"].pop(
+                    "checksum_type_full_object"
+                ),
+                "object report.md check map is not exact",
+            ),
+            (
+                "unexpected object check",
+                lambda payload: payload["objects"][0]["checks"].__setitem__(
+                    "forged_extra",
+                    True,
+                ),
+                "object report.md check map is not exact",
+            ),
+            (
+                "failed object check",
+                lambda payload: payload["objects"][0]["checks"].__setitem__(
+                    "exact_kms",
+                    False,
+                ),
+                "object report.md check map is not exact",
+            ),
+        )
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "exact"
+                verification = write_route_report(source)
+                payload = json.loads(verification.read_text(encoding="utf-8"))
+                mutate(payload)
+                write_json(verification, payload)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    STAGE.stage(
+                        source,
+                        verification,
+                        root / "staged",
+                        "sigprofiler_sbs3",
+                    )
+
+                self.assertFalse((root / "staged").exists())
+
+    def test_stage_rejects_download_verification_row_without_version_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            payload = json.loads(verification.read_text(encoding="utf-8"))
+            payload["objects"][0]["version_id"] = ""
+            write_json(verification, payload)
+
+            with self.assertRaisesRegex(ValueError, "lacks a VersionId"):
+                STAGE.stage(
+                    source,
+                    verification,
+                    root / "staged",
+                    "sigprofiler_sbs3",
+                )
+
+            self.assertFalse((root / "staged").exists())
+
     def test_stage_rejects_copy_that_differs_from_exact_replay(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -441,11 +536,16 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     "schema_version": 1,
                     "status": "passed",
                     "object_count": 3,
+                    "live_history_checks": dict(
+                        STAGE.EXPECTED_DOWNLOAD_LIVE_HISTORY_CHECKS
+                    ),
                     "objects": [
                         {
                             "relative_path": relative,
+                            "version_id": f"{relative}-version",
                             "bytes": (source / relative).stat().st_size,
                             "sha256": STAGE.sha256(source / relative),
+                            "checks": dict(STAGE.EXPECTED_DOWNLOAD_OBJECT_CHECKS),
                         }
                         for relative in (
                             "report.md",
