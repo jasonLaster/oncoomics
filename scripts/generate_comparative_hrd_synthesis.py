@@ -23,6 +23,7 @@ from typing import Any, Dict, Iterable, List, Sequence, Tuple
 from build_ai_review_bundle import validate_report_manifest_support
 from forbidden_text import has_unauthorized_hrd_classification
 from hrd_report_inventory import (
+    REQUIRED_METHOD_IDS,
     inventory_payload,
     inventory_sha256,
     require_inventory_binding,
@@ -42,6 +43,28 @@ ALLOWED_DISAGREEMENTS = {
     "method_conflict",
     "insufficient_comparability",
     "missing_evidence",
+}
+ALLOWED_AGREEMENT_STATUSES = {"concordant", "discordant", "partial_agreement"}
+ALLOWED_STRUCTURED_DISAGREEMENT_TYPES = {
+    "method_conflict",
+    "insufficient_comparability",
+    "missing_evidence",
+    "reviewer_disagreement_assessment_difference",
+    "reviewer_disposition_difference",
+    "reviewer_state_difference",
+    "source_not_comparable",
+    "source_partial_evidence",
+}
+REQUIRED_SYNTHESIS_PROCESS = {
+    "ordered_source_manifests_verified": True,
+    "source_reports_verified": True,
+    "ai_bundle_and_manifest_verified": True,
+    "reviewer_outputs_unchanged_after_validation": True,
+    "distinct_models_verified": True,
+    "distinct_invocations_verified": True,
+    "same_ai_bundle_verified": True,
+    "raw_inputs_used": False,
+    "external_research_used": False,
 }
 CLAIMS_FIELDS = [
     "claim_id",
@@ -837,8 +860,184 @@ def write_staged_text(path: Path, text: str) -> None:
     write_staged_bytes(path, text.encode("utf-8"))
 
 
+def expected_synthesis_source_hash_keys() -> set[str]:
+    return {
+        "generator",
+        "review_bundle.json",
+        "bundle_manifest.json",
+        "agreement_disagreement.csv",
+        *(
+            "E{0:03d}_report_manifest.json".format(index)
+            for index in range(1, len(REQUIRED_METHOD_IDS) + 1)
+        ),
+        *(
+            f"reviewer_{reviewer}_{filename}"
+            for reviewer in ("A", "B")
+            for filename in REVIEW_FILES
+        ),
+    }
+
+
+def require_synthesis_source_hashes(
+    manifest: Dict[str, Any], agreement_sha256: str
+) -> None:
+    source_hashes = manifest.get("source_sha256")
+    if (
+        not isinstance(source_hashes, dict)
+        or set(source_hashes) != expected_synthesis_source_hash_keys()
+    ):
+        raise ValueError("comparative synthesis source hashes are not exact")
+    for key, digest in source_hashes.items():
+        checked_hash(digest, "comparative synthesis source " + key)
+    if source_hashes["agreement_disagreement.csv"] != agreement_sha256:
+        raise ValueError(
+            "comparative synthesis source hash is stale for agreement_disagreement.csv"
+        )
+    if source_hashes["generator"] != sha256(Path(__file__).resolve()):
+        raise ValueError("comparative synthesis generator hash is stale")
+
+
+def require_string_list(value: Any, label: str) -> List[str]:
+    if not isinstance(value, list) or any(
+        not isinstance(item, str) or not item.strip() for item in value
+    ):
+        raise ValueError("comparative synthesis review summary has malformed " + label)
+    return value
+
+
+def require_synthesis_review_summary(manifest: Dict[str, Any]) -> None:
+    summary = manifest.get("review_summary")
+    if not isinstance(summary, dict) or not summary:
+        raise ValueError("comparative synthesis review summary is missing")
+
+    process = summary.get("process")
+    required_process_keys = set(REQUIRED_SYNTHESIS_PROCESS) | {
+        "method_inventory",
+        "method_inventory_sha256",
+    }
+    if (
+        not isinstance(process, dict)
+        or set(process) != required_process_keys
+        or any(
+            process.get(key) is not value
+            for key, value in REQUIRED_SYNTHESIS_PROCESS.items()
+        )
+    ):
+        raise ValueError("comparative synthesis process summary is not exact")
+    require_inventory_binding(
+        process.get("method_inventory"),
+        process.get("method_inventory_sha256"),
+        "comparative synthesis process method inventory",
+    )
+
+    readiness = summary.get("readiness")
+    if readiness != {
+        "evidence_status": manifest.get("evidence_status"),
+        "authorized_hrd_state": manifest.get("authorized_hrd_state"),
+        "classification_authorization": manifest.get("classification_authorization"),
+    }:
+        raise ValueError("comparative synthesis readiness summary is stale")
+
+    methods = summary.get("methods")
+    if not isinstance(methods, list) or len(methods) != len(REQUIRED_METHOD_IDS):
+        raise ValueError("comparative synthesis method summary is not exact")
+    method_by_evidence: Dict[str, str] = {}
+    for index, (row, method_id) in enumerate(zip(methods, REQUIRED_METHOD_IDS), 1):
+        evidence_id = "E{0:03d}".format(index)
+        if (
+            not isinstance(row, dict)
+            or row.get("evidence_id") != evidence_id
+            or row.get("method_id") != method_id
+            or not str(row.get("report_kind", "")).strip()
+            or row.get("evidence_status") not in ALLOWED_EVIDENCE_STATES
+            or row.get("authorized_hrd_state") not in ALLOWED_HRD_STATES
+        ):
+            raise ValueError("comparative synthesis method summary is not exact")
+        method_by_evidence[evidence_id] = method_id
+
+    reviewers = summary.get("reviewers")
+    if not isinstance(reviewers, list) or len(reviewers) != 2:
+        raise ValueError("comparative synthesis reviewer summary is not exact")
+    for row, reviewer in zip(reviewers, ("A", "B")):
+        if not isinstance(row, dict) or row.get("reviewer_id") != reviewer:
+            raise ValueError("comparative synthesis reviewer summary is not exact")
+        model = row.get("model")
+        claim_count = row.get("claim_count")
+        disagreement_count = row.get("disagreement_claim_count")
+        if (
+            not isinstance(model, dict)
+            or not str(model.get("provider", "")).strip()
+            or not str(model.get("model_id", "")).strip()
+            or not isinstance(claim_count, int)
+            or claim_count < 1
+            or not isinstance(disagreement_count, int)
+            or disagreement_count < 0
+            or disagreement_count > claim_count
+        ):
+            raise ValueError("comparative synthesis reviewer summary is not exact")
+
+    status_counts = summary.get("agreement_status_counts")
+    if (
+        not isinstance(status_counts, dict)
+        or not status_counts
+        or set(status_counts) - ALLOWED_AGREEMENT_STATUSES
+        or any(
+            not isinstance(value, int) or value < 0
+            for value in status_counts.values()
+        )
+        or sum(status_counts.values()) != len(REQUIRED_METHOD_IDS)
+    ):
+        raise ValueError("comparative synthesis agreement counts are not exact")
+
+    disagreements = summary.get("structured_disagreements")
+    if not isinstance(disagreements, list):
+        raise ValueError("comparative synthesis structured disagreements are malformed")
+    for row in disagreements:
+        if not isinstance(row, dict):
+            raise ValueError("comparative synthesis structured disagreements are malformed")
+        evidence_id = str(row.get("evidence_id", ""))
+        types = row.get("types")
+        if (
+            evidence_id not in method_by_evidence
+            or row.get("method_id") != method_by_evidence[evidence_id]
+            or row.get("agreement_status") not in ALLOWED_AGREEMENT_STATUSES
+            or not isinstance(types, list)
+            or not types
+            or any(item not in ALLOWED_STRUCTURED_DISAGREEMENT_TYPES for item in types)
+            or not str(row.get("resolution_needed", "")).strip()
+        ):
+            raise ValueError("comparative synthesis structured disagreements are malformed")
+
+    require_string_list(summary.get("limitations"), "limitations")
+    require_string_list(summary.get("unresolved_observations"), "unresolved observations")
+    if summary.get("authorized_conclusion") != manifest.get("authorized_hrd_state"):
+        raise ValueError("comparative synthesis authorized conclusion is stale")
+
+
 def require_synthesis_report_manifest(packet_dir: Path) -> None:
     manifest = load_object(packet_dir / "report_manifest.json", "synthesis packet")
+    if (
+        manifest.get("schema_version") != 1
+        or manifest.get("report_kind") != "comparative_synthesis"
+        or manifest.get("method_id") != "comparative_hrd_synthesis"
+        or manifest.get("evidence_status") not in ALLOWED_EVIDENCE_STATES
+        or manifest.get("authorized_hrd_state") not in ALLOWED_HRD_STATES
+        or manifest.get("classification_authorized")
+        is not (manifest.get("authorized_hrd_state") in {"positive", "negative"})
+        or manifest.get("classification_authorization")
+        != (
+            "deterministic_ceiling_preserved"
+            if manifest.get("authorized_hrd_state") in {"positive", "negative"}
+            else "none"
+        )
+        or manifest.get("classification_qc_status")
+        != (
+            "passed"
+            if manifest.get("authorized_hrd_state") in {"positive", "negative"}
+            else "not_applicable"
+        )
+    ):
+        raise ValueError("comparative synthesis manifest does not preserve authorization")
     expected = [
         ("report.md", str(manifest.get("report_sha256", ""))),
         (
@@ -862,6 +1061,15 @@ def require_synthesis_report_manifest(packet_dir: Path) -> None:
         )
         if observed_sha256 != expected_sha256:
             raise ValueError("comparative synthesis manifest is stale for " + filename)
+
+    agreement_sha256 = sha256(
+        require_real_nonempty_file(
+            packet_dir / "agreement_disagreement.csv",
+            "synthesis packet",
+        )
+    )
+    require_synthesis_source_hashes(manifest, agreement_sha256)
+    require_synthesis_review_summary(manifest)
 
 
 def copy_create_only(source: Path, destination: Path) -> None:

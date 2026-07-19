@@ -51,6 +51,89 @@ def write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
+    agreement_sha256 = sha256(agreement)
+    return {
+        "schema_version": 1,
+        "report_kind": "comparative_synthesis",
+        "method_id": "comparative_hrd_synthesis",
+        "evidence_status": "partial_evidence",
+        "interpretation_status": "no_call",
+        "authorized_hrd_state": "no_call",
+        "classification_authorized": False,
+        "classification_authorization": "none",
+        "classification_qc_status": "not_applicable",
+        "report_sha256": sha256(report),
+        "agreement_disagreement_sha256": agreement_sha256,
+        "support_sha256": {
+            "agreement_disagreement.csv": agreement_sha256,
+        },
+        "source_sha256": {
+            key: hashlib.sha256(key.encode()).hexdigest()
+            for key in GENERATE.expected_synthesis_source_hash_keys()
+        },
+        "review_summary": {
+            "evidence_scope": (
+                "offline comparative synthesis of deterministic, statistical, "
+                "and independently validated AI evidence"
+            ),
+            "process": {
+                **GENERATE.REQUIRED_SYNTHESIS_PROCESS,
+                "method_inventory": inventory_payload(),
+                "method_inventory_sha256": inventory_sha256(),
+            },
+            "readiness": {
+                "evidence_status": "partial_evidence",
+                "authorized_hrd_state": "no_call",
+                "classification_authorization": "none",
+            },
+            "methods": [
+                {
+                    "evidence_id": "E{0:03d}".format(index),
+                    "method_id": method_id,
+                    "report_kind": "statistical_method",
+                    "evidence_status": "partial_evidence",
+                    "authorized_hrd_state": "no_call",
+                }
+                for index, method_id in enumerate(REQUIRED_METHOD_IDS, 1)
+            ],
+            "reviewers": [
+                {
+                    "reviewer_id": "A",
+                    "model": {
+                        "provider": "synthetic-provider-a",
+                        "model_id": "latest-model-a",
+                    },
+                    "claim_count": len(REQUIRED_METHOD_IDS),
+                    "disagreement_claim_count": 0,
+                },
+                {
+                    "reviewer_id": "B",
+                    "model": {
+                        "provider": "synthetic-provider-b",
+                        "model_id": "latest-model-b",
+                    },
+                    "claim_count": len(REQUIRED_METHOD_IDS),
+                    "disagreement_claim_count": 0,
+                },
+            ],
+            "agreement_status_counts": {"concordant": len(REQUIRED_METHOD_IDS)},
+            "structured_disagreements": [],
+            "limitations": ["synthetic limitation"],
+            "unresolved_observations": ["synthetic unresolved observation"],
+            "authorized_conclusion": "no_call",
+        },
+    }
+
+
+def write_synthesis_manifest(path: Path, report: Path, agreement: Path) -> Dict[str, Any]:
+    manifest = synthesis_report_manifest(report, agreement)
+    manifest["source_sha256"]["generator"] = sha256(GENERATOR)
+    manifest["source_sha256"]["agreement_disagreement.csv"] = sha256(agreement)
+    write_json(path, manifest)
+    return manifest
+
+
 class SynthesisFixture:
     def __init__(self, root: Path):
         self.root = root
@@ -460,18 +543,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             agreement = staging / "agreement_disagreement.csv"
             GENERATE.write_staged_text(report, "# Report\n")
             GENERATE.write_agreement(agreement, [])
-            GENERATE.write_staged_bytes(
-                staging / "report_manifest.json",
-                GENERATE.canonical_json_bytes(
-                    {
-                        "report_sha256": sha256(report),
-                        "agreement_disagreement_sha256": sha256(agreement),
-                        "support_sha256": {
-                            "agreement_disagreement.csv": sha256(agreement),
-                        },
-                    }
-                ),
-            )
+            write_synthesis_manifest(staging / "report_manifest.json", report, agreement)
 
             report.write_text("tampered\n", encoding="utf-8")
 
@@ -490,24 +562,67 @@ class GenerateSynthesisTests(unittest.TestCase):
             agreement = staging / "agreement_disagreement.csv"
             GENERATE.write_staged_text(report, "# Report\n")
             GENERATE.write_agreement(agreement, [])
-            GENERATE.write_staged_bytes(
-                staging / "report_manifest.json",
-                GENERATE.canonical_json_bytes(
-                    {
-                        "report_sha256": sha256(report),
-                        "agreement_disagreement_sha256": sha256(agreement),
-                        "support_sha256": {
-                            "agreement_disagreement.csv": sha256(agreement),
-                        },
-                    }
-                ),
-            )
+            write_synthesis_manifest(staging / "report_manifest.json", report, agreement)
 
             agreement.write_text("tampered\n", encoding="utf-8")
 
             with self.assertRaisesRegex(
                 ValueError,
                 "comparative synthesis manifest is stale for agreement_disagreement.csv",
+            ):
+                GENERATE.require_synthesis_report_manifest(staging)
+
+    def test_synthesis_rejects_incomplete_source_hash_inventory(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            GENERATE.write_agreement(agreement, [])
+            payload = write_synthesis_manifest(manifest, report, agreement)
+            del payload["source_sha256"]["reviewer_B_claims.csv"]
+            write_json(manifest, payload)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis source hashes are not exact",
+            ):
+                GENERATE.require_synthesis_report_manifest(staging)
+
+    def test_synthesis_rejects_stale_agreement_source_hash(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            GENERATE.write_agreement(agreement, [])
+            payload = write_synthesis_manifest(manifest, report, agreement)
+            payload["source_sha256"]["agreement_disagreement.csv"] = "0" * 64
+            write_json(manifest, payload)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source hash is stale for agreement_disagreement.csv",
+            ):
+                GENERATE.require_synthesis_report_manifest(staging)
+
+    def test_synthesis_rejects_stale_readiness_summary(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            GENERATE.write_agreement(agreement, [])
+            payload = write_synthesis_manifest(manifest, report, agreement)
+            payload["review_summary"]["readiness"]["authorized_hrd_state"] = "positive"
+            write_json(manifest, payload)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis readiness summary is stale",
             ):
                 GENERATE.require_synthesis_report_manifest(staging)
 
@@ -654,18 +769,10 @@ class GenerateSynthesisTests(unittest.TestCase):
             manifest = staging / "report_manifest.json"
             GENERATE.write_staged_text(report, "# Report\n")
             GENERATE.write_agreement(agreement, [])
-            GENERATE.write_staged_bytes(
-                manifest,
-                GENERATE.canonical_json_bytes(
-                    {
-                        "report_sha256": sha256(report),
-                        "agreement_disagreement_sha256": "0" * 64,
-                        "support_sha256": {
-                            "agreement_disagreement.csv": "0" * 64,
-                        },
-                    }
-                ),
-            )
+            payload = write_synthesis_manifest(manifest, report, agreement)
+            payload["agreement_disagreement_sha256"] = "0" * 64
+            payload["support_sha256"]["agreement_disagreement.csv"] = "0" * 64
+            write_json(manifest, payload)
 
             with self.assertRaisesRegex(
                 ValueError,
