@@ -261,7 +261,7 @@ def build_manifest(
         validation.get("model_catalog_receipt_sha256") == catalog_hash
         and bundle.get("model_catalog_receipt_sha256") == catalog_hash
         and bundle_manifest.get("model_catalog_receipt_sha256") == catalog_hash
-        and catalog.get("schema_version") == 1
+        and is_exact_int(catalog.get("schema_version"), 1)
     ):
         raise ValueError("model catalog receipt binding failed")
 

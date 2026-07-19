@@ -16,6 +16,7 @@ for path in (SCRIPT_DIR, TEST_DIR):
         sys.path.insert(0, str(path))
 
 import finalize_ai_review as FINALIZE  # noqa: E402
+import build_ai_review_bundle as BUILD_BUNDLE  # noqa: E402
 import publish_private_report as PUBLISH_PRIVATE  # noqa: E402
 
 from tests.test_build_ai_review_bundle import write_json  # noqa: E402
@@ -43,6 +44,65 @@ def write_bound_review_bundle(fixture: ValidateReviewFixture, value: dict) -> No
         bundle_manifest[field] = value[field]
     bundle_manifest["review_bundle_sha256"] = FINALIZE.sha256(bundle)
     write_json(fixture.bundle_dir / "bundle_manifest.json", bundle_manifest)
+
+
+def write_hash_bound_catalog_schema(
+    fixture: ValidateReviewFixture,
+    review_dir: Path,
+    schema_version: object,
+) -> None:
+    catalog = load_json(fixture.catalog_receipt)
+    catalog["schema_version"] = schema_version
+    write_json(fixture.catalog_receipt, catalog)
+    catalog_hash = FINALIZE.sha256(fixture.catalog_receipt)
+
+    bundle_path = fixture.bundle_dir / "review_bundle.json"
+    bundle = load_json(bundle_path)
+    bundle["model_catalog_receipt_sha256"] = catalog_hash
+    write_json(bundle_path, bundle)
+    bundle_hash = FINALIZE.sha256(bundle_path)
+
+    manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+    bundle_manifest = load_json(manifest_path)
+    bundle_manifest["model_catalog_receipt_sha256"] = catalog_hash
+    bundle_manifest["review_bundle_sha256"] = bundle_hash
+    prompt_hashes = {}
+    for role in ("A", "B"):
+        prompt_path = fixture.bundle_dir / f"reviewer-{role.lower()}.prompt.md"
+        prompt_path.write_text(
+            BUILD_BUNDLE.prompt(
+                role,
+                bundle_hash,
+                bundle_manifest["subject_alias"],
+                bundle_manifest["model_execution_contracts"][role],
+                bundle_manifest["method_inventory_sha256"],
+            ),
+            encoding="utf-8",
+        )
+        prompt_hashes[role] = FINALIZE.sha256(prompt_path)
+    bundle_manifest["prompt_sha256"] = prompt_hashes
+    write_json(manifest_path, bundle_manifest)
+
+    review_manifest_path = review_dir / "review_manifest.json"
+    review_manifest = load_json(review_manifest_path)
+    review_manifest["prompt_sha256"] = prompt_hashes[review_manifest["reviewer_id"]]
+    review_manifest["input_bundle_sha256"] = bundle_hash
+    review_manifest["input_artifact_sha256"] = {
+        "review_bundle.json": bundle_hash,
+        f"reviewer-{review_manifest['reviewer_id'].lower()}.prompt.md": (
+            prompt_hashes[review_manifest["reviewer_id"]]
+        ),
+    }
+    write_json(review_manifest_path, review_manifest)
+    review_manifest_hash = FINALIZE.sha256(review_manifest_path)
+
+    validation_path = review_dir / "validation.json"
+    validation = load_json(validation_path)
+    validation["model_catalog_receipt_sha256"] = catalog_hash
+    validation["review_bundle_sha256"] = bundle_hash
+    validation["prompt_sha256"] = prompt_hashes[validation["reviewer_id"]]
+    validation["review_manifest_sha256"] = review_manifest_hash
+    write_json(validation_path, validation)
 
 
 class FinalizeAiReviewTests(unittest.TestCase):
@@ -607,6 +667,14 @@ class FinalizeAiReviewTests(unittest.TestCase):
                 "model catalog receipt binding",
             ),
             (
+                lambda fixture, review: write_hash_bound_catalog_schema(
+                    fixture,
+                    review,
+                    1.0,
+                ),
+                "model catalog receipt binding",
+            ),
+            (
                 lambda fixture, review: (
                     write_bound_review_bundle(
                         fixture,
@@ -659,6 +727,7 @@ class FinalizeAiReviewTests(unittest.TestCase):
 
                 self.assertNotEqual(finalized.returncode, 0)
                 self.assertIn(message, finalized.stderr)
+                self.assertFalse((review / "report_manifest.json").exists())
 
     def test_rejects_non_exact_review_manifest_or_validation_envelope(self) -> None:
         cases = (
