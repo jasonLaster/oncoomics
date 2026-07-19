@@ -236,6 +236,69 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                         "kms",
                     )
 
+    def test_exact_version_and_checksums_must_be_strings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "artifact"
+            path.write_bytes(b"1")
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            expected = {
+                "version_id": "frozen-version",
+                "bytes": 1,
+                "checksums": {"ChecksumCRC64NVME": "checksum"},
+                "checksum_type": "FULL_OBJECT",
+            }
+            response = {
+                "VersionId": "frozen-version",
+                "ContentLength": 1,
+                "ChecksumCRC64NVME": "checksum",
+                "ChecksumType": "FULL_OBJECT",
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": kms,
+            }
+
+            for value in (True, "null", "None", "has space"):
+                with self.subTest(version_id=value), self.assertRaisesRegex(
+                    ValueError,
+                    "exact VersionId",
+                ):
+                    MODULE.validate_materialized(
+                        {**expected, "version_id": value},
+                        response,
+                        path,
+                        kms,
+                    )
+
+            for value in (True, 123, ""):
+                with self.subTest(checksum=value), self.assertRaisesRegex(
+                    ValueError,
+                    "exact S3 checksum",
+                ):
+                    MODULE.validate_materialized(
+                        {
+                            **expected,
+                            "checksums": {"ChecksumCRC64NVME": value},
+                        },
+                        response,
+                        path,
+                        kms,
+                    )
+
+            with self.assertRaisesRegex(ValueError, "materialization checks failed"):
+                MODULE.validate_materialized(
+                    expected,
+                    {**response, "VersionId": True},
+                    path,
+                    kms,
+                )
+
+            with self.assertRaisesRegex(ValueError, "materialization checks failed"):
+                MODULE.validate_materialized(
+                    expected,
+                    {**response, "ChecksumCRC64NVME": True},
+                    path,
+                    kms,
+                )
+
     def test_exact_version_download_rejects_boolean_content_length(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "artifact"
@@ -317,6 +380,15 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                 receipt["objects"][0]["destination"]["bytes"] = 1
                 receipt["destination_inventory"][0]["bytes"] = True
 
+            def set_destination_version(receipt: dict, value: object) -> None:
+                receipt["objects"][0]["destination"]["version_id"] = value
+                receipt["destination_inventory"][0]["version_id"] = value
+
+            def set_destination_checksum(receipt: dict, value: object) -> None:
+                checksums = {"ChecksumCRC64NVME": value}
+                receipt["objects"][0]["destination"]["checksums"] = checksums
+                receipt["destination_inventory"][0]["checksums"] = checksums
+
             for label, mutate in (
                 (
                     "extra-top-level",
@@ -356,6 +428,18 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                         "version_id", "stale-version"
                     ),
                 ),
+                (
+                    "coerced-destination-version",
+                    lambda receipt: set_destination_version(receipt, True),
+                ),
+                (
+                    "sentinel-destination-version",
+                    lambda receipt: set_destination_version(receipt, "null"),
+                ),
+                (
+                    "coerced-destination-checksum",
+                    lambda receipt: set_destination_checksum(receipt, True),
+                ),
             ):
                 with self.subTest(label=label):
                     candidate = json.loads(json.dumps(base))
@@ -375,7 +459,12 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                         ) as get_exact,
                         self.assertRaisesRegex(
                             SystemExit,
-                            "private freeze receipt.*not exact|destination inventory differs",
+                            (
+                                "private freeze receipt.*not exact"
+                                "|destination inventory differs"
+                                "|exact VersionId"
+                                "|exact S3 checksum"
+                            ),
                         ),
                     ):
                         MODULE.main(self.args(freeze, output, receipt, kms))

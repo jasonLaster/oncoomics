@@ -348,7 +348,10 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact source-freeze scalars</li>
+          <li class="pill">Latest milestone = local exact AI-review bundle hashes</li>
+          <li class="pill">AI-review bundle hashes = exact</li>
+          <li class="pill">Materialized-final VersionIds/checksums = exact</li>
+          <li class="pill">Rosalind alias VersionIds = exact</li>
           <li class="pill">Cross-check/Phase 3 source-freeze scalars = exact</li>
           <li class="pill">AI-synthesis private summaries = exact</li>
           <li class="pill">Rosalind JSON counts = exact</li>
@@ -711,6 +714,10 @@
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materialized-final scalars</strong>
+              <span><code>materialize_frozen_artifacts.py</code> now requires frozen destinations to carry string, non-sentinel, whitespace-free VersionIds plus string checksum fields before exact local materialization can validate or install the recovered <code>materialized-final</code> tree.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact terminal/materializer custody scalars</strong>
               <span>Staged download validation now rejects boolean <code>ContentLength</code> values when comparing exact bytes, and deterministic report staging now rejects coerced SHA-256 and VersionId scalars in stage-provenance and exact-materialization receipts.</span>
             </li>
@@ -910,6 +917,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Rosalind alias VersionIds</strong>
+              <span><code>build_rosalind_hrd_packet.py</code> now rejects empty, sentinel, whitespace, or non-string Sequenza/scarHRD alias input VersionIds before building the Diana WGS Phase 3 fast Rosalind packet.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact source-freeze scalars</strong>
               <span><code>stage_hrd_crosscheck_report.py</code> now rejects non-string, sentinel, or whitespace-only download-verification VersionIds before staging scarHRD/SBS3 route packets, and <code>validate_phase3_fast_report_packets.py</code> now requires <code>validated_packet_count</code> to be an exact JSON integer before source-freeze handoff.</span>
@@ -1182,6 +1193,10 @@
 
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI-review bundle hashes</strong>
+              <span><code>stage_ai_review_inputs.py</code> now requires <code>bundle_manifest.json</code> SHA-256 fields to already be exact lowercase strings instead of lowercasing them before staging reviewer inputs.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact synthesis AI-review envelopes</strong>
               <span>Comparative HRD synthesis now rejects non-exact independent AI-review <code>validation.json</code>, <code>review_manifest.json</code>, and invocation envelopes before reviewer packets can feed the synthesis report.</span>
@@ -1520,6 +1535,37 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T17:50:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI-review bundle hashes:</strong>
+                <code>stage_ai_review_inputs.py</code> now requires
+                <code>bundle_manifest.json</code> SHA-256 fields to already be
+                exact lowercase strings instead of lowercasing them before
+                staging reviewer inputs.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T17:40:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact materialized-final scalars:</strong>
+                <code>materialize_frozen_artifacts.py</code> now requires
+                frozen destinations to carry string, non-sentinel,
+                whitespace-free VersionIds plus string checksum fields before
+                exact local materialization can validate or install the
+                recovered <code>materialized-final</code> tree.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T17:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact Rosalind alias VersionIds:</strong>
+                <code>build_rosalind_hrd_packet.py</code> now rejects empty,
+                sentinel, whitespace, or non-string Sequenza/scarHRD alias
+                input VersionIds before building the Diana WGS Phase 3 fast
+                Rosalind packet.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T17:20:00-07:00">Jul 19 · local</time>
               <span>

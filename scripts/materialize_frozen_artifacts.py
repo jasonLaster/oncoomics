@@ -246,12 +246,29 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
     return value
 
 
-def exact_checksums(value: dict[str, Any]) -> dict[str, str]:
-    return {
-        field: str(value[field])
-        for field in CHECKSUM_FIELDS
-        if str(value.get(field, "")).strip()
-    }
+def exact_version_id(value: Any) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.lower() in {"none", "null"}
+        or any(character.isspace() for character in value)
+    ):
+        raise ValueError("frozen destination lacks an exact VersionId")
+    return value
+
+
+def exact_checksums(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    checksums: dict[str, str] = {}
+    for field in CHECKSUM_FIELDS:
+        if field not in value:
+            continue
+        checksum = value[field]
+        if not isinstance(checksum, str) or not checksum.strip():
+            return {}
+        checksums[field] = checksum
+    return checksums
 
 
 def get_exact_object(
@@ -298,11 +315,9 @@ def validate_materialized(
     path: Path,
     expected_kms_key_arn: str,
 ) -> dict[str, Any]:
-    version_id = str(expected.get("version_id", ""))
+    version_id = exact_version_id(expected.get("version_id"))
     expected_bytes = expected.get("bytes")
     expected_checksums = expected.get("checksums")
-    if not version_id or version_id in {"null", "None"}:
-        raise ValueError("frozen destination lacks an exact VersionId")
     if type(expected_bytes) is not int or expected_bytes <= 0:
         raise ValueError("frozen destination lacks a positive byte count")
     if not isinstance(expected_checksums, dict) or not exact_checksums(expected_checksums):
@@ -311,7 +326,7 @@ def validate_materialized(
         raise ValueError("frozen destination checksum is not full-object")
     require_real_downloaded_file(path, "materialized object")
     checks = {
-        "version_id": str(response.get("VersionId", "")) == version_id,
+        "version_id": response.get("VersionId") == version_id,
         "content_length": INPUT_CONTRACT.exact_int(
             response.get("ContentLength"),
             expected_bytes,
@@ -385,6 +400,9 @@ def require_exact_final_freeze(
             raise ValueError("private freeze receipt object row is not exact")
         if relative in destination_by_relative:
             raise ValueError("duplicate final artifact freeze relative key")
+        exact_version_id(destination.get("version_id"))
+        if not exact_checksums(destination.get("checksums")):
+            raise ValueError("private freeze receipt source/destination is not exact")
         destination_by_relative[relative] = destination
 
     INPUT_CONTRACT.require_final_destination_inventory(freeze, destination_by_relative)
@@ -482,10 +500,20 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
             destination = raw_row.get("destination")
             if not isinstance(destination, dict):
                 raise ValueError(f"missing frozen destination: {relative}")
-            bucket = str(destination.get("bucket", ""))
-            key = str(destination.get("key", ""))
-            version_id = str(destination.get("version_id", ""))
-            if not bucket.startswith("diana-omics-private-results-") or not key:
+            bucket = destination.get("bucket")
+            key = destination.get("key")
+            version_id = exact_version_id(destination.get("version_id"))
+            if (
+                not isinstance(destination.get("checksums"), dict)
+                or not exact_checksums(destination.get("checksums"))
+            ):
+                raise ValueError("frozen destination lacks an exact S3 checksum")
+            if (
+                not isinstance(bucket, str)
+                or not bucket.startswith("diana-omics-private-results-")
+                or not isinstance(key, str)
+                or not key
+            ):
                 raise ValueError(f"unapproved frozen destination: {relative}")
             destination_prefix = str(freeze.get("destination_prefix", "")).rstrip("/") + "/"
             expected_uri_prefix = f"s3://{bucket}/"

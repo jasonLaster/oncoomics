@@ -177,6 +177,24 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse(self.output_root.exists())
         self.assertFalse(self.receipt.exists())
 
+    def test_rejects_non_lowercase_manifest_sha_before_creating_outputs(self) -> None:
+        manifest_path = self.bundle / "bundle_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["prompt_sha256"]["A"] = manifest["prompt_sha256"]["A"].upper()
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "AI review bundle manifest has malformed SHA-256 for reviewer-a.prompt.md",
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse(self.output_root.exists())
+        self.assertFalse(self.receipt.exists())
+
     def test_rejects_unbound_bundle_files_before_creating_outputs(self) -> None:
         (self.bundle / "unbound-scratch.json").write_text(
             "{}\n",

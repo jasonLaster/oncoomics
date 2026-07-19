@@ -911,10 +911,9 @@ def require_real_nonempty_file(path: Path, label: str) -> Path:
 
 
 def require_sha256(value: Any, label: str) -> str:
-    digest = str(value).lower()
-    if not HEX64.fullmatch(digest):
-        raise ValueError(f"{label} must be a lowercase SHA-256")
-    return digest
+    if not isinstance(value, str) or not HEX64.fullmatch(value):
+        raise ValueError(f"{label} must be a SHA-256 hex digest")
+    return value
 
 
 def require_json_nonnegative_int(value: Any, label: str) -> int:
@@ -927,6 +926,17 @@ def require_csv_nonnegative_int(value: Any, label: str) -> int:
     if not isinstance(value, str) or not value.isascii() or not value.isdecimal():
         raise ValueError(f"{label} must be a non-negative integer")
     return int(value)
+
+
+def require_version_id(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.lower() in {"none", "null"}
+        or any(character.isspace() for character in value)
+    ):
+        raise ValueError(f"{label} must be a non-empty VersionId string")
+    return value
 
 
 def is_exact_int(value: Any, expected: int) -> bool:
@@ -1311,13 +1321,13 @@ def phase3_fast_alias_source_summary(value: Any, label: str) -> dict[str, Any]:
     bytes_ = require_json_nonnegative_int(value.get("bytes"), f"{label} bytes")
     if bytes_ <= 0:
         raise ValueError(f"{label} bytes must be positive")
-    version_id = str(value.get("version_id", "")).strip()
-    if not version_id:
-        raise ValueError(f"{label} version_id is required")
     return {
         "bytes": bytes_,
         "sha256": require_sha256(value.get("sha256"), f"{label} sha256"),
-        "version_id": version_id,
+        "version_id": require_version_id(
+            value.get("version_id"),
+            f"{label} version_id",
+        ),
     }
 
 
@@ -2071,12 +2081,6 @@ def scan_generated_packet(paths: Sequence[Path], forbidden_tokens: Sequence[str]
         for path in paths:
             path.unlink(missing_ok=True)
         raise ValueError("Diana WGS generated-output identifier scan failed: " + "; ".join(findings))
-
-
-def require_sha256(value: Any, label: str) -> str:
-    if not isinstance(value, str) or not HEX64.fullmatch(value):
-        raise ValueError(f"{label} must be a SHA-256 hex digest")
-    return value
 
 
 def require_bound_packet_file(packet_dir: Path, name: str, digest: Any) -> None:

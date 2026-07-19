@@ -151,10 +151,9 @@ def resolve_real_bundle_dir(path: Path) -> Path:
 
 
 def require_sha(value: Any, label: str) -> str:
-    digest = str(value).lower()
-    if len(digest) != 64 or set(digest) - HEX64:
+    if not isinstance(value, str) or len(value) != 64 or set(value) - HEX64:
         raise ValueError(f"{label} is malformed")
-    return digest
+    return value
 
 
 def require_mode(path: Path, expected: int, label: str) -> None:

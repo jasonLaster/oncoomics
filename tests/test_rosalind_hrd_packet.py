@@ -1231,6 +1231,66 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     ).exists()
                 )
 
+    def test_diana_wgs_phase3_fast_packet_rejects_non_exact_alias_version_ids(self):
+        cases = (
+            ("empty", ""),
+            ("null", "null"),
+            ("none", "none"),
+            ("whitespace", "space separated"),
+            ("boolean", True),
+        )
+        for label, version_id in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                    output_root / "phase3_fast"
+                )
+                mutate_phase3_fast_crosscheck_plans(
+                    deterministic_root,
+                    lambda plans: plans["routes"]["sequenza_scarhrd"][
+                        "alias_input_contract"
+                    ]["artifacts"]["tumor_bam"].__setitem__(
+                        "version_id",
+                        version_id,
+                    ),
+                )
+
+                with (
+                    patch.object(
+                        packet,
+                        "path_from_root",
+                        lambda relative: output_root / relative,
+                    ),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(
+                                deterministic_root
+                            ),
+                            "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": (
+                                PHASE3_FAST_FORBIDDEN_TOKENS_JSON
+                            ),
+                        },
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "Sequenza tumor_bam version_id must be a non-empty VersionId string",
+                    ),
+                ):
+                    packet.write_packet(
+                        packet.PACKET_SPECS["diana_wgs"],
+                        "phase3-fast",
+                    )
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/phase3-fast/"
+                        "report_manifest.json"
+                    ).exists()
+                )
+
     def test_diana_wgs_phase3_fast_packet_requires_forbidden_token_inventory(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp)
