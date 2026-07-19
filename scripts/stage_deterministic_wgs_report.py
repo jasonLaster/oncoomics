@@ -167,6 +167,7 @@ EXPECTED_BATCH_WORKER_CHECKS: dict[str, bool] = {
     "live_hash_command": True,
     "live_freeze_command": True,
     "exact_version": True,
+    "exact_etag": True,
     "bytes": True,
     "sha256": True,
     "full_object_checksum": True,

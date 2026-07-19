@@ -44,6 +44,14 @@ assert PUBLISH_SPEC and PUBLISH_SPEC.loader
 PUBLISH = importlib.util.module_from_spec(PUBLISH_SPEC)
 PUBLISH_SPEC.loader.exec_module(PUBLISH)
 
+CAPTURE_SCRIPT = SCRIPT_DIR / "capture_batch_provenance.py"
+CAPTURE_SPEC = importlib.util.spec_from_file_location(
+    "capture_batch_provenance", CAPTURE_SCRIPT
+)
+assert CAPTURE_SPEC and CAPTURE_SPEC.loader
+CAPTURE = importlib.util.module_from_spec(CAPTURE_SPEC)
+CAPTURE_SPEC.loader.exec_module(CAPTURE)
+
 KMS_ARN = "arn:aws:kms:us-east-1:000000000000:key/00000000-0000-0000-0000-000000000000"
 RUN_ID = "synthetic-hrd-run"
 
@@ -134,6 +142,12 @@ def write_indexed_vcf(path: Path, records: list[str]) -> None:
 
 
 class StageDeterministicWgsReportInstallTests(unittest.TestCase):
+    def test_batch_worker_check_contract_matches_capture_provenance(self) -> None:
+        self.assertEqual(
+            REPORT_MODULE.EXPECTED_BATCH_WORKER_CHECKS,
+            CAPTURE.EXPECTED_BATCH_WORKER_CHECKS,
+        )
+
     def test_schema_versions_are_exact_json_integers(self) -> None:
         for value in (True, 1.0, "1", 2, None):
             with self.subTest(value=value):

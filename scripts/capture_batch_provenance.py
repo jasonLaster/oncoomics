@@ -142,6 +142,7 @@ EXPECTED_BATCH_WORKER_CHECKS = {
     "live_hash_command": True,
     "live_freeze_command": True,
     "exact_version": True,
+    "exact_etag": True,
     "bytes": True,
     "sha256": True,
     "full_object_checksum": True,
@@ -223,6 +224,17 @@ def require_version_id(value: Any, label: str) -> str:
         or any(character.isspace() for character in value)
     ):
         raise ValueError(f"{label} must be an exact S3 VersionId")
+    return value
+
+
+def require_s3_etag(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.lower() in {"none", "null"}
+        or any(character.isspace() for character in value)
+    ):
+        raise ValueError(f"{label} must be an exact S3 ETag")
     return value
 
 
@@ -1179,6 +1191,10 @@ def main() -> None:
         "exact_version": (
             worker_head.get("VersionId") == worker_get.get("VersionId") == worker_version
         ),
+        "exact_etag": require_s3_etag(
+            worker_head.get("ETag"), "executed-worker HEAD ETag"
+        )
+        == require_s3_etag(worker_get.get("ETag"), "executed-worker GET ETag"),
         "bytes": (
             exact_int(worker_head_size, worker_bytes)
             and exact_int(worker_get_size, worker_bytes)
@@ -1294,7 +1310,9 @@ def main() -> None:
             ),
             "bytes": worker_bytes,
             "sha256": worker_sha256,
-            "etag": str(worker_head.get("ETag", "")),
+            "etag": require_s3_etag(
+                worker_head.get("ETag"), "executed-worker HEAD ETag"
+            ),
             "last_modified": str(worker_head.get("LastModified", "")),
             "checksums": checksums(worker_head),
             "checksum_type": str(worker_head.get("ChecksumType", "")),

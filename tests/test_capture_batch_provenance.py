@@ -978,6 +978,7 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             MODULE.require_version_id("worker-version", "worker"),
             "worker-version",
         )
+        self.assertEqual(MODULE.require_s3_etag('"etag"', "worker ETag"), '"etag"')
         self.assertEqual(
             MODULE.require_sha256_hex(digest, "worker SHA-256"),
             digest,
@@ -1005,6 +1006,13 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 "exact S3 VersionId",
             ):
                 MODULE.require_version_id(value, "worker")
+
+        for value in (True, "", "null", "none", "has whitespace"):
+            with self.subTest(etag=value), self.assertRaisesRegex(
+                ValueError,
+                "exact S3 ETag",
+            ):
+                MODULE.require_s3_etag(value, "worker ETag")
 
         for value in (True, int(digest, 16), digest.upper(), "g" * 64):
             with self.subTest(sha256=value), self.assertRaisesRegex(
@@ -1093,8 +1101,12 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             "worker_receipt_upload_object.get('checksum_sha256_hex'",
             'worker_head.get("ChecksumSHA256"',
             "worker_head.get('ChecksumSHA256'",
+            'worker_head.get("ETag"',
+            "worker_head.get('ETag'",
             'worker_get.get("ChecksumSHA256"',
             "worker_get.get('ChecksumSHA256'",
+            'worker_get.get("ETag"',
+            "worker_get.get('ETag'",
             'receipt_upload_head.get("ChecksumSHA256"',
             "receipt_upload_head.get('ChecksumSHA256'",
             'worker_head_metadata.get("sha256"',

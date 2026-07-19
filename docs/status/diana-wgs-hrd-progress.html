@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact cross-check materializer ETags</li>
+          <li class="pill">Latest milestone = local exact executed-worker ETags</li>
+          <li class="pill">Executed-worker ETags = exact</li>
           <li class="pill">Cross-check materializer ETags = exact</li>
           <li class="pill">Stage-freeze ETags = exact</li>
           <li class="pill">Final-freeze ETags = exact</li>
@@ -798,6 +799,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact executed-worker ETags</strong>
+              <span>Terminal worker capture now exact-validates executed-worker HEAD/GET ETags, records the frozen worker ETag through the exact ETag guard, and mirrors <code>exact_etag</code> into deterministic staging so worker-check contract drift fails before deterministic, Rosalind, cross-check, AI synthesis, or reviewed-public report packets can trust worker custody.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact cross-check materializer ETags</strong>
               <span>Alias-only cross-check materialization now exact-validates source, upload, output-audit, and single-version history ETags, rejecting boolean, nullish, empty, sentinel, or whitespace-bearing values before materialized alias artifacts can feed the HRD input contract, deterministic staging, Rosalind packets, AI synthesis, or reviewed-public reports.</span>
@@ -1800,6 +1805,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T01:20:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact executed-worker ETags:</strong>
+                Terminal worker capture now binds HEAD/GET ETags through the
+                exact guard, and deterministic staging mirrors that
+                <code>exact_etag</code> worker-check contract.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T01:15:00-07:00">Jul 20 · local</time>
               <span>
