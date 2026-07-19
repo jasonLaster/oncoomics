@@ -450,6 +450,8 @@ def render(
         "",
         f"- Run: `{RUN_ID}`",
         f"- Subject alias: `{SUBJECT_ALIAS}`",
+        f"- Reviewer A model: `{REVIEWER_A[0]}/{REVIEWER_A[1]}`",
+        f"- Reviewer B model: `{REVIEWER_B[0]}/{REVIEWER_B[1]}`",
         "- Boundary: prepare one de-identified seven-method bundle, stage exact "
         "two-file reviewer inputs, validate two isolated model outputs, "
         "generate the comparative synthesis, then privately publish reviewer "

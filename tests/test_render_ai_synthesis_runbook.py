@@ -662,6 +662,16 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         self.assertIn(f"--output {catalog}", text)
         self.assertIn(f"--model-catalog-receipt {catalog}", text)
         self.assertIn("--attest-models-latest", text)
+        self.assertIn(f"Reviewer A model: `{MODULE.REVIEWER_A[0]}/{MODULE.REVIEWER_A[1]}`", text)
+        self.assertIn(f"Reviewer B model: `{MODULE.REVIEWER_B[0]}/{MODULE.REVIEWER_B[1]}`", text)
+        self.assertLess(
+            text.index(f"Reviewer A model: `{MODULE.REVIEWER_A[0]}/{MODULE.REVIEWER_A[1]}`"),
+            text.index("write_ai_model_catalog_receipt.py"),
+        )
+        self.assertLess(
+            text.index(f"Reviewer B model: `{MODULE.REVIEWER_B[0]}/{MODULE.REVIEWER_B[1]}`"),
+            text.index("write_ai_model_catalog_receipt.py"),
+        )
         self.assertLess(
             text.index("write_ai_model_catalog_receipt.py"),
             text.index("prepare_ai_review_run.py"),
