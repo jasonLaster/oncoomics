@@ -84,22 +84,40 @@ def require_real_downloaded_file(path: Path, label: str) -> None:
     require_real_local_file(path, label)
 
 
+def canonical_json_bytes(value: dict[str, Any]) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def require_installed_json(path: Path, expected_sha256: str, label: str) -> None:
+    require_real_local_file(path, label)
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"{label} mode is not 0600")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"{label} changed during write")
+
+
 def write_json_create_only(path: Path, value: dict[str, Any], label: str) -> None:
     require_safe_new_output_parent(path, label)
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = canonical_json_bytes(value)
+    expected_sha256 = hashlib.sha256(data).hexdigest()
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
-        os.fchmod(descriptor, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            descriptor = -1
-            json.dump(value, handle, indent=2, sort_keys=True)
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
+        try:
+            os.fchmod(descriptor, 0o600)
+            with os.fdopen(descriptor, "wb") as handle:
+                descriptor = -1
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            fsync_directory(path.parent)
+            require_installed_json(path, expected_sha256, label)
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
-    fsync_directory(path.parent)
 
 
 def run(command: list[str]) -> None:

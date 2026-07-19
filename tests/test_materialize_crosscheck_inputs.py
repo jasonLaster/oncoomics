@@ -208,8 +208,76 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "66c7c1388be2f37dfcc2144923d59bbb7d8c462d1bae1e81520d4a2df2f384e3",
+            "6d7dadb9604911fa0177ee151163c3a1faef257231b60c749f2063cdc396536d",
         )
+
+    def test_json_output_removes_partial_file_after_file_fsync_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "receipt.json"
+
+            with (
+                patch.object(
+                    module.os,
+                    "fsync",
+                    side_effect=OSError("synthetic file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic file fsync failure"),
+            ):
+                module.write_json_create_only(
+                    output,
+                    {"status": "partial"},
+                    "materialization receipt output",
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_json_output_removes_partial_file_after_directory_fsync_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "receipt.json"
+
+            with (
+                patch.object(
+                    module,
+                    "fsync_directory",
+                    side_effect=OSError("synthetic directory fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic directory fsync failure"),
+            ):
+                module.write_json_create_only(
+                    output,
+                    {"status": "partial"},
+                    "materialization receipt output",
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_json_output_rehashes_after_parent_fsync(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "receipt.json"
+            real_fsync_directory = module.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                patch.object(
+                    module,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materialization receipt output changed during write",
+                ),
+            ):
+                module.write_json_create_only(
+                    output,
+                    {"status": "passed"},
+                    "materialization receipt output",
+                )
+
+            self.assertFalse(output.exists())
 
     def test_upload_binds_local_sha256_in_object_metadata(self):
         uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
