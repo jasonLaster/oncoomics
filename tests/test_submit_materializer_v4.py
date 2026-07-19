@@ -1325,6 +1325,31 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                         MODULE.REGION,
                     )
 
+    def test_batch_pagination_rejects_malformed_next_token(self) -> None:
+        for value in (None, True):
+            with self.subTest(nextToken=value):
+                calls: list[tuple[str, ...]] = []
+
+                def aws(region: str, *arguments: str):
+                    self.assertEqual(region, MODULE.REGION)
+                    calls.append(arguments)
+                    return {"jobQueues": [], "nextToken": value}
+
+                with (
+                    mock.patch.object(MODULE, "aws_json", side_effect=aws),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "malformed nextToken",
+                    ),
+                ):
+                    MODULE.paginated_rows(
+                        MODULE.REGION,
+                        ["batch", "describe-job-queues"],
+                        "jobQueues",
+                    )
+
+                self.assertEqual(len(calls), 1)
+
     def test_dry_run_main_emits_exclusive_mode_0600_without_submit(self) -> None:
         args = self.args()
         argv = [

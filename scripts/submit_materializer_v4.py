@@ -950,9 +950,11 @@ def paginated_rows(
         if not isinstance(values, list) or any(not isinstance(value, dict) for value in values):
             raise ValueError(f"AWS pagination returned malformed {field}")
         rows.extend(values)
-        next_token = str(page.get("nextToken", ""))
-        if not next_token:
+        if "nextToken" not in page:
             return rows
+        next_token = page.get("nextToken")
+        if not isinstance(next_token, str) or not next_token:
+            raise ValueError("AWS pagination returned a malformed nextToken")
         if next_token in observed:
             raise ValueError("AWS pagination token loop detected")
         observed.add(next_token)
