@@ -688,6 +688,41 @@ class CustodyHandoffTests(unittest.TestCase):
             finalizer.EXPECTED_FINALIZED_CUSTODY_CHECKS,
             checker.EXPECTED_CUSTODY_CHECKS,
         )
+        self.assertEqual(
+            publisher.EXPECTED_FINALIZED_CUSTODY_CHECKS,
+            finalizer.EXPECTED_FINALIZED_CUSTODY_CHECKS,
+        )
+
+    def test_contract_publication_requires_exact_finalized_custody_checks(self):
+        publisher.require_finalized_custody(
+            {
+                "status": "passed",
+                "checks": dict(publisher.EXPECTED_FINALIZED_CUSTODY_CHECKS),
+            }
+        )
+
+        for label, mutate in (
+            ("missing", lambda checks: checks.pop("full_freeze_exactly_materialized")),
+            ("unexpected", lambda checks: checks.__setitem__("future_check", True)),
+            (
+                "failed",
+                lambda checks: checks.__setitem__(
+                    "sbs96_independently_rederived_from_final_pass_vcf",
+                    False,
+                ),
+            ),
+        ):
+            with self.subTest(label=label):
+                checks = dict(publisher.EXPECTED_FINALIZED_CUSTODY_CHECKS)
+                mutate(checks)
+
+                with self.assertRaisesRegex(
+                    SystemExit,
+                    "lacks passed custody evidence",
+                ):
+                    publisher.require_finalized_custody(
+                        {"status": "passed", "checks": checks}
+                    )
 
     def test_finalizer_rejects_crosscheck_source_not_in_exact_freeze(self):
         fixture = CustodyFixture()

@@ -30,6 +30,13 @@ EXPECTED_CONTRACT_ANCHOR_CHECKS: dict[str, bool] = {
     "exact_kms": True,
     "single_create_only_version": True,
 }
+EXPECTED_FINALIZED_CUSTODY_CHECKS: dict[str, bool] = {
+    "successful_execution_freeze_bound": True,
+    "full_freeze_exactly_materialized": True,
+    "crosscheck_sources_match_exact_freeze": True,
+    "alias_only_outputs_have_single_create_only_versions": True,
+    "sbs96_independently_rederived_from_final_pass_vcf": True,
+}
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -317,6 +324,15 @@ def require_contract_anchor_checks(checks: dict[str, bool]) -> None:
         raise ValueError(f"contract publication verification failed: {checks}")
 
 
+def require_finalized_custody(custody: Any) -> None:
+    if (
+        not isinstance(custody, dict)
+        or custody.get("status") != "passed"
+        or custody.get("checks") != EXPECTED_FINALIZED_CUSTODY_CHECKS
+    ):
+        raise SystemExit("Fail-closed: finalized contract lacks passed custody evidence")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--contract", required=True, type=Path)
@@ -334,15 +350,7 @@ def main() -> int:
     checked = validate(contract)
     if checked.get("overall_status") != "ready":
         raise SystemExit("Fail-closed: finalized contract is not ready")
-    custody = contract.get("custody")
-    if (
-        not isinstance(custody, dict)
-        or custody.get("status") != "passed"
-        or not isinstance(custody.get("checks"), dict)
-        or not custody["checks"]
-        or any(value is not True for value in custody["checks"].values())
-    ):
-        raise SystemExit("Fail-closed: finalized contract lacks passed custody evidence")
+    require_finalized_custody(contract.get("custody"))
     if contract.get("kms_key_arn") != args.kms_key_arn:
         raise SystemExit("Fail-closed: publication KMS key differs from contract")
 
