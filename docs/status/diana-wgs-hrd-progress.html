@@ -307,11 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>1263f80e1115b59303bd61302d920f548dd66d23</strong>.
-          The latest work is exact report-tree download hardening:
-          <code>download_exact_report_tree.py</code> now requires exact live
-          history and object-download maps before materializing exact-version
-          route reports.
+          <strong>983addbcf7aa21cf8ba6ca4ec9ddaa42ff2ad35a</strong>.
+          The latest work is exact HRD route-staging replay hardening:
+          <code>stage_hrd_crosscheck_report.py</code> now requires exact live
+          history, per-object download maps, and non-empty version IDs before
+          compacting executable HRD route replays.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 1263f80</li>
+          <li class="pill">Latest hardening = 983addb</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -401,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 1263f80</strong>
-              <span>Exact report-tree downloads now reject missing, unexpected, or failed live-history and object-download maps before materializing route reports.</span>
+              <strong>Preserve 983addb</strong>
+              <span>HRD route staging now rejects missing, unexpected, or failed replay check maps and missing VersionIds before compacting executable route replays.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +450,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>983addb Require exact replay checks for HRD route staging:</strong>
+                <code>stage_hrd_crosscheck_report.py</code> now requires
+                <code>download_exact_report_tree.py</code>'s
+                <code>live_history_checks</code>, exact per-object download
+                check maps, and non-empty <code>version_id</code>s before
+                compacting executable HRD route replays. The staging verifier
+                rejects missing, unexpected, or failed live-history and object
+                check maps instead of accepting broad all-true replay payloads,
+                and <code>test_stage_hrd_crosscheck_report.py</code> covers
+                those map failures plus missing VersionId rejection.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
