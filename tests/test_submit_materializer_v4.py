@@ -715,6 +715,24 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
 
         aws.assert_not_called()
 
+    def test_final_source_version_ids_must_be_strings_before_aws(self) -> None:
+        final_freeze = json.loads(self.final_freeze.read_text(encoding="utf-8"))
+        final_freeze["objects"][0]["destination"]["version_id"] = True
+        final_freeze["destination_inventory"][0]["version_id"] = True
+        self._write(self.final_freeze, final_freeze)
+
+        materialization = json.loads(
+            self.exact_materialization.read_text(encoding="utf-8")
+        )
+        materialization["objects"][0]["version_id"] = True
+        self._write(self.exact_materialization, materialization)
+
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(ValueError, "final freeze row is not exact"):
+                MODULE.preflight(self.args())
+
+        aws.assert_not_called()
+
     def test_rejects_final_freeze_below_symlinked_parent_before_aws(self) -> None:
         real_parent = self.root / "real-inputs"
         real_parent.mkdir()
@@ -791,6 +809,24 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                         MODULE.preflight(self.args())
 
                 aws.assert_not_called()
+
+    def test_reference_version_ids_must_be_strings_before_aws(self) -> None:
+        freeze = json.loads(self.reference_freeze.read_text(encoding="utf-8"))
+        freeze["objects"][0]["destination"]["version_id"] = True
+        self._write(self.reference_freeze, freeze)
+
+        sha_receipt = json.loads(self.reference_sha.read_text(encoding="utf-8"))
+        sha_receipt["objects"][0]["version_id"] = True
+        self._write(self.reference_sha, sha_receipt)
+
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(
+                ValueError,
+                "reference freeze destination is incomplete",
+            ):
+                MODULE.preflight(self.args())
+
+        aws.assert_not_called()
 
     def test_registration_hash_must_bind_exact_definition(self) -> None:
         altered = self.root / "definition.json"

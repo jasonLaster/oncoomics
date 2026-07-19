@@ -277,8 +277,11 @@ def expected_command_checks() -> set[str]:
 
 
 def valid_version(value: Any) -> bool:
-    text = str(value)
-    return bool(VERSION_ID.fullmatch(text) and text.lower() not in {"none", "null"})
+    return (
+        isinstance(value, str)
+        and VERSION_ID.fullmatch(value) is not None
+        and value.lower() not in {"none", "null"}
+    )
 
 
 def valid_sha(value: Any) -> bool:
