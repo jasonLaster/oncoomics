@@ -89,7 +89,19 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def require_real_hash_input(path: Path) -> None:
+    label = f"{path.name} SHA-256 input"
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent must not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent must be a directory: {parent}")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
 def sha256(path: Path) -> str:
+    require_real_hash_input(path)
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 

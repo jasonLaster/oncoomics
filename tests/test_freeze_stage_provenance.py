@@ -859,6 +859,35 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             self.assertFalse(path.exists())
             self.assertEqual(list(path.parent.glob(".receipt.json.*.tmp")), [])
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            real_input = root / "real-stage-receipt.json"
+            linked_input = root / "stage-receipt-link.json"
+            real_input.write_text("{}\n", encoding="utf-8")
+            linked_input.symlink_to(real_input)
+
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            (real_parent / "stage-receipt.json").write_text("{}\n", encoding="utf-8")
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            cases = (
+                (
+                    linked_input,
+                    "stage-receipt-link.json SHA-256 input must be a real file",
+                ),
+                (
+                    linked_parent / "stage-receipt.json",
+                    "stage-receipt.json SHA-256 input parent must not be a symlink",
+                ),
+            )
+            for path, message in cases:
+                with self.subTest(path=path):
+                    with self.assertRaisesRegex(ValueError, message):
+                        MODULE.sha256(path)
+
     def test_atomic_writer_rejects_output_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             root = Path(value)
