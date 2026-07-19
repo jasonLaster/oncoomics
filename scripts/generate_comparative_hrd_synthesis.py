@@ -694,8 +694,11 @@ def render_report(
                 "",
                 "### Independent AI reviewer {0}".format(reviewer),
                 "",
-                "Pinned latest-model contract: `{0}/{1}`. The output remained bound to the same AI bundle and an independent invocation.".format(
-                    markdown_text(model["provider"]), markdown_text(model["model_id"])
+                "Pinned latest-model contract: `{0}/{1}`, catalog-verified at `{2}`. "
+                "The output remained bound to the same AI bundle and an independent invocation.".format(
+                    markdown_text(model["provider"]),
+                    markdown_text(model["model_id"]),
+                    markdown_text(model["catalog_verified_at"]),
                 ),
                 "",
             ]

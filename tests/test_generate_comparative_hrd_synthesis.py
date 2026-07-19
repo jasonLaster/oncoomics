@@ -929,6 +929,16 @@ class GenerateSynthesisTests(unittest.TestCase):
             self.assertIn("## Unresolved observations", report)
             self.assertIn("## Authorized conclusion", report)
             self.assertIn("remains `no_call`", report)
+            self.assertIn(
+                "Pinned latest-model contract: `synthetic-provider-a/latest-model-a`, "
+                "catalog-verified at `2026-07-17T00:00:00+00:00`.",
+                report,
+            )
+            self.assertIn(
+                "Pinned latest-model contract: `synthetic-provider-b/latest-model-b`, "
+                "catalog-verified at `2026-07-17T00:00:00+00:00`.",
+                report,
+            )
             manifest = json.loads((fixture.output_dir / "report_manifest.json").read_text())
             self.assertEqual(manifest["schema_version"], 1)
             self.assertEqual(manifest["authorized_hrd_state"], "no_call")
