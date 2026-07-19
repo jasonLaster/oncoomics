@@ -64,13 +64,33 @@ def inventory_sha256(inventory_id: str = INVENTORY_ID) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def require_exact_methods(
+    values: Sequence[Any],
+    expected: Sequence[str],
+    label: str,
+    description: str,
+) -> list[str]:
+    observed = list(values)
+    if any(type(value) is not str for value in observed):
+        raise ValueError(
+            f"{label} must equal the pinned {description} in exact order; "
+            f"expected={list(expected)!r} observed={observed!r}"
+        )
+    return observed
+
+
 def require_pinned_methods(
-    values: Sequence[str],
+    values: Sequence[Any],
     label: str,
     inventory_id: str = INVENTORY_ID,
 ) -> list[str]:
-    observed = [str(value) for value in values]
     expected = list(required_method_ids(inventory_id))
+    observed = require_exact_methods(
+        values,
+        expected,
+        label,
+        f"seven-method inventory {inventory_id}",
+    )
     if observed != expected:
         raise ValueError(
             f"{label} must equal the pinned seven-method inventory {inventory_id} "
@@ -79,9 +99,14 @@ def require_pinned_methods(
     return observed
 
 
-def require_report_methods(values: Sequence[str], label: str) -> list[str]:
-    observed = [str(value) for value in values]
+def require_report_methods(values: Sequence[Any], label: str) -> list[str]:
     expected = list(REPORT_METHOD_IDS)
+    observed = require_exact_methods(
+        values,
+        expected,
+        label,
+        "report inventory",
+    )
     if observed != expected:
         raise ValueError(f"{label} must equal the pinned report inventory in exact order; expected={expected!r} observed={observed!r}")
     return observed
@@ -96,11 +121,14 @@ def require_inventory_binding(
     if inventory_id is None:
         if not isinstance(payload, dict):
             raise ValueError(f"{label} is not a report inventory object")
-        inventory_id = str(payload.get("inventory_id", ""))
+        inventory_id = payload.get("inventory_id")
+        if type(inventory_id) is not str:
+            raise ValueError(f"{label} inventory_id is not an exact string")
         required_method_ids(inventory_id)
     if (
         payload != inventory_payload(inventory_id)
-        or str(digest).lower() != inventory_sha256(inventory_id)
+        or type(digest) is not str
+        or digest != inventory_sha256(inventory_id)
     ):
         raise ValueError(
             f"{label} differs from the pinned seven-method inventory {inventory_id}"

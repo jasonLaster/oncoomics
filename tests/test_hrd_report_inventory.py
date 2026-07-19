@@ -34,6 +34,17 @@ STAGE = importlib.util.module_from_spec(STAGE_SPEC)
 STAGE_SPEC.loader.exec_module(STAGE)
 
 
+class Stringy:
+    def __init__(self, value: str):
+        self.value = value
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return f"Stringy({self.value!r})"
+
+
 class HrdReportInventoryTests(unittest.TestCase):
     def test_publisher_contracts_follow_pinned_method_inventory(self) -> None:
         self.assertEqual(
@@ -82,6 +93,46 @@ class HrdReportInventoryTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "differs"):
             INVENTORY.require_inventory_binding(payload, "0" * 64, "test binding")
+
+    def test_inventory_guards_reject_stringy_non_strings(self) -> None:
+        pinned_methods = list(INVENTORY.REQUIRED_METHOD_IDS)
+        pinned_methods[0] = Stringy(INVENTORY.REQUIRED_METHOD_IDS[0])
+        with self.assertRaisesRegex(ValueError, "exact order"):
+            INVENTORY.require_pinned_methods(pinned_methods, "test inventory")
+
+        report_methods = list(INVENTORY.REPORT_METHOD_IDS)
+        report_methods[0] = Stringy(INVENTORY.REPORT_METHOD_IDS[0])
+        with self.assertRaisesRegex(ValueError, "exact order"):
+            INVENTORY.require_report_methods(report_methods, "report inventory")
+
+        payload = INVENTORY.inventory_payload()
+        with self.assertRaisesRegex(ValueError, "differs"):
+            INVENTORY.require_inventory_binding(
+                payload,
+                Stringy(INVENTORY.inventory_sha256()),
+                "test binding",
+            )
+
+    def test_inventory_binding_requires_exact_lowercase_digest(self) -> None:
+        payload = INVENTORY.inventory_payload()
+        with self.assertRaisesRegex(ValueError, "differs"):
+            INVENTORY.require_inventory_binding(
+                payload,
+                INVENTORY.inventory_sha256().upper(),
+                "test binding",
+            )
+
+    def test_inventory_binding_requires_exact_string_inventory_id(self) -> None:
+        payload = INVENTORY.inventory_payload()
+        payload["inventory_id"] = Stringy(INVENTORY.INVENTORY_ID)
+
+        with self.assertRaisesRegex(ValueError, "inventory_id"):
+            INVENTORY.require_inventory_binding(
+                payload,
+                INVENTORY.inventory_sha256(),
+                "test binding",
+                inventory_id=None,
+            )
 
     def test_hcc1395_known_answer_inventory_is_distinct_and_exact(self) -> None:
         inventory_id = INVENTORY.HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID
