@@ -408,6 +408,60 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
         self.assertEqual(raw_schema_version_comparisons, [])
 
+    def test_sha256_file_rejects_symlinked_leaf(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_source = root / "real-source.json"
+            source_link = root / "report_manifest.json"
+            real_source.write_text("{}\n", encoding="utf-8")
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report_manifest.json SHA-256 input must be a regular "
+                "non-symlink file",
+            ):
+                packet.sha256_file(source_link)
+
+    def test_sha256_file_rejects_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_sources = root / "real-sources"
+            linked_sources = root / "linked-sources"
+            real_sources.mkdir()
+            (real_sources / "report_manifest.json").write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+            linked_sources.symlink_to(real_sources, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report_manifest.json SHA-256 input parent may not be a symlink",
+            ):
+                packet.sha256_file(linked_sources / "report_manifest.json")
+
+    def test_artifact_index_rejects_symlinked_present_artifact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_source = root / "real-source.json"
+            source_link = root / "source.json"
+            real_source.write_text("{}\n", encoding="utf-8")
+            source_link.symlink_to(real_source)
+
+            with (
+                patch.dict(
+                    "os.environ",
+                    {"ROSALIND_HRD_ARTIFACT_ROOT": str(root)},
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "source.json SHA-256 input must be a regular "
+                    "non-symlink file",
+                ),
+            ):
+                packet.artifact_index(("source.json",))
+
     def test_packet_file_writes_are_create_only_and_fsynced(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -2249,6 +2303,39 @@ class RosalindHrdPacketTest(unittest.TestCase):
             ):
                 packet.copy_diana_wgs_packet_file(source, destination)
 
+            self.assertFalse(destination.exists())
+
+    def test_diana_wgs_packet_file_copy_rejects_source_symlink_swap(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            relocated = root / "relocated.txt"
+            destination = root / "report.md"
+            source.write_text("packet\n", encoding="utf-8")
+            real_fsync_directory = packet.fsync_directory
+
+            def swap_source_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                relocated.write_text("packet\n", encoding="utf-8")
+                source.unlink()
+                source.symlink_to(relocated)
+
+            with (
+                patch.object(
+                    packet,
+                    "fsync_directory",
+                    side_effect=swap_source_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "source.txt SHA-256 input must be a regular "
+                    "non-symlink file",
+                ),
+            ):
+                packet.copy_diana_wgs_packet_file(source, destination)
+
+            self.assertTrue(relocated.exists())
+            self.assertTrue(source.is_symlink())
             self.assertFalse(destination.exists())
 
     def test_diana_wgs_packet_cleans_current_attempt_after_install_failure(self):

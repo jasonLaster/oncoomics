@@ -331,6 +331,7 @@ def artifact_index(paths: Sequence[str], *, logical_paths_only: bool = False) ->
 
 
 def sha256_file(path: Path) -> str:
+    require_real_hash_input(path)
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -975,6 +976,15 @@ def require_real_nonempty_file(path: Path, label: str) -> Path:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size <= 0:
         raise ValueError(f"{label} must be a non-empty regular non-symlink file")
+    return path
+
+
+def require_real_hash_input(path: Path) -> Path:
+    require_no_symlinked_ancestors(path, f"{path.name} SHA-256 input")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(
+            f"{path.name} SHA-256 input must be a regular non-symlink file"
+        )
     return path
 
 
