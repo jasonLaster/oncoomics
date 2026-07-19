@@ -50,6 +50,15 @@ EXPECTED_RECEIPT_CHECKS = {
     "all_outputs_create_only": True,
     "destination_exact_single_version_history": True,
 }
+EXPECTED_RECEIPT_ANCHOR_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_create_only_version": True,
+}
 
 
 def now() -> str:
@@ -841,15 +850,10 @@ def main() -> int:
             "receipt_uri": receipt_uri,
             "receipt_version_id": receipt_upload["version_id"],
             "checks": {
-                "version_exact": True,
-                "bytes_exact": True,
-                "sha256_exact": True,
+                **EXPECTED_RECEIPT_ANCHOR_CHECKS,
                 "sha256_checksum_exact": bool(
                     receipt_upload.get("checksums", {}).get("ChecksumSHA256")
                 ),
-                "metadata_sha256_exact": True,
-                "exact_kms": True,
-                "single_create_only_version": True,
             },
         }
         if not all(anchor["checks"].values()):

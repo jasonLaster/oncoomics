@@ -748,15 +748,65 @@ class CustodyHandoffTests(unittest.TestCase):
                     "receipt_bytes": receipt.stat().st_size,
                     "receipt_uri": f"s3://{BUCKET}/receipts/{finalizer.sha256(receipt)}.json",
                     "receipt_version_id": "receipt-version",
-                    "checks": {"exact": True},
+                    "checks": dict(finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS),
                 },
             )
-            finalizer.validate_anchor(receipt, anchor, "unit")
+            finalizer.validate_anchor(
+                receipt,
+                anchor,
+                "unit",
+                finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
+            )
             value = json.loads(anchor.read_text())
             value["receipt_version_id"] = ""
             write_json(anchor, value)
             with self.assertRaisesRegex(ValueError, "VersionId"):
-                finalizer.validate_anchor(receipt, anchor, "unit")
+                finalizer.validate_anchor(
+                    receipt,
+                    anchor,
+                    "unit",
+                    finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
+                )
+
+    def test_anchor_validation_rejects_inexact_anchor_checks(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "receipt.json"
+            write_json(receipt, {"status": "passed"})
+            anchor = root / "anchor.json"
+            write_json(
+                anchor,
+                {
+                    "schema_version": 1,
+                    "status": "passed",
+                    "receipt_sha256": finalizer.sha256(receipt),
+                    "receipt_bytes": receipt.stat().st_size,
+                    "receipt_uri": f"s3://{BUCKET}/receipts/{finalizer.sha256(receipt)}.json",
+                    "receipt_version_id": "receipt-version",
+                    "checks": {
+                        **finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
+                        "future_check": True,
+                    },
+                },
+            )
+
+            with self.assertRaisesRegex(ValueError, "exact custody checks"):
+                finalizer.validate_anchor(
+                    receipt,
+                    anchor,
+                    "unit",
+                    finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
+                )
+
+    def test_finalizer_anchor_check_inventory_matches_producers(self):
+        self.assertEqual(
+            set(finalizer.EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS),
+            submitter.EXPECTED_ANCHOR_CHECKS,
+        )
+        self.assertEqual(
+            finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
+            crosscheck_materializer.EXPECTED_RECEIPT_ANCHOR_CHECKS,
+        )
 
     def test_anchor_validation_rejects_symlinked_input_json(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -767,7 +817,12 @@ class CustodyHandoffTests(unittest.TestCase):
             linked_receipt.symlink_to(receipt)
 
             with self.assertRaisesRegex(ValueError, "receipt must be a real JSON file"):
-                finalizer.validate_anchor(linked_receipt, receipt, "unit")
+                finalizer.validate_anchor(
+                    linked_receipt,
+                    receipt,
+                    "unit",
+                    finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
+                )
 
     def test_anchor_validation_rejects_input_json_below_symlinked_parent(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -784,6 +839,7 @@ class CustodyHandoffTests(unittest.TestCase):
                     linked_parent / "receipt.json",
                     receipt,
                     "unit",
+                    finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
                 )
 
     def test_contract_check_rejects_symlinked_contract_without_writing_readiness(self):

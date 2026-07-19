@@ -34,6 +34,14 @@ SOURCE_ROLES = {
     "matrix": "sbs96_matrix",
 }
 REFERENCE_ROLES = {"fasta": "fasta", "fai": "fai"}
+EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "sha256_checksum_exact": True,
+    "exact_kms": True,
+    "single_create_only_version": True,
+}
 EXPECTED_FINAL_FREEZE_CHECKS = {
     "execution_receipt_bound": True,
     "complete_source_inventory_unchanged": True,
@@ -73,6 +81,15 @@ EXPECTED_CROSSCHECK_OUTPUT_CHECKS = {
     "metadata_sha256_exact": True,
     "exact_kms": True,
     "single_version_history": True,
+}
+EXPECTED_CROSSCHECK_ANCHOR_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_create_only_version": True,
 }
 
 
@@ -155,7 +172,10 @@ def require_exact_true(value: Any, expected: dict[str, bool], label: str) -> Non
 
 
 def validate_anchor(
-    receipt_path: Path, anchor_path: Path, label: str
+    receipt_path: Path,
+    anchor_path: Path,
+    label: str,
+    expected_checks: dict[str, bool],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     receipt = load_object(receipt_path, f"{label} receipt")
     anchor = load_object(anchor_path, f"{label} anchor")
@@ -171,7 +191,7 @@ def validate_anchor(
     ):
         raise ValueError(f"{label} anchor does not bind the local receipt")
     require_version(anchor.get("receipt_version_id"), f"{label} anchor")
-    require_all_true(anchor.get("checks"), f"{label} anchor")
+    require_exact_true(anchor.get("checks"), expected_checks, f"{label} anchor")
     return receipt, anchor
 
 
@@ -516,12 +536,16 @@ def main() -> int:
     args = parser.parse_args()
 
     freeze, freeze_anchor = validate_anchor(
-        args.final_freeze_receipt, args.final_freeze_anchor, "final freeze"
+        args.final_freeze_receipt,
+        args.final_freeze_anchor,
+        "final freeze",
+        EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS,
     )
     crosscheck, crosscheck_anchor = validate_anchor(
         args.crosscheck_materialization_receipt,
         args.crosscheck_materialization_anchor,
         "cross-check materialization",
+        EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
     )
     result = finalize(
         load_object(args.pending_contract, "pending contract"),

@@ -208,7 +208,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "4b04018a4563a33350b3696d9d45e7b1e2c9ab76978f87596ef6e9bed4d3e1d0",
+            "12159a656974d1b7722cf03a3a9936170dc5b72805f37748e3370f126930cf63",
         )
 
     def test_json_output_removes_partial_file_after_file_fsync_failure(self):
