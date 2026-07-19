@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local input-contract dry-run checklist</li>
+          <li class="pill">Latest milestone = local deterministic stager hash guard</li>
+          <li class="pill">Deterministic stager hash guard = real inputs</li>
           <li class="pill">Input-contract checklist = explicit</li>
           <li class="pill">Freeze dry-run checklists = explicit</li>
           <li class="pill">Materializer dry-run checklist = explicit</li>
@@ -876,6 +877,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real deterministic report hash inputs</strong>
+              <span><code>stage_deterministic_wgs_report.py</code> now passes its generic SHA-256 helper through the same nonempty real-file/no-symlink leaf/no-symlink parent guard used by its JSON/CSV readers before deterministic receipt, materialization, staged support, and packet-copy hashes can be trusted.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require real materializer input files</strong>
               <span>Alias-only final-input materializer preflight and submit now reject symlinked local JSON receipt and payload leaf paths before reading final, materialized, reference, script-anchor, registration, definition, or dry-run request inputs.</span>
@@ -2170,6 +2175,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:10:27-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real deterministic report hash inputs:</strong>
+                <code>stage_deterministic_wgs_report.py</code> now guards
+                generic SHA-256 inputs with the JSON/CSV nonempty real-file,
+                no-symlink leaf, and no-symlink parent checks before
+                deterministic receipts, materialization, staged support, and
+                packet-copy hashes can feed terminal report staging.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T14:06:57-07:00">Jul 19 · local</time>
               <span>

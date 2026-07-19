@@ -284,6 +284,7 @@ def load_csv(path: Path, delimiter: str = ",") -> list[dict[str, str]]:
 
 
 def sha256(path: Path) -> str:
+    require_real_input_path(path, f"{path.name} SHA-256 input")
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):

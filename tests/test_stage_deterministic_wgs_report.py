@@ -898,6 +898,37 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             ):
                 REPORT_MODULE.load_json(path)
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-input-"
+        ) as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.json"
+            linked_source = root / "receipt.json"
+            real_source.write_text('{"status":"passed"}\n', encoding="utf-8")
+            linked_source.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "receipt.json SHA-256 input must be a non-empty real file",
+            ):
+                REPORT_MODULE.sha256(linked_source)
+
+            linked_parent = root / "linked-inputs"
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            (real_parent / "receipt.json").write_text(
+                '{"status":"passed"}\n',
+                encoding="utf-8",
+            )
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "receipt.json SHA-256 input parent may not be a symlink",
+            ):
+                REPORT_MODULE.sha256(linked_parent / "receipt.json")
+
     def test_load_csv_rejects_input_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-input-"
