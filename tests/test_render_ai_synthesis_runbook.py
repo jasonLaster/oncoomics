@@ -286,6 +286,38 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 dry_run_receipt=root / "ai-reviewer-a.private.dry.json",
             )
 
+    def test_reviewer_output_checklists_are_concrete(self) -> None:
+        text = render()
+        review_root = (
+            f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}"
+        )
+
+        for reviewer, suffix in (("A", "a"), ("B", "b")):
+            input_dir = f"{review_root}/reviewer-inputs/reviewer-{suffix}-input"
+            review_dir = f"{review_root}/reviewer-{suffix}"
+            review = text.index(
+                f"Review Reviewer {reviewer} output in `{review_dir}` "
+                "before validation:"
+            )
+            validate = text.index(
+                f"--reviewer {reviewer} --review-dir {review_dir}",
+                review,
+            )
+            checklist = text[review:validate]
+
+            self.assertIn(f"`{input_dir}/review_bundle.json`", checklist)
+            self.assertIn(f"`{input_dir}/reviewer-{suffix}.prompt.md`", checklist)
+            self.assertIn("did not receive the other reviewer's", checklist)
+            self.assertIn("`report.md`, `claims.csv`, and `review_manifest.json`", checklist)
+            self.assertIn("catalog-pinned model", checklist)
+            self.assertIn("unique invocation", checklist)
+            self.assertIn("independence attestation", checklist)
+            self.assertIn("allowed states", checklist)
+            self.assertIn("authorized ceiling", checklist)
+            self.assertIn("no raw-data paths", checklist)
+            self.assertIn("private identifiers", checklist)
+            self.assertIn("`validate_ai_review.py`", checklist)
+
     def test_renderer_hands_forbidden_tokens_file_to_ai_chain(self) -> None:
         text = MODULE.render(
             Path("/repo"),

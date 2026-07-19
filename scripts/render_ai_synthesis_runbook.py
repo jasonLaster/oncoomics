@@ -383,6 +383,42 @@ def comparative_synthesis_command(
     ]
 
 
+def reviewer_input_paths(
+    reviewer_inputs: Path,
+    reviewer: str,
+) -> tuple[Path, Path]:
+    reviewer_label = reviewer.lower()
+    input_dir = reviewer_inputs / f"reviewer-{reviewer_label}-input"
+    return input_dir / "review_bundle.json", input_dir / f"reviewer-{reviewer_label}.prompt.md"
+
+
+def reviewer_output_checklist(
+    reviewer: str,
+    review_bundle: Path,
+    reviewer_prompt: Path,
+    review_dir: Path,
+) -> list[str]:
+    return [
+        f"Review Reviewer {reviewer} output in `{review_dir}` before validation:",
+        "",
+        f"- [ ] The isolated session received only `{review_bundle}` and "
+        f"`{reviewer_prompt}`.",
+        "- [ ] The reviewer did not receive the other reviewer's prompt, "
+        "output directory, context, or validation result.",
+        f"- [ ] `{review_dir}` contains only `report.md`, `claims.csv`, and "
+        "`review_manifest.json` before validation.",
+        "- [ ] `review_manifest.json` records the correct reviewer ID, the "
+        "catalog-pinned model, a unique invocation, and the independence "
+        "attestation.",
+        "- [ ] `claims.csv` preserves source evidence IDs with allowed states "
+        "and never proposes an HRD state beyond the authorized ceiling.",
+        "- [ ] `report.md` is source-grounded and includes no raw-data paths, "
+        "private identifiers, or clinical-actionability escalation.",
+        "- [ ] Run the matching `validate_ai_review.py` command below before "
+        "synthesis or finalization.",
+    ]
+
+
 def reviewed_publication_runbook_command(
     scripts: Path,
     root: Path,
@@ -576,15 +612,27 @@ def render(
             "## 3. Invoke reviewers in isolated sessions",
             "",
             f"- Reviewer A receives only "
-            f"`{reviewer_inputs / 'reviewer-a-input/review_bundle.json'}` and "
-            f"`{reviewer_inputs / 'reviewer-a-input/reviewer-a.prompt.md'}`; "
+            f"`{reviewer_input_paths(reviewer_inputs, 'A')[0]}` and "
+            f"`{reviewer_input_paths(reviewer_inputs, 'A')[1]}`; "
             f"write only `report.md`, `claims.csv`, and `review_manifest.json` "
             f"into `{reviewer_a}`.",
             f"- Reviewer B receives only "
-            f"`{reviewer_inputs / 'reviewer-b-input/review_bundle.json'}` and "
-            f"`{reviewer_inputs / 'reviewer-b-input/reviewer-b.prompt.md'}`; "
+            f"`{reviewer_input_paths(reviewer_inputs, 'B')[0]}` and "
+            f"`{reviewer_input_paths(reviewer_inputs, 'B')[1]}`; "
             f"write only `report.md`, `claims.csv`, and `review_manifest.json` "
             f"into `{reviewer_b}`.",
+            "",
+            *reviewer_output_checklist(
+                "A",
+                *reviewer_input_paths(reviewer_inputs, "A"),
+                reviewer_a,
+            ),
+            "",
+            *reviewer_output_checklist(
+                "B",
+                *reviewer_input_paths(reviewer_inputs, "B"),
+                reviewer_b,
+            ),
             "",
             "## 4. Validate isolated reviewer outputs",
             "",

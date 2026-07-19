@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local reviewed-public dry-run checklists</li>
+          <li class="pill">Latest milestone = local isolated-reviewer checklists</li>
+          <li class="pill">Isolated-reviewer checklists = explicit</li>
           <li class="pill">Reviewed-public checklists = explicit</li>
           <li class="pill">Executable dry-run checklists = explicit</li>
           <li class="pill">Executable review stops = explicit</li>
@@ -1623,6 +1624,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require isolated-reviewer output checklists</strong>
+              <span>AI synthesis runbook rendering now inserts concrete Reviewer A and Reviewer B output checklists before validation, making the two-file input limit, no cross-reviewer context, exact three-file outputs, model/invocation/independence metadata, allowed-state and authorized-ceiling preservation, and source-grounded/no-escalation review explicit before synthesis or finalization.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real AI model-catalog receipt hashes</strong>
               <span>AI model-catalog receipt writing now rehashes create-only model-catalog receipts through a symlink-aware local SHA-256 helper before exact AI/freeform model provenance can feed source-freeze and synthesis runbooks.</span>
             </li>
@@ -2140,6 +2145,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T13:55:38-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Add isolated-reviewer output checklists:</strong>
+                AI synthesis runbook rendering now adds Reviewer A and Reviewer B
+                output checklists covering two-file inputs, no cross-reviewer
+                context, exact three-file outputs, model/invocation/independence
+                metadata, allowed states, the authorized ceiling, and
+                source-grounded/no-escalation review before validation.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T13:53:52-07:00">Jul 19 · local</time>
               <span>
