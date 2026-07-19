@@ -24,9 +24,23 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                 {
                     "schema_version": 1,
                     "status": "passed",
+                    "generated_at": "2026-07-19T00:00:00+00:00",
                     "run_id": "synthetic-run",
                     "batch_job_id": "synthetic-job",
+                    "batch_status": "SUCCEEDED",
+                    "execution_receipt": {
+                        "path": str(root / "terminal.execution.succeeded.json"),
+                        "sha256": "a" * 64,
+                    },
+                    "source_prefix": (
+                        "s3://diana-omics-work-test/runs/diana-hrd/"
+                        "synthetic-run/private-results/final/artifacts/"
+                    ),
                     "kms_key_arn": kms,
+                    "script_sha256": "b" * 64,
+                    "destination_bucket_versioning": "Enabled",
+                    "destination_initial_version_history_count": 0,
+                    "receipt_anchor_strategy": "sha256_content_addressed_create_only",
                     "destination_prefix": (
                         "s3://diana-omics-private-results-test/"
                         "runs/subject01/synthetic-run/deterministic/artifacts/"
@@ -36,6 +50,18 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                         {
                             "relative_key": "variants/final.vcf.gz",
                             "status": "passed",
+                            "source": {
+                                "bucket": "diana-omics-work-test",
+                                "key": (
+                                    "runs/diana-hrd/synthetic-run/private-results/"
+                                    "final/artifacts/variants/final.vcf.gz"
+                                ),
+                                "version_id": "source-version",
+                                "bytes": 5,
+                                "etag": "source-etag",
+                                "checksums": {"ChecksumCRC64NVME": "checksum"},
+                                "checksum_type": "FULL_OBJECT",
+                            },
                             "destination": {
                                 "bucket": "diana-omics-private-results-test",
                                 "key": (
@@ -44,11 +70,69 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                                 ),
                                 "version_id": "exact-version",
                                 "bytes": 5,
+                                "etag": "destination-etag",
                                 "checksums": {"ChecksumCRC64NVME": "checksum"},
                                 "checksum_type": "FULL_OBJECT",
+                                "server_side_encryption": "aws:kms",
+                                "kms_key_id": kms,
+                            },
+                            "checks": {
+                                "listed_inventory_stable": True,
+                                "source_stable": True,
+                                "size_matches": True,
+                                "common_checksum_matches": True,
+                                "exact_kms_matches": True,
+                                "destination_versioned": True,
+                                "copy_response_version_matches": True,
                             },
                         }
                     ],
+                    "initial_inventory_identity": [
+                        {
+                            "relative_key": "variants/final.vcf.gz",
+                            "key": (
+                                "runs/diana-hrd/synthetic-run/private-results/"
+                                "final/artifacts/variants/final.vcf.gz"
+                            ),
+                            "bytes": 5,
+                            "etag": "source-etag",
+                            "version_id": "source-version",
+                        }
+                    ],
+                    "final_inventory_identity": [
+                        {
+                            "relative_key": "variants/final.vcf.gz",
+                            "key": (
+                                "runs/diana-hrd/synthetic-run/private-results/"
+                                "final/artifacts/variants/final.vcf.gz"
+                            ),
+                            "bytes": 5,
+                            "etag": "source-etag",
+                            "version_id": "source-version",
+                        }
+                    ],
+                    "destination_inventory": [
+                        {
+                            "relative_key": "variants/final.vcf.gz",
+                            "key": (
+                                "runs/subject01/synthetic-run/deterministic/"
+                                "artifacts/variants/final.vcf.gz"
+                            ),
+                            "version_id": "exact-version",
+                            "bytes": 5,
+                            "etag": "destination-etag",
+                            "checksums": {"ChecksumCRC64NVME": "checksum"},
+                            "checksum_type": "FULL_OBJECT",
+                            "kms_key_id": kms,
+                        }
+                    ],
+                    "checks": {
+                        "execution_receipt_bound": True,
+                        "complete_source_inventory_unchanged": True,
+                        "destination_exact_history_and_receipt_match": True,
+                    },
+                    "completed_at": "2026-07-19T00:00:01+00:00",
+                    "passed_count": 1,
                 },
                 indent=2,
                 sort_keys=True,
@@ -181,6 +265,62 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             self.assertEqual(payload["passed_count"], 1)
             self.assertEqual(stat.S_IMODE(receipt.stat().st_mode), 0o600)
             self.assertFalse((root / ".materialized.staging").exists())
+
+    def test_rejects_stale_final_freeze_receipt_before_download(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            base = json.loads(freeze.read_text(encoding="utf-8"))
+
+            for label, mutate in (
+                (
+                    "extra-top-level",
+                    lambda receipt: receipt.__setitem__("legacy_note", "accepted"),
+                ),
+                (
+                    "failed-check",
+                    lambda receipt: receipt["checks"].__setitem__(
+                        "destination_exact_history_and_receipt_match", False
+                    ),
+                ),
+                (
+                    "missing-row-checks",
+                    lambda receipt: receipt["objects"][0].pop("checks"),
+                ),
+                (
+                    "extra-destination",
+                    lambda receipt: receipt["objects"][0]["destination"].__setitem__(
+                        "legacy_note", "accepted"
+                    ),
+                ),
+            ):
+                with self.subTest(label=label):
+                    candidate = json.loads(json.dumps(base))
+                    mutate(candidate)
+                    freeze.write_text(
+                        json.dumps(candidate, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                    output = root / f"{label}-materialized"
+                    receipt = root / f"{label}-materialization.json"
+
+                    with (
+                        patch.object(
+                            MODULE,
+                            "get_exact_object",
+                            side_effect=AssertionError("AWS called"),
+                        ) as get_exact,
+                        self.assertRaisesRegex(
+                            SystemExit,
+                            "private freeze receipt.*not exact",
+                        ),
+                    ):
+                        MODULE.main(self.args(freeze, output, receipt, kms))
+
+                    get_exact.assert_not_called()
+                    self.assertFalse(output.exists())
+                    self.assertFalse(receipt.exists())
 
     def test_rejects_unexpected_staging_child_before_local_cutover(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

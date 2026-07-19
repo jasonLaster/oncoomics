@@ -19,6 +19,8 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+import finalize_input_contract as INPUT_CONTRACT
+
 CHECKSUM_FIELDS = (
     "ChecksumCRC64NVME",
     "ChecksumSHA256",
@@ -26,15 +28,7 @@ CHECKSUM_FIELDS = (
     "ChecksumCRC32C",
     "ChecksumCRC32",
 )
-EXPECTED_MATERIALIZATION_CHECKS = {
-    "version_id": True,
-    "content_length": True,
-    "local_bytes": True,
-    "checksums": True,
-    "checksum_type": True,
-    "sse": True,
-    "kms": True,
-}
+EXPECTED_MATERIALIZATION_CHECKS = INPUT_CONTRACT.EXPECTED_MATERIALIZATION_CHECKS
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -335,6 +329,53 @@ def validate_materialized(
     }
 
 
+def require_exact_final_freeze(
+    freeze: dict[str, Any], expected_kms_key_arn: str
+) -> list[dict[str, Any]]:
+    rows = freeze.get("objects")
+    if (
+        set(freeze) != INPUT_CONTRACT.EXPECTED_FINAL_FREEZE_KEYS
+        or freeze.get("schema_version") != 1
+        or freeze.get("status") != "passed"
+        or freeze.get("batch_status") != "SUCCEEDED"
+        or freeze.get("kms_key_arn") != expected_kms_key_arn
+        or freeze.get("destination_bucket_versioning") != "Enabled"
+        or freeze.get("destination_initial_version_history_count") != 0
+        or freeze.get("receipt_anchor_strategy")
+        != "sha256_content_addressed_create_only"
+        or not isinstance(rows, list)
+        or not rows
+        or len(rows) != int(freeze.get("object_count", -1))
+        or len(rows) != int(freeze.get("passed_count", -1))
+        or freeze.get("initial_inventory_identity")
+        != freeze.get("final_inventory_identity")
+        or freeze.get("checks") != INPUT_CONTRACT.EXPECTED_FINAL_FREEZE_CHECKS
+    ):
+        raise ValueError("private freeze receipt is incomplete or not exact")
+
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or set(row) != INPUT_CONTRACT.EXPECTED_FINAL_ROW_KEYS
+            or row.get("status") != "passed"
+            or row.get("checks") != INPUT_CONTRACT.EXPECTED_FINAL_ROW_CHECKS
+        ):
+            raise ValueError("private freeze receipt object row is not exact")
+        source = row.get("source")
+        destination = row.get("destination")
+        if (
+            not isinstance(source, dict)
+            or set(source) != INPUT_CONTRACT.EXPECTED_FINAL_SOURCE_KEYS
+            or not isinstance(destination, dict)
+            or set(destination) != INPUT_CONTRACT.EXPECTED_FINAL_DESTINATION_KEYS
+            or destination.get("server_side_encryption") != "aws:kms"
+            or destination.get("kms_key_id") != expected_kms_key_arn
+        ):
+            raise ValueError("private freeze receipt source/destination is not exact")
+
+    return rows
+
+
 def materialize(args: argparse.Namespace) -> dict[str, Any]:
     output = resolve_new_output(args.output_dir, "materialization output")
     receipt_output = resolve_new_output(args.receipt_output, "materialization receipt")
@@ -342,16 +383,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("materialization receipt must be outside the artifact tree")
 
     freeze = load_object(args.freeze_receipt, "freeze receipt")
-    rows = freeze.get("objects")
-    if (
-        freeze.get("schema_version") != 1
-        or freeze.get("status") != "passed"
-        or freeze.get("kms_key_arn") != args.expected_kms_key_arn
-        or not isinstance(rows, list)
-        or not rows
-        or len(rows) != int(freeze.get("object_count", -1))
-    ):
-        raise ValueError("private freeze receipt is incomplete or not passed")
+    rows = require_exact_final_freeze(freeze, args.expected_kms_key_arn)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     staging = output.with_name(f".{output.name}.staging")
