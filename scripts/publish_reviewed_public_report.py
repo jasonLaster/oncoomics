@@ -157,6 +157,17 @@ PRIVATE_RECEIPT_OBJECT_CHECKS = {
     "kms": True,
     "metadata_sha256": True,
 }
+PRIVATE_RECEIPT_APPLY_CHECKS = {
+    "packet_inventory_exact": True,
+    "packet_manifest_no_call_boundary": True,
+    "packet_forbidden_token_scan": True,
+    "dry_run_receipt": True,
+    "destination_initially_empty": True,
+    "destination_sse_kms": True,
+    "destination_full_object_sha256": True,
+    "destination_non_null_versions": True,
+    "destination_exact_one_version_no_delete_history": True,
+}
 PUBLIC_DESTINATION_OBJECT_CHECKS = {
     "version_exact": True,
     "bytes_exact": True,
@@ -469,9 +480,11 @@ def validate_private_receipt(
         method_id, str(receipt.get("destination_prefix", ""))
     )
     rows = receipt.get("objects")
+    checks = receipt.get("checks")
     if (
         receipt.get("schema_version") != 1
         or receipt.get("status") != "passed"
+        or receipt.get("apply") is not True
         or receipt.get("subject_alias") != SUBJECT_ALIAS
         or receipt.get("run_id") != RUN_ID
         or receipt.get("method_id") != method_id
@@ -481,6 +494,7 @@ def validate_private_receipt(
         or receipt.get("passed_count") != len(expected)
         or not isinstance(rows, list)
         or len(rows) != len(expected)
+        or checks != PRIVATE_RECEIPT_APPLY_CHECKS
     ):
         raise ValueError("private publication receipt contract is not exact and passed")
 

@@ -115,6 +115,7 @@ class Fixture:
         receipt = {
             "schema_version": 1,
             "status": "passed",
+            "apply": True,
             "subject_alias": MODULE.SUBJECT_ALIAS,
             "run_id": MODULE.RUN_ID,
             "method_id": self.method_id,
@@ -125,6 +126,7 @@ class Fixture:
             "object_count": len(rows),
             "passed_count": len(rows),
             "objects": rows,
+            "checks": dict(MODULE.PRIVATE_RECEIPT_APPLY_CHECKS),
         }
         self.receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
 
@@ -726,6 +728,45 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 )
 
                 with self.assertRaisesRegex(ValueError, "object is not exact"):
+                    MODULE.validate_private_receipt(
+                        fixture.receipt_path,
+                        fixture.method_id,
+                    )
+
+    def test_private_receipt_top_level_apply_checks_must_be_exact(self) -> None:
+        cases = (
+            ("non-apply receipt", lambda receipt: receipt.update({"apply": False})),
+            (
+                "missing dry-run binding",
+                lambda receipt: receipt["checks"].pop("dry_run_receipt"),
+            ),
+            (
+                "failed final history check",
+                lambda receipt: receipt["checks"].__setitem__(
+                    "destination_exact_one_version_no_delete_history",
+                    False,
+                ),
+            ),
+            (
+                "unexpected late check",
+                lambda receipt: receipt["checks"].__setitem__(
+                    "unexpected_late_check",
+                    True,
+                ),
+            ),
+        )
+
+        for label, mutate in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                receipt = json.loads(fixture.receipt_path.read_text())
+                mutate(receipt)
+                fixture.receipt_path.write_text(
+                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(ValueError, "not exact and passed"):
                     MODULE.validate_private_receipt(
                         fixture.receipt_path,
                         fixture.method_id,

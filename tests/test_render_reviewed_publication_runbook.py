@@ -69,6 +69,7 @@ def write_receipts(root: Path) -> list[Path]:
         receipt = {
             "schema_version": 1,
             "status": "passed",
+            "apply": True,
             "subject_alias": PUBLISH.SUBJECT_ALIAS,
             "run_id": PUBLISH.RUN_ID,
             "method_id": method_id,
@@ -79,6 +80,7 @@ def write_receipts(root: Path) -> list[Path]:
             "object_count": len(expected),
             "passed_count": len(expected),
             "objects": rows,
+            "checks": dict(PUBLISH.PRIVATE_RECEIPT_APPLY_CHECKS),
         }
         path = receipt_root / f"{method_id}.json"
         path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
