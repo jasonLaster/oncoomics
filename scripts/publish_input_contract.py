@@ -108,6 +108,19 @@ def require_version_id(value: Any, label: str) -> str:
     return value
 
 
+def require_next_version_history_markers(page: dict[str, Any]) -> tuple[str, str]:
+    key_marker = page.get("NextKeyMarker")
+    version_marker = page.get("NextVersionIdMarker")
+    if (
+        not isinstance(key_marker, str)
+        or not isinstance(version_marker, str)
+        or not key_marker
+        or not version_marker
+    ):
+        raise ValueError("truncated S3 history omitted its next key/version markers")
+    return key_marker, version_marker
+
+
 def aws_json(arguments: list[str], region: str) -> dict[str, Any]:
     value = json.loads(
         subprocess.check_output(
@@ -141,10 +154,7 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
             rows.extend({**row, "history_kind": kind} for row in values)
         if page.get("IsTruncated") is not True:
             return rows
-        key_marker = str(page.get("NextKeyMarker", ""))
-        version_marker = str(page.get("NextVersionIdMarker", ""))
-        if not key_marker or not version_marker:
-            raise ValueError("truncated S3 history omitted its next key/version markers")
+        key_marker, version_marker = require_next_version_history_markers(page)
         marker = (key_marker, version_marker)
         if marker in seen_markers:
             raise ValueError("S3 version history pagination did not advance")

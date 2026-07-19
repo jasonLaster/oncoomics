@@ -2755,15 +2755,22 @@ class CustodyHandoffTests(unittest.TestCase):
         )
 
     def test_contract_version_history_rejects_missing_or_stalled_markers(self):
-        missing_version = {
-            "IsTruncated": True,
-            "Versions": [],
-            "DeleteMarkers": [],
-            "NextKeyMarker": "prefix/contract.json",
-        }
-        with patch.object(publisher, "aws_json", return_value=missing_version):
-            with self.assertRaisesRegex(ValueError, "key/version markers"):
-                publisher.version_history(BUCKET, "prefix/", "us-east-1")
+        cases = (
+            {"NextKeyMarker": "prefix/contract.json"},
+            {"NextKeyMarker": True, "NextVersionIdMarker": "v1"},
+            {"NextKeyMarker": "prefix/contract.json", "NextVersionIdMarker": True},
+        )
+        for case in cases:
+            with self.subTest(case=case):
+                malformed = {
+                    "IsTruncated": True,
+                    "Versions": [],
+                    "DeleteMarkers": [],
+                    **case,
+                }
+                with patch.object(publisher, "aws_json", return_value=malformed):
+                    with self.assertRaisesRegex(ValueError, "key/version markers"):
+                        publisher.version_history(BUCKET, "prefix/", "us-east-1")
 
         stalled = {
             "IsTruncated": True,
