@@ -607,6 +607,51 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             MODULE.destination_matches_receipt(source, destination, receipt)
         )
 
+    def test_destination_snapshot_receipt_match_requires_exact_bytes(self) -> None:
+        source = [{"relative_key": "a", "bytes": 10}]
+        destination = [
+            {
+                "relative_key": "a",
+                "key": "prefix/a",
+                "version_id": "v1",
+                "bytes": 10,
+            }
+        ]
+        receipt = [
+            {
+                "relative_key": "a",
+                "status": "passed",
+                "destination": {"key": "prefix/a", "version_id": "v1"},
+            }
+        ]
+        self.assertTrue(
+            MODULE.destination_matches_receipt(source, destination, receipt)
+        )
+        for source_bytes, destination_bytes in (
+            (True, 10),
+            (10, 10.0),
+            ("10", 10),
+            (10, "10"),
+            (-1, -1),
+            (None, 10),
+            (10, None),
+        ):
+            with self.subTest(
+                source_bytes=source_bytes,
+                destination_bytes=destination_bytes,
+            ):
+                mutated_source = [{**source[0], "bytes": source_bytes}]
+                mutated_destination = [
+                    {**destination[0], "bytes": destination_bytes}
+                ]
+                self.assertFalse(
+                    MODULE.destination_matches_receipt(
+                        mutated_source,
+                        mutated_destination,
+                        receipt,
+                    )
+                )
+
     def test_destination_snapshot_content_length_must_be_exact_integer(self) -> None:
         history = [
             {

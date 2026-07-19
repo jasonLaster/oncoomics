@@ -95,9 +95,16 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
 
 
 def exact_s3_size(value: Any) -> int:
-    if type(value) is not int:
+    if type(value) is not int or value < 0:
         raise RuntimeError("S3 object size must be an exact integer")
     return value
+
+
+def same_exact_s3_size(left: Any, right: Any) -> bool:
+    try:
+        return exact_s3_size(left) == exact_s3_size(right)
+    except RuntimeError:
+        return False
 
 
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
@@ -644,8 +651,10 @@ def destination_matches_receipt(
         if not isinstance(receipt_destination, dict):
             return False
         if (
-            int(source_row.get("bytes", -1))
-            != int(destination_row.get("bytes", -2))
+            not same_exact_s3_size(
+                source_row.get("bytes"),
+                destination_row.get("bytes"),
+            )
             or destination_row.get("version_id")
             != receipt_destination.get("version_id")
             or destination_row.get("key") != receipt_destination.get("key")
