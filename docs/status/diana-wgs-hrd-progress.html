@@ -307,13 +307,12 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>53a6cf2f3b030a4e5d0ea2502b48501b5be77fc5</strong>.
-          The latest work removes the final inline all-true receipt guard from
-          <code>stage_deterministic_wgs_report.py</code>: duplicate
-          final-freeze row validation now requires
-          <code>EXPECTED_FINAL_FREEZE_ROW_CHECKS</code>, matching
-          <code>validate_final_freeze_provenance()</code>, before frozen
-          terminal rows can support the staged WGS report packet.
+          <strong>ec5626b235be7c404159836ea0086cf5e36f2764</strong>.
+          The latest work is materializer terminal capture hardening:
+          <code>capture_materializer_terminal.py</code> now requires exact
+          receipt-upload, materializer-receipt, and receipt-anchor producer
+          maps before a terminal cross-check materialization receipt can be
+          captured.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -321,7 +320,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 53a6cf2</li>
+          <li class="pill">Latest hardening = ec5626b</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -403,8 +402,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 53a6cf2</strong>
-              <span>Deterministic report staging now rejects missing, unexpected, or failed inline final-freeze row checks before frozen terminal rows can support a WGS report packet.</span>
+              <strong>Preserve ec5626b</strong>
+              <span>Terminal materializer capture now rejects missing, unexpected, or failed receipt-upload, materializer-receipt, and receipt-anchor check maps before cross-check materialization receipts can be trusted.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -452,6 +451,22 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>ec5626b Require exact materializer terminal checks:</strong>
+                <code>capture_materializer_terminal.py</code> now defines
+                <code>EXPECTED_RECEIPT_UPLOAD_CHECKS</code>,
+                <code>EXPECTED_MATERIALIZER_RECEIPT_CHECKS</code>, and
+                <code>EXPECTED_RECEIPT_ANCHOR_CHECKS</code> for the producer
+                maps around content-addressed materialization receipts instead
+                of accepting arbitrary all-true maps. The capture path now
+                requires exact logged receipt uploads, materializer receipt
+                checks, and receipt-anchor checks; tests reject missing,
+                unexpected, or failed keys in all three maps, including
+                content-addressed malformed receipt fixtures.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
