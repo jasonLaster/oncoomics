@@ -307,11 +307,12 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>6be592d985924abf38448759f31e95fce8e4d684</strong>.
-          The latest work is exact materializer terminal-capture hardening:
-          <code>capture_materializer_terminal.py</code> now requires exact
-          Batch identity, logged receipt-anchor, and exact receipt-download
-          maps before post-materializer terminal receipt capture can pass.
+          <strong>2f0317fefa414cb06375b1505f30c45e42ed5ed0</strong>.
+          The latest work is exact route terminal-capture hardening:
+          <code>capture_route_terminal.py</code> now requires exact Batch
+          identity, logged publication-anchor, output-inventory, and exact
+          route receipt-download maps before route terminal receipt capture can
+          pass.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +320,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 6be592d</li>
+          <li class="pill">Latest hardening = 2f0317f</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -332,8 +333,8 @@
           <ol class="tracks" aria-label="Operational progress by lane">
             <li class="track" style="--tone: var(--done)">
               <strong>Source custody hardening</strong>
-              <span>99.7%</span>
-              <div class="bar" aria-hidden="true" style="--pct: 99.7%"><span></span></div>
+              <span>99.8%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 99.8%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--blocked)">
               <strong>Deterministic terminal outputs</strong>
@@ -401,8 +402,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 6be592d</strong>
-              <span>Post-materializer terminal capture now rejects missing, unexpected, or failed Batch identity, logged receipt-anchor, and exact receipt-download maps.</span>
+              <strong>Preserve 2f0317f</strong>
+              <span>Route terminal capture now rejects missing, unexpected, or failed Batch identity, logged publication-anchor, output-inventory, and exact receipt-download maps.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +451,30 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>2f0317f Require exact route terminal capture checks:</strong>
+                <code>capture_route_terminal.py</code> now defines
+                <code>EXPECTED_BATCH_IDENTITY_CHECKS</code>,
+                <code>EXPECTED_LOGGED_PUBLICATION_ANCHOR_CHECKS</code>,
+                <code>EXPECTED_OUTPUT_INVENTORY_CHECKS</code>, and
+                <code>EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS</code>; adds
+                <code>check_map_mismatches()</code> and
+                <code>require_exact_checks()</code>; and routes
+                <code>validate_job()</code>,
+                <code>validate_logged_anchor()</code>,
+                <code>validate_output_rows()</code>, and
+                <code>validate_exact_receipt()</code> through exact
+                missing, unexpected, and failed-key validation.
+                <code>output_inventory_exact</code> now requires the exact
+                expected output-inventory map, and
+                <code>test_capture_route_terminal.py</code> covers missing,
+                unexpected, and failed outer maps across Batch identity, logged
+                publication anchors, output inventory, and exact route receipt
+                downloads.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
