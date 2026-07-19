@@ -216,6 +216,33 @@ class Phase3FastStagedInputsTests(unittest.TestCase):
                     with self.assertRaisesRegex(staged.ManifestError, "staging_plan"):
                         staged.load_manifest_from_environment()
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_plan = root / "staging-plan.json"
+            linked_plan = root / "staging-plan-link.json"
+            write_json(real_plan, materialized_staging_plan(root))
+            linked_plan.symlink_to(real_plan)
+
+            with self.assertRaisesRegex(
+                staged.ManifestError,
+                "staging-plan-link\\.json SHA-256 input is missing or a symlink",
+            ):
+                staged._sha256_path(linked_plan)
+
+            real_parent = root / "real-inputs"
+            linked_parent = root / "linked-inputs"
+            real_parent.mkdir()
+            parent_plan = real_parent / "staging-plan.json"
+            write_json(parent_plan, materialized_staging_plan(root))
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                staged.ManifestError,
+                "staging-plan\\.json SHA-256 input parent may not be a symlink",
+            ):
+                staged._sha256_path(linked_parent / "staging-plan.json")
+
     def test_manifest_output_rejects_symlinked_parent(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

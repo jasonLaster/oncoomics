@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import subprocess
@@ -14,7 +13,7 @@ from ...utils import ensure_parent
 from .render_phase3_fast_cache_manifest import BAM_CACHE_ARTIFACTS, REFERENCE_CACHE_ARTIFACTS
 from .render_phase3_fast_input_manifest import CALLER_RESOURCES, ManifestError, _require_s3_uri
 from .render_phase3_fast_staging_plan import EXPECTED_STAGED_OBJECTS
-from .safe_json_output import read_real_json, require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path, sha256_real_file
 from .verify_phase3_fast_staged_inputs import build_phase3_fast_staged_inputs_manifest
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staging_plan.json"
@@ -148,11 +147,7 @@ class AwsCliS3GetObjectClient:
 
 
 def _sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_real_file(path, ManifestError)
 
 
 def _require_safe_output_path(path: Path, label: str) -> None:

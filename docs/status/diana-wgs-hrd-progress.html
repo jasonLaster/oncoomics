@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local rederived Rosalind source artifacts</li>
+          <li class="pill">Latest milestone = local real Phase 3 staged-input hashes</li>
+          <li class="pill">Phase 3 staged-input hashes = real</li>
           <li class="pill">Rosalind source artifacts = rederived</li>
           <li class="pill">Rosalind deterministic hashes = carried</li>
           <li class="pill">AI synthesis hashes = carried</li>
@@ -357,6 +358,7 @@
           <li class="pill">AI validation CSV fields = exact</li>
           <li class="pill">AI synthesis CSV fields = exact</li>
           <li class="pill">Phase 3 manifest hash guards = real inputs</li>
+          <li class="pill">Phase 3 staged-input hashes = real</li>
           <li class="pill">Input-contract checker hash guard = real inputs</li>
           <li class="pill">Materializer submit hash guard = real inputs</li>
           <li class="pill">HCC known-answer stack hash guard = real inputs</li>
@@ -798,6 +800,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real Phase 3 staged-input hashes</strong>
+              <span>Phase 3 staged-input handoff hashing now uses the shared real-file SHA-256 helper for <code>cache_manifest.json</code> and <code>staging_plan.json</code>, rejecting symlinked hash leaves or symlinked hash parents before the next fast receipt can bind them.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require real Phase 3 manifest hash inputs</strong>
               <span><code>render_phase3_fast_input_manifest.py</code> and <code>render_phase3_fast_replication_plan.py</code> now pass source-receipt and input-manifest SHA-256 reads through no-symlink leaf, no-symlink parent, and real-file guards before selected fast-rerun input and replication manifests can bind local custody.</span>
@@ -2248,6 +2254,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:59:45-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real Phase 3 staged-input hashes:</strong>
+                Phase 3 staged-input handoff hashing now uses the shared
+                real-file SHA-256 helper for
+                <code>cache_manifest.json</code> and
+                <code>staging_plan.json</code>, rejecting symlinked hash leaves
+                or symlinked hash parents before the next fast receipt can
+                bind them.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T14:55:54-07:00">Jul 19 · local</time>
               <span>
