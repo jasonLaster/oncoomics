@@ -477,8 +477,7 @@ def validate_report_manifest_support(
         ):
             raise ValueError(f"malformed support path for {method}: {relative}")
 
-        expected_sha256 = str(digest).lower()
-        if not HEX64.fullmatch(expected_sha256):
+        if not isinstance(digest, str) or not HEX64.fullmatch(digest):
             raise ValueError(f"malformed support SHA-256 for {method}: {relative}")
 
         try:
@@ -490,7 +489,7 @@ def validate_report_manifest_support(
             raise ValueError(
                 f"support hash mismatch for {method}: {relative}: {error}"
             ) from error
-        if sha256(support_path) != expected_sha256:
+        if sha256(support_path) != digest:
             raise ValueError(f"support hash mismatch for {method}: {relative}")
         bound_support_files.add(relative)
 
@@ -904,8 +903,8 @@ def main() -> None:
             raise SystemExit(
                 f"Fail-closed: invalid classification QC state for {method}"
             )
-        report_hash = str(manifest.get("report_sha256", "")).lower()
-        if not HEX64.fullmatch(report_hash):
+        report_hash = manifest.get("report_sha256")
+        if not isinstance(report_hash, str) or not HEX64.fullmatch(report_hash):
             raise SystemExit(f"Fail-closed: missing report SHA-256 for {method}")
 
         report_path = path.parent / "report.md"
@@ -931,7 +930,8 @@ def main() -> None:
 
         source_hashes = manifest.get("source_sha256", {})
         if not isinstance(source_hashes, dict) or not source_hashes or not all(
-            HEX64.fullmatch(str(value).lower()) for value in source_hashes.values()
+            isinstance(value, str) and HEX64.fullmatch(value)
+            for value in source_hashes.values()
         ):
             raise SystemExit(f"Fail-closed: malformed source hashes for {method}")
         try:
@@ -953,7 +953,7 @@ def main() -> None:
                 "classification_qc_status": classification_qc,
                 "report_sha256": report_hash,
                 "source_artifact_sha256": sorted(
-                    str(value).lower() for value in source_hashes.values()
+                    source_hashes.values()
                 ),
                 "review_summary": summary,
             }

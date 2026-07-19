@@ -813,6 +813,55 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 self.assertIn(message, built.stderr)
                 self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
+    def test_rejects_non_lowercase_source_packet_hashes(self) -> None:
+        cases = (
+            (
+                "report",
+                lambda fixture: fixture.update_manifest(
+                    0,
+                    {
+                        "report_sha256": BUILD.sha256(
+                            fixture.manifests[0].parent / "report.md"
+                        ).upper(),
+                    },
+                ),
+                "missing report SHA-256",
+            ),
+            (
+                "support",
+                lambda fixture: fixture.update_manifest(
+                    0,
+                    {
+                        "support_sha256": {
+                            "support.json": BUILD.sha256(
+                                fixture.manifests[0].parent / "support.json"
+                            ).upper(),
+                        },
+                    },
+                ),
+                "malformed support SHA-256",
+            ),
+            (
+                "source",
+                lambda fixture: fixture.update_manifest(
+                    0,
+                    {"source_sha256": {"safe_summary": "A" * 64}},
+                ),
+                "malformed source hashes",
+            ),
+        )
+
+        for name, mutate, message in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                fixture = AiReviewBundleFixture(Path(temporary))
+                mutate(fixture)
+
+                built = fixture.run()
+
+                self.assertNotEqual(built.returncode, 0)
+                self.assertIn(message, built.stderr)
+                self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
     def test_rejects_inexact_source_packet_report_manifest_envelope(self) -> None:
         cases = (
             ("extra_legacy_key", {"legacy_support": {}}, {}),
