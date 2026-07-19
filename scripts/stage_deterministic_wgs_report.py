@@ -608,20 +608,22 @@ def summary_version_id(value: Any) -> str:
 def s3_checksums(value: Any) -> dict[str, str]:
     if not isinstance(value, dict):
         return {}
-    return {
-        key: str(raw)
-        for key, raw in value.items()
-        if key in S3_CHECKSUM_FIELDS and str(raw).strip()
-    }
+    checksums: dict[str, str] = {}
+    for key, raw in value.items():
+        if key not in S3_CHECKSUM_FIELDS:
+            continue
+        if not isinstance(raw, str) or not raw.strip():
+            return {}
+        checksums[key] = raw
+    return checksums
 
 
 def s3_full_object_sha256_matches(value: Any, digest: Any) -> bool:
-    text = str(digest)
-    if not valid_sha256(text) or not isinstance(value, dict):
+    if not valid_sha256(digest) or not isinstance(value, dict):
         return False
     return (
         value.get("ChecksumType") == "FULL_OBJECT"
-        and value.get("ChecksumSHA256") == checksum_sha256(text)
+        and value.get("ChecksumSHA256") == checksum_sha256(digest)
     )
 
 
