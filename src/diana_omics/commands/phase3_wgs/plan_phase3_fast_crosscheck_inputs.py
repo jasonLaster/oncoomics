@@ -45,7 +45,7 @@ def _require_hex(value: Any, label: str) -> str:
 
 
 def _require_positive_int(value: Any, label: str) -> int:
-    if not isinstance(value, int) or value <= 0:
+    if type(value) is not int or value <= 0:
         raise ManifestError(f"{label} must be a positive integer")
     return value
 

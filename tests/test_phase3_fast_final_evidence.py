@@ -17,6 +17,13 @@ def _sha256_path(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _poison_artifact_as_boolean_byte(row: dict) -> None:
+    path = Path(row.get("exported_path") or row["local_path"])
+    path.write_bytes(b"1")
+    row["bytes"] = True
+    row["sha256"] = _sha256_path(path)
+
+
 def _join_manifest(root: Path) -> dict:
     return join_evidence.build_phase3_fast_evidence_join_manifest(
         *phase3_fast_receipts(root),
@@ -206,6 +213,67 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
                     sv_evidence_artifact_root=root / "sv_evidence",
                     output_root=root / "final",
                 )
+
+    def test_rejects_boolean_small_variant_export_bytes_before_copy(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            join = _join_manifest(root)
+            _poison_artifact_as_boolean_byte(
+                join["evidence"]["small_variants"]["exports"]["filter_mutect"]["filtered_vcf"]
+            )
+
+            with self.assertRaisesRegex(
+                final_evidence.ManifestError,
+                "small_variants.filter_mutect.filtered_vcf.bytes",
+            ):
+                final_evidence.build_phase3_fast_final_evidence_manifest(
+                    join,
+                    evidence_join_sha256=SHA_4,
+                    small_variant_artifact_root=root / "small_variant_export",
+                    bam_qc_artifact_root=root / "bam_qc",
+                    cnv_evidence_artifact_root=root / "cnv_evidence",
+                    sv_evidence_artifact_root=root / "sv_evidence",
+                    output_root=root / "final",
+                )
+
+    def test_rejects_boolean_side_evidence_bytes_before_copy(self) -> None:
+        cases = (
+            (
+                "bam_qc.normal.idxstats.bytes",
+                lambda join: join["evidence"]["bam_qc"]["materialized_outputs"]["normal"]["idxstats"],
+            ),
+            (
+                "cnv_evidence.coverage_bins.bytes",
+                lambda join: join["evidence"]["cnv_evidence"]["materialized_outputs"]["coverage_bins"],
+            ),
+            (
+                "cnv_evidence.interval_shards.chr1.bedcov_tsv.bytes",
+                lambda join: join["evidence"]["cnv_evidence"]["materialized_outputs"]["interval_shards"]["chr1"][
+                    "bedcov_tsv"
+                ],
+            ),
+            (
+                "sv_evidence.tumor.idxstats.bytes",
+                lambda join: join["evidence"]["sv_evidence"]["materialized_outputs"]["tumor"]["idxstats"],
+            ),
+        )
+
+        for label, select_row in cases:
+            with self.subTest(label=label), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                join = _join_manifest(root)
+                _poison_artifact_as_boolean_byte(select_row(join))
+
+                with self.assertRaisesRegex(final_evidence.ManifestError, label):
+                    final_evidence.build_phase3_fast_final_evidence_manifest(
+                        join,
+                        evidence_join_sha256=SHA_4,
+                        small_variant_artifact_root=root / "small_variant_export",
+                        bam_qc_artifact_root=root / "bam_qc",
+                        cnv_evidence_artifact_root=root / "cnv_evidence",
+                        sv_evidence_artifact_root=root / "sv_evidence",
+                        output_root=root / "final",
+                    )
 
     def test_rejects_symlinked_source_before_copy(self) -> None:
         with TemporaryDirectory() as tmp:

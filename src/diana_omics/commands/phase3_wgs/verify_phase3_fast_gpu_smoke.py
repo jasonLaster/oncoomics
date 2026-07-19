@@ -71,7 +71,7 @@ def _require_use2_ecr_repository(params: Mapping[str, Any], key: str, errors: li
 
 def _require_int_at_least(params: Mapping[str, Any], key: str, minimum: int, errors: list[str]) -> int:
     value = params.get(key)
-    if not isinstance(value, int):
+    if type(value) is not int:
         errors.append(f"{key} must be an integer")
         return 0
     if value < minimum:

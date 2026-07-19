@@ -118,6 +118,9 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                 )
             )
 
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "gpu_p5en_max_vcpus must be an integer"):
+            verify.validate_gpu_smoke_params(p5en_params(gpu_p5en_max_vcpus=True))
+
     def test_rejects_missing_or_public_phase3_fast_cache(self) -> None:
         with self.assertRaisesRegex(verify.GpuSmokeConfigError, "phase3_fast_cache_prefix"):
             verify.validate_gpu_smoke_params(p5en_params(phase3_fast_cache_prefix=""))

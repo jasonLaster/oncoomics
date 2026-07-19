@@ -44,7 +44,7 @@ def _require_string(value: Any, label: str) -> str:
 
 
 def _require_non_negative_int(value: Any, label: str) -> int:
-    if not isinstance(value, int) or value < 0:
+    if type(value) is not int or value < 0:
         raise ManifestError(f"{label} must be a non-negative integer")
     return value
 

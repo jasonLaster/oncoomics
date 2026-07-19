@@ -73,6 +73,13 @@ def _write_minimal_staged_report(staging: Path) -> None:
     )
 
 
+def _write_one_byte_final_artifact(final_root: Path, artifact_row: dict) -> None:
+    path = final_root / artifact_row["relative_path"]
+    path.write_bytes(b"1")
+    artifact_row["bytes"] = 1
+    artifact_row["sha256"] = _sha256_path(path)
+
+
 class Phase3FastDeterministicReportTests(unittest.TestCase):
     def test_schema_version_checks_use_exact_integer_helper(self) -> None:
         for value, expected, accepted in (
@@ -463,6 +470,85 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                     _crosscheck_materialization_plan(final_manifest, manifest_path),
                     final_manifest_sha256=_sha256_path(manifest_path),
                     final_manifest_bytes=manifest_path.stat().st_size,
+                    final_root=final_root,
+                    output_dir=root / "deterministic",
+                )
+
+    def test_rejects_boolean_final_artifact_bytes_before_hash_validation(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            artifact = final_manifest["artifacts"]["small_variants"]["filter_mutect"]["filtered_vcf"]
+            _write_one_byte_final_artifact(final_root, artifact)
+            artifact["bytes"] = True
+
+            with self.assertRaisesRegex(
+                stage_report.ManifestError,
+                "small_variants.filter_mutect.filtered_vcf.bytes",
+            ):
+                stage_report.stage_phase3_fast_deterministic_report(
+                    final_manifest,
+                    _crosscheck_materialization_plan(final_manifest, manifest_path),
+                    final_manifest_sha256=_sha256_path(manifest_path),
+                    final_manifest_bytes=manifest_path.stat().st_size,
+                    final_root=final_root,
+                    output_dir=root / "deterministic",
+                )
+
+    def test_rejects_boolean_crosscheck_plan_final_source_bytes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            artifact = final_manifest["artifacts"]["small_variants"]["filter_mutect"]["filtered_vcf"]
+            _write_one_byte_final_artifact(final_root, artifact)
+            materialization_plan = _crosscheck_materialization_plan(
+                final_manifest,
+                manifest_path,
+            )
+            materialization_plan["sigprofiler_sbs3"]["final_sources"]["source_vcf"]["bytes"] = True
+
+            with self.assertRaisesRegex(stage_report.ManifestError, "source_vcf.bytes"):
+                stage_report.stage_phase3_fast_deterministic_report(
+                    final_manifest,
+                    materialization_plan,
+                    final_manifest_sha256=_sha256_path(manifest_path),
+                    final_manifest_bytes=manifest_path.stat().st_size,
+                    final_root=final_root,
+                    output_dir=root / "deterministic",
+                )
+
+    def test_rejects_boolean_crosscheck_reference_bytes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            final_manifest["input_sources"]["reference"]["fasta"]["bytes"] = 1
+            materialization_plan = _crosscheck_materialization_plan(
+                final_manifest,
+                manifest_path,
+            )
+            materialization_plan["sigprofiler_sbs3"]["reference_sources"]["reference_fasta"]["bytes"] = True
+
+            with self.assertRaisesRegex(stage_report.ManifestError, "reference_fasta.bytes"):
+                stage_report.stage_phase3_fast_deterministic_report(
+                    final_manifest,
+                    materialization_plan,
+                    final_manifest_sha256=_sha256_path(manifest_path),
+                    final_manifest_bytes=manifest_path.stat().st_size,
+                    final_root=final_root,
+                    output_dir=root / "deterministic",
+                )
+
+    def test_rejects_boolean_final_manifest_bytes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+
+            with self.assertRaisesRegex(stage_report.ManifestError, "final_manifest_bytes"):
+                stage_report.stage_phase3_fast_deterministic_report(
+                    final_manifest,
+                    _crosscheck_materialization_plan(final_manifest, manifest_path),
+                    final_manifest_sha256=_sha256_path(manifest_path),
+                    final_manifest_bytes=True,
                     final_root=final_root,
                     output_dir=root / "deterministic",
                 )

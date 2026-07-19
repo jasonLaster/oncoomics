@@ -157,6 +157,37 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
                 final_evidence_sha256=SHA_4,
             )
 
+    def test_rejects_boolean_byte_counts(self) -> None:
+        cases = (
+            (
+                "artifacts.small_variants.filter_mutect.sbs96_matrix.bytes",
+                lambda manifest: manifest["artifacts"]["small_variants"]["filter_mutect"]["sbs96_matrix"],
+            ),
+            (
+                "input_sources.reference.fasta.bytes",
+                lambda manifest: manifest["input_sources"]["reference"]["fasta"],
+            ),
+            (
+                "input_sources.reference.sequence_dictionary.bytes",
+                lambda manifest: manifest["input_sources"]["reference"]["sequence_dictionary"],
+            ),
+            (
+                "input_sources.bam_pair.tumor.bam.bytes",
+                lambda manifest: manifest["input_sources"]["bam_pair"]["tumor"]["bam"],
+            ),
+        )
+
+        for label, select_row in cases:
+            with self.subTest(label=label), TemporaryDirectory() as tmp:
+                manifest = _final_evidence(Path(tmp))
+                select_row(manifest)["bytes"] = True
+
+                with self.assertRaisesRegex(crosscheck_plan.ManifestError, label):
+                    crosscheck_plan.build_phase3_fast_crosscheck_materialization_plan(
+                        manifest,
+                        final_evidence_sha256=SHA_4,
+                    )
+
     def test_environment_command_writes_plan(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

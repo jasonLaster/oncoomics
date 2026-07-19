@@ -64,7 +64,7 @@ def _require_absolute_path(value: Any, label: str) -> Path:
 
 
 def _require_positive_int(value: Any, label: str) -> int:
-    if not isinstance(value, int) or value <= 0:
+    if type(value) is not int or value <= 0:
         raise ManifestError(f"{label} must be a positive integer")
     return value
 

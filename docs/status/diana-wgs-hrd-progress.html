@@ -348,7 +348,10 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local Phase 3 fast small-variant byte exactness</li>
+          <li class="pill">Latest milestone = local Phase 3 WGS integer guard closure</li>
+          <li class="pill">Phase 3 WGS integer guards = exact</li>
+          <li class="pill">Deterministic report bytes = exact</li>
+          <li class="pill">Phase 3 fast final evidence bytes = exact</li>
           <li class="pill">Phase 3 fast small-variant bytes = exact</li>
           <li class="pill">Phase 3 fast side-evidence receipts = exact</li>
           <li class="pill">Phase 3 fast side-evidence counts = exact</li>
@@ -561,6 +564,18 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · close Phase 3 WGS boolean-friendly integer guards</strong>
+              <span>Shared Sequenza alias contracts, cross-check materialization planning, the Parabricks P5en runner, and GPU-smoke parameter validation now reject JSON booleans as integers, closing the last raw Phase 3 WGS integer guards.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact deterministic report bytes</strong>
+              <span>The no-compute deterministic report stager now rejects JSON booleans in final artifact bytes, SigProfiler planned final-source/reference bytes, and the final-manifest byte count before writing the deterministic report input table.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Phase 3 fast final-evidence bytes</strong>
+              <span>The Phase 3 fast final-evidence publisher now rejects JSON booleans in small-variant exports, BAM QC side evidence, CNV evidence including interval shards, and SV evidence byte counts before copying them into the portable final tree.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 fast small-variant bytes</strong>
               <span><code>FAST_FILTER_MUTECT_PLAN</code> now rejects JSON booleans in staged caller-resource byte counts, <code>FAST_FILTER_MUTECT</code> re-validates exact Parabricks materialized byte counts before running GATK/bcftools, and small-variant export rejects non-exact input-source and materialized-output byte counts before copying Parabricks or FilterMutect artifacts into the final-evidence export tree.</span>
@@ -1075,6 +1090,42 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:06:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Close Phase 3 WGS boolean-friendly integer guards:</strong>
+                shared Sequenza alias contracts, cross-check materialization
+                planning, the Parabricks P5en runner, and GPU-smoke parameter
+                validation now reject JSON booleans as integers, leaving no
+                raw boolean-friendly integer guards in Phase 3 WGS. No S3,
+                Batch, route, GPU, quota, replacement compute, or AWS-side
+                verification was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T03:05:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact deterministic report bytes:</strong>
+                the no-compute deterministic report stager now rejects JSON
+                booleans in final artifact bytes, SigProfiler planned
+                final-source/reference bytes, and the final-manifest byte
+                count before writing the deterministic report input table. No
+                S3, Batch, route, GPU, quota, replacement compute, or AWS-side
+                verification was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T03:04:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact Phase 3 fast final-evidence bytes:</strong>
+                the Phase 3 fast final-evidence publisher now rejects JSON
+                booleans in small-variant exports, BAM QC side evidence, CNV
+                evidence including interval shards, and SV evidence byte
+                counts before copying them into the portable final tree. No
+                S3, Batch, route, GPU, quota, replacement compute, or AWS-side
+                verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:03:00-07:00">Jul 19 · local</time>
               <span>

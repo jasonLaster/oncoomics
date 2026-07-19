@@ -57,13 +57,13 @@ def _require_hex(value: Any, label: str) -> str:
 
 
 def _require_non_negative_int(value: Any, label: str) -> int:
-    if not isinstance(value, int) or value < 0:
+    if type(value) is not int or value < 0:
         raise ManifestError(f"{label} must be a non-negative integer")
     return value
 
 
 def _require_positive_int(value: Any, label: str) -> int:
-    if not isinstance(value, int) or value <= 0:
+    if type(value) is not int or value <= 0:
         raise ManifestError(f"{label} must be a positive integer")
     return value
 
@@ -451,7 +451,7 @@ def _build_input_rows(
         {
             "input_id": "final_evidence_manifest",
             "path": "manifest/final_evidence_manifest.json",
-            "bytes": final_manifest_bytes,
+            "bytes": _require_positive_int(final_manifest_bytes, "final_manifest_bytes"),
             "sha256": final_manifest_sha256,
         },
         *[
