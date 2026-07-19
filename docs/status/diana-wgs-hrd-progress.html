@@ -307,11 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>ef1e6e1d9d98418901c8e48d8bebe95585cb764e</strong>.
-          The latest work is published-contract custody hardening:
-          <code>publish_input_contract.py</code> now requires the exact
-          five-key finalized-custody map before a finalized HRD input contract
-          can be published.
+          <strong>e2d82a9bec37d977a2e2470aacaac05b0cd6c013</strong>.
+          The latest work is exact AI prep postcondition hardening:
+          <code>prepare_ai_review_run.py</code> now requires the exact
+          <code>EXPECTED_PREPARE_POSTCONDITION_CHECKS</code> map before
+          staging reviewer inputs.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = ef1e6e1</li>
+          <li class="pill">Latest hardening = e2d82a9</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -401,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve ef1e6e1</strong>
-              <span>Finalized HRD input-contract publication now rejects missing, unexpected, or failed finalized-custody maps before publishing cross-check inputs.</span>
+              <strong>Preserve e2d82a9</strong>
+              <span>AI-review prep now rejects missing, unexpected, failed, or non-boolean postcondition entries before staging reviewer inputs.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +450,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>e2d82a9 Require exact AI prep postconditions:</strong>
+                <code>prepare_ai_review_run.py</code> now defines and requires
+                the exact <code>EXPECTED_PREPARE_POSTCONDITION_CHECKS</code>
+                map for AI-review prep postconditions before it can stage
+                reviewer inputs. <code>test_prepare_ai_review_run.py</code>
+                rejects missing, unexpected, failed, and non-boolean
+                postcondition entries.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
