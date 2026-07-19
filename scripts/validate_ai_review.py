@@ -17,7 +17,10 @@ from ai_model_catalog import MODEL_CATALOG_MODEL_KEYS, MODEL_CATALOG_RECEIPT_KEY
 from build_ai_review_bundle import (
     BUNDLE_MANIFEST_KEYS,
     BUNDLE_REVIEW_BUNDLE_KEYS,
+    DuplicateJsonKeyError,
+    checked_source_artifact_id,
     is_exact_int,
+    reject_duplicate_json_object_names,
     require_bundle_manifest,
     validate_report_manifest_support,
 )
@@ -173,7 +176,17 @@ def sha256(path: Path) -> str:
 
 
 def load_object(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(
+            f"duplicate JSON object name in {path.name}: {error}"
+        ) from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in {path.name}") from error
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path.name}")
     return value
@@ -386,27 +399,38 @@ def validate_source_manifests(
             raise ValueError(f"source report hash mismatch for {evidence_id}")
         if not isinstance(source_hashes, dict) or not source_hashes:
             raise ValueError(f"source artifact hashes are missing for {evidence_id}")
+        method = str(source.get("method_id") or source.get("route") or "")
+        try:
+            source_artifact_sha256 = sorted(
+                checked_sha256(
+                    value,
+                    (
+                        f"source artifact {evidence_id} "
+                        + checked_source_artifact_id(key, method or evidence_id)
+                    ),
+                )
+                for key, value in source_hashes.items()
+            )
+        except ValueError as error:
+            raise ValueError(f"source artifact hash mismatch for {evidence_id}: {error}") from error
         try:
             validate_report_manifest_support(
                 path.parent,
                 source,
-                str(source.get("method_id") or source.get("route") or evidence_id),
+                method or evidence_id,
             )
         except ValueError as error:
             raise ValueError(f"source support mismatch for {evidence_id}: {error}") from error
 
         expected_evidence = {
-            "method_id": str(source.get("method_id") or source.get("route") or ""),
+            "method_id": method,
             "report_kind": str(source.get("report_kind", "method")),
             "evidence_status": str(source.get("evidence_status", "")),
             "authorized_hrd_state": str(source.get("authorized_hrd_state") or source.get("interpretation_status") or ""),
             "classification_authorized": source.get("classification_authorized") is True,
             "classification_qc_status": str(source.get("classification_qc_status", "not_applicable")),
             "report_sha256": report_hash,
-            "source_artifact_sha256": sorted(
-                checked_sha256(value, f"source artifact {evidence_id}")
-                for value in source_hashes.values()
-            ),
+            "source_artifact_sha256": source_artifact_sha256,
             "review_summary": source.get("review_summary"),
         }
         observed_evidence = {key: evidence.get(key) for key in expected_evidence}

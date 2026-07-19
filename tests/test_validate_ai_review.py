@@ -242,6 +242,14 @@ class ValidateReviewFixture(AiReviewBundleFixture):
         }
         write_json(manifest_path, manifest)
 
+    def refresh_source_manifest_hash(self, index: int) -> None:
+        manifest_path = self.bundle_dir / "bundle_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["input_manifest_sha256"][f"E{index + 1:03d}"] = sha256(
+            self.manifests[index]
+        )
+        write_json(manifest_path, manifest)
+
 
 class ValidateAiReviewTests(unittest.TestCase):
     def test_rejects_stale_model_catalog_receipt_envelope(self) -> None:
@@ -1029,6 +1037,80 @@ class ValidateAiReviewTests(unittest.TestCase):
                         evidence,
                         {"E001": valid_hash},
                     )
+
+    def test_source_manifests_reject_malformed_source_artifact_ids(self) -> None:
+        for malformed in (
+            "",
+            " safe_summary",
+            "safe summary",
+            "safe/summary",
+            "safe|summary",
+            "true",
+            "false",
+            "null",
+            7,
+            True,
+        ):
+            with (
+                self.subTest(malformed=malformed),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                fixture = ValidateReviewFixture(Path(temporary))
+                fixture.build()
+                review = Path(temporary) / "review-a"
+                fixture.update_manifest(
+                    0,
+                    {"source_sha256": {malformed: "a" * 64}},
+                )
+                fixture.refresh_source_manifest_hash(0)
+                fixture.write_review(review)
+
+                validated = fixture.validate(review)
+
+                self.assertNotEqual(validated.returncode, 0)
+                self.assertIn(
+                    "malformed source-artifact ID for deterministic_full_wgs",
+                    validated.stderr,
+                )
+                self.assertFalse((review / "validation.json").exists())
+
+    def test_source_manifests_reject_duplicate_source_artifact_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review = Path(temporary) / "review-a"
+            manifest_path = fixture.manifests[0]
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            digest = "a" * 64
+            manifest["source_sha256"] = {}
+            payload = (
+                json.dumps(manifest, indent=2, sort_keys=True)
+                .replace(
+                    '  "source_sha256": {},',
+                    (
+                        '  "source_sha256": {\n'
+                        f'    "safe_summary": "{digest}",\n'
+                        f'    "safe_summary": "{digest}"\n'
+                        "  },"
+                    ),
+                )
+                + "\n"
+            )
+            manifest_path.write_text(payload, encoding="utf-8")
+            fixture.refresh_source_manifest_hash(0)
+            fixture.write_review(review)
+
+            validated = fixture.validate(review)
+
+            self.assertNotEqual(validated.returncode, 0)
+            self.assertIn(
+                (
+                    "duplicate JSON object name in report_manifest.json: "
+                    "safe_summary"
+                ),
+                validated.stderr,
+            )
+            self.assertFalse((review / "validation.json").exists())
 
     def test_rejects_symlinked_custody_inputs(self) -> None:
         cases = (

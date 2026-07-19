@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact AI-bundle source-artifact IDs</li>
+          <li class="pill">Latest milestone = local exact AI-validation source-artifact IDs</li>
+          <li class="pill">AI-validation source-artifact IDs = exact</li>
           <li class="pill">AI-bundle source-artifact IDs = exact</li>
           <li class="pill">Synthesis source-artifact IDs = exact</li>
           <li class="pill">Rosalind tool-version pipes = rejected</li>
@@ -1441,6 +1442,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI-validation source-artifact IDs</strong>
+              <span>AI review validation now rejects malformed or duplicate <code>source_sha256</code> artifact IDs while rechecking source manifests, before reviewer outputs can be accepted or <code>validation.json</code> can be written.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI-bundle source-artifact IDs</strong>
               <span>AI review bundle construction now rejects malformed or duplicate <code>source_sha256</code> artifact IDs before emitting model-facing <code>source_artifact_sha256</code>, preventing ambiguous source-manifest keys from entering deterministic, Rosalind, cross-check, or AI-review bundle evidence.</span>
             </li>
@@ -1830,6 +1835,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T01:50:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI-validation source-artifact IDs:</strong>
+                AI review validation now rejects malformed or duplicate
+                <code>source_sha256</code> artifact IDs while rechecking source
+                manifests.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T01:45:00-07:00">Jul 20 · local</time>
               <span>
