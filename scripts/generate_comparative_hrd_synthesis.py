@@ -23,6 +23,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 from build_ai_review_bundle import (
     BUNDLE_MANIFEST_KEYS,
     BUNDLE_REVIEW_BUNDLE_KEYS,
+    is_exact_int,
     validate_report_manifest_support,
 )
 from forbidden_text import has_unauthorized_hrd_classification
@@ -312,7 +313,10 @@ def verify_bundle(
         raise ValueError("AI review bundle envelope is not exact")
     if set(manifest) != BUNDLE_MANIFEST_KEYS:
         raise ValueError("AI review bundle manifest envelope is not exact")
-    if bundle.get("schema_version") != 2 or manifest.get("schema_version") != 2:
+    if not is_exact_int(bundle.get("schema_version"), 2) or not is_exact_int(
+        manifest.get("schema_version"),
+        2,
+    ):
         raise ValueError("unsupported AI bundle schema")
     if bundle.get("purpose") != "deidentified_independent_narrative_crosscheck":
         raise ValueError("AI bundle purpose is missing or altered")
@@ -527,11 +531,14 @@ def verify_review(
     claims_path = directory / "claims.csv"
     validation = load_object(validation_path, "reviewer " + reviewer + " validation")
     manifest = load_object(manifest_path, "reviewer " + reviewer + " manifest")
-    if validation.get("schema_version") != 2 or validation.get("status") != "passed":
+    if not is_exact_int(
+        validation.get("schema_version"),
+        2,
+    ) or validation.get("status") != "passed":
         raise ValueError("reviewer " + reviewer + " is not validated")
     if validation.get("reviewer_id") != reviewer or manifest.get("reviewer_id") != reviewer:
         raise ValueError("reviewer identity is altered for reviewer " + reviewer)
-    if manifest.get("schema_version") != 2:
+    if not is_exact_int(manifest.get("schema_version"), 2):
         raise ValueError("unsupported review-manifest schema for reviewer " + reviewer)
     alias = str(bundle["subject_alias"])
     if validation.get("subject_alias") != alias or manifest.get("subject_alias") != alias:
@@ -1210,7 +1217,7 @@ def require_synthesis_report_manifest(
     if set(manifest) != REPORT_MANIFEST_KEYS:
         raise ValueError("comparative synthesis manifest envelope is not exact")
     if (
-        manifest.get("schema_version") != 1
+        not is_exact_int(manifest.get("schema_version"), 1)
         or manifest.get("report_kind") != "comparative_synthesis"
         or manifest.get("method_id") != "comparative_hrd_synthesis"
         or manifest.get("evidence_status") not in ALLOWED_EVIDENCE_STATES

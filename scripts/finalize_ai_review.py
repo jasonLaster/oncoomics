@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from build_ai_review_bundle import (
+    is_exact_int,
     require_bundle_manifest,
     validate_report_manifest_support,
 )
@@ -201,7 +202,10 @@ def build_manifest(
         raise ValueError("review manifest envelope is not exact")
     if set(validation) != VALIDATION_KEYS:
         raise ValueError("validation envelope is not exact")
-    if review_manifest.get("schema_version") != 2 or validation.get("schema_version") != 2:
+    if not is_exact_int(
+        review_manifest.get("schema_version"),
+        2,
+    ) or not is_exact_int(validation.get("schema_version"), 2):
         raise ValueError("review and validation schemas must both be version 2")
     if validation.get("status") != "passed":
         raise ValueError("review validation is not passed")

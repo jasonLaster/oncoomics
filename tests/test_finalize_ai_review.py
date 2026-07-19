@@ -575,6 +575,28 @@ class FinalizeAiReviewTests(unittest.TestCase):
             self.assertIn("report_manifest.json already exists", finalized.stderr)
             self.assertEqual(manifest.read_text(encoding="utf-8"), "keep me\n")
 
+    def test_rejects_non_integer_validated_review_schemas(self) -> None:
+        cases = (
+            "review_manifest.json",
+            "validation.json",
+        )
+        for filename in cases:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as temporary:
+                fixture, review = self.validated_review(temporary)
+                path = review / filename
+                payload = load_json(path)
+                payload["schema_version"] = 2.0
+                write_json(path, payload)
+
+                finalized = self.execute(fixture, review)
+
+                self.assertNotEqual(finalized.returncode, 0)
+                self.assertIn(
+                    "review and validation schemas must both be version 2",
+                    finalized.stderr,
+                )
+                self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_model_catalog_and_bundle_drift(self) -> None:
         for mutate, message in (
             (

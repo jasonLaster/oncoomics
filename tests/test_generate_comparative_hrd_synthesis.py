@@ -1588,6 +1588,54 @@ class GenerateSynthesisTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(message, result.stdout + result.stderr)
 
+    def test_rejects_non_integer_ai_bundle_schemas(self) -> None:
+        cases = (
+            "review_bundle.json",
+            "bundle_manifest.json",
+        )
+        for filename in cases:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-bundle-schema-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                path = fixture.bundle_dir / filename
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload["schema_version"] = 2.0
+                write_json(path, payload)
+
+                result = fixture.run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("unsupported AI bundle schema", result.stdout + result.stderr)
+                self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
+    def test_rejects_non_integer_reviewer_schemas(self) -> None:
+        cases = (
+            (
+                "review_manifest.json",
+                "unsupported review-manifest schema",
+            ),
+            (
+                "validation.json",
+                "reviewer A is not validated",
+            ),
+        )
+        for filename, message in cases:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-review-schema-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                path = fixture.review_a / filename
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload["schema_version"] = 2.0
+                write_json(path, payload)
+
+                result = fixture.run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stdout + result.stderr)
+                self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
     def test_rejects_symlinked_cli_inputs_without_final_output(self) -> None:
         cases = (
             (
