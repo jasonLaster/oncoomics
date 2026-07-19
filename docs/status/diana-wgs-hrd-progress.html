@@ -307,11 +307,13 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>ec028e602e4c56a0a4bb8263a5d06cb36a15da17</strong>.
-          The latest work is exact executed-worker receipt hardening:
-          <code>stage_deterministic_wgs_report.py</code> now names and requires
-          the child worker-freeze and worker-freeze-upload receipt maps before
-          captured Batch worker bytes can support the staged WGS report packet.
+          <strong>53a6cf2f3b030a4e5d0ea2502b48501b5be77fc5</strong>.
+          The latest work removes the final inline all-true receipt guard from
+          <code>stage_deterministic_wgs_report.py</code>: duplicate
+          final-freeze row validation now requires
+          <code>EXPECTED_FINAL_FREEZE_ROW_CHECKS</code>, matching
+          <code>validate_final_freeze_provenance()</code>, before frozen
+          terminal rows can support the staged WGS report packet.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +321,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = ec028e6</li>
+          <li class="pill">Latest hardening = 53a6cf2</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -401,8 +403,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve ec028e6</strong>
-              <span>Deterministic report staging now rejects missing, unexpected, or failed executed-worker freeze and freeze-upload receipt maps before exact worker bytes can support a WGS report packet.</span>
+              <strong>Preserve 53a6cf2</strong>
+              <span>Deterministic report staging now rejects missing, unexpected, or failed inline final-freeze row checks before frozen terminal rows can support a WGS report packet.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +452,23 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>53a6cf2 Require exact inline final freeze checks:</strong>
+                <code>stage_deterministic_wgs_report.py</code> no longer has
+                arbitrary <code>all(value is True ...)</code> receipt-map
+                acceptance. The duplicate inline final-freeze row guard now
+                requires <code>EXPECTED_FINAL_FREEZE_ROW_CHECKS</code>,
+                matching <code>validate_final_freeze_provenance()</code>, and
+                tests reject missing, unexpected, or failed final-freeze row
+                checks before <code>report.md</code> can be published. This
+                completes the report-stager pass that made stage provenance,
+                final freeze, Batch worker, executed-worker child receipts,
+                exact materialization, cross-check terminal capture, and
+                cross-check output maps exact.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
