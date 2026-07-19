@@ -88,17 +88,17 @@ def write_packet(directory: Path, method_id: str) -> None:
             if method_id.endswith("_blocked")
             else {}
         ),
-        "source_sha256": {
-            **{"unit_source": "a" * 64},
-            **(
-                {
+        "source_sha256": (
+            {
+                "generator": sha256(SCRIPT_DIR / "generate_blocked_hrd_crosscheck_reports.py"),
+                **{
                     f"{source_id}_report_manifest": digest
                     for source_id, digest in source_report_manifests.items()
-                }
-                if method_id.endswith("_blocked")
-                else {}
-            ),
-        },
+                },
+            }
+            if method_id.endswith("_blocked")
+            else {"unit_source": "a" * 64}
+        ),
         "support_sha256": {name: sha256(directory / name) for name in sorted(support_names)},
         "report_sha256": sha256(directory / "report.md"),
         "review_summary": {
@@ -269,6 +269,29 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                         packet_dirs,
                         json.dumps(["Run-Private-Token"]),
                     )
+
+    def test_rejects_pre_route_blocked_packet_extra_source_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            blocked = packet_dirs["hrdetect_blocked"]
+
+            manifest_path = blocked / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["source_sha256"]["legacy_unit_source"] = "0" * 64
+            manifest_path.write_text(
+                json.dumps(manifest, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "must use pre_route_deterministic_rosalind",
+            ):
+                VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
 
     def test_rejects_run_supplied_forbidden_token_leak(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

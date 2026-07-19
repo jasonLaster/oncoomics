@@ -243,6 +243,21 @@ def validate_pre_route_blocked_packet(packet_dir: Path, method_id: str) -> None:
         if isinstance(source_sha256, dict)
         else {}
     )
+    expected_source_sha256 = (
+        {
+            "generator": hashlib.sha256(
+                Path(__file__).with_name(
+                    "generate_blocked_hrd_crosscheck_reports.py"
+                ).read_bytes()
+            ).hexdigest(),
+            **{
+                f"{source_method_id}_report_manifest": digest
+                for source_method_id, digest in method_spec_manifests.items()
+            },
+        }
+        if isinstance(method_spec_manifests, dict)
+        else {}
+    )
     if (
         method_spec.get("source_report_binding_scope")
         != PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE
@@ -257,6 +272,8 @@ def validate_pre_route_blocked_packet(packet_dir: Path, method_id: str) -> None:
         or tuple(review_summary_manifests) != PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
         or tuple(source_report_manifests_from_sha256)
         != PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+        or not isinstance(source_sha256, dict)
+        or source_sha256 != expected_source_sha256
         or source_report_manifests_from_sha256 != method_spec_manifests
         or source_report_manifests_from_sha256 != review_summary_manifests
     ):
