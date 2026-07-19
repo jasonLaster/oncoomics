@@ -307,11 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>983addbcf7aa21cf8ba6ca4ec9ddaa42ff2ad35a</strong>.
-          The latest work is exact HRD route-staging replay hardening:
-          <code>stage_hrd_crosscheck_report.py</code> now requires exact live
-          history, per-object download maps, and non-empty version IDs before
-          compacting executable HRD route replays.
+          <strong>6e658a67e34c75805ca16024ba16f2ca675b0083</strong>.
+          The latest work keeps fast WGS planning off the GPU queue:
+          <code>FAST_PARABRICKS_MUTECT_PLAN</code> is CPU-only, while the
+          Parabricks GPU reservation stays isolated to
+          <code>FAST_MUTECT_PARABRICKS_FILTER</code>.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 983addb</li>
+          <li class="pill">Latest hardening = 6e658a6</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -401,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 983addb</strong>
-              <span>HRD route staging now rejects missing, unexpected, or failed replay check maps and missing VersionIds before compacting executable route replays.</span>
+              <strong>Preserve 6e658a6</strong>
+              <span>Fast WGS plan mode now stays on CPU I/O and cannot reserve GPU capacity until execution enters the Parabricks filter process.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +450,23 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>6e658a6 Keep fast WGS planning off the GPU queue:</strong>
+                <code>main.nf</code> now keeps
+                <code>FAST_PARABRICKS_MUTECT_PLAN</code> on
+                <code>cpu_io</code> with <code>cpus 8</code>,
+                <code>memory '16 GB'</code>, and <code>time '2h'</code>
+                instead of using the <code>gpu_parabricks</code> label or
+                Parabricks CPU and memory knobs. The next-generation fast rerun
+                guide now states that plan mode must not reserve GPU capacity
+                until execution reaches <code>FAST_MUTECT_PARABRICKS_FILTER</code>,
+                and <code>test_phase3_fast_nextflow.py</code> guards that plan
+                mode stays CPU-only while execute mode keeps the GPU Parabricks
+                resources.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
