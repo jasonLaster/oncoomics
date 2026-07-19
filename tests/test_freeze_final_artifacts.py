@@ -593,6 +593,42 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             MODULE.destination_matches_receipt(source, destination, receipt)
         )
 
+    def test_destination_snapshot_content_length_must_be_exact_integer(self) -> None:
+        history = [
+            {
+                "history_kind": "version",
+                "Key": "prefix/a",
+                "VersionId": "v1",
+                "IsLatest": True,
+            }
+        ]
+        current = {
+            "VersionId": "v1",
+            "ContentLength": 10,
+            "ETag": '"etag"',
+            "ChecksumType": "FULL_OBJECT",
+            "ChecksumSHA256": "sha",
+            "ServerSideEncryption": "aws:kms",
+            "SSEKMSKeyId": "kms",
+        }
+        for value in (True, 10.0, "10"):
+            with self.subTest(value=value):
+                with patch.object(
+                    MODULE, "version_history", return_value=history
+                ), patch.object(
+                    MODULE,
+                    "list_objects",
+                    return_value=[{"Key": "prefix/a", "Size": 10}],
+                ), patch.object(
+                    MODULE,
+                    "head",
+                    return_value={**current, "ContentLength": value},
+                ):
+                    with self.assertRaisesRegex(RuntimeError, "exact integer"):
+                        MODULE.snapshot_destination(
+                            "bucket", "prefix/", "kms", "us-east-1"
+                        )
+
     def test_existing_receipt_is_never_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             path = Path(value) / "receipt.json"
@@ -1016,6 +1052,43 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         )
         self.assertEqual(snapshot[0]["version_id"], "va")
         self.assertEqual(snapshot[1]["version_id"], "null")
+
+    def test_snapshot_inventory_sizes_must_be_exact_integers(self) -> None:
+        listed = [{"Key": "prefix/a", "Size": 10, "ETag": '"a"'}]
+        current = {
+            "ContentLength": 10,
+            "ETag": '"a"',
+            "VersionId": "v1",
+            "ChecksumType": "FULL_OBJECT",
+            "ChecksumSHA256": "sha",
+        }
+        cases = (
+            ("head_bool", listed, {**current, "ContentLength": True}),
+            ("head_float", listed, {**current, "ContentLength": 10.0}),
+            ("head_string", listed, {**current, "ContentLength": "10"}),
+            (
+                "listed_bool",
+                [{**listed[0], "Size": True}],
+                current,
+            ),
+            (
+                "listed_float",
+                [{**listed[0], "Size": 10.0}],
+                current,
+            ),
+            (
+                "listed_string",
+                [{**listed[0], "Size": "10"}],
+                current,
+            ),
+        )
+        for label, listed_rows, head_response in cases:
+            with self.subTest(label=label):
+                with patch.object(
+                    MODULE, "list_objects", return_value=listed_rows
+                ), patch.object(MODULE, "head", return_value=head_response):
+                    with self.assertRaisesRegex(RuntimeError, "exact integer"):
+                        MODULE.snapshot_inventory("bucket", "prefix/", "us-east-1")
 
     def test_inventory_identity_detects_added_or_replaced_object(self) -> None:
         original = [

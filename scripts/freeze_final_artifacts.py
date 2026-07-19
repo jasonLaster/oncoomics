@@ -94,6 +94,12 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def exact_s3_size(value: Any) -> int:
+    if type(value) is not int:
+        raise RuntimeError("S3 object size must be an exact integer")
+    return value
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -424,11 +430,11 @@ def snapshot_inventory(bucket: str, prefix: str, region: str) -> list[dict[str, 
             raise RuntimeError(f"source key is outside declared prefix: {source_key}")
         current = head(bucket, source_key, region)
         version_id = str(current.get("VersionId", ""))
-        size = int(current.get("ContentLength", -1))
+        size = exact_s3_size(current.get("ContentLength"))
         etag = str(current.get("ETag", ""))
+        listed_size = exact_s3_size(listed_row.get("Size"))
         listed_stable = (
-            int(listed_row.get("Size", -1)) == size
-            and str(listed_row.get("ETag", "")) == etag
+            listed_size == size and str(listed_row.get("ETag", "")) == etag
         )
         if (
             not listed_stable
@@ -585,9 +591,10 @@ def snapshot_destination(
         ):
             raise RuntimeError("destination history contains an invalid key/version")
         current = head(bucket, key, region, version_id)
+        size = exact_s3_size(current.get("ContentLength"))
         if (
             str(current.get("VersionId", "")) != version_id
-            or int(current.get("ContentLength", -1)) <= 0
+            or size <= 0
             or current.get("ChecksumType") != "FULL_OBJECT"
             or not checksums(current)
             or current.get("ServerSideEncryption") != "aws:kms"
@@ -601,7 +608,7 @@ def snapshot_destination(
                 "relative_key": relative,
                 "key": key,
                 "version_id": version_id,
-                "bytes": int(current.get("ContentLength", -1)),
+                "bytes": size,
                 "etag": str(current.get("ETag", "")),
                 "checksums": checksums(current),
                 "checksum_type": str(current.get("ChecksumType", "")),
