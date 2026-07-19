@@ -487,6 +487,139 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
         mutate(payload)
         write_json(path, payload)
 
+    def test_alignment_metrics_reject_coercible_json_counts(self) -> None:
+        mutations = (
+            ("bam bytes string", "tumor", "bam_bytes", "1000"),
+            ("total reads string", "tumor", "total_reads", "100"),
+            ("mapped reads string", "tumor", "mapped_reads", "90"),
+            ("duplicate reads string", "tumor", "duplicate_reads", "10"),
+            ("normal reads float", "normal", "total_reads", 120.0),
+            ("normal duplicate bool", "normal", "duplicate_reads", True),
+        )
+        for name, role, field, value in mutations:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                self._mutate_alignment_json_count(fixture, role, field, value)
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "alignment_metric_bounds",
+                    result.stdout + result.stderr,
+                )
+                self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_alignment_gather_rejects_coercible_counts(self) -> None:
+        mutations = (
+            (
+                "bam bytes bool",
+                lambda row: row.__setitem__("output_bam_bytes", True),
+            ),
+            (
+                "bam bytes float",
+                lambda row: row.__setitem__("output_bam_bytes", 1000.0),
+            ),
+            (
+                "bam bytes string",
+                lambda row: row.__setitem__("output_bam_bytes", "1000"),
+            ),
+            (
+                "lane count bool",
+                lambda row: row.__setitem__("lane_count", True),
+            ),
+            (
+                "lane count float",
+                lambda row: row.__setitem__("lane_count", 4.0),
+            ),
+            (
+                "lane count string",
+                lambda row: row.__setitem__("lane_count", "4"),
+            ),
+        )
+        for name, mutate in mutations:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                self._mutate_json(
+                    fixture.aux / "gather.json",
+                    lambda payload, mutate=mutate: mutate(payload["samples"][0]),
+                )
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "alignment_provenance",
+                    result.stdout + result.stderr,
+                )
+                self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_alignment_guards_avoid_raw_int_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "json_row.get('bam_bytes'",
+                    'json_row.get("bam_bytes"',
+                    "json_row.get('total_reads'",
+                    'json_row.get("total_reads"',
+                    "json_row.get('mapped_reads'",
+                    'json_row.get("mapped_reads"',
+                    "json_row.get('duplicate_reads'",
+                    'json_row.get("duplicate_reads"',
+                    "gather_row.get('output_bam_bytes'",
+                    'gather_row.get("output_bam_bytes"',
+                    "gather_row.get('lane_count'",
+                    'gather_row.get("lane_count"',
+                    "alignment_by_role[role].get(field",
+                    'alignment_by_role[role].get(field',
+                )
+            )
+        ]
+
+        self.assertEqual(raw_coercions, [])
+
+    @staticmethod
+    def _mutate_alignment_json_count(
+        fixture: SyntheticFixture,
+        role: str,
+        field: str,
+        value: Any,
+    ) -> None:
+        def mutate_alignment(alignment: dict[str, Any]) -> None:
+            for row in alignment["rows"]:
+                if row["role"] == role:
+                    row[field] = value
+
+        StageDeterministicWgsReportInstallTests._mutate_json(
+            fixture.artifacts / "alignment/bam_validation_summary.json",
+            mutate_alignment,
+        )
+        StageDeterministicWgsReportInstallTests._mutate_json(
+            fixture.artifacts / "diana_hrd_summary.json",
+            lambda summary: mutate_alignment(summary["alignment"]),
+        )
+
     def test_run_provenance_avoids_raw_int_coercion(self) -> None:
         source = GENERATOR.read_text(encoding="utf-8")
         module = ast.parse(source)

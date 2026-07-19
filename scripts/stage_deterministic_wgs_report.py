@@ -2527,27 +2527,30 @@ def main() -> None:
         csv_row = alignment_csv_by_role.get(role, {})
         gather_row = gather_by_role.get(role, {})
         for field in ("bam_bytes", "total_reads", "mapped_reads", "duplicate_reads"):
-            if str(json_row.get(field, "")) != str(csv_row.get(field, "")):
+            if not nonnegative_int(json_row.get(field)) or str(
+                json_row.get(field)
+            ) != str(csv_row.get(field, "")):
                 alignment_consistent = False
-        if int(json_row.get("bam_bytes", -1)) != int(gather_row.get("output_bam_bytes", -2)) or int(gather_row.get("lane_count", 0)) != 4:
+        if not integer_equals(
+            json_row.get("bam_bytes"),
+            gather_row.get("output_bam_bytes"),
+        ) or not integer_equals(gather_row.get("lane_count"), 4):
             alignment_consistent = False
     add_check(checks, "alignment_provenance", alignment_consistent and set(gather_by_role) == {"tumor", "normal"}, "Alignment JSON/CSV metrics match four-lane-per-role gather BAM provenance.")
     alignment_metrics_valid = True
     for role in ("tumor", "normal"):
         row = alignment_by_role.get(role, {})
-        try:
-            bam_bytes = int(row.get("bam_bytes", -1))
-            total_reads = int(row.get("total_reads", -1))
-            mapped_reads = int(row.get("mapped_reads", -1))
-            duplicate_reads = int(row.get("duplicate_reads", -1))
-        except (TypeError, ValueError):
-            alignment_metrics_valid = False
-            continue
+        bam_bytes = row.get("bam_bytes")
+        total_reads = row.get("total_reads")
+        mapped_reads = row.get("mapped_reads")
+        duplicate_reads = row.get("duplicate_reads")
         if not (
-            bam_bytes > 0
-            and total_reads > 0
-            and 0 <= mapped_reads <= total_reads
-            and 0 <= duplicate_reads <= total_reads
+            positive_int(bam_bytes)
+            and positive_int(total_reads)
+            and nonnegative_int(mapped_reads)
+            and nonnegative_int(duplicate_reads)
+            and mapped_reads <= total_reads
+            and duplicate_reads <= total_reads
         ):
             alignment_metrics_valid = False
     add_check(
@@ -2567,7 +2570,10 @@ def main() -> None:
         }
         for field, pattern in patterns.items():
             match = re.search(pattern, text, re.MULTILINE)
-            if not match or int(match.group(1)) != int(alignment_by_role[role].get(field, -1)):
+            if not match or not integer_equals(
+                alignment_by_role[role].get(field),
+                int(match.group(1)),
+            ):
                 flagstat_consistent = False
     add_check(checks, "alignment_flagstat", flagstat_consistent, "Role-level flagstat totals match alignment summaries.")
 
