@@ -198,6 +198,78 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_write_once_rejects_output_swapped_to_symlink_before_digest(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            output = root / "model-catalog-receipt.json"
+            relocated = root / "relocated-receipt.json"
+            real_is_file = Path.is_file
+            swapped = False
+
+            def swap_after_first_output_file_check(path: Path) -> bool:
+                nonlocal swapped
+                result = real_is_file(path)
+                if path == output and result and not swapped:
+                    output.unlink()
+                    relocated.write_text("{}\n", encoding="utf-8")
+                    relocated.chmod(0o600)
+                    output.symlink_to(relocated)
+                    swapped = True
+                return result
+
+            with (
+                mock.patch.object(
+                    Path,
+                    "is_file",
+                    autospec=True,
+                    side_effect=swap_after_first_output_file_check,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "model-catalog-receipt.json SHA-256 input is missing or a symlink",
+                ),
+            ):
+                WRITER.write_once(output, "{}\n")
+
+            self.assertTrue(swapped)
+            self.assertFalse(output.exists())
+            self.assertFalse(output.is_symlink())
+            self.assertEqual(relocated.read_text(encoding="utf-8"), "{}\n")
+
+    def test_sha256_file_rejects_symlinked_leaf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_source = root / "real-model-catalog-receipt.json"
+            real_source.write_text("{}\n", encoding="utf-8")
+            source_link = root / "model-catalog-receipt.json"
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "model-catalog-receipt.json SHA-256 input is missing or a symlink",
+            ):
+                WRITER.sha256_file(source_link)
+
+    def test_sha256_file_rejects_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            real_parent = root / "real-receipts"
+            real_parent.mkdir()
+            (real_parent / "model-catalog-receipt.json").write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+            linked_parent = root / "linked-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "model-catalog-receipt.json SHA-256 input parent may not be a symlink",
+            ):
+                WRITER.sha256_file(linked_parent / "model-catalog-receipt.json")
+
     def test_requires_latest_model_attestation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary).resolve() / "model-catalog-receipt.json"
