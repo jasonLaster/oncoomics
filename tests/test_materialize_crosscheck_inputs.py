@@ -208,7 +208,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "6d7dadb9604911fa0177ee151163c3a1faef257231b60c749f2063cdc396536d",
+            "d3b9ca5c4e81ec2de627746d634f1430f8ade6d12af39d58791b542c1a1a0e6f",
         )
 
     def test_json_output_removes_partial_file_after_file_fsync_failure(self):
@@ -291,6 +291,8 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 "SSEKMSKeyId": kms,
                 "VersionId": "output-version",
                 "ContentLength": source.stat().st_size,
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": module.checksum_sha256(digest),
                 "ETag": "unit",
                 "ChecksumCRC64NVME": "unit-crc",
                 "Metadata": {"sha256": digest},
@@ -333,14 +335,52 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 kms,
                 "--checksum-algorithm",
                 "SHA256",
+                "--checksum-sha256",
+                module.checksum_sha256(digest),
                 "--metadata",
                 f"sha256={digest}",
             ],
         )
         self.assertEqual(receipt["version_id"], "output-version")
         self.assertEqual(receipt["sha256"], digest)
+        self.assertEqual(
+            receipt["checksums"]["ChecksumSHA256"],
+            module.checksum_sha256(digest),
+        )
         self.assertEqual(receipt["checksums"]["ChecksumCRC64NVME"], "unit-crc")
         self.assertTrue(all(receipt["checks"].values()))
+
+    def test_upload_rejects_s3_checksum_that_differs_from_local_sha256(self):
+        uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "output.json"
+            source.write_text("{}\n")
+            digest = module.sha256(source)
+            metadata = {
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": kms,
+                "VersionId": "output-version",
+                "ContentLength": source.stat().st_size,
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": module.checksum_sha256("0" * 64),
+                "Metadata": {"sha256": digest},
+            }
+            calls = iter([
+                {"Versions": [], "DeleteMarkers": [], "IsTruncated": False},
+                {"VersionId": "output-version"},
+            ])
+            with (
+                patch.object(
+                    module,
+                    "aws_json",
+                    side_effect=lambda arguments, region: next(calls),
+                ),
+                patch.object(module, "head", return_value=metadata),
+                self.assertRaisesRegex(ValueError, "SHA-256 checksum mismatch"),
+            ):
+                module.upload(source, uri, kms, "us-east-1")
 
     def test_upload_rejects_symlinked_source_before_aws(self):
         uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
@@ -362,6 +402,64 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 self.assertRaisesRegex(ValueError, "upload source may not be a symlink"),
             ):
                 module.upload(linked_source, uri, kms, "us-east-1")
+
+    def test_audit_output_history_rejects_checksum_that_differs_from_receipt_sha256(self):
+        uri = (
+            "s3://diana-omics-private-results-000000000000-us-east-1/"
+            "runs/subject01/materialized/sbs96.csv"
+        )
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+        digest = "1" * 64
+        outputs = {
+            "sbs96.csv": {
+                "uri": uri,
+                "version_id": "output-version",
+                "bytes": 10,
+                "sha256": digest,
+                "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": module.checksum_sha256("0" * 64),
+                },
+            }
+        }
+
+        with (
+            patch.object(
+                module,
+                "version_history",
+                return_value=[
+                    {
+                        "history_kind": "version",
+                        "Key": "runs/subject01/materialized/sbs96.csv",
+                        "VersionId": "output-version",
+                        "IsLatest": True,
+                    }
+                ],
+            ),
+            patch.object(
+                module,
+                "head",
+                return_value={
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": kms,
+                    "VersionId": "output-version",
+                    "ContentLength": 10,
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": module.checksum_sha256("0" * 64),
+                    "Metadata": {"sha256": digest},
+                },
+            ),
+            self.assertRaisesRegex(ValueError, "exact-version audit failed"),
+        ):
+            module.audit_output_history(
+                (
+                    "s3://diana-omics-private-results-000000000000-us-east-1/"
+                    "runs/subject01/materialized/"
+                ),
+                outputs,
+                kms,
+                "us-east-1",
+            )
 
     def test_main_rejects_receipt_anchor_below_symlinked_parent_before_aws(self):
         bucket = "diana-omics-private-results-000000000000-us-east-1"

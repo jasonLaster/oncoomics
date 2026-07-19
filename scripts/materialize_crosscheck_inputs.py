@@ -11,6 +11,7 @@ canonical artifacts with a hash-bound custody receipt.
 from __future__ import annotations
 
 import argparse
+import base64
 import csv
 import hashlib
 import json
@@ -44,6 +45,10 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def checksum_sha256(digest: str) -> str:
+    return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
 def fsync_directory(path: Path) -> None:
@@ -475,6 +480,7 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
     """Publish one small artifact with PutObject create-only semantics."""
     require_real_local_file(path, "upload source")
     local_sha256 = sha256(path)
+    expected_checksum = checksum_sha256(local_sha256)
     bucket, key = s3_parts(uri)
     if version_history(bucket, key, region):
         raise ValueError(f"create-only destination already has history: {uri}")
@@ -482,7 +488,8 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
         "s3api", "put-object", "--bucket", bucket, "--key", key,
         "--body", str(path), "--if-none-match", "*",
         "--server-side-encryption", "aws:kms", "--sse-kms-key-id", kms_key_arn,
-        "--checksum-algorithm", "SHA256", "--metadata", f"sha256={local_sha256}",
+        "--checksum-algorithm", "SHA256", "--checksum-sha256", expected_checksum,
+        "--metadata", f"sha256={local_sha256}",
     ], region)
     version_id = str(response.get("VersionId", ""))
     if not version_id or version_id.lower() in {"none", "null"}:
@@ -493,6 +500,11 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
         raise ValueError(f"uploaded object size mismatch: {uri}")
     if str(metadata.get("Metadata", {}).get("sha256", "")) != local_sha256:
         raise ValueError(f"uploaded object SHA-256 metadata mismatch: {uri}")
+    if (
+        metadata.get("ChecksumType") != "FULL_OBJECT"
+        or metadata.get("ChecksumSHA256") != expected_checksum
+    ):
+        raise ValueError(f"uploaded object SHA-256 checksum mismatch: {uri}")
     history = version_history(bucket, key, region)
     history_exact = (
         len(history) == 1
@@ -519,6 +531,7 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
             "create_only_put": True,
             "version_exact": True,
             "bytes_exact": True,
+            "sha256_checksum_exact": True,
             "metadata_sha256_exact": True,
             "exact_kms": True,
             "single_version_history": True,
@@ -554,9 +567,15 @@ def audit_output_history(
         require_private_versioned_kms(
             output["uri"], metadata, kms_key_arn, str(output["version_id"])
         )
+        expected_checksum = checksum_sha256(str(output.get("sha256", "")))
+        checksums = output.get("checksums") if isinstance(output.get("checksums"), dict) else {}
         if (
             int(metadata.get("ContentLength", -1)) != int(output.get("bytes", -2))
             or metadata.get("Metadata", {}).get("sha256") != output.get("sha256")
+            or metadata.get("ChecksumType") != "FULL_OBJECT"
+            or metadata.get("ChecksumSHA256") != expected_checksum
+            or checksums.get("ChecksumType") != "FULL_OBJECT"
+            or checksums.get("ChecksumSHA256") != expected_checksum
         ):
             raise ValueError(f"cross-check output exact-version audit failed: {filename}")
         audited.append({
