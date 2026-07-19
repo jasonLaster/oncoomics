@@ -252,6 +252,10 @@ def is_positive_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def s3_key_or_none(uri: Any) -> str | None:
     if not isinstance(uri, str):
         return None
@@ -586,7 +590,7 @@ def validate_logged_anchor(
     expected_key = expected_prefix_key.removesuffix("sentinel") + receipt_sha + ".json"
     checks = {
         "outer_status": payload.get("status") == "passed",
-        "anchor_schema_status": (anchor.get("schema_version") == 1 and anchor.get("status") == "passed"),
+        "anchor_schema_status": (exact_schema_version(anchor, 1) and anchor.get("status") == "passed"),
         "anchor_checks_exact": anchor_checks == EXPECTED_RECEIPT_ANCHOR_CHECKS,
         "receipt_sha256_well_formed": bool(re.fullmatch(r"[0-9a-f]{64}", receipt_sha)),
         "receipt_bytes_positive": (isinstance(receipt_bytes, int) and not isinstance(receipt_bytes, bool) and receipt_bytes > 0),
@@ -826,7 +830,7 @@ def validate_exact_receipt(
             isinstance(head_response.get("Metadata"), dict) and head_response["Metadata"].get("sha256") == local_sha
         ),
         "single_version_no_delete_history": exact_history,
-        "receipt_schema_status": (receipt.get("schema_version") == 2 and receipt.get("status") == "passed"),
+        "receipt_schema_status": (exact_schema_version(receipt, 2) and receipt.get("status") == "passed"),
         "receipt_script_exact": receipt.get("script_sha256") == EXPECTED_MATERIALIZER_SHA256,
         "receipt_checks_exact": receipt_checks == EXPECTED_MATERIALIZER_RECEIPT_CHECKS,
         "receipt_keys_exact": set(receipt) == EXPECTED_MATERIALIZER_RECEIPT_KEYS,

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import copy
 import hashlib
@@ -804,6 +805,13 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "failed upload_binding"):
             MODULE.validate_logged_anchor(terminal, self.prefix, self.kms)
 
+    def test_logged_anchor_requires_exact_schema_version(self) -> None:
+        terminal = copy.deepcopy(self.terminal)
+        terminal["receipt_anchor"]["schema_version"] = 1.0
+
+        with self.assertRaisesRegex(ValueError, "failed anchor_schema_status"):
+            MODULE.validate_logged_anchor(terminal, self.prefix, self.kms)
+
     def test_rejects_logged_anchor_with_missing_unexpected_or_failed_upload_check(self) -> None:
         cases = {}
         for label, mutate in (
@@ -983,6 +991,67 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 self.destination_prefix,
                 self.kms,
             )
+
+    def test_materializer_receipt_requires_exact_schema_version(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = json.loads(self.receipt_bytes)
+            receipt["schema_version"] = 2.0
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "failed receipt_schema_status",
+            ):
+                self.run_capture_with_receipt(Path(temporary), receipt)
+
+    def test_schema_version_checks_use_exact_integer_helper(self) -> None:
+        cases = (
+            (1, 1, True),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (2, 1, False),
+            (None, 1, False),
+            (True, 1, False),
+            (False, 0, False),
+        )
+        for value, expected, accepted in cases:
+            with self.subTest(value=value, expected=expected):
+                self.assertIs(
+                    MODULE.exact_schema_version(
+                        {"schema_version": value},
+                        expected,
+                    ),
+                    accepted,
+                )
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "capture_materializer_terminal.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        parent_by_child = {
+            child: parent
+            for parent in ast.walk(module)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def in_exact_schema_helper(node: ast.AST) -> bool:
+            parent = parent_by_child.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef):
+                    return parent.name == "exact_schema_version"
+                parent = parent_by_child.get(parent)
+            return False
+
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+            and not in_exact_schema_helper(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
 
     def test_rejects_symlinked_exact_receipt_download_before_capture(self) -> None:
         def get(region, bucket, key, version_id, destination):
