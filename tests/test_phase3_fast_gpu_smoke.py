@@ -104,6 +104,28 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                 )
             )
 
+    def test_rejects_padded_gpu_params_strings(self) -> None:
+        string_keys = (
+            "aws_gpu_queue",
+            "aws_job_role",
+            "aws_logs_group",
+            "aws_workdir",
+            "aws_private_results_dir",
+            "parabricks_container",
+            "parabricks_mirror_repository",
+            "phase3_fast_cache_kms_key_arn",
+            "phase3_fast_cache_prefix",
+        )
+
+        for key in string_keys:
+            with self.subTest(key=key), self.assertRaisesRegex(
+                verify.GpuSmokeConfigError,
+                "surrounding whitespace",
+            ):
+                verify.validate_gpu_smoke_params(
+                    p5en_params(**{key: f" {p5en_params()[key]}\n"})
+                )
+
     def test_rejects_parabricks_container_outside_mirror(self) -> None:
         with self.assertRaisesRegex(verify.GpuSmokeConfigError, "parabricks_mirror_repository"):
             verify.validate_gpu_smoke_params(p5en_params(parabricks_mirror_repository=""))

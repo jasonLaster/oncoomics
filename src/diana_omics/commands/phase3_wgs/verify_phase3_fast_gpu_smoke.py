@@ -33,7 +33,9 @@ def _require_non_empty_string(params: Mapping[str, Any], key: str, errors: list[
     if not isinstance(value, str) or not value.strip():
         errors.append(f"{key} must be set")
         return ""
-    return value.strip()
+    if value != value.strip():
+        errors.append(f"{key} must not include surrounding whitespace")
+    return value
 
 
 def _require_use2_s3_uri(params: Mapping[str, Any], key: str, errors: list[str]) -> str | None:
