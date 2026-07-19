@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local coverage-CNV count exactness</li>
+          <li class="pill">Latest milestone = local SV count exactness</li>
+          <li class="pill">SV counts = exact</li>
           <li class="pill">Coverage-CNV counts = exact</li>
           <li class="pill">SBS96 counts = exact</li>
           <li class="pill">Variant counts = exact</li>
@@ -672,6 +673,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact BAM-derived SV counts</strong>
+              <span>Deterministic WGS report staging now rejects non-exact BAM-derived SV counters before mechanical side evidence can feed the first terminal report; these counters are not a production SV VCF/BEDPE and do not make CHORD or HRDetect ready.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact coverage-CNV counts</strong>
               <span>Deterministic WGS report staging now rejects non-exact coverage bin and relative gain/loss counts before mechanical coverage-CNV evidence can feed the first terminal report; these bins are not allele-specific LOH.</span>
@@ -1330,6 +1335,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T08:45:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact BAM-derived SV counts:</strong>
+                deterministic WGS report staging now rejects non-exact
+                BAM-derived SV counters before mechanical side evidence can feed
+                the first terminal report; these counters are not a production
+                SV VCF/BEDPE and do not make CHORD or HRDetect ready. No live
+                cloud action, compute action, or replacement run was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T08:30:00-07:00">Jul 19 · local</time>
               <span>

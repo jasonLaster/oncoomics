@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 from collections import Counter
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 from urllib.parse import urlparse
 
 import finalize_input_contract as INPUT_CONTRACT
@@ -66,6 +66,14 @@ OUTPUT_READINESS = [
     ("HRDetect-style model", "no_call", "The complete calibrated feature vector and validated integration policy are absent."),
     ("Overall HRD", "no_call", "The full deterministic evidence bundle remains partial_evidence without a defensible scalar or categorical HRD call."),
 ]
+
+SV_COUNT_FIELDS = (
+    "total_alignments",
+    "supplementary_alignments",
+    "discordant_mapped_pairs",
+    "interchromosomal_pairs",
+    "large_insert_pairs",
+)
 
 OUTPUT_NAMES = (
     "report.md",
@@ -618,6 +626,14 @@ def nonnegative_int(value: Any) -> bool:
 
 def integer_equals(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
+
+
+def parse_nonnegative_int_text(value: Any) -> Optional[int]:
+    if type(value) is not str or not value.isdecimal():
+        return None
+    if len(value) > 1 and value.startswith("0"):
+        return None
+    return int(value)
 
 
 def require_nonnegative_exact_int(value: Any, label: str) -> int:
@@ -2649,10 +2665,20 @@ def main() -> None:
     for role in ("tumor", "normal"):
         json_row = sv_json_by_role.get(role, {})
         csv_row = sv_csv_by_role.get(role, {})
-        for field in ("total_alignments", "supplementary_alignments", "discordant_mapped_pairs", "interchromosomal_pairs", "large_insert_pairs", "chord_input_status"):
-            if str(json_row.get(field, "")) != str(csv_row.get(field, "")):
+        for field in SV_COUNT_FIELDS:
+            csv_value = parse_nonnegative_int_text(csv_row.get(field))
+            if csv_value is None or not integer_equals(
+                json_row.get(field), csv_value
+            ):
                 sv_consistent = False
-        if int(json_row.get("total_alignments", -1)) != int(alignment_by_role[role].get("total_reads", -2)) or not str(json_row.get("chord_input_status", "")).startswith("no_call"):
+        if str(json_row.get("chord_input_status", "")) != str(
+            csv_row.get("chord_input_status", "")
+        ):
+            sv_consistent = False
+        if not integer_equals(
+            json_row.get("total_alignments"),
+            alignment_by_role[role].get("total_reads"),
+        ) or not str(json_row.get("chord_input_status", "")).startswith("no_call"):
             sv_consistent = False
     add_check(checks, "sv_evidence", sv_consistent, "SV JSON/CSV agree by role; alignment totals reconcile; production SV and CHORD inputs remain no_call.")
 
@@ -2918,10 +2944,10 @@ def main() -> None:
         },
         "sv_evidence": {
             role: {
-                "supplementary_alignments": int(sv_json_by_role[role]["supplementary_alignments"]),
-                "discordant_mapped_pairs": int(sv_json_by_role[role]["discordant_mapped_pairs"]),
-                "interchromosomal_pairs": int(sv_json_by_role[role]["interchromosomal_pairs"]),
-                "large_insert_pairs": int(sv_json_by_role[role]["large_insert_pairs"]),
+                "supplementary_alignments": sv_json_by_role[role]["supplementary_alignments"],
+                "discordant_mapped_pairs": sv_json_by_role[role]["discordant_mapped_pairs"],
+                "interchromosomal_pairs": sv_json_by_role[role]["interchromosomal_pairs"],
+                "large_insert_pairs": sv_json_by_role[role]["large_insert_pairs"],
             }
             for role in ("tumor", "normal")
         },

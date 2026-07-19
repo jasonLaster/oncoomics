@@ -2264,6 +2264,27 @@ def mutate_coverage_cnv_json_count(
     )
 
 
+def mutate_sv_json_count(
+    fixture: SyntheticFixture,
+    role: str,
+    field: str,
+    value: Any,
+) -> None:
+    def mutate_sv(sv: dict[str, Any]) -> None:
+        for row in sv["rows"]:
+            if row["role"] == role:
+                row[field] = value
+
+    StageDeterministicWgsReportInstallTests._mutate_json(
+        fixture.artifacts / "sv/sv_evidence_summary.json",
+        mutate_sv,
+    )
+    StageDeterministicWgsReportInstallTests._mutate_json(
+        fixture.artifacts / "diana_hrd_summary.json",
+        lambda summary: mutate_sv(summary["sv"]),
+    )
+
+
 @unittest.skipUnless(shutil.which("bcftools"), "bcftools is required for the indexed-VCF E2E fixture")
 class StageDeterministicWgsReportTests(unittest.TestCase):
     def test_packet_file_install_is_create_only_and_fsynced(self) -> None:
@@ -2917,6 +2938,80 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             and node.func.id == "int"
             and node.args
             and coerces_coverage_cnv_field(node)
+        ]
+
+        self.assertEqual(raw_coercions, [])
+
+    def test_sv_counts_reject_coercible_json_counts(self) -> None:
+        mutations = (
+            ("tumor total alignments string", "tumor", "total_alignments", "100"),
+            (
+                "tumor supplementary alignments string",
+                "tumor",
+                "supplementary_alignments",
+                "2",
+            ),
+            (
+                "tumor discordant pairs string",
+                "tumor",
+                "discordant_mapped_pairs",
+                "3",
+            ),
+            (
+                "tumor interchromosomal pairs string",
+                "tumor",
+                "interchromosomal_pairs",
+                "1",
+            ),
+            (
+                "normal large insert pairs string",
+                "normal",
+                "large_insert_pairs",
+                "0",
+            ),
+        )
+        for name, role, field, value in mutations:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                mutate_sv_json_count(fixture, role, field, value)
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("sv_evidence", result.stdout + result.stderr)
+                self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_sv_guards_avoid_raw_int_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "json_row.get('total_alignments'",
+                    'json_row.get("total_alignments"',
+                    "sv_json_by_role[role]['supplementary_alignments'",
+                    'sv_json_by_role[role]["supplementary_alignments"',
+                    "sv_json_by_role[role]['discordant_mapped_pairs'",
+                    'sv_json_by_role[role]["discordant_mapped_pairs"',
+                    "sv_json_by_role[role]['interchromosomal_pairs'",
+                    'sv_json_by_role[role]["interchromosomal_pairs"',
+                    "sv_json_by_role[role]['large_insert_pairs'",
+                    'sv_json_by_role[role]["large_insert_pairs"',
+                )
+            )
         ]
 
         self.assertEqual(raw_coercions, [])
