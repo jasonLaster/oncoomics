@@ -336,19 +336,21 @@
           to terminal reports, while deterministic staging, Rosalind,
           source-freeze, private/public publication, AI, and Phase 3 packet
           gates now share one static forbidden-token inventory plus the
-          run-specific scan. Reviewed-public report and public-index apply gates
-          now reject stale top-level or nested dry-run receipt metadata before
-          live publication. Diana terminal deterministic artifacts are still
-          absent, compute is GPU-quota blocked under the selected quota-only,
-          no-race plan, the legacy CPU run remains stopped, and Diana HRD remains
+          run-specific scan. Private report, reviewed-public report, and
+          public-index apply gates now reject stale top-level or nested dry-run
+          receipt metadata before live publication. Diana terminal deterministic
+          artifacts are still absent, compute is GPU-quota blocked under the
+          selected quota-only, no-race plan, the legacy CPU run remains stopped,
+          and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code>.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = 7c5f43e</li>
-          <li class="pill">Prior source = 6c1ddab</li>
+          <li class="pill">Latest milestone = ff7284f</li>
+          <li class="pill">Prior source = 7c5f43e</li>
           <li class="pill">AI bundle staging = exact</li>
           <li class="pill">Pre-route digests = bound</li>
+          <li class="pill">Private dry-run receipts = exact</li>
           <li class="pill">Private apply receipts = exact</li>
           <li class="pill">Public dry-run receipts = exact</li>
           <li class="pill">Public results bucket = intentional</li>
@@ -404,8 +406,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
-              <span>75% · dry-run receipts exact</span>
-              <div class="bar" aria-hidden="true" style="--pct: 75%"><span></span></div>
+              <span>80% · private/public dry-run receipts exact</span>
+              <div class="bar" aria-hidden="true" style="--pct: 80%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Public / private boundary posture</strong>
@@ -593,6 +595,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact private dry-run receipts</strong>
+              <span>Private reviewed-report apply now rejects stale extra top-level dry-run receipt metadata before AWS calls or receipt creation.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact public dry-run receipts</strong>
               <span>Reviewed-public report apply and public-index apply now reject dry-run receipts with stale extra top-level or nested metadata before live publication.</span>
             </li>
@@ -630,6 +636,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T23:52:33-07:00">Jul 18 · 11:52 PM</time>
+              <span>
+                <strong>ff7284f Require exact private dry-run receipts:</strong>
+                private reviewed-report apply now rejects dry-run receipts with
+                stale extra top-level metadata before AWS calls or receipt
+                creation. No publication or compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T23:48:59-07:00">Jul 18 · 11:48 PM</time>
               <span>
