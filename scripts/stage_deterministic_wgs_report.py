@@ -107,6 +107,43 @@ def json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
+def write_snapshot_receipt(path: Path, value: dict[str, Any]) -> None:
+    require_no_symlinked_ancestors(path, "input snapshot receipt")
+    if path.is_symlink():
+        raise ValueError(f"input snapshot receipt may not be a symlink: {path}")
+    if path.exists():
+        raise FileExistsError(f"input snapshot receipt already exists: {path}")
+
+    data = json_bytes(value)
+    expected_sha256 = sha256_bytes(data)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = -1
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(data)
+            handle.flush()
+            os.fchmod(handle.fileno(), 0o400)
+            os.fsync(handle.fileno())
+        fsync_directory(path.parent)
+        require_installed_snapshot_receipt(path, expected_sha256)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def require_installed_snapshot_receipt(path: Path, expected_sha256: str) -> None:
+    require_real_input_path(path, "input snapshot receipt")
+    if (path.stat().st_mode & 0o777) != 0o400:
+        raise ValueError(f"input snapshot receipt mode is not 0400: {path}")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"input snapshot receipt changed during write: {path}")
+
+
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
     return (
         value.st_dev,
@@ -289,10 +326,7 @@ def create_stable_input_snapshot(
         "files": manifest_rows,
     }
     manifest_path = snapshot_root / "input-snapshot-receipt.json"
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    manifest_path.chmod(0o400)
+    write_snapshot_receipt(manifest_path, manifest)
     return {
         "artifact_root": artifact_snapshot,
         "early_root": early_snapshot,

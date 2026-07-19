@@ -154,6 +154,65 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
                 REPORT_MODULE.load_csv(linked_parent / "input.csv")
 
+    def test_input_snapshot_receipt_rehashes_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-input-snapshot-receipt-"
+        ) as temporary:
+            root = Path(temporary)
+            output = root / "input-snapshot-receipt.json"
+            real_fsync_directory = REPORT_MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.chmod(0o600)
+                output.write_text(
+                    '{"status":"tampered"}\n',
+                    encoding="utf-8",
+                )
+                output.chmod(0o400)
+
+            with (
+                patch.object(
+                    REPORT_MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "input snapshot receipt changed during write",
+                ),
+            ):
+                REPORT_MODULE.write_snapshot_receipt(
+                    output,
+                    {
+                        "schema_version": 1,
+                        "status": "passed",
+                    },
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_input_snapshot_receipt_rejects_symlinked_output_parent(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-input-snapshot-receipt-"
+        ) as temporary:
+            root = Path(temporary)
+            real_parent = root / "real-snapshot"
+            real_parent.mkdir()
+            linked_parent = root / "linked-snapshot"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
+                REPORT_MODULE.write_snapshot_receipt(
+                    linked_parent / "input-snapshot-receipt.json",
+                    {
+                        "schema_version": 1,
+                        "status": "passed",
+                    },
+                )
+
+            self.assertFalse((real_parent / "input-snapshot-receipt.json").exists())
+
     def test_packet_file_install_removes_partial_after_file_fsync_failure(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-install-"
