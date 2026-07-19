@@ -72,6 +72,7 @@ def checksum_sha256(digest: str) -> str:
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
+    path = resolve_real_file(path, label)
     try:
         payload = json.loads(
             path.read_text(encoding="utf-8"),

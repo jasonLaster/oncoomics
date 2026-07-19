@@ -1128,6 +1128,73 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertFalse(verification.exists())
 
+    def test_rechecks_materializer_receipt_leaf_before_json_load(self) -> None:
+        payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            forged_receipt_path = root / "forged-materializer.json"
+            output = root / "staged_input_validation.json"
+            verification = root / "verification.json"
+            receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            forged_receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            resolved_output = MODULE.resolve_new_output
+            swapped = False
+
+            def resolve_new_output(path: Path, label: str) -> Path:
+                nonlocal swapped
+                resolved_path = resolved_output(path, label)
+                if not swapped:
+                    swapped = True
+                    receipt_path.unlink()
+                    receipt_path.symlink_to(forged_receipt_path)
+                return resolved_path
+
+            with (
+                patch.object(
+                    MODULE,
+                    "resolve_new_output",
+                    side_effect=resolve_new_output,
+                ),
+                patch.object(
+                    MODULE,
+                    "head_object",
+                    side_effect=AssertionError("AWS called"),
+                ) as head_object,
+                patch.object(
+                    MODULE,
+                    "get_object",
+                    side_effect=AssertionError("AWS called"),
+                ) as get_object,
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materializer receipt may not be a symlink",
+                ),
+            ):
+                MODULE.materialize(
+                    argparse.Namespace(
+                        materializer_receipt=receipt_path,
+                        output=output,
+                        verification_output=verification,
+                        expected_kms_key_arn=KMS,
+                        region="us-east-1",
+                    )
+                )
+
+            self.assertTrue(swapped)
+            head_object.assert_not_called()
+            get_object.assert_not_called()
+            self.assertFalse(output.exists())
+            self.assertFalse(verification.exists())
+
     def test_refuses_symlinked_output_before_verification_reservation(self) -> None:
         payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
 
