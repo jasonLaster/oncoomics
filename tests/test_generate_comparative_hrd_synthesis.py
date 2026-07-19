@@ -471,6 +471,17 @@ class SynthesisFixture:
         manifest["review_bundle_sha256"] = sha256(self.bundle_dir / "review_bundle.json")
         write_json(manifest_path, manifest)
 
+    def mutate_bundle_models(self, mutate) -> None:
+        bundle_path = self.bundle_dir / "review_bundle.json"
+        manifest_path = self.bundle_dir / "bundle_manifest.json"
+        bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        mutate(bundle["model_execution_contracts"])
+        manifest["model_execution_contracts"] = bundle["model_execution_contracts"]
+        write_json(bundle_path, bundle)
+        manifest["review_bundle_sha256"] = sha256(bundle_path)
+        write_json(manifest_path, manifest)
+
 
 class GenerateSynthesisTests(unittest.TestCase):
     def test_synthesis_packet_install_is_create_only_and_fsynced(self) -> None:
@@ -1107,6 +1118,46 @@ class GenerateSynthesisTests(unittest.TestCase):
                     },
                 ],
             )
+
+    def test_bundle_rejects_reviewer_model_summary_drift(self) -> None:
+        for label, mutate_models, message in (
+            (
+                "missing catalog timestamp",
+                lambda models: models["A"].pop("catalog_verified_at"),
+                "comparative synthesis reviewer A model summary is not exact",
+            ),
+            (
+                "non-attested model",
+                lambda models: models["A"].__setitem__(
+                    "latest_available_attested", False
+                ),
+                "comparative synthesis reviewer A model summary is not exact",
+            ),
+            (
+                "split catalog timestamp",
+                lambda models: models["B"].__setitem__(
+                    "catalog_verified_at", "2026-07-18T00:00:00+00:00"
+                ),
+                "reviewer model catalog timestamps differ",
+            ),
+            (
+                "duplicate reviewer model",
+                lambda models: models.__setitem__("B", dict(models["A"])),
+                "reviewers must use distinct models",
+            ),
+        ):
+            with self.subTest(label), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                fixture.mutate_bundle_models(mutate_models)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    GENERATE.verify_bundle(
+                        fixture.bundle_dir / "review_bundle.json",
+                        fixture.bundle_dir / "bundle_manifest.json",
+                        tuple(fixture.methods),
+                    )
 
     def test_synthesis_manifest_rejects_reviewer_model_summary_drift(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:

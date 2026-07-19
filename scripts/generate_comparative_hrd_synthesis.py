@@ -325,18 +325,19 @@ def verify_bundle(
     )
     if manifest.get("model_catalog_receipt_sha256") != catalog_receipt_hash:
         raise ValueError("model catalog receipt binding differs between bundle and manifest")
-    identities = []
+    model_identities: set[Tuple[str, str]] = set()
+    catalog_timestamps: set[str] = set()
     for reviewer in ("A", "B"):
-        model = models[reviewer]
-        if not isinstance(model, dict) or model.get("latest_available_attested") is not True:
-            raise ValueError("latest-model attestation is missing for reviewer " + reviewer)
-        provider = str(model.get("provider", "")).strip()
-        model_id = str(model.get("model_id", "")).strip()
-        if not provider or not model_id:
-            raise ValueError("model identity is missing for reviewer " + reviewer)
-        identities.append((provider, model_id))
-    if identities[0] == identities[1]:
+        provider, model_id, catalog_verified_at = require_reviewer_model_summary(
+            models[reviewer],
+            reviewer,
+        )
+        model_identities.add((provider, model_id))
+        catalog_timestamps.add(catalog_verified_at)
+    if len(model_identities) != 2:
         raise ValueError("reviewers must use distinct models")
+    if len(catalog_timestamps) != 1:
+        raise ValueError("reviewer model catalog timestamps differ")
     prompt_hashes = manifest.get("prompt_sha256")
     if not isinstance(prompt_hashes, dict) or set(prompt_hashes) != {"A", "B"}:
         raise ValueError("prompt hash inventory is missing")
