@@ -188,6 +188,62 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
                         final_evidence_sha256=SHA_4,
                     )
 
+    def test_rejects_non_lowercase_sha256_values(self) -> None:
+        cases = (
+            (
+                "final-evidence",
+                lambda _manifest: None,
+                SHA_4.upper(),
+                "final_evidence_sha256",
+            ),
+            (
+                "final-artifact",
+                lambda manifest: manifest["artifacts"]["small_variants"][
+                    "filter_mutect"
+                ]["sbs96_matrix"].__setitem__(
+                    "sha256",
+                    manifest["artifacts"]["small_variants"]["filter_mutect"][
+                        "sbs96_matrix"
+                    ]["sha256"].upper(),
+                ),
+                SHA_4,
+                "artifacts.small_variants.filter_mutect.sbs96_matrix.sha256",
+            ),
+            (
+                "reference",
+                lambda manifest: manifest["input_sources"]["reference"]["fasta"].__setitem__(
+                    "sha256",
+                    manifest["input_sources"]["reference"]["fasta"]["sha256"].upper(),
+                ),
+                SHA_4,
+                "input_sources.reference.fasta.sha256",
+            ),
+            (
+                "sequenza-bam",
+                lambda manifest: manifest["input_sources"]["bam_pair"]["tumor"][
+                    "bam"
+                ].__setitem__(
+                    "sha256",
+                    manifest["input_sources"]["bam_pair"]["tumor"]["bam"][
+                        "sha256"
+                    ].upper(),
+                ),
+                SHA_4,
+                "input_sources.bam_pair.tumor.bam.sha256",
+            ),
+        )
+
+        for label, mutate, final_evidence_sha256, error in cases:
+            with self.subTest(label=label), TemporaryDirectory() as tmp:
+                manifest = _final_evidence(Path(tmp))
+                mutate(manifest)
+
+                with self.assertRaisesRegex(crosscheck_plan.ManifestError, error):
+                    crosscheck_plan.build_phase3_fast_crosscheck_materialization_plan(
+                        manifest,
+                        final_evidence_sha256=final_evidence_sha256,
+                    )
+
     def test_environment_command_writes_plan(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact deterministic final SHA-256s</li>
+          <li class="pill">Latest milestone = local exact cross-check materialization SHA-256s</li>
+          <li class="pill">Cross-check materialization SHA-256s = exact</li>
           <li class="pill">Deterministic final SHA-256s = exact</li>
           <li class="pill">AI model-catalog strings = exact</li>
           <li class="pill">GPU smoke parameter strings = exact</li>
@@ -1061,6 +1062,10 @@
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact cross-check materialization SHA-256s</strong>
+              <span>Phase 3 fast cross-check materialization now requires final-evidence, SigProfiler/SBS3 final-artifact/reference, and Sequenza/scarHRD alias-source SHA-256 fields to be exact lowercase strings before rendering <code>crosscheck_materialization_plan.json</code>.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer source VersionIds</strong>
               <span><code>submit_materializer_v4.py</code> now requires exact string VersionIds in final-freeze, exact-materialization, reference-freeze, and SHA receipt source gates before materializer-v4 preflight can build submission parameters.</span>
             </li>
@@ -1710,6 +1715,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:50:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact cross-check materialization SHA-256s:</strong>
+                Phase 3 fast cross-check materialization now rejects
+                uppercase final-evidence, SigProfiler/SBS3 final-artifact or
+                reference, and Sequenza/scarHRD alias-source SHA-256 strings
+                before rendering its materialization plan.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:40:00-07:00">Jul 19 · local</time>
               <span>
