@@ -343,8 +343,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = 68b2a80</li>
-          <li class="pill">Source hardening = d157281</li>
+          <li class="pill">Latest milestone = 0c5e1c9</li>
+          <li class="pill">Prior source = 9e238b1</li>
+          <li class="pill">Reviewed-public versions = build + apply checked</li>
           <li class="pill">Compute decision = quota-only / no race</li>
           <li class="pill">In flight = dry post-deterministic chain</li>
           <li class="pill">Reviewer identities = explicit</li>
@@ -390,13 +391,13 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
-              <span>50% · self-check closed</span>
-              <div class="bar" aria-hidden="true" style="--pct: 50%"><span></span></div>
+              <span>55% · exact support guarded</span>
+              <div class="bar" aria-hidden="true" style="--pct: 55%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
-              <span>60% · source-only chain prep</span>
-              <div class="bar" aria-hidden="true" style="--pct: 60%"><span></span></div>
+              <span>65% · current versions rechecked</span>
+              <div class="bar" aria-hidden="true" style="--pct: 65%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Public / private boundary posture</strong>
@@ -520,6 +521,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require the exact synthesis support inventory</strong>
+              <span>Final synthesis validation now accepts only the agreement CSV support hash and rejects extra stale support entries before the packet can move forward.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · validate reviewer contracts at synthesis bundle ingress</strong>
               <span>Bundle verification now reuses the exact reviewer-model summary validator, requires distinct A/B provider-model identities, and requires both catalog timestamps to come from one snapshot before rendering.</span>
             </li>
@@ -564,6 +569,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · recheck current reviewed-public versions</strong>
+              <span>Index build verifies current object versions and receipt-bound metadata, and index apply repeats that check immediately before publication.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · carry run-specific public-safety scans end to end</strong>
               <span>The static Diana scan defaults live in one shared module, and the reviewed-public renderer receives the run-specific inventory before rescanning all 20 dry/apply publication commands.</span>
             </li>
@@ -589,6 +598,44 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T23:25:39-07:00">Jul 18 · 11:25 PM</time>
+              <span>
+                <strong>0c5e1c9 Require exact synthesis support hashes:</strong>
+                final comparative-synthesis validation now requires the support
+                inventory to contain exactly the agreement CSV hash, rejecting
+                extra stale support entries before packet handoff. No compute
+                was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T23:24:30-07:00">Jul 18 · 11:24 PM</time>
+              <span>
+                <strong>9e238b1 Recheck reviewed-public versions before index apply:</strong>
+                public-index apply now repeats the current object-version and
+                receipt-bound metadata checks immediately before publication,
+                closing the gap between local index build and apply. No compute
+                was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T23:18:13-07:00">Jul 18 · 11:18 PM</time>
+              <span>
+                <strong>01ca4ce Refresh HRD dashboard for quota-only GPU path:</strong>
+                published the selected P5en/Parabricks quota-only, no-race
+                decision plus the 5 Mb CNV-bin and BAM-derived SV-counter
+                <code>no_call</code> boundaries. No compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T23:18:07-07:00">Jul 18 · 11:18 PM</time>
+              <span>
+                <strong>2bb1f75 Require current reviewed-public versions in index build:</strong>
+                public-index build now verifies each current object version,
+                size, checksum, encryption mode, and receipt-bound metadata
+                before creating the local index. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T23:13:18-07:00">Jul 18 · 11:13 PM</time>
               <span>
