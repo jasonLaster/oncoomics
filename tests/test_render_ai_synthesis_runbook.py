@@ -142,6 +142,11 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         text = render(receipt_stem="unit")
 
         self.assertIn("/repo/scripts/prepare_ai_review_run.py", text)
+        self.assertIn(
+            "--inventory-id diana_wgs_hrd_report_set_v1",
+            text,
+        )
+        self.assertEqual(text.count("--inventory-id "), 1)
         self.assertNotIn("build_ai_review_bundle.py", text)
         self.assertNotIn("stage_ai_review_inputs.py", text)
 

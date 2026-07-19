@@ -192,10 +192,21 @@ def required_methods(args: argparse.Namespace) -> tuple[str, ...]:
     return required_method_ids(args.inventory_id)
 
 
+def manifest_arguments_for_methods(methods: tuple[str, ...]) -> dict[str, str]:
+    if len(methods) != len(MANIFEST_ARGUMENTS):
+        raise ValueError(
+            "HRD report inventory must have exactly one manifest argument per "
+            f"required method; methods={len(methods)} arguments={len(MANIFEST_ARGUMENTS)}"
+        )
+    return dict(zip(methods, MANIFEST_ARGUMENTS))
+
+
 def method_manifest_paths(args: argparse.Namespace) -> dict[str, Path]:
     return {
         method_id: Path(getattr(args, argument))
-        for method_id, argument in zip(required_methods(args), MANIFEST_ARGUMENTS)
+        for method_id, argument in manifest_arguments_for_methods(
+            required_methods(args)
+        ).items()
     }
 
 

@@ -18,6 +18,7 @@ from ai_model_catalog import (
 from hrd_report_inventory import (
     AI_REVIEW_METHOD_IDS,
     COMPARATIVE_METHOD_IDS,
+    INVENTORY_ID,
     REPORT_METHOD_IDS,
     REQUIRED_METHOD_IDS,
     source_report_manifest_paths,
@@ -489,6 +490,8 @@ def render(
                 [
                     "python3",
                     scripts / "prepare_ai_review_run.py",
+                    "--inventory-id",
+                    INVENTORY_ID,
                     *prepare_manifest_flags(manifests),
                     *expected_source_manifest_flags(receipt_summaries),
                     "--output-dir",

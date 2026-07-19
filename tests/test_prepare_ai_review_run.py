@@ -215,6 +215,14 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             self.assertIn("rosalind_hcc1395_wgs", receipt["source_manifests"])
             self.assertNotIn("rosalind_diana_wgs", receipt["source_manifests"])
 
+    def test_manifest_argument_inventory_must_match_required_method_count(
+        self,
+    ) -> None:
+        with self.assertRaisesRegex(ValueError, "exactly one manifest argument"):
+            PREPARE.manifest_arguments_for_methods(
+                (*INVENTORY.REQUIRED_METHOD_IDS, "extra_method")
+            )
+
     def test_prepares_bundle_with_forbidden_tokens_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))
