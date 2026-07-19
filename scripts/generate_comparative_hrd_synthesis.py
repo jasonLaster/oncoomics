@@ -202,6 +202,14 @@ def checked_hash(value: Any, label: str) -> str:
     return text
 
 
+def is_nonnegative_exact_int(value: Any) -> bool:
+    return type(value) is int and value >= 0
+
+
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
 def split_semicolon(value: str) -> Tuple[str, ...]:
     return tuple(item.strip() for item in value.split(";") if item.strip())
 
@@ -577,10 +585,18 @@ def verify_review(
         raise ValueError("reviewer " + reviewer + " invocation metadata is incomplete")
     evidence_by_id = {str(row["evidence_id"]): row for row in bundle["evidence_sources"]}
     claims = read_claims(claims_path, evidence_by_id, str(bundle["authorized_hrd_state"]))
-    if validation.get("claim_count") != len(claims):
+    claim_count = validation.get("claim_count")
+    if (
+        not is_positive_exact_int(claim_count)
+        or claim_count != len(claims)
+    ):
         raise ValueError("reviewer " + reviewer + " claim count changed")
     disagreement_count = sum(row["disagreement_status"].strip() != "none" for row in claims)
-    if validation.get("disagreement_claim_count") != disagreement_count:
+    validation_disagreement_count = validation.get("disagreement_claim_count")
+    if (
+        not is_nonnegative_exact_int(validation_disagreement_count)
+        or validation_disagreement_count != disagreement_count
+    ):
         raise ValueError("reviewer " + reviewer + " disagreement count changed")
     if validation.get("covered_evidence_ids") != sorted(evidence_by_id):
         raise ValueError("reviewer " + reviewer + " validation omits source evidence")
@@ -1121,10 +1137,8 @@ def require_synthesis_review_summary(
         model_identities.add((provider, model_id))
         catalog_timestamps.add(catalog_verified_at)
         if (
-            not isinstance(claim_count, int)
-            or claim_count < 1
-            or not isinstance(disagreement_count, int)
-            or disagreement_count < 0
+            not is_positive_exact_int(claim_count)
+            or not is_nonnegative_exact_int(disagreement_count)
             or disagreement_count > claim_count
         ):
             raise ValueError("comparative synthesis reviewer summary is not exact")
@@ -1137,7 +1151,7 @@ def require_synthesis_review_summary(
         or not status_counts
         or set(status_counts) - ALLOWED_AGREEMENT_STATUSES
         or any(
-            not isinstance(value, int) or value < 0
+            not is_nonnegative_exact_int(value)
             for value in status_counts.values()
         )
         or sum(status_counts.values()) != len(required_methods)

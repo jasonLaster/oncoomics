@@ -777,6 +777,45 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.require_synthesis_report_manifest(staging)
 
+    def test_synthesis_rejects_boolean_count_summaries(self) -> None:
+        cases = (
+            (
+                lambda summary: summary["reviewers"][0].__setitem__(
+                    "claim_count", True
+                ),
+                "comparative synthesis reviewer summary is not exact",
+            ),
+            (
+                lambda summary: summary["reviewers"][0].__setitem__(
+                    "disagreement_claim_count", False
+                ),
+                "comparative synthesis reviewer summary is not exact",
+            ),
+            (
+                lambda summary: summary["agreement_status_counts"].__setitem__(
+                    "concordant", True
+                ),
+                "comparative synthesis agreement counts are not exact",
+            ),
+        )
+
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-"
+            ) as temporary:
+                staging = Path(temporary)
+                report = staging / "report.md"
+                agreement = staging / "agreement_disagreement.csv"
+                manifest = staging / "report_manifest.json"
+                GENERATE.write_staged_text(report, "# Report\n")
+                write_synthesis_agreement(agreement)
+                payload = write_synthesis_manifest(manifest, report, agreement)
+                mutate(payload["review_summary"])
+                write_json(manifest, payload)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    GENERATE.require_synthesis_report_manifest(staging)
+
     def test_synthesis_rejects_stale_structured_disagreement_summary(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             staging = Path(temporary)
@@ -1521,6 +1560,33 @@ class GenerateSynthesisTests(unittest.TestCase):
             result = fixture.run()
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("output differs", result.stdout + result.stderr)
+
+    def test_boolean_reviewer_validation_counts_fail_closed(self) -> None:
+        cases = (
+            ("claim_count", True, "claim count changed"),
+            (
+                "disagreement_claim_count",
+                False,
+                "disagreement count changed",
+            ),
+        )
+
+        for field, value, message in cases:
+            with self.subTest(field=field), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-validation-count-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                validation_path = fixture.review_a / "validation.json"
+                validation = json.loads(
+                    validation_path.read_text(encoding="utf-8")
+                )
+                validation[field] = value
+                write_json(validation_path, validation)
+
+                result = fixture.run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stdout + result.stderr)
 
     def test_rejects_symlinked_cli_inputs_without_final_output(self) -> None:
         cases = (
