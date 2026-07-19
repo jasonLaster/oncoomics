@@ -99,14 +99,73 @@ S3_CHECKSUM_FIELDS = {
     "ChecksumCRC32C",
     "ChecksumCRC32",
 }
-STAGED_VALIDATION_DOWNLOAD_REQUIRED_CHECKS = {
-    "version_exact",
-    "bytes_exact",
-    "sha256_exact",
-    "get_checksum_present",
-    "head_checksum_present",
-    "full_object_sha256_exact",
-    "exact_kms",
+EXPECTED_CROSSCHECK_CAPTURE_CHECKS: dict[str, bool] = {
+    "terminal_batch_identity": True,
+    "exact_cloudwatch_stream": True,
+    "single_terminal_anchor": True,
+    "logged_receipt_binding": True,
+    "bucket_versioning_enabled": True,
+    "exact_version_get": True,
+    "exact_version_head": True,
+    "logged_local_sha256_and_bytes": True,
+    "s3_sha256_checksums": True,
+    "exact_kms": True,
+    "single_version_no_delete_history": True,
+    "private_mode_0600": True,
+}
+EXPECTED_CROSSCHECK_BATCH_CHECKS: dict[str, bool] = {
+    "job_id_exact": True,
+    "succeeded": True,
+    "terminal_timestamps": True,
+    "exact_job_definition": True,
+    "exact_queue": True,
+    "one_retry_attempt": True,
+    "one_terminal_attempt": True,
+    "job_exit_zero": True,
+    "attempt_exit_zero": True,
+    "parameters_exact": True,
+    "log_stream_exact": True,
+    "definition_exact": True,
+    "definition_log_exact": True,
+    "queue_live_exact": True,
+    "arm_compute_environment_exact": True,
+}
+EXPECTED_CROSSCHECK_ANCHOR_CHECKS: dict[str, bool] = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_create_only_version": True,
+}
+EXPECTED_CROSSCHECK_RECEIPT_DOWNLOAD_CHECKS: dict[str, bool] = {
+    "logged_local_sha256_exact": True,
+    "logged_local_bytes_exact": True,
+    "get_version_exact": True,
+    "head_version_exact": True,
+    "get_bytes_exact": True,
+    "head_bytes_exact": True,
+    "get_sha256_checksum_exact": True,
+    "head_sha256_checksum_exact": True,
+    "get_kms_exact": True,
+    "head_kms_exact": True,
+    "get_metadata_sha256_exact": True,
+    "head_metadata_sha256_exact": True,
+    "single_version_no_delete_history": True,
+    "receipt_schema_status": True,
+    "receipt_script_exact": True,
+    "receipt_checks_passed": True,
+    "receipt_boundary_no_call": True,
+}
+EXPECTED_STAGED_VALIDATION_DOWNLOAD_CHECKS: dict[str, bool] = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "get_checksum_present": True,
+    "head_checksum_present": True,
+    "full_object_sha256_exact": True,
+    "exact_kms": True,
 }
 
 
@@ -703,14 +762,13 @@ def validate_crosscheck_terminal_capture(
             == "private read-only terminal materializer custody capture"
         ),
         "capture_checks_passed": bool(capture_checks)
-        and all(value is True for value in capture_checks.values()),
+        and capture_checks == EXPECTED_CROSSCHECK_CAPTURE_CHECKS,
         "batch_terminal_identity": (
             batch.get("status") == "SUCCEEDED"
             and batch.get("log_group") == "/aws/batch/job"
             and batch.get("attempt_count") == 1
             and batch.get("exit_code") == 0
-            and bool(batch_checks)
-            and all(value is True for value in batch_checks.values())
+            and batch_checks == EXPECTED_CROSSCHECK_BATCH_CHECKS
         ),
         "cloudwatch_anchor_matches_local_anchor": (
             cloudwatch.get("receipt_anchor") == anchor
@@ -727,8 +785,7 @@ def validate_crosscheck_terminal_capture(
         "anchor_schema_checks": (
             anchor.get("schema_version") == 1
             and anchor.get("status") == "passed"
-            and bool(anchor_checks)
-            and all(value is True for value in anchor_checks.values())
+            and anchor_checks == EXPECTED_CROSSCHECK_ANCHOR_CHECKS
         ),
         "anchor_binds_receipt": (
             anchor.get("receipt_sha256") == receipt_sha
@@ -750,8 +807,7 @@ def validate_crosscheck_terminal_capture(
             and integer_equals(
                 receipt_summary.get("local_bytes"), receipt_path.stat().st_size
             )
-            and bool(receipt_checks)
-            and all(value is True for value in receipt_checks.values())
+            and receipt_checks == EXPECTED_CROSSCHECK_RECEIPT_DOWNLOAD_CHECKS
             and receipt_summary.get("kms_key_arn") == expected_kms_key_arn
             and single_receipt_version
         ),
@@ -760,11 +816,7 @@ def validate_crosscheck_terminal_capture(
             and download.get("status") == "passed"
             and download.get("expected_kms_key_arn") == expected_kms_key_arn
             and download.get("materializer_receipt_sha256") == receipt_sha
-            and STAGED_VALIDATION_DOWNLOAD_REQUIRED_CHECKS.issubset(
-                set(download_checks)
-            )
-            and bool(download_checks)
-            and all(value is True for value in download_checks.values())
+            and download_checks == EXPECTED_STAGED_VALIDATION_DOWNLOAD_CHECKS
         ),
         "download_binds_staged_validation": (
             download_object.get("uri") == staged_output.get("uri")

@@ -1410,7 +1410,7 @@ class SyntheticFixture:
                     "attempt_count": 1,
                     "exit_code": 0,
                     "log_group": "/aws/batch/job",
-                    "checks": {"terminal": True},
+                    "checks": dict(REPORT_MODULE.EXPECTED_CROSSCHECK_BATCH_CHECKS),
                 },
                 "cloudwatch": {
                     "event_count": 3,
@@ -1446,7 +1446,9 @@ class SyntheticFixture:
                             "history_kind": "version",
                         }
                     ],
-                    "checks": {"exact_version": True},
+                    "checks": dict(
+                        REPORT_MODULE.EXPECTED_CROSSCHECK_RECEIPT_DOWNLOAD_CHECKS
+                    ),
                 },
                 "local_anchor": {
                     "sha256": sha256(anchor_path),
@@ -1454,7 +1456,7 @@ class SyntheticFixture:
                 },
                 "classification_authorization": "none",
                 "authorized_hrd_state": "no_call",
-                "checks": {"terminal_batch_identity": True},
+                "checks": dict(REPORT_MODULE.EXPECTED_CROSSCHECK_CAPTURE_CHECKS),
             },
         )
         staged_output = outputs["staged_input_validation.json"]
@@ -2110,6 +2112,54 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
 
+    def test_incomplete_terminal_capture_checks_fail_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            capture_path = fixture.aux / "crosscheck-materialization-capture.json"
+            capture = json.loads(capture_path.read_text(encoding="utf-8"))
+            capture["checks"].pop("single_terminal_anchor")
+            write_json(capture_path, capture)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_unexpected_terminal_receipt_download_checks_fail_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            capture_path = fixture.aux / "crosscheck-materialization-capture.json"
+            capture = json.loads(capture_path.read_text(encoding="utf-8"))
+            capture["receipt"]["checks"]["future_check"] = True
+            write_json(capture_path, capture)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_incomplete_terminal_batch_checks_fail_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            capture_path = fixture.aux / "crosscheck-materialization-capture.json"
+            capture = json.loads(capture_path.read_text(encoding="utf-8"))
+            capture["batch"]["checks"].pop("definition_log_exact")
+            write_json(capture_path, capture)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
     def test_changed_staged_validation_download_fails_before_report_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
             fixture = SyntheticFixture(Path(temporary))
@@ -2118,6 +2168,22 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             download["object"]["sha256"] = "0" * 64
             write_json(download_path, download)
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_unexpected_staged_validation_download_checks_fail_before_report_publication(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            download_path = fixture.aux / "staged-input-validation-download.json"
+            download = json.loads(download_path.read_text(encoding="utf-8"))
+            download["checks"]["future_check"] = True
+            write_json(download_path, download)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
