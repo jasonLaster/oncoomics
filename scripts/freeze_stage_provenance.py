@@ -134,6 +134,10 @@ def valid_version_id(value: Any) -> bool:
     )
 
 
+def valid_sha256(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
 def exact_version_id(value: Any, label: str) -> str:
     if not valid_version_id(value):
         raise RuntimeError(f"{label} omitted an exact S3 VersionId")
@@ -481,7 +485,7 @@ def validate_execution(
     source_bucket = f"diana-omics-work-{account_id}-{region}"
     destination_bucket = f"diana-omics-private-results-{account_id}-{region}"
     expected_command = expected_execution_command(source_bucket, run_id, region)
-    worker_sha = str(worker.get("sha256", ""))
+    worker_sha = worker.get("sha256")
     launch_uri = (
         f"s3://{source_bucket}/runs/diana-hrd/{run_id}/inputs/"
         "diana_hrd_wgs_worker.py"
@@ -518,7 +522,7 @@ def validate_execution(
         or worker.get("executed_uri") != executed_uri
         or not valid_version_id(worker.get("executed_version_id"))
         or not valid_version_id(worker.get("freeze_receipt_version_id"))
-        or not re.fullmatch(r"[0-9a-f]{64}", worker_sha)
+        or not valid_sha256(worker_sha)
         or not is_positive_exact_int(worker.get("bytes"))
         or worker.get("server_side_encryption") != "aws:kms"
         or worker.get("kms_key_id") != kms_key_arn

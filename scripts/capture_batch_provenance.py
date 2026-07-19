@@ -1088,6 +1088,9 @@ def main() -> None:
     freeze_output = json.loads(str(freeze_invocation.get("StandardOutputContent", "")))
     if not isinstance(freeze_output, dict):
         raise SystemExit("Fail-closed: worker freeze command output is malformed")
+    worker_head_metadata = worker_head.get("Metadata")
+    if not isinstance(worker_head_metadata, dict):
+        raise SystemExit("Fail-closed: executed worker HEAD metadata is malformed")
     try:
         head_checksum_hex = decode_checksum_sha256(
             worker_head.get("ChecksumSHA256"),
@@ -1100,6 +1103,10 @@ def main() -> None:
         receipt_upload_head_checksum_hex = decode_checksum_sha256(
             receipt_upload_head.get("ChecksumSHA256"),
             "executed-worker freeze receipt upload HEAD ChecksumSHA256",
+        )
+        head_metadata_checksum_hex = require_sha256_hex(
+            worker_head_metadata.get("sha256"),
+            "executed-worker HEAD metadata sha256",
         )
     except ValueError as error:
         raise SystemExit(
@@ -1184,7 +1191,7 @@ def main() -> None:
             == expected_checksum_hex
             == head_checksum_hex
             == get_checksum_hex
-            == str((worker_head.get("Metadata") or {}).get("sha256", ""))
+            == head_metadata_checksum_hex
         ),
         "full_object_checksum": (
             worker_head.get("ChecksumType")

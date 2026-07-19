@@ -295,6 +295,17 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         wrong_kms = deepcopy(receipt)
         wrong_kms["worker"]["kms_key_id"] = "wrong"
         tampered.append(wrong_kms)
+        numeric_worker_sha = deepcopy(receipt)
+        forged_worker_sha = "1" * 64
+        numeric_worker_sha["worker"]["sha256"] = int(forged_worker_sha)
+        numeric_worker_sha["worker"]["executed_uri"] = (
+            f"s3://{DESTINATION_BUCKET}/runs/subject01/{RUN_ID}/deterministic/"
+            f"provenance/executed-workers/{forged_worker_sha}.py"
+        )
+        numeric_worker_sha["worker"]["checksums"]["ChecksumSHA256"] = (
+            base64.b64encode(bytes.fromhex(forged_worker_sha)).decode("ascii")
+        )
+        tampered.append(numeric_worker_sha)
         wrong_effective_timeout = deepcopy(receipt)
         wrong_effective_timeout["batch"]["timeout"]["attemptDurationSeconds"] = 64800
         tampered.append(wrong_effective_timeout)

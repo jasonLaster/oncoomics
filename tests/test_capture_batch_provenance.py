@@ -1097,6 +1097,8 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             "worker_get.get('ChecksumSHA256'",
             'receipt_upload_head.get("ChecksumSHA256"',
             "receipt_upload_head.get('ChecksumSHA256'",
+            'worker_head_metadata.get("sha256"',
+            "worker_head_metadata.get('sha256'",
         )
         raw_string_coercions = [
             ast.unparse(node)

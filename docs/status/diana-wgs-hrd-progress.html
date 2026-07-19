@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact terminal checksums</li>
+          <li class="pill">Latest milestone = local exact worker metadata hashes</li>
+          <li class="pill">Worker metadata SHA-256s = exact</li>
           <li class="pill">Terminal ChecksumSHA256s = exact</li>
           <li class="pill">Stager worker SHA-256s = exact</li>
           <li class="pill">Input-contract finalizer VersionIds = exact</li>
@@ -731,6 +732,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact worker metadata hashes</strong>
+              <span><code>capture_batch_provenance.py</code> now validates executed-worker HEAD metadata hashes through the exact lowercase SHA-256 guard, and <code>freeze_stage_provenance.py</code> rejects non-string terminal execution worker digests before stage provenance can trust worker custody.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact terminal checksum strings</strong>
               <span><code>capture_materializer_terminal.py</code> and <code>capture_route_terminal.py</code> now reject non-string S3 <code>ChecksumSHA256</code> values from exact GET and HEAD receipt metadata before terminal materializer or route capture receipts can pass.</span>
@@ -1625,6 +1630,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T21:00:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact worker metadata hashes:</strong>
+                <code>capture_batch_provenance.py</code> now validates the
+                executed-worker HEAD metadata hash with the exact lowercase
+                SHA-256 guard used for downloaded worker bytes, command
+                stdout, and full-object checksums, while
+                <code>freeze_stage_provenance.py</code> requires the terminal
+                execution receipt's worker hash to be an actual string digest
+                before it can be used as a content address. The focused
+                69-test custody gate and 20-module, 866-test post-terminal
+                gate both passed.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T20:50:00-07:00">Jul 19 · local</time>
               <span>
