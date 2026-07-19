@@ -307,13 +307,13 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>2d3ec4f8710d081a82e2fd5084921e459af9c629</strong>.
-          The latest work is exact reviewed-public source-check hardening:
-          <code>publish_reviewed_public_report.py</code> now requires private
-          source-object <code>HEAD</code>, exact-version <code>GET</code>, and
-          local downloaded-file checks to exactly match their fixed contracts
-          before a source object can be recorded as preflighted for
-          reviewed-public publication.
+          <strong>1cbef45548dbbc531410e8239d2553222b474a02</strong>.
+          The latest work is exact frozen-materialization custody hardening:
+          <code>materialize_frozen_artifacts.py</code> and
+          <code>finalize_input_contract.py</code> now require every
+          exact-version materialization row to carry exactly the seven
+          all-true checks expected by the v4 cross-check materializer submitter
+          before alias-only HRD cross-check inputs can be finalized.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -321,7 +321,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 2d3ec4f</li>
+          <li class="pill">Latest hardening = 1cbef45</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -403,8 +403,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 2d3ec4f</strong>
-              <span>Reviewed-public publication now rejects missing, unexpected, or lagging private-source HEAD, GET, or local file verification maps before recording source preflight success.</span>
+              <strong>Preserve 1cbef45</strong>
+              <span>Frozen private downloads now require the exact seven-check materialization map before alias-only HRD cross-check input contracts can bind version, byte, full-object checksum, SSE-KMS, KMS-key, and local SHA-256 evidence.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -452,6 +452,26 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>1cbef45 Require exact frozen materialization checks:</strong>
+                <code>validate_materialized()</code> now records a materialized
+                private object only when <code>version_id</code>,
+                <code>content_length</code>, <code>local_bytes</code>,
+                <code>checksums</code>, <code>checksum_type</code>,
+                <code>sse</code>, and <code>kms</code> exactly match the
+                all-true <code>EXPECTED_MATERIALIZATION_CHECKS</code> contract.
+                <code>finalize_input_contract.py</code> now requires the same
+                exact receipt row before it can finalize an HRD cross-check
+                input contract, and also binds row
+                <code>checksum_type == FULL_OBJECT</code> plus
+                <code>server_side_encryption == aws:kms</code>. The new tests
+                reject missing, unexpected, and failed materialization-row
+                checks and keep the materializer, finalizer, and v4 submitter
+                aligned on the seven-check inventory.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
