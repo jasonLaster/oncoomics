@@ -307,12 +307,12 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>d9a0db89f2daafdfebff915e7a271b8b149e6589</strong>.
-          The latest work is route terminal capture hardening:
-          <code>capture_route_terminal.py</code> now requires exact expected
-          maps for publication anchors, route receipts, route output objects,
-          and history-audit rows before reviewed cross-check route outputs can
-          be captured.
+          <strong>750cbb2ff35ba64e206330dd48d4ce582d040a03</strong>.
+          The latest work is exact report-tree replay hardening:
+          <code>download_exact_report_tree.py</code> now requires exact
+          expected maps on the route publication receipt, publication anchor,
+          and each publication object row before exact-version local report
+          trees can be materialized.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -320,7 +320,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = d9a0db8</li>
+          <li class="pill">Latest hardening = 750cbb2</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -402,8 +402,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve d9a0db8</strong>
-              <span>Route terminal capture now rejects missing, unexpected, or failed publication-anchor, route-receipt, route-output, and history-audit check maps before reviewed route outputs can be trusted.</span>
+              <strong>Preserve 750cbb2</strong>
+              <span>Exact report-tree replay now rejects missing, unexpected, or failed route publication receipt, publication anchor, and publication object row checks before local report trees can be materialized.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -451,6 +451,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>750cbb2 Require exact report tree receipt checks:</strong>
+                <code>download_exact_report_tree.py</code> now defines
+                <code>EXPECTED_PUBLICATION_RECEIPT_CHECKS</code>,
+                <code>EXPECTED_PUBLICATION_ANCHOR_CHECKS</code>, and
+                <code>EXPECTED_PUBLICATION_OBJECT_CHECKS</code> for the route
+                publication receipt, publication anchor, and each publication
+                object row. Local report-tree replay now requires those exact
+                expected maps before materializing exact-version report files,
+                and <code>test_download_exact_report_tree.py</code> rejects
+                missing, unexpected, or failed keys in all three maps.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
