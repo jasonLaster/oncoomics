@@ -48,6 +48,15 @@ STAGE_RECEIPT_CHECKS = {
     "reviewer_b_two_file_inventory": True,
     "no_cross_prompt": True,
 }
+STAGE_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "generated_at",
+    "bundle_dir",
+    "output_root",
+    "reviewers",
+    "checks",
+}
 EXPECTED_PREPARE_POSTCONDITION_CHECKS = {
     "pinned_seven_method_inventory": True,
     "source_report_hashes_match": True,
@@ -472,8 +481,11 @@ def require_rebased_stage_receipt(
         }
 
     if (
-        receipt.get("schema_version") != 1
+        set(receipt) != STAGE_RECEIPT_KEYS
+        or receipt.get("schema_version") != 1
         or receipt.get("status") != "passed"
+        or not isinstance(receipt.get("generated_at"), str)
+        or not receipt.get("generated_at")
         or receipt.get("bundle_dir") != str(output / "bundle")
         or receipt.get("output_root") != str(output / "reviewer-inputs")
         or receipt.get("reviewers") != expected_reviewers

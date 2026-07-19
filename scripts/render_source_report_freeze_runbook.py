@@ -63,6 +63,20 @@ BLOCKED_SOURCE_METHOD_IDS = (
     "rosalind_diana_wgs",
     *EXECUTABLE_CROSSCHECK_METHOD_IDS,
 )
+TERMINAL_SOURCE_REPORT_KINDS = {
+    "deterministic_full_wgs": "deterministic_baseline",
+    "rosalind_diana_wgs": "rosalind_hrd_reviewer_packet",
+    **{
+        method_id: "executable_crosscheck_method"
+        for method_id in EXECUTABLE_CROSSCHECK_METHOD_IDS
+    },
+    **{
+        method_id: "blocked_method"
+        for method_id in BLOCKED_CROSSCHECK_METHOD_IDS
+    },
+}
+if tuple(TERMINAL_SOURCE_REPORT_KINDS) != REQUIRED_METHOD_IDS:
+    raise AssertionError("terminal source report kinds must match source inventory")
 
 
 def forbidden_flags() -> list[str]:
@@ -146,6 +160,7 @@ def validate_packet_dirs(
             validate_private_packet_dir(path, method_id, forbidden_tokens)
         except ValueError as error:
             raise ValueError(f"{method_id} packet directory is invalid: {error}") from error
+        validate_terminal_source_report_kind(method_id, path)
     validate_blocked_source_bindings(paths)
     validate_executable_source_bindings(paths)
     if phase3_fast_report_packet_validation is not None:
@@ -219,6 +234,19 @@ def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
                 f"{blocked_method_id} packet is not bound to current upstream "
                 "report manifests"
             )
+
+
+def validate_terminal_source_report_kind(method_id: str, packet_dir: Path) -> None:
+    manifest = load_json_object(
+        packet_dir / "report_manifest.json",
+        f"{method_id} report manifest",
+    )
+    expected = TERMINAL_SOURCE_REPORT_KINDS[method_id]
+    if manifest.get("report_kind") != expected:
+        raise ValueError(
+            f"{method_id} report_kind must be {expected} for terminal source "
+            f"freeze; observed={manifest.get('report_kind')!r}"
+        )
 
 
 def validate_executable_source_bindings(paths: dict[str, Path]) -> None:

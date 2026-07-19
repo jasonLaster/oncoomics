@@ -47,7 +47,7 @@ def write_packet_dirs(paths: dict[str, Path]) -> None:
             }
         }
         source_sha256 = {"fixture": "a" * 64}
-        report_kind = "blocked_crosscheck_method" if method_id.endswith("_blocked") else "report"
+        report_kind = MODULE.TERMINAL_SOURCE_REPORT_KINDS[method_id]
         route = None
         if method_id in MODULE.EXECUTABLE_CROSSCHECK_METHOD_IDS:
             source_sha256 = {
@@ -478,6 +478,28 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError,
                 "deterministic_full_wgs packet directory is invalid: report manifest does not preserve the reviewed no-call contract",
+            ):
+                MODULE.validate_packet_dirs(paths)
+
+    def test_validate_packet_dirs_rejects_stale_terminal_report_kind(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+
+            rosalind_manifest = paths["rosalind_diana_wgs"] / "report_manifest.json"
+            manifest = json.loads(rosalind_manifest.read_text(encoding="utf-8"))
+            manifest["report_kind"] = "generic_reviewed_report"
+            rosalind_manifest.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            bind_blocked_reports(paths)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "rosalind_diana_wgs report_kind must be "
+                "rosalind_hrd_reviewer_packet",
             ):
                 MODULE.validate_packet_dirs(paths)
 

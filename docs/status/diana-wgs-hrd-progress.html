@@ -348,7 +348,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local cross-check receipt staging</li>
+          <li class="pill">Latest milestone = local AI stage receipts</li>
+          <li class="pill">AI stage receipts = exact</li>
+          <li class="pill">Terminal report kinds = exact</li>
           <li class="pill">Cross-check receipts = schema-2 exact</li>
           <li class="pill">Cross-check inventory keys = exact</li>
           <li class="pill">Final freeze destination inventory = exact</li>
@@ -366,7 +368,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 52d681d</li>
+          <li class="pill">Prior dashboard = 64daf27</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -588,6 +590,10 @@
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact terminal report kinds at source-freeze</strong>
+              <span>The seven-source private-freeze renderer now pins the exact terminal <code>report_kind</code> for deterministic, Rosalind, executable cross-check, and blocked packets, rejecting stale generic packet identities before any private freeze handoff can be rendered.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact input-contract receipts</strong>
               <span>Alias-only HRD cross-check input finalization now rejects stale final-freeze receipts, exact-version materialization receipts, and schema-2 cross-check materialization receipts before publishing the contract for downstream routes.</span>
             </li>
@@ -687,6 +693,10 @@
 
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI stage receipts</strong>
+              <span>AI review preparation now rejects missing or legacy <code>stage_ai_review_inputs</code> receipt fields before installing isolated reviewer input runs.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI model-catalog receipts</strong>
               <span>AI review bundle construction and isolated reviewer validation now reject stale <code>model_catalog_receipt.json</code> top-level fields or per-model rows before trusting the two de-identified reviewer model attestations.</span>
@@ -845,6 +855,28 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:19:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI stage receipts:</strong>
+                AI review preparation now requires the exact
+                <code>stage_ai_review_inputs</code> receipt envelope before
+                installing isolated reviewer inputs, rejecting thin or legacy
+                stage receipts before the reviewer run can proceed. No S3,
+                Batch, route, GPU, quota, or replacement compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T02:18:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact terminal source report kinds:</strong>
+                the seven-source private-freeze renderer now pins
+                method-specific terminal <code>report_kind</code> values and
+                rejects stale deterministic, Rosalind, executable, or blocked
+                packet identities before source-freeze rendering. No S3, Batch,
+                route, GPU, quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:12:00-07:00">Jul 19 · local</time>
               <span>

@@ -366,6 +366,49 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertFalse(any(root.glob(".ai-review.*")))
 
+    def test_rejects_thin_or_legacy_stage_receipt_envelope(self) -> None:
+        cases = {
+            "missing_generated_at": lambda payload: payload.pop("generated_at"),
+            "extra_legacy_key": lambda payload: payload.update(
+                {"legacy_stage_receipt": True}
+            ),
+        }
+        for name, mutate in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = AiReviewBundleFixture(root)
+                output = root / "ai-review"
+                real_stage_inputs = PREPARE.stage_inputs
+
+                def stage_then_mutate_receipt(
+                    bundle_dir: Path,
+                    output_root: Path,
+                    receipt: Path,
+                    *,
+                    mutate=mutate,
+                    real_stage_inputs=real_stage_inputs,
+                ) -> None:
+                    real_stage_inputs(bundle_dir, output_root, receipt)
+                    payload = json.loads(receipt.read_text(encoding="utf-8"))
+                    mutate(payload)
+                    write_json(receipt, payload)
+
+                with (
+                    mock.patch.object(
+                        PREPARE,
+                        "stage_inputs",
+                        side_effect=stage_then_mutate_receipt,
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "stage AI review input receipt is not exact",
+                    ),
+                ):
+                    PREPARE.prepare(namespace(fixture, output))
+
+                self.assertFalse(output.exists())
+                self.assertFalse(any(root.glob(".ai-review.*")))
+
     def test_rejects_stage_receipt_with_reviewer_inventory_drift(self) -> None:
         cases = {
             "missing_prompt": lambda payload, root: payload["reviewers"]["B"][
@@ -389,6 +432,10 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                     bundle_dir: Path,
                     output_root: Path,
                     receipt: Path,
+                    *,
+                    mutate=mutate,
+                    real_stage_inputs=real_stage_inputs,
+                    root=root,
                 ) -> None:
                     real_stage_inputs(bundle_dir, output_root, receipt)
                     payload = json.loads(receipt.read_text(encoding="utf-8"))
