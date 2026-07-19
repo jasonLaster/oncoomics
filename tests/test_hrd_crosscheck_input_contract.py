@@ -307,6 +307,65 @@ class CustodyFixture:
 
 
 class CustodyHandoffTests(unittest.TestCase):
+    def assert_contract_publication_rejects_checks(
+        self, checks: dict[str, bool]
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            anchor = root / "anchor.json"
+            contract_sha = publisher.sha256(contract)
+            version = "contract-version"
+            prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
+            key = f"{prefix}{contract_sha}.json"
+            history = [
+                {
+                    "history_kind": "version",
+                    "Key": key,
+                    "VersionId": version,
+                    "IsLatest": True,
+                }
+            ]
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/{prefix}",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+                "--apply",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                patch.object(publisher, "version_history", side_effect=[[], history]),
+                patch.object(
+                    publisher,
+                    "put_create_only",
+                    return_value={"VersionId": version},
+                ),
+                patch.object(publisher, "verify_publication", return_value=checks),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "contract publication verification failed",
+                ),
+            ):
+                publisher.main()
+
+            value = json.loads(anchor.read_text(encoding="utf-8"))
+            self.assertEqual(value["status"], "failed")
+            self.assertEqual(value["checks"], checks)
+            self.assertIn(
+                "contract publication verification failed",
+                value["error"],
+            )
+            self.assertEqual(value["observed_version_history"], history)
+
     def test_finalizer_writes_contract_create_only_mode_0600(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "input-contract.json"
@@ -974,6 +1033,73 @@ class CustodyHandoffTests(unittest.TestCase):
             self.assertEqual(value["receipt_version_id"], version)
             self.assertTrue(all(value["checks"].values()))
             self.assertIn(contract_sha, value["receipt_uri"])
+
+    def test_contract_publication_verify_publication_emits_expected_checks(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            contract_sha = publisher.sha256(contract)
+            version = "contract-version"
+            prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
+            key = f"{prefix}{contract_sha}.json"
+            checksum = base64.b64encode(bytes.fromhex(contract_sha)).decode("ascii")
+            metadata = {
+                "VersionId": version,
+                "ContentLength": contract.stat().st_size,
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": checksum,
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": KMS,
+                "Metadata": {"sha256": contract_sha},
+            }
+            history = [
+                {
+                    "history_kind": "version",
+                    "Key": key,
+                    "VersionId": version,
+                    "IsLatest": True,
+                }
+            ]
+
+            def fake_get(bucket, object_key, version_id, destination, region):
+                destination.write_bytes(contract.read_bytes())
+                return dict(metadata)
+
+            with (
+                patch.object(publisher, "head", return_value=metadata),
+                patch.object(publisher, "get_exact", side_effect=fake_get),
+                patch.object(publisher, "version_history", return_value=history),
+            ):
+                checks = publisher.verify_publication(
+                    contract,
+                    BUCKET,
+                    prefix,
+                    key,
+                    version,
+                    KMS,
+                    "us-east-1",
+                )
+
+            self.assertEqual(checks, publisher.EXPECTED_CONTRACT_ANCHOR_CHECKS)
+
+    def test_contract_publication_rejects_missing_verification_check(self):
+        checks = dict(publisher.EXPECTED_CONTRACT_ANCHOR_CHECKS)
+        checks.pop("version_exact")
+
+        self.assert_contract_publication_rejects_checks(checks)
+
+    def test_contract_publication_rejects_unexpected_verification_check(self):
+        checks = dict(publisher.EXPECTED_CONTRACT_ANCHOR_CHECKS)
+        checks["future_check"] = True
+
+        self.assert_contract_publication_rejects_checks(checks)
+
+    def test_contract_publication_rejects_failed_verification_check(self):
+        checks = dict(publisher.EXPECTED_CONTRACT_ANCHOR_CHECKS)
+        checks["metadata_sha256_exact"] = False
+
+        self.assert_contract_publication_rejects_checks(checks)
 
     def test_contract_publication_put_pins_exact_checksum(self):
         with tempfile.TemporaryDirectory() as temporary:

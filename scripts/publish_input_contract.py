@@ -21,6 +21,16 @@ S3_PREFIX = re.compile(
     r"(runs/(subject[0-9]{2,})/([^/]+)/deterministic/contracts)/?$"
 )
 
+EXPECTED_CONTRACT_ANCHOR_CHECKS: dict[str, bool] = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_create_only_version": True,
+}
+
 
 def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
@@ -302,6 +312,11 @@ def verify_publication(
         }
 
 
+def require_contract_anchor_checks(checks: dict[str, bool]) -> None:
+    if checks != EXPECTED_CONTRACT_ANCHOR_CHECKS:
+        raise ValueError(f"contract publication verification failed: {checks}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--contract", required=True, type=Path)
@@ -431,8 +446,7 @@ def main() -> int:
             args.kms_key_arn,
             args.region,
         )
-        if not all(anchor["checks"].values()):
-            raise ValueError(f"contract publication verification failed: {anchor['checks']}")
+        require_contract_anchor_checks(anchor["checks"])
         anchor["status"] = "passed"
         anchor.pop("error", None)
         anchor.pop("observed_version_history", None)
