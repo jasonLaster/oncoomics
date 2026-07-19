@@ -622,6 +622,59 @@ class PublicIndexTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, message):
                     MODULE.validate_reviewed_public_receipts(receipts)
 
+    def test_reviewed_public_receipt_hashes_must_be_exact_strings(self) -> None:
+        numeric_digest = int("1" * 64)
+        digest = "1" * 64
+        checksum = PUBLISH.checksum_sha256(digest)
+        cases = (
+            (
+                lambda receipt: receipt.update({"script_sha256": numeric_digest}),
+                "reviewed-public receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt["dry_run_receipt"].update(
+                    {"sha256": numeric_digest}
+                ),
+                "reviewed-public dry-run receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt["private_publication_receipt"].update(
+                    {"sha256": numeric_digest}
+                ),
+                "reviewed-public private receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt["source_objects"][0].update(
+                    {"sha256": numeric_digest, "checksum_sha256": checksum}
+                ),
+                "reviewed-public source object is not exact",
+            ),
+            (
+                lambda receipt: (
+                    receipt["source_objects"][0].update(
+                        {"sha256": digest, "checksum_sha256": checksum}
+                    ),
+                    receipt["destination_objects"][0].update(
+                        {"sha256": numeric_digest, "checksum_sha256": checksum}
+                    ),
+                ),
+                "reviewed-public destination object is not exact",
+            ),
+        )
+
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                receipts = write_public_receipts(Path(temporary))
+                receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+                mutate(receipt)
+                receipts[0].write_text(
+                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(RuntimeError, message):
+                    MODULE.validate_reviewed_public_receipts(receipts)
+
     def test_reviewed_public_destination_rows_must_be_exact(self) -> None:
         cases = (
             (

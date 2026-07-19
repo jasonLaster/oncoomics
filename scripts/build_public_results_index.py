@@ -293,6 +293,10 @@ def is_nonnegative_exact_int(value: Any) -> bool:
     return type(value) is int and value >= 0
 
 
+def is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and SHA256_HEX.fullmatch(value) is not None
+
+
 def validate_reviewed_public_receipts(
     paths: Sequence[pathlib.Path],
 ) -> tuple[dict[str, ReviewedPublicObject], list[dict[str, Any]]]:
@@ -322,7 +326,7 @@ def validate_reviewed_public_receipts(
             or not receipt.get("generated_at_utc")
             or not isinstance(receipt.get("completed_at_utc"), str)
             or not receipt.get("completed_at_utc")
-            or not SHA256_HEX.fullmatch(str(receipt.get("script_sha256", "")))
+            or not is_sha256(receipt.get("script_sha256"))
             or receipt.get("destination_prefix") != expected_prefix
             or tuple(receipt.get("expected_files", ())) != expected_files
             or not is_positive_exact_int(receipt.get("forbidden_token_count"))
@@ -358,7 +362,7 @@ def validate_reviewed_public_receipts(
             or dry_run_receipt.get("status") != "dry_run"
             or dry_run_receipt.get("method_id") != method_id
             or not str(dry_run_receipt.get("path", ""))
-            or not SHA256_HEX.fullmatch(str(dry_run_receipt.get("sha256", "")))
+            or not is_sha256(dry_run_receipt.get("sha256"))
         ):
             raise RuntimeError(
                 f"{method_id} reviewed-public dry-run receipt is not exact"
@@ -378,8 +382,8 @@ def validate_reviewed_public_receipts(
             raise RuntimeError(
                 f"{method_id} reviewed-public private receipt is not exact"
             ) from error
-        private_receipt_sha256 = str(private_publication_receipt.get("sha256", ""))
-        if private_bucket != PRIVATE_BUCKET or not SHA256_HEX.fullmatch(
+        private_receipt_sha256 = private_publication_receipt.get("sha256")
+        if private_bucket != PRIVATE_BUCKET or not is_sha256(
             private_receipt_sha256
         ):
             raise RuntimeError(f"{method_id} reviewed-public private receipt is not exact")
@@ -403,7 +407,7 @@ def validate_reviewed_public_receipts(
                 raise RuntimeError(f"{method_id} reviewed-public source object is incomplete")
             relative = str(row.get("relative_path", ""))
             key = str(row.get("key", ""))
-            digest = str(row.get("sha256", ""))
+            digest = row.get("sha256")
             version_id = str(row.get("version_id", ""))
             checks = row.get("checks")
             size = row.get("bytes")
@@ -413,7 +417,7 @@ def validate_reviewed_public_receipts(
                 or relative not in expected_private_key_by_relative
                 or key != expected_private_key_by_relative[relative]
                 or not non_null_version_id(version_id)
-                or not SHA256_HEX.fullmatch(digest)
+                or not is_sha256(digest)
                 or row.get("checksum_sha256") != checksum_sha256(digest)
                 or not is_positive_exact_int(size)
                 or size > MAX_FILE_BYTES
@@ -441,7 +445,7 @@ def validate_reviewed_public_receipts(
                 raise RuntimeError(f"{method_id} reviewed-public destination object is incomplete")
             relative = str(row.get("relative_path", ""))
             key = str(row.get("key", ""))
-            digest = str(row.get("sha256", ""))
+            digest = row.get("sha256")
             version_id = str(row.get("version_id", ""))
             checks = row.get("checks")
             size = row.get("bytes")
@@ -453,7 +457,7 @@ def validate_reviewed_public_receipts(
                 or key != expected_key_by_relative[relative]
                 or row.get("uri") != f"s3://{BUCKET}/{key}"
                 or not non_null_version_id(version_id)
-                or not SHA256_HEX.fullmatch(digest)
+                or not is_sha256(digest)
                 or row.get("checksum_sha256") != checksum_sha256(digest)
                 or row.get("server_side_encryption") != "AES256"
                 or not is_positive_exact_int(size)
