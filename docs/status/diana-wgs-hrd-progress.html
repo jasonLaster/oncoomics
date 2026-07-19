@@ -307,15 +307,15 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>65953238e0231c61bafd23525dfeea57b13ba76f</strong>.
-          The latest work is still custody/local materialization hardening, not
+          <strong>207c2e7accf22d826439c2a9c2c6d33eddf076e0</strong>.
+          The latest work is still cross-check materialization custody hardening, not
           terminal HRD evidence. No deterministic final artifacts yet; no real
           Diana WGS Rosalind packet, executable cross-check packets,
           model-review outputs, or comparative synthesis have been produced.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 6595323</li>
+          <li class="pill">Latest hardening = 207c2e7</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -397,8 +397,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 6595323</strong>
-              <span>Exact local materializers now validate the staged tree, cut over atomically, fsync the output parent, and revalidate the final output tree.</span>
+              <strong>Preserve 207c2e7</strong>
+              <span>Cross-check JSON receipts now write create-only 0600, fsync the file and parent, rehash final bytes, verify mode 0600, and unlink partial files on failure.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Audit the next report-packet seam</strong>
@@ -446,6 +446,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>207c2e7 Harden cross-check materializer receipts:</strong>
+                serialize each receipt once, write it create-only with mode
+                0600, fsync the file and parent directory, rehash the installed
+                JSON, verify the final mode, and unlink partial receipts before
+                cross-check inputs can feed scarHRD or SBS3 routes.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
