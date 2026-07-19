@@ -277,6 +277,31 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
             self.assertEqual(destination.read_text(encoding="utf-8"), "one\n")
 
+    def test_packet_file_write_rehashes_after_directory_fsync(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            destination = root / "results/rosalind_hrd/unit/report.md"
+            original_fsync_directory = packet.fsync_directory
+
+            def tamper_after_directory_fsync(path: Path) -> None:
+                original_fsync_directory(path)
+                destination.write_text("tampered\n", encoding="utf-8")
+
+            with (
+                patch.object(
+                    packet,
+                    "fsync_directory",
+                    side_effect=tamper_after_directory_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "HRD packet output changed during write",
+                ),
+            ):
+                packet.write_text_create_only(destination, "one")
+
+            self.assertFalse(destination.exists())
+
     def test_hcc1395_wes_packet_writes_no_call_adapter_status(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

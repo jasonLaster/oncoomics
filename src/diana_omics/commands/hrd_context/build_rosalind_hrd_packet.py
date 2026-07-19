@@ -207,19 +207,30 @@ def fsync_directory(path: Path) -> None:
 def write_text_create_only(path: Path, value: str) -> None:
     require_safe_output_parent(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = value if value.endswith("\n") else f"{value}\n"
+    expected_sha256 = hashlib.sha256(data.encode("utf-8")).hexdigest()
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             descriptor = -1
-            handle.write(value if value.endswith("\n") else f"{value}\n")
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
         fsync_directory(path.parent)
+        require_installed_packet_file(path, expected_sha256)
     except Exception:
         if descriptor >= 0:
             os.close(descriptor)
         path.unlink(missing_ok=True)
         raise
+
+
+def require_installed_packet_file(path: Path, expected_sha256: str) -> None:
+    require_safe_output_parent(path)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"HRD packet output changed during write: {path}")
+    if sha256_file(path) != expected_sha256:
+        raise ValueError(f"HRD packet output changed during write: {path}")
 
 
 def require_safe_output_parent(path: Path) -> None:
