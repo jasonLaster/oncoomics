@@ -2685,10 +2685,15 @@ def main() -> None:
     add_check(checks, "tool_versions", set(tools) == {"bwa", "samtools", "bcftools", "gatk"} and all(str(value).strip() for value in tools.values()), "BWA, samtools, bcftools, and GATK versions are present.")
     early_variants = early.get("core_hrr_variants", {}) if isinstance(early.get("core_hrr_variants"), dict) else {}
     early_cnv = early.get("coverage_cnv", {}) if isinstance(early.get("coverage_cnv"), dict) else {}
+    early_bam_qc = early.get("bam_qc", {}) if isinstance(early.get("bam_qc"), dict) else {}
+    early_tumor_bam_qc = early_bam_qc.get("tumor", {}) if isinstance(early_bam_qc.get("tumor"), dict) else {}
+    early_normal_bam_qc = early_bam_qc.get("normal", {}) if isinstance(early_bam_qc.get("normal"), dict) else {}
     early_cnv_classes = Counter(row.get("coverage_class", "") for row in early_cnv_rows)
     early_baseline_match = (
         early.get("status") == "partial_evidence"
         and early.get("overall_hrd_status") == "no_call"
+        and positive_int(early_tumor_bam_qc.get("total_reads"))
+        and positive_int(early_normal_bam_qc.get("total_reads"))
         and integer_equals(early_variants.get("pass_records"), len(early_pass_rows))
         and nonnegative_int(early_variants.get("brca1_brca2_pass_records"))
         and early_variants.get("brca1_brca2_pass_records")
@@ -2714,11 +2719,13 @@ def main() -> None:
     early_contamination = safe_float(early.get("contamination", {}).get("contamination"))
     brca_counts = Counter(row.get("region_label", "") for row in brca_rows)
     neutral_bins = cnv_classes["neutral_or_low_signal"]
+    early_tumor_total_reads = early_tumor_bam_qc["total_reads"]
+    early_normal_total_reads = early_normal_bam_qc["total_reads"]
     early_total_pass = early_variants["pass_records"]
     early_brca = early_variants["brca1_brca2_pass_records"]
     comparison_rows = [
-        ["Tumor total reads", format_int(early["bam_qc"]["tumor"]["total_reads"]), format_int(alignment_by_role["tumor"]["total_reads"]), format_int(int(alignment_by_role["tumor"]["total_reads"]) - int(early["bam_qc"]["tumor"]["total_reads"]))],
-        ["Normal total reads", format_int(early["bam_qc"]["normal"]["total_reads"]), format_int(alignment_by_role["normal"]["total_reads"]), format_int(int(alignment_by_role["normal"]["total_reads"]) - int(early["bam_qc"]["normal"]["total_reads"]))],
+        ["Tumor total reads", format_int(early_tumor_total_reads), format_int(alignment_by_role["tumor"]["total_reads"]), format_int(alignment_by_role["tumor"]["total_reads"] - early_tumor_total_reads)],
+        ["Normal total reads", format_int(early_normal_total_reads), format_int(alignment_by_role["normal"]["total_reads"]), format_int(alignment_by_role["normal"]["total_reads"] - early_normal_total_reads)],
         ["Contamination fraction", f"{early_contamination:.12g}", f"{contamination:.12g}", f"{contamination - early_contamination:+.12g}"],
         ["BRCA1/BRCA2 region PASS records", str(early_brca), str(len(brca_rows)), str(len(brca_rows) - early_brca)],
         ["Coverage-CNV bins", str(early_cnv["bin_count"]), str(cnv["bin_count"]), str(cnv["bin_count"] - early_cnv["bin_count"])],
