@@ -290,6 +290,57 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
 
             self.assertEqual(json.loads(receipt.read_text())["status"], "failed")
 
+    def test_public_index_destination_checks_must_be_exact(self) -> None:
+        cases = (
+            {"version_exact": True},
+            {
+                **MODULE.PUBLIC_INDEX_DESTINATION_CHECKS,
+                "unexpected_late_check": True,
+            },
+        )
+
+        for checks in cases:
+            with self.subTest(checks=checks):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "public index destination verification failed",
+                ):
+                    MODULE.require_public_index_destination_checks_exact(checks)
+
+    def test_apply_rejects_outdated_public_index_destination_check_set(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = self.write_index(root)
+            receipt = root / "receipt.json"
+            dry_run_receipt = self.write_dry_run_receipt(root, index)
+            fake = FakeAws(index.read_bytes())
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "PUBLIC_INDEX_DESTINATION_CHECKS",
+                    {
+                        **MODULE.PUBLIC_INDEX_DESTINATION_CHECKS,
+                        "unexpected_late_check": True,
+                    },
+                ),
+                mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "public index destination verification failed",
+                ),
+            ):
+                MODULE.run(
+                    self.args(
+                        index,
+                        receipt,
+                        apply=True,
+                        dry_run_receipt=dry_run_receipt,
+                    )
+                )
+
     def test_apply_rejects_missing_or_null_destination_version(self) -> None:
         for field in ("null_version", "literal_null_version"):
             with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:

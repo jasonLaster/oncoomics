@@ -26,6 +26,16 @@ CACHE_CONTROL = "max-age=300"
 CONTENT_TYPE = "application/json"
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 VERSION_ID = re.compile(r"^\S+$")
+PUBLIC_INDEX_DESTINATION_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "checksum_type": True,
+    "checksum_sha256": True,
+    "sse_s3": True,
+    "metadata": True,
+    "cache_control": True,
+    "content_type": True,
+}
 
 
 def now() -> str:
@@ -110,13 +120,12 @@ def write_private_atomic(path: Path, value: dict[str, Any], *, create: bool) -> 
     temporary = Path(raw)
     linked = False
     try:
-        if not create:
-            if (
-                not path.is_file()
-                or path.is_symlink()
-                or (path.stat().st_mode & 0o777) != 0o600
-            ):
-                raise ValueError("reserved receipt output is missing or not mode 0600")
+        if not create and (
+            not path.is_file()
+            or path.is_symlink()
+            or (path.stat().st_mode & 0o777) != 0o600
+        ):
+            raise ValueError("reserved receipt output is missing or not mode 0600")
         with os.fdopen(descriptor, "wb") as handle:
             descriptor = -1
             handle.write(data)
@@ -233,6 +242,11 @@ def head_object(bucket: str, key: str, region: str, version_id: str = "") -> dic
     return aws_json(arguments, region)
 
 
+def require_public_index_destination_checks_exact(checks: dict[str, bool]) -> None:
+    if checks != PUBLIC_INDEX_DESTINATION_CHECKS:
+        raise ValueError(f"public index destination verification failed: {checks}")
+
+
 def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, Any]:
     expected_checksum = checksum_sha256(custody["sha256"])
     metadata = {
@@ -289,8 +303,7 @@ def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, 
         == CACHE_CONTROL,
         "content_type": exact.get("ContentType") == current.get("ContentType") == CONTENT_TYPE,
     }
-    if not all(checks.values()):
-        raise ValueError(f"public index destination verification failed: {checks}")
+    require_public_index_destination_checks_exact(checks)
     return {
         "bucket": BUCKET,
         "key": INDEX_KEY,
