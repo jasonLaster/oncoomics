@@ -987,6 +987,22 @@ class CustodyHandoffTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "one-shot freeze"):
             fixture.finalize()
 
+    def test_finalizer_rejects_boolean_final_freeze_object_count(self):
+        fixture = CustodyFixture()
+        fixture.freeze["objects"] = fixture.freeze["objects"][:1]
+        fixture.freeze["destination_inventory"] = fixture.freeze[
+            "destination_inventory"
+        ][:1]
+        fixture.freeze["object_count"] = True
+        fixture.freeze["passed_count"] = 1
+
+        with self.assertRaisesRegex(ValueError, "one-shot freeze"):
+            finalizer.validate_freeze(
+                fixture.freeze,
+                fixture.freeze_anchor,
+                fixture.freeze_sha,
+            )
+
     def test_finalizer_rejects_incomplete_final_freeze_checks(self):
         fixture = CustodyFixture()
         fixture.freeze["checks"].pop("execution_receipt_bound")
@@ -1097,6 +1113,68 @@ class CustodyHandoffTests(unittest.TestCase):
         ):
             fixture.finalize()
 
+    def test_finalizer_rejects_boolean_destination_inventory_bytes(self):
+        destination = {
+            "key": "runs/subject01/unit/deterministic/final/sbs96.csv",
+            "version_id": "frozen-version",
+            "bytes": 1,
+            "etag": "destination-etag",
+            "checksums": {"ChecksumType": "FULL_OBJECT", "ChecksumSHA256": "sha256"},
+            "checksum_type": "FULL_OBJECT",
+            "kms_key_id": KMS,
+        }
+        receipt = {
+            "destination_inventory": [
+                {
+                    **destination,
+                    "relative_key": "signatures/sbs96.csv",
+                    "bytes": True,
+                }
+            ]
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "destination inventory differs",
+        ):
+            finalizer.require_final_destination_inventory(
+                receipt,
+                {"signatures/sbs96.csv": destination},
+            )
+
+    def test_finalizer_rejects_boolean_exact_materialization_counts(self):
+        fixture = CustodyFixture()
+        exact = json.loads(json.dumps(fixture.exact))
+        exact["objects"] = exact["objects"][:1]
+        exact["object_count"] = True
+        exact["passed_count"] = 1
+        row = exact["objects"][0]
+        freeze_uri = f"s3://{row['bucket']}/{row['key']}"
+
+        with self.assertRaisesRegex(ValueError, "incomplete or unbound"):
+            finalizer.validate_exact_materialization(
+                exact,
+                fixture.freeze_sha,
+                {freeze_uri: fixture.freeze["objects"][0]["destination"]},
+            )
+
+    def test_finalizer_rejects_string_exact_materialization_bytes(self):
+        fixture = CustodyFixture()
+        exact = json.loads(json.dumps(fixture.exact))
+        exact["objects"] = exact["objects"][:1]
+        exact["object_count"] = 1
+        exact["passed_count"] = 1
+        exact["objects"][0]["bytes"] = str(exact["objects"][0]["bytes"])
+        row = exact["objects"][0]
+        freeze_uri = f"s3://{row['bucket']}/{row['key']}"
+
+        with self.assertRaisesRegex(ValueError, "exact-version materialization"):
+            finalizer.validate_exact_materialization(
+                exact,
+                fixture.freeze_sha,
+                {freeze_uri: fixture.freeze["objects"][0]["destination"]},
+            )
+
     def test_finalizer_rejects_crosscheck_destination_inventory_key_drift(self):
         fixture = CustodyFixture()
         fixture.cross["destination_inventory"][0]["key"] = (
@@ -1177,6 +1255,36 @@ class CustodyHandoffTests(unittest.TestCase):
             value["receipt_version_id"] = ""
             write_json(anchor, value)
             with self.assertRaisesRegex(ValueError, "VersionId"):
+                finalizer.validate_anchor(
+                    receipt,
+                    anchor,
+                    "unit",
+                    finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
+                )
+
+    def test_anchor_validation_requires_exact_integer_receipt_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "receipt.json"
+            receipt.write_text("{}", encoding="utf-8")
+            anchor = root / "anchor.json"
+            write_json(
+                anchor,
+                {
+                    "schema_version": 1,
+                    "status": "passed",
+                    "receipt_sha256": finalizer.sha256(receipt),
+                    "receipt_bytes": "2",
+                    "receipt_uri": f"s3://{BUCKET}/receipts/{finalizer.sha256(receipt)}.json",
+                    "receipt_version_id": "receipt-version",
+                    "checks": dict(finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS),
+                },
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "unit anchor does not bind the local receipt",
+            ):
                 finalizer.validate_anchor(
                     receipt,
                     anchor,

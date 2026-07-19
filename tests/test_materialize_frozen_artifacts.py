@@ -274,6 +274,16 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             freeze = self.freeze_fixture(root, kms)
             base = json.loads(freeze.read_text(encoding="utf-8"))
 
+            def set_one_object_boolean_count(receipt: dict) -> None:
+                receipt["objects"] = receipt["objects"][:1]
+                receipt["destination_inventory"] = receipt["destination_inventory"][:1]
+                receipt["object_count"] = True
+                receipt["passed_count"] = 1
+
+            def set_boolean_destination_bytes(receipt: dict) -> None:
+                receipt["objects"][0]["destination"]["bytes"] = 1
+                receipt["destination_inventory"][0]["bytes"] = True
+
             for label, mutate in (
                 (
                     "extra-top-level",
@@ -288,6 +298,14 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                 (
                     "non-exact-schema",
                     lambda receipt: receipt.__setitem__("schema_version", 1.0),
+                ),
+                (
+                    "boolean-object-count",
+                    set_one_object_boolean_count,
+                ),
+                (
+                    "boolean-destination-bytes",
+                    set_boolean_destination_bytes,
                 ),
                 (
                     "missing-row-checks",
@@ -354,6 +372,47 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                     "expected_kms_key_arn": kms,
                     "materialization_dir": str(output.resolve()),
                     "object_count": 1,
+                    "objects": [],
+                },
+            )
+
+            with (
+                patch.object(
+                    MODULE,
+                    "get_exact_object",
+                    side_effect=AssertionError("AWS called"),
+                ) as get_exact,
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "belongs to another operation",
+                ),
+            ):
+                MODULE.main(self.args(freeze, output, receipt, kms))
+
+            get_exact.assert_not_called()
+            self.assertFalse(output.exists())
+
+    def test_prepared_receipt_recovery_requires_exact_object_count(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+            MODULE.reserve_json(
+                receipt,
+                {
+                    "schema_version": 1,
+                    "status": "prepared",
+                    "run_id": "synthetic-run",
+                    "batch_job_id": "synthetic-job",
+                    "script_sha256": MODULE.sha256(
+                        SCRIPT_DIR / "materialize_frozen_artifacts.py"
+                    ),
+                    "freeze_receipt_sha256": MODULE.sha256(freeze),
+                    "expected_kms_key_arn": kms,
+                    "materialization_dir": str(output.resolve()),
+                    "object_count": True,
                     "objects": [],
                 },
             )

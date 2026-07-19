@@ -349,8 +349,8 @@ def require_exact_final_freeze(
         != "sha256_content_addressed_create_only"
         or not isinstance(rows, list)
         or not rows
-        or len(rows) != int(freeze.get("object_count", -1))
-        or len(rows) != int(freeze.get("passed_count", -1))
+        or not INPUT_CONTRACT.exact_int(freeze.get("object_count"), len(rows))
+        or not INPUT_CONTRACT.exact_int(freeze.get("passed_count"), len(rows))
         or freeze.get("initial_inventory_identity")
         != freeze.get("final_inventory_identity")
         or freeze.get("checks") != INPUT_CONTRACT.EXPECTED_FINAL_FREEZE_CHECKS
@@ -423,7 +423,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
             and prior.get("freeze_receipt_sha256") == result["freeze_receipt_sha256"]
             and prior.get("expected_kms_key_arn") == args.expected_kms_key_arn
             and prior.get("materialization_dir") == str(output)
-            and int(prior.get("object_count", -1)) == len(rows)
+            and INPUT_CONTRACT.exact_int(prior.get("object_count"), len(rows))
         )
         if not identity_matches:
             raise ValueError(

@@ -255,6 +255,10 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
@@ -380,7 +384,7 @@ def require_final_destination_inventory(
         if (
             inventory.get("key") != destination.get("key")
             or inventory.get("version_id") != destination.get("version_id")
-            or inventory.get("bytes") != destination.get("bytes")
+            or not exact_int(destination.get("bytes"), inventory.get("bytes"))
             or inventory.get("etag") != destination.get("etag")
             or inventory.get("checksums") != destination.get("checksums")
             or inventory.get("checksum_type") != destination.get("checksum_type")
@@ -404,7 +408,7 @@ def validate_anchor(
         not exact_schema_version(anchor, 1)
         or anchor.get("status") != "passed"
         or str(anchor.get("receipt_sha256", "")).lower() != receipt_hash
-        or int(anchor.get("receipt_bytes", -1)) != receipt_path.stat().st_size
+        or not exact_int(anchor.get("receipt_bytes"), receipt_path.stat().st_size)
         or not str(anchor.get("receipt_uri", "")).startswith(
             "s3://diana-omics-private-results-"
         )
@@ -435,8 +439,8 @@ def validate_freeze(
         != "sha256_content_addressed_create_only"
         or not isinstance(rows, list)
         or not rows
-        or len(rows) != int(receipt.get("object_count", -1))
-        or len(rows) != int(receipt.get("passed_count", -1))
+        or not exact_int(receipt.get("object_count"), len(rows))
+        or not exact_int(receipt.get("passed_count"), len(rows))
         or receipt.get("initial_inventory_identity")
         != receipt.get("final_inventory_identity")
     ):
@@ -515,8 +519,8 @@ def validate_exact_materialization(
         or str(receipt.get("freeze_receipt_sha256", "")).lower() != freeze_sha256
         or not isinstance(rows, list)
         or not rows
-        or len(rows) != int(receipt.get("object_count", -1))
-        or len(rows) != int(receipt.get("passed_count", -1))
+        or not exact_int(receipt.get("object_count"), len(rows))
+        or not exact_int(receipt.get("passed_count"), len(rows))
     ):
         raise ValueError("exact-version materialization is incomplete or unbound")
     by_uri: dict[str, dict[str, Any]] = {}
@@ -536,7 +540,7 @@ def validate_exact_materialization(
         if (
             frozen is None
             or row.get("version_id") != frozen.get("version_id")
-            or int(row.get("bytes", -1)) != int(frozen.get("bytes", -2))
+            or not exact_int(row.get("bytes"), frozen.get("bytes"))
             or row.get("checksums") != frozen.get("checksums")
             or row.get("checksum_type") != frozen.get("checksum_type")
             or row.get("checksum_type") != "FULL_OBJECT"
