@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Diana WGS HRD progress dashboard</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #070b14;
+        --panel: rgba(15, 23, 42, 0.92);
+        --panel-soft: rgba(30, 41, 59, 0.72);
+        --line: rgba(148, 163, 184, 0.24);
+        --text: #f8fafc;
+        --muted: #a5b4c7;
+        --done: #34d399;
+        --active: #60a5fa;
+        --blocked: #fbbf24;
+        --queued: #c084fc;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 320px;
+        margin: 0;
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at 12% 6%, rgba(96, 165, 250, 0.27), transparent 32%),
+          radial-gradient(circle at 86% 9%, rgba(192, 132, 252, 0.23), transparent 34%),
+          radial-gradient(circle at 50% 100%, rgba(52, 211, 153, 0.12), transparent 38%),
+          var(--bg);
+      }
+
+      main {
+        width: min(1180px, 100%);
+        margin: 0 auto;
+        padding: 40px 20px 56px;
+      }
+
+      .hero,
+      .card {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 32px;
+        border-radius: 28px;
+      }
+
+      .hero::after {
+        position: absolute;
+        inset: -160px -120px auto auto;
+        width: 360px;
+        height: 360px;
+        border-radius: 999px;
+        background: conic-gradient(var(--done), var(--active), var(--queued), var(--done));
+        opacity: 0.42;
+        filter: blur(72px);
+        content: "";
+      }
+
+      .hero > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        margin: 0 0 14px;
+        color: #bfdbfe;
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--active);
+        box-shadow: 0 0 0 8px rgba(96, 165, 250, 0.16);
+        content: "";
+      }
+
+      h1 {
+        max-width: 900px;
+        margin: 0;
+        font-size: clamp(34px, 6vw, 64px);
+        line-height: 0.94;
+        letter-spacing: -0.07em;
+      }
+
+      .lede {
+        max-width: 880px;
+        margin: 20px 0 0;
+        color: #dbeafe;
+        font-size: clamp(17px, 2vw, 21px);
+        line-height: 1.5;
+      }
+
+      .pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 24px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .pill {
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: #d1d5db;
+        background: rgba(2, 6, 23, 0.38);
+        font-size: 13px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .card {
+        grid-column: span 12;
+        padding: 22px;
+        border-radius: 24px;
+      }
+
+      @media (min-width: 900px) {
+        .wide {
+          grid-column: span 7;
+        }
+
+        .narrow {
+          grid-column: span 5;
+        }
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 20px;
+        letter-spacing: -0.03em;
+      }
+
+      h3 {
+        margin: 18px 0 8px;
+        color: #cbd5e1;
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .tracks,
+      .flow,
+      .todo,
+      .changelog {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .track,
+      .stage,
+      .item {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--panel-soft);
+      }
+
+      .track {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px 14px;
+        align-items: center;
+        padding: 14px;
+      }
+
+      .track strong,
+      .item strong {
+        font-size: 15px;
+      }
+
+      .track span,
+      .item span,
+      .stage p {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .bar {
+        grid-column: 1 / -1;
+        height: 9px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.18);
+      }
+
+      .bar > span {
+        display: block;
+        width: var(--pct);
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone), white 30%));
+      }
+
+      .flow {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      }
+
+      .stage {
+        min-height: 124px;
+        padding: 14px;
+        border-color: color-mix(in srgb, var(--tone), transparent 42%);
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--tone), transparent 88%), transparent),
+          var(--panel-soft);
+      }
+
+      .stage strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 15px;
+        line-height: 1.2;
+      }
+
+      .badge {
+        display: inline-flex;
+        margin-top: 12px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        color: #020617;
+        background: var(--tone);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .item {
+        display: grid;
+        gap: 4px;
+        padding: 13px 14px;
+      }
+
+      .todo .item {
+        border-left: 4px solid var(--tone);
+      }
+
+      .changelog .item {
+        grid-template-columns: 92px 1fr;
+      }
+
+      time {
+        color: #93c5fd;
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .note {
+        margin-top: 18px;
+        padding: 14px;
+        border-left: 4px solid var(--blocked);
+        border-radius: 12px;
+        color: #fde68a;
+        background: rgba(251, 191, 36, 0.12);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      footer {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero" aria-labelledby="title">
+        <p class="eyebrow">Diana WGS HRD ops tracker</p>
+        <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
+        <p class="lede">
+          Current pushed frontier:
+          <strong>fdf1aa15ecfd045fa2e3ea777c9485cea6937945</strong>.
+          The latest work is still custody/report-packet hardening, not
+          terminal HRD evidence. No deterministic final artifacts yet; no real
+          Diana WGS Rosalind packet, executable cross-check packets,
+          model-review outputs, or comparative synthesis have been produced.
+        </p>
+        <ul class="pills" aria-label="Current state">
+          <li class="pill">Updated 2026-07-18</li>
+          <li class="pill">HEAD = origin/main = fdf1aa1</li>
+          <li class="pill">Legacy CPU run stopped</li>
+          <li class="pill">GPU/distributed rerun pending</li>
+          <li class="pill">HRD remains no_call / partial_evidence</li>
+        </ul>
+      </section>
+
+      <section class="grid" aria-label="Progress dashboard">
+        <article class="card wide">
+          <h2>Visual progress dashboard</h2>
+          <ol class="tracks" aria-label="Operational progress by lane">
+            <li class="track" style="--tone: var(--done)">
+              <strong>Source custody hardening</strong>
+              <span>90%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 90%"><span></span></div>
+            </li>
+            <li class="track" style="--tone: var(--blocked)">
+              <strong>Deterministic terminal outputs</strong>
+              <span>0%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 0%"><span></span></div>
+            </li>
+            <li class="track" style="--tone: var(--queued)">
+              <strong>Rosalind Diana WGS HRD packet</strong>
+              <span>20%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 20%"><span></span></div>
+            </li>
+            <li class="track" style="--tone: var(--queued)">
+              <strong>scarHRD / SBS3 / CHORD / HRDetect checks</strong>
+              <span>25%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 25%"><span></span></div>
+            </li>
+            <li class="track" style="--tone: var(--queued)">
+              <strong>Reviewed public handoff</strong>
+              <span>15%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 15%"><span></span></div>
+            </li>
+          </ol>
+          <p class="note">
+            Percentages are operational readiness only. Broad CNV bins,
+            blocked cross-check scaffolds, BRCA evidence, source-only receipt
+            hardening, and reviewer-packet installers must not be interpreted
+            as a Diana terminal HRD call.
+          </p>
+        </article>
+
+        <article class="card narrow">
+          <h2>Next flow</h2>
+          <div class="flow" aria-label="Ordered terminal-to-public flow">
+            <div class="stage" style="--tone: var(--blocked)">
+              <strong>1. Rerun deterministic WGS</strong>
+              <p>Wait for the selected GPU or distributed CPU architecture.</p>
+              <span class="badge">blocked</span>
+            </div>
+            <div class="stage" style="--tone: var(--queued)">
+              <strong>2. Freeze terminal artifacts</strong>
+              <p>Capture immutable final inputs once deterministic/final exists.</p>
+              <span class="badge">queued</span>
+            </div>
+            <div class="stage" style="--tone: var(--queued)">
+              <strong>3. Build Rosalind packet</strong>
+              <p>Materialize alias-only inputs and stage the real WGS HRD packet.</p>
+              <span class="badge">queued</span>
+            </div>
+            <div class="stage" style="--tone: var(--queued)">
+              <strong>4. Run reviewed cross-checks</strong>
+              <p>Execute approved scarHRD, SBS3, CHORD, and HRDetect routes.</p>
+              <span class="badge">queued</span>
+            </div>
+            <div class="stage" style="--tone: var(--queued)">
+              <strong>5. Publish handoffs</strong>
+              <p>Stage source-freeze, AI synthesis, and reviewed-public outputs.</p>
+              <span class="badge">queued</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="card narrow">
+          <h2>TODO list</h2>
+
+          <h3>Source hardening</h3>
+          <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Preserve fdf1aa1</strong>
+              <span>Cross-check packet installs now rehash final bytes and revalidate the installed manifest.</span>
+            </li>
+            <li class="item" style="--tone: var(--active)">
+              <strong>Audit the next report-packet seam</strong>
+              <span>Keep the pass source-only and stop at generated-result drift.</span>
+            </li>
+          </ol>
+
+          <h3>Deterministic terminal outputs</h3>
+          <ol class="todo">
+            <li class="item" style="--tone: var(--blocked)">
+              <strong>Do not restart the legacy CPU job</strong>
+              <span>Use the GPU lane or distributed CPU architecture for the next significant rerun.</span>
+            </li>
+            <li class="item" style="--tone: var(--queued)">
+              <strong>Freeze final WGS artifacts</strong>
+              <span>Run the checked-in post-terminal chain only after deterministic final files exist.</span>
+            </li>
+          </ol>
+
+          <h3>Rosalind packet</h3>
+          <ol class="todo">
+            <li class="item" style="--tone: var(--queued)">
+              <strong>Materialize alias-only inputs</strong>
+              <span>Bind the real terminal outputs before building the Diana WGS HRD reviewer packet.</span>
+            </li>
+          </ol>
+
+          <h3>Model and cross-check packets</h3>
+          <ol class="todo">
+            <li class="item" style="--tone: var(--queued)">
+              <strong>Review dry-run route requests</strong>
+              <span>Run expensive cross-checks only after deterministic and Rosalind packets are complete.</span>
+            </li>
+          </ol>
+
+          <h3>Reviewed public handoff</h3>
+          <ol class="todo">
+            <li class="item" style="--tone: var(--queued)">
+              <strong>Publish only reviewed no-call-safe packets</strong>
+              <span>Require private receipts, forbidden-token scans, and create-only public receipt checks.</span>
+            </li>
+          </ol>
+        </article>
+
+        <article class="card wide">
+          <h2>Changelog</h2>
+          <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>fdf1aa1 Harden cross-check packet install:</strong>
+                rehash installed method specs, reports, and manifests after the
+                final output-directory fsync, then reject stale installed
+                cross-check manifests before accepting a staged packet.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>bbabde7 Harden public index receipt checks:</strong>
+                make public-index eligibility reuse the reviewed-public
+                preflight contract instead of a partial local checklist.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>e750925 + a8d2c0f Harden report packet installs:</strong>
+                add final-byte rehashing to deterministic report and comparative
+                synthesis packet installation.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>8d2d2c0, 258e81e, 25ff960:</strong>
+                bind AI-review source validation, finalized AI-review, and
+                comparative synthesis support files back to their manifest
+                SHA-256 claims.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>862fa8f + 9915cdb:</strong>
+                harden Rosalind report-manifest bindings and blocked
+                cross-check report bindings while preserving explicit
+                <code>no_call</code> / <code>partial_evidence</code> states.
+              </span>
+            </li>
+          </ol>
+        </article>
+      </section>
+
+      <footer>
+        Static, dependency-free, and source-controlled. No live cloud calls, no
+        external assets, no credential material, and no private object payloads.
+      </footer>
+    </main>
+  </body>
+</html>
