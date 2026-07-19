@@ -415,6 +415,72 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
         self.assertEqual(raw_comparisons, [])
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.txt"
+            real_source.write_text("real source\n", encoding="utf-8")
+            source_link = root / "source-link.txt"
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source-link.txt SHA-256 input must be a real file",
+            ):
+                MODULE.sha256(source_link)
+
+            real_inputs = root / "real-inputs"
+            real_inputs.mkdir()
+            receipt = real_inputs / "private-publication.json"
+            receipt.write_text(
+                '{"status": "passed"}\n',
+                encoding="utf-8",
+            )
+            linked_inputs = root / "linked-inputs"
+            linked_inputs.symlink_to(real_inputs, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "private-publication.json SHA-256 input parent may not be a symlink",
+            ):
+                MODULE.sha256(linked_inputs / "private-publication.json")
+
+    def test_report_packet_hash_rejects_symlink_after_manifest_load(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            real_load_json = MODULE.load_json
+            swapped = False
+
+            def swap_report_after_manifest_load(path: Path, label: str) -> dict:
+                nonlocal swapped
+                payload = real_load_json(path, label)
+                if label == "report manifest" and not swapped:
+                    report = fixture.packet / "report.md"
+                    moved = fixture.root / "report.real.md"
+                    report.rename(moved)
+                    report.symlink_to(moved)
+                    swapped = True
+                return payload
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "load_json",
+                    side_effect=swap_report_after_manifest_load,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report.md SHA-256 input must be a real file",
+                ),
+            ):
+                MODULE.validate_report_packet(
+                    {name: fixture.packet / name for name in fixture.files},
+                    fixture.method_id,
+                    fixture.files,
+                )
+
+            self.assertTrue(swapped)
+
     def execute(
         self,
         fixture: Fixture,

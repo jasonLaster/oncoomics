@@ -272,6 +272,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 
 def sha256(path: Path) -> str:
+    require_real_hash_input(path)
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
@@ -371,6 +372,10 @@ def require_real_input_file(path: Path, label: str) -> None:
             raise ValueError(f"{label} parent is not a directory: {parent}")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real file")
+
+
+def require_real_hash_input(path: Path) -> None:
+    require_real_input_file(path, f"{path.name} SHA-256 input")
 
 
 def require_safe_receipt_output_parent(path: Path) -> None:
