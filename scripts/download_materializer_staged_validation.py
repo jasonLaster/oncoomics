@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -38,6 +39,10 @@ def sha256_path(path: Path) -> str:
         for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def checksum_sha256(digest: str) -> str:
+    return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
@@ -312,6 +317,12 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
     bucket, key = parse_s3(uri)
     if not key.endswith("/" + OUTPUT_NAME):
         raise ValueError(f"{OUTPUT_NAME} URI has an unexpected key: {uri}")
+    expected_checksum = checksum_sha256(digest)
+    if (
+        row["checksums"].get("ChecksumType") != "FULL_OBJECT"
+        or row["checksums"].get("ChecksumSHA256") != expected_checksum
+    ):
+        raise ValueError(f"{OUTPUT_NAME} lacks exact materializer custody")
     return {**row, "bucket": bucket, "key": key}
 
 
@@ -324,11 +335,7 @@ def validate_download(
 ) -> dict[str, bool]:
     resolve_real_file(local_path, f"downloaded {OUTPUT_NAME}")
     local_sha = sha256_path(local_path)
-    expected_checksums = {
-        key: str(value)
-        for key, value in row.get("checksums", {}).items()
-        if key in CHECKSUM_FIELDS and str(value)
-    }
+    expected_checksum = checksum_sha256(row["sha256"])
     get_checksums = checksums(get)
     head_checksums = checksums(head)
     return {
@@ -346,10 +353,15 @@ def validate_download(
         "sha256_exact": local_sha == row["sha256"],
         "get_checksum_present": bool(get_checksums),
         "head_checksum_present": bool(head_checksums),
-        "receipt_checksum_observed": bool(
-            set(expected_checksums.items())
-            & set(get_checksums.items())
-            & set(head_checksums.items())
+        "full_object_sha256_exact": (
+            row["checksums"].get("ChecksumType")
+            == get.get("ChecksumType")
+            == head.get("ChecksumType")
+            == "FULL_OBJECT"
+            and row["checksums"].get("ChecksumSHA256")
+            == get.get("ChecksumSHA256")
+            == head.get("ChecksumSHA256")
+            == expected_checksum
         ),
         "exact_kms": (
             get.get("ServerSideEncryption")

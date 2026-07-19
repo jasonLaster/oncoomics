@@ -43,7 +43,10 @@ def receipt(payload: bytes) -> dict:
                 "bytes": len(payload),
                 "sha256": sha(payload),
                 "kms_key_arn": KMS,
-                "checksums": {"ChecksumSHA256": checksum(payload)},
+                "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": checksum(payload),
+                },
                 "checks": {
                     "create_only_put": True,
                     "version_exact": True,
@@ -86,6 +89,20 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
         wrong_kms["outputs"]["staged_input_validation.json"]["kms_key_arn"] = "wrong"
         with self.assertRaisesRegex(ValueError, "lacks exact"):
             MODULE.validate_receipt(wrong_kms, KMS)
+
+        wrong_checksum = receipt(b"{}")
+        wrong_checksum["outputs"]["staged_input_validation.json"]["checksums"][
+            "ChecksumSHA256"
+        ] = checksum(b'{"changed":true}')
+        with self.assertRaisesRegex(ValueError, "lacks exact"):
+            MODULE.validate_receipt(wrong_checksum, KMS)
+
+        composite_checksum = receipt(b"{}")
+        composite_checksum["outputs"]["staged_input_validation.json"]["checksums"][
+            "ChecksumType"
+        ] = "COMPOSITE"
+        with self.assertRaisesRegex(ValueError, "lacks exact"):
+            MODULE.validate_receipt(composite_checksum, KMS)
 
     def test_head_and_get_request_exact_version_with_checksum_mode(self) -> None:
         with patch.object(MODULE, "aws_json", return_value={"ok": True}) as aws:
@@ -409,6 +426,72 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                 json.loads(verification.read_text(encoding="utf-8"))["status"],
                 "failed",
             )
+
+    def test_download_requires_exact_full_object_sha256(self) -> None:
+        payload = json.dumps({"schema_version": 1}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            output = root / "staged_input_validation.json"
+            verification = root / "verification.json"
+            stored_receipt = receipt(payload)
+            stored_receipt["outputs"]["staged_input_validation.json"]["checksums"][
+                "ChecksumCRC32"
+            ] = "shared-but-not-sufficient"
+            stale_checksums = {
+                "ChecksumCRC32": "shared-but-not-sufficient",
+                "ChecksumSHA256": MODULE.checksum_sha256("0" * 64),
+                "ChecksumType": "FULL_OBJECT",
+            }
+            receipt_path.write_text(
+                json.dumps(stored_receipt, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            def get_object(
+                _bucket: str,
+                _key: str,
+                _version_id: str,
+                destination: Path,
+                _region: str,
+            ) -> dict:
+                destination.write_bytes(payload)
+                return {
+                    "VersionId": "version-1",
+                    "ContentLength": len(payload),
+                    **stale_checksums,
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                }
+
+            with patch.object(
+                MODULE,
+                "head_object",
+                return_value={
+                    "VersionId": "version-1",
+                    "ContentLength": len(payload),
+                    **stale_checksums,
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                },
+            ), patch.object(MODULE, "get_object", side_effect=get_object):
+                with self.assertRaisesRegex(ValueError, "download validation"):
+                    MODULE.materialize(
+                        argparse.Namespace(
+                            materializer_receipt=receipt_path,
+                            output=output,
+                            verification_output=verification,
+                            expected_kms_key_arn=KMS,
+                            region="us-east-1",
+                        )
+                    )
+
+            self.assertFalse(output.exists())
+            failed = json.loads(verification.read_text(encoding="utf-8"))
+            self.assertEqual(failed["status"], "failed")
+            self.assertTrue(failed["checks"]["sha256_exact"])
+            self.assertFalse(failed["checks"]["full_object_sha256_exact"])
 
     def test_rejects_symlinked_download_before_installing_output(self) -> None:
         payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
