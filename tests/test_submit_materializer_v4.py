@@ -775,6 +775,30 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
 
         aws.assert_not_called()
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        real_anchor = self.root / "real-anchor.json"
+        self.script_anchor.rename(real_anchor)
+        self.script_anchor.symlink_to(real_anchor)
+        with self.assertRaisesRegex(
+            ValueError,
+            "materializer-script-freeze-anchor\\.json SHA-256 input "
+            "must be a real file",
+        ):
+            MODULE.sha256_path(self.script_anchor)
+
+        real_parent = self.root / "real-inputs"
+        real_parent.mkdir()
+        linked_parent = self.root / "linked-inputs"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+        relocated_freeze = real_parent / "final-freeze.json"
+        self.final_freeze.rename(relocated_freeze)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "final-freeze\\.json SHA-256 input parent may not be a symlink",
+        ):
+            MODULE.sha256_path(linked_parent / "final-freeze.json")
+
     def test_rejects_duplicate_custody_receipts_before_aws(self) -> None:
         cases = (
             ("final freeze receipt", self.final_freeze, "schema_version"),
