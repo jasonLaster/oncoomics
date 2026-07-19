@@ -799,6 +799,24 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
         self.assertEqual(raw_version_coercions, [])
 
+    def test_crosscheck_sources_avoid_raw_hash_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_hash_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and (
+                "source.get('sha256'" in ast.unparse(node.args[0])
+                or 'source.get("sha256"' in ast.unparse(node.args[0])
+            )
+        ]
+
+        self.assertEqual(raw_hash_coercions, [])
+
     def test_load_json_rejects_input_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-input-"

@@ -2319,7 +2319,7 @@ def main() -> None:
             else {}
         )
         materialized = materialized_by_relative.get(relative_key, {})
-        source_sha256 = str(source.get("sha256", ""))
+        source_sha256 = source.get("sha256")
         if not (
             valid_version_id(source.get("version_id"))
             and source.get("version_id") == freeze_destination.get("version_id")
@@ -2360,7 +2360,7 @@ def main() -> None:
             if isinstance(crosscheck_sources.get(source_name), dict)
             else {}
         )
-        source_sha256 = str(source.get("sha256", ""))
+        source_sha256 = source.get("sha256")
         if not (
             valid_version_id(source.get("version_id"))
             and positive_int(source.get("bytes"))
