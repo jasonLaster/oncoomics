@@ -31,6 +31,29 @@ STATUS = {
     "classification_authorization": "none",
     "patient_result": "none",
 }
+BLOCKED_REPORT_MANIFEST_KEYS = {
+    "schema_version",
+    "method_id",
+    "report_kind",
+    "generated_at",
+    *STATUS,
+    "authorized_hrd_state",
+    "classification_authorized",
+    "classification_qc_status",
+    "explicit_no_patient_result",
+    "alias_scope",
+    "intended_computation",
+    "prerequisites",
+    "blockers",
+    "next_gate",
+    "sources",
+    "run_id",
+    "source_report_binding_scope",
+    "review_summary",
+    "source_sha256",
+    "support_sha256",
+    "report_sha256",
+}
 
 # Keep formatter noise out of this static prose table so diffs only show
 # substantive route-contract changes.
@@ -502,11 +525,47 @@ def require_blocked_report_manifest(packet_dir: Path) -> None:
         manifest = json.load(handle)
     if not isinstance(manifest, dict):
         raise ValueError("blocked cross-check report manifest must be a JSON object")
+    if (
+        set(manifest) != BLOCKED_REPORT_MANIFEST_KEYS
+        or manifest.get("schema_version") != 1
+        or manifest.get("method_id") not in BLOCKED_CROSSCHECK_METHOD_IDS
+        or manifest.get("report_kind") != "blocked_method"
+        or any(manifest.get(key) != value for key, value in STATUS.items())
+        or manifest.get("authorized_hrd_state") != "no_call"
+        or manifest.get("classification_authorized") is not False
+        or manifest.get("classification_qc_status") != "not_applicable"
+        or not str(manifest.get("generated_at", ""))
+        or not isinstance(manifest.get("review_summary"), dict)
+        or not manifest.get("review_summary")
+    ):
+        raise ValueError("blocked cross-check report manifest envelope is not exact")
+
     support_hashes = manifest.get("support_sha256")
     if not isinstance(support_hashes, dict) or set(support_hashes) != {"method_spec.json"}:
         raise ValueError(
             "blocked cross-check report manifest must bind method_spec.json"
         )
+    source_hashes = manifest.get("source_sha256")
+    review_summary = manifest.get("review_summary")
+    source_report_manifests = (
+        review_summary.get("source_report_manifests", {})
+        if isinstance(review_summary, dict)
+        else {}
+    )
+    if not isinstance(source_hashes, dict) or not isinstance(
+        source_report_manifests,
+        dict,
+    ):
+        raise ValueError("blocked cross-check report manifest source hashes are not exact")
+    expected_source_hashes = {
+        "generator": sha256_file(Path(__file__).resolve()),
+        **{
+            f"{method_id}_report_manifest": digest
+            for method_id, digest in source_report_manifests.items()
+        },
+    }
+    if source_hashes != expected_source_hashes:
+        raise ValueError("blocked cross-check report manifest source hashes are not exact")
     require_bound_packet_file(packet_dir, "report.md", manifest.get("report_sha256"))
     require_bound_packet_file(
         packet_dir,

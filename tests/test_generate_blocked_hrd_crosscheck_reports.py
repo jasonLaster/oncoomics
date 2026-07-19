@@ -333,6 +333,54 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             for forbidden in ("E019", "DRF-", "Personalis", "Echo"):
                 self.assertNotIn(forbidden.casefold(), serialized.casefold())
 
+    def test_packet_manifest_requires_exact_envelope_and_source_hashes(self) -> None:
+        mutations = {
+            "extra_top_level": (
+                lambda manifest: manifest.__setitem__("legacy_note", "accepted"),
+                "envelope is not exact",
+            ),
+            "classification_authorized": (
+                lambda manifest: manifest.__setitem__(
+                    "classification_authorized",
+                    True,
+                ),
+                "envelope is not exact",
+            ),
+            "extra_source_hash": (
+                lambda manifest: manifest["source_sha256"].__setitem__(
+                    "stale_report_manifest",
+                    "0" * 64,
+                ),
+                "source hashes are not exact",
+            ),
+            "changed_generator_hash": (
+                lambda manifest: manifest["source_sha256"].__setitem__(
+                    "generator",
+                    "0" * 64,
+                ),
+                "source hashes are not exact",
+            ),
+        }
+
+        for label, (mutate, message) in mutations.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / "blocked"
+                GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+                manifest_path = (
+                    output
+                    / GENERATOR.METHODS[0]["directory"]
+                    / "report_manifest.json"
+                )
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                mutate(manifest)
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(ValueError, message):
+                    GENERATOR.require_blocked_report_manifest(manifest_path.parent)
+
     def test_reports_bind_upstream_report_manifests_without_exposing_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
