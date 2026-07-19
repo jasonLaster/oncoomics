@@ -2736,6 +2736,15 @@ def main() -> None:
     brca_counts = Counter(row.get("region_label", "") for row in brca_rows)
     usable_snv_records = signatures["usable_snv_records"]
     skipped_snv_records = signatures["skipped_snv_records"]
+    exact_alignment_by_role = {
+        role: {
+            "bam_bytes": alignment_by_role[role]["bam_bytes"],
+            "total_reads": alignment_by_role[role]["total_reads"],
+            "mapped_reads": alignment_by_role[role]["mapped_reads"],
+            "duplicate_reads": alignment_by_role[role]["duplicate_reads"],
+        }
+        for role in ("tumor", "normal")
+    }
     neutral_bins = cnv_classes["neutral_or_low_signal"]
     early_tumor_total_reads = early_tumor_bam_qc["total_reads"]
     early_normal_total_reads = early_normal_bam_qc["total_reads"]
@@ -2754,12 +2763,12 @@ def main() -> None:
     alignment_report_rows = [
         [
             role,
-            format_int(alignment_by_role[role]["total_reads"]),
-            format_int(alignment_by_role[role]["mapped_reads"]),
-            f"{100 * int(alignment_by_role[role]['mapped_reads']) / int(alignment_by_role[role]['total_reads']):.4f}%",
-            format_int(alignment_by_role[role]["duplicate_reads"]),
-            f"{100 * int(alignment_by_role[role]['duplicate_reads']) / int(alignment_by_role[role]['total_reads']):.4f}%",
-            f"{format_int(alignment_by_role[role]['bam_bytes'])} ({format_gib(alignment_by_role[role]['bam_bytes'])})",
+            format_int(exact_alignment_by_role[role]["total_reads"]),
+            format_int(exact_alignment_by_role[role]["mapped_reads"]),
+            f"{100 * exact_alignment_by_role[role]['mapped_reads'] / exact_alignment_by_role[role]['total_reads']:.4f}%",
+            format_int(exact_alignment_by_role[role]["duplicate_reads"]),
+            f"{100 * exact_alignment_by_role[role]['duplicate_reads'] / exact_alignment_by_role[role]['total_reads']:.4f}%",
+            f"{format_int(exact_alignment_by_role[role]['bam_bytes'])} ({format_gib(exact_alignment_by_role[role]['bam_bytes'])})",
         ]
         for role in ("tumor", "normal")
     ]
@@ -2952,9 +2961,9 @@ def main() -> None:
         },
         "alignment": {
             role: {
-                "total_reads": int(alignment_by_role[role]["total_reads"]),
-                "mapped_reads": int(alignment_by_role[role]["mapped_reads"]),
-                "duplicate_reads": int(alignment_by_role[role]["duplicate_reads"]),
+                "total_reads": exact_alignment_by_role[role]["total_reads"],
+                "mapped_reads": exact_alignment_by_role[role]["mapped_reads"],
+                "duplicate_reads": exact_alignment_by_role[role]["duplicate_reads"],
             }
             for role in ("tumor", "normal")
         },

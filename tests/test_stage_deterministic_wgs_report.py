@@ -593,6 +593,14 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                     'gather_row.get("lane_count"',
                     "alignment_by_role[role].get(field",
                     'alignment_by_role[role].get(field',
+                    "alignment_by_role[role]['bam_bytes'",
+                    'alignment_by_role[role]["bam_bytes"',
+                    "alignment_by_role[role]['total_reads'",
+                    'alignment_by_role[role]["total_reads"',
+                    "alignment_by_role[role]['mapped_reads'",
+                    'alignment_by_role[role]["mapped_reads"',
+                    "alignment_by_role[role]['duplicate_reads'",
+                    'alignment_by_role[role]["duplicate_reads"',
                 )
             )
         ]
