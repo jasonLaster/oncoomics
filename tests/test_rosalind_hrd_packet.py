@@ -871,6 +871,19 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertEqual(summary["missingArtifacts"], [])
             self.assertEqual(summary["blockers"], [])
             self.assertTrue(summary["interpretationGaps"])
+            report_manifest = utils.read_json(
+                output_root
+                / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json"
+            )
+            self.assertEqual(
+                report_manifest["review_summary"]["provenance"]["tool_versions"],
+                {
+                    "bcftools": "bcftools 1.20",
+                    "bwa": "bwa 0.7.17",
+                    "gatk": "gatk 4.6.1.0",
+                    "samtools": "samtools 1.20",
+                },
+            )
             evidence_rows = utils.parse_csv(
                 utils.read_text(output_root / "results/rosalind_hrd/diana_wgs/unit/sample_validation_summary.csv")
             )
@@ -1900,6 +1913,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
             ("bcftools", ""),
             ("bwa", True),
             ("gatk", "gatk\n4.6.1.0"),
+            ("gatk", "gatk|4.6.1.0"),
             ("samtools", " samtools 1.20"),
         ):
             with self.subTest(tool=tool), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
