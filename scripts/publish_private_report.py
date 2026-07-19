@@ -29,6 +29,7 @@ from publish_reviewed_public_report import (
     checksum_sha256,
     content_type,
     exact_schema_version,
+    exact_int,
     exact_final_history,
     head_object,
     non_null_version_id,
@@ -193,7 +194,8 @@ def upload_private(
     current = head_object(bucket, destination_key, region)
     checks = {
         "version_id": exact.get("VersionId") == current.get("VersionId") == version_id,
-        "bytes": int(exact.get("ContentLength", -1)) == int(current.get("ContentLength", -2)) == row["bytes"],
+        "bytes": exact_int(exact.get("ContentLength"), row["bytes"])
+        and exact_int(current.get("ContentLength"), row["bytes"]),
         "checksum_type": exact.get("ChecksumType") == current.get("ChecksumType") == "FULL_OBJECT",
         "checksum_sha256": exact.get("ChecksumSHA256") == current.get("ChecksumSHA256") == row["checksum_sha256"],
         "sse": exact.get("ServerSideEncryption") == current.get("ServerSideEncryption") == "aws:kms",

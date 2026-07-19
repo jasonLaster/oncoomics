@@ -302,6 +302,10 @@ def is_positive_exact_int(value: Any) -> bool:
     return type(value) is int and value > 0
 
 
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
@@ -664,7 +668,7 @@ def exact_source_checks(
 ) -> dict[str, bool]:
     return {
         "version_id": metadata.get("VersionId") == row["version_id"],
-        "bytes": int(metadata.get("ContentLength", -1)) == row["bytes"],
+        "bytes": exact_int(metadata.get("ContentLength"), row["bytes"]),
         "checksum_type": metadata.get("ChecksumType") == "FULL_OBJECT",
         "checksum_sha256": metadata.get("ChecksumSHA256") == row["checksum_sha256"],
         "sse_kms": metadata.get("ServerSideEncryption") == "aws:kms",
@@ -859,9 +863,8 @@ def upload_public(
     current = head_object(PUBLIC_BUCKET, destination_key, region)
     checks = {
         "version_exact": exact.get("VersionId") == current.get("VersionId") == version_id,
-        "bytes_exact": int(exact.get("ContentLength", -1))
-        == int(current.get("ContentLength", -2))
-        == row["bytes"],
+        "bytes_exact": exact_int(exact.get("ContentLength"), row["bytes"])
+        and exact_int(current.get("ContentLength"), row["bytes"]),
         "checksum_type": exact.get("ChecksumType")
         == current.get("ChecksumType")
         == "FULL_OBJECT",
@@ -911,7 +914,7 @@ def exact_final_history(
             not key.startswith(destination_prefix)
             or row.get("VersionId") != published["version_id"]
             or row.get("IsLatest") is not True
-            or int(row.get("Size", -1)) != published["bytes"]
+            or not exact_int(row.get("Size"), published["bytes"])
         ):
             return False
     return True

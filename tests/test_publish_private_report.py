@@ -117,6 +117,7 @@ class FakeAws:
         self.preexisting_history: list[dict[str, object]] = []
         self.literal_null_version = False
         self.wrong_checksum = False
+        self.boolean_content_length = False
 
     @staticmethod
     def value(arguments: list[str], name: str) -> str:
@@ -177,7 +178,10 @@ class FakeAws:
             raise AssertionError(f"wrong bucket: {bucket}")
         if region != MODULE.REGION:
             raise AssertionError(f"wrong region: {region}")
-        return dict(self.public[key])
+        metadata = dict(self.public[key])
+        if self.boolean_content_length:
+            metadata["ContentLength"] = True
+        return metadata
 
     def version_history(
         self,
@@ -501,6 +505,26 @@ class PublishPrivateReportTests(unittest.TestCase):
                     apply=True,
                     dry_run_receipt=dry_run_receipt,
                 )
+
+    def test_apply_rejects_boolean_destination_content_length(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws()
+            fake.boolean_content_length = True
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "private destination verification failed",
+            ):
+                self.execute(
+                    fixture,
+                    fake,
+                    apply=True,
+                    dry_run_receipt=dry_run_receipt,
+                )
+
+            self.assertEqual(json.loads(fixture.receipt_path.read_text())["status"], "failed")
 
     def test_private_destination_object_checks_must_be_exact(self) -> None:
         cases = (

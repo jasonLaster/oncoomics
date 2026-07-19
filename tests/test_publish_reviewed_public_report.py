@@ -259,13 +259,15 @@ class FakeAws:
         self.wrong_destination_checksum = False
         self.wrong_source_version = False
         self.wrong_source_kms = False
+        self.boolean_source_content_length = False
+        self.boolean_destination_content_length = False
         self.corrupt_download = False
         self.symlink_download = False
 
     def source_metadata(self, row: dict[str, object]) -> dict[str, object]:
         return {
             "VersionId": "wrong-version" if self.wrong_source_version else row["version_id"],
-            "ContentLength": row["bytes"],
+            "ContentLength": True if self.boolean_source_content_length else row["bytes"],
             "ChecksumType": "FULL_OBJECT",
             "ChecksumSHA256": row["checksum_sha256"],
             "ServerSideEncryption": "aws:kms",
@@ -309,7 +311,10 @@ class FakeAws:
             key = self.value(arguments, "--key")
             if bucket == MODULE.PRIVATE_BUCKET:
                 return self.source_metadata(self.sources[key])
-            return dict(self.public[key])
+            metadata = dict(self.public[key])
+            if self.boolean_destination_content_length:
+                metadata["ContentLength"] = True
+            return metadata
         if operation == ("s3api", "put-object"):
             self.put_calls.append(list(arguments))
             if self.null_put_version:
@@ -1012,6 +1017,15 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                     self.execute(fixture, fake, apply=True)
                 self.assertEqual(fake.put_calls, [])
 
+    def test_rejects_boolean_source_content_length_before_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            fake.boolean_source_content_length = True
+            with self.assertRaisesRegex(ValueError, "exact-version head failed"):
+                self.execute(fixture, fake, apply=True)
+            self.assertEqual(fake.put_calls, [])
+
     def test_source_version_checks_must_be_exact(self) -> None:
         cases = (
             {"version_id": True},
@@ -1220,6 +1234,15 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "destination verification failed"):
                 self.execute(fixture, fake, apply=True)
 
+    def test_apply_rejects_boolean_destination_content_length(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            fake.boolean_destination_content_length = True
+            with self.assertRaisesRegex(ValueError, "destination verification failed"):
+                self.execute(fixture, fake, apply=True)
+            self.assertEqual(json.loads(fixture.output_path.read_text())["status"], "failed")
+
     def test_public_destination_object_checks_must_be_exact(self) -> None:
         cases = (
             {"version_exact": True},
@@ -1239,6 +1262,29 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                         checks,
                         "report.md",
                     )
+
+    def test_final_history_size_must_be_exact_int(self) -> None:
+        self.assertFalse(
+            MODULE.exact_final_history(
+                [
+                    {
+                        "history_kind": "version",
+                        "Key": "reports/report.md",
+                        "VersionId": "public-version-1",
+                        "IsLatest": True,
+                        "Size": True,
+                    }
+                ],
+                "reports/",
+                [
+                    {
+                        "key": "reports/report.md",
+                        "version_id": "public-version-1",
+                        "bytes": 1,
+                    }
+                ],
+            )
+        )
 
     def test_apply_rejects_outdated_public_destination_object_check_set(
         self,
