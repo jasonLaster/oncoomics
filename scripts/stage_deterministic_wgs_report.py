@@ -113,6 +113,22 @@ EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS: dict[str, bool] = {
     "exact_kms": True,
     "single_create_only_version": True,
 }
+EXPECTED_BATCH_WORKER_CHECKS: dict[str, bool] = {
+    "receipt_status": True,
+    "receipt_checks": True,
+    "receipt_upload": True,
+    "task_identity": True,
+    "task_host_mapping": True,
+    "hash_command_definition": True,
+    "freeze_command_definition": True,
+    "live_hash_command": True,
+    "live_freeze_command": True,
+    "exact_version": True,
+    "bytes": True,
+    "sha256": True,
+    "full_object_checksum": True,
+    "kms": True,
+}
 EXPECTED_EXACT_MATERIALIZATION_ROW_CHECKS: dict[str, bool] = {
     "version_id": True,
     "content_length": True,
@@ -1934,9 +1950,7 @@ def main() -> None:
         and execution_worker.get("checksum_type") == "FULL_OBJECT"
         and isinstance(execution_worker.get("checksums"), dict)
         and bool(execution_worker.get("checksums"))
-        and isinstance(worker_checks, dict)
-        and bool(worker_checks)
-        and all(value is True for value in worker_checks.values())
+        and worker_checks == EXPECTED_BATCH_WORKER_CHECKS
         and isinstance(worker_freeze_checks, dict)
         and bool(worker_freeze_checks)
         and all(value is True for value in worker_freeze_checks.values())

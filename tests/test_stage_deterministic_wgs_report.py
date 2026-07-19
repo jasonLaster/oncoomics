@@ -893,7 +893,22 @@ class SyntheticFixture:
                     "checksum_type": "FULL_OBJECT",
                     "server_side_encryption": "aws:kms",
                     "kms_key_id": KMS_ARN,
-                    "checks": {"synthetic_exact_container_capture": True},
+                    "checks": {
+                        "receipt_status": True,
+                        "receipt_checks": True,
+                        "receipt_upload": True,
+                        "task_identity": True,
+                        "task_host_mapping": True,
+                        "hash_command_definition": True,
+                        "freeze_command_definition": True,
+                        "live_hash_command": True,
+                        "live_freeze_command": True,
+                        "exact_version": True,
+                        "bytes": True,
+                        "sha256": True,
+                        "full_object_checksum": True,
+                        "kms": True,
+                    },
                 },
             },
         )
@@ -2348,6 +2363,48 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             receipt["source"]["sha256"] = "0" * 64
             write_json(receipt_path, receipt)
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("batch_worker_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_missing_batch_worker_check_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            execution_path = fixture.aux / "execution.json"
+            execution = json.loads(execution_path.read_text(encoding="utf-8"))
+            execution["worker"]["checks"].pop("live_freeze_command")
+            write_json(execution_path, execution)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("batch_worker_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_unexpected_batch_worker_check_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            execution_path = fixture.aux / "execution.json"
+            execution = json.loads(execution_path.read_text(encoding="utf-8"))
+            execution["worker"]["checks"]["future_check"] = True
+            write_json(execution_path, execution)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("batch_worker_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_failed_batch_worker_check_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            execution_path = fixture.aux / "execution.json"
+            execution = json.loads(execution_path.read_text(encoding="utf-8"))
+            execution["worker"]["checks"]["live_freeze_command"] = False
+            write_json(execution_path, execution)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("batch_worker_custody", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
