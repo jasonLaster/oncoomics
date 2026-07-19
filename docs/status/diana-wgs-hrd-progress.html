@@ -348,7 +348,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact known-answer stack JSON</li>
+          <li class="pill">Latest milestone = local exact public-safety inventories</li>
+          <li class="pill">Public-safety inventories = exact</li>
+          <li class="pill">Execution failure JSON = exact</li>
           <li class="pill">Known-answer stack JSON = exact</li>
           <li class="pill">Cross-check readiness JSON = exact</li>
           <li class="pill">Phase 3 real-file JSON = exact</li>
@@ -830,6 +832,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact execution failure JSON</strong>
+              <span>Terminal execution failure handling now reparses reserved provenance outputs with the duplicate-key-safe loader before replacing a reservation, preserving ambiguous duplicate-key outputs instead of overwriting them.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact execution-provenance JSON</strong>
               <span>Terminal execution-provenance capture now rejects duplicate JSON object names in executed-worker freeze/upload receipts and worker-freeze command stdout before terminal execution receipts can pass.</span>
@@ -1739,6 +1745,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact public-safety inventories</strong>
+              <span>Shared public-safety scans now normalize file-sourced token inventories with the same string-array policy as direct inventories, deduping entries and rejecting short or control-character tokens before source-freeze, AI-review, or reviewed-public scans can consume them.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact private dry-run receipt JSON</strong>
               <span>Private report publication now rejects duplicate JSON object names while loading the apply-mode dry-run receipt before planning private packet publication or writing an apply receipt.</span>
             </li>
@@ -1940,6 +1950,24 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T03:45:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact public-safety inventories:</strong>
+                File-sourced public-safety token inventories now share direct
+                inventory normalization, dedupe entries, and reject short or
+                control-character tokens before scans can consume them.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-20T03:40:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact execution failure JSON:</strong>
+                Terminal execution failure handling now preserves ambiguous
+                duplicate-key reserved outputs instead of overwriting them with
+                failure receipts.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T03:35:00-07:00">Jul 20 · local</time>
               <span>

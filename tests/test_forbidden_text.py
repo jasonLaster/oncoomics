@@ -115,6 +115,30 @@ class ForbiddenTextTests(unittest.TestCase):
             ):
                 MODULE.merge_forbidden_tokens([], files=[tokens])
 
+    def test_file_forbidden_tokens_share_json_normalization_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            tokens = root / "forbidden_tokens.json"
+            tokens.write_text(
+                '["DirectIdentifier", "personalis", "DirectIdentifier"]\n',
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                MODULE.forbidden_tokens_from_file(tokens),
+                ["DirectIdentifier", "personalis"],
+            )
+
+            for value in ('["ab"]', '["personalis\\u0000"]'):
+                with self.subTest(value=value):
+                    tokens.write_text(value + "\n", encoding="utf-8")
+
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "forbidden-token file must contain a valid non-empty JSON string array",
+                    ):
+                        MODULE.forbidden_tokens_from_file(tokens)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -202,6 +202,40 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 MODULE.reserved_payload(context),
             )
 
+    def test_failure_receipt_preserves_duplicate_key_reservations(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = {
+                "run_id": "run-1",
+                "job_id": "job-1",
+                "expected_status": "SUCCEEDED",
+                "region": "us-east-1",
+                "output": Path(temporary) / "execution.json",
+            }
+            reservation = MODULE.reserved_payload(context)
+            MODULE.reserve_json(context["output"], reservation)
+            text = json.dumps(reservation, indent=2, sort_keys=True)
+            current = '  "status": "reserved"'
+            self.assertEqual(text.count(current), 1)
+            context["output"].write_text(
+                text.replace(
+                    current,
+                    '  "status": "stale",\n' + current,
+                    1,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            MODULE.write_failure_if_reserved(
+                context,
+                SystemExit("Fail-closed: Batch job status is RUNNING"),
+            )
+
+            self.assertIn(
+                '  "status": "stale",\n  "status": "reserved"',
+                context["output"].read_text(encoding="utf-8"),
+            )
+
     def test_main_rejects_symlinked_worker_receipt_before_reservation_or_aws(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

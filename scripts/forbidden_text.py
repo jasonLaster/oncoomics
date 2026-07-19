@@ -101,16 +101,10 @@ def forbidden_tokens_from_file(path: Path) -> list[str]:
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"forbidden-token file must be a real file: {path}")
 
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, list) or not payload:
-        raise ValueError(f"forbidden-token file must contain a non-empty JSON string array: {path}")
-
-    tokens = []
-    for index, value in enumerate(payload):
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError(f"forbidden-token file {path} entry {index} must be a non-empty string")
-        tokens.append(value.strip())
-    return tokens
+    try:
+        return normalize_forbidden_tokens_json(path.read_text(encoding="utf-8"))
+    except ValueError as error:
+        raise ValueError(f"forbidden-token file must contain a valid non-empty JSON string array: {path}") from error
 
 
 def is_platform_root_alias(path: Path) -> bool:

@@ -422,8 +422,8 @@ def write_failure_if_reserved(
         return
 
     try:
-        current = json.loads(output.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        current = load_object(output, "reserved provenance output")
+    except (OSError, ValueError):
         return
     if current != reserved_payload(context):
         return
