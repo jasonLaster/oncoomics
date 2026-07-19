@@ -343,8 +343,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = 0c5e1c9</li>
-          <li class="pill">Prior source = 9e238b1</li>
+          <li class="pill">Latest milestone = 0c1c9eb</li>
+          <li class="pill">Prior source = 38dc757</li>
+          <li class="pill">Route exactness = source maps + review summaries</li>
           <li class="pill">Reviewed-public versions = build + apply checked</li>
           <li class="pill">Compute decision = quota-only / no race</li>
           <li class="pill">In flight = dry post-deterministic chain</li>
@@ -386,8 +387,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana Rosalind packet</strong>
-              <span>40% · scaffolding ready</span>
-              <div class="bar" aria-hidden="true" style="--pct: 40%"><span></span></div>
+              <span>45% · route exactness guarded</span>
+              <div class="bar" aria-hidden="true" style="--pct: 45%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
@@ -501,6 +502,14 @@
               <span>Source-freeze now rejects blocked FACETS, CHORD, and HRDetect packets whose human reports carry extra stale upstream <code>report_manifest_sha256</code> lines before those packets can enter the AI bundle.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact blocked source hash maps at freeze</strong>
+              <span>Terminal source-freeze rejects FACETS, CHORD, and HRDetect <code>source_sha256</code> maps with extra stale keys and requires exactly the generator plus four upstream <code>report_manifest</code> hashes.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind executable-route review summaries</strong>
+              <span>Sequenza and SigProfiler staging rejects drift between <code>method_spec.source_review_summary</code> and <code>report_manifest.review_summary</code>, even when the altered method specification is rebound in the support hashes.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · enforce the pre-route / terminal packet split</strong>
               <span>Fast-DAG validation now requires <code>pre_route_deterministic_rosalind</code> on blocked packets, terminal source-freeze independently requires <code>terminal_source_reports</code>, and the terminal runbook no longer sends terminal packets through the pre-route gate.</span>
             </li>
@@ -598,6 +607,25 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T23:31:46-07:00">Jul 18 · 11:31 PM</time>
+              <span>
+                <strong>0c1c9eb Bind staged crosscheck review summaries:</strong>
+                executable Sequenza and SigProfiler staging now rejects drift
+                between method-spec and report-manifest review summaries even
+                when support hashes are rebound. No compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T23:31:46-07:00">Jul 18 · 11:31 PM</time>
+              <span>
+                <strong>38dc757 Require exact blocked source hashes at freeze:</strong>
+                terminal source-freeze now rejects extra stale keys in blocked
+                FACETS, CHORD, and HRDetect source-hash maps and requires the
+                exact generator plus four upstream report-manifest hashes. No
+                compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T23:25:39-07:00">Jul 18 · 11:25 PM</time>
               <span>
