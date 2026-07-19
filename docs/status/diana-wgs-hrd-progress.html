@@ -307,12 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>2f0317fefa414cb06375b1505f30c45e42ed5ed0</strong>.
-          The latest work is exact route terminal-capture hardening:
-          <code>capture_route_terminal.py</code> now requires exact Batch
-          identity, logged publication-anchor, output-inventory, and exact
-          route receipt-download maps before route terminal receipt capture can
-          pass.
+          <strong>1263f80e1115b59303bd61302d920f548dd66d23</strong>.
+          The latest work is exact report-tree download hardening:
+          <code>download_exact_report_tree.py</code> now requires exact live
+          history and object-download maps before materializing exact-version
+          route reports.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -320,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 2f0317f</li>
+          <li class="pill">Latest hardening = 1263f80</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -333,8 +332,8 @@
           <ol class="tracks" aria-label="Operational progress by lane">
             <li class="track" style="--tone: var(--done)">
               <strong>Source custody hardening</strong>
-              <span>99.8%</span>
-              <div class="bar" aria-hidden="true" style="--pct: 99.8%"><span></span></div>
+              <span>99.9%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 99.9%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--blocked)">
               <strong>Deterministic terminal outputs</strong>
@@ -402,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 2f0317f</strong>
-              <span>Route terminal capture now rejects missing, unexpected, or failed Batch identity, logged publication-anchor, output-inventory, and exact receipt-download maps.</span>
+              <strong>Preserve 1263f80</strong>
+              <span>Exact report-tree downloads now reject missing, unexpected, or failed live-history and object-download maps before materializing route reports.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -451,6 +450,24 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>1263f80 Require exact report tree download checks:</strong>
+                <code>download_exact_report_tree.py</code> now defines
+                <code>EXPECTED_LIVE_HISTORY_CHECKS</code> and
+                <code>EXPECTED_DOWNLOAD_OBJECT_CHECKS</code>; routes
+                <code>validate_live_history()</code> and the report-object
+                download loop through <code>require_exact_checks()</code>; and
+                records receipt-level
+                <code>live_history_checks</code> from the exact live history
+                map. Exact report-tree downloads now reject missing,
+                unexpected, or failed live-history and object-download maps
+                before materializing exact-version route reports, and
+                <code>test_download_exact_report_tree.py</code> covers those
+                missing, unexpected, and failed map cases.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
