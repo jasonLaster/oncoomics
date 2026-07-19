@@ -767,6 +767,75 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                     self.execute(fixture, fake, apply=True)
                 self.assertEqual(fake.put_calls, [])
 
+    def test_source_version_checks_must_be_exact(self) -> None:
+        cases = (
+            {"version_id": True},
+            {**MODULE.SOURCE_VERSION_CHECKS, "unexpected_late_check": True},
+        )
+
+        for checks in cases:
+            with self.subTest(checks=checks):
+                with self.assertRaisesRegex(ValueError, "exact-version head failed"):
+                    MODULE.require_source_version_checks_exact(
+                        checks,
+                        "report.md",
+                        "head",
+                    )
+
+    def test_local_source_checks_must_be_exact(self) -> None:
+        cases = (
+            {"bytes": True},
+            {**MODULE.SOURCE_LOCAL_CHECKS, "unexpected_late_check": True},
+        )
+
+        for checks in cases:
+            with self.subTest(checks=checks):
+                with self.assertRaisesRegex(ValueError, "exact-version GET failed"):
+                    MODULE.require_source_local_checks_exact(
+                        checks,
+                        "report.md",
+                    )
+
+    def test_apply_rejects_outdated_source_version_check_set(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "SOURCE_VERSION_CHECKS",
+                    {
+                        **MODULE.SOURCE_VERSION_CHECKS,
+                        "unexpected_late_check": True,
+                    },
+                ),
+                self.assertRaisesRegex(ValueError, "exact-version head failed"),
+            ):
+                self.execute(fixture, fake, apply=True)
+
+            self.assertEqual(fake.put_calls, [])
+
+    def test_apply_rejects_outdated_local_source_check_set(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "SOURCE_LOCAL_CHECKS",
+                    {
+                        **MODULE.SOURCE_LOCAL_CHECKS,
+                        "unexpected_late_check": True,
+                    },
+                ),
+                self.assertRaisesRegex(ValueError, "exact-version GET failed"),
+            ):
+                self.execute(fixture, fake, apply=True)
+
+            self.assertEqual(fake.put_calls, [])
+
     def test_rejects_local_get_sha_mismatch_before_upload(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))

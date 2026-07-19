@@ -139,6 +139,19 @@ SOURCE_PREFLIGHT_CHECKS = {
     "exact_kms": True,
     "forbidden_token_scan": True,
 }
+SOURCE_VERSION_CHECKS = {
+    "version_id": True,
+    "bytes": True,
+    "checksum_type": True,
+    "checksum_sha256": True,
+    "sse_kms": True,
+    "exact_kms": True,
+    "metadata_sha256": True,
+}
+SOURCE_LOCAL_CHECKS = {
+    "bytes": True,
+    "sha256": True,
+}
 PRIVATE_RECEIPT_OBJECT_CHECKS = {
     "version_id": True,
     "bytes": True,
@@ -547,6 +560,34 @@ def exact_source_checks(
     }
 
 
+def exact_local_source_checks(path: Path, row: dict[str, Any]) -> dict[str, bool]:
+    return {
+        "bytes": path.is_file() and path.stat().st_size == row["bytes"],
+        "sha256": path.is_file() and sha256(path) == row["sha256"],
+    }
+
+
+def require_source_version_checks_exact(
+    checks: dict[str, bool],
+    relative_path: str,
+    phase: str,
+) -> None:
+    if checks != SOURCE_VERSION_CHECKS:
+        raise ValueError(
+            f"private exact-version {phase} failed for {relative_path}: {checks}"
+        )
+
+
+def require_source_local_checks_exact(
+    checks: dict[str, bool],
+    relative_path: str,
+) -> None:
+    if checks != SOURCE_LOCAL_CHECKS:
+        raise ValueError(
+            f"private exact-version GET failed for {relative_path}: local={checks}"
+        )
+
+
 def require_public_destination_checks_exact(
     checks: dict[str, bool],
     relative_path: str,
@@ -922,10 +963,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     row["bucket"], row["key"], args.region, row["version_id"]
                 )
                 before_checks = exact_source_checks(before, row)
-                if not all(before_checks.values()):
-                    raise ValueError(
-                        f"private exact-version head failed for {relative}: {before_checks}"
-                    )
+                require_source_version_checks_exact(
+                    before_checks,
+                    relative,
+                    "head",
+                )
                 local = staging / relative
                 downloaded = download_exact(
                     row["bucket"],
@@ -939,15 +981,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     f"downloaded reviewed-public report file {relative}",
                 )
                 get_checks = exact_source_checks(downloaded, row)
-                local_checks = {
-                    "bytes": local.is_file() and local.stat().st_size == row["bytes"],
-                    "sha256": local.is_file() and sha256(local) == row["sha256"],
-                }
-                if not all(get_checks.values()) or not all(local_checks.values()):
-                    raise ValueError(
-                        f"private exact-version GET failed for {relative}: "
-                        f"get={get_checks}, local={local_checks}"
-                    )
+                require_source_version_checks_exact(get_checks, relative, "GET")
+                local_checks = exact_local_source_checks(local, row)
+                require_source_local_checks_exact(local_checks, relative)
                 scan_text(local, tokens)
                 local_paths[relative] = local
                 receipt["source_objects"].append(source_preflight_object(row))
