@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact AI-finalizer invocations</li>
+          <li class="pill">Latest milestone = local exact AI-staging bundle manifests</li>
+          <li class="pill">AI-staging bundle manifests = exact</li>
           <li class="pill">AI-finalizer invocations = exact</li>
           <li class="pill">AI-prep source-artifact IDs = exact</li>
           <li class="pill">AI-validation source-artifact IDs = exact</li>
@@ -1444,6 +1445,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI-staging bundle manifests</strong>
+              <span>AI review input staging now rejects duplicate JSON object names when rereading the post-validation bundle manifest, before copying bundle artifacts into exact two-file reviewer input directories.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI-finalizer invocations</strong>
               <span>AI review finalization now rejects duplicate JSON object names and reuses the exact invocation validator before wrapping validated reviewer outputs into source reports.</span>
             </li>
@@ -1845,6 +1850,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T02:05:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI-staging bundle manifests:</strong>
+                AI review input staging now rejects duplicate JSON object
+                names when rereading post-validation bundle manifests before
+                copying exact two-file reviewer inputs.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T02:00:00-07:00">Jul 20 · local</time>
               <span>

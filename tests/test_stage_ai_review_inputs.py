@@ -195,6 +195,37 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse(self.output_root.exists())
         self.assertFalse(self.receipt.exists())
 
+    def test_rejects_duplicate_bundle_manifest_key_after_validation(self) -> None:
+        real_require_bundle_manifest = STAGE.require_bundle_manifest
+
+        def mutate_after_validation(bundle: Path) -> None:
+            real_require_bundle_manifest(bundle)
+            manifest_path = bundle / "bundle_manifest.json"
+            manifest_path.write_text(
+                manifest_path.read_text(encoding="utf-8").replace(
+                    "{\n",
+                    '{\n  "schema_version": 2,\n',
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+        with (
+            mock.patch.object(
+                STAGE,
+                "require_bundle_manifest",
+                side_effect=mutate_after_validation,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "duplicate JSON object name in bundle_manifest.json",
+            ),
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse(self.output_root.exists())
+        self.assertFalse(self.receipt.exists())
+
     def test_rejects_unbound_bundle_files_before_creating_outputs(self) -> None:
         (self.bundle / "unbound-scratch.json").write_text(
             "{}\n",

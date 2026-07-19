@@ -13,7 +13,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
-from build_ai_review_bundle import is_exact_int, require_bundle_manifest
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    is_exact_int,
+    reject_duplicate_json_object_names,
+    require_bundle_manifest,
+)
 
 ROLES = ("A", "B")
 ROLE_DIRS = {"A": "reviewer-a-input", "B": "reviewer-b-input"}
@@ -41,7 +46,15 @@ def sha256(path: Path) -> str:
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value
