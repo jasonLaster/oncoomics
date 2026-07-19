@@ -252,6 +252,16 @@ def mutate_phase3_fast_crosscheck_plans(
     utils.write_json(report_manifest_path, report_manifest)
 
 
+def mutate_phase3_fast_report_manifest(
+    deterministic_root: Path,
+    mutation: Callable[[dict], None],
+) -> None:
+    report_manifest_path = deterministic_root / "report_manifest.json"
+    report_manifest = utils.read_json(report_manifest_path)
+    mutation(report_manifest)
+    utils.write_json(report_manifest_path, report_manifest)
+
+
 def write_staged_rosalind_packet(root: Path) -> list[Path]:
     root.mkdir(parents=True, exist_ok=True)
     for name in packet.PACKET_REPORT_SUPPORT_FILES:
@@ -1110,6 +1120,83 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     )
                 )
                 mutate_phase3_fast_crosscheck_plans(deterministic_root, mutation)
+
+                with (
+                    patch.object(
+                        packet,
+                        "path_from_root",
+                        lambda relative: output_root / relative,
+                    ),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(
+                                deterministic_root
+                            ),
+                            "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": (
+                                PHASE3_FAST_FORBIDDEN_TOKENS_JSON
+                            ),
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(
+                        packet.PACKET_SPECS["diana_wgs"],
+                        "phase3-fast",
+                    )
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/phase3-fast/"
+                        "report_manifest.json"
+                    ).exists()
+                )
+
+    def test_diana_wgs_phase3_fast_packet_rejects_json_float_counts_and_bytes(self):
+        cases = (
+            (
+                "artifact_count",
+                lambda deterministic_root: mutate_phase3_fast_report_manifest(
+                    deterministic_root,
+                    lambda manifest: manifest["review_summary"].__setitem__(
+                        "artifact_count",
+                        1.0,
+                    ),
+                ),
+                "Phase 3 fast artifact_count must be a non-negative integer",
+            ),
+            (
+                "artifact_group",
+                lambda deterministic_root: mutate_phase3_fast_report_manifest(
+                    deterministic_root,
+                    lambda manifest: manifest["review_summary"][
+                        "artifact_groups"
+                    ].__setitem__("small_variants", 1.0),
+                ),
+                "Phase 3 fast small_variants artifact count must be a non-negative integer",
+            ),
+            (
+                "sequenza_alias_bytes",
+                lambda deterministic_root: mutate_phase3_fast_crosscheck_plans(
+                    deterministic_root,
+                    lambda plans: plans["routes"]["sequenza_scarhrd"][
+                        "alias_input_contract"
+                    ]["artifacts"]["tumor_bam"].__setitem__("bytes", 1.0),
+                ),
+                "Sequenza tumor_bam bytes must be a non-negative integer",
+            ),
+        )
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                deterministic_root, final_root = (
+                    write_phase3_fast_deterministic_report(
+                        output_root / "phase3_fast"
+                    )
+                )
+                mutation(deterministic_root)
 
                 with (
                     patch.object(

@@ -917,16 +917,16 @@ def require_sha256(value: Any, label: str) -> str:
     return digest
 
 
-def require_nonnegative_int(value: Any, label: str) -> int:
-    if isinstance(value, bool):
+def require_json_nonnegative_int(value: Any, label: str) -> int:
+    if type(value) is not int or value < 0:
         raise ValueError(f"{label} must be a non-negative integer")
-    try:
-        number = int(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f"{label} must be a non-negative integer") from error
-    if number < 0 or str(value).strip() not in {str(number), f"{number}.0"}:
+    return value
+
+
+def require_csv_nonnegative_int(value: Any, label: str) -> int:
+    if not isinstance(value, str) or not value.isascii() or not value.isdecimal():
         raise ValueError(f"{label} must be a non-negative integer")
-    return number
+    return int(value)
 
 
 def is_exact_int(value: Any, expected: int) -> bool:
@@ -946,14 +946,14 @@ def validate_diana_wgs_worker_schema() -> None:
     ):
         raise ValueError("Diana WGS alignment schema requires one passed tumor and one passed normal row")
     for role, row in alignment_by_role.items():
-        total = require_nonnegative_int(row.get("total_reads"), f"{role} total_reads")
-        mapped = require_nonnegative_int(row.get("mapped_reads"), f"{role} mapped_reads")
+        total = require_json_nonnegative_int(row.get("total_reads"), f"{role} total_reads")
+        mapped = require_json_nonnegative_int(row.get("mapped_reads"), f"{role} mapped_reads")
         if row.get("status") != "passed" or total <= 0 or mapped > total:
             raise ValueError(f"Diana WGS {role} alignment counts are inconsistent")
 
     variants = read_json_or_empty("variants/mutect2_summary.json")
     variant_counts = {
-        key: require_nonnegative_int(variants.get(key), f"variant {key}")
+        key: require_json_nonnegative_int(variants.get(key), f"variant {key}")
         for key in (
             "total_filtered_records", "pass_records", "pass_snvs", "pass_indels",
             "brca1_brca2_pass_region_records",
@@ -971,25 +971,25 @@ def validate_diana_wgs_worker_schema() -> None:
     cnv = read_json_or_empty("cnv/coverage_cnv_summary.json")
     cnv_rows = read_csv_or_empty("cnv/coverage_cnv_bins.csv")
     cnv_classes = [row.get("coverage_class", "") for row in cnv_rows]
-    bin_count = require_nonnegative_int(cnv.get("bin_count"), "CNV bin_count")
+    bin_count = require_json_nonnegative_int(cnv.get("bin_count"), "CNV bin_count")
     if (
         cnv.get("status") != "partial_evidence"
         or len(cnv_rows) != bin_count
         or set(cnv_classes) - {"relative_gain", "relative_loss", "neutral_or_low_signal"}
-        or cnv_classes.count("relative_gain") != require_nonnegative_int(cnv.get("relative_gain_bins"), "CNV gain bins")
-        or cnv_classes.count("relative_loss") != require_nonnegative_int(cnv.get("relative_loss_bins"), "CNV loss bins")
+        or cnv_classes.count("relative_gain") != require_json_nonnegative_int(cnv.get("relative_gain_bins"), "CNV gain bins")
+        or cnv_classes.count("relative_loss") != require_json_nonnegative_int(cnv.get("relative_loss_bins"), "CNV loss bins")
     ):
         raise ValueError("Diana WGS coverage-CNV rows and summary do not reconcile")
 
     signatures = read_json_or_empty("signatures/signature_assignment_summary.json")
     sbs_rows = read_csv_or_empty("signatures/wgs_sbs96_matrix.csv")
     sbs_keys = {(row.get("mutation_type", ""), row.get("trinucleotide", "")) for row in sbs_rows}
-    sbs_counts = [require_nonnegative_int(row.get("count"), "SBS96 count") for row in sbs_rows]
+    sbs_counts = [require_csv_nonnegative_int(row.get("count"), "SBS96 count") for row in sbs_rows]
     if (
         signatures.get("status") != "partial_evidence"
         or len(sbs_rows) != 96
         or sbs_keys != EXPECTED_SBS96
-        or sum(sbs_counts) != require_nonnegative_int(signatures.get("usable_snv_records"), "usable SBS96 SNVs")
+        or sum(sbs_counts) != require_json_nonnegative_int(signatures.get("usable_snv_records"), "usable SBS96 SNVs")
         or not str(signatures.get("sbs3_status", "")).startswith("no_call")
     ):
         raise ValueError("Diana WGS SBS96 matrix is not an exact 96-channel input")
@@ -1014,11 +1014,11 @@ def validate_diana_wgs_worker_schema() -> None:
         raise ValueError("Diana WGS SV JSON/CSV role schema is not exact")
     for role in ("tumor", "normal"):
         for field in count_fields:
-            json_value = require_nonnegative_int(json_by_role[role].get(field), f"SV {role} {field}")
-            csv_value = require_nonnegative_int(csv_by_role[role].get(field), f"SV CSV {role} {field}")
+            json_value = require_json_nonnegative_int(json_by_role[role].get(field), f"SV {role} {field}")
+            csv_value = require_csv_nonnegative_int(csv_by_role[role].get(field), f"SV CSV {role} {field}")
             if json_value != csv_value:
                 raise ValueError(f"Diana WGS SV JSON/CSV differs for {role} {field}")
-        if require_nonnegative_int(json_by_role[role].get("total_alignments"), f"SV {role} total") != require_nonnegative_int(alignment_by_role[role].get("total_reads"), f"alignment {role} total"):
+        if require_json_nonnegative_int(json_by_role[role].get("total_alignments"), f"SV {role} total") != require_json_nonnegative_int(alignment_by_role[role].get("total_reads"), f"alignment {role} total"):
             raise ValueError(f"Diana WGS SV totals do not reconcile with {role} alignment")
 
 
@@ -1185,7 +1185,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
     ):
         raise ValueError("Phase 3 fast deterministic report artifact groups are not exact")
 
-    artifact_count = require_nonnegative_int(
+    artifact_count = require_json_nonnegative_int(
         review_summary.get("artifact_count"),
         "Phase 3 fast artifact_count",
     )
@@ -1255,7 +1255,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
         digest = require_sha256(row.get("sha256"), f"Phase 3 fast deterministic input {input_id}")
         if require_sha256(source.get(input_id), f"Phase 3 fast deterministic source {input_id}") != digest:
             raise ValueError(f"Phase 3 fast source hash differs from deterministic input {input_id}")
-        bytes_ = require_nonnegative_int(row.get("bytes"), f"Phase 3 fast deterministic input {input_id} bytes")
+        bytes_ = require_csv_nonnegative_int(row.get("bytes"), f"Phase 3 fast deterministic input {input_id} bytes")
 
         exists = "yes"
         if input_id != "final_evidence_manifest":
@@ -1289,7 +1289,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
         "artifact_index": artifact_index_rows,
         "phase3_fast": {
             "artifact_groups": {
-                str(group): require_nonnegative_int(count, f"Phase 3 fast artifact group {group}")
+                str(group): require_json_nonnegative_int(count, f"Phase 3 fast artifact group {group}")
                 for group, count in sorted(artifact_groups.items())
             },
             "run": dict(review_summary.get("run", {})) if isinstance(review_summary.get("run"), dict) else {},
@@ -1308,7 +1308,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
 def phase3_fast_alias_source_summary(value: Any, label: str) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise ValueError(f"{label} must be an alias source object")
-    bytes_ = require_nonnegative_int(value.get("bytes"), f"{label} bytes")
+    bytes_ = require_json_nonnegative_int(value.get("bytes"), f"{label} bytes")
     if bytes_ <= 0:
         raise ValueError(f"{label} bytes must be positive")
     version_id = str(value.get("version_id", "")).strip()
@@ -1617,7 +1617,7 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
         blockers.append(f"Phase 3 fast readiness contract is missing surfaces: {', '.join(missing_surfaces)}.")
 
     def group_count(group: str) -> int:
-        return require_nonnegative_int(groups.get(group, 0), f"Phase 3 fast {group} artifact count")
+        return require_json_nonnegative_int(groups.get(group, 0), f"Phase 3 fast {group} artifact count")
 
     def reason(surface: str) -> str:
         return str(readiness_by_surface.get(surface, {}).get("reason") or "Missing or incomplete readiness evidence.")
