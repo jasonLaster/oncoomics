@@ -307,12 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>506333f1b2e277956124f4d4032519cefd8ea495</strong>.
-          The latest work is exact cross-check output custody hardening:
+          <strong>ec028e602e4c56a0a4bb8263a5d06cb36a15da17</strong>.
+          The latest work is exact executed-worker receipt hardening:
           <code>stage_deterministic_wgs_report.py</code> now names and requires
-          the per-output upload map emitted by
-          <code>materialize_crosscheck_inputs.py</code> before canonical
-          cross-check outputs can support the staged WGS report packet.
+          the child worker-freeze and worker-freeze-upload receipt maps before
+          captured Batch worker bytes can support the staged WGS report packet.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -320,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 506333f</li>
+          <li class="pill">Latest hardening = ec028e6</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -402,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 506333f</strong>
-              <span>Deterministic report staging now rejects missing, unexpected, or failed cross-check output checks before versioned canonical VCF, index, SBS96, or staged-validation outputs can support a WGS report packet.</span>
+              <strong>Preserve ec028e6</strong>
+              <span>Deterministic report staging now rejects missing, unexpected, or failed executed-worker freeze and freeze-upload receipt maps before exact worker bytes can support a WGS report packet.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -451,6 +450,25 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>ec028e6 Require exact executed worker receipts:</strong>
+                <code>stage_deterministic_wgs_report.py</code> now defines
+                <code>EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS</code> and
+                <code>EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS</code> for
+                the executed worker's child receipts instead of accepting
+                arbitrary all-true maps. The freeze map binds active task
+                identity, container file hash and size capture, direct
+                container upload, S3 byte, KMS, VersionId, SHA-256, and
+                metadata custody; the upload map binds byte, exact KMS, exact
+                VersionId, full-object SHA-256, local SHA-256 to S3 checksum,
+                and metadata checks. The synthetic fixture now imports both
+                exact maps, and tests reject missing, unexpected, or failed
+                worker-freeze and worker-freeze-upload checks before
+                <code>report.md</code> can be published.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
