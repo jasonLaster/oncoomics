@@ -336,6 +336,10 @@ PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE = "pre_route_deterministic_rosalind"
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 
 
+def is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and SHA256_HEX.fullmatch(value) is not None
+
+
 def json_bytes(value: Any) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -387,7 +391,7 @@ def load_source_report_manifest(path: Path, method_id: str) -> None:
         raise ValueError(f"source report manifest must not authorize classification: {method_id}")
     if manifest.get("classification_qc_status") != "not_applicable":
         raise ValueError(f"source report manifest classification QC must remain not_applicable: {method_id}")
-    if SHA256_HEX.fullmatch(str(manifest.get("report_sha256", ""))) is None:
+    if not is_sha256(manifest.get("report_sha256")):
         raise ValueError(f"source report manifest report_sha256 is malformed: {method_id}")
     if manifest["report_sha256"] != sha256_file(report_path):
         raise ValueError(f"source report manifest hash differs from report.md: {method_id}")
@@ -440,7 +444,7 @@ def validate_source_report_manifests(
     for method_id, digest in manifests.items():
         if method_id not in REQUIRED_METHOD_IDS:
             raise ValueError(f"unexpected source report method: {method_id}")
-        if SHA256_HEX.fullmatch(digest) is None:
+        if not is_sha256(digest):
             raise ValueError(f"source report manifest SHA-256 is malformed: {method_id}")
 
     observed = tuple(manifests)
@@ -513,12 +517,11 @@ def write_file_create_only(path: Path, data: bytes) -> None:
 
 
 def require_bound_packet_file(packet_dir: Path, name: str, digest: Any) -> None:
-    digest_text = str(digest)
-    if SHA256_HEX.fullmatch(digest_text) is None:
+    if not is_sha256(digest):
         raise ValueError(f"blocked cross-check report manifest has malformed SHA-256 for {name}")
     path = packet_dir / name
     require_real_nonempty_file(path, "blocked cross-check packet")
-    if sha256_file(path) != digest_text:
+    if sha256_file(path) != digest:
         raise ValueError(f"blocked cross-check report manifest is stale for {name}")
 
 

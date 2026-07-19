@@ -415,6 +415,28 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     GENERATOR.require_blocked_report_manifest(manifest_path.parent)
 
+    def test_packet_manifest_bound_hashes_must_be_exact_strings(self) -> None:
+        numeric_digest = int("1" * 64)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            packet_dir = Path(temporary)
+            target = packet_dir / "method_spec.json"
+            target.write_text("{}\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(GENERATOR, "sha256_file", return_value="1" * 64),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "blocked cross-check report manifest has malformed SHA-256 "
+                    "for method_spec.json",
+                ),
+            ):
+                GENERATOR.require_bound_packet_file(
+                    packet_dir,
+                    "method_spec.json",
+                    numeric_digest,
+                )
+
     def test_reports_bind_upstream_report_manifests_without_exposing_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -873,6 +895,20 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 )
 
             self.assertFalse(output.exists())
+
+    def test_source_report_hashes_must_be_exact_strings(self) -> None:
+        numeric_digest = int("1" * 64)
+        values = {
+            method_id: "a" * 64
+            for method_id in GENERATOR.SOURCE_REPORT_METHOD_IDS
+        }
+        values[GENERATOR.SOURCE_REPORT_METHOD_IDS[0]] = numeric_digest
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "source report manifest SHA-256 is malformed",
+        ):
+            GENERATOR.validate_source_report_manifests(values)
 
     def test_cli_rejects_source_report_manifest_with_stale_report_hash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
