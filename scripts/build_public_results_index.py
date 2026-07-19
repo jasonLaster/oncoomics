@@ -22,6 +22,7 @@ from publish_reviewed_public_report import (
     METHOD_CONTRACTS,
     PUBLIC_BUCKET,
     PUBLIC_ROOT,
+    REVIEWED_PUBLIC_PREFLIGHT_CHECKS,
     RUN_ID,
     SHA256_HEX,
     SUBJECT_ALIAS,
@@ -209,10 +210,7 @@ def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> dict[str
         if not isinstance(checks, dict) or not isinstance(destination_objects, list):
             raise RuntimeError(f"{method_id} reviewed-public receipt is incomplete")
         required_checks = (
-            "private_receipt_exact_and_passed",
-            "source_exact_versions",
-            "source_sha256_and_bytes",
-            "second_forbidden_token_scan",
+            *REVIEWED_PUBLIC_PREFLIGHT_CHECKS,
             "all_destination_writes_create_only",
             "destination_sse_s3",
             "destination_full_object_sha256",

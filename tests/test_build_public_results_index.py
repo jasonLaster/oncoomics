@@ -34,10 +34,7 @@ def write_public_receipts(root: Path) -> list[Path]:
     receipt_root.mkdir()
     receipts = []
     required_checks = {
-        "private_receipt_exact_and_passed": True,
-        "source_exact_versions": True,
-        "source_sha256_and_bytes": True,
-        "second_forbidden_token_scan": True,
+        **{check_id: True for check_id in PUBLISH.REVIEWED_PUBLIC_PREFLIGHT_CHECKS},
         "all_destination_writes_create_only": True,
         "destination_sse_s3": True,
         "destination_full_object_sha256": True,
@@ -344,6 +341,32 @@ class PublicIndexTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "parent may not be a symlink"):
                 MODULE.validate_reviewed_public_receipts(receipts)
+
+    def test_reviewed_public_receipts_require_full_source_preflight_checks(
+        self,
+    ) -> None:
+        newly_bound_checks = (
+            "source_exact_kms",
+            "manifest_no_call_boundary",
+            "destination_initially_empty",
+            "packet_size_bounded",
+        )
+
+        for check_id in newly_bound_checks:
+            with self.subTest(check_id=check_id), tempfile.TemporaryDirectory() as temporary:
+                receipts = write_public_receipts(Path(temporary))
+                receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+                self.assertTrue(receipt["checks"].pop(check_id))
+                receipts[0].write_text(
+                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "failed required checks",
+                ):
+                    MODULE.validate_reviewed_public_receipts(receipts)
 
     def test_reviewed_public_destination_rows_must_be_exact(self) -> None:
         cases = (
