@@ -896,6 +896,30 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "failed upload_binding"):
             MODULE.validate_logged_anchor(terminal, self.prefix, self.kms)
 
+    def test_logged_anchor_rejects_coerced_sha256_and_version_id(self) -> None:
+        cases = (
+            (
+                "numeric_sha256",
+                "receipt_sha256",
+                int("1" * 64),
+                "receipt_sha256_well_formed",
+            ),
+            (
+                "numeric_version",
+                "receipt_version_id",
+                1234567890,
+                "failed receipt_version_nonempty",
+            ),
+        )
+
+        for label, field, value, error in cases:
+            with self.subTest(label=label):
+                terminal = copy.deepcopy(self.terminal)
+                terminal["receipt_anchor"][field] = value
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_logged_anchor(terminal, self.prefix, self.kms)
+
     def test_rejects_logged_anchor_with_missing_unexpected_or_failed_upload_check(self) -> None:
         cases = {}
         for label, mutate in (

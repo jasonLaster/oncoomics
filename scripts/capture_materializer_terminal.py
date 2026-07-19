@@ -617,23 +617,29 @@ def validate_logged_anchor(
         raise ValueError("terminal materialization receipt anchor is malformed")
     anchor_checks = anchor.get("checks")
     upload_checks = receipt_upload.get("checks")
-    receipt_sha = str(anchor.get("receipt_sha256", ""))
-    receipt_uri = str(anchor.get("receipt_uri", ""))
-    receipt_version = str(anchor.get("receipt_version_id", ""))
+    receipt_sha = anchor.get("receipt_sha256")
+    receipt_uri = anchor.get("receipt_uri")
+    receipt_version = anchor.get("receipt_version_id")
     receipt_bytes = anchor.get("receipt_bytes")
-    bucket, key = s3_location(receipt_uri)
+    bucket = ""
+    key = ""
+    if isinstance(receipt_uri, str):
+        with contextlib.suppress(ValueError):
+            bucket, key = s3_location(receipt_uri)
     expected_prefix = expected_receipt_prefix.rstrip("/") + "/"
     expected_bucket, expected_prefix_key = s3_location(expected_prefix + "sentinel")
-    expected_key = expected_prefix_key.removesuffix("sentinel") + receipt_sha + ".json"
+    expected_key = (
+        expected_prefix_key.removesuffix("sentinel") + receipt_sha + ".json"
+        if isinstance(receipt_sha, str)
+        else ""
+    )
     checks = {
         "outer_status": payload.get("status") == "passed",
         "anchor_schema_status": (exact_schema_version(anchor, 1) and anchor.get("status") == "passed"),
         "anchor_checks_exact": anchor_checks == EXPECTED_RECEIPT_ANCHOR_CHECKS,
-        "receipt_sha256_well_formed": bool(re.fullmatch(r"[0-9a-f]{64}", receipt_sha)),
+        "receipt_sha256_well_formed": is_sha256(receipt_sha),
         "receipt_bytes_positive": (isinstance(receipt_bytes, int) and not isinstance(receipt_bytes, bool) and receipt_bytes > 0),
-        "receipt_version_nonempty": (
-            bool(receipt_version) and receipt_version.lower() not in {"none", "null"} and bool(re.fullmatch(r"\S+", receipt_version))
-        ),
+        "receipt_version_nonempty": is_nonempty_text(receipt_version) and receipt_version.lower() not in {"none", "null"},
         "receipt_uri_content_addressed": (bucket == expected_bucket and key == expected_key),
         "upload_binding": (
             receipt_upload.get("uri") == receipt_uri
@@ -662,6 +668,12 @@ def validate_logged_anchor(
         raise ValueError(
             f"logged materialization receipt anchor failed: {error}"
         ) from error
+    if (
+        not isinstance(receipt_uri, str)
+        or not isinstance(receipt_sha, str)
+        or not isinstance(receipt_version, str)
+    ):
+        raise AssertionError("validated materialization receipt anchor has non-string fields")
     return {
         "bucket": bucket,
         "key": key,
