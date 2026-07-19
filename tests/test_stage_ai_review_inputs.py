@@ -142,6 +142,18 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse(self.output_root.exists())
         self.assertFalse(self.receipt.exists())
 
+    def test_rejects_unbound_bundle_files_before_creating_outputs(self) -> None:
+        (self.bundle / "unbound-scratch.json").write_text(
+            "{}\n",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(ValueError, "bundle inventory is not exact"):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse(self.output_root.exists())
+        self.assertFalse(self.receipt.exists())
+
     def test_write_once_fsyncs_file_and_parent_directory(self) -> None:
         output = self.root / "complete.json"
 
@@ -506,7 +518,7 @@ class StageAiReviewInputsTests(unittest.TestCase):
                     receipt = linked_parent / "existing" / "stage-receipt.json"
                     message = "receipt output parent"
                 else:
-                    real_manifest = bundle / "bundle_manifest.real.json"
+                    real_manifest = root / "bundle_manifest.real.json"
                     (bundle / "bundle_manifest.json").rename(real_manifest)
                     (bundle / "bundle_manifest.json").symlink_to(real_manifest)
                     message = "bundle_manifest.json"

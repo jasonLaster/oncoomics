@@ -16,6 +16,13 @@ from typing import Any, Sequence
 ROLES = ("A", "B")
 ROLE_DIRS = {"A": "reviewer-a-input", "B": "reviewer-b-input"}
 ROLE_PROMPTS = {"A": "reviewer-a.prompt.md", "B": "reviewer-b.prompt.md"}
+BUNDLE_FILES = frozenset(
+    {
+        "bundle_manifest.json",
+        "review_bundle.json",
+        *ROLE_PROMPTS.values(),
+    }
+)
 HEX64 = set("0123456789abcdef")
 
 
@@ -155,6 +162,19 @@ def require_mode(path: Path, expected: int, label: str) -> None:
 
 
 def validate_bundle(bundle_dir: Path) -> dict[str, str]:
+    observed = {path.name for path in bundle_dir.iterdir()}
+    if observed != BUNDLE_FILES:
+        missing = sorted(BUNDLE_FILES - observed)
+        unexpected = sorted(observed - BUNDLE_FILES)
+        details = []
+        if missing:
+            details.append("missing " + ",".join(missing))
+        if unexpected:
+            details.append("unexpected " + ",".join(unexpected))
+        raise ValueError(
+            "bundle inventory is not exact: " + "; ".join(details)
+        )
+
     require_real_file(
         bundle_dir / "bundle_manifest.json",
         "bundle_manifest.json",
