@@ -262,6 +262,65 @@ def mutate_phase3_fast_report_manifest(
     utils.write_json(report_manifest_path, report_manifest)
 
 
+def phase3_fast_process_binding() -> dict:
+    return {
+        "binding_kind": "phase3_fast_final",
+        "deterministic_report_sha256": "c" * 64,
+        "deterministic_manifest_sha256": "d" * 64,
+        "artifact_count": 12,
+        "phase3_fast": {
+            "workflow": {
+                "name": "phase3_wgs_fast",
+                "parameter_sha256": "2" * 64,
+                "source_commit": "abcd1234",
+            },
+            "crosscheck_input_plans": {
+                "sigprofiler_sbs3": "awaiting_private_results_freeze",
+                "sequenza_scarhrd": "blocked",
+            },
+            "sequenza_scarhrd_alias_input_contract": {
+                "schema_version": 1,
+                "route": "sequenza_scarhrd",
+                "status": "blocked",
+                "run_alias": "subject01",
+                "planned_aliases": {
+                    "tumor": "subject01_tumor",
+                    "normal": "subject01_normal",
+                },
+                "planned_alias_outputs": {
+                    "tumor_bam": "tumor.bam",
+                    "tumor_bai": "tumor.bam.bai",
+                    "normal_bam": "normal.bam",
+                    "normal_bai": "normal.bam.bai",
+                    "staged_validation": "staged_input_validation.json",
+                },
+                "method_parameters": {
+                    "sequenza": {
+                        "female": True,
+                    },
+                },
+                "reference": {
+                    "build": "GRCh38",
+                },
+                "artifacts": {
+                    "tumor_bam": {},
+                    "tumor_bai": {},
+                    "normal_bam": {},
+                    "normal_bai": {},
+                },
+                "attestations": {
+                    "input_sha256_verified": True,
+                    "bam_quickcheck_passed": True,
+                    "bam_reference_digest_matched": True,
+                    "no_direct_identifiers_in_aliases": True,
+                    "final_bam_contract_published": False,
+                    "validated_sequenza_scarhrd_runtime": False,
+                },
+            },
+        },
+    }
+
+
 def write_staged_rosalind_packet(root: Path) -> list[Path]:
     root.mkdir(parents=True, exist_ok=True)
     for name in packet.PACKET_REPORT_SUPPORT_FILES:
@@ -1321,6 +1380,51 @@ class RosalindHrdPacketTest(unittest.TestCase):
                         "report_manifest.json"
                     ).exists()
                 )
+
+    def test_diana_wgs_phase3_fast_process_lines_reject_loose_summaries(self):
+        cases = (
+            (
+                "missing_workflow_name",
+                lambda binding: binding["phase3_fast"]["workflow"].pop("name"),
+                "Phase 3 fast workflow provenance is not exact",
+            ),
+            (
+                "missing_route_state",
+                lambda binding: binding["phase3_fast"][
+                    "crosscheck_input_plans"
+                ].pop("sigprofiler_sbs3"),
+                "Phase 3 fast cross-check route summary is not exact",
+            ),
+            (
+                "extra_route_state",
+                lambda binding: binding["phase3_fast"][
+                    "crosscheck_input_plans"
+                ].__setitem__("facets", "blocked"),
+                "Phase 3 fast cross-check route summary is not exact",
+            ),
+            (
+                "non_exact_sequenza_female",
+                lambda binding: binding["phase3_fast"][
+                    "sequenza_scarhrd_alias_input_contract"
+                ]["method_parameters"]["sequenza"].__setitem__("female", "true"),
+                "Phase 3 fast compact Sequenza alias contract is not exact",
+            ),
+            (
+                "missing_sequenza_attestation",
+                lambda binding: binding["phase3_fast"][
+                    "sequenza_scarhrd_alias_input_contract"
+                ]["attestations"].pop("validated_sequenza_scarhrd_runtime"),
+                "Phase 3 fast compact Sequenza alias contract is not exact",
+            ),
+        )
+
+        for label, mutation, error in cases:
+            with self.subTest(label=label):
+                binding = phase3_fast_process_binding()
+                mutation(binding)
+
+                with self.assertRaisesRegex(ValueError, error):
+                    packet.diana_wgs_deterministic_process_lines(binding)
 
     def test_diana_wgs_phase3_fast_packet_rejects_json_float_counts_and_bytes(self):
         cases = (
