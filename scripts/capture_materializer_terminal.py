@@ -606,7 +606,7 @@ def validate_logged_anchor(
             receipt_upload.get("uri") == receipt_uri
             and receipt_upload.get("version_id") == receipt_version
             and receipt_upload.get("sha256") == receipt_sha
-            and receipt_upload.get("bytes") == receipt_bytes
+            and exact_int(receipt_upload.get("bytes"), receipt_bytes)
             and receipt_upload.get("kms_key_arn") == expected_kms_key_arn
         ),
         "upload_checks_exact": upload_checks == EXPECTED_RECEIPT_UPLOAD_CHECKS,
@@ -635,7 +635,7 @@ def validate_logged_anchor(
         "uri": receipt_uri,
         "version_id": receipt_version,
         "sha256": receipt_sha,
-        "bytes": int(receipt_bytes),
+        "bytes": receipt_bytes,
         "kms_key_arn": expected_kms_key_arn,
         "checks": checks,
     }
@@ -773,7 +773,7 @@ def destination_inventory_is_exact(receipt: dict[str, Any]) -> bool:
             key is None
             or row.get("key") != key
             or row.get("version_id") != output.get("version_id")
-            or row.get("bytes") != output.get("bytes")
+            or not exact_int(row.get("bytes"), output.get("bytes"))
             or row.get("sha256") != output.get("sha256")
             or row.get("checksums") != output.get("checksums")
         ):
@@ -845,7 +845,7 @@ def validate_exact_receipt(
         "receipt_destination_exact": (
             receipt.get("destination_prefix") == expected_destination_prefix
             and receipt.get("destination_bucket_versioning") == "Enabled"
-            and receipt.get("destination_initial_version_history_count") == 0
+            and exact_int(receipt.get("destination_initial_version_history_count"), 0)
             and receipt.get("receipt_anchor_strategy") == "sha256_content_addressed_create_only"
         ),
         "receipt_source_custody_exact": source_custody_is_exact(

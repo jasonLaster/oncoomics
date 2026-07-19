@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local deterministic terminal byte exactness</li>
+          <li class="pill">Latest milestone = local materializer terminal byte exactness</li>
+          <li class="pill">Materializer terminal bytes = exact</li>
           <li class="pill">Deterministic terminal bytes = exact</li>
           <li class="pill">Batch provenance worker bytes = exact</li>
           <li class="pill">Stage-freeze byte counts = exact</li>
@@ -732,6 +733,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer terminal bytes</strong>
+              <span>Terminal cross-check materializer capture now rejects non-exact logged receipt-upload bytes, one-shot destination history counts, and destination-inventory byte rows before alias-only VCF/index/SBS96 receipt capture can feed the HRD input contract, Rosalind packet, or executable SigProfiler/Sequenza route reports.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact terminal receipt-anchor bytes</strong>
               <span>Terminal materializer and cross-check route capture now require exact integers for logged receipt bytes and exact-version GET/HEAD ContentLength checks before materializer or route publication receipts from terminal anchors can be trusted.</span>
@@ -1150,6 +1155,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:19:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact materializer terminal bytes:</strong>
+                terminal materializer capture now rejects non-exact logged
+                receipt-upload bytes, one-shot destination history counts, and
+                destination-inventory byte rows before alias-only VCF/index/SBS96
+                receipt capture can feed the HRD input contract, Rosalind
+                packet, or executable SigProfiler/Sequenza route reports. No
+                S3, Batch, route, GPU, quota, replacement compute, or AWS-side
+                verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:18:00-07:00">Jul 19 · local</time>
               <span>

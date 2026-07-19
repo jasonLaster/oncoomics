@@ -812,6 +812,13 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "failed anchor_schema_status"):
             MODULE.validate_logged_anchor(terminal, self.prefix, self.kms)
 
+    def test_logged_anchor_receipt_bytes_must_be_exact_int(self) -> None:
+        terminal = copy.deepcopy(self.terminal)
+        terminal["receipt"]["bytes"] = float(self.terminal["receipt"]["bytes"])
+
+        with self.assertRaisesRegex(ValueError, "failed upload_binding"):
+            MODULE.validate_logged_anchor(terminal, self.prefix, self.kms)
+
     def test_rejects_logged_anchor_with_missing_unexpected_or_failed_upload_check(self) -> None:
         cases = {}
         for label, mutate in (
@@ -1029,6 +1036,31 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 self.kms,
             )
 
+    def test_materializer_receipt_destination_count_must_be_exact_int(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = json.loads(self.receipt_bytes)
+            receipt["destination_initial_version_history_count"] = 0.0
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "failed receipt_destination_exact",
+            ):
+                self.run_capture_with_receipt(Path(temporary), receipt)
+
+    def test_materializer_receipt_destination_inventory_bytes_must_be_exact_int(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = json.loads(self.receipt_bytes)
+            row = receipt["destination_inventory"][0]
+            row["bytes"] = float(row["bytes"])
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "failed receipt_destination_inventory_exact",
+            ):
+                self.run_capture_with_receipt(Path(temporary), receipt)
+
     def test_materializer_receipt_requires_exact_schema_version(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             receipt = json.loads(self.receipt_bytes)
@@ -1039,6 +1071,17 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 "failed receipt_schema_status",
             ):
                 self.run_capture_with_receipt(Path(temporary), receipt)
+
+    def test_integer_helpers_reject_coercible_values(self) -> None:
+        self.assertTrue(MODULE.is_positive_int(1))
+        self.assertTrue(MODULE.exact_int(7, 7))
+
+        for value in (True, 1.0, "1", 0, -1, None):
+            with self.subTest(helper="is_positive_int", value=value):
+                self.assertFalse(MODULE.is_positive_int(value))
+        for value in (True, 7.0, "7", 0, None):
+            with self.subTest(helper="exact_int", value=value):
+                self.assertFalse(MODULE.exact_int(value, 7))
 
     def test_schema_version_checks_use_exact_integer_helper(self) -> None:
         cases = (
