@@ -1755,6 +1755,20 @@ class GenerateSynthesisTests(unittest.TestCase):
             )
             self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
 
+    def test_synthesis_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-hash-") as temporary:
+            root = Path(temporary)
+            real_input = root / "real.json"
+            linked_input = root / "linked.json"
+            real_input.write_text("{}\n", encoding="utf-8")
+            linked_input.symlink_to(real_input)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "missing or unsafe linked.json SHA-256 input",
+            ):
+                GENERATE.sha256(linked_input)
+
     def test_changed_ai_output_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             fixture = SynthesisFixture(Path(temporary))
