@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact materializer output VersionIds</li>
+          <li class="pill">Latest milestone = local exact fast-rerun cache HEADs</li>
+          <li class="pill">Fast-rerun cache HEADs = exact</li>
           <li class="pill">Materializer output VersionIds = exact</li>
           <li class="pill">Stage-freeze checksum types = exact</li>
           <li class="pill">Final-freeze checksum maps = exact</li>
@@ -678,6 +679,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact fast-rerun cache HEADs</strong>
+              <span><code>replicate_phase3_fast_inputs.py</code> now rejects string-coerced destination sizes and numeric destination VersionIds before treating a cached Phase 3 fast input as already present or verifying a just-copied object.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · close Phase 3 WGS boolean-friendly integer guards</strong>
               <span>Shared Sequenza alias contracts, cross-check materialization planning, the Parabricks P5en runner, and GPU-smoke parameter validation now reject JSON booleans as integers, closing the last raw Phase 3 WGS integer guards.</span>
@@ -1660,6 +1665,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T22:10:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact fast-rerun cache HEADs:</strong>
+                <code>replicate_phase3_fast_inputs.py</code> now compares
+                destination HEAD byte counts and VersionIds exactly before
+                reusing a cached Phase 3 fast input or validating a copied
+                input object.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T22:00:00-07:00">Jul 19 · local</time>
               <span>

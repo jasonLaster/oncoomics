@@ -96,6 +96,10 @@ def _require_positive_int(value: Any, label: str) -> int:
     return value
 
 
+def _is_positive_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
 def _require_part_size(value: str | None) -> int:
     if value is None or value == "":
         return DEFAULT_MULTIPART_PART_SIZE_BYTES
@@ -126,9 +130,18 @@ def _copy_plan_rows(value: Any) -> list[Mapping[str, Any]]:
 
 
 def _require_version(value: Any, label: str) -> str:
-    if not isinstance(value, str) or value in {"", "null", "None"}:
+    if not _valid_version_id(value):
         raise ManifestError(f"{label} source_version_id must be a non-null S3 VersionId")
     return value
+
+
+def _valid_version_id(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and value
+        and value.lower() not in {"none", "null"}
+        and not any(character.isspace() for character in value)
+    )
 
 
 def _validate_cache_member(uri: str, prefix: str, artifact: str, sha256: str) -> None:
@@ -275,7 +288,7 @@ def _row_destination(row: Mapping[str, Any]) -> Mapping[str, Any]:
 
 
 def _require_version_id(value: Any, label: str) -> str:
-    if not isinstance(value, str) or value in {"", "null", "None"}:
+    if not _valid_version_id(value):
         raise ManifestError(f"{label} must return a durable destination VersionId")
     return value
 
@@ -293,12 +306,15 @@ def _destination_matches(row: Mapping[str, Any], head: Mapping[str, Any] | None)
         return False
     metadata = _require_mapping(head.get("Metadata", {}), "destination Metadata")
     expected_metadata = _destination_metadata(row)
+    content_length = head.get("ContentLength")
+    version_id = head.get("VersionId")
     return (
-        int(head.get("ContentLength", -1)) == int(row.get("bytes", -2))
+        _is_positive_int(content_length)
+        and content_length == row.get("bytes")
         and head.get("ServerSideEncryption") == "aws:kms"
         and head.get("SSEKMSKeyId") == row.get("destination_kms_key_arn")
-        and str(head.get("VersionId", "")) not in {"", "null", "None"}
-        and all(str(metadata.get(key, "")) == value for key, value in expected_metadata.items())
+        and _valid_version_id(version_id)
+        and all(metadata.get(key) == value for key, value in expected_metadata.items())
     )
 
 
@@ -322,7 +338,7 @@ def _verify_copied_destination(
         artifact = _require_string(row.get("artifact"), "artifact")
         raise ManifestError(f"{artifact} destination object did not match the planned copy")
     assert destination is not None
-    if str(destination.get("VersionId", "")) != version_id:
+    if destination.get("VersionId") != version_id:
         artifact = _require_string(row.get("artifact"), "artifact")
         raise ManifestError(f"{artifact} destination VersionId did not match the copy response")
     return destination
@@ -370,7 +386,10 @@ def _apply_copy_result(row: Mapping[str, Any], client: S3CopyClient) -> dict[str
         assert existing is not None
         updated = dict(row)
         updated["status"] = "already_present"
-        updated["destination_version_id"] = str(existing.get("VersionId"))
+        updated["destination_version_id"] = _require_version_id(
+            existing.get("VersionId"),
+            f"{row.get('artifact', 'artifact')} existing destination",
+        )
         updated["checks"] = {
             **_require_mapping(row.get("checks"), "checks"),
             "destination_kms_key_matches": True,

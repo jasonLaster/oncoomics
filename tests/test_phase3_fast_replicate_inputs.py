@@ -193,6 +193,70 @@ class Phase3FastReplicateInputsTests(unittest.TestCase):
 
         self.assertEqual([], client.copied)
 
+    def test_apply_rejects_existing_cache_object_with_coerced_head_values(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "string_content_length",
+                lambda head, row: head.__setitem__(
+                    "ContentLength",
+                    str(row["bytes"]),
+                ),
+            ),
+            (
+                "numeric_version_id",
+                lambda head, _row: head.__setitem__("VersionId", 1234567890),
+            ),
+        )
+
+        for label, mutate in cases:
+            with self.subTest(label=label):
+                client = FakeS3CopyClient()
+                receipt = self.build_apply_receipt()
+                first = receipt["copy_results"][0]
+                client.add_matching_destination(first)
+                mutate(client.destination_heads[destination_id(first)], first)
+
+                with self.assertRaisesRegex(replicate.ManifestError, "already exists"):
+                    replicate.apply_phase3_fast_replication_receipt(receipt, client)
+
+                self.assertEqual([], client.copied)
+
+    def test_apply_rejects_copied_cache_object_with_coerced_version_id(self) -> None:
+        class CoercedVersionCopyClient(FakeS3CopyClient):
+            def copy_object(self, row: Mapping[str, Any]) -> dict[str, Any]:
+                self.copied.append(row)
+                self.destination_heads[destination_id(row)] = matching_head(row, 123)
+                return {"VersionId": "123"}
+
+        with self.assertRaisesRegex(replicate.ManifestError, "did not match"):
+            replicate.apply_phase3_fast_replication_receipt(
+                self.build_apply_receipt(),
+                CoercedVersionCopyClient(),
+            )
+
+    def test_version_id_helpers_reject_coerced_nullish_and_whitespace_values(
+        self,
+    ) -> None:
+        invalid = (True, 1, 1.0, "", "null", "None", "none", "has space")
+
+        for value in invalid:
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(replicate.ManifestError, "source_version_id"):
+                    replicate._require_version(value, "source")
+                with self.assertRaisesRegex(
+                    replicate.ManifestError,
+                    "durable destination VersionId",
+                ):
+                    replicate._require_version_id(value, "copy response")
+
+        self.assertEqual("v/1+a==", replicate._require_version("v/1+a==", "source"))
+        self.assertEqual(
+            "copy-version",
+            replicate._require_version_id("copy-version", "copy response"),
+        )
+
     def test_apply_upload_part_copy_uses_planned_ranges(self) -> None:
         plan = replication_plan()
         rows = plan["copy_plan"]
