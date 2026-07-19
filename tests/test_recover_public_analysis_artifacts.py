@@ -218,6 +218,19 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
             ):
                 MODULE.exact_version_id(value, "upload VersionId")
 
+    def test_exact_crc64nvme_rejects_non_string_checksums(self) -> None:
+        self.assertEqual(
+            MODULE.exact_crc64nvme("crc64", "source ChecksumCRC64NVME"),
+            "crc64",
+        )
+
+        for value in (True, 1, 1.0, "", None):
+            with (
+                self.subTest(value=value),
+                self.assertRaisesRegex(ValueError, "exact CRC64NVME"),
+            ):
+                MODULE.exact_crc64nvme(value, "source ChecksumCRC64NVME")
+
     def test_source_evidence_requires_exact_s3_sizes(self) -> None:
         head = {
             "ContentLength": 42,
@@ -282,6 +295,31 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                 self.assertRaisesRegex(ValueError, "exact nonnegative S3 size"),
             ):
                 MODULE.source_evidence("source-bucket", row)
+
+    def test_source_evidence_requires_exact_crc64nvme_checksum(self) -> None:
+        head = {
+            "ContentLength": 42,
+            "ChecksumCRC64NVME": "crc64",
+            "ChecksumType": "FULL_OBJECT",
+            "ContentType": "application/json",
+            "ServerSideEncryption": "aws:kms",
+            "SSEKMSKeyId": MODULE.EXPECTED_KMS_KEY,
+        }
+
+        for value in (True, 1, 1.0, "", None):
+            with (
+                self.subTest(value=value),
+                mock.patch.object(
+                    MODULE,
+                    "head",
+                    return_value={**head, "ChecksumCRC64NVME": value},
+                ),
+                self.assertRaisesRegex(ValueError, "exact CRC64NVME"),
+            ):
+                MODULE.source_evidence(
+                    "source-bucket",
+                    {"Key": MODULE.WORK_PREFIX + "a.json", "Size": 42},
+                )
 
     def test_public_upload_pins_exact_checksum(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -75,6 +75,12 @@ def exact_version_id(value: Any, label: str) -> str:
     return value
 
 
+def exact_crc64nvme(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} is not an exact CRC64NVME checksum")
+    return value
+
+
 def inventory_total_bytes(rows: list[dict[str, Any]], label: str) -> int:
     total = 0
     for index, row in enumerate(rows, 1):
@@ -272,7 +278,10 @@ def source_evidence(bucket: str, row: dict[str, Any]) -> dict[str, Any]:
         evidence.get("ContentLength"),
         f"source head {key} ContentLength",
     )
-    checksum = str(evidence.get("ChecksumCRC64NVME", ""))
+    checksum = exact_crc64nvme(
+        evidence.get("ChecksumCRC64NVME"),
+        f"source head {key} ChecksumCRC64NVME",
+    )
     checks = {
         "bytes": head_size == listed_size,
         "encryption": evidence.get("ServerSideEncryption") == "aws:kms",
