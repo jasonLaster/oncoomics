@@ -206,6 +206,33 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 )
             self.assertFalse((output / "reviewer-inputs" / "reviewer-a-input" / "prepare_ai_review_run_receipt.json").exists())
 
+    def test_prepare_postcondition_checks_must_be_exact(self) -> None:
+        cases = {
+            "missing": (
+                lambda checks: checks.pop("reviewer_b_prompt_bound"),
+                "missing reviewer_b_prompt_bound",
+            ),
+            "unexpected": (
+                lambda checks: checks.update({"extra_postcondition": True}),
+                "unexpected extra_postcondition",
+            ),
+            "failed": (
+                lambda checks: checks.update({"source_report_hashes_match": False}),
+                "failed source_report_hashes_match",
+            ),
+            "non_bool": (
+                lambda checks: checks.update({"no_model_invoked": 1}),
+                "failed no_model_invoked",
+            ),
+        }
+        for name, (mutate, error) in cases.items():
+            with self.subTest(name=name):
+                checks = dict(PREPARE.EXPECTED_PREPARE_POSTCONDITION_CHECKS)
+                mutate(checks)
+
+                with self.assertRaisesRegex(ValueError, error):
+                    PREPARE.require_exact_postcondition_checks(checks)
+
     def test_rejects_stage_receipt_with_stale_reviewer_file_hash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

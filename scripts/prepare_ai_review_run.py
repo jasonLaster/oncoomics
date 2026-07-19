@@ -47,6 +47,18 @@ STAGE_RECEIPT_CHECKS = {
     "reviewer_b_two_file_inventory": True,
     "no_cross_prompt": True,
 }
+EXPECTED_PREPARE_POSTCONDITION_CHECKS = {
+    "pinned_seven_method_inventory": True,
+    "source_report_hashes_match": True,
+    "bundle_manifest_bound": True,
+    "reviewer_a_two_file_inventory": True,
+    "reviewer_b_two_file_inventory": True,
+    "no_cross_prompt": True,
+    "stage_receipt_exact": True,
+    "no_model_invoked": True,
+    "reviewer_a_prompt_bound": True,
+    "reviewer_b_prompt_bound": True,
+}
 REVIEWER_INPUTS = {
     "A": ("reviewer-a-input", "reviewer-a.prompt.md"),
     "B": ("reviewer-b-input", "reviewer-b.prompt.md"),
@@ -339,6 +351,7 @@ def validate_postconditions(
         output,
         bundle_manifest,
     )
+    expected_prompt_hashes = bundle_manifest["prompt_sha256"]
     checks = {
         "pinned_seven_method_inventory": bundle_manifest.get("required_method_ids") == list(REQUIRED_METHOD_IDS),
         "source_report_hashes_match": bundle_manifest.get("input_manifest_sha256") == expected_inputs,
@@ -351,20 +364,37 @@ def validate_postconditions(
         and not (reviewer_root / "reviewer-b-input" / "reviewer-a.prompt.md").exists(),
         "stage_receipt_exact": True,
         "no_model_invoked": True,
+        "reviewer_a_prompt_bound": expected_prompt_hashes.get("A") == sha256(bundle_dir / "reviewer-a.prompt.md"),
+        "reviewer_b_prompt_bound": expected_prompt_hashes.get("B") == sha256(bundle_dir / "reviewer-b.prompt.md"),
     }
-    expected_prompt_hashes = bundle_manifest.get("prompt_sha256", {})
-    if isinstance(expected_prompt_hashes, dict):
-        checks["reviewer_a_prompt_bound"] = expected_prompt_hashes.get("A") == sha256(bundle_dir / "reviewer-a.prompt.md")
-        checks["reviewer_b_prompt_bound"] = expected_prompt_hashes.get("B") == sha256(bundle_dir / "reviewer-b.prompt.md")
-    if not all(checks.values()):
-        failed = ", ".join(key for key, value in checks.items() if not value)
-        raise ValueError(f"AI review prep postcondition failed: {failed}")
+    require_exact_postcondition_checks(checks)
     return {
         "bundle_manifest": bundle_manifest,
         "stage_receipt_reviewers": stage_receipt_reviewers,
         "stage_receipt": stage_receipt,
         "checks": checks,
     }
+
+
+def require_exact_postcondition_checks(checks: dict[str, Any]) -> None:
+    missing = sorted(set(EXPECTED_PREPARE_POSTCONDITION_CHECKS) - set(checks))
+    unexpected = sorted(set(checks) - set(EXPECTED_PREPARE_POSTCONDITION_CHECKS))
+    failed = sorted(
+        key
+        for key in set(EXPECTED_PREPARE_POSTCONDITION_CHECKS) & set(checks)
+        if checks[key] is not True
+    )
+    if missing or unexpected or failed:
+        details = []
+        if missing:
+            details.append("missing " + ",".join(missing))
+        if unexpected:
+            details.append("unexpected " + ",".join(unexpected))
+        if failed:
+            details.append("failed " + ",".join(failed))
+        raise ValueError(
+            "AI review prep postcondition map is not exact: " + "; ".join(details)
+        )
 
 
 def require_sha256(value: Any, label: str) -> str:
