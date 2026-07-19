@@ -606,6 +606,20 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             )
             self.assertEqual(summary["report_manifest_sha256"], manifest_sha256)
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_input = root / "real.json"
+            linked_input = root / "linked.json"
+            real_input.write_text("{}\n", encoding="utf-8")
+            linked_input.symlink_to(real_input)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "linked.json SHA-256 input is missing or a symlink",
+            ):
+                MODULE.sha256_path(linked_input)
+
     def test_report_manifest_paths_match_current_blocked_generator_dirs(self) -> None:
         root = Path("/repo")
         paths = MODULE.report_manifest_paths(root)
