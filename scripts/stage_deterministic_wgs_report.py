@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import csv
 import hashlib
 import io
@@ -75,6 +76,15 @@ S3_CHECKSUM_FIELDS = {
     "ChecksumCRC32C",
     "ChecksumCRC32",
 }
+STAGED_VALIDATION_DOWNLOAD_REQUIRED_CHECKS = {
+    "version_exact",
+    "bytes_exact",
+    "sha256_exact",
+    "get_checksum_present",
+    "head_checksum_present",
+    "full_object_sha256_exact",
+    "exact_kms",
+}
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -101,6 +111,10 @@ def sha256(path: Path) -> str:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def checksum_sha256(digest: str) -> str:
+    return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
 def json_bytes(value: dict[str, Any]) -> bytes:
@@ -414,6 +428,16 @@ def s3_checksums(value: Any) -> dict[str, str]:
     }
 
 
+def s3_full_object_sha256_matches(value: Any, digest: Any) -> bool:
+    text = str(digest)
+    if not valid_sha256(text) or not isinstance(value, dict):
+        return False
+    return (
+        value.get("ChecksumType") == "FULL_OBJECT"
+        and value.get("ChecksumSHA256") == checksum_sha256(text)
+    )
+
+
 def positive_int(value: Any) -> bool:
     try:
         return int(value) > 0
@@ -714,6 +738,9 @@ def validate_crosscheck_terminal_capture(
             and download.get("status") == "passed"
             and download.get("expected_kms_key_arn") == expected_kms_key_arn
             and download.get("materializer_receipt_sha256") == receipt_sha
+            and STAGED_VALIDATION_DOWNLOAD_REQUIRED_CHECKS.issubset(
+                set(download_checks)
+            )
             and bool(download_checks)
             and all(value is True for value in download_checks.values())
         ),
@@ -728,6 +755,10 @@ def validate_crosscheck_terminal_capture(
                 staged_input_validation_path.stat().st_size,
             )
             and staged_output.get("sha256") == staged_sha
+            and s3_full_object_sha256_matches(
+                staged_output.get("checksums"),
+                staged_sha,
+            )
         ),
         "boundary_preserved": (
             capture.get("classification_authorization") == "none"
@@ -2076,13 +2107,23 @@ def main() -> None:
             if isinstance(crosscheck_outputs.get(output_name), dict)
             else {}
         )
+        output_checks = (
+            output_row.get("checks")
+            if isinstance(output_row.get("checks"), dict)
+            else {}
+        )
         if not (
             output_row.get("uri") == crosscheck_output_prefix + output_name
             and valid_version_id(output_row.get("version_id"))
             and positive_int(output_row.get("bytes"))
             and valid_sha256(output_row.get("sha256"))
             and output_row.get("kms_key_arn") == args.expected_kms_key_arn
-            and bool(s3_checksums(output_row.get("checksums")))
+            and s3_full_object_sha256_matches(
+                output_row.get("checksums"),
+                output_row.get("sha256"),
+            )
+            and bool(output_checks)
+            and all(value is True for value in output_checks.values())
         ):
             crosscheck_outputs_valid = False
     staged_output = (

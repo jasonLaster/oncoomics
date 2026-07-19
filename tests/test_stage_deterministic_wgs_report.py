@@ -1229,6 +1229,7 @@ class SyntheticFixture:
                 "bytes": 100,
                 "etag": "synthetic-reference",
                 "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
                     "ChecksumSHA256": base64.b64encode(
                         bytes.fromhex(digest)
                     ).decode("ascii")
@@ -1261,12 +1262,22 @@ class SyntheticFixture:
                 ),
                 "etag": "synthetic-output",
                 "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
                     "ChecksumSHA256": base64.b64encode(
                         bytes.fromhex(digest)
                     ).decode("ascii")
                 },
                 "sha256": digest,
                 "kms_key_arn": KMS_ARN,
+                "checks": {
+                    "create_only_put": True,
+                    "version_exact": True,
+                    "bytes_exact": True,
+                    "sha256_checksum_exact": True,
+                    "metadata_sha256_exact": True,
+                    "exact_kms": True,
+                    "single_version_history": True,
+                },
             }
             for index, (name, digest) in enumerate(output_digests.items(), 1)
         }
@@ -1445,7 +1456,15 @@ class SyntheticFixture:
                 "status": "passed",
                 "materializer_receipt_sha256": crosscheck_receipt_sha,
                 "expected_kms_key_arn": KMS_ARN,
-                "checks": {"sha256_exact": True},
+                "checks": {
+                    "version_exact": True,
+                    "bytes_exact": True,
+                    "sha256_exact": True,
+                    "get_checksum_present": True,
+                    "head_checksum_present": True,
+                    "full_object_sha256_exact": True,
+                    "exact_kms": True,
+                },
                 "object": {
                     "uri": staged_output["uri"],
                     "version_id": staged_output["version_id"],
@@ -1985,6 +2004,42 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("crosscheck_materialization_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_changed_crosscheck_output_checksum_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "crosscheck-materialization.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["outputs"]["sbs96.csv"]["checksums"]["ChecksumSHA256"] = (
+                base64.b64encode(bytes.fromhex("0" * 64)).decode("ascii")
+            )
+            write_json(receipt_path, receipt)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "crosscheck_materialization_custody", result.stdout + result.stderr
+            )
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_stale_staged_download_checksum_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "staged-input-validation-download.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["checks"] = {
+                "version_exact": True,
+                "bytes_exact": True,
+                "sha256_exact": True,
+                "get_checksum_present": True,
+                "head_checksum_present": True,
+                "receipt_checksum_observed": True,
+                "exact_kms": True,
+            }
+            write_json(receipt_path, receipt)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
 
     def test_changed_canonical_output_kms_fails_before_report_publication(self) -> None:
