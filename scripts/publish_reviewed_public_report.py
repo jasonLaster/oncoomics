@@ -302,6 +302,10 @@ def is_positive_exact_int(value: Any) -> bool:
     return type(value) is int and value > 0
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def load_json(path: Path, label: str) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -553,7 +557,7 @@ def validate_private_receipt(
     forbidden_hashes = receipt.get("forbidden_token_sha256")
     if (
         set(receipt) != PRIVATE_RECEIPT_APPLY_KEYS
-        or receipt.get("schema_version") != 1
+        or not exact_schema_version(receipt)
         or receipt.get("status") != "passed"
         or receipt.get("apply") is not True
         or receipt.get("subject_alias") != SUBJECT_ALIAS
@@ -763,7 +767,7 @@ def validate_report_packet(
 ) -> dict[str, Any]:
     manifest = load_json(paths["report_manifest.json"], "report manifest")
     if (
-        manifest.get("schema_version") != 1
+        not exact_schema_version(manifest)
         or manifest.get("method_id") != method_id
         or manifest.get("evidence_status") not in {"partial_evidence", "no_call", "blocked"}
         or manifest.get("authorized_hrd_state") != "no_call"
@@ -928,7 +932,7 @@ def validate_dry_run_receipt(
     checks = dry_run.get("checks")
     private_publication_receipt = dry_run.get("private_publication_receipt")
     if (
-        dry_run.get("schema_version") != 1
+        not exact_schema_version(dry_run)
         or dry_run.get("status") != "dry_run"
         or dry_run.get("apply") is not False
         or set(dry_run) != REVIEWED_PUBLIC_DRY_RUN_RECEIPT_KEYS

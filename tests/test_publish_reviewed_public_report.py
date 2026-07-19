@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import hashlib
 import importlib.util
@@ -367,6 +368,35 @@ class FakeAws:
 
 
 class PublishReviewedPublicReportTests(unittest.TestCase):
+    def test_schema_versions_are_exact_json_integers(self) -> None:
+        for value in (True, 1.0, "1", 2, None):
+            with self.subTest(value=value):
+                self.assertFalse(
+                    MODULE.exact_schema_version({"schema_version": value})
+                )
+
+        self.assertTrue(MODULE.exact_schema_version({"schema_version": 1}))
+
+    def test_schema_guards_use_exact_integer_helper(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(SCRIPT))
+
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "schema_version" not in segment:
+                continue
+            if segment in {
+                'type(payload.get("schema_version")) is int',
+                'payload["schema_version"] == expected',
+            }:
+                continue
+            raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_comparisons, [])
+
     def execute(
         self,
         fixture: Fixture,
@@ -541,6 +571,11 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                     {"stale_path": "/tmp/old-private-receipt.json"}
                 ),
                 "private receipt does not match",
+            ),
+            (
+                "float schema_version",
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+                "contract is malformed",
             ),
         )
 
@@ -862,6 +897,11 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 "not exact and passed",
             ),
             (
+                "float schema_version",
+                lambda receipt: receipt.__setitem__("schema_version", 1.0),
+                "not exact and passed",
+            ),
+            (
                 "extra object key",
                 lambda receipt: receipt["objects"][0].__setitem__(
                     "legacy_etag", "abc123"
@@ -1147,6 +1187,18 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 self.execute(fixture, fake, apply=True)
 
             self.assertEqual(fake.put_calls, [])
+
+    def test_manifest_schema_version_must_be_exact(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fixture.mutate_manifest(schema_version=1.0)
+
+            with self.assertRaisesRegex(ValueError, "no-call contract"):
+                MODULE.validate_report_packet(
+                    {name: fixture.packet / name for name in fixture.files},
+                    fixture.method_id,
+                    fixture.files,
+                )
 
     def test_apply_rejects_null_destination_version(self) -> None:
         for flag in ("null_put_version", "literal_null_put_version"):
