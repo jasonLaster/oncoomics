@@ -177,6 +177,27 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_write_once_rechecks_output_mode_after_directory_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary).resolve() / "model-catalog-receipt.json"
+            real_fsync_directory = WRITER.fsync_directory
+
+            def chmod_after_directory_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.chmod(0o644)
+
+            with (
+                mock.patch.object(
+                    WRITER,
+                    "fsync_directory",
+                    side_effect=chmod_after_directory_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "output mode changed during write"),
+            ):
+                WRITER.write_once(output, "{}\n")
+
+            self.assertFalse(output.exists())
+
     def test_requires_latest_model_attestation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary).resolve() / "model-catalog-receipt.json"
