@@ -15,6 +15,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,8 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlparse
+
+SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 
 EXPECTED_PUBLICATION_RECEIPT_CHECKS = {
     "exact_contract_version_bound": True,
@@ -135,6 +138,12 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
 
 def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
+
+
+def require_sha256(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not SHA256_HEX.fullmatch(value):
+        raise ValueError(f"{label} must be a lowercase SHA-256")
+    return value
 
 
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
@@ -488,9 +497,9 @@ def validate_publication(
         or set(contract) != PUBLICATION_CONTRACT_KEYS
         or not str(contract.get("uri", "")).startswith("s3://")
         or not str(contract.get("version_id", ""))
-        or len(str(contract.get("sha256", ""))) != 64
     ):
         raise ValueError("publication receipt contract is not exact")
+    require_sha256(contract.get("sha256"), "publication contract SHA-256")
     if (
         not exact_schema_version(receipt, 1)
         or receipt.get("status") != "passed"
@@ -536,11 +545,15 @@ def validate_publication(
         if relative in seen:
             raise ValueError(f"duplicate report relative path: {relative}")
         seen.add(relative)
+        row_sha256 = require_sha256(
+            row.get("sha256"),
+            "publication object SHA-256",
+        )
         row_bindings.add(
             (
                 str(row.get("key", "")),
                 str(row.get("version_id", "")),
-                str(row.get("sha256", "")),
+                row_sha256,
             )
         )
 
@@ -552,7 +565,6 @@ def validate_publication(
         if (
             not str(row.get("version_id", ""))
             or str(row.get("version_id", "")).lower() in {"none", "null"}
-            or not str(row.get("sha256", ""))
             or type(row.get("content_length")) is not int
             or row.get("content_length") <= 0
             or row.get("server_side_encryption") != "aws:kms"
@@ -565,10 +577,14 @@ def validate_publication(
     for row in history_audit:
         if not isinstance(row, dict) or set(row) != PUBLICATION_HISTORY_AUDIT_KEYS:
             raise ValueError("publication receipt history audit is not exact")
+        history_sha256 = require_sha256(
+            row.get("sha256"),
+            "publication history SHA-256",
+        )
         binding = (
             str(row.get("key", "")),
             str(row.get("version_id", "")),
-            str(row.get("sha256", "")),
+            history_sha256,
         )
         if row.get("checks") != EXPECTED_HISTORY_AUDIT_CHECKS or binding in audit_bindings:
             raise ValueError("publication receipt history audit is not exact")

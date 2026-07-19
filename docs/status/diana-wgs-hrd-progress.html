@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact materializer registration hashes</li>
+          <li class="pill">Latest milestone = local exact publication download hashes</li>
+          <li class="pill">Publication download hashes = exact</li>
           <li class="pill">Materializer registration hashes = exact</li>
           <li class="pill">Final contract hashes = exact</li>
           <li class="pill">Runbook receipt hashes = exact</li>
@@ -889,6 +890,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact publication download hashes</strong>
+              <span>The exact report-tree download verifier now rejects coerced SHA-256 values in publication input contracts, published object rows, and publication history audits before replaying exact-version cross-check report outputs for synthesis.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer registration hashes</strong>
               <span>The reviewed materializer registration validator now rejects coerced SHA-256 values before the frozen materializer script can be cross-bound to the local Batch job-definition payload, AWS registration response, and live Batch definition for alias-only cross-check materialization.</span>
@@ -1435,6 +1440,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:00:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact publication download hashes:</strong>
+                the exact report-tree download verifier now rejects coerced
+                SHA-256 values in publication input contracts, published object
+                rows, and publication history audits before replaying
+                exact-version cross-check report outputs for synthesis.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T13:45:00-07:00">Jul 19 · local</time>
               <span>

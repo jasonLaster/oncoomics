@@ -528,6 +528,60 @@ class ExactReportDownloadTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "anchor envelope"):
                 MODULE.validate_publication(receipt, anchor, KMS)
 
+    def test_rejects_non_exact_publication_receipt_sha256_values(self) -> None:
+        cases = (
+            (
+                "numeric_contract",
+                lambda payload: payload["contract"].__setitem__(
+                    "sha256",
+                    int("1" * 64),
+                ),
+                "publication contract SHA-256",
+            ),
+            (
+                "uppercase_contract",
+                lambda payload: payload["contract"].__setitem__(
+                    "sha256",
+                    "C" * 64,
+                ),
+                "publication contract SHA-256",
+            ),
+            (
+                "numeric_object",
+                lambda payload: (
+                    payload["objects"][0].__setitem__("sha256", int("1" * 64)),
+                    payload["history_audit"][0].__setitem__(
+                        "sha256",
+                        int("1" * 64),
+                    ),
+                ),
+                "publication object SHA-256",
+            ),
+            (
+                "numeric_history",
+                lambda payload: (
+                    payload["objects"][0].__setitem__("sha256", "1" * 64),
+                    payload["history_audit"][0].__setitem__(
+                        "sha256",
+                        int("1" * 64),
+                    ),
+                ),
+                "publication history SHA-256",
+            ),
+        )
+
+        for name, mutate, error in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                receipt, anchor, _, _ = self.fixture(root)
+                payload = json.loads(receipt.read_text(encoding="utf-8"))
+                mutate(payload)
+                write_json(receipt, payload)
+                self.reanchor(receipt, anchor)
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_publication(receipt, anchor, KMS)
+
     def test_rejects_inexact_publication_receipt_counts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
