@@ -1023,6 +1023,72 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             ):
                 MODULE.sha256(linked_input)
 
+    def test_runbook_io_sha256_rejects_symlinked_hash_leaf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_input = root / "real-runbook.md"
+            linked_input = root / "runbook.md"
+            real_input.write_text("real runbook\n", encoding="utf-8")
+            linked_input.symlink_to(real_input)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "runbook.md SHA-256 input is missing or a symlink",
+            ):
+                RUNBOOK_IO.sha256_file(linked_input)
+
+    def test_runbook_io_sha256_rejects_symlinked_hash_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_output = root / "real-runbooks"
+            linked_output = root / "linked-runbooks"
+            real_output.mkdir()
+            (real_output / "runbook.md").write_text(
+                "real runbook\n",
+                encoding="utf-8",
+            )
+            linked_output.symlink_to(real_output, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "runbook.md SHA-256 input parent may not be a symlink",
+            ):
+                RUNBOOK_IO.sha256_file(linked_output / "runbook.md")
+
+    def test_write_once_rejects_hash_input_symlink_swap(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "runbook.md"
+            relocated = root / "relocated.md"
+            original_is_file = Path.is_file
+            swapped = False
+
+            def swap_after_installed_output_file_check(path: Path) -> bool:
+                nonlocal swapped
+                if path == output and not swapped and output.exists():
+                    swapped = True
+                    relocated.write_text("one\n", encoding="utf-8")
+                    output.unlink()
+                    output.symlink_to(relocated)
+                    return True
+                return original_is_file(path)
+
+            with (
+                patch.object(
+                    Path,
+                    "is_file",
+                    swap_after_installed_output_file_check,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "runbook.md SHA-256 input is missing or a symlink",
+                ),
+            ):
+                RUNBOOK_IO.write_once(output, "one\n")
+
+            self.assertTrue(relocated.exists())
+            self.assertFalse(output.exists())
+
     def test_write_once_rejects_existing_child_below_symlinked_parent(self) -> None:
         self.assertFalse(RUNBOOK_IO.is_platform_root_alias(Path("runbook-link")))
 

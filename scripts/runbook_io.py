@@ -157,6 +157,11 @@ def fsync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
+def sha256_file(path: Path) -> str:
+    require_real_input_file(path, f"{path.name} SHA-256 input")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def write_once(path: Path, text: str) -> None:
     if path.exists() or path.is_symlink():
         raise FileExistsError(path)
@@ -187,5 +192,5 @@ def write_once(path: Path, text: str) -> None:
 def require_installed_output(path: Path, expected_sha256: str) -> None:
     if has_symlinked_parent(path) or path.is_symlink() or not path.is_file():
         raise ValueError(f"output changed during write: {path}")
-    if hashlib.sha256(path.read_bytes()).hexdigest() != expected_sha256:
+    if sha256_file(path) != expected_sha256:
         raise ValueError(f"output changed during write: {path}")
