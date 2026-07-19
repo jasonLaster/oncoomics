@@ -412,7 +412,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--reviewed-public-receipt",
         action="append",
-        default=[],
+        required=True,
         type=pathlib.Path,
         help=(
             "repeat once for each passed reviewed-public publication receipt, "
@@ -421,12 +421,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    expected_reviewed_public_objects: dict[str, int] = {}
-    reviewed_public_receipts: list[dict[str, Any]] = []
-    if args.reviewed_public_receipt:
-        expected_reviewed_public_objects, reviewed_public_receipts = validate_reviewed_public_receipts(
-            args.reviewed_public_receipt
-        )
+    expected_reviewed_public_objects, reviewed_public_receipts = validate_reviewed_public_receipts(
+        args.reviewed_public_receipt
+    )
 
     objects: list[dict[str, Any]] = []
     for prefix in PUBLIC_PREFIXES:
@@ -436,8 +433,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     keys = [item["key"] for item in objects]
     if len(keys) != len(set(keys)):
         raise RuntimeError("Public prefix overlap produced duplicate keys")
-    if expected_reviewed_public_objects:
-        validate_reviewed_public_s3_state(objects, expected_reviewed_public_objects)
+    validate_reviewed_public_s3_state(objects, expected_reviewed_public_objects)
 
     payload = {
         "schema_version": 1,

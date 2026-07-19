@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import importlib.util
 import json
 import sys
@@ -125,6 +126,10 @@ def expected_public_prefix_pages(receipts: list[Path]) -> list[list[dict[str, ob
         [row for row in objects if str(row["key"]).startswith(prefix)]
         for prefix in MODULE.PUBLIC_PREFIXES
     ]
+
+
+def fake_reviewed_public_receipt_args(root: Path) -> list[str]:
+    return ["--reviewed-public-receipt", str(root / "reviewed-public.json")]
 
 
 class PublicIndexTests(unittest.TestCase):
@@ -272,6 +277,10 @@ class PublicIndexTests(unittest.TestCase):
             ("runs/example/", "runs/example/nested/"),
         ), mock.patch.object(
             MODULE,
+            "validate_reviewed_public_receipts",
+            return_value=({}, []),
+        ), mock.patch.object(
+            MODULE,
             "list_prefix",
             side_effect=[
                 [
@@ -291,18 +300,28 @@ class PublicIndexTests(unittest.TestCase):
             ],
         ):
             with self.assertRaisesRegex(RuntimeError, "duplicate keys"):
-                MODULE.main(["--output", str(Path(temporary) / "objects.json")])
+                MODULE.main(
+                    [
+                        "--output",
+                        str(Path(temporary) / "objects.json"),
+                        *fake_reviewed_public_receipt_args(Path(temporary)),
+                    ]
+                )
 
     def test_main_writes_index_atomically_without_following_symlinks(self) -> None:
         objects = [
             {
-                "key": MODULE.PUBLIC_PREFIXES[0] + "report.md",
+                "key": MODULE.PUBLIC_PREFIXES[-1] + "report.md",
                 "size": 100,
                 "last_modified": "2026-07-17T00:00:00Z",
             }
         ]
 
         with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+            MODULE,
+            "validate_reviewed_public_receipts",
+            return_value=({}, []),
+        ), mock.patch.object(
             MODULE,
             "list_prefix",
             side_effect=[objects] + [[] for _ in MODULE.PUBLIC_PREFIXES[1:]],
@@ -313,7 +332,13 @@ class PublicIndexTests(unittest.TestCase):
             symlink = root / "symlink.json"
 
             output.write_text("stale\n", encoding="utf-8")
-            MODULE.main(["--output", str(output)])
+            MODULE.main(
+                [
+                    "--output",
+                    str(output),
+                    *fake_reviewed_public_receipt_args(root),
+                ]
+            )
 
             payload = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual(payload["objects"], objects)
@@ -538,6 +563,19 @@ class PublicIndexTests(unittest.TestCase):
             for row, receipt in zip(payload["reviewed_public_receipts"], receipts):
                 self.assertEqual(row["sha256"], MODULE.sha256(receipt))
             self.assertEqual(list_prefix.call_count, len(MODULE.PUBLIC_PREFIXES))
+
+    def test_main_requires_reviewed_public_receipts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "objects.json"
+
+            with (
+                self.assertRaises(SystemExit) as raised,
+                mock.patch("sys.stderr", new=io.StringIO()),
+            ):
+                MODULE.main(["--output", str(output)])
+
+            self.assertEqual(raised.exception.code, 2)
+            self.assertFalse(output.exists())
 
     def test_main_rejects_reviewed_public_state_that_differs_from_receipts(self) -> None:
         cases = (
