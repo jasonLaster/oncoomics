@@ -903,6 +903,72 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 self.assertIn(message, built.stderr)
                 self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
+    def test_rejects_malformed_source_packet_hash_ids(self) -> None:
+        for malformed in (
+            "",
+            " safe_summary",
+            "safe summary",
+            "safe/summary",
+            "safe|summary",
+            "true",
+            "false",
+            "null",
+            7,
+            True,
+        ):
+            with (
+                self.subTest(malformed=malformed),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                fixture = AiReviewBundleFixture(Path(temporary))
+                fixture.update_manifest(
+                    0,
+                    {"source_sha256": {malformed: "a" * 64}},
+                )
+
+                built = fixture.run()
+
+                self.assertNotEqual(built.returncode, 0)
+                self.assertIn(
+                    "malformed source-artifact ID for deterministic_full_wgs",
+                    built.stderr,
+                )
+                self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_rejects_duplicate_source_packet_hash_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            manifest_path = fixture.manifests[0]
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            digest = "a" * 64
+            manifest["source_sha256"] = {}
+            payload = (
+                json.dumps(manifest, indent=2, sort_keys=True)
+                .replace(
+                    '  "source_sha256": {},',
+                    (
+                        '  "source_sha256": {\n'
+                        f'    "safe_summary": "{digest}",\n'
+                        f'    "safe_summary": "{digest}"\n'
+                        "  },"
+                    ),
+                )
+                + "\n"
+            )
+            manifest_path.write_text(payload, encoding="utf-8")
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn(
+                (
+                    "duplicate JSON object name in manifest report_manifest.json: "
+                    "safe_summary"
+                ),
+                built.stderr,
+            )
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
     def test_rejects_inexact_source_packet_report_manifest_envelope(self) -> None:
         cases = (
             ("extra_legacy_key", {"legacy_support": {}}, {}),

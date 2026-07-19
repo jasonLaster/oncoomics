@@ -30,6 +30,8 @@ METHOD_ID = re.compile(r"^[a-z0-9][a-z0-9_.-]{1,79}$")
 SUBJECT_ALIAS = re.compile(r"^subject[0-9]{2,4}$")
 MODEL_VALUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/+-]{1,159}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+SOURCE_ARTIFACT_ID = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
+RESERVED_JSON_OBJECT_NAMES = {"false", "null", "true"}
 NUMBER_TOKEN = re.compile(
     r"(?<![A-Za-z0-9])[-+]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?%?"
     r"(?![A-Za-z0-9])"
@@ -163,8 +165,33 @@ def is_exact_int(value: Any, expected: int) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value == expected
 
 
+class DuplicateJsonKeyError(ValueError):
+    pass
+
+
+def reject_duplicate_json_object_names(
+    pairs: Sequence[tuple[str, Any]],
+) -> dict[str, Any]:
+    parsed: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in parsed:
+            raise DuplicateJsonKeyError(key)
+        parsed[key] = value
+    return parsed
+
+
 def load_object(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(
+            f"duplicate JSON object name in manifest {path.name}: {error}"
+        ) from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in manifest {path.name}") from error
     if not isinstance(value, dict):
         raise ValueError(f"manifest must be a JSON object: {path.name}")
     return value
@@ -182,6 +209,16 @@ def scan_text(text: str, forbidden_tokens: list[str], context: str) -> None:
         normalized_token = normalized_scan_text(token).lower()
         if normalized_token and normalized_token in lowered:
             raise ValueError(f"forbidden token found in {context}")
+
+
+def checked_source_artifact_id(value: Any, method: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not SOURCE_ARTIFACT_ID.fullmatch(value)
+        or value in RESERVED_JSON_OBJECT_NAMES
+    ):
+        raise ValueError(f"malformed source-artifact ID for {method}")
+    return value
 
 
 def normalized_key(value: str) -> str:
@@ -898,7 +935,10 @@ def main() -> None:
                 f"Fail-closed: missing or unsafe report manifest {manifest_path}: "
                 f"{error}"
             ) from error
-        manifest = load_object(path)
+        try:
+            manifest = load_object(path)
+        except ValueError as error:
+            raise SystemExit(f"Fail-closed: {error}") from error
         if not is_exact_int(manifest.get("schema_version"), 1):
             raise SystemExit(
                 f"Fail-closed: unsupported report-manifest schema in {path.name}"
@@ -956,11 +996,18 @@ def main() -> None:
             raise SystemExit(f"Fail-closed: {error}") from error
 
         source_hashes = manifest.get("source_sha256", {})
-        if not isinstance(source_hashes, dict) or not source_hashes or not all(
-            isinstance(value, str) and HEX64.fullmatch(value)
-            for value in source_hashes.values()
-        ):
+        if not isinstance(source_hashes, dict) or not source_hashes:
             raise SystemExit(f"Fail-closed: malformed source hashes for {method}")
+        try:
+            normalized_source_hashes = []
+            for key, digest in source_hashes.items():
+                checked_source_artifact_id(key, method)
+                if not isinstance(digest, str) or not HEX64.fullmatch(digest):
+                    raise ValueError(f"malformed source hashes for {method}")
+                normalized_source_hashes.append(digest)
+        except ValueError as error:
+            raise SystemExit(f"Fail-closed: {error}") from error
+        normalized_source_hashes.sort()
         try:
             validate_report_manifest_support(path.parent, manifest, method)
         except ValueError as error:
@@ -979,9 +1026,7 @@ def main() -> None:
                 is True,
                 "classification_qc_status": classification_qc,
                 "report_sha256": report_hash,
-                "source_artifact_sha256": sorted(
-                    source_hashes.values()
-                ),
+                "source_artifact_sha256": normalized_source_hashes,
                 "review_summary": summary,
             }
         )
