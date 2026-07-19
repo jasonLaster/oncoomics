@@ -373,6 +373,84 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                     INVENTORY.REQUIRED_METHOD_IDS[0],
                 )
 
+    def test_rejects_malformed_source_manifest_hash_ids(self) -> None:
+        for malformed in (
+            "",
+            " safe_summary",
+            "safe summary",
+            "safe/summary",
+            "safe|summary",
+            "true",
+            "false",
+            "null",
+            7,
+            True,
+        ):
+            with (
+                self.subTest(malformed=malformed),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary)
+                fixture = AiReviewBundleFixture(root)
+                output = root / "ai-review"
+                fixture.update_manifest(
+                    0,
+                    {"source_sha256": {malformed: "a" * 64}},
+                )
+
+                result = subprocess.run(
+                    command(fixture, output),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "malformed source-artifact ID for deterministic_full_wgs",
+                    result.stderr,
+                )
+                self.assertFalse(output.exists())
+
+    def test_rejects_duplicate_source_manifest_hash_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+            manifest_path = fixture.manifests[0]
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            digest = "a" * 64
+            manifest["source_sha256"] = {}
+            payload = (
+                json.dumps(manifest, indent=2, sort_keys=True)
+                .replace(
+                    '  "source_sha256": {},',
+                    (
+                        '  "source_sha256": {\n'
+                        f'    "safe_summary": "{digest}",\n'
+                        f'    "safe_summary": "{digest}"\n'
+                        "  },"
+                    ),
+                )
+                + "\n"
+            )
+            manifest_path.write_text(payload, encoding="utf-8")
+
+            result = subprocess.run(
+                command(fixture, output),
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                (
+                    "duplicate JSON object name in report_manifest.json: "
+                    "safe_summary"
+                ),
+                result.stderr,
+            )
+            self.assertFalse(output.exists())
+
     def test_schema_version_checks_use_exact_integer_helper(self) -> None:
         cases = (
             (1, 1, True),

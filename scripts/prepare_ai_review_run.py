@@ -18,6 +18,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    checked_source_artifact_id,
+    reject_duplicate_json_object_names,
+)
 from forbidden_text import merge_forbidden_tokens
 from hrd_report_inventory import (
     INVENTORY_ID,
@@ -91,7 +96,17 @@ def sha256(path: Path) -> str:
 
 
 def load_object(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(
+            f"duplicate JSON object name in {path.name}: {error}"
+        ) from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in {path.name}") from error
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path}")
     return value
@@ -198,6 +213,9 @@ def require_manifest(path: Path, expected_method: str) -> dict[str, Any]:
         or not review_summary
     ):
         raise ValueError(f"{expected_method} report manifest is not exact")
+    for key, digest in source_sha256.items():
+        checked_source_artifact_id(key, expected_method)
+        require_sha256(digest, f"{expected_method} source_sha256.{key}")
     return manifest
 
 

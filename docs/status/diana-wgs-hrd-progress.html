@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact AI-validation source-artifact IDs</li>
+          <li class="pill">Latest milestone = local exact AI-prep source-artifact IDs</li>
+          <li class="pill">AI-prep source-artifact IDs = exact</li>
           <li class="pill">AI-validation source-artifact IDs = exact</li>
           <li class="pill">AI-bundle source-artifact IDs = exact</li>
           <li class="pill">Synthesis source-artifact IDs = exact</li>
@@ -1442,6 +1443,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI-prep source-artifact IDs</strong>
+              <span>AI review prep now rejects malformed or duplicate <code>source_sha256</code> artifact IDs while validating source manifests, before reviewer inputs can be staged or bundle construction can start.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI-validation source-artifact IDs</strong>
               <span>AI review validation now rejects malformed or duplicate <code>source_sha256</code> artifact IDs while rechecking source manifests, before reviewer outputs can be accepted or <code>validation.json</code> can be written.</span>
             </li>
@@ -1835,6 +1840,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T01:55:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI-prep source-artifact IDs:</strong>
+                AI review prep now rejects malformed or duplicate
+                <code>source_sha256</code> artifact IDs before staging reviewer
+                inputs or starting bundle construction.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T01:50:00-07:00">Jul 20 · local</time>
               <span>
