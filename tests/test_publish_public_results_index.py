@@ -472,6 +472,40 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                         )
                     )
 
+    def test_rejects_index_with_duplicate_json_object_names_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index, receipts = self.write_receipt_bound_index(root)
+            payload = json.loads(index.read_text(encoding="utf-8"))
+            text = json.dumps(payload, indent=2, sort_keys=True).replace(
+                f'  "object_count": {payload["object_count"]},',
+                (
+                    '  "object_count": 0,\n'
+                    f'  "object_count": {payload["object_count"]},'
+                ),
+                1,
+            )
+            index.write_text(text + "\n", encoding="utf-8")
+
+            with (
+                self.assertRaisesRegex(
+                    ValueError,
+                    "duplicate JSON object name in public index: object_count",
+                ),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+            ):
+                MODULE.run(
+                    self.args(
+                        index,
+                        root / "receipt.json",
+                        reviewed_public_receipts=receipts,
+                    )
+                )
+
     def test_rejects_index_below_symlinked_parent_before_aws(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -836,6 +870,46 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                     )
 
                 self.assertFalse((root / "apply.json").exists())
+
+    def test_apply_rejects_dry_run_receipt_with_duplicate_json_object_names_before_aws(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index, receipts = self.write_receipt_bound_index(root)
+            dry_run_receipt = self.write_dry_run_receipt(root, index, receipts)
+            payload = json.loads(dry_run_receipt.read_text(encoding="utf-8"))
+            text = json.dumps(payload, indent=2, sort_keys=True)
+            status = f'  "status": "{payload["status"]}"'
+            self.assertEqual(text.count(status), 1)
+            text = text.replace(status, f'  "status": "failed",\n{status}', 1)
+            dry_run_receipt.write_text(text + "\n", encoding="utf-8")
+
+            with (
+                self.assertRaisesRegex(
+                    ValueError,
+                    (
+                        "duplicate JSON object name in "
+                        "public index dry-run receipt: status"
+                    ),
+                ),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+            ):
+                MODULE.run(
+                    self.args(
+                        index,
+                        root / "apply.json",
+                        apply=True,
+                        dry_run_receipt=dry_run_receipt,
+                        reviewed_public_receipts=receipts,
+                    )
+                )
+
+            self.assertFalse((root / "apply.json").exists())
 
     def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_aws(
         self,

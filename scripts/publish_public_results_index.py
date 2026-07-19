@@ -15,6 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 from build_public_results_index import (
     BUCKET,
     FORBIDDEN_PREFIXES,
@@ -124,10 +128,18 @@ def is_nonnegative_exact_int(value: Any) -> bool:
     return type(value) is int and value >= 0
 
 
-def load_json(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+def load_json(path: Path, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
-        raise ValueError("public index must be a JSON object")
+        raise ValueError(f"{label} must be a JSON object")
     return value
 
 
@@ -272,7 +284,7 @@ def validate_public_index(
     digest = sha256(path)
     if not SHA256_HEX.fullmatch(digest):
         raise ValueError("public index SHA-256 is malformed")
-    payload = load_json(path)
+    payload = load_json(path, "public index")
     objects = payload.get("objects")
     object_count = payload.get("object_count")
     total_size = payload.get("total_size")
@@ -420,7 +432,7 @@ def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, 
 
 def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, Any]:
     path = require_real_input_file(path, "public index dry-run receipt")
-    receipt = load_json(path)
+    receipt = load_json(path, "public index dry-run receipt")
     index = receipt.get("index")
     destination = receipt.get("destination")
     checks = receipt.get("checks")
