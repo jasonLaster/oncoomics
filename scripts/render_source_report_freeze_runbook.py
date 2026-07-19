@@ -308,6 +308,36 @@ def publish_command(
     return command
 
 
+def source_private_freeze_checklist(
+    method_id: str,
+    packet_dir: Path,
+    dry_receipt: Path,
+    apply_receipt: Path,
+) -> list[str]:
+    return [
+        f"Review `{dry_receipt}` before source private-freeze apply:",
+        "",
+        f"- [ ] `method_id` is `{method_id}` and `source_packet_dir` is "
+        f"`{packet_dir}`.",
+        "- [ ] `expected_files` exactly matches the method contract for this "
+        "source packet and no extra files are present.",
+        "- [ ] `forbidden_token_count` is nonzero and "
+        "`forbidden_token_sha256` matches the token set used for the dry-run.",
+        "- [ ] `checks.packet_inventory_exact`, "
+        "`checks.packet_manifest_no_call_boundary`, and "
+        "`checks.packet_forbidden_token_scan` are all true.",
+        f"- [ ] `{apply_receipt}` does not already exist and the private "
+        "destination prefix is expected to have no version history.",
+        "- [ ] The matching apply will enforce `checks.dry_run_receipt`, "
+        "`checks.destination_initially_empty`, `checks.destination_sse_kms`, "
+        "`checks.destination_full_object_sha256`, "
+        "`checks.destination_non_null_versions`, and "
+        "`checks.destination_exact_one_version_no_delete_history`.",
+        "- [ ] Running the following `--apply` command is still the intended "
+        "source private-freeze action.",
+    ]
+
+
 def ai_runbook_command(
     scripts: Path,
     root: Path,
@@ -422,6 +452,12 @@ def render(
                         forbidden_tokens_file=phase3_fast_forbidden_tokens_file,
                         apply=False,
                     )
+                ),
+                *source_private_freeze_checklist(
+                    method_id,
+                    packet_dir,
+                    dry_receipt,
+                    apply_receipt,
                 ),
                 block(
                     publish_command(

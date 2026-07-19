@@ -370,6 +370,45 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                 dry_run_receipt=dry,
             )
 
+    def test_source_private_freeze_checklists_are_concrete(self) -> None:
+        root = Path("/repo")
+        text = MODULE.render(root, "terminal")
+        packet_dirs = MODULE.source_packet_dirs(root)
+
+        for method_id in MODULE.REQUIRED_METHOD_IDS:
+            dry_receipt = MODULE.dry_receipt_path(root, "terminal", method_id)
+            apply_receipt = MODULE.receipt_path(root, "terminal", method_id)
+            review = text.index(
+                f"Review `{dry_receipt}` before source private-freeze apply:"
+            )
+            apply = text.index(f"--receipt-output {apply_receipt}", review)
+            checklist = text[review:apply]
+
+            self.assertIn(f"`method_id` is `{method_id}`", checklist)
+            self.assertIn(
+                f"`source_packet_dir` is `{packet_dirs[method_id]}`",
+                checklist,
+            )
+            self.assertIn("`expected_files`", checklist)
+            self.assertIn("no extra files", checklist)
+            self.assertIn("`forbidden_token_count`", checklist)
+            self.assertIn("`forbidden_token_sha256`", checklist)
+            self.assertIn("`checks.packet_inventory_exact`", checklist)
+            self.assertIn("`checks.packet_manifest_no_call_boundary`", checklist)
+            self.assertIn("`checks.packet_forbidden_token_scan`", checklist)
+            self.assertIn(f"`{apply_receipt}` does not already exist", checklist)
+            self.assertIn("no version history", checklist)
+            self.assertIn("`checks.dry_run_receipt`", checklist)
+            self.assertIn("`checks.destination_initially_empty`", checklist)
+            self.assertIn("`checks.destination_sse_kms`", checklist)
+            self.assertIn("`checks.destination_full_object_sha256`", checklist)
+            self.assertIn("`checks.destination_non_null_versions`", checklist)
+            self.assertIn(
+                "`checks.destination_exact_one_version_no_delete_history`",
+                checklist,
+            )
+            self.assertIn("`--apply` command", checklist)
+
     def test_publish_command_reads_forbidden_tokens_file_by_path(self) -> None:
         command = MODULE.publish_command(
             Path("/repo/scripts"),

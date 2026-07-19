@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local AI private-apply checklists</li>
+          <li class="pill">Latest milestone = local source-freeze private checklists</li>
+          <li class="pill">Source-freeze checklists = explicit</li>
           <li class="pill">AI private-apply checklists = explicit</li>
           <li class="pill">Isolated-reviewer checklists = explicit</li>
           <li class="pill">Reviewed-public checklists = explicit</li>
@@ -1565,6 +1566,10 @@
               <span>The source-freeze and AI/freeform private-publish renderers now fail fast if a live private apply command is built without its matching dry-run receipt, and regressions prove each generated source, reviewer, and synthesis apply stays receipt-bound.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require source-freeze private checklists</strong>
+              <span>Source-freeze runbook rendering now adds explicit dry-run review checklists before private publication of seven source HRD packets, so each source packet's method identity, packet inventory, forbidden-token fingerprinting, no-call boundary checks, destination emptiness, dry-run receipt binding, and exact encryption/checksum/version checks are reviewed before source private-freeze apply.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind stage freeze apply to its dry-run receipt</strong>
               <span>Live stage-provenance freeze now requires its matching dry-run receipt and rejects stale top-level metadata, failed source-object checks, run/KMS/source/destination/script drift, or preflight/gather object drift before any provenance copy.</span>
             </li>
@@ -2150,6 +2155,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T13:59:41-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Add source-freeze private checklists:</strong>
+                Source-freeze runbook rendering now adds dry-run review
+                checklists before private publication of seven source HRD
+                packets so method identity, packet inventory, forbidden-token
+                fingerprints, no-call boundaries, destination emptiness,
+                dry-run binding, and exact encryption/checksum/version checks
+                are reviewed before source private-freeze apply.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T13:57:52-07:00">Jul 19 · local</time>
               <span>
