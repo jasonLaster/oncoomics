@@ -343,10 +343,11 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest source = eb3d99b</li>
-          <li class="pill">Prior dashboard = 79bc15b</li>
+          <li class="pill">Latest source = 668559f</li>
+          <li class="pill">Prior dashboard = 9d3a70c</li>
           <li class="pill">Reviewer identities = explicit</li>
           <li class="pill">Catalog timestamps = in synthesis</li>
+          <li class="pill">Model attestations = manifest-checked</li>
           <li class="pill">Public access foundation = ready</li>
           <li class="pill">HCC1395 seven-report stack = passed</li>
           <li class="pill">Forbidden scans = shared</li>
@@ -504,6 +505,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · revalidate model attestations after synthesis</strong>
+              <span>The comparative synthesis manifest checker now requires each reviewer summary to retain its provider/model, latest-model attestation, and timezone-qualified catalog timestamp.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind latest-model timestamps in synthesis</strong>
               <span>The comparative synthesis report now prints each reviewer provider/model pair plus its model-catalog verification timestamp before summarizing the independent AI claims.</span>
             </li>
@@ -553,6 +558,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T22:53:00-07:00">Jul 18 · 10:53 PM</time>
+              <span>
+                <strong>668559f Require AI model attestations in HRD synthesis manifest:</strong>
+                the synthesis packet revalidator now rejects reviewer summaries
+                that drop <code>latest_available_attested</code>, lose the
+                catalog verification timestamp, or carry a malformed timestamp.
+                No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T22:51:01-07:00">Jul 18 · 10:51 PM</time>
               <span>
