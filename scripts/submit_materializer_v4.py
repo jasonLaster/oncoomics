@@ -234,7 +234,7 @@ def sha256_path(path: Path) -> str:
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
-    require_no_symlinked_ancestors(path, label)
+    path = require_real_input_file(path, label)
     try:
         value = json.loads(
             path.read_text(encoding="utf-8"),

@@ -761,6 +761,20 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
 
         aws.assert_not_called()
 
+    def test_rejects_symlinked_local_json_input_before_aws(self) -> None:
+        relocated = self.root / "exact-materialization.real.json"
+        self.exact_materialization.rename(relocated)
+        self.exact_materialization.symlink_to(relocated)
+
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(
+                ValueError,
+                "exact local materialization receipt must be a real file",
+            ):
+                MODULE.preflight(self.args())
+
+        aws.assert_not_called()
+
     def test_rejects_duplicate_custody_receipts_before_aws(self) -> None:
         cases = (
             ("final freeze receipt", self.final_freeze, "schema_version"),
