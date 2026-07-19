@@ -307,11 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>c35f1afb3b1c6e2bd6d92ceaaa54b00ff8845bbd</strong>.
-          The latest work requires receipts when building the public index:
-          <code>build_public_results_index.py</code> now needs the canonical
-          ten reviewed-public receipts and checks the HRD
-          <code>objects.json</code> subset against them before writing.
+          <strong>70733ca69e44b7c5ff6cb8db09f158934d1c8ada</strong>.
+          The latest work requires upstream manifests for blocked HRD packets:
+          <code>generate_blocked_hrd_crosscheck_reports.py</code> now binds
+          exact ordered source report manifests before rendering FACETS, CHORD,
+          and HRDetect blocked packets.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = c35f1af</li>
+          <li class="pill">Latest hardening = 70733ca</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -401,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve c35f1af</strong>
-              <span>Public-index builds now fail closed unless the ten reviewed-public receipts are present and the HRD object subset matches them.</span>
+              <strong>Preserve 70733ca</strong>
+              <span>Blocked FACETS/CHORD/HRDetect packets now require exact ordered upstream manifests from deterministic, Rosalind, scarHRD, and SBS3 source packets.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +450,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>70733ca Require upstream manifests for blocked HRD packets:</strong>
+                <code>generate_blocked_hrd_crosscheck_reports.py</code> now
+                requires exact ordered upstream report manifests for
+                <code>deterministic_full_wgs</code>,
+                <code>rosalind_diana_wgs</code>,
+                <code>sequenza_scarhrd</code>, and
+                <code>sigprofiler_sbs3</code> before it can render FACETS,
+                CHORD, and HRDetect blocked packets. The manifests must
+                preserve <code>no_call</code>, stay classification-unauthorized,
+                and hash-bind each upstream <code>report.md</code>.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
