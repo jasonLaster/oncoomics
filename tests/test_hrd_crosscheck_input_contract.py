@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import ast
 import base64
 import importlib.util
 import json
@@ -1060,6 +1061,31 @@ class CustodyHandoffTests(unittest.TestCase):
 
         self.assertEqual(contract["custody"]["status"], "passed")
 
+    def test_finalizer_rejects_non_integer_receipt_schema_versions(self):
+        for label, mutate, message in (
+            (
+                "final freeze",
+                lambda fixture: fixture.freeze.__setitem__("schema_version", 1.0),
+                "one-shot freeze",
+            ),
+            (
+                "exact materialization",
+                lambda fixture: fixture.exact.__setitem__("schema_version", 1.0),
+                "incomplete or unbound",
+            ),
+            (
+                "cross-check materialization",
+                lambda fixture: fixture.cross.__setitem__("schema_version", 2.0),
+                "one-shot publication",
+            ),
+        ):
+            with self.subTest(label=label):
+                fixture = CustodyFixture()
+                mutate(fixture)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    fixture.finalize()
+
     def test_anchor_validation_binds_exact_local_receipt(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1088,6 +1114,36 @@ class CustodyHandoffTests(unittest.TestCase):
             value["receipt_version_id"] = ""
             write_json(anchor, value)
             with self.assertRaisesRegex(ValueError, "VersionId"):
+                finalizer.validate_anchor(
+                    receipt,
+                    anchor,
+                    "unit",
+                    finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
+                )
+
+    def test_anchor_validation_rejects_non_integer_schema_version(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "receipt.json"
+            write_json(receipt, {"status": "passed"})
+            anchor = root / "anchor.json"
+            write_json(
+                anchor,
+                {
+                    "schema_version": 1.0,
+                    "status": "passed",
+                    "receipt_sha256": finalizer.sha256(receipt),
+                    "receipt_bytes": receipt.stat().st_size,
+                    "receipt_uri": f"s3://{BUCKET}/receipts/{finalizer.sha256(receipt)}.json",
+                    "receipt_version_id": "receipt-version",
+                    "checks": dict(finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS),
+                },
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "unit anchor does not bind the local receipt",
+            ):
                 finalizer.validate_anchor(
                     receipt,
                     anchor,
@@ -1966,6 +2022,56 @@ class CustodyHandoffTests(unittest.TestCase):
                 publisher.main()
 
             self.assertFalse(anchor.exists())
+
+    def test_finalizer_schema_version_checks_use_exact_integer_helper(self):
+        cases = (
+            (1, 1, True),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (2, 1, False),
+            (None, 1, False),
+            (True, 1, False),
+            (False, 0, False),
+        )
+        for value, expected, accepted in cases:
+            with self.subTest(value=value, expected=expected):
+                self.assertIs(
+                    finalizer.exact_schema_version(
+                        {"schema_version": value},
+                        expected,
+                    ),
+                    accepted,
+                )
+
+    def test_finalizer_schema_version_checks_avoid_raw_comparisons(self):
+        module = ast.parse(
+            (ROOT / "scripts/finalize_input_contract.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        parent_by_child = {
+            child: parent
+            for parent in ast.walk(module)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def in_exact_schema_helper(node: ast.AST) -> bool:
+            parent = parent_by_child.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef):
+                    return parent.name == "exact_schema_version"
+                parent = parent_by_child.get(parent)
+            return False
+
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+            and not in_exact_schema_helper(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
 
     def test_contract_publication_rejects_contract_below_symlinked_parent_before_aws(
         self,

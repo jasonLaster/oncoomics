@@ -251,6 +251,10 @@ def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
@@ -397,7 +401,7 @@ def validate_anchor(
     anchor = load_object(anchor_path, f"{label} anchor")
     receipt_hash = sha256(receipt_path)
     if (
-        anchor.get("schema_version") != 1
+        not exact_schema_version(anchor, 1)
         or anchor.get("status") != "passed"
         or str(anchor.get("receipt_sha256", "")).lower() != receipt_hash
         or int(anchor.get("receipt_bytes", -1)) != receipt_path.stat().st_size
@@ -422,7 +426,7 @@ def validate_freeze(
     rows = receipt.get("objects")
     checks = receipt.get("checks")
     if (
-        receipt.get("schema_version") != 1
+        not exact_schema_version(receipt, 1)
         or receipt.get("status") != "passed"
         or receipt.get("batch_status") != "SUCCEEDED"
         or receipt.get("destination_bucket_versioning") != "Enabled"
@@ -506,7 +510,7 @@ def validate_exact_materialization(
     )
     rows = receipt.get("objects")
     if (
-        receipt.get("schema_version") != 1
+        not exact_schema_version(receipt, 1)
         or receipt.get("status") != "passed"
         or str(receipt.get("freeze_receipt_sha256", "")).lower() != freeze_sha256
         or not isinstance(rows, list)
@@ -586,7 +590,7 @@ def finalize(
         exact_materialization, freeze_receipt_sha256, freeze_by_uri
     )
     if (
-        crosscheck_receipt.get("schema_version") != 2
+        not exact_schema_version(crosscheck_receipt, 2)
         or crosscheck_receipt.get("status") != "passed"
         or crosscheck_receipt.get("run_alias") != pending.get("run_alias")
         or crosscheck_receipt.get("destination_bucket_versioning") != "Enabled"
