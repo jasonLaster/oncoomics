@@ -464,6 +464,29 @@ def generated_object(staging: pathlib.Path, relative: str, data: bytes) -> dict[
     }
 
 
+def private_receipt_source(source: dict[str, Any] | None) -> dict[str, Any] | None:
+    if source is None:
+        return None
+    return {
+        "bucket": source["bucket"],
+        "key": source["key"],
+        "bytes": source["bytes"],
+        "checksum_crc64nvme": source["checksum_crc64nvme"],
+    }
+
+
+def publication_manifest_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "destination_key": item["destination_key"],
+            "bytes": item["bytes"],
+            "sha256": item["sha256"],
+            "transformed": item["transformed"],
+        }
+        for item in sorted(items, key=lambda value: value["destination_key"])
+    ]
+
+
 def build_readme() -> bytes:
     return (
         b"# Diana WGS HRD public analysis\n\n"
@@ -499,8 +522,6 @@ def upload(item: dict[str, Any]) -> dict[str, Any]:
         "classification": CLASSIFICATION,
         "sha256": item["sha256"],
     }
-    if item["source"] is not None:
-        metadata["source-crc64nvme"] = item["source"]["checksum_crc64nvme"]
     response = aws_json(
         "s3api",
         "put-object",
@@ -649,29 +670,13 @@ def main() -> int:
                 )
             )
 
-            manifest_rows = [
-                {
-                    "destination_key": item["destination_key"],
-                    "bytes": item["bytes"],
-                    "sha256": item["sha256"],
-                    "transformed": item["transformed"],
-                    "source": None
-                    if item["source"] is None
-                    else {
-                        "bucket": item["source"]["bucket"],
-                        "key": item["source"]["key"],
-                        "checksum_crc64nvme": item["source"]["checksum_crc64nvme"],
-                    },
-                }
-                for item in sorted(items, key=lambda value: value["destination_key"])
-            ]
             manifest = {
                 "schema_version": 1,
                 "generated_at_utc": receipt["generated_at_utc"],
                 "classification": CLASSIFICATION,
                 "evidence_state": "partial_evidence",
                 "overall_hrd_state": "no_call",
-                "objects": manifest_rows,
+                "objects": publication_manifest_rows(items),
             }
             items.append(generated_object(staging, "publication_manifest.json", canonical_bytes(manifest)))
             items.sort(key=lambda value: value["destination_key"])
@@ -696,6 +701,7 @@ def main() -> int:
                     "bytes": item["bytes"],
                     "sha256": item["sha256"],
                     "transformed": item["transformed"],
+                    "source": private_receipt_source(item["source"]),
                     "action": "planned_upload",
                 }
                 if args.apply:

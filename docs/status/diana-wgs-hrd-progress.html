@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local public recovery final-history exactness</li>
+          <li class="pill">Latest milestone = local public recovery source-metadata privacy</li>
+          <li class="pill">Public recovery source metadata = private</li>
           <li class="pill">Public recovery final history = exact</li>
           <li class="pill">Public recovery S3 sizes = exact</li>
           <li class="pill">Public-index dry-run index = exact</li>
@@ -1097,6 +1098,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · keep recovery source metadata private</strong>
+              <span>Public recovery now keeps source bucket/key/CRC custody in the local private receipt while omitting private source locations and source CRC metadata from the generated public <code>publication_manifest.json</code> and public object metadata.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind public recovery final history</strong>
               <span>Public recovery now rejects put-object VersionId drift and final destination version histories with delete markers, missing keys, duplicate keys, unexpected keys, non-latest rows, mismatched VersionIds, or non-exact final history Size values.</span>
             </li>
@@ -1210,6 +1215,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:31:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Keep public recovery source metadata private:</strong>
+                public recovery now keeps source bucket/key/CRC custody in the
+                local private receipt while omitting private source locations
+                and source CRC metadata from generated public
+                <code>publication_manifest.json</code> files and public object
+                metadata. No S3, Batch, route, GPU, quota, replacement compute,
+                or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:30:00-07:00">Jul 19 · local</time>
               <span>

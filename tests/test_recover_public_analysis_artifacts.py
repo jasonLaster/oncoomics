@@ -129,6 +129,62 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                     Path(temporary),
                 )
 
+    def test_public_manifest_rows_omit_private_source_locations(self) -> None:
+        source = {
+            "bucket": "private-source-bucket",
+            "key": "private/source/key.json",
+            "bytes": 123,
+            "checksum_crc64nvme": "private-crc64",
+        }
+        items = [
+            {
+                "source": source,
+                "destination_key": MODULE.DESTINATION_PREFIX
+                + "early-look/artifacts/summary.json",
+                "bytes": 42,
+                "sha256": "a" * 64,
+                "transformed": True,
+            },
+            {
+                "source": None,
+                "destination_key": MODULE.DESTINATION_PREFIX + "README.md",
+                "bytes": 12,
+                "sha256": "b" * 64,
+                "transformed": False,
+            },
+        ]
+
+        self.assertEqual(
+            MODULE.publication_manifest_rows(items),
+            [
+                {
+                    "destination_key": MODULE.DESTINATION_PREFIX + "README.md",
+                    "bytes": 12,
+                    "sha256": "b" * 64,
+                    "transformed": False,
+                },
+                {
+                    "destination_key": MODULE.DESTINATION_PREFIX
+                    + "early-look/artifacts/summary.json",
+                    "bytes": 42,
+                    "sha256": "a" * 64,
+                    "transformed": True,
+                },
+            ],
+        )
+        self.assertEqual(MODULE.private_receipt_source(source), source)
+        self.assertIsNone(MODULE.private_receipt_source(None))
+
+        manifest = MODULE.canonical_bytes(
+            {
+                "schema_version": 1,
+                "objects": MODULE.publication_manifest_rows(items),
+            }
+        )
+        self.assertNotIn(b"private-source-bucket", manifest)
+        self.assertNotIn(b"private/source/key", manifest)
+        self.assertNotIn(b"private-crc64", manifest)
+
     def test_inventory_total_bytes_requires_exact_s3_sizes(self) -> None:
         self.assertEqual(
             MODULE.inventory_total_bytes(
@@ -249,7 +305,6 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
             metadata = {
                 "classification": MODULE.CLASSIFICATION,
                 "sha256": digest,
-                "source-crc64nvme": "crc64",
             }
             head_response = {
                 "ContentLength": len(payload),
@@ -305,7 +360,7 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
             ),
         )
 
-    def test_public_upload_rejects_missing_classification_or_source_crc_metadata(
+    def test_public_upload_rejects_missing_classification_metadata(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
