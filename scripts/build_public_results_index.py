@@ -30,8 +30,8 @@ from publish_reviewed_public_report import (
     SOURCE_PREFLIGHT_CHECKS,
     SUBJECT_ALIAS,
     checksum_sha256,
-    exact_schema_version,
     exact_int,
+    exact_schema_version,
     non_null_version_id,
     private_report_prefix,
 )
@@ -332,8 +332,11 @@ def validate_reviewed_public_receipts(
                 not isinstance(digest, str) or not SHA256_HEX.fullmatch(digest)
                 for digest in forbidden_token_sha256
             )
-            or receipt.get("destination_initial_history_count") != 0
-            or receipt.get("destination_final_history_count") != len(expected_files)
+            or not exact_int(receipt.get("destination_initial_history_count"), 0)
+            or not exact_int(
+                receipt.get("destination_final_history_count"),
+                len(expected_files),
+            )
         ):
             raise RuntimeError(f"{method_id} reviewed-public receipt is not exact")
 

@@ -544,6 +544,38 @@ class PublicIndexTests(unittest.TestCase):
                 "reviewed-public receipt is not exact",
             ),
             (
+                lambda receipt: receipt.update(
+                    {"destination_initial_history_count": False}
+                ),
+                "reviewed-public receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt.update(
+                    {"destination_initial_history_count": 0.0}
+                ),
+                "reviewed-public receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt.update(
+                    {
+                        "destination_final_history_count": float(
+                            len(receipt["expected_files"])
+                        )
+                    }
+                ),
+                "reviewed-public receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt.update(
+                    {
+                        "destination_final_history_count": str(
+                            len(receipt["expected_files"])
+                        )
+                    }
+                ),
+                "reviewed-public receipt is not exact",
+            ),
+            (
                 lambda receipt: receipt["source_objects"][0].update({"bytes": True}),
                 "reviewed-public source object is not exact",
             ),
