@@ -105,6 +105,10 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def is_exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and value == expected
+
+
 def require_installed_json(path: Path, expected_sha256: str) -> None:
     require_real_file(path, "staged AI review JSON")
     if (path.stat().st_mode & 0o777) != 0o600:
@@ -185,7 +189,7 @@ def require_manifest(path: Path, expected_method: str) -> dict[str, Any]:
     source_sha256 = manifest.get("source_sha256")
     review_summary = manifest.get("review_summary")
     if (
-        manifest.get("schema_version") != 1
+        not is_exact_int(manifest.get("schema_version"), 1)
         or manifest.get("method_id") != expected_method
         or manifest.get("report_sha256") != sha256(report_path)
         or not isinstance(source_sha256, dict)
@@ -482,7 +486,7 @@ def require_rebased_stage_receipt(
 
     if (
         set(receipt) != STAGE_RECEIPT_KEYS
-        or receipt.get("schema_version") != 1
+        or not is_exact_int(receipt.get("schema_version"), 1)
         or receipt.get("status") != "passed"
         or not isinstance(receipt.get("generated_at"), str)
         or not receipt.get("generated_at")

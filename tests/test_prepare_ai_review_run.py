@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import shutil
 import subprocess
@@ -21,6 +22,9 @@ import hrd_report_inventory as INVENTORY  # noqa: E402
 import prepare_ai_review_run as PREPARE  # noqa: E402
 
 from tests.test_build_ai_review_bundle import AiReviewBundleFixture, write_json  # noqa: E402
+
+
+PREPARE_SCRIPT = SCRIPT_DIR / "prepare_ai_review_run.py"
 
 
 def write_staged_run(staging: Path) -> None:
@@ -300,6 +304,45 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, error):
                     PREPARE.require_exact_postcondition_checks(checks)
 
+    def test_rejects_non_exact_source_manifest_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            manifest_path = fixture.manifests[0]
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["schema_version"] = 1.0
+            write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(ValueError, "report manifest is not exact"):
+                PREPARE.require_manifest(
+                    manifest_path,
+                    INVENTORY.REQUIRED_METHOD_IDS[0],
+                )
+
+    def test_schema_version_checks_use_exact_integer_helper(self) -> None:
+        cases = (
+            (1, 1, True),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (2, 1, False),
+            (None, 1, False),
+            (True, 1, False),
+            (False, 0, False),
+        )
+        for value, expected, accepted in cases:
+            with self.subTest(value=value, expected=expected):
+                self.assertIs(PREPARE.is_exact_int(value, expected), accepted)
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        module = ast.parse(PREPARE_SCRIPT.read_text(encoding="utf-8"))
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
+
     def test_rejects_stage_receipt_with_stale_reviewer_file_hash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -371,6 +414,9 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             "missing_generated_at": lambda payload: payload.pop("generated_at"),
             "extra_legacy_key": lambda payload: payload.update(
                 {"legacy_stage_receipt": True}
+            ),
+            "non_exact_schema": lambda payload: payload.update(
+                {"schema_version": 1.0}
             ),
         }
         for name, mutate in cases.items():
