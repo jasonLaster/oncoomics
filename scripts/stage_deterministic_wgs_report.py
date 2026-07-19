@@ -1184,7 +1184,7 @@ def forbidden_tokens(
     explicit: list[str],
     forbidden_token_files: Iterable[Path] = (),
 ) -> list[str]:
-    values: set[str] = {token.strip() for token in explicit if token.strip()}
+    values: set[str] = set()
     generic_words = {
         "analysis",
         "data",
@@ -1235,7 +1235,7 @@ def forbidden_tokens(
     for key in ("source_uri", "result_uri"):
         add_value(audit.get(key, ""), split_words=True)
     return rank_forbidden_tokens(
-        merge_forbidden_tokens(values, files=forbidden_token_files)
+        merge_forbidden_tokens((*explicit, *values), files=forbidden_token_files)
     )
 
 

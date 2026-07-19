@@ -970,6 +970,29 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             tokens.index("synthetic"),
         )
 
+    def test_forbidden_tokens_reject_invalid_explicit_tokens(self) -> None:
+        cases = (
+            ("blank", "  ", r"forbidden token\[0\] must be a non-empty string"),
+            ("short", "ab", r"forbidden token\[0\] must be at least 3 characters"),
+            (
+                "control",
+                "sample\x00id",
+                r"forbidden token\[0\] must not contain control characters",
+            ),
+        )
+        for label, token, message in cases:
+            with self.subTest(label=label), self.assertRaisesRegex(
+                ValueError,
+                message,
+            ):
+                REPORT_MODULE.forbidden_tokens(
+                    {"input": {"dataset": "", "pair": ""}},
+                    [],
+                    [],
+                    {"objects": [], "source_uri": "", "result_uri": ""},
+                    [token],
+                )
+
     def test_input_snapshot_receipt_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-input-snapshot-receipt-"

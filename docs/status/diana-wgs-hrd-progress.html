@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local strict AI bundle explicit tokens</li>
+          <li class="pill">Latest milestone = local strict deterministic explicit tokens</li>
+          <li class="pill">Deterministic explicit tokens = strict</li>
           <li class="pill">AI bundle explicit tokens = strict</li>
           <li class="pill">Explicit forbidden tokens = strict</li>
           <li class="pill">Phase 3 post-join hashes = real</li>
@@ -668,6 +669,7 @@
           <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
           <li class="pill">Deterministic staging receipts = exact</li>
+          <li class="pill">Deterministic explicit tokens = strict</li>
           <li class="pill">Materializer submit receipts = exact</li>
           <li class="pill">Materializer download receipts = exact</li>
           <li class="pill">Materializer receipts = alias-exact</li>
@@ -1283,6 +1285,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind deterministic staging to materializer checks</strong>
               <span>Deterministic WGS staging now consumes the schema-2 materializer receipt custody checks and rejects non-exact <code>report_manifest.json</code> envelopes or support inventories while preserving <code>partial_evidence</code> / <code>no_call</code> identity fields.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · normalize deterministic explicit tokens strictly</strong>
+              <span>Local deterministic report staging now rejects blank, too-short, or control-character explicit forbidden tokens through the shared normalizer before report install.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · scan deterministic packets before install</strong>
@@ -2290,6 +2296,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T15:18:34-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Normalize deterministic explicit tokens strictly:</strong>
+                Local deterministic report staging now rejects blank,
+                too-short, or control-character explicit forbidden tokens
+                through the shared normalizer before report install.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T15:15:44-07:00">Jul 19 · local</time>
               <span>
