@@ -343,9 +343,10 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest source = 66a737d</li>
-          <li class="pill">Prior dashboard = cd47ffe</li>
+          <li class="pill">Latest source = eb3d99b</li>
+          <li class="pill">Prior dashboard = 79bc15b</li>
           <li class="pill">Reviewer identities = explicit</li>
+          <li class="pill">Catalog timestamps = in synthesis</li>
           <li class="pill">Public access foundation = ready</li>
           <li class="pill">HCC1395 seven-report stack = passed</li>
           <li class="pill">Forbidden scans = shared</li>
@@ -503,6 +504,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind latest-model timestamps in synthesis</strong>
+              <span>The comparative synthesis report now prints each reviewer provider/model pair plus its model-catalog verification timestamp before summarizing the independent AI claims.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · expose exact reviewer model identities</strong>
               <span>The source-only AI handoff now prints both reviewer provider/model pairs before model-catalog attestation and bundle preparation; focused ordering tests enforce the placement.</span>
             </li>
@@ -548,6 +553,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T22:51:01-07:00">Jul 18 · 10:51 PM</time>
+              <span>
+                <strong>eb3d99b Bind AI catalog timestamps in HRD synthesis:</strong>
+                the comparative synthesis report now carries the pinned
+                latest-model catalog verification timestamp beside each
+                reviewer provider/model pair. Focused synthesis tests assert
+                both reviewer sections keep that model-contract context. No
+                compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T22:46:27-07:00">Jul 18 · 10:46 PM</time>
               <span>
