@@ -190,6 +190,7 @@ def ecs_cluster(task_arn: str) -> str:
 
 
 def sha256(path: Path) -> str:
+    require_real_downloaded_file(path, f"{path.name} SHA-256 input")
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):

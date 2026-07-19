@@ -306,6 +306,35 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             ):
                 MODULE.load_object(receipt, "executed-worker freeze receipt")
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-worker.py"
+            worker = root / "worker.py"
+            real_source.write_text("# executed worker\n", encoding="utf-8")
+            worker.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "worker.py SHA-256 input may not be a symlink",
+            ):
+                MODULE.sha256(worker)
+
+            real_parent = root / "real-receipts"
+            real_parent.mkdir()
+            (real_parent / "receipt.json").write_text(
+                '{"status":"passed"}\n',
+                encoding="utf-8",
+            )
+            linked_parent = root / "linked-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "receipt.json SHA-256 input parent may not be a symlink",
+            ):
+                MODULE.sha256(linked_parent / "receipt.json")
+
     def test_worker_freeze_command_output_rejects_duplicate_object_names(self) -> None:
         with self.assertRaisesRegex(
             ValueError,
