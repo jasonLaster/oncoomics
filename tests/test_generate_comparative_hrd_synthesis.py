@@ -477,6 +477,12 @@ class SynthesisFixture:
         manifest["review_bundle_sha256"] = sha256(self.bundle_dir / "review_bundle.json")
         write_json(manifest_path, manifest)
 
+    def refresh_input_manifest_hash(self, evidence_id: str, source_manifest: Path) -> None:
+        manifest_path = self.bundle_dir / "bundle_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["input_manifest_sha256"][evidence_id] = sha256(source_manifest)
+        write_json(manifest_path, manifest)
+
     def mutate_bundle_models(self, mutate) -> None:
         bundle_path = self.bundle_dir / "review_bundle.json"
         manifest_path = self.bundle_dir / "bundle_manifest.json"
@@ -1645,6 +1651,74 @@ class GenerateSynthesisTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(
                 f"support hash mismatch for {fixture.methods[0]}: support.json",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
+    def test_malformed_source_artifact_hash_ids_fail_closed(self) -> None:
+        for malformed in (
+            "",
+            " safe_summary",
+            "safe summary",
+            "safe/summary",
+            "safe|summary",
+            "true",
+            "false",
+            "null",
+            7,
+            True,
+        ):
+            with self.subTest(malformed=malformed), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-source-hash-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                source_path = fixture.source_manifests[0]
+                source = json.loads(source_path.read_text(encoding="utf-8"))
+                source["source_sha256"] = {
+                    malformed: next(iter(source["source_sha256"].values()))
+                }
+                write_json(source_path, source)
+                fixture.refresh_input_manifest_hash("E001", source_path)
+
+                result = fixture.run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    f"malformed source-artifact ID for {fixture.methods[0]}",
+                    result.stdout + result.stderr,
+                )
+                self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
+    def test_duplicate_source_artifact_hash_id_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="hrd-synthesis-source-hash-"
+        ) as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            source_path = fixture.source_manifests[0]
+            source = json.loads(source_path.read_text(encoding="utf-8"))
+            digest = next(iter(source["source_sha256"].values()))
+            source["source_sha256"] = {}
+            payload = (
+                json.dumps(source, indent=2, sort_keys=True)
+                .replace(
+                    '  "source_sha256": {},',
+                    (
+                        '  "source_sha256": {\n'
+                        f'    "safe_summary": "{digest}",\n'
+                        f'    "safe_summary": "{digest}"\n'
+                        "  },"
+                    ),
+                )
+                + "\n"
+            )
+            source_path.write_text(payload, encoding="utf-8")
+            fixture.refresh_input_manifest_hash("E001", source_path)
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "duplicate JSON object name in E001 report_manifest.json: safe_summary",
                 result.stdout + result.stderr,
             )
             self.assertFalse((fixture.output_dir / "report_manifest.json").exists())

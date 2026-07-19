@@ -45,6 +45,8 @@ METHOD_ID = re.compile(r"^[a-z0-9][a-z0-9_.-]{1,79}$")
 EVIDENCE_ID = re.compile(r"^E[0-9]{3,}$")
 CLAIM_ID = re.compile(r"^C[0-9]{3,}$")
 SUBJECT_ALIAS = re.compile(r"^subject[0-9]{2,4}$")
+SOURCE_ARTIFACT_ID = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
+RESERVED_JSON_OBJECT_NAMES = {"false", "null", "true"}
 ALLOWED_EVIDENCE_STATES = {"ready", "partial_evidence", "no_call", "blocked"}
 ALLOWED_HRD_STATES = {"no_call", "positive", "negative"}
 ALLOWED_QC_STATES = {"passed", "failed", "not_applicable", "blocked", "not_run"}
@@ -148,6 +150,19 @@ REPORT_MANIFEST_KEYS = {
 }
 
 
+class DuplicateJsonKeyError(ValueError):
+    pass
+
+
+def reject_duplicate_json_object_names(pairs: Sequence[Tuple[str, Any]]) -> Dict[str, Any]:
+    parsed: Dict[str, Any] = {}
+    for key, value in pairs:
+        if key in parsed:
+            raise DuplicateJsonKeyError(key)
+        parsed[key] = value
+    return parsed
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -167,7 +182,12 @@ def sha256_bytes(payload: bytes) -> str:
 def load_object(path: Path, label: str) -> Dict[str, Any]:
     require_real_nonempty_file(path, label)
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError("duplicate JSON object name in " + label + ": " + str(error)) from error
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise ValueError("invalid JSON in " + label) from error
     if not isinstance(value, dict):
@@ -204,6 +224,16 @@ def require_real_directory(path: Path, label: str) -> Path:
 def checked_hash(value: Any, label: str) -> str:
     if not isinstance(value, str) or not HEX64.fullmatch(value):
         raise ValueError("malformed SHA-256 for " + label)
+    return value
+
+
+def checked_source_artifact_id(value: Any, method: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not SOURCE_ARTIFACT_ID.fullmatch(value)
+        or value in RESERVED_JSON_OBJECT_NAMES
+    ):
+        raise ValueError("malformed source-artifact ID for " + method)
     return value
 
 
@@ -475,7 +505,13 @@ def verify_sources(
         source_hashes = source.get("source_sha256")
         if not isinstance(source_hashes, dict) or not source_hashes:
             raise ValueError("source-artifact hash inventory is missing for " + method)
-        normalized_hashes = sorted(checked_hash(value, method + " source artifact") for value in source_hashes.values())
+        normalized_hashes = sorted(
+            checked_hash(
+                value,
+                method + " source artifact " + checked_source_artifact_id(key, method),
+            )
+            for key, value in source_hashes.items()
+        )
         validate_report_manifest_support(source_path.parent, source, method)
         summary = source.get("review_summary")
         if not isinstance(summary, dict) or not summary:
