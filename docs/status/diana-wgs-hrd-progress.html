@@ -346,8 +346,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 6a5b32b</li>
-          <li class="pill">Prior dashboard = 7cbc6de</li>
+          <li class="pill">Latest milestone = 9d55326</li>
+          <li class="pill">Prior dashboard = 5e9a4f0</li>
+          <li class="pill">Final freeze dry-run = exact</li>
           <li class="pill">Input contract dry-run = exact</li>
           <li class="pill">AI validation method inventory = exact</li>
           <li class="pill">Terminal cross-check inputs = absent</li>
@@ -513,6 +514,10 @@
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind final freeze apply to its dry-run receipt</strong>
+              <span>Live final-artifact freeze now requires its matching dry-run receipt and rejects stale receipt metadata, failed checks, run binding, source inventory, or object rows before any create-only copy.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind input-contract apply to its dry-run receipt</strong>
               <span>Live input-contract publication now requires the matching dry-run receipt and rejects stale metadata, failed preflight checks, or contract SHA-256, byte-size, URI, and KMS drift before create-only publication.</span>
             </li>
@@ -650,6 +655,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:09:36-07:00">Jul 19 · 12:09 AM</time>
+              <span>
+                <strong>9d55326 Bind final freeze apply to dry-run receipt:</strong>
+                live final-freeze apply now requires its matching dry-run
+                receipt and validates exact receipt metadata, checks,
+                run/job/execution/KMS/source/destination/script fields, initial
+                and final source inventory identity, and object rows before any
+                create-only copy. Stale inventory, object metadata, run binding,
+                or failed checks now fail closed. Validation passed: 48 focused
+                tests + 12 subtests, then 1,712 full-suite tests + 744 subtests.
+                No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:04:25-07:00">Jul 19 · 12:04 AM</time>
               <span>
