@@ -307,20 +307,21 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>e51b9beabafc1df8e6ba442b9bca2e38dbc63049</strong>.
-          The latest work is public-index receipt/source binding:
-          <code>build_public_results_index.py</code> now requires every
-          reviewed-public receipt to bind the private publication receipt and
-          exact private source objects before any public destination object can
-          feed <code>public-index/objects.json</code>. This is still
-          source/test/dashboard work only. No deterministic final artifacts yet;
-          no real Diana WGS Rosalind packet, executable cross-check packets,
-          AI-review inputs, model-review outputs, or comparative synthesis have
-          been produced.
+          <strong>2d1c39495766cc6cb6b38f8e764ab5e4580628ba</strong>.
+          The latest work is deterministic intake-audit hardening:
+          <code>stage_deterministic_wgs_report.py</code> now treats
+          <code>sha-audit.json</code> object rows as an exact typed inventory,
+          rejects malformed non-object rows, and requires passed audit rows,
+          object counts, streamed bytes, and per-row size/SHA-256 matches to
+          agree before the deterministic WGS report can be published. This is
+          still source/test/dashboard work only. No deterministic final artifacts
+          yet; no real Diana WGS Rosalind packet, executable cross-check
+          packets, AI-review inputs, model-review outputs, or comparative
+          synthesis have been produced.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = e51b9be</li>
+          <li class="pill">Latest hardening = 2d1c394</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -402,8 +403,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve e51b9be</strong>
-              <span>Public indexing now rejects reviewed-public receipts unless their public rows match validated private source rows byte-for-byte.</span>
+              <strong>Preserve 2d1c394</strong>
+              <span>Deterministic report staging now fails closed when intake SHA-256 audit rows are malformed or no longer match their declared totals.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -451,6 +452,24 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>2d1c394 Harden deterministic intake audit rows:</strong>
+                <code>stage_deterministic_wgs_report.py</code> now treats the
+                SHA-256 intake audit as an exact dict-row inventory. A
+                malformed row keeps <code>intake_sha256</code> from passing,
+                and <code>passed_count</code> must equal the exact row count,
+                the declared object count, the summed
+                <code>actual_size_bytes</code> total, and every per-row
+                <code>size_matches</code> / <code>sha256_matches</code>
+                boolean before report publication can install deterministic
+                WGS packet files. The new
+                <code>test_malformed_sha_audit_row_fails_before_report_publication</code>
+                regression proves a malformed audit row fails before
+                <code>report.md</code> exists.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
