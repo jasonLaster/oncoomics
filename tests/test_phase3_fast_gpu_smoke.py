@@ -94,6 +94,16 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                 p5en_params(parabricks_container="172630973301.dkr.ecr.us-east-2.amazonaws.com/parabricks:latest")
             )
 
+    def test_rejects_non_exact_uppercase_parabricks_container_digest(self) -> None:
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "sha256"):
+            verify.validate_gpu_smoke_params(
+                p5en_params(
+                    parabricks_container=(
+                        f"{PARABRICKS_REPOSITORY}@{DESTINATION_DIGEST.replace('a', 'A')}"
+                    )
+                )
+            )
+
     def test_rejects_parabricks_container_outside_mirror(self) -> None:
         with self.assertRaisesRegex(verify.GpuSmokeConfigError, "parabricks_mirror_repository"):
             verify.validate_gpu_smoke_params(p5en_params(parabricks_mirror_repository=""))

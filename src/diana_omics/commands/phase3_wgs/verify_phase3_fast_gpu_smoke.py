@@ -21,7 +21,7 @@ ON_DEMAND_P_QUOTA_CODE = "L-417A185B"
 BATCH_GPU_COMPUTE_ENVIRONMENT_SUFFIX = "-ondemand"
 KMS_KEY_ARN = re.compile(r"^arn:aws:kms:([a-z]{2}-[a-z]+-\d):(\d{12}):key/[A-Za-z0-9-]+$")
 ECR_REPOSITORY = re.compile(r"^\d{12}\.dkr\.ecr\.([a-z]{2}-[a-z]+-\d)\.amazonaws\.com/[a-z0-9][a-z0-9._/-]*$")
-PINNED_IMAGE = re.compile(r"^\S+@sha256:[0-9a-fA-F]{64}$")
+PINNED_IMAGE = re.compile(r"^\S+@sha256:[0-9a-f]{64}$")
 
 
 class GpuSmokeConfigError(ValueError):
