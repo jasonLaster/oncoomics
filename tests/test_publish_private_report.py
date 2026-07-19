@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import hashlib
 import importlib.util
@@ -204,6 +205,30 @@ class FakeAws:
 
 
 class PublishPrivateReportTests(unittest.TestCase):
+    def test_schema_versions_are_exact_json_integers(self) -> None:
+        for value in (True, 1.0, "1", 2, None):
+            with self.subTest(value=value):
+                self.assertFalse(
+                    MODULE.exact_schema_version({"schema_version": value})
+                )
+
+        self.assertTrue(MODULE.exact_schema_version({"schema_version": 1}))
+
+    def test_schema_guards_use_exact_integer_helper(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(SCRIPT))
+
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "schema_version" not in segment:
+                continue
+            raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_comparisons, [])
+
     def write_dry_run_receipt(self, fixture: Fixture) -> Path:
         output = fixture.root / "private-publication.dry.json"
         args = fixture.args()
@@ -595,27 +620,42 @@ class PublishPrivateReportTests(unittest.TestCase):
     def test_apply_rejects_dry_run_receipt_with_stale_extra_metadata_before_aws(
         self,
     ) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            fixture = Fixture(Path(temporary))
-            dry_run_receipt = self.write_dry_run_receipt(fixture)
-            payload = json.loads(dry_run_receipt.read_text(encoding="utf-8"))
-            payload["stale_packet_revision"] = "0" * 64
-            dry_run_receipt.write_text(
-                json.dumps(payload, indent=2, sort_keys=True) + "\n",
-                encoding="utf-8",
-            )
-
-            with (
-                self.assertRaisesRegex(ValueError, "contract is malformed"),
-                mock.patch.object(
-                    MODULE,
-                    "aws_json",
-                    side_effect=AssertionError("AWS called"),
+        cases = (
+            (
+                "extra top-level",
+                lambda payload: payload.__setitem__(
+                    "stale_packet_revision",
+                    "0" * 64,
                 ),
-            ):
-                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_run_receipt))
+            ),
+            (
+                "float schema_version",
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+            ),
+        )
 
-            self.assertFalse(fixture.receipt_path.exists())
+        for label, mutate in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                dry_run_receipt = self.write_dry_run_receipt(fixture)
+                payload = json.loads(dry_run_receipt.read_text(encoding="utf-8"))
+                mutate(payload)
+                dry_run_receipt.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with (
+                    self.assertRaisesRegex(ValueError, "contract is malformed"),
+                    mock.patch.object(
+                        MODULE,
+                        "aws_json",
+                        side_effect=AssertionError("AWS called"),
+                    ),
+                ):
+                    MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_run_receipt))
+
+                self.assertFalse(fixture.receipt_path.exists())
 
     def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_aws(
         self,

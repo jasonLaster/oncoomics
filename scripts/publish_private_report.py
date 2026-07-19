@@ -28,6 +28,7 @@ from publish_reviewed_public_report import (
     canonical_packet_digest,
     checksum_sha256,
     content_type,
+    exact_schema_version,
     exact_final_history,
     head_object,
     non_null_version_id,
@@ -225,7 +226,7 @@ def validate_dry_run_receipt(
     if not isinstance(dry_run, dict):
         raise ValueError("private report dry-run receipt must be a JSON object")
     if (
-        dry_run.get("schema_version") != 1
+        not exact_schema_version(dry_run)
         or dry_run.get("status") != "dry_run"
         or dry_run.get("apply") is not False
         or set(dry_run) != PRIVATE_DRY_RUN_RECEIPT_KEYS

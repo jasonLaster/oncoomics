@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local reviewed-public schema exactness</li>
+          <li class="pill">Latest milestone = local private reviewed-report schema exactness</li>
+          <li class="pill">Private reviewed-report schemas = exact</li>
           <li class="pill">Reviewed-public schemas = exact</li>
           <li class="pill">Blocked / Phase 3 schemas = exact</li>
           <li class="pill">Route stager schemas = exact</li>
@@ -848,6 +849,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact private reviewed-report schemas</strong>
+              <span>Private reviewed-report apply now rejects JSON floats or booleans in dry-run receipt <code>schema_version</code> before any private reviewed packet can be uploaded.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact reviewed-public schemas</strong>
               <span>Reviewed-public publication now rejects JSON floats or booleans in private apply receipts, reviewed <code>report_manifest.json</code> packets, and reviewed-public dry-run receipts before any live public apply can trust the private-to-public contract.</span>
             </li>
@@ -925,6 +930,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:34:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact private reviewed-report schemas:</strong>
+                private reviewed-report apply now rejects JSON float or
+                boolean <code>schema_version</code> values in dry-run receipts
+                before any private reviewed packet upload can be planned or
+                executed. No S3, Batch, route, GPU, quota, or replacement
+                compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:33:00-07:00">Jul 19 · local</time>
               <span>
