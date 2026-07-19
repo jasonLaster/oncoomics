@@ -348,7 +348,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 4f29acb</li>
+          <li class="pill">Latest milestone = dc47ed6</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
           <li class="pill">Prior dashboard = 0b44ec7</li>
@@ -612,6 +612,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · validate AI review bundle envelopes</strong>
+              <span>The AI review validator now rejects rebound stale review-bundle and bundle-manifest envelopes before writing <code>validation.json</code>.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · validate AI bundle envelopes before staging</strong>
               <span>AI review bundle staging now revalidates exact request and receipt envelopes before preparing isolated reviewer inputs.</span>
             </li>
@@ -737,6 +741,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T01:07:52-07:00">Jul 19 · 1:07 AM</time>
+              <span>
+                <strong>dc47ed6 Validate AI review bundle envelopes:</strong>
+                the AI review validator now rejects rebound stale review-bundle
+                and bundle-manifest envelopes before writing
+                <code>validation.json</code>. No S3, Batch, route, GPU, quota,
+                or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T01:05:53-07:00">Jul 19 · 1:05 AM</time>
               <span>
