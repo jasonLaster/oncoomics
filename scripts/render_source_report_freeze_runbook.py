@@ -161,8 +161,13 @@ def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
         for method_id in BLOCKED_SOURCE_METHOD_IDS
     }
     expected_source_sha256 = {
-        f"{method_id}_report_manifest": digest
-        for method_id, digest in expected.items()
+        "generator": sha256(
+            Path(__file__).with_name("generate_blocked_hrd_crosscheck_reports.py")
+        ),
+        **{
+            f"{method_id}_report_manifest": digest
+            for method_id, digest in expected.items()
+        },
     }
     expected_lines = [
         f"- {method_id} report_manifest_sha256: `{digest}`"
@@ -187,11 +192,6 @@ def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
             f"{blocked_method_id} blocked report",
         )
         report = report_path.read_text(encoding="utf-8")
-        observed = {
-            key: value
-            for key, value in (source_sha256 or {}).items()
-            if key in expected_source_sha256
-        } if isinstance(source_sha256, dict) else {}
         observed_lines = [
             line
             for line in report.splitlines()
@@ -207,7 +207,7 @@ def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
             or review_summary.get("source_report_manifests") != expected
             or review_summary.get("source_report_binding_scope")
             != TERMINAL_SOURCE_REPORT_BINDING_SCOPE
-            or observed != expected_source_sha256
+            or source_sha256 != expected_source_sha256
             or "source_report_manifests: `not_bound`" in report
             or observed_lines != expected_lines
         ):

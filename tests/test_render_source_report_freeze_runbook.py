@@ -120,12 +120,13 @@ def bind_blocked_reports(paths: dict[str, Path]) -> None:
             "source_report_binding_scope"
         ] = "terminal_source_reports"
         manifest["review_summary"]["source_report_manifests"] = manifests
-        manifest["source_sha256"].update(
-            {
+        manifest["source_sha256"] = {
+            "generator": MODULE.sha256(SCRIPT_DIR / "generate_blocked_hrd_crosscheck_reports.py"),
+            **{
                 f"{source_id}_report_manifest": digest
                 for source_id, digest in manifests.items()
-            }
-        )
+            },
+        }
         manifest["support_sha256"]["method_spec.json"] = MODULE.sha256(
             path / "method_spec.json"
         )
@@ -694,6 +695,28 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             manifest_path = blocked_dir / "report_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["report_sha256"] = MODULE.sha256(report_path)
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "not bound to current upstream report manifests",
+            ):
+                MODULE.validate_packet_dirs(paths)
+
+    def test_validate_packet_dirs_rejects_extra_stale_blocked_source_hash(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+            blocked_dir = paths["hrdetect_blocked"]
+            manifest_path = blocked_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["source_sha256"]["stale_report_manifest"] = "0" * 64
             manifest_path.write_text(
                 json.dumps(manifest, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
