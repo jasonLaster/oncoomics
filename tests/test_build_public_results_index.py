@@ -120,6 +120,24 @@ def expected_public_objects(receipts: list[Path]) -> list[dict[str, object]]:
     return sorted(objects, key=lambda row: str(row["key"]))
 
 
+def expected_public_heads(receipts: list[Path]) -> dict[str, dict[str, object]]:
+    heads = {}
+    for receipt in receipts:
+        for row in json.loads(receipt.read_text(encoding="utf-8"))["destination_objects"]:
+            heads[row["key"]] = {
+                "VersionId": row["version_id"],
+                "ContentLength": row["bytes"],
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": row["checksum_sha256"],
+                "ServerSideEncryption": "AES256",
+                "Metadata": {
+                    "classification": PUBLISH.CLASSIFICATION,
+                    "sha256": row["sha256"],
+                },
+            }
+    return heads
+
+
 def expected_public_prefix_pages(receipts: list[Path]) -> list[list[dict[str, object]]]:
     objects = expected_public_objects(receipts)
     return [
@@ -543,7 +561,11 @@ class PublicIndexTests(unittest.TestCase):
                 MODULE,
                 "list_prefix",
                 side_effect=expected_public_prefix_pages(receipts),
-            ) as list_prefix:
+            ) as list_prefix, mock.patch.object(
+                MODULE,
+                "head_object",
+                side_effect=expected_public_heads(receipts).__getitem__,
+            ):
                 argv = ["--output", str(output)]
                 for receipt in receipts:
                     argv.extend(["--reviewed-public-receipt", str(receipt)])
@@ -608,6 +630,38 @@ class PublicIndexTests(unittest.TestCase):
                 with mock.patch.object(MODULE, "list_prefix", side_effect=pages):
                     with self.assertRaisesRegex(RuntimeError, message):
                         MODULE.main(argv)
+
+    def test_main_rejects_current_reviewed_public_object_version_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipts = write_public_receipts(root)
+            pages = expected_public_prefix_pages(receipts)
+            heads = expected_public_heads(receipts)
+            stale_key = str(pages[0][0]["key"])
+            heads[stale_key] = {
+                **heads[stale_key],
+                "VersionId": "unexpected-overwrite",
+                "ChecksumSHA256": PUBLISH.checksum_sha256("0" * 64),
+                "Metadata": {
+                    "classification": PUBLISH.CLASSIFICATION,
+                    "sha256": "0" * 64,
+                },
+            }
+            argv = ["--output", str(root / "objects.json")]
+            for receipt in receipts:
+                argv.extend(["--reviewed-public-receipt", str(receipt)])
+
+            with mock.patch.object(
+                MODULE,
+                "list_prefix",
+                side_effect=pages,
+            ), mock.patch.object(
+                MODULE,
+                "head_object",
+                side_effect=heads.__getitem__,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "current reviewed-public"):
+                    MODULE.main(argv)
 
     def test_write_index_fsyncs_file_and_parent_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

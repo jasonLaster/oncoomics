@@ -13,6 +13,7 @@ from unittest import mock
 
 from tests.test_build_public_results_index import (
     MODULE as BUILD_INDEX,
+    expected_public_heads,
     expected_public_prefix_pages,
     write_public_receipts,
 )
@@ -117,6 +118,10 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             BUILD_INDEX,
             "list_prefix",
             side_effect=expected_public_prefix_pages(receipts),
+        ), mock.patch.object(
+            BUILD_INDEX,
+            "head_object",
+            side_effect=expected_public_heads(receipts).__getitem__,
         ):
             argv = ["--output", str(index)]
             for receipt in receipts:

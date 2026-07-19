@@ -73,6 +73,9 @@ REVIEWED_PUBLIC_APPLY_CHECKS = {
 }
 
 
+ReviewedPublicObject = dict[str, int | str]
+
+
 def list_prefix(prefix: str) -> list[dict[str, Any]]:
     objects: list[dict[str, Any]] = []
     continuation_token = ""
@@ -124,6 +127,29 @@ def list_prefix(prefix: str) -> list[dict[str, Any]]:
             raise RuntimeError(f"S3 pagination did not advance for {prefix}")
         seen_tokens.add(next_token)
         continuation_token = next_token
+
+
+def head_object(key: str) -> dict[str, Any]:
+    command = [
+        "aws",
+        "s3api",
+        "head-object",
+        "--region",
+        REGION,
+        "--bucket",
+        BUCKET,
+        "--key",
+        key,
+        "--checksum-mode",
+        "ENABLED",
+        "--output",
+        "json",
+    ]
+    result = subprocess.run(command, check=True, text=True, capture_output=True)
+    response = json.loads(result.stdout)
+    if not isinstance(response, dict):
+        raise RuntimeError(f"S3 returned malformed object metadata for {key}")
+    return response
 
 
 def write_index(path: pathlib.Path, payload: dict[str, Any]) -> None:
@@ -198,13 +224,13 @@ def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
 
 def validate_reviewed_public_receipts(
     paths: Sequence[pathlib.Path],
-) -> tuple[dict[str, int], list[dict[str, Any]]]:
+) -> tuple[dict[str, ReviewedPublicObject], list[dict[str, Any]]]:
     if len(paths) != len(REPORT_METHOD_IDS):
         raise RuntimeError(
             "reviewed-public index build requires exactly ten public publication receipts"
         )
 
-    receipt_objects: dict[str, int] = {}
+    receipt_objects: dict[str, ReviewedPublicObject] = {}
     receipt_binding: list[dict[str, Any]] = []
     for method_id, path in zip(REPORT_METHOD_IDS, paths):
         receipt = load_json_object(path, f"{method_id} reviewed-public receipt")
@@ -342,7 +368,12 @@ def validate_reviewed_public_receipts(
                 )
             if key in receipt_objects:
                 raise RuntimeError(f"{method_id} reviewed-public destination key is duplicated: {key}")
-            receipt_objects[key] = size
+            receipt_objects[key] = {
+                "bytes": size,
+                "sha256": digest,
+                "checksum_sha256": str(row.get("checksum_sha256", "")),
+                "version_id": version_id,
+            }
         if observed_keys != expected_keys or observed_relative_paths != set(expected_files):
             raise RuntimeError(f"{method_id} reviewed-public receipt objects do not match the public contract")
 
@@ -360,7 +391,7 @@ def validate_reviewed_public_receipts(
 
 def validate_reviewed_public_s3_state(
     objects: Sequence[dict[str, Any]],
-    expected_objects: dict[str, int],
+    expected_objects: dict[str, ReviewedPublicObject],
 ) -> None:
     observed_objects = {
         str(item["key"]): int(item["size"])
@@ -371,7 +402,8 @@ def validate_reviewed_public_s3_state(
     unexpected = sorted(set(observed_objects) - set(expected_objects))
     size_mismatches = sorted(
         key
-        for key, expected_size in expected_objects.items()
+        for key, expected in expected_objects.items()
+        for expected_size in (int(expected["bytes"]),)
         if key in observed_objects and observed_objects[key] != expected_size
     )
     if missing or unexpected or size_mismatches:
@@ -383,6 +415,34 @@ def validate_reviewed_public_s3_state(
         raise RuntimeError(
             "reviewed-public S3 state does not match publication receipts: "
             + json.dumps(details, sort_keys=True)
+        )
+
+
+def validate_reviewed_public_current_versions(
+    expected_objects: dict[str, ReviewedPublicObject],
+) -> None:
+    mismatches: list[str] = []
+    for key, expected in sorted(expected_objects.items()):
+        current = head_object(key)
+        if (
+            current.get("VersionId") != expected["version_id"]
+            or int(current.get("ContentLength", -1)) != expected["bytes"]
+            or current.get("ChecksumType") != "FULL_OBJECT"
+            or current.get("ChecksumSHA256") != expected["checksum_sha256"]
+            or current.get("ServerSideEncryption") != "AES256"
+            or current.get("Metadata")
+            != {
+                "classification": REVIEWED_PUBLIC_CLASSIFICATION,
+                "sha256": expected["sha256"],
+            }
+        ):
+            mismatches.append(key)
+
+    if mismatches:
+        raise RuntimeError(
+            "current reviewed-public S3 object versions do not match "
+            "publication receipts: "
+            + json.dumps(mismatches, sort_keys=True)
         )
 
 
@@ -446,6 +506,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if len(keys) != len(set(keys)):
         raise RuntimeError("Public prefix overlap produced duplicate keys")
     validate_reviewed_public_s3_state(objects, expected_reviewed_public_objects)
+    validate_reviewed_public_current_versions(expected_reviewed_public_objects)
 
     payload = {
         "schema_version": 1,
