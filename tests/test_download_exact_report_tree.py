@@ -225,6 +225,106 @@ class ExactReportDownloadTests(unittest.TestCase):
             self.assertTrue(all(result["objects"][0]["checks"].values()))
             self.assertEqual(stat.S_IMODE(verification.stat().st_mode), 0o600)
 
+    def test_rejects_unexpected_staging_child_before_local_cutover(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, data, row = self.fixture(root)
+            output = root / "report-tree"
+            verification = root / "verification.json"
+
+            def fake_get(
+                _bucket: str,
+                _key: str,
+                version_id: str,
+                destination: Path,
+                _region: str,
+            ) -> dict:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(data)
+                (destination.parent / "unexpected.md").write_text(
+                    "extra\n",
+                    encoding="utf-8",
+                )
+                return {
+                    "VersionId": version_id,
+                    "ContentLength": len(data),
+                    "ChecksumSHA256": row["checksum_sha256"],
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                }
+
+            with (
+                patch.object(MODULE, "version_history", return_value=self.history(row)),
+                patch.object(MODULE, "get_exact", side_effect=fake_get),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "downloaded report inventory differs from its receipt",
+                ),
+            ):
+                MODULE.main(self.args(receipt, anchor, output, verification))
+
+            self.assertFalse(output.exists())
+            self.assertFalse((root / ".report-tree.staging").exists())
+            self.assertEqual(
+                json.loads(verification.read_text(encoding="utf-8"))["status"],
+                "failed",
+            )
+
+    def test_revalidates_output_tree_after_final_cutover_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, data, row = self.fixture(root)
+            output = root / "report-tree"
+            verification = root / "verification.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def fake_get(
+                _bucket: str,
+                _key: str,
+                version_id: str,
+                destination: Path,
+                _region: str,
+            ) -> dict:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(data)
+                return {
+                    "VersionId": version_id,
+                    "ContentLength": len(data),
+                    "ChecksumSHA256": row["checksum_sha256"],
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                }
+
+            def tamper_after_cutover_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                local = output / "report.md"
+                if local.exists():
+                    local.write_bytes(b"tampered\n")
+
+            with (
+                patch.object(MODULE, "version_history", return_value=self.history(row)),
+                patch.object(MODULE, "get_exact", side_effect=fake_get),
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_cutover_fsync,
+                ),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "downloaded report differs from its receipt",
+                ),
+            ):
+                MODULE.main(self.args(receipt, anchor, output, verification))
+
+            self.assertFalse(output.exists())
+            self.assertFalse((root / ".report-tree.staging").exists())
+            self.assertEqual(
+                json.loads(verification.read_text(encoding="utf-8"))["status"],
+                "failed",
+            )
+
     def test_rejects_symlinked_exact_version_report_before_local_cutover(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

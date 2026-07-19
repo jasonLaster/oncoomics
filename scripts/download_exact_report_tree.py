@@ -187,6 +187,22 @@ def validate_local_tree(root: Path, rows: list[dict[str, Any]]) -> None:
             raise ValueError(f"downloaded report differs from its receipt: {relative}")
 
 
+def remove_local_tree(path: Path) -> None:
+    if path.exists() and path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+
+
+def publish_local_tree(staging: Path, output: Path, rows: list[dict[str, Any]]) -> None:
+    validate_local_tree(staging, rows)
+    os.replace(staging, output)
+    try:
+        fsync_directory(output.parent)
+        validate_local_tree(output, rows)
+    except Exception:
+        remove_local_tree(output)
+        raise
+
+
 def recover_local_cutover(
     result: dict[str, Any], staging: Path, output: Path, verification: Path
 ) -> bool:
@@ -203,10 +219,11 @@ def recover_local_cutover(
     if len(roots) != 1:
         raise ValueError("prepared report replay has an ambiguous local cutover")
 
-    validate_local_tree(roots[0], result.get("objects", []))
+    rows = result.get("objects", [])
     if roots[0] == staging:
-        os.replace(staging, output)
-        fsync_directory(output.parent)
+        publish_local_tree(staging, output, rows)
+    else:
+        validate_local_tree(output, rows)
     result["status"] = "passed"
     result["object_count"] = len(result.get("objects", []))
     result["recovered_prepared_cutover"] = True
@@ -532,8 +549,7 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
         result["object_count"] = len(result["objects"])
         write_json_atomic(verification, result)
 
-        os.replace(staging, output)
-        fsync_directory(output.parent)
+        publish_local_tree(staging, output, result["objects"])
         result["status"] = "passed"
         write_json_atomic(verification, result)
     except Exception as error:

@@ -165,6 +165,97 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(receipt.stat().st_mode), 0o600)
             self.assertFalse((root / ".materialized.staging").exists())
 
+    def test_rejects_unexpected_staging_child_before_local_cutover(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+
+            def fake_get(
+                bucket: str, key: str, version_id: str, destination: Path, region: str
+            ) -> dict[str, object]:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(b"exact")
+                (destination.parents[1] / "unexpected.tmp").write_text(
+                    "extra\n",
+                    encoding="utf-8",
+                )
+                return {
+                    "VersionId": version_id,
+                    "ContentLength": 5,
+                    "ChecksumCRC64NVME": "checksum",
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": kms,
+                }
+
+            with (
+                patch.object(MODULE, "get_exact_object", side_effect=fake_get),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "materialized tree inventory differs from its receipt",
+                ),
+            ):
+                MODULE.main(self.args(freeze, output, receipt, kms))
+
+            self.assertFalse(output.exists())
+            self.assertFalse((root / ".materialized.staging").exists())
+            self.assertEqual(
+                json.loads(receipt.read_text(encoding="utf-8"))["status"],
+                "failed",
+            )
+
+    def test_revalidates_output_tree_after_final_cutover_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def fake_get(
+                bucket: str, key: str, version_id: str, destination: Path, region: str
+            ) -> dict[str, object]:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(b"exact")
+                return {
+                    "VersionId": version_id,
+                    "ContentLength": 5,
+                    "ChecksumCRC64NVME": "checksum",
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": kms,
+                }
+
+            def tamper_after_cutover_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                local = output / "variants/final.vcf.gz"
+                if local.exists():
+                    local.write_bytes(b"tampered")
+
+            with (
+                patch.object(MODULE, "get_exact_object", side_effect=fake_get),
+                patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_cutover_fsync,
+                ),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "materialized tree differs from its receipt",
+                ),
+            ):
+                MODULE.main(self.args(freeze, output, receipt, kms))
+
+            self.assertFalse(output.exists())
+            self.assertEqual(
+                json.loads(receipt.read_text(encoding="utf-8"))["status"],
+                "failed",
+            )
+
     def test_rejects_symlinked_exact_version_object_before_materializing_tree(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

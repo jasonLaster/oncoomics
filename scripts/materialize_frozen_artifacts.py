@@ -183,6 +183,22 @@ def validate_local_tree(root: Path, rows: list[dict[str, Any]]) -> None:
             raise ValueError(f"materialized tree differs from its receipt: {relative}")
 
 
+def remove_local_tree(path: Path) -> None:
+    if path.exists() and path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+
+
+def publish_local_tree(staging: Path, output: Path, rows: list[dict[str, Any]]) -> None:
+    validate_local_tree(staging, rows)
+    os.replace(staging, output)
+    try:
+        fsync_directory(output.parent)
+        validate_local_tree(output, rows)
+    except Exception:
+        remove_local_tree(output)
+        raise
+
+
 def recover_local_cutover(
     result: dict[str, Any], staging: Path, output: Path, receipt_output: Path
 ) -> bool:
@@ -197,10 +213,11 @@ def recover_local_cutover(
     roots = [path for path in (staging, output) if path.exists()]
     if len(roots) != 1:
         raise ValueError("prepared materialization has an ambiguous local cutover")
-    validate_local_tree(roots[0], result.get("objects", []))
+    rows = result.get("objects", [])
     if roots[0] == staging:
-        os.replace(staging, output)
-        fsync_directory(output.parent)
+        publish_local_tree(staging, output, rows)
+    else:
+        validate_local_tree(output, rows)
     result["status"] = "passed"
     result["passed_count"] = len(result.get("objects", []))
     result["recovered_prepared_cutover"] = True
@@ -447,8 +464,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
             if output.is_symlink() or not output.is_dir() or any(output.iterdir()):
                 raise ValueError("materialization output changed during staging")
             output.rmdir()
-        os.replace(staging, output)
-        fsync_directory(output.parent)
+        publish_local_tree(staging, output, result["objects"])
         result["status"] = "passed"
     except Exception as error:
         if staging.exists():
