@@ -468,6 +468,12 @@ class PublicIndexTests(unittest.TestCase):
                 ),
                 "reviewed-public dry-run receipt is not exact",
             ),
+            (
+                lambda receipt: receipt["private_publication_receipt"].update(
+                    {"legacy_destination": "s3://old-bucket/old-prefix/"}
+                ),
+                "reviewed-public private receipt is not exact",
+            ),
         )
         for mutate, message in cases:
             with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
@@ -511,6 +517,10 @@ class PublicIndexTests(unittest.TestCase):
             (
                 lambda row: row["checks"].update({"unexpected_late_check": True}),
                 "not exact",
+            ),
+            (
+                lambda row: row.update({"legacy_etag": "abc123"}),
+                "destination object is incomplete",
             ),
         )
 
@@ -571,6 +581,12 @@ class PublicIndexTests(unittest.TestCase):
                     {"version_id": "null"}
                 ),
                 "source object is not exact",
+            ),
+            (
+                lambda receipt: receipt["source_objects"][0].update(
+                    {"legacy_checksum": "multipart-etag"}
+                ),
+                "source object is incomplete",
             ),
             (
                 lambda receipt: receipt["destination_objects"][0].update(

@@ -100,6 +100,35 @@ REVIEWED_PUBLIC_DRY_RUN_RECEIPT_KEYS = {
     "method_id",
     "status",
 }
+REVIEWED_PUBLIC_PRIVATE_RECEIPT_KEYS = {
+    "path",
+    "sha256",
+    "destination_prefix",
+}
+REVIEWED_PUBLIC_SOURCE_OBJECT_KEYS = {
+    "relative_path",
+    "bucket",
+    "key",
+    "version_id",
+    "bytes",
+    "sha256",
+    "checksum_sha256",
+    "status",
+    "checks",
+}
+REVIEWED_PUBLIC_DESTINATION_OBJECT_KEYS = {
+    "relative_path",
+    "bucket",
+    "key",
+    "uri",
+    "version_id",
+    "bytes",
+    "sha256",
+    "checksum_sha256",
+    "server_side_encryption",
+    "status",
+    "checks",
+}
 
 
 ReviewedPublicObject = dict[str, int | str]
@@ -319,6 +348,8 @@ def validate_reviewed_public_receipts(
             raise RuntimeError(
                 f"{method_id} reviewed-public dry-run receipt is not exact"
             )
+        if set(private_publication_receipt) != REVIEWED_PUBLIC_PRIVATE_RECEIPT_KEYS:
+            raise RuntimeError(f"{method_id} reviewed-public private receipt is not exact")
         if checks != REVIEWED_PUBLIC_APPLY_CHECKS:
             raise RuntimeError(f"{method_id} reviewed-public receipt failed required checks")
         if len(source_objects) != len(expected_files) or len(destination_objects) != len(expected_files):
@@ -349,7 +380,11 @@ def validate_reviewed_public_receipts(
         expected_keys = set(expected_key_by_relative.values())
         source_by_relative: dict[str, dict[str, int | str]] = {}
         for row in source_objects:
-            if not isinstance(row, dict) or row.get("status") != "passed":
+            if (
+                not isinstance(row, dict)
+                or set(row) != REVIEWED_PUBLIC_SOURCE_OBJECT_KEYS
+                or row.get("status") != "passed"
+            ):
                 raise RuntimeError(f"{method_id} reviewed-public source object is incomplete")
             relative = str(row.get("relative_path", ""))
             key = str(row.get("key", ""))
@@ -386,7 +421,11 @@ def validate_reviewed_public_receipts(
         observed_relative_paths = set()
         observed_keys = set()
         for row in destination_objects:
-            if not isinstance(row, dict) or row.get("status") != "passed":
+            if (
+                not isinstance(row, dict)
+                or set(row) != REVIEWED_PUBLIC_DESTINATION_OBJECT_KEYS
+                or row.get("status") != "passed"
+            ):
                 raise RuntimeError(f"{method_id} reviewed-public destination object is incomplete")
             relative = str(row.get("relative_path", ""))
             key = str(row.get("key", ""))

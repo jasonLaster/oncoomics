@@ -348,14 +348,15 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local AI model catalog</li>
+          <li class="pill">Latest milestone = local public index</li>
+          <li class="pill">Reviewed-public rows = exact</li>
           <li class="pill">AI model-catalog receipts = exact</li>
           <li class="pill">Input contract receipts = exact</li>
           <li class="pill">Phase 3 validation receipts = exact</li>
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 6c9010b</li>
+          <li class="pill">Prior dashboard = ca6bb3d</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -741,6 +742,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact reviewed-public index rows</strong>
+              <span>The public results index now rejects stale private-publication receipt summaries, source object rows, and destination object rows before reviewed-public receipts can feed the public index.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact private report receipts</strong>
               <span>The reviewed-public publisher now requires exact private report apply envelopes, per-object envelopes, and dry-run summaries before private receipts can feed public publication.</span>
             </li>
@@ -791,9 +796,20 @@
           <h2>Changelog</h2>
           <ol class="changelog">
             <li class="item">
-              <time datetime="2026-07-19T01:38:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T01:42:00-07:00">Jul 19 · local</time>
               <span>
-                <strong>Local patch · Require exact AI model-catalog receipts:</strong>
+                <strong>Local patch · Require exact reviewed-public index rows:</strong>
+                public index validation now enforces exact embedded private
+                receipt summaries, source object rows, and destination object
+                rows before reviewed-public receipts can publish
+                <code>objects.json</code>. No S3, Batch, route, GPU, quota, or
+                replacement compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T01:36:31-07:00">Jul 19 · 1:36 AM</time>
+              <span>
+                <strong>ca6bb3d Require exact AI model catalog receipts:</strong>
                 model-catalog receipts now define exact top-level and
                 per-model row keys, and both AI review bundle construction and
                 isolated reviewer validation reject stale catalog envelopes
