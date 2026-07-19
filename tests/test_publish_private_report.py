@@ -477,6 +477,53 @@ class PublishPrivateReportTests(unittest.TestCase):
                     dry_run_receipt=dry_run_receipt,
                 )
 
+    def test_private_destination_object_checks_must_be_exact(self) -> None:
+        cases = (
+            {"version_id": True},
+            {
+                **MODULE.PRIVATE_RECEIPT_OBJECT_CHECKS,
+                "unexpected_late_check": True,
+            },
+        )
+
+        for checks in cases:
+            with self.subTest(checks=checks):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "private destination verification failed",
+                ):
+                    MODULE.require_private_object_checks_exact(
+                        checks,
+                        "report.md",
+                    )
+
+    def test_apply_rejects_outdated_destination_object_check_set(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws()
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "PRIVATE_RECEIPT_OBJECT_CHECKS",
+                    {
+                        **MODULE.PRIVATE_RECEIPT_OBJECT_CHECKS,
+                        "unexpected_late_check": True,
+                    },
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private destination verification failed",
+                ),
+            ):
+                self.execute(
+                    fixture,
+                    fake,
+                    apply=True,
+                    dry_run_receipt=dry_run_receipt,
+                )
+
     def test_apply_requires_matching_dry_run_receipt_before_aws(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))

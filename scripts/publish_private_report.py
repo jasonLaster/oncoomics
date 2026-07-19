@@ -17,6 +17,7 @@ from publish_reviewed_public_report import (
     METHOD_CONTRACTS,
     PRIVATE_BUCKET,
     PRIVATE_KMS_KEY_ARN,
+    PRIVATE_RECEIPT_OBJECT_CHECKS,
     REGION,
     RUN_ID,
     SUBJECT_ALIAS,
@@ -37,6 +38,16 @@ from publish_reviewed_public_report import (
 )
 
 CLASSIFICATION = "private-reviewed-hrd-report"
+
+
+def require_private_object_checks_exact(
+    checks: dict[str, bool],
+    relative_path: str,
+) -> None:
+    if checks != PRIVATE_RECEIPT_OBJECT_CHECKS:
+        raise ValueError(
+            f"private destination verification failed for {relative_path}: {checks}"
+        )
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -164,8 +175,7 @@ def upload_private(
         "kms": exact.get("SSEKMSKeyId") == current.get("SSEKMSKeyId") == PRIVATE_KMS_KEY_ARN,
         "metadata_sha256": exact.get("Metadata") == current.get("Metadata") == {"classification": CLASSIFICATION, "sha256": row["sha256"]},
     }
-    if not all(checks.values()):
-        raise ValueError(f"private destination verification failed for {row['relative_path']}: {checks}")
+    require_private_object_checks_exact(checks, str(row["relative_path"]))
     return {
         "relative_path": row["relative_path"],
         "bucket": bucket,
