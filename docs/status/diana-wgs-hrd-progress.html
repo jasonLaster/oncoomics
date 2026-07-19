@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact execution-provenance JSON</li>
+          <li class="pill">Latest milestone = local exact Phase 3 real-file JSON</li>
+          <li class="pill">Phase 3 real-file JSON = exact</li>
           <li class="pill">Execution provenance JSON = exact</li>
           <li class="pill">Terminal capture JSON = exact</li>
           <li class="pill">Staged/materializer JSON = exact</li>
@@ -731,6 +732,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Phase 3 real-file JSON</strong>
+              <span>Phase 3 fast-rerun readers now reject duplicate JSON object names in real-file inputs and scratch-readiness proofs before fast-rerun smoke or execute preflights can pass.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact GPU smoke parameter strings</strong>
               <span>Phase 3 fast GPU smoke parameter validation now preserves required runtime, logging, storage, container, mirror, and cache strings exactly instead of trimming whitespace before smoke or execute preflights can consume launch parameters.</span>
@@ -1925,6 +1930,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T03:25:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact Phase 3 real-file JSON:</strong>
+                Phase 3 fast-rerun readers now reject duplicate JSON object names
+                in real-file inputs and scratch-readiness proofs before smoke or
+                execute preflights can pass.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T03:20:00-07:00">Jul 20 · local</time>
               <span>

@@ -318,6 +318,26 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             with self.assertRaisesRegex(verify.Phase3FastExecuteError, "exactly 8"):
                 verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
 
+    def test_rejects_duplicate_p5en_scratch_evidence(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_smoke_result(root)
+            (root / "scratch-readiness.json").write_text(
+                (
+                    '{"schema": "stale",'
+                    ' "schema": "diana_p5en_nvme_scratch.v1",'
+                    ' "mountPoint": "/scratch",'
+                    ' "mountedSource": "/dev/md0",'
+                    ' "fileSystem": "xfs",'
+                    ' "instanceStoreDeviceCount": 8,'
+                    ' "probeStatus": "passed"}\n'
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(verify.Phase3FastExecuteError, "duplicate JSON object name"):
+                verify.validate_gpu_smoke_result(passed_smoke_result(), csv_root=root, expected_params=expected_gpu_params())
+
     def test_rejects_smoke_result_without_filter_mutect_runtime_evidence(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

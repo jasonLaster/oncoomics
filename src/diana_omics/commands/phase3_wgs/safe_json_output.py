@@ -1,13 +1,25 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
-
-from ...utils import read_json
 
 
 def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
+
+
+class DuplicateJsonObjectName(ValueError):
+    """Raised when a JSON object repeats a name."""
+
+
+def reject_duplicate_json_object_names(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise DuplicateJsonObjectName(key)
+        result[key] = value
+    return result
 
 
 def require_no_symlinked_ancestors(
@@ -34,4 +46,10 @@ def read_real_json(path: Path, label: str, error_type: type[Exception]) -> Any:
     if path.is_symlink() or not path.is_file():
         raise error_type(f"{label} must be a real JSON file: {path}")
     require_no_symlinked_ancestors(path, label, error_type)
-    return read_json(path)
+    try:
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonObjectName as error:
+        raise error_type(f"duplicate JSON object name in {label}: {error}") from error

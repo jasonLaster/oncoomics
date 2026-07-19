@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import re
 from pathlib import Path
@@ -141,11 +140,7 @@ def _parse_nvidia_smi_csv(path: Path) -> list[dict[str, str]]:
 
 
 def _parse_scratch_readiness(path: Path) -> dict[str, Any]:
-    _require_existing_file(path, "P5en scratch readiness JSON")
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
-        raise Phase3FastExecuteError("P5en scratch readiness JSON must be valid JSON") from error
+    payload = read_real_json(path, "P5en scratch readiness JSON", Phase3FastExecuteError)
     if not isinstance(payload, dict):
         raise Phase3FastExecuteError("P5en scratch readiness JSON must be an object")
     if payload.get("schema") != REQUIRED_SCRATCH_SCHEMA:

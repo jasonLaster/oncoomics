@@ -121,6 +121,14 @@ class Phase3FastSafeJsonOutputsTests(unittest.TestCase):
             with self.assertRaisesRegex(ManifestError, "parent may not be a symlink"):
                 safe_json_output.read_real_json(input_path, "source", ManifestError)
 
+    def test_read_real_json_rejects_duplicate_object_names(self) -> None:
+        with TemporaryDirectory() as tmp:
+            input_path = Path(tmp) / "input.json"
+            input_path.write_text('{"status": "stale", "status": "ready"}\n', encoding="utf-8")
+
+            with self.assertRaisesRegex(ManifestError, "duplicate JSON object name in source: status"):
+                safe_json_output.read_real_json(input_path, "source", ManifestError)
+
     def test_read_real_json_reads_real_json_file(self) -> None:
         with TemporaryDirectory() as tmp:
             input_path = Path(tmp) / "input.json"
