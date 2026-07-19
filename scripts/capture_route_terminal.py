@@ -125,6 +125,62 @@ EXPECTED_HISTORY_AUDIT_CHECKS = {
     "checksum_sha256_exact": True,
     "exact_kms": True,
 }
+EXPECTED_BATCH_IDENTITY_CHECKS = {
+    "job_id_exact": True,
+    "succeeded": True,
+    "terminal_timestamps": True,
+    "exact_job_definition": True,
+    "exact_queue": True,
+    "one_retry_attempt": True,
+    "one_terminal_attempt": True,
+    "job_exit_zero": True,
+    "attempt_exit_zero": True,
+    "job_environment_exact": True,
+    "submission_environment_exact": True,
+    "log_stream_exact": True,
+    "definition_identity_exact": True,
+    "definition_container_exact": True,
+    "definition_log_exact": True,
+    "queue_live_exact": True,
+    "x86_compute_environment_live_exact": True,
+}
+EXPECTED_LOGGED_PUBLICATION_ANCHOR_CHECKS = {
+    "anchor_keys_exact": True,
+    "anchor_schema_status": True,
+    "anchor_checks_exact": True,
+    "receipt_sha256_well_formed": True,
+    "receipt_bytes_positive": True,
+    "receipt_version_nonempty": True,
+    "receipt_uri_content_addressed": True,
+    "route_output_uri_exact": True,
+}
+EXPECTED_OUTPUT_INVENTORY_CHECKS = {
+    "output_rows_unique_and_exact_prefix": True,
+    "history_audit_binds_every_output": True,
+    "successful_report_products_present": True,
+}
+EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS = {
+    "receipt_keys_exact": True,
+    "logged_local_sha256_exact": True,
+    "logged_local_bytes_exact": True,
+    "get_version_exact": True,
+    "head_version_exact": True,
+    "get_bytes_exact": True,
+    "head_bytes_exact": True,
+    "get_sha256_checksum_exact": True,
+    "head_sha256_checksum_exact": True,
+    "get_kms_exact": True,
+    "head_kms_exact": True,
+    "get_metadata_sha256_exact": True,
+    "head_metadata_sha256_exact": True,
+    "single_version_no_delete_history": True,
+    "receipt_schema_status": True,
+    "receipt_route_submission_exact": True,
+    "receipt_contract_exact": True,
+    "receipt_output_exact": True,
+    "receipt_checks_exact": True,
+    "output_inventory_exact": True,
+}
 
 
 def now() -> str:
@@ -208,6 +264,26 @@ def require_one(payload: dict[str, Any], key: str) -> dict[str, Any]:
     if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
         raise ValueError(f"expected exactly one {key} record")
     return rows[0]
+
+
+def check_map_mismatches(value: dict[str, Any], expected: dict[str, bool]) -> list[str]:
+    missing = sorted(set(expected) - set(value))
+    unexpected = sorted(set(value) - set(expected))
+    failed = sorted(key for key in set(expected) & set(value) if value[key] is not expected[key])
+    errors: list[str] = []
+    if missing:
+        errors.append("missing " + ",".join(missing))
+    if unexpected:
+        errors.append("unexpected " + ",".join(unexpected))
+    if failed:
+        errors.append("failed " + ",".join(failed))
+    return errors
+
+
+def require_exact_checks(checks: dict[str, bool], expected: dict[str, bool], label: str) -> None:
+    errors = check_map_mismatches(checks, expected)
+    if errors:
+        raise ValueError(f"{label} check map is not exact: {'; '.join(errors)}")
 
 
 def s3_location(uri: str) -> tuple[str, str]:
@@ -543,8 +619,14 @@ def validate_job(
             and resources.get("ec2Configuration") == [{"imageType": "ECS_AL2023"}]
         ),
     }
-    if not all(checks.values()):
-        raise ValueError(f"terminal route Batch identity failed: {checks}")
+    try:
+        require_exact_checks(
+            checks,
+            EXPECTED_BATCH_IDENTITY_CHECKS,
+            "terminal route Batch identity",
+        )
+    except ValueError as error:
+        raise ValueError(f"terminal route Batch identity failed: {error}") from error
     return {
         "route": args.route,
         "job_id": args.job_id,
@@ -604,8 +686,14 @@ def validate_logged_anchor(
         "receipt_uri_content_addressed": (bucket == expected_bucket and key == expected_key),
         "route_output_uri_exact": (anchor.get("route_output_uri") == submission_environment["HRD_CROSSCHECK_ROUTE_OUTPUT_URI"]),
     }
-    if not all(checks.values()):
-        raise ValueError(f"logged route publication anchor failed: {checks}")
+    try:
+        require_exact_checks(
+            checks,
+            EXPECTED_LOGGED_PUBLICATION_ANCHOR_CHECKS,
+            "logged route publication anchor",
+        )
+    except ValueError as error:
+        raise ValueError(f"logged route publication anchor failed: {error}") from error
     return {
         "bucket": bucket,
         "key": key,
@@ -726,8 +814,14 @@ def validate_output_rows(
             "report_upload_receipt.json",
         }.issubset(relative_paths),
     }
-    if not all(checks.values()):
-        raise ValueError(f"route receipt output inventory failed: {checks}")
+    try:
+        require_exact_checks(
+            checks,
+            EXPECTED_OUTPUT_INVENTORY_CHECKS,
+            "route receipt output inventory",
+        )
+    except ValueError as error:
+        raise ValueError(f"route receipt output inventory failed: {error}") from error
     return checks
 
 
@@ -818,10 +912,16 @@ def validate_exact_receipt(
             and receipt.get("publication_strategy") == "one_shot_create_only_exact_version_history"
         ),
         "receipt_checks_exact": receipt_checks == EXPECTED_RECEIPT_CHECKS,
-        "output_inventory_exact": all(output_checks.values()),
+        "output_inventory_exact": output_checks == EXPECTED_OUTPUT_INVENTORY_CHECKS,
     }
-    if not all(checks.values()):
-        raise ValueError(f"exact route receipt verification failed: {checks}")
+    try:
+        require_exact_checks(
+            checks,
+            EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS,
+            "exact route receipt verification",
+        )
+    except ValueError as error:
+        raise ValueError(f"exact route receipt verification failed: {error}") from error
     return receipt, checks
 
 

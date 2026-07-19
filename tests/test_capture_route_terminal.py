@@ -272,6 +272,25 @@ class CaptureRouteTerminalTests(unittest.TestCase):
             region=MODULE.REGION,
         )
 
+    def receipt_location(self, fixture: dict) -> dict[str, object]:
+        return {
+            "key": fixture["receipt_key"],
+            "version_id": fixture["receipt_version"],
+            "sha256": fixture["receipt_sha"],
+            "bytes": len(fixture["receipt_bytes"]),
+            "kms_key_arn": fixture["kms"],
+        }
+
+    def receipt_history_rows(self, fixture: dict) -> list[dict[str, object]]:
+        return [
+            {
+                "history_kind": "version",
+                "Key": fixture["receipt_key"],
+                "VersionId": fixture["receipt_version"],
+                "IsLatest": True,
+            }
+        ]
+
     def events(self, fixture: dict, terminal=None, trailing=None):
         payload = fixture["terminal"] if terminal is None else terminal
         lines = ["route startup"] + json.dumps(payload, indent=2, sort_keys=True).splitlines()
@@ -779,6 +798,56 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                         aws=self.aws_side_effect(fixture, job=job),
                     )
 
+    def test_batch_identity_check_map_must_be_exact(self):
+        fixture = self.fixture()
+        cases = (
+            (
+                {
+                    **MODULE.EXPECTED_BATCH_IDENTITY_CHECKS,
+                    "future_route_batch_identity_check": True,
+                },
+                "missing future_route_batch_identity_check",
+            ),
+            (
+                {
+                    name: value
+                    for name, value in MODULE.EXPECTED_BATCH_IDENTITY_CHECKS.items()
+                    if name != "definition_log_exact"
+                },
+                "unexpected definition_log_exact",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(MODULE, "EXPECTED_BATCH_IDENTITY_CHECKS", expected),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.validate_job(
+                    fixture["job"],
+                    fixture["definition"],
+                    fixture["queue"],
+                    fixture["compute"],
+                    self.args(Path("unused"), fixture),
+                    fixture["submission_environment"],
+                )
+
+    def test_failed_batch_identity_check_reports_exact_key(self):
+        fixture = self.fixture()
+        job = copy.deepcopy(fixture["job"])
+        job["stoppedAt"] = 99
+
+        with self.assertRaisesRegex(ValueError, "failed terminal_timestamps"):
+            MODULE.validate_job(
+                job,
+                fixture["definition"],
+                fixture["queue"],
+                fixture["compute"],
+                self.args(Path("unused"), fixture),
+                fixture["submission_environment"],
+            )
+
     def test_terminal_parser_rejects_duplicate_anchor_and_trailing_output(self):
         fixture = self.fixture()
         valid = self.events(fixture)
@@ -832,6 +901,54 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                             events=self.events(fixture, terminal),
                         ),
                     )
+
+    def test_logged_anchor_outer_check_map_must_be_exact(self):
+        fixture = self.fixture()
+        cases = (
+            (
+                {
+                    **MODULE.EXPECTED_LOGGED_PUBLICATION_ANCHOR_CHECKS,
+                    "future_logged_anchor_check": True,
+                },
+                "missing future_logged_anchor_check",
+            ),
+            (
+                {
+                    name: value
+                    for name, value in MODULE.EXPECTED_LOGGED_PUBLICATION_ANCHOR_CHECKS.items()
+                    if name != "receipt_uri_content_addressed"
+                },
+                "unexpected receipt_uri_content_addressed",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(
+                    MODULE,
+                    "EXPECTED_LOGGED_PUBLICATION_ANCHOR_CHECKS",
+                    expected,
+                ),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.validate_logged_anchor(
+                    fixture["terminal"],
+                    self.args(Path("unused"), fixture),
+                    fixture["submission_environment"],
+                )
+
+    def test_failed_logged_anchor_outer_check_reports_exact_key(self):
+        fixture = self.fixture()
+        terminal = copy.deepcopy(fixture["terminal"])
+        terminal["publication_anchor"]["route_output_uri"] += "forged/"
+
+        with self.assertRaisesRegex(ValueError, "failed route_output_uri_exact"):
+            MODULE.validate_logged_anchor(
+                terminal,
+                self.args(Path("unused"), fixture),
+                fixture["submission_environment"],
+            )
 
     def test_receipt_rejects_contract_route_submission_and_inventory_tampering(self):
         fixture = self.fixture()
@@ -997,6 +1114,111 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                     args,
                     fixture["submission_environment"],
                 )
+
+    def test_output_inventory_check_map_must_be_exact(self):
+        fixture = self.fixture()
+        cases = (
+            (
+                {
+                    **MODULE.EXPECTED_OUTPUT_INVENTORY_CHECKS,
+                    "future_inventory_check": True,
+                },
+                "missing future_inventory_check",
+            ),
+            (
+                {
+                    name: value
+                    for name, value in MODULE.EXPECTED_OUTPUT_INVENTORY_CHECKS.items()
+                    if name != "history_audit_binds_every_output"
+                },
+                "unexpected history_audit_binds_every_output",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(MODULE, "EXPECTED_OUTPUT_INVENTORY_CHECKS", expected),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.validate_output_rows(
+                    fixture["receipt"],
+                    fixture["route_output"],
+                    fixture["kms"],
+                )
+
+    def test_failed_output_inventory_check_reports_exact_key(self):
+        fixture = self.fixture()
+        receipt = copy.deepcopy(fixture["receipt"])
+        receipt["objects"] = receipt["objects"][:-1]
+        receipt["history_audit"] = receipt["history_audit"][:-1]
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "failed successful_report_products_present",
+        ):
+            MODULE.validate_output_rows(
+                receipt,
+                fixture["route_output"],
+                fixture["kms"],
+            )
+
+    def test_exact_receipt_download_check_map_must_be_exact(self):
+        fixture = self.fixture()
+        args = self.args(Path("unused"), fixture)
+        cases = (
+            (
+                {
+                    **MODULE.EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS,
+                    "future_exact_receipt_check": True,
+                },
+                "missing future_exact_receipt_check",
+            ),
+            (
+                {
+                    name: value
+                    for name, value in MODULE.EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS.items()
+                    if name != "head_metadata_sha256_exact"
+                },
+                "unexpected head_metadata_sha256_exact",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(
+                    MODULE,
+                    "EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS",
+                    expected,
+                ),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.validate_exact_receipt(
+                    fixture["receipt_bytes"],
+                    fixture["metadata"],
+                    fixture["metadata"],
+                    self.receipt_history_rows(fixture),
+                    self.receipt_location(fixture),
+                    args,
+                    fixture["submission_environment"],
+                )
+
+    def test_failed_exact_receipt_download_check_reports_exact_key(self):
+        fixture = self.fixture()
+        args = self.args(Path("unused"), fixture)
+        get_response = {**fixture["metadata"], "VersionId": "wrong-version"}
+
+        with self.assertRaisesRegex(ValueError, "failed get_version_exact"):
+            MODULE.validate_exact_receipt(
+                fixture["receipt_bytes"],
+                get_response,
+                fixture["metadata"],
+                self.receipt_history_rows(fixture),
+                self.receipt_location(fixture),
+                args,
+                fixture["submission_environment"],
+            )
 
     def test_rejects_download_sha_checksum_kms_or_receipt_history_tampering(self):
         fixture = self.fixture()
