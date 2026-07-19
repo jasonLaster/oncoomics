@@ -1017,6 +1017,30 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 lambda payload: payload.__setitem__("legacy_note", "accepted"),
                 "method spec envelope is not exact",
             ),
+            (
+                "method spec source object count bool",
+                "method_spec.json",
+                lambda payload: payload.__setitem__("source_object_count", True),
+                "source_object_count is not an exact positive integer",
+            ),
+            (
+                "method spec source object count float",
+                "method_spec.json",
+                lambda payload: payload.__setitem__("source_object_count", 3.0),
+                "source_object_count is not an exact positive integer",
+            ),
+            (
+                "method spec source object count string",
+                "method_spec.json",
+                lambda payload: payload.__setitem__("source_object_count", "3"),
+                "source_object_count is not an exact positive integer",
+            ),
+            (
+                "method spec source object count zero",
+                "method_spec.json",
+                lambda payload: payload.__setitem__("source_object_count", 0),
+                "source_object_count is not an exact positive integer",
+            ),
         )
 
         for label, relative, mutate, message in cases:

@@ -163,6 +163,12 @@ def require_exact_check_map(
         raise ValueError(f"{label} check map is not exact")
 
 
+def require_positive_exact_int(value: Any, label: str) -> int:
+    if type(value) is not int or value < 1:
+        raise ValueError(f"{label} is not an exact positive integer")
+    return value
+
+
 def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
@@ -483,6 +489,10 @@ def require_staged_report_manifest(packet_dir: Path) -> None:
         or method_spec.get("authorized_hrd_state") != "no_call"
         or method_spec.get("classification_authorized") is not False
         or method_spec.get("classification_qc_status") != "not_applicable"
+        or not require_positive_exact_int(
+            method_spec.get("source_object_count"),
+            "staged cross-check method spec source_object_count",
+        )
         or method_spec.get("source_review_summary") != manifest.get("review_summary")
     ):
         raise ValueError("staged cross-check method spec differs from the manifest")
