@@ -622,9 +622,28 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             values + ["extra=value"],
             values + [values[0]],
             [value if not value.startswith("source_vcf_sha256=") else "source_vcf_sha256=BAD" for value in values],
+            [value if not value.startswith("source_vcf_version_id=") else "source_vcf_version_id=null" for value in values],
         ):
             with self.subTest(malformed=malformed), self.assertRaises(ValueError):
                 MODULE.parse_parameters(malformed)
+
+    def test_valid_version_id_rejects_coerced_empty_null_and_whitespace_values(
+        self,
+    ) -> None:
+        cases = (
+            (True, False),
+            (1, False),
+            (1.0, False),
+            ("", False),
+            ("null", False),
+            ("None", False),
+            ("has space", False),
+            ("exact-version", True),
+        )
+
+        for value, accepted in cases:
+            with self.subTest(value=value):
+                self.assertIs(MODULE.valid_version_id(value), accepted)
 
     def test_rejects_nonterminal_or_wrong_batch_identity(self) -> None:
         mutations = {
@@ -1053,6 +1072,26 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 ):
                     self.run_capture_with_receipt(
                         Path(temporary) / label,
+                        receipt,
+                    )
+
+    def test_rejects_nullish_materializer_output_version_ids(self) -> None:
+        cases = ("null", "None")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            for version_id in cases:
+                receipt = json.loads(self.receipt_bytes)
+                for output in receipt["outputs"].values():
+                    output["version_id"] = version_id
+                for row in receipt["destination_inventory"]:
+                    row["version_id"] = version_id
+
+                with self.subTest(version_id=version_id), self.assertRaisesRegex(
+                    ValueError,
+                    "failed receipt_outputs_exact",
+                ):
+                    self.run_capture_with_receipt(
+                        Path(temporary) / version_id.lower(),
                         receipt,
                     )
 

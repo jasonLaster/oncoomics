@@ -250,6 +250,10 @@ def is_sha256(value: Any) -> bool:
     return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
 
 
+def valid_version_id(value: Any) -> bool:
+    return is_nonempty_text(value) and value.lower() not in {"none", "null"}
+
+
 def is_positive_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
@@ -372,7 +376,7 @@ def parse_parameters(values: Iterable[str]) -> dict[str, str]:
         if name in SHA_PARAMETER_NAMES:
             if not re.fullmatch(r"[0-9a-f]{64}", value):
                 raise ValueError(f"expected parameter {name} is not lowercase SHA-256")
-        elif not re.fullmatch(r"\S+", value):
+        elif not valid_version_id(value):
             raise ValueError(f"expected parameter {name} is malformed")
     return {name: result[name] for name in PARAMETER_NAMES}
 
@@ -651,7 +655,7 @@ def validate_logged_anchor(
         "anchor_checks_exact": anchor_checks == EXPECTED_RECEIPT_ANCHOR_CHECKS,
         "receipt_sha256_well_formed": is_sha256(receipt_sha),
         "receipt_bytes_positive": (isinstance(receipt_bytes, int) and not isinstance(receipt_bytes, bool) and receipt_bytes > 0),
-        "receipt_version_nonempty": is_nonempty_text(receipt_version) and receipt_version.lower() not in {"none", "null"},
+        "receipt_version_nonempty": valid_version_id(receipt_version),
         "receipt_uri_content_addressed": (bucket == expected_bucket and key == expected_key),
         "upload_binding": (
             receipt_upload.get("uri") == receipt_uri
@@ -793,7 +797,7 @@ def outputs_are_exact(
         expected_uri = expected_prefix + filename
         if (
             output.get("uri") != expected_uri
-            or not is_nonempty_text(output.get("version_id"))
+            or not valid_version_id(output.get("version_id"))
             or not is_positive_int(output.get("bytes"))
             or not is_nonempty_text(output.get("etag"))
             or not is_sha256(output.get("sha256"))
