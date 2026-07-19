@@ -2285,6 +2285,21 @@ def mutate_sv_json_count(
     )
 
 
+def mutate_early_look_json_count(
+    fixture: SyntheticFixture,
+    section: str,
+    field: str,
+    value: Any,
+) -> None:
+    def mutate_early(early: dict[str, Any]) -> None:
+        early[section][field] = value
+
+    StageDeterministicWgsReportInstallTests._mutate_json(
+        fixture.early / "early_look_summary.json",
+        mutate_early,
+    )
+
+
 @unittest.skipUnless(shutil.which("bcftools"), "bcftools is required for the indexed-VCF E2E fixture")
 class StageDeterministicWgsReportTests(unittest.TestCase):
     def test_packet_file_install_is_create_only_and_fsynced(self) -> None:
@@ -3010,6 +3025,76 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                     'sv_json_by_role[role]["interchromosomal_pairs"',
                     "sv_json_by_role[role]['large_insert_pairs'",
                     'sv_json_by_role[role]["large_insert_pairs"',
+                )
+            )
+        ]
+
+        self.assertEqual(raw_coercions, [])
+
+    def test_early_baseline_counts_reject_coercible_json_counts(self) -> None:
+        mutations = (
+            ("HRR pass records string", "core_hrr_variants", "pass_records", "1"),
+            (
+                "BRCA pass records bool",
+                "core_hrr_variants",
+                "brca1_brca2_pass_records",
+                False,
+            ),
+            ("coverage bins float", "coverage_cnv", "bin_count", 1.0),
+            ("coverage gain bins string", "coverage_cnv", "relative_gain_bins", "0"),
+            ("coverage loss bins bool", "coverage_cnv", "relative_loss_bins", False),
+        )
+        for name, section, field, value in mutations:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                mutate_early_look_json_count(fixture, section, field, value)
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "early_baseline_boundary",
+                    result.stdout + result.stderr,
+                )
+                self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_early_baseline_guards_avoid_raw_int_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "early.get('core_hrr_variants'",
+                    'early.get("core_hrr_variants"',
+                    "early_variants.get('pass_records'",
+                    'early_variants.get("pass_records"',
+                    "early_variants.get('brca1_brca2_pass_records'",
+                    'early_variants.get("brca1_brca2_pass_records"',
+                    "early_cnv.get('bin_count'",
+                    'early_cnv.get("bin_count"',
+                    "early_cnv.get('relative_gain_bins'",
+                    'early_cnv.get("relative_gain_bins"',
+                    "early_cnv.get('relative_loss_bins'",
+                    'early_cnv.get("relative_loss_bins"',
+                    "early_cnv['bin_count'",
+                    'early_cnv["bin_count"',
+                    "early_cnv['relative_gain_bins'",
+                    'early_cnv["relative_gain_bins"',
+                    "early_cnv['relative_loss_bins'",
+                    'early_cnv["relative_loss_bins"',
                 )
             )
         ]
