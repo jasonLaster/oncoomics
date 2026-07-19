@@ -1373,6 +1373,74 @@ class RosalindHrdPacketTest(unittest.TestCase):
                         "phase3-fast",
                     )
 
+            self.assertFalse(
+                (
+                    output_root
+                    / "results/rosalind_hrd/diana_wgs/phase3-fast/"
+                    "report_manifest.json"
+                ).exists()
+            )
+
+    def test_diana_wgs_phase3_fast_packet_rejects_non_exact_sequenza_run_alias(
+        self,
+    ):
+        cases = (
+            (
+                "boolean",
+                True,
+                "Phase 3 fast Sequenza run_alias must be a non-empty unpadded single-line string",
+            ),
+            (
+                "padded",
+                " subject01 ",
+                "Phase 3 fast Sequenza run_alias must be a non-empty unpadded single-line string",
+            ),
+            (
+                "multiline",
+                "subject\n01",
+                "Phase 3 fast Sequenza run_alias must be a non-empty unpadded single-line string",
+            ),
+        )
+        for label, run_alias, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                deterministic_root, final_root = (
+                    write_phase3_fast_deterministic_report(
+                        output_root / "phase3_fast"
+                    )
+                )
+                mutate_phase3_fast_crosscheck_plans(
+                    deterministic_root,
+                    lambda plans: plans["routes"]["sequenza_scarhrd"][
+                        "alias_input_contract"
+                    ].__setitem__("run_alias", run_alias),
+                )
+
+                with (
+                    patch.object(
+                        packet,
+                        "path_from_root",
+                        lambda relative: output_root / relative,
+                    ),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(
+                                deterministic_root
+                            ),
+                            "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": (
+                                PHASE3_FAST_FORBIDDEN_TOKENS_JSON
+                            ),
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(
+                        packet.PACKET_SPECS["diana_wgs"],
+                        "phase3-fast",
+                    )
+
                 self.assertFalse(
                     (
                         output_root

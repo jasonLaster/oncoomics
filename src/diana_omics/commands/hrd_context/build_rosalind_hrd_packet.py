@@ -1470,7 +1470,10 @@ def compact_sequenza_alias_contract(route_plan: Mapping[str, Any]) -> dict[str, 
         "normal_bai": "normal.bam.bai",
         "staged_validation": "staged_input_validation.json",
     }
-    run_alias = str(alias_contract.get("run_alias", "")).strip()
+    run_alias = require_exact_nonempty_string(
+        alias_contract.get("run_alias"),
+        "Phase 3 fast Sequenza run_alias",
+    )
     planned_aliases = alias_contract.get("planned_aliases")
     planned_alias_outputs = alias_contract.get("planned_alias_outputs")
     attestations = alias_contract.get("attestations")
@@ -2389,8 +2392,8 @@ def diana_wgs_deterministic_process_lines(deterministic_binding: Mapping[str, An
             f"Sequenza/scarHRD alias contract: `{sequenza_alias_contract['status']}` with `sequenza.female={json.dumps(sequenza_alias_contract['female'])}`.",
             (
                 "Sequenza/scarHRD attestations: "
-                f"final BAM contract published `{json.dumps(sequenza_attestations.get('final_bam_contract_published'))}`; "
-                f"validated runtime `{json.dumps(sequenza_attestations.get('validated_sequenza_scarhrd_runtime'))}`."
+                f"final BAM contract published `{json.dumps(sequenza_attestations['final_bam_contract_published'])}`; "
+                f"validated runtime `{json.dumps(sequenza_attestations['validated_sequenza_scarhrd_runtime'])}`."
             ),
             "",
         ]
