@@ -38,6 +38,61 @@ def write_staged_run(staging: Path) -> None:
             path.write_text("{}\n", encoding="utf-8")
 
 
+def rebased_stage_receipt(
+    output: Path,
+    *,
+    review_bundle_sha256: str = "a" * 64,
+    reviewer_a_prompt_sha256: str = "b" * 64,
+    reviewer_b_prompt_sha256: str = "c" * 64,
+) -> dict:
+    return {
+        "schema_version": 1,
+        "status": "passed",
+        "generated_at": "2026-07-19T00:00:00+00:00",
+        "bundle_dir": str(output / "bundle"),
+        "output_root": str(output / "reviewer-inputs"),
+        "reviewers": {
+            "A": {
+                "directory": str(output / "reviewer-inputs" / "reviewer-a-input"),
+                "exact_two_file_inventory": [
+                    "review_bundle.json",
+                    "reviewer-a.prompt.md",
+                ],
+                "files": {
+                    "review_bundle.json": {
+                        "mode_0600": True,
+                        "sha256": review_bundle_sha256,
+                    },
+                    "reviewer-a.prompt.md": {
+                        "mode_0600": True,
+                        "sha256": reviewer_a_prompt_sha256,
+                    },
+                },
+                "mode_0700": True,
+            },
+            "B": {
+                "directory": str(output / "reviewer-inputs" / "reviewer-b-input"),
+                "exact_two_file_inventory": [
+                    "review_bundle.json",
+                    "reviewer-b.prompt.md",
+                ],
+                "files": {
+                    "review_bundle.json": {
+                        "mode_0600": True,
+                        "sha256": review_bundle_sha256,
+                    },
+                    "reviewer-b.prompt.md": {
+                        "mode_0600": True,
+                        "sha256": reviewer_b_prompt_sha256,
+                    },
+                },
+                "mode_0700": True,
+            },
+        },
+        "checks": dict(PREPARE.STAGE_RECEIPT_CHECKS),
+    }
+
+
 def namespace(
     fixture: AiReviewBundleFixture,
     output_dir: Path,
@@ -342,6 +397,66 @@ class PrepareAiReviewRunTests(unittest.TestCase):
         ]
 
         self.assertEqual(raw_schema_version_comparisons, [])
+
+    def test_rejects_non_exact_bundle_manifest_hashes_before_stage_rebase(self) -> None:
+        cases = (
+            (
+                "numeric_review_bundle_hash",
+                lambda manifest, receipt: (
+                    manifest.__setitem__("review_bundle_sha256", int("1" * 64)),
+                    receipt["reviewers"]["A"]["files"]["review_bundle.json"].__setitem__(
+                        "sha256",
+                        "1" * 64,
+                    ),
+                    receipt["reviewers"]["B"]["files"]["review_bundle.json"].__setitem__(
+                        "sha256",
+                        "1" * 64,
+                    ),
+                ),
+                "review_bundle.json SHA-256",
+            ),
+            (
+                "numeric_reviewer_a_prompt_hash",
+                lambda manifest, receipt: (
+                    manifest["prompt_sha256"].__setitem__("A", int("1" * 64)),
+                    receipt["reviewers"]["A"]["files"][
+                        "reviewer-a.prompt.md"
+                    ].__setitem__(
+                        "sha256",
+                        "1" * 64,
+                    ),
+                ),
+                "reviewer-a.prompt.md SHA-256",
+            ),
+            (
+                "uppercase_reviewer_b_prompt_hash",
+                lambda manifest, receipt: manifest["prompt_sha256"].__setitem__(
+                    "B",
+                    "C" * 64,
+                ),
+                "reviewer-b.prompt.md SHA-256",
+            ),
+        )
+
+        for name, mutate, error in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / "ai-review"
+                bundle_manifest = {
+                    "review_bundle_sha256": "a" * 64,
+                    "prompt_sha256": {
+                        "A": "b" * 64,
+                        "B": "c" * 64,
+                    },
+                }
+                receipt = rebased_stage_receipt(output)
+                mutate(bundle_manifest, receipt)
+
+                with self.assertRaisesRegex(ValueError, error):
+                    PREPARE.require_rebased_stage_receipt(
+                        receipt,
+                        output,
+                        bundle_manifest,
+                    )
 
     def test_rejects_stage_receipt_with_stale_reviewer_file_hash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

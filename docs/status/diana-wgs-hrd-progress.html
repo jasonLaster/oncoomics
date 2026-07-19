@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact publication download hashes</li>
+          <li class="pill">Latest milestone = local exact AI-review prep hashes</li>
+          <li class="pill">AI-review prep hashes = exact</li>
           <li class="pill">Publication download hashes = exact</li>
           <li class="pill">Materializer registration hashes = exact</li>
           <li class="pill">Final contract hashes = exact</li>
@@ -1131,6 +1132,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI-review prep hashes</strong>
+              <span>The AI-review run preparer now rejects coerced SHA-256 values in bundle and reviewer prompt hashes before trusting the staged two-reviewer input receipt that feeds the later source-free model-review and synthesis steps.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI-review source hashes</strong>
               <span>The independent AI-review validator now rejects non-string and non-lowercase SHA-256 values for nested source-report, source-artifact, source-manifest, and reviewer prompt bindings before a reviewer output can be validated for synthesis.</span>
             </li>
@@ -1440,6 +1445,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:15:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI-review prep hashes:</strong>
+                the AI-review run preparer now rejects coerced SHA-256 values in
+                bundle and reviewer prompt hashes before trusting the staged
+                two-reviewer input receipt that feeds the later source-free
+                model-review and synthesis steps.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T14:00:00-07:00">Jul 19 · local</time>
               <span>

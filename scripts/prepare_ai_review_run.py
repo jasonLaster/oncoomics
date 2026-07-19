@@ -444,10 +444,9 @@ def require_exact_postcondition_checks(checks: dict[str, Any]) -> None:
 
 
 def require_sha256(value: Any, label: str) -> str:
-    digest = str(value).lower()
-    if SHA256_PATTERN.fullmatch(digest) is None:
+    if not isinstance(value, str) or SHA256_PATTERN.fullmatch(value) is None:
         raise ValueError(f"{label} is malformed")
-    return digest
+    return value
 
 
 def require_rebased_stage_receipt(
