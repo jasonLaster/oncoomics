@@ -170,19 +170,31 @@ def is_platform_root_alias(path: Path) -> bool:
 
 
 def read_json_object(path: Path, label: str) -> dict[str, Any]:
+    data, _ = read_json_object_with_sha256(path, label)
+    return data
+
+
+def read_json_object_with_sha256(
+    path: Path,
+    label: str,
+) -> tuple[dict[str, Any], str]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if sha256_path(path) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must contain a JSON object: {path}")
-    return value
+    return value, digest
 
 
 def require_no_symlinked_ancestors(path: Path, label: str) -> None:
@@ -226,7 +238,10 @@ def validate_parameters(value: Any) -> dict[str, str]:
 
 
 def validate_receipts(
-    request_path: Path, request: dict[str, Any], response: dict[str, Any]
+    request_path: Path,
+    request_sha256: str,
+    request: dict[str, Any],
+    response: dict[str, Any],
 ) -> tuple[str, dict[str, str]]:
     if (
         set(request) != REQUEST_DRY_RUN_RECEIPT_KEYS
@@ -254,7 +269,8 @@ def validate_receipts(
     )
     if set(request_summary) != REQUEST_RECEIPT_SUMMARY_KEYS:
         raise ValueError("response request receipt summary is not exact")
-    request_sha256 = sha256_path(request_path)
+    if request_summary.get("path") != str(request_path):
+        raise ValueError("response receipt is not bound to the request receipt path")
     if request_summary.get("sha256") != request_sha256:
         raise ValueError("response receipt is not bound to the request receipt bytes")
 
@@ -329,10 +345,18 @@ def render_command(
 
 
 def render_from_files(args: argparse.Namespace) -> str:
-    request = read_json_object(args.request_receipt, "request receipt")
+    request, request_sha256 = read_json_object_with_sha256(
+        args.request_receipt,
+        "request receipt",
+    )
     response = read_json_object(args.response_receipt, "response receipt")
     request_path = args.request_receipt.resolve()
-    job_id, parameters = validate_receipts(request_path, request, response)
+    job_id, parameters = validate_receipts(
+        request_path,
+        request_sha256,
+        request,
+        response,
+    )
     return render_command(
         capture_script=Path(__file__).resolve().parent
         / "capture_materializer_terminal.py",

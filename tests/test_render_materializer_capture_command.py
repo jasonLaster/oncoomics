@@ -220,6 +220,79 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not bound to the request"):
             MODULE.render_from_files(self.args())
 
+    def test_refuses_request_changed_after_json_read(self) -> None:
+        args = self.args()
+        real_read_bytes = Path.read_bytes
+        changed = False
+
+        def change_after_first_request_read(path: Path) -> bytes:
+            nonlocal changed
+            data = real_read_bytes(path)
+            if path == self.request_path and not changed:
+                request = copy.deepcopy(self.request)
+                request["submit_job_request"]["parameters"][
+                    "source_vcf_sha256"
+                ] = "d" * 64
+                path.write_text(
+                    json.dumps(request, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                changed = True
+            return data
+
+        with (
+            mock.patch.object(
+                Path,
+                "read_bytes",
+                autospec=True,
+                side_effect=change_after_first_request_read,
+            ),
+            self.assertRaisesRegex(ValueError, "request receipt changed during read"),
+        ):
+            MODULE.render_from_files(args)
+
+        self.assertTrue(changed)
+
+    def test_refuses_response_changed_after_json_read(self) -> None:
+        args = self.args()
+        real_read_bytes = Path.read_bytes
+        changed = False
+
+        def change_after_first_response_read(path: Path) -> bytes:
+            nonlocal changed
+            data = real_read_bytes(path)
+            if path == self.response_path and not changed:
+                response = copy.deepcopy(self.response)
+                response["response"]["jobId"] = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+                path.write_text(
+                    json.dumps(response, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                changed = True
+            return data
+
+        with (
+            mock.patch.object(
+                Path,
+                "read_bytes",
+                autospec=True,
+                side_effect=change_after_first_response_read,
+            ),
+            self.assertRaisesRegex(ValueError, "response receipt changed during read"),
+        ):
+            MODULE.render_from_files(args)
+
+        self.assertTrue(changed)
+
+    def test_refuses_response_bound_to_different_request_path(self) -> None:
+        self.response = self.bound_response(self.request)
+        self.response["request_receipt"]["path"] = str(
+            self.root / "unreviewed-request.json"
+        )
+
+        with self.assertRaisesRegex(ValueError, "not bound to the request receipt path"):
+            MODULE.render_from_files(self.args())
+
     def test_rejects_inexact_submit_and_response_receipt_envelopes(self) -> None:
         original_request = copy.deepcopy(self.request)
         cases = (
