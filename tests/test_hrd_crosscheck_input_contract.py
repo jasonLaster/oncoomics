@@ -429,6 +429,7 @@ class CustodyHandoffTests(unittest.TestCase):
                     "Key": key,
                     "VersionId": version,
                     "IsLatest": True,
+                    "Size": contract.stat().st_size,
                 }
             ]
             argv = [
@@ -1493,6 +1494,7 @@ class CustodyHandoffTests(unittest.TestCase):
                     "Key": f"runs/subject01/{RUN}/deterministic/contracts/{contract_sha}.json",
                     "VersionId": version,
                     "IsLatest": True,
+                    "Size": contract.stat().st_size,
                 }
             ]
             with (
@@ -1535,6 +1537,7 @@ class CustodyHandoffTests(unittest.TestCase):
                     "Key": key,
                     "VersionId": version,
                     "IsLatest": True,
+                    "Size": contract.stat().st_size,
                 }
             ]
 
@@ -1558,6 +1561,159 @@ class CustodyHandoffTests(unittest.TestCase):
                 )
 
             self.assertEqual(checks, publisher.EXPECTED_CONTRACT_ANCHOR_CHECKS)
+
+    def test_contract_publication_exact_int_rejects_coerced_byte_values(self):
+        self.assertTrue(publisher.exact_int(1, 1))
+
+        for value in (True, 1.0, "1"):
+            with self.subTest(value=value):
+                self.assertFalse(publisher.exact_int(value, 1))
+
+    def test_contract_publication_byte_guards_avoid_raw_content_length_equality(self):
+        source = (ROOT / "scripts/publish_input_contract.py").read_text(
+            encoding="utf-8"
+        )
+        tree = ast.parse(source)
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "ContentLength" in segment:
+                raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_comparisons, [])
+
+    def test_contract_publication_verify_requires_exact_content_lengths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            contract.write_bytes(b"x")
+            contract_sha = publisher.sha256(contract)
+            checksum = checksum_sha256(contract_sha)
+            version = "contract-version"
+            prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
+            key = f"{prefix}{contract_sha}.json"
+            metadata = {
+                "VersionId": version,
+                "ContentLength": 1,
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": checksum,
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": KMS,
+                "Metadata": {"sha256": contract_sha},
+            }
+            history = [
+                {
+                    "history_kind": "version",
+                    "Key": key,
+                    "VersionId": version,
+                    "IsLatest": True,
+                    "Size": 1,
+                }
+            ]
+
+            for phase, value in (
+                ("head", True),
+                ("head", 1.0),
+                ("head", "1"),
+                ("get", True),
+                ("get", 1.0),
+                ("get", "1"),
+            ):
+                with self.subTest(phase=phase, value=value):
+                    head_metadata = dict(metadata)
+                    get_metadata = dict(metadata)
+                    if phase == "head":
+                        head_metadata["ContentLength"] = value
+                    else:
+                        get_metadata["ContentLength"] = value
+
+                    def fake_get(
+                        bucket,
+                        object_key,
+                        version_id,
+                        destination,
+                        region,
+                        get_metadata=get_metadata,
+                    ):
+                        destination.write_bytes(contract.read_bytes())
+                        return dict(get_metadata)
+
+                    with (
+                        patch.object(publisher, "head", return_value=head_metadata),
+                        patch.object(publisher, "get_exact", side_effect=fake_get),
+                        patch.object(
+                            publisher, "version_history", return_value=history
+                        ),
+                    ):
+                        checks = publisher.verify_publication(
+                            contract,
+                            BUCKET,
+                            prefix,
+                            key,
+                            version,
+                            KMS,
+                            "us-east-1",
+                        )
+
+                    self.assertFalse(checks["bytes_exact"])
+                    self.assertTrue(checks["single_create_only_version"])
+
+    def test_contract_publication_verify_requires_exact_history_size(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            contract.write_bytes(b"x")
+            contract_sha = publisher.sha256(contract)
+            checksum = checksum_sha256(contract_sha)
+            version = "contract-version"
+            prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
+            key = f"{prefix}{contract_sha}.json"
+            metadata = {
+                "VersionId": version,
+                "ContentLength": 1,
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": checksum,
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": KMS,
+                "Metadata": {"sha256": contract_sha},
+            }
+
+            def fake_get(bucket, object_key, version_id, destination, region):
+                destination.write_bytes(contract.read_bytes())
+                return dict(metadata)
+
+            for size in (True, 1.0, "1"):
+                with self.subTest(size=size):
+                    history = [
+                        {
+                            "history_kind": "version",
+                            "Key": key,
+                            "VersionId": version,
+                            "IsLatest": True,
+                            "Size": size,
+                        }
+                    ]
+                    with (
+                        patch.object(publisher, "head", return_value=metadata),
+                        patch.object(publisher, "get_exact", side_effect=fake_get),
+                        patch.object(
+                            publisher, "version_history", return_value=history
+                        ),
+                    ):
+                        checks = publisher.verify_publication(
+                            contract,
+                            BUCKET,
+                            prefix,
+                            key,
+                            version,
+                            KMS,
+                            "us-east-1",
+                        )
+
+                    self.assertTrue(checks["bytes_exact"])
+                    self.assertFalse(checks["single_create_only_version"])
 
     def test_contract_publication_dry_run_emits_exact_preflight_checks(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -1892,6 +2048,7 @@ class CustodyHandoffTests(unittest.TestCase):
                     "Key": key,
                     "VersionId": version,
                     "IsLatest": True,
+                    "Size": contract.stat().st_size,
                 }
             ]
 
@@ -1953,6 +2110,7 @@ class CustodyHandoffTests(unittest.TestCase):
                     "Key": key,
                     "VersionId": version,
                     "IsLatest": True,
+                    "Size": contract.stat().st_size,
                 }
             ]
 

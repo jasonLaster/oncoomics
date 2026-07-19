@@ -93,6 +93,10 @@ def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def aws_json(arguments: list[str], region: str) -> dict[str, Any]:
     value = json.loads(
         subprocess.check_output(
@@ -329,14 +333,14 @@ def verify_publication(
             bytes.fromhex(contract_sha)
         ).decode("ascii")
         history = version_history(bucket, prefix, region)
+        contract_bytes = contract.stat().st_size
         return {
             "version_exact": metadata.get("VersionId")
             == fetched.get("VersionId")
             == version_id,
-            "bytes_exact": metadata.get("ContentLength")
-            == fetched.get("ContentLength")
-            == contract.stat().st_size
-            == downloaded.stat().st_size,
+            "bytes_exact": exact_int(metadata.get("ContentLength"), contract_bytes)
+            and exact_int(fetched.get("ContentLength"), contract_bytes)
+            and exact_int(downloaded.stat().st_size, contract_bytes),
             "sha256_exact": sha256(downloaded) == contract_sha,
             "sha256_checksum_exact": metadata.get("ChecksumType")
             == fetched.get("ChecksumType")
@@ -356,7 +360,8 @@ def verify_publication(
             and history[0].get("history_kind") == "version"
             and history[0].get("Key") == key
             and history[0].get("VersionId") == version_id
-            and history[0].get("IsLatest") is True,
+            and history[0].get("IsLatest") is True
+            and exact_int(history[0].get("Size"), contract_bytes),
         }
 
 

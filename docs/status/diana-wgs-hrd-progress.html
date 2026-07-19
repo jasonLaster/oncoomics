@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local cross-check materializer byte exactness</li>
+          <li class="pill">Latest milestone = local input-contract publication byte exactness</li>
+          <li class="pill">Input-contract publication bytes = exact</li>
           <li class="pill">Cross-check materializer bytes = exact</li>
           <li class="pill">Route terminal bytes = exact</li>
           <li class="pill">Materializer terminal bytes = exact</li>
@@ -639,6 +640,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact input-contract publication bytes</strong>
+              <span>HRD input-contract publication now rejects non-exact post-upload HEAD/GET <code>ContentLength</code> values and exact-version destination history <code>Size</code> values before the content-addressed contract anchor can be marked passed for SigProfiler, Sequenza, Rosalind, or AI/freeform consumers.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact cross-check materializer bytes</strong>
               <span>Cross-check materialization now rejects non-exact exact-version input <code>ContentLength</code> values, create-only output <code>ContentLength</code> values, destination history <code>Size</code> values, output-audit <code>ContentLength</code> values, and output byte receipt rows before alias-only VCF/index/SBS96/staged-validation artifacts can feed the terminal materializer receipt, HRD input contract, Rosalind packet, or executable SigProfiler/Sequenza route reports.</span>
@@ -1165,6 +1170,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:22:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact input-contract publication bytes:</strong>
+                HRD input-contract publication now rejects non-exact
+                post-upload HEAD/GET <code>ContentLength</code> values and
+                exact-version destination history <code>Size</code> values
+                before the content-addressed contract anchor can be marked
+                passed for SigProfiler, Sequenza, Rosalind, or AI/freeform
+                consumers. No S3, Batch, route, GPU, quota, replacement
+                compute, or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:21:00-07:00">Jul 19 · local</time>
               <span>
