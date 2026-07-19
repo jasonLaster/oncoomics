@@ -187,7 +187,13 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             dry_run_receipt = self.write_dry_run_receipt(root, index, receipts)
             fake = FakeAws(index.read_bytes())
 
-            with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json):
+            with (
+                mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
+                mock.patch.object(
+                    MODULE,
+                    "validate_reviewed_public_apply_state",
+                ) as validate_apply_state,
+            ):
                 result = MODULE.run(
                     self.args(
                         index,
@@ -199,6 +205,7 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 )
 
             self.assertEqual(result["status"], "passed")
+            validate_apply_state.assert_called_once_with(receipts, MODULE.REGION)
             self.assertEqual(result["dry_run_receipt"]["path"], str(dry_run_receipt.resolve()))
             self.assertEqual(
                 result["dry_run_receipt"]["sha256"],
@@ -226,6 +233,43 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 },
             )
 
+    def test_apply_rejects_reviewed_public_version_drift_before_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index, receipts = self.write_receipt_bound_index(root)
+            dry_run_receipt = self.write_dry_run_receipt(root, index, receipts)
+            heads = expected_public_heads(receipts)
+            stale_key = next(iter(heads))
+            heads[stale_key] = {
+                **heads[stale_key],
+                "VersionId": "unexpected-overwrite",
+            }
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "head_object",
+                    side_effect=lambda _bucket, key, _region: heads[key],
+                ),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=AssertionError("index AWS called"),
+                ),
+                self.assertRaisesRegex(RuntimeError, "current reviewed-public"),
+            ):
+                MODULE.run(
+                    self.args(
+                        index,
+                        root / "apply.json",
+                        apply=True,
+                        dry_run_receipt=dry_run_receipt,
+                        reviewed_public_receipts=receipts,
+                    )
+                )
+
+            self.assertFalse((root / "apply.json").exists())
+
     def test_apply_rejects_suspended_bucket_versioning_before_upload(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -235,7 +279,10 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             fake = FakeAws(index.read_bytes())
             fake.versioning_status = "Suspended"
 
-            with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json):
+            with (
+                mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
+                mock.patch.object(MODULE, "validate_reviewed_public_apply_state"),
+            ):
                 with self.assertRaisesRegex(ValueError, "versioning is not enabled"):
                     MODULE.run(
                         self.args(
@@ -343,7 +390,10 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             fake = FakeAws(index.read_bytes())
             fake.wrong_checksum = True
 
-            with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json):
+            with (
+                mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
+                mock.patch.object(MODULE, "validate_reviewed_public_apply_state"),
+            ):
                 with self.assertRaisesRegex(ValueError, "destination verification failed"):
                     MODULE.run(
                         self.args(
@@ -394,6 +444,7 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                     },
                 ),
                 mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
+                mock.patch.object(MODULE, "validate_reviewed_public_apply_state"),
                 self.assertRaisesRegex(
                     ValueError,
                     "public index destination verification failed",
@@ -419,7 +470,13 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 fake = FakeAws(index.read_bytes())
                 setattr(fake, field, True)
 
-                with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json):
+                with (
+                    mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
+                    mock.patch.object(
+                        MODULE,
+                        "validate_reviewed_public_apply_state",
+                    ),
+                ):
                     with self.assertRaisesRegex(ValueError, "non-null VersionId"):
                         MODULE.run(
                             self.args(

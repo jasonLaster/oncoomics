@@ -420,10 +420,13 @@ def validate_reviewed_public_s3_state(
 
 def validate_reviewed_public_current_versions(
     expected_objects: dict[str, ReviewedPublicObject],
+    *,
+    head_current: Any | None = None,
 ) -> None:
+    head_current = head_current or head_object
     mismatches: list[str] = []
     for key, expected in sorted(expected_objects.items()):
-        current = head_object(key)
+        current = head_current(key)
         if (
             current.get("VersionId") != expected["version_id"]
             or int(current.get("ContentLength", -1)) != expected["bytes"]

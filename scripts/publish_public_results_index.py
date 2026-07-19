@@ -19,6 +19,7 @@ from build_public_results_index import (
     BUCKET,
     FORBIDDEN_PREFIXES,
     PUBLIC_PREFIXES,
+    validate_reviewed_public_current_versions,
     validate_reviewed_public_receipts,
     validate_reviewed_public_s3_state,
 )
@@ -381,6 +382,19 @@ def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, A
     }
 
 
+def validate_reviewed_public_apply_state(
+    reviewed_public_receipts: Sequence[Path],
+    region: str,
+) -> None:
+    reviewed_public_objects, _ = validate_reviewed_public_receipts(
+        reviewed_public_receipts
+    )
+    validate_reviewed_public_current_versions(
+        reviewed_public_objects,
+        head_current=lambda key: head_object(BUCKET, key, region),
+    )
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     custody = validate_public_index(args.index, args.reviewed_public_receipt)
     dry_run_receipt = None
@@ -388,6 +402,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         if args.dry_run_receipt is None:
             raise ValueError("public index apply requires --dry-run-receipt")
         dry_run_receipt = validate_dry_run_receipt(args.dry_run_receipt, custody)
+        validate_reviewed_public_apply_state(
+            args.reviewed_public_receipt,
+            args.region,
+        )
     elif args.dry_run_receipt is not None:
         raise ValueError("--dry-run-receipt is only valid with --apply")
     receipt: dict[str, Any] = {
@@ -414,6 +432,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     if dry_run_receipt is not None:
         receipt["dry_run_receipt"] = dry_run_receipt
         receipt["checks"]["dry_run_receipt"] = True
+        receipt["checks"]["reviewed_public_current_versions"] = True
     write_private_atomic(args.receipt_output, receipt, create=True)
     try:
         if args.apply:
