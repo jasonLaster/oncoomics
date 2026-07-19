@@ -694,6 +694,117 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 )
                 self.assertFalse(result[failed_check])
 
+    def test_executed_worker_receipt_envelopes_are_exact(self) -> None:
+        freeze_receipt = {
+            key: "value" for key in MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_RECEIPT_KEYS
+        }
+        freeze_receipt["source"] = {
+            key: "value" for key in MODULE.EXPECTED_EXECUTED_WORKER_SOURCE_KEYS
+        }
+        freeze_receipt["freeze"] = {
+            key: "value" for key in MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_KEYS
+        }
+        upload_receipt = {
+            key: "value" for key in MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_KEYS
+        }
+        upload_receipt["object"] = {
+            key: "value"
+            for key in MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_OBJECT_KEYS
+        }
+
+        self.assertEqual(
+            MODULE.exact_executed_worker_receipt_envelopes(
+                freeze_receipt,
+                upload_receipt,
+            ),
+            {
+                "receipt_envelope": True,
+                "receipt_source_envelope": True,
+                "receipt_freeze_envelope": True,
+                "receipt_upload_envelope": True,
+                "receipt_upload_object_envelope": True,
+            },
+        )
+
+        for location, label, mutate, failed_check in (
+            (
+                "freeze_receipt",
+                "missing",
+                lambda receipt: receipt.pop("captured_at"),
+                "receipt_envelope",
+            ),
+            (
+                "freeze_receipt",
+                "unexpected",
+                lambda receipt: receipt.__setitem__("legacy_timestamp", True),
+                "receipt_envelope",
+            ),
+            (
+                "source",
+                "missing",
+                lambda receipt: receipt["source"].pop("container_path"),
+                "receipt_source_envelope",
+            ),
+            (
+                "source",
+                "unexpected",
+                lambda receipt: receipt["source"].__setitem__("legacy_host", True),
+                "receipt_source_envelope",
+            ),
+            (
+                "freeze",
+                "missing",
+                lambda receipt: receipt["freeze"].pop("head_verified"),
+                "receipt_freeze_envelope",
+            ),
+            (
+                "freeze",
+                "unexpected",
+                lambda receipt: receipt["freeze"].__setitem__(
+                    "legacy_checksum",
+                    True,
+                ),
+                "receipt_freeze_envelope",
+            ),
+            (
+                "upload",
+                "missing",
+                lambda receipt: receipt.pop("local_receipt_sha256"),
+                "receipt_upload_envelope",
+            ),
+            (
+                "upload",
+                "unexpected",
+                lambda receipt: receipt.__setitem__("legacy_upload", True),
+                "receipt_upload_envelope",
+            ),
+            (
+                "upload_object",
+                "missing",
+                lambda receipt: receipt["object"].pop("metadata"),
+                "receipt_upload_object_envelope",
+            ),
+            (
+                "upload_object",
+                "unexpected",
+                lambda receipt: receipt["object"].__setitem__(
+                    "legacy_version",
+                    True,
+                ),
+                "receipt_upload_object_envelope",
+            ),
+        ):
+            freeze = json.loads(json.dumps(freeze_receipt))
+            upload = json.loads(json.dumps(upload_receipt))
+            mutate(upload if location.startswith("upload") else freeze)
+
+            with self.subTest(location=location, label=label):
+                result = MODULE.exact_executed_worker_receipt_envelopes(
+                    freeze,
+                    upload,
+                )
+                self.assertFalse(result[failed_check])
+
 
 if __name__ == "__main__":
     unittest.main()

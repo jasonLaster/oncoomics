@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local public index payloads</li>
+          <li class="pill">Latest milestone = local Batch worker envelopes</li>
+          <li class="pill">Batch worker envelopes = exact</li>
           <li class="pill">Public index payloads = exact</li>
           <li class="pill">Publication summaries = exact</li>
           <li class="pill">Reviewed-public rows = exact</li>
@@ -358,7 +359,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = abf95ad</li>
+          <li class="pill">Prior dashboard = 7473922</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -523,6 +524,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Batch executed-worker envelopes</strong>
+              <span>Terminal execution capture now requires exact executed-worker freeze and upload receipt envelopes before <code>terminal.execution.succeeded.json</code> can be written or deterministic WGS staging can trust Batch worker custody.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind deterministic staging to materializer checks</strong>
               <span>Deterministic WGS staging now consumes the schema-2 materializer receipt custody checks and rejects non-exact <code>report_manifest.json</code> envelopes or support inventories while preserving <code>partial_evidence</code> / <code>no_call</code> identity fields.</span>
@@ -806,9 +811,21 @@
           <h2>Changelog</h2>
           <ol class="changelog">
             <li class="item">
-              <time datetime="2026-07-19T01:45:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T01:46:00-07:00">Jul 19 · local</time>
               <span>
-                <strong>Local patch · Require exact public index payloads:</strong>
+                <strong>Local patch · Harden Batch executed-worker receipt envelopes:</strong>
+                Batch provenance capture now checks exact executed-worker
+                freeze and upload receipt envelopes, including nested source,
+                freeze, and uploaded-object rows, before
+                <code>terminal.execution.succeeded.json</code> can be written.
+                No S3, Batch, route, GPU, quota, or replacement compute was
+                launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T01:42:13-07:00">Jul 19 · 1:42 AM</time>
+              <span>
+                <strong>7473922 Require exact public index payloads:</strong>
                 final public-index dry-run and apply now reject
                 <code>objects.json</code> payloads with extra or missing
                 top-level fields, or stale extra per-object fields, before

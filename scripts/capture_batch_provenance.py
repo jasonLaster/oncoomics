@@ -38,6 +38,66 @@ EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS = {
     "local_sha256_matches_s3_checksum": True,
     "metadata": True,
 }
+EXPECTED_EXECUTED_WORKER_FREEZE_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "run_id",
+    "batch_job_id",
+    "captured_at",
+    "note",
+    "source",
+    "freeze",
+    "checks",
+}
+EXPECTED_EXECUTED_WORKER_SOURCE_KEYS = {
+    "task_arn",
+    "ecs_cluster",
+    "container_instance_arn",
+    "ec2_instance_id",
+    "container_runtime_id",
+    "container_path",
+    "sha256",
+    "bytes",
+    "hash_command_status",
+    "hash_command_response_code",
+    "hash_command_executed_at",
+    "ssm_hash_command_id",
+}
+EXPECTED_EXECUTED_WORKER_FREEZE_KEYS = {
+    "bucket",
+    "key",
+    "version_id",
+    "bytes",
+    "checksum_type",
+    "checksum_sha256_base64",
+    "checksum_sha256_hex",
+    "server_side_encryption",
+    "kms_key_id",
+    "metadata",
+    "head_verified",
+    "command_status",
+    "command_response_code",
+    "ssm_command_id",
+}
+EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_KEYS = {
+    "schema_version",
+    "status",
+    "local_receipt_sha256",
+    "object",
+    "checks",
+}
+EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_OBJECT_KEYS = {
+    "bucket",
+    "key",
+    "version_id",
+    "bytes",
+    "checksum_type",
+    "checksum_sha256_base64",
+    "checksum_sha256_hex",
+    "server_side_encryption",
+    "kms_key_id",
+    "metadata",
+}
 EXPECTED_TASK_HOST_BINDING_CHECKS = {
     "receipt_cluster_matches_task": True,
     "receipt_container_instance_matches_task": True,
@@ -57,8 +117,13 @@ EXPECTED_SSM_COMMAND_BINDING_CHECKS = {
 }
 EXPECTED_BATCH_WORKER_CHECKS = {
     "receipt_status": True,
+    "receipt_envelope": True,
+    "receipt_source_envelope": True,
+    "receipt_freeze_envelope": True,
     "receipt_checks": True,
     "receipt_upload": True,
+    "receipt_upload_envelope": True,
+    "receipt_upload_object_envelope": True,
     "task_identity": True,
     "task_host_mapping": True,
     "hash_command_definition": True,
@@ -473,6 +538,39 @@ def exact_executed_worker_check_maps(
         "freeze_receipt_upload": (
             worker_receipt_upload_checks
             == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS
+        ),
+    }
+
+
+def exact_executed_worker_receipt_envelopes(
+    worker_receipt: dict[str, Any],
+    worker_receipt_upload: dict[str, Any],
+) -> dict[str, bool]:
+    worker_source = worker_receipt.get("source")
+    if not isinstance(worker_source, dict):
+        worker_source = {}
+    worker_freeze = worker_receipt.get("freeze")
+    if not isinstance(worker_freeze, dict):
+        worker_freeze = {}
+    worker_receipt_upload_object = worker_receipt_upload.get("object")
+    if not isinstance(worker_receipt_upload_object, dict):
+        worker_receipt_upload_object = {}
+    return {
+        "receipt_envelope": (
+            set(worker_receipt) == EXPECTED_EXECUTED_WORKER_FREEZE_RECEIPT_KEYS
+        ),
+        "receipt_source_envelope": (
+            set(worker_source) == EXPECTED_EXECUTED_WORKER_SOURCE_KEYS
+        ),
+        "receipt_freeze_envelope": (
+            set(worker_freeze) == EXPECTED_EXECUTED_WORKER_FREEZE_KEYS
+        ),
+        "receipt_upload_envelope": (
+            set(worker_receipt_upload) == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_KEYS
+        ),
+        "receipt_upload_object_envelope": (
+            set(worker_receipt_upload_object)
+            == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_OBJECT_KEYS
         ),
     }
 
@@ -892,6 +990,10 @@ def main() -> None:
             and worker_receipt.get("status") == "passed"
             and worker_receipt.get("run_id") == args.run_id
             and worker_receipt.get("batch_job_id") == args.job_id
+        ),
+        **exact_executed_worker_receipt_envelopes(
+            worker_receipt,
+            worker_receipt_upload,
         ),
         "receipt_checks": (
             executed_worker_check_maps["freeze_receipt"]

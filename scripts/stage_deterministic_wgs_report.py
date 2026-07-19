@@ -132,8 +132,13 @@ EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS: dict[str, bool] = {
 }
 EXPECTED_BATCH_WORKER_CHECKS: dict[str, bool] = {
     "receipt_status": True,
+    "receipt_envelope": True,
+    "receipt_source_envelope": True,
+    "receipt_freeze_envelope": True,
     "receipt_checks": True,
     "receipt_upload": True,
+    "receipt_upload_envelope": True,
+    "receipt_upload_object_envelope": True,
     "task_identity": True,
     "task_host_mapping": True,
     "hash_command_definition": True,
