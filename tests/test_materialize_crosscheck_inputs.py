@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import ast
 import csv
 import importlib.util
 import subprocess
@@ -155,6 +156,41 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 uri, metadata, kms, "different-version"
             )
 
+        for content_length in (True, 10.0, "10", 0):
+            with self.subTest(content_length=content_length):
+                malformed = {**metadata, "ContentLength": content_length}
+                with self.assertRaisesRegex(ValueError, "ContentLength"):
+                    module.require_private_versioned_kms(
+                        uri, malformed, kms, "frozen-version"
+                    )
+
+    def test_exact_int_rejects_coerced_s3_byte_metadata(self):
+        self.assertTrue(module.is_positive_exact_int(7))
+        self.assertTrue(module.exact_int(7, 7))
+
+        for value in (True, 7.0, "7", None):
+            with self.subTest(value=value):
+                self.assertFalse(module.is_positive_exact_int(value))
+                self.assertFalse(module.exact_int(value, 7))
+
+    def test_content_length_guards_avoid_raw_int_coercion(self):
+        source = (SCRIPT_DIR / "materialize_crosscheck_inputs.py").read_text(
+            encoding="utf-8"
+        )
+        tree = ast.parse(source)
+        raw_calls = []
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "int"
+            ):
+                segment = ast.get_source_segment(source, node) or ""
+                if "ContentLength" in segment:
+                    raw_calls.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_calls, [])
+
     def test_versioned_head_and_download_bind_the_same_object_version(self):
         uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/input.vcf.gz"
         with patch.object(module, "aws_json", return_value={}) as aws_json:
@@ -208,7 +244,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "12159a656974d1b7722cf03a3a9936170dc5b72805f37748e3370f126930cf63",
+            "cae4dad3be1c2e7c8476964531e1c14dc6359a51ac2561f14218140ed5b9d2a3",
         )
 
     def test_json_output_removes_partial_file_after_file_fsync_failure(self):
@@ -302,6 +338,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                     "Key": "runs/subject01/output.json",
                     "VersionId": "output-version",
                     "IsLatest": True,
+                    "Size": source.stat().st_size,
                 }],
                 "DeleteMarkers": [],
                 "IsTruncated": False,
@@ -349,6 +386,82 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         )
         self.assertEqual(receipt["checksums"]["ChecksumCRC64NVME"], "unit-crc")
         self.assertTrue(all(receipt["checks"].values()))
+
+    def test_upload_rejects_non_exact_content_length(self):
+        uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+
+        for content_length in (True, 3.0, "3"):
+            with self.subTest(content_length=content_length), tempfile.TemporaryDirectory() as tmp:
+                source = Path(tmp) / "output.json"
+                source.write_text("{}\n")
+                digest = module.sha256(source)
+                metadata = {
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": kms,
+                    "VersionId": "output-version",
+                    "ContentLength": content_length,
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": module.checksum_sha256(digest),
+                    "Metadata": {"sha256": digest},
+                }
+                calls = iter([
+                    {"Versions": [], "DeleteMarkers": [], "IsTruncated": False},
+                    {"VersionId": "output-version"},
+                ])
+                with (
+                    patch.object(
+                        module,
+                        "aws_json",
+                        side_effect=lambda arguments, region, calls=calls: next(calls),
+                    ),
+                    patch.object(module, "head", return_value=metadata),
+                    self.assertRaisesRegex(ValueError, "ContentLength"),
+                ):
+                    module.upload(source, uri, kms, "us-east-1")
+
+    def test_upload_rejects_non_exact_history_size(self):
+        uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "output.json"
+            source.write_text("{}\n")
+            digest = module.sha256(source)
+            metadata = {
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": kms,
+                "VersionId": "output-version",
+                "ContentLength": source.stat().st_size,
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": module.checksum_sha256(digest),
+                "Metadata": {"sha256": digest},
+            }
+            history = {
+                "Versions": [{
+                    "Key": "runs/subject01/output.json",
+                    "VersionId": "output-version",
+                    "IsLatest": True,
+                    "Size": True,
+                }],
+                "DeleteMarkers": [],
+                "IsTruncated": False,
+            }
+            calls = iter([
+                {"Versions": [], "DeleteMarkers": [], "IsTruncated": False},
+                {"VersionId": "output-version"},
+                history,
+            ])
+            with (
+                patch.object(
+                    module,
+                    "aws_json",
+                    side_effect=lambda arguments, region: next(calls),
+                ),
+                patch.object(module, "head", return_value=metadata),
+                self.assertRaisesRegex(ValueError, "single-version history"),
+            ):
+                module.upload(source, uri, kms, "us-east-1")
 
     def test_upload_rejects_s3_checksum_that_differs_from_local_sha256(self):
         uri = "s3://diana-omics-private-results-000000000000-us-east-1/runs/subject01/output.json"
@@ -433,6 +546,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                         "Key": "runs/subject01/materialized/sbs96.csv",
                         "VersionId": "output-version",
                         "IsLatest": True,
+                        "Size": 10,
                     }
                 ],
             ),
@@ -460,6 +574,81 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 kms,
                 "us-east-1",
             )
+
+    def test_audit_output_history_rejects_non_exact_bytes(self):
+        uri = (
+            "s3://diana-omics-private-results-000000000000-us-east-1/"
+            "runs/subject01/materialized/sbs96.csv"
+        )
+        kms = "arn:aws:kms:us-east-1:000000000000:key/unit"
+        digest = "1" * 64
+
+        cases = (
+            (
+                "receipt bytes",
+                {"bytes": True},
+                {"Size": 10},
+            ),
+            (
+                "history Size",
+                {"bytes": 10},
+                {"Size": True},
+            ),
+        )
+        for label, output_updates, history_updates in cases:
+            with self.subTest(label=label):
+                outputs = {
+                    "sbs96.csv": {
+                        "uri": uri,
+                        "version_id": "output-version",
+                        "bytes": 10,
+                        "sha256": digest,
+                        "checksums": {
+                            "ChecksumType": "FULL_OBJECT",
+                            "ChecksumSHA256": module.checksum_sha256(digest),
+                        },
+                        **output_updates,
+                    }
+                }
+
+                with (
+                    patch.object(
+                        module,
+                        "version_history",
+                        return_value=[
+                            {
+                                "history_kind": "version",
+                                "Key": "runs/subject01/materialized/sbs96.csv",
+                                "VersionId": "output-version",
+                                "IsLatest": True,
+                                **history_updates,
+                            }
+                        ],
+                    ),
+                    patch.object(
+                        module,
+                        "head",
+                        return_value={
+                            "ServerSideEncryption": "aws:kms",
+                            "SSEKMSKeyId": kms,
+                            "VersionId": "output-version",
+                            "ContentLength": 10,
+                            "ChecksumType": "FULL_OBJECT",
+                            "ChecksumSHA256": module.checksum_sha256(digest),
+                            "Metadata": {"sha256": digest},
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, "exact-version audit failed"),
+                ):
+                    module.audit_output_history(
+                        (
+                            "s3://diana-omics-private-results-000000000000-us-east-1/"
+                            "runs/subject01/materialized/"
+                        ),
+                        outputs,
+                        kms,
+                        "us-east-1",
+                    )
 
     def test_main_rejects_receipt_anchor_below_symlinked_parent_before_aws(self):
         bucket = "diana-omics-private-results-000000000000-us-east-1"

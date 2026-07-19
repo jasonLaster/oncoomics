@@ -77,6 +77,14 @@ def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -475,8 +483,8 @@ def require_private_versioned_kms(
         raise ValueError(f"object is not versioned: {uri}")
     if expected_version_id is not None and observed_version_id != expected_version_id:
         raise ValueError(f"object VersionId differs from the frozen input contract: {uri}")
-    if int(metadata.get("ContentLength", 0)) <= 0:
-        raise ValueError(f"object is empty: {uri}")
+    if not is_positive_exact_int(metadata.get("ContentLength")):
+        raise ValueError(f"object ContentLength is not an exact positive integer: {uri}")
 
 
 def download(uri: str, path: Path, region: str, version_id: str) -> None:
@@ -522,7 +530,8 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
         raise ValueError(f"create-only put omitted VersionId: {uri}")
     metadata = head(uri, region, version_id)
     require_private_versioned_kms(uri, metadata, kms_key_arn, version_id)
-    if int(metadata.get("ContentLength", -1)) != path.stat().st_size:
+    metadata_bytes = metadata.get("ContentLength")
+    if not exact_int(metadata_bytes, path.stat().st_size):
         raise ValueError(f"uploaded object size mismatch: {uri}")
     if str(metadata.get("Metadata", {}).get("sha256", "")) != local_sha256:
         raise ValueError(f"uploaded object SHA-256 metadata mismatch: {uri}")
@@ -538,13 +547,14 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
         and history[0].get("Key") == key
         and history[0].get("VersionId") == version_id
         and history[0].get("IsLatest") is True
+        and exact_int(history[0].get("Size"), metadata_bytes)
     )
     if not history_exact:
         raise ValueError(f"uploaded object lacks exact single-version history: {uri}")
     return {
         "uri": uri,
         "version_id": str(metadata["VersionId"]),
-        "bytes": int(metadata["ContentLength"]),
+        "bytes": metadata_bytes,
         "etag": str(metadata.get("ETag", "")),
         "checksums": {
             key: str(value)
@@ -587,8 +597,11 @@ def audit_output_history(
         )
         expected_checksum = checksum_sha256(str(output.get("sha256", "")))
         checksums = output.get("checksums") if isinstance(output.get("checksums"), dict) else {}
+        expected_bytes = output.get("bytes")
         if (
-            int(metadata.get("ContentLength", -1)) != int(output.get("bytes", -2))
+            not is_positive_exact_int(expected_bytes)
+            or not exact_int(history_row.get("Size"), expected_bytes)
+            or not exact_int(metadata.get("ContentLength"), expected_bytes)
             or metadata.get("Metadata", {}).get("sha256") != output.get("sha256")
             or metadata.get("ChecksumType") != "FULL_OBJECT"
             or metadata.get("ChecksumSHA256") != expected_checksum
@@ -740,12 +753,13 @@ def main() -> int:
                 args.kms_key_arn,
                 version_ids[name],
             )
+            expected_bytes = metadata["ContentLength"]
             download(uri, local[name], args.region, version_ids[name])
             require_real_downloaded_file(
                 local[name],
                 f"downloaded exact input {name}",
             )
-            if local[name].stat().st_size != int(metadata["ContentLength"]):
+            if not exact_int(expected_bytes, local[name].stat().st_size):
                 raise ValueError(f"downloaded object size mismatch: {name}")
             observed_sha256 = sha256(local[name])
             if expected_sha256[name] is not None and observed_sha256 != expected_sha256[name]:
@@ -753,7 +767,7 @@ def main() -> int:
             source_custody[name] = {
                 "uri": uri,
                 "version_id": str(metadata["VersionId"]),
-                "bytes": int(metadata["ContentLength"]),
+                "bytes": expected_bytes,
                 "etag": str(metadata.get("ETag", "")),
                 "checksums": {
                     key: str(value)
