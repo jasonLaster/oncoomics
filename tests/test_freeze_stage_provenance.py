@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import importlib.util
 import json
 import sys
@@ -174,6 +175,85 @@ def gather_payload(run_id: str = RUN_ID) -> dict:
             for role in ("normal", "tumor")
         ],
     }
+
+
+def stage_payload_bytes() -> dict[str, bytes]:
+    return {
+        "preflight.json": (
+            json.dumps(preflight_payload(), sort_keys=True) + "\n"
+        ).encode(),
+        "gather.json": (json.dumps(gather_payload(), sort_keys=True) + "\n").encode(),
+    }
+
+
+def stage_dry_run_receipt(execution: Path, payloads: dict[str, bytes]) -> dict:
+    source_prefix = f"runs/diana-hrd/{RUN_ID}/private-results/"
+    destination_prefix = f"runs/subject01/{RUN_ID}/deterministic/provenance/wgs-stage/"
+    objects = []
+    for name in MODULE.SOURCE_NAMES:
+        payload = payloads[name]
+        head = object_head(payload)
+        objects.append(
+            {
+                "name": name,
+                "source": {
+                    "bucket": SOURCE_BUCKET,
+                    "key": source_prefix + name,
+                    "version_id": "null",
+                    "bytes": len(payload),
+                    "etag": str(head["ETag"]),
+                    "checksums": MODULE.checksums(head),
+                    "checksum_type": "FULL_OBJECT",
+                    "sha256": hashlib.sha256(payload).hexdigest(),
+                    "server_side_encryption": "aws:kms",
+                    "kms_key_id": KMS,
+                    "get_response": head,
+                },
+                "destination": {
+                    "bucket": DESTINATION_BUCKET,
+                    "key": destination_prefix + name,
+                },
+                "checks": dict(MODULE.EXPECTED_DRY_RUN_CHECKS),
+                "status": "dry_run",
+            }
+        )
+    return {
+        "schema_version": 1,
+        "status": "dry_run",
+        "generated_at": "2026-07-19T00:00:00+00:00",
+        "run_id": RUN_ID,
+        "batch_job_id": JOB_ID,
+        "batch_status": "SUCCEEDED",
+        "execution_receipt_sha256": MODULE.sha256(execution),
+        "source_prefix": f"s3://{SOURCE_BUCKET}/{source_prefix}",
+        "destination_prefix": f"s3://{DESTINATION_BUCKET}/{destination_prefix}",
+        "kms_key_arn": KMS,
+        "source_bucket_versioning": "Suspended",
+        "destination_bucket_versioning": "Enabled",
+        "destination_initial_version_history_count": 0,
+        "script_sha256": MODULE.sha256(Path(MODULE.__file__)),
+        "receipt_anchor_strategy": "sha256_content_addressed_never_overwritten",
+        "objects": objects,
+        "completed_at": "2026-07-19T00:01:00+00:00",
+        "object_count": len(objects),
+        "passed_count": 0,
+    }
+
+
+def write_stage_dry_run_receipt(
+    path: Path, execution: Path
+) -> tuple[Path, dict[str, bytes]]:
+    payloads = stage_payload_bytes()
+    path.write_text(
+        json.dumps(
+            stage_dry_run_receipt(execution, payloads),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return path, payloads
 
 
 class FreezeStageProvenanceTests(unittest.TestCase):
@@ -551,6 +631,113 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "parent must not be a symlink"):
                 MODULE.load_json(linked_parent / "input.json")
 
+    def test_apply_requires_dry_run_receipt_before_aws(self) -> None:
+        with (
+            patch.object(
+                sys,
+                "argv",
+                [
+                    "freeze_stage_provenance.py",
+                    "--job-id",
+                    JOB_ID,
+                    "--run-id",
+                    RUN_ID,
+                    "--execution-receipt",
+                    "execution.json",
+                    "--kms-key-arn",
+                    KMS,
+                    "--output",
+                    "receipt.json",
+                    "--anchor-output",
+                    "anchor.json",
+                    "--region",
+                    REGION,
+                    "--apply",
+                ],
+            ),
+            patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            self.assertRaisesRegex(SystemExit, "requires --dry-run-receipt"),
+        ):
+            MODULE.main()
+
+    def test_dry_run_receipt_is_only_valid_with_apply_before_aws(self) -> None:
+        with (
+            patch.object(
+                sys,
+                "argv",
+                [
+                    "freeze_stage_provenance.py",
+                    "--job-id",
+                    JOB_ID,
+                    "--run-id",
+                    RUN_ID,
+                    "--execution-receipt",
+                    "execution.json",
+                    "--kms-key-arn",
+                    KMS,
+                    "--output",
+                    "receipt.json",
+                    "--anchor-output",
+                    "anchor.json",
+                    "--region",
+                    REGION,
+                    "--dry-run-receipt",
+                    "receipt.dry.json",
+                ],
+            ),
+            patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            self.assertRaisesRegex(SystemExit, "only valid with --apply"),
+        ):
+            MODULE.main()
+
+    def test_validate_dry_run_receipt_rejects_stale_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            execution = root / "execution.json"
+            execution.write_text("{}\n", encoding="utf-8")
+            payloads = stage_payload_bytes()
+            receipt = stage_dry_run_receipt(execution, payloads)
+            path = root / "stage.dry.json"
+
+            for label, mutate, message in (
+                (
+                    "extra-top-level",
+                    lambda payload: payload.__setitem__(
+                        "stale_receipt_sha256", "0" * 64
+                    ),
+                    "stale or missing metadata",
+                ),
+                (
+                    "stale-run-binding",
+                    lambda payload: payload.__setitem__("batch_job_id", "stale-job"),
+                    "does not match this apply",
+                ),
+                (
+                    "stale-object",
+                    lambda payload: payload["objects"][0]["source"].__setitem__(
+                        "sha256", "0" * 64
+                    ),
+                    "object evidence does not match this apply",
+                ),
+                (
+                    "failed-object-check",
+                    lambda payload: payload["objects"][0]["checks"].__setitem__(
+                        "source_kms_exact", False
+                    ),
+                    "object evidence does not match this apply",
+                ),
+            ):
+                with self.subTest(label=label):
+                    mutated = deepcopy(receipt)
+                    mutate(mutated)
+                    path.write_text(
+                        json.dumps(mutated, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaisesRegex(ValueError, message):
+                        MODULE.validate_dry_run_receipt(path, receipt)
+
     def test_main_rejects_symlink_output_before_aws_observation(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             root = Path(value)
@@ -586,8 +773,7 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             mocked_aws.assert_not_called()
 
     def test_copy_success_then_validation_failure_records_version_and_history(self) -> None:
-        preflight = (json.dumps(preflight_payload(), sort_keys=True) + "\n").encode()
-        source_head = object_head(preflight)
+        payloads = stage_payload_bytes()
         failure_history = [
             {
                 "history_type": "Versions",
@@ -597,7 +783,7 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 ),
                 "VersionId": "copied-version",
                 "IsLatest": True,
-                "Size": len(preflight),
+                "Size": len(payloads["preflight.json"]),
                 "ETag": '"etag"',
             }
         ]
@@ -609,8 +795,16 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             _region: str,
             **_kwargs: object,
         ) -> dict:
-            destination.write_bytes(preflight)
-            return dict(source_head)
+            name = _key.rsplit("/", 1)[-1]
+            destination.write_bytes(payloads[name])
+            return object_head(payloads[name])
+
+        def fake_head(
+            bucket: str, key: str, _region: str, version_id: str = ""
+        ) -> dict:
+            if bucket == DESTINATION_BUCKET:
+                raise RuntimeError("destination head failed")
+            return object_head(payloads[key.rsplit("/", 1)[-1]])
 
         with tempfile.TemporaryDirectory() as value:
             directory = Path(value)
@@ -618,6 +812,10 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             execution.write_text("{}\n")
             output = directory / "receipt.json"
             anchor = directory / "anchor.json"
+            dry_run, payloads = write_stage_dry_run_receipt(
+                directory / "receipt.dry.json",
+                execution,
+            )
             argv = [
                 "freeze_stage_provenance.py",
                 "--job-id",
@@ -634,6 +832,8 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 str(anchor),
                 "--region",
                 REGION,
+                "--dry-run-receipt",
+                str(dry_run),
                 "--apply",
             ]
             with (
@@ -650,15 +850,7 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 patch.object(
                     MODULE, "version_history", side_effect=[[], failure_history]
                 ),
-                patch.object(
-                    MODULE,
-                    "head_object",
-                    side_effect=[
-                        source_head,
-                        source_head,
-                        RuntimeError("destination head failed"),
-                    ],
-                ),
+                patch.object(MODULE, "head_object", side_effect=fake_head),
                 patch.object(MODULE, "download_object", side_effect=fake_download),
                 patch.object(
                     MODULE,

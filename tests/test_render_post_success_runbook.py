@@ -250,6 +250,22 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             apply.index("--dry-run-receipt") + text.index(apply),
         )
 
+    def test_stage_freeze_apply_is_bound_to_dry_run_receipt(self) -> None:
+        text = render()
+
+        apply = text[text.index("terminal.stage-freeze.json") :]
+
+        self.assertIn(
+            "--dry-run-receipt "
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.stage-freeze.dry.json",
+            apply,
+        )
+        self.assertLess(
+            text.index("terminal.stage-freeze.dry.json"),
+            apply.index("--dry-run-receipt") + text.index(apply),
+        )
+
     def test_render_source_handoff_follows_all_packet_staging(self) -> None:
         text = render()
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from copy import deepcopy
 import hashlib
 import json
 import os
@@ -56,6 +57,38 @@ CHECKSUM_ALGORITHMS = {
     "ChecksumCRC32C": "CRC32C",
     "ChecksumCRC32": "CRC32",
 }
+EXPECTED_DRY_RUN_CHECKS = {
+    "get_matches_head": True,
+    "local_bytes_exact": True,
+    "semantic_binding": True,
+    "source_kms_exact": True,
+}
+EXPECTED_DRY_RUN_RECEIPT_KEYS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "generated_at",
+        "run_id",
+        "batch_job_id",
+        "batch_status",
+        "execution_receipt_sha256",
+        "source_prefix",
+        "destination_prefix",
+        "kms_key_arn",
+        "source_bucket_versioning",
+        "destination_bucket_versioning",
+        "destination_initial_version_history_count",
+        "script_sha256",
+        "receipt_anchor_strategy",
+        "objects",
+        "completed_at",
+        "object_count",
+        "passed_count",
+    }
+)
+EXPECTED_DRY_RUN_OBJECT_KEYS = frozenset(
+    {"name", "source", "destination", "checks", "status"}
+)
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -546,6 +579,146 @@ def validate_source_document(name: str, document: dict[str, Any], run_id: str) -
         raise ValueError("gather.json has invalid reference or duplicate-marking semantics")
 
 
+def prepare_source_row(
+    *,
+    name: str,
+    source_bucket: str,
+    source_prefix: str,
+    destination_bucket: str,
+    destination_prefix: str,
+    kms_key_arn: str,
+    run_id: str,
+    region: str,
+    temp: Path,
+) -> tuple[dict[str, Any], dict[str, Any], str]:
+    source_key = source_prefix + name
+    destination_key = destination_prefix + name
+    before = head_object(source_bucket, source_key, region)
+    if (
+        int(before.get("ContentLength", -1)) <= 0
+        or before.get("ChecksumType") != "FULL_OBJECT"
+        or not checksums(before)
+        or str(before.get("VersionId", "null")) != "null"
+        or not str(before.get("ETag", "")).strip()
+        or before.get("ContentType") != "application/json"
+        or before.get("ServerSideEncryption") != "aws:kms"
+        or before.get("SSEKMSKeyId") != kms_key_arn
+    ):
+        raise RuntimeError(f"invalid unversioned source object: {name}")
+    source_local = temp / f"source-{name}"
+    downloaded_source = download_object(
+        source_bucket,
+        source_key,
+        source_local,
+        region,
+        etag=str(before.get("ETag", "")),
+    )
+    require_real_downloaded_file(
+        source_local,
+        f"downloaded source {name}",
+    )
+    if not response_matches_head(
+        downloaded_source,
+        before,
+        source_local,
+        expected_version_id="null",
+    ):
+        raise RuntimeError(f"source get response did not match head: {name}")
+    try:
+        validate_source_document(name, load_json(source_local), run_id)
+    except ValueError as error:
+        raise RuntimeError(str(error)) from error
+    source_sha = sha256(source_local)
+    return (
+        {
+            "name": name,
+            "source": {
+                "bucket": source_bucket,
+                "key": source_key,
+                "version_id": "null",
+                "bytes": int(before["ContentLength"]),
+                "etag": str(before["ETag"]),
+                "checksums": checksums(before),
+                "checksum_type": "FULL_OBJECT",
+                "sha256": source_sha,
+                "server_side_encryption": "aws:kms",
+                "kms_key_id": kms_key_arn,
+                "get_response": downloaded_source,
+            },
+            "destination": {
+                "bucket": destination_bucket,
+                "key": destination_key,
+            },
+            "checks": dict(EXPECTED_DRY_RUN_CHECKS),
+            "status": "dry_run",
+        },
+        before,
+        source_sha,
+    )
+
+
+def validate_dry_run_receipt(path: Path, expected: dict[str, Any]) -> None:
+    receipt = load_json(path)
+    observed_keys = set(receipt)
+    if observed_keys != EXPECTED_DRY_RUN_RECEIPT_KEYS:
+        raise ValueError(
+            "stage provenance dry-run receipt has stale or missing metadata: "
+            f"missing={sorted(EXPECTED_DRY_RUN_RECEIPT_KEYS - observed_keys)} "
+            f"unexpected={sorted(observed_keys - EXPECTED_DRY_RUN_RECEIPT_KEYS)}"
+        )
+    if (
+        receipt.get("schema_version") != 1
+        or receipt.get("status") != "dry_run"
+        or receipt.get("batch_status") != "SUCCEEDED"
+        or receipt.get("object_count") != len(SOURCE_NAMES)
+        or receipt.get("passed_count") != 0
+        or receipt.get("destination_initial_version_history_count") != 0
+        or not isinstance(receipt.get("generated_at"), str)
+        or not receipt.get("generated_at")
+        or not isinstance(receipt.get("completed_at"), str)
+        or not receipt.get("completed_at")
+    ):
+        raise ValueError("stage provenance dry-run receipt did not pass preflight")
+
+    bound_fields = (
+        "run_id",
+        "batch_job_id",
+        "execution_receipt_sha256",
+        "source_prefix",
+        "destination_prefix",
+        "kms_key_arn",
+        "source_bucket_versioning",
+        "destination_bucket_versioning",
+        "destination_initial_version_history_count",
+        "script_sha256",
+        "receipt_anchor_strategy",
+        "object_count",
+    )
+    if any(receipt.get(field) != expected.get(field) for field in bound_fields):
+        raise ValueError(
+            "stage provenance dry-run receipt does not match this apply"
+        )
+
+    observed_objects = receipt.get("objects")
+    expected_objects = expected.get("objects")
+    if not isinstance(observed_objects, list) or observed_objects != expected_objects:
+        raise ValueError(
+            "stage provenance dry-run receipt object evidence does not "
+            "match this apply"
+        )
+    for row in observed_objects:
+        if (
+            not isinstance(row, dict)
+            or set(row) != EXPECTED_DRY_RUN_OBJECT_KEYS
+            or row.get("checks") != EXPECTED_DRY_RUN_CHECKS
+            or row.get("status") != "dry_run"
+        ):
+            raise ValueError(
+                "stage provenance dry-run receipt has stale or malformed "
+                "object metadata"
+            )
+
+
 def exact_history_matches(
     actual: list[dict[str, Any]], expected: list[dict[str, Any]]
 ) -> bool:
@@ -602,7 +775,12 @@ def main() -> int:
     parser.add_argument("--anchor-output", required=True, type=Path)
     parser.add_argument("--region", default="us-east-1")
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--dry-run-receipt", type=Path)
     args = parser.parse_args()
+    if args.dry_run_receipt is not None and not args.apply:
+        raise SystemExit("Fail-closed: --dry-run-receipt is only valid with --apply")
+    if args.apply and args.dry_run_receipt is None:
+        raise SystemExit("Fail-closed: --apply requires --dry-run-receipt")
     try:
         require_safe_new_output(args.output, "freeze receipt output")
         require_safe_new_output(args.anchor_output, "freeze receipt anchor output")
@@ -642,7 +820,10 @@ def main() -> int:
         raise SystemExit(
             "Fail-closed: source must be versioning-suspended and destination versioning-enabled"
         )
-    if args.apply and version_history(destination_bucket, destination_prefix, args.region):
+    initial_destination_history = version_history(
+        destination_bucket, destination_prefix, args.region
+    )
+    if initial_destination_history:
         raise SystemExit("Fail-closed: private provenance destination has version history")
 
     receipt: dict[str, Any] = {
@@ -658,6 +839,7 @@ def main() -> int:
         "kms_key_arn": args.kms_key_arn,
         "source_bucket_versioning": source_versioning,
         "destination_bucket_versioning": destination_versioning,
+        "destination_initial_version_history_count": len(initial_destination_history),
         "script_sha256": sha256(Path(__file__)),
         "receipt_anchor_strategy": "sha256_content_addressed_never_overwritten",
         "objects": [],
@@ -669,75 +851,39 @@ def main() -> int:
         temp = Path(temp_value)
         expected_history: list[dict[str, Any]] = []
         try:
-            for name in SOURCE_NAMES:
-                source_key = source_prefix + name
-                destination_key = destination_prefix + name
-                before = head_object(source_bucket, source_key, args.region)
-                if (
-                    int(before.get("ContentLength", -1)) <= 0
-                    or before.get("ChecksumType") != "FULL_OBJECT"
-                    or not checksums(before)
-                    or str(before.get("VersionId", "null")) != "null"
-                    or not str(before.get("ETag", "")).strip()
-                    or before.get("ContentType") != "application/json"
-                    or before.get("ServerSideEncryption") != "aws:kms"
-                    or before.get("SSEKMSKeyId") != args.kms_key_arn
-                ):
-                    raise RuntimeError(f"invalid unversioned source object: {name}")
-                source_local = temp / f"source-{name}"
-                downloaded_source = download_object(
-                    source_bucket,
-                    source_key,
-                    source_local,
-                    args.region,
-                    etag=str(before.get("ETag", "")),
+            prepared_sources = [
+                prepare_source_row(
+                    name=name,
+                    source_bucket=source_bucket,
+                    source_prefix=source_prefix,
+                    destination_bucket=destination_bucket,
+                    destination_prefix=destination_prefix,
+                    kms_key_arn=args.kms_key_arn,
+                    run_id=args.run_id,
+                    region=args.region,
+                    temp=temp,
                 )
-                require_real_downloaded_file(
-                    source_local,
-                    f"downloaded source {name}",
-                )
-                if not response_matches_head(
-                    downloaded_source,
-                    before,
-                    source_local,
-                    expected_version_id="null",
-                ):
-                    raise RuntimeError(f"source get response did not match head: {name}")
-                try:
-                    validate_source_document(name, load_json(source_local), args.run_id)
-                except ValueError as error:
-                    raise RuntimeError(str(error)) from error
-                source_sha = sha256(source_local)
-                row: dict[str, Any] = {
-                    "name": name,
-                    "source": {
-                        "bucket": source_bucket,
-                        "key": source_key,
-                        "version_id": "null",
-                        "bytes": int(before["ContentLength"]),
-                        "etag": str(before["ETag"]),
-                        "checksums": checksums(before),
-                        "checksum_type": "FULL_OBJECT",
-                        "sha256": source_sha,
-                        "server_side_encryption": "aws:kms",
-                        "kms_key_id": args.kms_key_arn,
-                        "get_response": downloaded_source,
-                    },
-                    "destination": {
-                        "bucket": destination_bucket,
-                        "key": destination_key,
-                    },
-                    "checks": {
-                        "get_matches_head": True,
-                        "local_bytes_exact": source_local.stat().st_size
-                        == int(before["ContentLength"]),
-                        "semantic_binding": True,
-                        "source_kms_exact": True,
-                    },
-                    "status": "source_validated",
-                }
+                for name in SOURCE_NAMES
+            ]
+            dry_run_receipt = {
+                **receipt,
+                "status": "dry_run",
+                "objects": [
+                    deepcopy(row) for row, _before, _source_sha in prepared_sources
+                ],
+                "completed_at": "dry-run-preflight",
+                "object_count": len(prepared_sources),
+                "passed_count": 0,
+            }
+            if args.dry_run_receipt is not None:
+                validate_dry_run_receipt(args.dry_run_receipt, dry_run_receipt)
+
+            for row, before, source_sha in prepared_sources:
                 receipt["objects"].append(row)
                 if args.apply:
+                    source = row["source"]
+                    source_key = str(source["key"])
+                    destination_key = str(row["destination"]["key"])
                     row["status"] = "copy_started"
                     copied = copy_object(
                         source_bucket,
