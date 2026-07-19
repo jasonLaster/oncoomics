@@ -348,7 +348,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 501c4ea</li>
+          <li class="pill">Latest milestone = 59e3d5a</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
           <li class="pill">Prior dashboard = 0b44ec7</li>
@@ -358,6 +358,7 @@
           <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
           <li class="pill">Deterministic staging receipts = exact</li>
+          <li class="pill">Materializer submit receipts = exact</li>
           <li class="pill">Materializer download receipts = exact</li>
           <li class="pill">Materializer receipts = alias-exact</li>
           <li class="pill">Private handoff dry-runs = required</li>
@@ -544,6 +545,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind Batch submits to dry-run requests</strong>
               <span>Materializer and route submits now require an exact matching dry-run request receipt before Batch submission, and reject stale live preflight or job-request drift before submit.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer submit receipts</strong>
+              <span>Materializer capture rendering now requires exact request receipts, five-key submit requests, successful response receipts, response summaries, response checks, and Batch response rows before rendering a terminal capture command.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · validate materializer terminal receipt outputs</strong>
@@ -755,6 +760,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T01:16:16-07:00">Jul 19 · 1:16 AM</time>
+              <span>
+                <strong>59e3d5a Require exact materializer submit receipts:</strong>
+                materializer capture rendering now requires exact request
+                receipts, five-key submit requests, successful response
+                receipts, response summaries, response checks, and Batch
+                response rows before rendering a terminal capture command.
+                Validation passed: 14 focused tests + 9 subtests, 103
+                handoff-adjacent tests + 150 subtests, compileall, import-order
+                lint, and diff checks. No S3, Batch, route, GPU, quota, or
+                replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T01:14:41-07:00">Jul 19 · 1:14 AM</time>
               <span>
