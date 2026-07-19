@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local variant count exactness</li>
+          <li class="pill">Latest milestone = local SBS96 count exactness</li>
+          <li class="pill">SBS96 counts = exact</li>
           <li class="pill">Variant counts = exact</li>
           <li class="pill">Alignment provenance = exact</li>
           <li class="pill">Run provenance = exact</li>
@@ -670,6 +671,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact SBS96 signature counts</strong>
+              <span>Deterministic WGS report staging now rejects non-exact SBS96/signature count fields before cross-check mutation-signature evidence can feed the first terminal report.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact somatic variant counts</strong>
               <span>Deterministic WGS report staging now rejects non-exact somatic SNV and indel counts before small-variant evidence can feed the first terminal report.</span>
@@ -1320,6 +1325,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T08:15:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact SBS96 signature counts:</strong>
+                deterministic WGS report staging now rejects non-exact
+                SBS96/signature count fields before cross-check
+                mutation-signature evidence can feed the first terminal report.
+                No live cloud action, compute action, or replacement run was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T08:00:00-07:00">Jul 19 · local</time>
               <span>

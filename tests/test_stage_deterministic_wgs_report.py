@@ -2214,6 +2214,38 @@ def mutate_variant_json_count(
     )
 
 
+def mutate_signature_json_count(
+    fixture: SyntheticFixture,
+    field: str,
+    value: Any,
+) -> None:
+    def mutate_signatures(signatures: dict[str, Any]) -> None:
+        signatures[field] = value
+
+    StageDeterministicWgsReportInstallTests._mutate_json(
+        fixture.artifacts / "signatures/signature_assignment_summary.json",
+        mutate_signatures,
+    )
+    StageDeterministicWgsReportInstallTests._mutate_json(
+        fixture.artifacts / "diana_hrd_summary.json",
+        lambda summary: mutate_signatures(summary["signatures"]),
+    )
+
+
+def mutate_staged_sbs96_json_count(
+    fixture: SyntheticFixture,
+    field: str,
+    value: Any,
+) -> None:
+    def mutate_staged_sbs96(validation: dict[str, Any]) -> None:
+        validation["checks"]["sbs96_equivalence"][field] = value
+
+    StageDeterministicWgsReportInstallTests._mutate_json(
+        fixture.aux / "staged-input-validation.json",
+        mutate_staged_sbs96,
+    )
+
+
 @unittest.skipUnless(shutil.which("bcftools"), "bcftools is required for the indexed-VCF E2E fixture")
 class StageDeterministicWgsReportTests(unittest.TestCase):
     def test_packet_file_install_is_create_only_and_fsynced(self) -> None:
@@ -2705,6 +2737,97 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                     'variants.get("pass_indels"',
                     "variants.get('brca1_brca2_pass_region_records'",
                     'variants.get("brca1_brca2_pass_region_records"',
+                )
+            )
+        ]
+
+        self.assertEqual(raw_coercions, [])
+
+    def test_sbs96_counts_reject_coercible_json_counts(self) -> None:
+        mutations = (
+            (
+                "signature rows float",
+                lambda fixture: mutate_signature_json_count(
+                    fixture, "sbs96_rows", 96.0
+                ),
+                "sbs96_matrix",
+            ),
+            (
+                "signature usable alleles string",
+                lambda fixture: mutate_signature_json_count(
+                    fixture, "usable_snv_records", "1"
+                ),
+                "sbs96_matrix",
+            ),
+            (
+                "signature usable alleles bool",
+                lambda fixture: mutate_signature_json_count(
+                    fixture, "usable_snv_records", True
+                ),
+                "sbs96_matrix",
+            ),
+            (
+                "staged contexts string",
+                lambda fixture: mutate_staged_sbs96_json_count(
+                    fixture, "contexts", "96"
+                ),
+                "independent_vcf_sbs96_validation",
+            ),
+            (
+                "staged usable alleles float",
+                lambda fixture: mutate_staged_sbs96_json_count(
+                    fixture, "usable_pass_snv_alleles", 1.0
+                ),
+                "independent_vcf_sbs96_validation",
+            ),
+            (
+                "staged matrix burden bool",
+                lambda fixture: mutate_staged_sbs96_json_count(
+                    fixture, "matrix_burden", True
+                ),
+                "independent_vcf_sbs96_validation",
+            ),
+        )
+        for name, mutate, expected_check in mutations:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                mutate(fixture)
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_check, result.stdout + result.stderr)
+                self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_sbs96_guards_avoid_raw_int_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "signatures.get('sbs96_rows'",
+                    'signatures.get("sbs96_rows"',
+                    "signatures.get('usable_snv_records'",
+                    'signatures.get("usable_snv_records"',
+                    "staged_sbs96.get('contexts'",
+                    'staged_sbs96.get("contexts"',
+                    "staged_sbs96.get('usable_pass_snv_alleles'",
+                    'staged_sbs96.get("usable_pass_snv_alleles"',
+                    "staged_sbs96.get('matrix_burden'",
+                    'staged_sbs96.get("matrix_burden"',
                 )
             )
         ]

@@ -2608,8 +2608,9 @@ def main() -> None:
     add_check(checks, "brca_region_rows", brca_region_rows_match, "Indexed BRCA-region VCF, CSV rows, summary count, PASS state, and region-only annotation boundary agree.")
 
     sbs_counts = [int(row.get("count", -1)) for row in sbs_rows]
+    sbs_count_sum = sum(sbs_counts)
     sbs_keys = {(row.get("mutation_type", ""), row.get("trinucleotide", "")) for row in sbs_rows}
-    add_check(checks, "sbs96_matrix", signatures.get("status") == "partial_evidence" and len(sbs_rows) == int(signatures.get("sbs96_rows", -1)) == 96 and sbs_keys == EXPECTED_SBS96 and min(sbs_counts, default=-1) >= 0 and sum(sbs_counts) == int(signatures.get("usable_snv_records", -1)) and str(signatures.get("sbs3_status", "")).startswith("no_call") and signatures.get("source_vcf") == paths["filtered_vcf"].name, "SBS96 has exactly the 96 canonical nonnegative channels summing to the summary count; SBS3 remains no_call.")
+    add_check(checks, "sbs96_matrix", signatures.get("status") == "partial_evidence" and len(sbs_rows) == 96 and integer_equals(signatures.get("sbs96_rows"), len(sbs_rows)) and sbs_keys == EXPECTED_SBS96 and min(sbs_counts, default=-1) >= 0 and integer_equals(signatures.get("usable_snv_records"), sbs_count_sum) and str(signatures.get("sbs3_status", "")).startswith("no_call") and signatures.get("source_vcf") == paths["filtered_vcf"].name, "SBS96 has exactly the 96 canonical nonnegative channels summing to the summary count; SBS3 remains no_call.")
     add_check(
         checks,
         "independent_vcf_sbs96_validation",
@@ -2618,8 +2619,15 @@ def main() -> None:
         and staged_vcf.get("status") == "passed"
         and staged_sbs96.get("status") == "passed"
         and staged_sbs96.get("matrix_matches_independent_pass_vcf_derivation") is True
-        and int(staged_sbs96.get("contexts", 0)) == 96
-        and int(staged_sbs96.get("usable_pass_snv_alleles", -1)) == int(signatures.get("usable_snv_records", -2)),
+        and integer_equals(staged_sbs96.get("contexts"), 96)
+        and integer_equals(
+            staged_sbs96.get("usable_pass_snv_alleles"),
+            signatures.get("usable_snv_records"),
+        )
+        and integer_equals(
+            staged_sbs96.get("matrix_burden"),
+            signatures.get("usable_snv_records"),
+        ),
         "An independent indexed-reference pass reproduced every SBS96 channel exactly from the final PASS-SNV VCF and validated VCF/reference compatibility.",
     )
 
