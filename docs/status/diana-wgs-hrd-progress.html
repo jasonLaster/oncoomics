@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 9efb447</li>
+          <li class="pill">Latest milestone = 9a59d6b</li>
+          <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
           <li class="pill">Prior dashboard = 0b44ec7</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
@@ -610,6 +611,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · validate AI bundle envelopes before staging</strong>
+              <span>AI review bundle staging now revalidates exact request and receipt envelopes before preparing isolated reviewer inputs.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact comparative synthesis manifests</strong>
               <span>Comparative HRD synthesis now rejects stale <code>report_manifest.json</code> envelopes and mismatched support inventories before a synthesis packet can install.</span>
             </li>
@@ -727,6 +732,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T01:05:05-07:00">Jul 19 · 1:05 AM</time>
+              <span>
+                <strong>9a59d6b Validate AI bundle envelopes before staging:</strong>
+                AI review bundle staging now revalidates exact request and
+                receipt envelopes before preparing isolated reviewer inputs. No
+                S3, Batch, route, GPU, quota, or replacement compute was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T01:03:09-07:00">Jul 19 · 1:03 AM</time>
               <span>
