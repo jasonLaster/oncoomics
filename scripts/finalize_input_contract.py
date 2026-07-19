@@ -57,6 +57,23 @@ EXPECTED_MATERIALIZATION_CHECKS = {
     "sse": True,
     "kms": True,
 }
+EXPECTED_CROSSCHECK_CHECKS = {
+    "all_sources_exact_version_and_sha256": True,
+    "alias_only_pass_snv_vcf": True,
+    "sbs96_matches_independent_pass_vcf_derivation": True,
+    "destination_prefix_initially_empty": True,
+    "all_outputs_create_only": True,
+    "destination_exact_single_version_history": True,
+}
+EXPECTED_CROSSCHECK_OUTPUT_CHECKS = {
+    "create_only_put": True,
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_version_history": True,
+}
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -309,7 +326,11 @@ def finalize(
         or crosscheck_receipt.get("authorized_hrd_state") != "no_call"
     ):
         raise ValueError("cross-check materialization is not a passed one-shot publication")
-    require_all_true(crosscheck_receipt.get("checks"), "cross-check materialization")
+    require_exact_true(
+        crosscheck_receipt.get("checks"),
+        EXPECTED_CROSSCHECK_CHECKS,
+        "cross-check materialization",
+    )
     if crosscheck_anchor.get("receipt_sha256") != crosscheck_receipt_sha256:
         raise ValueError("cross-check materialization anchor hash changed after validation")
 
@@ -337,7 +358,11 @@ def finalize(
     for filename, row in outputs.items():
         if not isinstance(row, dict):
             raise ValueError("cross-check materialization output is malformed")
-        require_all_true(row.get("checks"), f"{filename} materializer output")
+        require_exact_true(
+            row.get("checks"),
+            EXPECTED_CROSSCHECK_OUTPUT_CHECKS,
+            f"{filename} materializer output",
+        )
         require_full_object_sha256(row, f"{filename} materializer output")
         inventory = inventory_by_name[filename]
         if (

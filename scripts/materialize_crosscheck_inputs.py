@@ -33,6 +33,23 @@ CANONICAL = {f"{left}[{sub}]{right}" for sub in SUBSTITUTIONS for left in BASES 
 CONTEXT = re.compile(r"^[ACGT]\[(C>A|C>G|C>T|T>A|T>C|T>G)\][ACGT]$")
 COMPLEMENT = {"A": "T", "C": "G", "G": "C", "T": "A"}
 STANDARD_CONTIGS = [f"chr{i}" for i in range(1, 23)] + ["chrX"]
+EXPECTED_UPLOAD_CHECKS = {
+    "create_only_put": True,
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_version_history": True,
+}
+EXPECTED_RECEIPT_CHECKS = {
+    "all_sources_exact_version_and_sha256": True,
+    "alias_only_pass_snv_vcf": True,
+    "sbs96_matches_independent_pass_vcf_derivation": True,
+    "destination_prefix_initially_empty": True,
+    "all_outputs_create_only": True,
+    "destination_exact_single_version_history": True,
+}
 
 
 def now() -> str:
@@ -527,15 +544,7 @@ def upload(path: Path, uri: str, kms_key_arn: str, region: str) -> dict[str, Any
         },
         "sha256": local_sha256,
         "kms_key_arn": str(metadata.get("SSEKMSKeyId", "")),
-        "checks": {
-            "create_only_put": True,
-            "version_exact": True,
-            "bytes_exact": True,
-            "sha256_checksum_exact": True,
-            "metadata_sha256_exact": True,
-            "exact_kms": True,
-            "single_version_history": True,
-        },
+        "checks": dict(EXPECTED_UPLOAD_CHECKS),
     }
 
 
@@ -805,14 +814,7 @@ def main() -> int:
             "input_sha256": result["input_sha256"],
             "outputs": output_custody,
             "destination_inventory": destination_inventory,
-            "checks": {
-                "all_sources_exact_version_and_sha256": True,
-                "alias_only_pass_snv_vcf": True,
-                "sbs96_matches_independent_pass_vcf_derivation": True,
-                "destination_prefix_initially_empty": True,
-                "all_outputs_create_only": True,
-                "destination_exact_single_version_history": True,
-            },
+            "checks": dict(EXPECTED_RECEIPT_CHECKS),
             "classification_authorization": "none",
             "authorized_hrd_state": "no_call",
         }

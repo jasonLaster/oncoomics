@@ -28,6 +28,9 @@ finalizer = load("finalize_input_contract", ROOT / "scripts/finalize_input_contr
 materializer = load(
     "materialize_frozen_artifacts", ROOT / "scripts/materialize_frozen_artifacts.py"
 )
+crosscheck_materializer = load(
+    "materialize_crosscheck_inputs", ROOT / "scripts/materialize_crosscheck_inputs.py"
+)
 publisher = load("publish_input_contract", ROOT / "scripts/publish_input_contract.py")
 submitter = load("submit_materializer_v4", ROOT / "scripts/submit_materializer_v4.py")
 checker = load("check_contract_for_custody", ROOT / "scripts/check_contract.py")
@@ -240,15 +243,7 @@ class CustodyFixture:
                     "ChecksumType": "FULL_OBJECT",
                     "ChecksumSHA256": checksum_sha256(digest),
                 },
-                "checks": {
-                    "create_only_put": True,
-                    "version_exact": True,
-                    "bytes_exact": True,
-                    "sha256_checksum_exact": True,
-                    "metadata_sha256_exact": True,
-                    "exact_kms": True,
-                    "single_version_history": True,
-                },
+                "checks": dict(finalizer.EXPECTED_CROSSCHECK_OUTPUT_CHECKS),
             }
         validation_digest = "f" * 64
         outputs["staged_input_validation.json"] = {
@@ -260,15 +255,7 @@ class CustodyFixture:
                 "ChecksumType": "FULL_OBJECT",
                 "ChecksumSHA256": checksum_sha256(validation_digest),
             },
-            "checks": {
-                "create_only_put": True,
-                "version_exact": True,
-                "bytes_exact": True,
-                "sha256_checksum_exact": True,
-                "metadata_sha256_exact": True,
-                "exact_kms": True,
-                "single_version_history": True,
-            },
+            "checks": dict(finalizer.EXPECTED_CROSSCHECK_OUTPUT_CHECKS),
         }
         destination_inventory = [
             {
@@ -292,7 +279,7 @@ class CustodyFixture:
             "source_custody": self.cross_sources,
             "outputs": outputs,
             "destination_inventory": destination_inventory,
-            "checks": {"complete": True},
+            "checks": dict(finalizer.EXPECTED_CROSSCHECK_CHECKS),
             "classification_authorization": "none",
             "authorized_hrd_state": "no_call",
         }
@@ -681,8 +668,30 @@ class CustodyHandoffTests(unittest.TestCase):
         fixture.cross["outputs"]["staged_input_validation.json"]["checks"][
             "sha256_checksum_exact"
         ] = False
-        with self.assertRaisesRegex(ValueError, "did not pass every custody check"):
+        with self.assertRaisesRegex(ValueError, "exact custody checks"):
             fixture.finalize()
+
+    def test_finalizer_rejects_incomplete_crosscheck_receipt_checks(self):
+        fixture = CustodyFixture()
+        fixture.cross["checks"].pop("destination_prefix_initially_empty")
+        with self.assertRaisesRegex(ValueError, "exact custody checks"):
+            fixture.finalize()
+
+    def test_finalizer_rejects_unexpected_crosscheck_output_checks(self):
+        fixture = CustodyFixture()
+        fixture.cross["outputs"]["somatic.pass.vcf.gz"]["checks"]["future"] = True
+        with self.assertRaisesRegex(ValueError, "exact custody checks"):
+            fixture.finalize()
+
+    def test_finalizer_crosscheck_check_inventory_matches_materializer(self):
+        self.assertEqual(
+            finalizer.EXPECTED_CROSSCHECK_CHECKS,
+            crosscheck_materializer.EXPECTED_RECEIPT_CHECKS,
+        )
+        self.assertEqual(
+            finalizer.EXPECTED_CROSSCHECK_OUTPUT_CHECKS,
+            crosscheck_materializer.EXPECTED_UPLOAD_CHECKS,
+        )
 
     def test_finalizer_rejects_incomplete_freeze_or_history(self):
         fixture = CustodyFixture()
