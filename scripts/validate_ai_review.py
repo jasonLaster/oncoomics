@@ -13,7 +13,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Sequence
 
-from build_ai_review_bundle import validate_report_manifest_support
+from build_ai_review_bundle import (
+    BUNDLE_MANIFEST_KEYS,
+    BUNDLE_REVIEW_BUNDLE_KEYS,
+    validate_report_manifest_support,
+)
 from forbidden_text import (
     forbidden_token_fingerprints,
     has_unauthorized_hrd_classification,
@@ -475,6 +479,10 @@ def validate_bundle(
     str,
     str,
 ]:
+    if set(bundle) != BUNDLE_REVIEW_BUNDLE_KEYS:
+        raise ValueError("AI review bundle envelope is not exact")
+    if set(bundle_manifest) != BUNDLE_MANIFEST_KEYS:
+        raise ValueError("AI review bundle manifest envelope is not exact")
     if bundle.get("schema_version") != 2 or bundle_manifest.get("schema_version") != 2:
         raise ValueError("unsupported bundle or bundle-manifest schema")
     if bundle_manifest.get("forbidden_token_sha256") != forbidden_token_fingerprints(forbidden_tokens):

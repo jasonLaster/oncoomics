@@ -444,6 +444,46 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertIn("distinct pinned models", validated.stderr)
             self.assertFalse((review / "validation.json").exists())
 
+    def test_rejects_rebound_bundle_with_non_exact_envelopes(self) -> None:
+        cases = (
+            (
+                "review bundle",
+                "review_bundle.json",
+                "AI review bundle envelope is not exact",
+            ),
+            (
+                "bundle manifest",
+                "bundle_manifest.json",
+                "AI review bundle manifest envelope is not exact",
+            ),
+        )
+        for label, relative, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = ValidateReviewFixture(Path(temporary))
+                fixture.build()
+
+                path = fixture.bundle_dir / relative
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload["legacy_note"] = "accepted"
+                write_json(path, payload)
+
+                if relative == "review_bundle.json":
+                    bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+                    bundle_manifest = json.loads(
+                        bundle_manifest_path.read_text(encoding="utf-8")
+                    )
+                    bundle_manifest["review_bundle_sha256"] = sha256(path)
+                    write_json(bundle_manifest_path, bundle_manifest)
+
+                review = Path(temporary) / "review-a"
+                fixture.write_review(review)
+
+                validated = fixture.validate(review)
+
+                self.assertNotEqual(validated.returncode, 0)
+                self.assertIn(message, validated.stderr)
+                self.assertFalse((review / "validation.json").exists())
+
     def test_rejects_existing_validation_create_only_and_preserves_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))

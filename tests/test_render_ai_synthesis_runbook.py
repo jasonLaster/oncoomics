@@ -90,18 +90,32 @@ def write_receipts(root: Path, manifest_paths: dict[str, Path]) -> list[Path]:
         receipt = {
             "schema_version": 1,
             "status": "passed",
+            "generated_at_utc": "2026-07-19T00:00:00+00:00",
             "apply": True,
             "subject_alias": MODULE.SUBJECT_ALIAS,
             "run_id": MODULE.RUN_ID,
             "method_id": method_id,
             "packet_revision": revision,
+            "source_packet_dir": str(
+                (root / "packets" / method_id).resolve()
+            ),
             "destination_prefix": prefix,
             "kms_key_arn": PUBLISH.PRIVATE_KMS_KEY_ARN,
             "expected_files": list(expected),
             "object_count": len(expected),
             "passed_count": len(expected),
+            "forbidden_token_count": 1,
+            "forbidden_token_sha256": ["a" * 64],
             "objects": rows,
             "checks": dict(PUBLISH.PRIVATE_RECEIPT_APPLY_CHECKS),
+            "dry_run_receipt": {
+                "path": str((receipt_root / f"{method_id}.dry.json").resolve()),
+                "sha256": "b" * 64,
+                "packet_revision": revision,
+                "status": "dry_run",
+            },
+            "destination_final_history_count": len(expected),
+            "completed_at_utc": "2026-07-19T00:01:00+00:00",
         }
         path = receipt_root / f"{method_id}.json"
         path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
