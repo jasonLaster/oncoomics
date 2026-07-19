@@ -91,6 +91,10 @@ def receipt_output(root: Path, receipt_stem: str, method_id: str, suffix: str) -
     )
 
 
+def public_index_path(root: Path) -> Path:
+    return root / ".codex-tmp/public-index/objects.json"
+
+
 def publish_command(
     scripts: Path,
     receipt_path: Path,
@@ -131,7 +135,7 @@ def publish_command(
 
 def index_commands(root: Path, receipt_stem: str = "terminal") -> list[list[str | Path]]:
     scripts = root / "scripts"
-    index = root / ".codex-tmp/public-index/objects.json"
+    index = public_index_path(root)
     dry_receipt, apply_receipt = public_index_receipt_paths(root, receipt_stem)
     reviewed_public_receipts = [
         receipt_output(root, receipt_stem, method_id, "")
@@ -201,6 +205,7 @@ def required_absent(root: Path, receipt_stem: str) -> tuple[Path, ...]:
             for method_id in REPORT_METHOD_IDS
             for suffix in (".dry", "")
         ),
+        public_index_path(root),
         *public_index_receipt_paths(root, receipt_stem),
     )
 
@@ -291,6 +296,7 @@ def render(
     for summary in receipt_summaries:
         lines.append(
             f"- `{summary['method_id']}`: {summary['object_count']} files → "
+            f"private receipt SHA-256 `{summary['receipt_sha256']}` -> "
             f"`{summary['destination_prefix']}`"
         )
     lines.append("")

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import hashlib
-import io
 import importlib.util
+import io
 import json
 import sys
 import tempfile
@@ -328,10 +328,6 @@ class PublicIndexTests(unittest.TestCase):
         ) as list_prefix:
             root = Path(temporary)
             output = root / "objects.json"
-            stale = root / "stale.json"
-            symlink = root / "symlink.json"
-
-            output.write_text("stale\n", encoding="utf-8")
             MODULE.main(
                 [
                     "--output",
@@ -352,7 +348,7 @@ class PublicIndexTests(unittest.TestCase):
             stale.write_text("do not overwrite\n", encoding="utf-8")
             symlink.symlink_to(stale)
 
-            with self.assertRaisesRegex(RuntimeError, "through symlink"):
+            with self.assertRaisesRegex(FileExistsError, "already exists"):
                 MODULE.write_index(symlink, {"objects": []})
 
             self.assertEqual(stale.read_text(encoding="utf-8"), "do not overwrite\n")
@@ -626,7 +622,7 @@ class PublicIndexTests(unittest.TestCase):
 
             self.assertEqual(fsync.call_count, 2)
 
-    def test_write_index_preserves_old_index_after_file_fsync_failure(self) -> None:
+    def test_write_index_refuses_to_replace_old_index_before_io(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             output = root / "objects.json"
@@ -636,14 +632,38 @@ class PublicIndexTests(unittest.TestCase):
                 mock.patch.object(
                     MODULE.os,
                     "fsync",
-                    side_effect=OSError("synthetic index fsync failure"),
-                ),
-                self.assertRaisesRegex(OSError, "synthetic index fsync failure"),
+                    side_effect=AssertionError("fsync should not run"),
+                ) as fsync,
+                self.assertRaisesRegex(FileExistsError, "already exists"),
             ):
                 MODULE.write_index(output, {"objects": []})
 
+            fsync.assert_not_called()
             self.assertEqual(output.read_text(encoding="utf-8"), "preserve\n")
             self.assertEqual(list(root.glob(".objects.json.*")), [])
+
+    def test_main_rejects_existing_output_before_s3_listing(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "objects.json"
+            output.write_text("preserve\n", encoding="utf-8")
+            receipts = write_public_receipts(root)
+            argv = ["--output", str(output)]
+            for receipt in receipts:
+                argv.extend(["--reviewed-public-receipt", str(receipt)])
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "list_prefix",
+                    side_effect=AssertionError("S3 should not be listed"),
+                ) as list_prefix,
+                self.assertRaisesRegex(FileExistsError, "already exists"),
+            ):
+                MODULE.main(argv)
+
+            list_prefix.assert_not_called()
+            self.assertEqual(output.read_text(encoding="utf-8"), "preserve\n")
 
     def test_write_index_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -670,10 +690,7 @@ class PublicIndexTests(unittest.TestCase):
             ):
                 MODULE.write_index(output, {"objects": []})
 
-            self.assertEqual(
-                json.loads(output.read_text(encoding="utf-8")),
-                {"objects": [{"key": "tampered"}]},
-            )
+            self.assertFalse(output.exists())
 
     def test_write_index_rejects_symlinked_parent_without_writing_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -21,8 +21,8 @@ from publish_reviewed_public_report import (
     MAX_FILE_BYTES,
     METHOD_CONTRACTS,
     PRIVATE_BUCKET,
-    PUBLIC_DESTINATION_OBJECT_CHECKS,
     PUBLIC_BUCKET,
+    PUBLIC_DESTINATION_OBJECT_CHECKS,
     PUBLIC_ROOT,
     REVIEWED_PUBLIC_PREFLIGHT_CHECKS,
     RUN_ID,
@@ -127,25 +127,29 @@ def list_prefix(prefix: str) -> list[dict[str, Any]]:
 
 
 def write_index(path: pathlib.Path, payload: dict[str, Any]) -> None:
-    """Atomically write the local public index without following symlinks."""
+    """Atomically create the local public index without following symlinks."""
 
-    if path.is_symlink():
-        raise RuntimeError(f"Refusing to write public index through symlink: {path}")
-    require_safe_index_parent(path)
+    require_new_index_output(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = canonical_bytes(payload)
     expected_sha256 = sha256_bytes(data)
     descriptor, raw = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     temporary = pathlib.Path(raw)
+    linked = False
     try:
         with os.fdopen(descriptor, "wb") as handle:
             descriptor = -1
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary, path)
+        os.link(temporary, path)
+        linked = True
         fsync_directory(path.parent)
         require_installed_index(path, expected_sha256)
+    except Exception:
+        if linked:
+            path.unlink(missing_ok=True)
+        raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
@@ -396,6 +400,12 @@ def require_safe_index_parent(path: pathlib.Path) -> None:
             raise RuntimeError(f"Public index parent is not a directory: {parent}")
 
 
+def require_new_index_output(path: pathlib.Path) -> None:
+    if path.is_symlink() or path.exists():
+        raise FileExistsError(f"public index output already exists: {path}")
+    require_safe_index_parent(path)
+
+
 def require_real_input_file(path: pathlib.Path, label: str) -> None:
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
@@ -420,6 +430,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     args = parser.parse_args(argv)
+
+    require_new_index_output(args.output)
 
     expected_reviewed_public_objects, reviewed_public_receipts = validate_reviewed_public_receipts(
         args.reviewed_public_receipt

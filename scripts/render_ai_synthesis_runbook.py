@@ -468,8 +468,10 @@ def render(
         ]
     )
     for summary in receipt_summaries:
+        method_id = str(summary["method_id"])
         lines.append(
-            f"- `{summary['method_id']}`: `report_manifest.json` VersionId "
+            f"- `{method_id}`: `{manifests[method_id]}` -> "
+            f"`report_manifest.json` VersionId "
             f"`{summary['report_manifest_version_id']}`, SHA-256 "
             f"`{summary['report_manifest_sha256']}`"
         )

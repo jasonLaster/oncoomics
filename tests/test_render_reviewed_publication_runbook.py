@@ -142,6 +142,12 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             self.assertGreater(index, previous)
             self.assertIn(MODULE.destination_prefix(method_id), text)
             previous = index
+        for index, method_id in enumerate(MODULE.REPORT_METHOD_IDS, 1):
+            self.assertIn(
+                f"- `{method_id}`: 3 files → private receipt SHA-256 "
+                f"`{index:064x}` -> `{MODULE.destination_prefix(method_id)}`",
+                text,
+            )
 
     def test_renderer_hands_forbidden_tokens_file_to_public_scan(self) -> None:
         text = render(forbidden_tokens_file=Path("/fast/forbidden_tokens.json"))
@@ -353,8 +359,8 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
         )
         self.assertEqual(receipt_outputs, list(expected))
         self.assertEqual(
-            MODULE.required_absent(Path("/repo"), "unit")[-2:],
-            expected,
+            MODULE.required_absent(Path("/repo"), "unit")[-3:],
+            (Path("/repo/.codex-tmp/public-index/objects.json"), *expected),
         )
 
     def test_private_receipt_gate_accepts_current_checked_in_receipts(self) -> None:
@@ -508,6 +514,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
         self.assertEqual(
             outputs[20:],
             [
+                "/repo/.codex-tmp/public-index/objects.json",
                 "/repo/.codex-tmp/public-index/public-index.unit.dry.json",
                 "/repo/.codex-tmp/public-index/public-index.unit.json",
             ],

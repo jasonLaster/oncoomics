@@ -169,6 +169,11 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             f"/repo/.codex-tmp/hrd-reports/ai-review/{MODULE.RUN_ID}/reviewer-inputs/reviewer-b-input/reviewer-b.prompt.md",
             text,
         )
+        for method_id, path in MODULE.report_manifest_paths(Path("/repo")).items():
+            self.assertIn(
+                f"- `{method_id}`: `{path}` -> `report_manifest.json`",
+                text,
+            )
 
     def test_renderer_validates_and_publishes_checked_in_outputs(self) -> None:
         text = render()
