@@ -1027,6 +1027,59 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             ):
                 REPORT_MODULE.require_report_manifest(staging)
 
+    def test_staged_report_manifest_rejects_coerced_hashes(self) -> None:
+        digest = "1" * 64
+        cases = (
+            (
+                "report",
+                lambda manifest: manifest.__setitem__("report_sha256", int(digest)),
+                "report.md",
+            ),
+            (
+                "support",
+                lambda manifest: manifest["support_sha256"].__setitem__(
+                    "readiness.csv",
+                    int(digest),
+                ),
+                "readiness.csv",
+            ),
+            (
+                "source",
+                lambda manifest: manifest["source_sha256"].__setitem__(
+                    "somatic_vcf",
+                    int(digest),
+                ),
+                "source_sha256.somatic_vcf",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-install-"
+            ) as temporary:
+                staging = Path(temporary)
+                write_minimal_report_packet(staging)
+                manifest_path = staging / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["report_sha256"] = digest
+                manifest["source_sha256"]["somatic_vcf"] = digest
+                for name in manifest["support_sha256"]:
+                    manifest["support_sha256"][name] = digest
+                mutate(manifest)
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with (
+                    patch.object(REPORT_MODULE, "sha256", return_value=digest),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "report manifest has malformed SHA-256 for " + message,
+                    ),
+                ):
+                    REPORT_MODULE.require_report_manifest(staging)
+
     def test_staged_report_manifest_requires_exact_envelope(self) -> None:
         mutations = {
             "extra_top_level": lambda manifest: manifest.__setitem__(

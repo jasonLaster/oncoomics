@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact cross-check route hashes</li>
+          <li class="pill">Latest milestone = local exact deterministic report hashes</li>
+          <li class="pill">Deterministic report hashes = exact</li>
           <li class="pill">Cross-check route hashes = exact</li>
           <li class="pill">AI-review source hashes = exact</li>
           <li class="pill">Synthesis packet hashes = exact</li>
@@ -689,6 +690,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact deterministic report hashes</strong>
+              <span>The deterministic WGS report stager now rejects coerced SHA-256 values in <code>report_sha256</code>, <code>support_sha256</code>, and <code>source_sha256</code> before the first descriptive deterministic report can feed Rosalind packets, cross-check packets, or AI synthesis.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact cross-check output bytes</strong>
               <span>Deterministic WGS report staging now rejects non-exact materialized cross-check output bytes before SigProfiler/SBS96 and scarHRD input planning can trust alias-only side evidence.</span>
@@ -1415,6 +1420,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T13:00:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact deterministic report hashes:</strong>
+                the deterministic WGS report stager now rejects coerced
+                SHA-256 values in <code>report_sha256</code>,
+                <code>support_sha256</code>, and <code>source_sha256</code>
+                before the first descriptive deterministic report can feed
+                Rosalind packets, cross-check packets, or AI synthesis. No live
+                cloud action, compute action, or replacement run was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:45:00-07:00">Jul 19 · local</time>
               <span>

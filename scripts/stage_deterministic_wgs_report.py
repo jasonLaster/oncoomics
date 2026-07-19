@@ -580,6 +580,12 @@ def valid_sha256(value: Any) -> bool:
     return bool(HEX64.fullmatch(str(value)))
 
 
+def require_manifest_sha256(value: Any, name: str) -> str:
+    if not isinstance(value, str) or not HEX64.fullmatch(value):
+        raise ValueError("report manifest has malformed SHA-256 for " + name)
+    return value
+
+
 def valid_version_id(value: Any) -> bool:
     text = str(value)
     return bool(
@@ -1604,21 +1610,23 @@ def require_report_manifest(packet_dir: Path) -> None:
     if (
         not isinstance(source_hashes, dict)
         or not source_hashes
-        or any(
-            not isinstance(key, str) or not HEX64.fullmatch(str(value))
-            for key, value in source_hashes.items()
-        )
+        or any(not isinstance(key, str) for key in source_hashes)
     ):
         raise ValueError("report manifest source SHA-256 inventory is not exact")
+    for key, value in source_hashes.items():
+        require_manifest_sha256(value, "source_sha256." + key)
 
-    expected = [("report.md", str(payload.get("report_sha256", "")))]
+    expected = [
+        (
+            "report.md",
+            require_manifest_sha256(payload.get("report_sha256"), "report.md"),
+        )
+    ]
     expected.extend(
-        (name, str(support_hashes.get(name, "")))
+        (name, require_manifest_sha256(support_hashes.get(name), name))
         for name in sorted(support_names)
     )
     for name, expected_sha256 in expected:
-        if not HEX64.fullmatch(expected_sha256):
-            raise ValueError("report manifest has malformed SHA-256 for " + name)
         path = require_real_input_path(packet_dir / name, "report packet")
         if sha256(path) != expected_sha256:
             raise ValueError("report manifest is stale for " + name)
