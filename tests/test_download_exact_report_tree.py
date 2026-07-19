@@ -27,6 +27,18 @@ def write_json(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    if key not in payload:
+        raise AssertionError(f"missing top-level JSON field {key}")
+    current = f'  "{key}": '
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 def checksum_sha256(value: bytes) -> str:
     return base64.b64encode(hashlib.sha256(value).digest()).decode("ascii")
 
@@ -1232,6 +1244,73 @@ class ExactReportDownloadTests(unittest.TestCase):
 
                 self.assertFalse(output.exists())
                 self.assertFalse(verification.exists())
+
+    def test_rejects_duplicate_receipt_object_names_before_download(self) -> None:
+        cases = (
+            (
+                "publication receipt",
+                lambda receipt, _anchor, _verification: receipt,
+                "publication receipt",
+                False,
+            ),
+            (
+                "publication anchor",
+                lambda _receipt, anchor, _verification: anchor,
+                "publication anchor",
+                False,
+            ),
+            (
+                "verification receipt",
+                lambda _receipt, _anchor, verification: verification,
+                "verification receipt",
+                True,
+            ),
+        )
+        for label, select_path, error_label, needs_history in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                receipt, anchor, _, row = self.fixture(root)
+                output = root / "report-tree"
+                verification = root / "verification.json"
+                if needs_history:
+                    write_json(verification, {"schema_version": 1, "status": "failed"})
+
+                write_duplicate_json_field(
+                    select_path(receipt, anchor, verification),
+                    "schema_version",
+                    0,
+                )
+
+                history = (
+                    patch.object(
+                        MODULE,
+                        "version_history",
+                        return_value=self.history(row),
+                    )
+                    if needs_history
+                    else patch.object(
+                        MODULE,
+                        "version_history",
+                        side_effect=AssertionError("AWS called"),
+                    )
+                )
+                with (
+                    history,
+                    patch.object(
+                        MODULE,
+                        "get_exact",
+                        side_effect=AssertionError("AWS called"),
+                    ) as get_exact,
+                    self.assertRaisesRegex(
+                        SystemExit,
+                        f"duplicate JSON object name in {error_label}: "
+                        "schema_version",
+                    ),
+                ):
+                    MODULE.main(self.args(receipt, anchor, output, verification))
+
+                get_exact.assert_not_called()
+                self.assertFalse(output.exists())
 
     def test_refuses_output_below_existing_dir_under_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -23,6 +23,10 @@ import shlex
 from pathlib import Path
 from typing import Any, Iterable
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 from submit_materializer_v4 import REQUEST_DRY_RUN_RECEIPT_KEYS
 
 REGION = "us-east-1"
@@ -165,7 +169,13 @@ def read_json_object(path: Path, label: str) -> dict[str, Any]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must contain a JSON object: {path}")
     return value

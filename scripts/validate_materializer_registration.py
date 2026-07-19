@@ -24,6 +24,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
+
 ACCOUNT_ID = "172630973301"
 REGION = "us-east-1"
 JOB_DEFINITION_NAME = "diana-wgs-hrd-materialize-crosscheck-inputs"
@@ -118,7 +123,13 @@ def load_json(path: Path, label: str) -> dict[str, Any]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value

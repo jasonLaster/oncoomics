@@ -26,6 +26,18 @@ def submitter_canonical_bytes(value: object) -> bytes:
     ).encode("utf-8")
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    if key not in payload:
+        raise AssertionError(f"missing top-level JSON field {key}")
+    current = f'  "{key}": '
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 class RenderMaterializerCaptureCommandTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -295,6 +307,21 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "parent may not be a symlink"):
             MODULE.render_from_files(args)
+
+    def test_rejects_duplicate_receipt_object_names(self) -> None:
+        for label, select_path in (
+            ("request receipt", lambda args: args.request_receipt),
+            ("response receipt", lambda args: args.response_receipt),
+        ):
+            with self.subTest(label=label):
+                args = self.args()
+                write_duplicate_json_field(select_path(args), "schema_version", 0)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"duplicate JSON object name in {label}: schema_version",
+                ):
+                    MODULE.render_from_files(args)
 
     def test_requires_all_materializer_parameters(self) -> None:
         mutations = {

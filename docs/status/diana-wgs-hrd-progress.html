@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact final-freeze receipt JSON</li>
+          <li class="pill">Latest milestone = local exact materializer/report-custody JSON</li>
+          <li class="pill">Materializer/report custody = exact</li>
           <li class="pill">Final/materialized receipts = exact</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Phase 3 fast packet JSON = exact</li>
@@ -819,6 +820,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer/report-custody JSON</strong>
+              <span>Local materializer and report-custody readers now reject duplicate JSON object names in replay receipts, replay anchors, verification receipts, materializer request/response receipts, script anchors, definition snapshots, registration responses, and described definitions before exact envelope, version, and cutover gates can pass.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final/materialized receipt JSON</strong>
               <span>Final-freeze and materialized-final loaders now reject duplicate JSON object names in execution, dry-run, final-freeze, and prepared-materialization receipts before exact schema, count, and hash gates can pass.</span>
@@ -1905,6 +1910,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T03:05:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact materializer/report-custody JSON:</strong>
+                Local replay, capture-rendering, and registration readers now
+                reject duplicate JSON object names before exact envelope,
+                version, or cutover gates can pass.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T03:00:00-07:00">Jul 20 · local</time>
               <span>

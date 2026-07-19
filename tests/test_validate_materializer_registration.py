@@ -33,6 +33,18 @@ renderer = importlib.util.module_from_spec(RENDER_SPEC)
 RENDER_SPEC.loader.exec_module(renderer)
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    if key not in payload:
+        raise AssertionError(f"missing top-level JSON field {key}")
+    current = f'  "{key}": '
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 class ValidateMaterializerRegistrationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -112,6 +124,21 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
             job_role_arn="arn:aws:iam::172630973301:role/diana-omics-prod-use1-batch-job",
         )
 
+    def main_argv(self) -> list[str]:
+        return [
+            "validate_materializer_registration.py",
+            "--materializer-script-anchor",
+            str(self.script_anchor),
+            "--job-definition-payload",
+            str(self.definition),
+            "--registration-response",
+            str(self.response),
+            "--live-job-definition",
+            str(self.live),
+            "--output",
+            str(self.output),
+        ]
+
     def _write_fixtures(self) -> None:
         definition = renderer.render(self.render_args())
         arn = module.JOB_DEFINITION_ARN + "5"
@@ -153,21 +180,7 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
         self.write(self.live, {"jobDefinitions": [live]})
 
     def test_validate_writes_schema_3_registration_receipt_for_future_revision(self) -> None:
-        argv = [
-            "validate_materializer_registration.py",
-            "--materializer-script-anchor",
-            str(self.script_anchor),
-            "--job-definition-payload",
-            str(self.definition),
-            "--registration-response",
-            str(self.response),
-            "--live-job-definition",
-            str(self.live),
-            "--output",
-            str(self.output),
-        ]
-
-        with mock.patch.object(sys, "argv", argv):
+        with mock.patch.object(sys, "argv", self.main_argv()):
             self.assertEqual(module.main(), 0)
 
         receipt = json.loads(self.output.read_text(encoding="utf-8"))
@@ -177,6 +190,29 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
         self.assertEqual(receipt["batch"]["revision"], 5)
         self.assertTrue(receipt["checks"]["exact_active_revision"])
         self.assertEqual(self.output.stat().st_mode & 0o777, 0o600)
+
+    def test_rejects_duplicate_input_object_names_before_output(self) -> None:
+        cases = (
+            ("materializer script anchor", self.script_anchor, "schema_version"),
+            ("materializer job definition", self.definition, "containerProperties"),
+            ("materializer registration response", self.response, "revision"),
+            ("materializer live job definition", self.live, "jobDefinitions"),
+        )
+        for label, path, duplicate_key in cases:
+            with self.subTest(label=label):
+                self._write_fixtures()
+                write_duplicate_json_field(path, duplicate_key, 0)
+
+                with (
+                    mock.patch.object(sys, "argv", self.main_argv()),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        f"duplicate JSON object name in {label}",
+                    ),
+                ):
+                    module.main()
+
+                self.assertFalse(self.output.exists())
 
     def test_registration_revision_must_match_live_active_arn(self) -> None:
         response = json.loads(self.response.read_text(encoding="utf-8"))

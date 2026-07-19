@@ -24,6 +24,11 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlparse
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
+
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 VERSION_ID = re.compile(r"^\S+$")
 
@@ -354,7 +359,13 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} is missing or a symlink: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value
