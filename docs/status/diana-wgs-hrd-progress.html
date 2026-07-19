@@ -343,11 +343,11 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest source = 668559f</li>
-          <li class="pill">Prior dashboard = 9d3a70c</li>
+          <li class="pill">Latest source = 4a8484f</li>
+          <li class="pill">Prior dashboard = c32b33a</li>
           <li class="pill">Reviewer identities = explicit</li>
           <li class="pill">Catalog timestamps = in synthesis</li>
-          <li class="pill">Model attestations = manifest-checked</li>
+          <li class="pill">Model isolation = manifest-checked</li>
           <li class="pill">Public access foundation = ready</li>
           <li class="pill">HCC1395 seven-report stack = passed</li>
           <li class="pill">Forbidden scans = shared</li>
@@ -505,6 +505,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · prove distinct reviewer model summaries</strong>
+              <span>The comparative synthesis manifest checker now rejects duplicated reviewer provider/model pairs and split catalog timestamps before the synthesis packet can be installed.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · revalidate model attestations after synthesis</strong>
               <span>The comparative synthesis manifest checker now requires each reviewer summary to retain its provider/model, latest-model attestation, and timezone-qualified catalog timestamp.</span>
             </li>
@@ -558,6 +562,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T22:54:31-07:00">Jul 18 · 10:54 PM</time>
+              <span>
+                <strong>4a8484f Require distinct AI models in HRD synthesis manifest:</strong>
+                the synthesis packet revalidator now rejects duplicate reviewer
+                model identities and reviewer summaries that drift onto
+                different model-catalog timestamps. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T22:53:00-07:00">Jul 18 · 10:53 PM</time>
               <span>
