@@ -133,6 +133,44 @@ class Phase3FastStagedInputsTests(unittest.TestCase):
                     staging_plan_sha256=SHA_1,
                 )
 
+    def test_staging_plan_counts_must_be_exact_integers(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = materialized_staging_plan(Path(tmp))
+            plan["object_count"] = float(plan["object_count"])
+
+            with self.assertRaisesRegex(staged.ManifestError, "object_count"):
+                staged.build_phase3_fast_staged_inputs_manifest(
+                    plan,
+                    staging_plan_sha256=SHA_1,
+                )
+
+        with TemporaryDirectory() as tmp:
+            plan = materialized_staging_plan(Path(tmp))
+            plan["total_bytes"] = float(plan["total_bytes"])
+
+            with self.assertRaisesRegex(staged.ManifestError, "total_bytes"):
+                staged.build_phase3_fast_staged_inputs_manifest(
+                    plan,
+                    staging_plan_sha256=SHA_1,
+                )
+
+    def test_staging_plan_bytes_must_be_exact_positive_integers(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = materialized_staging_plan(Path(tmp))
+            row = plan["staged_objects"][0]
+            old_bytes = row["bytes"]
+            data = b"x"
+            Path(row["local_path"]).write_bytes(data)
+            row["bytes"] = True
+            row["sha256"] = _sha256(data)
+            plan["total_bytes"] = plan["total_bytes"] - old_bytes + 1
+
+            with self.assertRaisesRegex(staged.ManifestError, "positive integer"):
+                staged.build_phase3_fast_staged_inputs_manifest(
+                    plan,
+                    staging_plan_sha256=SHA_1,
+                )
+
     def test_environment_command_writes_staged_manifest(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

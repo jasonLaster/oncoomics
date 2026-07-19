@@ -48,7 +48,7 @@ def _require_hex(value: Any, label: str) -> str:
 
 
 def _require_positive_int(value: Any, label: str) -> int:
-    if not isinstance(value, int) or value <= 0:
+    if type(value) is not int or value <= 0:
         raise ManifestError(f"{label} bytes must be a positive integer")
     return value
 
@@ -202,9 +202,9 @@ def build_phase3_fast_staged_inputs_manifest(
     total_bytes = sum(int(row["bytes"]) for row in staged_objects)
     if object_count != EXPECTED_STAGED_OBJECTS:
         raise ManifestError(f"staged inputs must contain {EXPECTED_STAGED_OBJECTS} objects")
-    if staging_plan.get("object_count") != object_count:
+    if type(staging_plan.get("object_count")) is not int or staging_plan.get("object_count") != object_count:
         raise ManifestError("staging plan object_count does not match staged objects")
-    if staging_plan.get("total_bytes") != total_bytes:
+    if type(staging_plan.get("total_bytes")) is not int or staging_plan.get("total_bytes") != total_bytes:
         raise ManifestError("staging plan total_bytes does not match staged objects")
 
     source = _require_mapping(staging_plan.get("source"), "source")

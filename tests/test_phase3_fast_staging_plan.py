@@ -112,6 +112,37 @@ class Phase3FastStagingPlanTests(unittest.TestCase):
                 cache_manifest_sha256=SHA_1,
             )
 
+    def test_cache_counts_must_be_exact_integers(self) -> None:
+        manifest = ready_cache_manifest()
+        manifest["object_count"] = float(manifest["object_count"])
+
+        with self.assertRaisesRegex(staging.ManifestError, "object_count"):
+            staging.build_phase3_fast_staging_plan(
+                manifest,
+                cache_manifest_sha256=SHA_1,
+            )
+
+        manifest = ready_cache_manifest()
+        manifest["total_bytes"] = float(manifest["total_bytes"])
+
+        with self.assertRaisesRegex(staging.ManifestError, "total_bytes"):
+            staging.build_phase3_fast_staging_plan(
+                manifest,
+                cache_manifest_sha256=SHA_1,
+            )
+
+    def test_cache_bytes_must_be_exact_positive_integers(self) -> None:
+        manifest = ready_cache_manifest()
+        old_bytes = manifest["bam_pair"]["tumor"]["bam"]["bytes"]
+        manifest["bam_pair"]["tumor"]["bam"]["bytes"] = True
+        manifest["total_bytes"] = manifest["total_bytes"] - old_bytes + 1
+
+        with self.assertRaisesRegex(staging.ManifestError, "positive integer"):
+            staging.build_phase3_fast_staging_plan(
+                manifest,
+                cache_manifest_sha256=SHA_1,
+            )
+
     def test_environment_command_writes_staging_plan(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local Phase 3 fast replication/cache count exactness</li>
+          <li class="pill">Latest milestone = local Phase 3 fast staging count exactness</li>
+          <li class="pill">Phase 3 fast staging counts = exact</li>
           <li class="pill">Phase 3 fast replication/cache counts = exact</li>
           <li class="pill">Phase 3 fast input counts = exact</li>
           <li class="pill">Parabricks mirror schemas = exact</li>
@@ -556,6 +557,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Phase 3 fast staging counts</strong>
+              <span>The cache-to-local staging plan and staged-input verifier now reject JSON floats or booleans in cache/staging object counts, total bytes, and staged file byte counts before local scratch inputs can be marked ready for Parabricks planning.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 fast replication/cache counts</strong>
               <span>The selected P5en/Parabricks replication plan, dry-run/apply receipt builder, and cache-manifest renderer now reject JSON floats or booleans in copy-plan byte counts, object counts, and total bytes before declaring the immutable cache ready for downstream deterministic evidence.</span>
@@ -1050,6 +1055,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:59:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact Phase 3 fast staging counts:</strong>
+                the cache-to-local staging plan and staged-input verifier now
+                reject JSON floats or booleans in cache/staging object counts,
+                total bytes, and staged file byte counts before local scratch
+                inputs can be marked ready for Parabricks planning. No S3,
+                Batch, route, GPU, quota, replacement compute, or AWS-side
+                verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:58:00-07:00">Jul 19 · local</time>
               <span>

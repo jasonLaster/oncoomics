@@ -63,7 +63,7 @@ def _require_hex(value: Any, label: str) -> str:
 
 
 def _require_positive_int(value: Any, label: str) -> int:
-    if not isinstance(value, int) or value <= 0:
+    if type(value) is not int or value <= 0:
         raise ManifestError(f"{label} bytes must be a positive integer")
     return value
 
@@ -226,9 +226,9 @@ def build_phase3_fast_staging_plan(
     total_bytes = sum(int(row["bytes"]) for row in staged_objects)
     if object_count != EXPECTED_STAGED_OBJECTS:
         raise ManifestError(f"staging plan must contain {EXPECTED_STAGED_OBJECTS} objects")
-    if cache_manifest.get("object_count") != object_count:
+    if type(cache_manifest.get("object_count")) is not int or cache_manifest.get("object_count") != object_count:
         raise ManifestError("cache manifest object_count does not match staged objects")
-    if cache_manifest.get("total_bytes") != total_bytes:
+    if type(cache_manifest.get("total_bytes")) is not int or cache_manifest.get("total_bytes") != total_bytes:
         raise ManifestError("cache manifest total_bytes does not match staged objects")
 
     by_artifact = _index_by_artifact(staged_objects)
