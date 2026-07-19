@@ -196,6 +196,33 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
                     with self.assertRaisesRegex(render_plan.ManifestError, "input_manifest"):
                         render_plan.load_plan_from_environment()
 
+    def test_manifest_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source_manifest = root / "input-manifest.json"
+            write_json(source_manifest, input_manifest())
+
+            linked_manifest = root / "input-manifest-link.json"
+            linked_manifest.symlink_to(source_manifest)
+            with self.assertRaisesRegex(
+                render_plan.ManifestError,
+                "input-manifest-link\\.json SHA-256 input must be a real file",
+            ):
+                render_plan._manifest_sha256(linked_manifest)
+
+            real_parent = root / "real-manifests"
+            real_parent.mkdir()
+            linked_parent = root / "linked-manifests"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            real_parent_manifest = real_parent / "input-manifest.json"
+            write_json(real_parent_manifest, input_manifest())
+
+            with self.assertRaisesRegex(
+                render_plan.ManifestError,
+                "input-manifest\\.json SHA-256 input parent may not be a symlink",
+            ):
+                render_plan._manifest_sha256(linked_parent / "input-manifest.json")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,7 +10,13 @@ from typing import Any, Mapping
 
 from ...paths import path_from_root
 from ...utils import ensure_parent
-from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
+from .render_phase3_fast_input_manifest import (
+    HEX64,
+    ManifestError,
+    _require_s3_uri,
+    normalize_method_parameters,
+    require_real_hash_input,
+)
 from .safe_json_output import read_real_json, require_safe_output_path
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/input_manifest.json"
@@ -150,6 +156,7 @@ def _append_caller_resource_rows(rows: list[dict[str, Any]], prefix: str, kms_ke
 
 
 def _manifest_sha256(path: Path) -> str:
+    require_real_hash_input(path)
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         while chunk := handle.read(1024 * 1024):

@@ -10,7 +10,11 @@ from typing import Any, Mapping, Sequence
 
 from ...paths import ROOT, path_from_root
 from ...utils import ensure_parent
-from .safe_json_output import read_real_json, require_safe_output_path
+from .safe_json_output import (
+    read_real_json,
+    require_no_symlinked_ancestors,
+    require_safe_output_path,
+)
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 IMAGE_DIGEST = re.compile(r"^(?:.+@)?sha256:[0-9a-f]{64}$")
@@ -348,11 +352,19 @@ def role_validation(validation: Mapping[str, Any], role: str) -> Mapping[str, An
 
 
 def sha256_file(path: Path) -> str:
+    require_real_hash_input(path)
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         while chunk := handle.read(1024 * 1024):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def require_real_hash_input(path: Path) -> None:
+    label = f"{path.name} SHA-256 input"
+    require_no_symlinked_ancestors(path, label, ManifestError)
+    if path.is_symlink() or not path.is_file():
+        raise ManifestError(f"{label} must be a real file: {path}")
 
 
 def git_head() -> str:

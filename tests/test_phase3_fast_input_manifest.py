@@ -615,6 +615,33 @@ class Phase3FastInputManifestTests(unittest.TestCase):
                     with self.assertRaisesRegex(render.ManifestError, "private_freeze receipt"):
                         render.load_manifest_from_environment()
 
+    def test_sha256_file_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source_receipt = root / "private-freeze.json"
+            write_json(source_receipt, {"status": "passed"})
+
+            linked_receipt = root / "private-freeze-link.json"
+            linked_receipt.symlink_to(source_receipt)
+            with self.assertRaisesRegex(
+                render.ManifestError,
+                "private-freeze-link\\.json SHA-256 input must be a real file",
+            ):
+                render.sha256_file(linked_receipt)
+
+            real_parent = root / "real-receipts"
+            real_parent.mkdir()
+            linked_parent = root / "linked-receipts"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            real_parent_receipt = real_parent / "private-freeze.json"
+            write_json(real_parent_receipt, {"status": "passed"})
+
+            with self.assertRaisesRegex(
+                render.ManifestError,
+                "private-freeze\\.json SHA-256 input parent may not be a symlink",
+            ):
+                render.sha256_file(linked_parent / "private-freeze.json")
+
 
 if __name__ == "__main__":
     unittest.main()
