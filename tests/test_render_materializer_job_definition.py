@@ -162,6 +162,78 @@ class RenderMaterializerJobDefinitionTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_output_rejects_symlink_swap_before_final_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output = root / "materializer-job-definition.json"
+            relocated = root / "relocated-job-definition.json"
+            real_is_file = Path.is_file
+            swapped = False
+
+            def swap_after_first_output_file_check(path: Path) -> bool:
+                nonlocal swapped
+                result = real_is_file(path)
+                if path == output and result and not swapped:
+                    output.unlink()
+                    relocated.write_text('{"status":"relocated"}\n', encoding="utf-8")
+                    output.symlink_to(relocated)
+                    swapped = True
+                return result
+
+            with (
+                mock.patch.object(
+                    Path,
+                    "is_file",
+                    autospec=True,
+                    side_effect=swap_after_first_output_file_check,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materializer-job-definition.json SHA-256 input "
+                    "is missing or a symlink",
+                ),
+            ):
+                module.write_json_create_only(output, {"status": "passed"})
+
+            self.assertTrue(swapped)
+            self.assertFalse(output.exists())
+            self.assertFalse(output.is_symlink())
+            self.assertEqual(
+                relocated.read_text(encoding="utf-8"),
+                '{"status":"relocated"}\n',
+            )
+
+    def test_sha256_file_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_source = root / "real-job-definition.json"
+            real_source.write_text('{"status":"real"}\n', encoding="utf-8")
+            source_link = root / "materializer-job-definition.json"
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "materializer-job-definition.json SHA-256 input "
+                "is missing or a symlink",
+            ):
+                module.sha256_file(source_link)
+
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            (real_parent / "materializer-job-definition.json").write_text(
+                '{"status":"real"}\n',
+                encoding="utf-8",
+            )
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "materializer-job-definition.json SHA-256 input "
+                "parent may not be a symlink",
+            ):
+                module.sha256_file(linked_parent / "materializer-job-definition.json")
+
 
 if __name__ == "__main__":
     unittest.main()

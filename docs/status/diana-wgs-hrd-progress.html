@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact Rosalind provenance strings</li>
+          <li class="pill">Latest milestone = local real materializer definitions</li>
+          <li class="pill">Materializer definitions = real</li>
           <li class="pill">Rosalind provenance strings = exact</li>
           <li class="pill">AI catalog receipt hashes = real</li>
           <li class="pill">Runbook hash inputs = real</li>
@@ -1367,6 +1368,10 @@
               <span>Materializer registration validation now rejects symlinked local files inside its SHA-256 script-anchor and job-definition readers before those inputs can be bound into the materializer registration receipt.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real materializer definition hashes</strong>
+              <span>Materializer definition rendering now rehashes create-only rendered job-definition JSON through a symlink-aware local SHA-256 helper after fsync before reviewed definition payloads can feed alias-only final-input materialization.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer registration hashes</strong>
               <span>The reviewed materializer registration validator now rejects coerced SHA-256 values before the frozen materializer script can be cross-bound to the local Batch job-definition payload, AWS registration response, and live Batch definition for alias-only cross-check materialization.</span>
             </li>
@@ -2120,6 +2125,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T13:45:54-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real materializer definition hashes:</strong>
+                Materializer definition rendering now rehashes create-only
+                rendered job-definition JSON through a symlink-aware local
+                SHA-256 helper after fsync before reviewed payloads can feed
+                alias-only final-input materialization.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T13:44:09-07:00">Jul 19 · local</time>
               <span>

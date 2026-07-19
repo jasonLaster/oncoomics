@@ -142,8 +142,23 @@ def require_installed_output(path: Path, expected_sha256: str) -> None:
             raise ValueError(f"output changed during write: {path}")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"output changed during write: {path}")
-    if hashlib.sha256(path.read_bytes()).hexdigest() != expected_sha256:
+    if sha256_file(path) != expected_sha256:
         raise ValueError(f"output changed during write: {path}")
+
+
+def sha256_file(path: Path) -> str:
+    require_real_file(path, f"{path.name} SHA-256 input")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def require_real_file(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise NotADirectoryError(parent)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} is missing or a symlink: {path}")
 
 
 def render(args: argparse.Namespace) -> dict[str, Any]:
