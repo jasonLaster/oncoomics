@@ -307,12 +307,12 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>ec5626b235be7c404159836ea0086cf5e36f2764</strong>.
-          The latest work is materializer terminal capture hardening:
-          <code>capture_materializer_terminal.py</code> now requires exact
-          receipt-upload, materializer-receipt, and receipt-anchor producer
-          maps before a terminal cross-check materialization receipt can be
-          captured.
+          <strong>d9a0db89f2daafdfebff915e7a271b8b149e6589</strong>.
+          The latest work is route terminal capture hardening:
+          <code>capture_route_terminal.py</code> now requires exact expected
+          maps for publication anchors, route receipts, route output objects,
+          and history-audit rows before reviewed cross-check route outputs can
+          be captured.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -320,7 +320,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = ec5626b</li>
+          <li class="pill">Latest hardening = d9a0db8</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -402,8 +402,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve ec5626b</strong>
-              <span>Terminal materializer capture now rejects missing, unexpected, or failed receipt-upload, materializer-receipt, and receipt-anchor check maps before cross-check materialization receipts can be trusted.</span>
+              <strong>Preserve d9a0db8</strong>
+              <span>Route terminal capture now rejects missing, unexpected, or failed publication-anchor, route-receipt, route-output, and history-audit check maps before reviewed route outputs can be trusted.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -451,6 +451,23 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>d9a0db8 Require exact route terminal checks:</strong>
+                <code>capture_route_terminal.py</code> now defines
+                <code>EXPECTED_PUBLICATION_ANCHOR_CHECKS</code>,
+                <code>EXPECTED_RECEIPT_CHECKS</code>,
+                <code>EXPECTED_OBJECT_CHECKS</code>, and
+                <code>EXPECTED_HISTORY_AUDIT_CHECKS</code> for publication
+                anchors, route receipts, route output objects, and
+                history-audit rows. The terminal capture path now requires
+                those exact expected maps instead of exact key sets plus
+                arbitrary literal-true values, and
+                <code>test_capture_route_terminal.py</code> rejects missing,
+                unexpected, or failed keys across all four maps.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
