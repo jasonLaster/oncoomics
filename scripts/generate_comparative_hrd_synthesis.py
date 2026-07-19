@@ -1184,8 +1184,11 @@ def require_synthesis_report_manifest(packet_dir: Path) -> None:
         ),
     ]
     support_hashes = manifest.get("support_sha256")
-    if not isinstance(support_hashes, dict):
-        raise ValueError("comparative synthesis manifest lacks support hashes")
+    if (
+        not isinstance(support_hashes, dict)
+        or set(support_hashes) != {"agreement_disagreement.csv"}
+    ):
+        raise ValueError("comparative synthesis manifest support hashes are not exact")
     expected.append(
         (
             "agreement_disagreement.csv",
