@@ -108,6 +108,7 @@ def receipt_summaries(
 def render(
     receipts: list[Path] | None = None,
     receipt_stem: str = "terminal",
+    forbidden_tokens_file: Path | None = None,
 ) -> str:
     receipt_paths = receipts or [
         Path(f"/receipts/{method_id}.json")
@@ -118,6 +119,7 @@ def render(
         receipt_paths,
         receipt_stem,
         receipt_summaries=receipt_summaries(receipt_paths),
+        forbidden_tokens_file=forbidden_tokens_file,
     )
 
 
@@ -140,6 +142,14 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             self.assertGreater(index, previous)
             self.assertIn(MODULE.destination_prefix(method_id), text)
             previous = index
+
+    def test_renderer_hands_forbidden_tokens_file_to_public_scan(self) -> None:
+        text = render(forbidden_tokens_file=Path("/fast/forbidden_tokens.json"))
+
+        self.assertEqual(text.count("--forbidden-tokens-file /fast/forbidden_tokens.json"), 20)
+        for block in text.split("```bash\n")[1:21]:
+            command = block.split("\n```", 1)[0]
+            self.assertEqual(command.count("--forbidden-tokens-file"), 1)
 
     def test_publish_command_has_exact_dry_and_apply_argv(self) -> None:
         receipt = Path("/receipts/deterministic_full_wgs.json")
@@ -205,6 +215,20 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                 dry_output,
                 "--apply",
             ],
+        )
+
+        with_file_command = MODULE.publish_command(
+            scripts,
+            receipt,
+            "a" * 64,
+            "deterministic_full_wgs",
+            dry_output,
+            apply=False,
+            forbidden_tokens_file=Path("/fast/forbidden_tokens.json"),
+        )
+        self.assertEqual(
+            with_file_command[-2:],
+            ["--forbidden-tokens-file", Path("/fast/forbidden_tokens.json")],
         )
 
     def test_renderer_binds_every_apply_to_its_public_dry_run_receipt(self) -> None:

@@ -252,7 +252,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         self.assertEqual(len(publish_commands), 6)
         self.assertEqual(
             text.count("--forbidden-tokens-file /fast/forbidden_tokens.json"),
-            9,
+            10,
         )
         for command in (*prepare_commands, *validate_commands, *publish_commands):
             self.assertEqual(command.count("--forbidden-tokens-file"), 1)
@@ -261,6 +261,22 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 "/fast/forbidden_tokens.json",
             )
         self.assertNotIn("Unit-Run-Private-Token", text)
+        reviewed_public_commands = [
+            command
+            for command in commands
+            if "/repo/scripts/render_reviewed_publication_runbook.py" in command
+        ]
+        self.assertEqual(len(reviewed_public_commands), 1)
+        self.assertEqual(
+            reviewed_public_commands[0].count("--forbidden-tokens-file"),
+            1,
+        )
+        self.assertEqual(
+            reviewed_public_commands[0][
+                reviewed_public_commands[0].index("--forbidden-tokens-file") + 1
+            ],
+            "/fast/forbidden_tokens.json",
+        )
 
     def test_reviewed_publication_receipts_reuse_source_and_ai_helpers(self) -> None:
         root = Path("/repo")
@@ -552,6 +568,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             output,
             [Path("/receipts/a.json"), Path("/receipts/b.json")],
             "rerun",
+            forbidden_tokens_file=Path("/fast/forbidden_tokens.json"),
         )
 
         self.assertEqual(
@@ -565,6 +582,8 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 Path("/repo"),
                 "--receipt-stem",
                 "rerun",
+                "--forbidden-tokens-file",
+                Path("/fast/forbidden_tokens.json"),
                 "--private-publication-receipt",
                 Path("/receipts/a.json"),
                 "--private-publication-receipt",

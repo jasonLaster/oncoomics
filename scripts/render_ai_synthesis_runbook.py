@@ -25,11 +25,11 @@ from hrd_report_inventory import (
 )
 from prepare_ai_review_run import MANIFEST_ARGUMENTS
 from publish_reviewed_public_report import (
-    non_null_version_id,
-    private_report_prefix,
     REGION,
     RUN_ID,
     SUBJECT_ALIAS,
+    non_null_version_id,
+    private_report_prefix,
     validate_private_receipt,
 )
 from render_reviewed_publication_runbook import (
@@ -337,6 +337,8 @@ def reviewed_publication_runbook_command(
     output: str | Path,
     receipt_paths: Iterable[Path],
     receipt_stem: str = "terminal",
+    *,
+    forbidden_tokens_file: Path | None = None,
 ) -> list[str | Path]:
     return [
         "python3",
@@ -347,6 +349,7 @@ def reviewed_publication_runbook_command(
         root,
         "--receipt-stem",
         receipt_stem,
+        *(["--forbidden-tokens-file", forbidden_tokens_file] if forbidden_tokens_file is not None else []),
         *[token for path in receipt_paths for token in ("--private-publication-receipt", path)],
     ]
 
@@ -641,6 +644,7 @@ def render(
                             Raw('"$REVIEWED_PUBLIC_RUNBOOK"'),
                             reviewed_publication_receipt_paths(root, receipt_stem),
                             receipt_stem,
+                            forbidden_tokens_file=forbidden_tokens_file,
                         )
                     ),
                 ]

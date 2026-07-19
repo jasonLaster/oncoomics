@@ -100,6 +100,7 @@ def publish_command(
     *,
     apply: bool,
     dry_run_receipt: Path | None = None,
+    forbidden_tokens_file: Path | None = None,
 ) -> list[str | Path]:
     command: list[str | Path] = [
         "python3",
@@ -116,6 +117,8 @@ def publish_command(
         REGION,
     ]
     command.extend(["--private-publication-receipt-sha256", receipt_sha256])
+    if forbidden_tokens_file is not None:
+        command.extend(["--forbidden-tokens-file", forbidden_tokens_file])
     if apply:
         if dry_run_receipt is None:
             raise ValueError("reviewed-public apply command requires a dry-run receipt")
@@ -255,6 +258,8 @@ def render(
     receipt_paths: Iterable[Path],
     receipt_stem: str,
     receipt_summaries: tuple[dict[str, str | int], ...] = (),
+    *,
+    forbidden_tokens_file: Path | None = None,
 ) -> str:
     receipt_summaries = require_receipt_summaries(receipt_summaries)
     paths = require_receipt_paths(receipt_paths, receipt_summaries)
@@ -307,6 +312,7 @@ def render(
                         method_id,
                         dry_receipt,
                         apply=False,
+                        forbidden_tokens_file=forbidden_tokens_file,
                     )
                 ),
                 block(
@@ -318,6 +324,7 @@ def render(
                         apply_receipt,
                         apply=True,
                         dry_run_receipt=dry_receipt,
+                        forbidden_tokens_file=forbidden_tokens_file,
                     )
                 ),
             ]
@@ -345,6 +352,7 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--root", default=Path.cwd(), type=Path)
     parser.add_argument("--receipt-stem", default="terminal")
+    parser.add_argument("--forbidden-tokens-file", type=Path)
     parser.add_argument(
         "--private-publication-receipt",
         action="append",
@@ -384,7 +392,13 @@ def main() -> int:
 
     write_once(
         args.output,
-        render(root, args.private_publication_receipt, args.receipt_stem, receipt_summaries),
+        render(
+            root,
+            args.private_publication_receipt,
+            args.receipt_stem,
+            receipt_summaries,
+            forbidden_tokens_file=args.forbidden_tokens_file,
+        ),
     )
     print(json.dumps({"status": "rendered", "output": str(args.output)}, sort_keys=True))
     return 0

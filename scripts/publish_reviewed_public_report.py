@@ -25,6 +25,7 @@ from typing import Any
 from forbidden_text import (
     forbidden_token_fingerprints,
     has_unauthorized_hrd_classification,
+    merge_forbidden_tokens,
     normalized_scan_text,
 )
 from hrd_report_inventory import require_report_methods
@@ -894,15 +895,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     private_receipt, expected, source_rows = validate_private_receipt(
         args.private_publication_receipt, method_id
     )
-    tokens = tuple(
-        sorted(
-            {
-                token.strip()
-                for token in (*DEFAULT_FORBIDDEN_TOKENS, *args.forbidden_token)
-                if token.strip()
-            },
-            key=str.casefold,
-        )
+    tokens = merge_forbidden_tokens(
+        (*DEFAULT_FORBIDDEN_TOKENS, *args.forbidden_token),
+        files=args.forbidden_tokens_file,
     )
     if not tokens:
         raise ValueError("at least one forbidden token is required")
@@ -1057,6 +1052,12 @@ def main() -> int:
     parser.add_argument("--destination-prefix", required=True)
     parser.add_argument("--receipt-output", required=True, type=Path)
     parser.add_argument("--forbidden-token", action="append", default=[])
+    parser.add_argument(
+        "--forbidden-tokens-file",
+        action="append",
+        default=[],
+        type=Path,
+    )
     parser.add_argument("--dry-run-receipt", type=Path)
     parser.add_argument("--region", default=REGION, choices=(REGION,))
     parser.add_argument("--apply", action="store_true")

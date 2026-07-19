@@ -152,26 +152,26 @@ class Fixture:
             destination_prefix=destination or f"s3://{MODULE.PUBLIC_BUCKET}/{prefix}",
             receipt_output=self.output_path,
             forbidden_token=[],
+            forbidden_tokens_file=[],
             region=MODULE.REGION,
             apply=apply,
             dry_run_receipt=dry_run_receipt,
         )
 
-    def write_dry_run_receipt(self, path: Path | None = None) -> Path:
+    def write_dry_run_receipt(
+        self,
+        path: Path | None = None,
+        *,
+        forbidden_tokens_file: list[Path] | None = None,
+    ) -> Path:
         output = path or self.root / "public-publication.dry.json"
         private_receipt = json.loads(self.receipt_path.read_text(encoding="utf-8"))
         _, expected, source_rows = MODULE.validate_private_receipt(
             self.receipt_path, self.method_id
         )
-        tokens = tuple(
-            sorted(
-                {
-                    token.strip()
-                    for token in MODULE.DEFAULT_FORBIDDEN_TOKENS
-                    if token.strip()
-                },
-                key=str.casefold,
-            )
+        tokens = MODULE.merge_forbidden_tokens(
+            MODULE.DEFAULT_FORBIDDEN_TOKENS,
+            files=forbidden_tokens_file or [],
         )
         prefix = MODULE.PUBLIC_ROOT + MODULE.METHOD_CONTRACTS[self.method_id]["destination"]
         receipt = {
@@ -893,6 +893,32 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             fake = FakeAws(fixture)
             with self.assertRaisesRegex(ValueError, "forbidden identifier"):
                 self.execute(fixture, fake, apply=True)
+            self.assertEqual(fake.put_calls, [])
+
+    def test_second_scan_rejects_forbidden_identifier_from_file_before_upload(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            forbidden = fixture.root / "forbidden_tokens.json"
+            forbidden.write_text(json.dumps(["Run-Specific-Token"]) + "\n")
+            report = fixture.packet / "report.md"
+            report.write_text("# Reviewed\n\nRUN-SPECIFIC-TOKEN leaked here\n")
+            fixture.mutate_manifest(report_sha256=digest(report.read_bytes()))
+            args = fixture.args(
+                apply=True,
+                dry_run_receipt=fixture.write_dry_run_receipt(
+                    forbidden_tokens_file=[forbidden],
+                ),
+            )
+            args.forbidden_tokens_file = [forbidden]
+            fake = FakeAws(fixture)
+
+            with mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json), mock.patch.object(
+                MODULE, "download_exact", side_effect=fake.download_exact
+            ), self.assertRaisesRegex(ValueError, "forbidden identifier"):
+                MODULE.run(args)
+
             self.assertEqual(fake.put_calls, [])
 
     def test_manifest_cannot_promote_no_call_boundary(self) -> None:
