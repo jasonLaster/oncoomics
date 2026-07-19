@@ -693,6 +693,53 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_stage_rejects_method_spec_source_hash_that_differs_from_manifest(
+        self,
+    ) -> None:
+        cases = {
+            "download_verification_sha256": "download_verification",
+            "source_report_sha256": "source_report",
+            "source_report_manifest_sha256": "source_report_manifest",
+        }
+        for method_field, source_key in cases.items():
+            with self.subTest(method_field=method_field, source_key=source_key):
+                with tempfile.TemporaryDirectory() as temporary:
+                    root = Path(temporary)
+                    source = root / "exact"
+                    verification = write_route_report(source)
+                    staging = root / "staging"
+                    output = root / "staged"
+                    STAGE.stage(source, verification, staging, "sigprofiler_sbs3")
+
+                    method_spec_path = staging / "method_spec.json"
+                    method_spec = json.loads(
+                        method_spec_path.read_text(encoding="utf-8")
+                    )
+                    self.assertNotEqual(method_spec[method_field], "0" * 64)
+                    method_spec[method_field] = "0" * 64
+                    write_json(method_spec_path, method_spec)
+
+                    manifest_path = staging / "report_manifest.json"
+                    manifest = json.loads(
+                        manifest_path.read_text(encoding="utf-8")
+                    )
+                    self.assertNotEqual(
+                        manifest["source_sha256"][source_key],
+                        method_spec[method_field],
+                    )
+                    manifest["support_sha256"]["method_spec.json"] = STAGE.sha256(
+                        method_spec_path
+                    )
+                    write_json(manifest_path, manifest)
+
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "method spec source hashes differ from the manifest",
+                    ):
+                        STAGE.install_staged_packet(staging, output)
+
+                    self.assertFalse(output.exists())
+
     def test_stage_rehashes_packet_after_final_directory_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

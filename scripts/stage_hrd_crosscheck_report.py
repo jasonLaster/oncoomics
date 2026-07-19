@@ -389,6 +389,24 @@ def require_staged_report_manifest(packet_dir: Path) -> None:
         raise ValueError("staged cross-check report manifest source hashes are not exact")
     for key, digest in source.items():
         require_sha(digest, f"staged cross-check source SHA-256 {key}")
+    expected_source = {
+        "download_verification": require_sha(
+            method_spec.get("download_verification_sha256"),
+            "staged cross-check method spec download verification SHA-256",
+        ),
+        "source_report": require_sha(
+            method_spec.get("source_report_sha256"),
+            "staged cross-check method spec source report SHA-256",
+        ),
+        "source_report_manifest": require_sha(
+            method_spec.get("source_report_manifest_sha256"),
+            "staged cross-check method spec source report manifest SHA-256",
+        ),
+    }
+    if source != expected_source:
+        raise ValueError(
+            "staged cross-check method spec source hashes differ from the manifest"
+        )
 
 
 def install_staged_packet(staging: Path, output_dir: Path) -> None:

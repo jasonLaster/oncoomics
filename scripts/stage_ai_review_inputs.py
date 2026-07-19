@@ -62,6 +62,7 @@ def require_installed_file(path: Path, expected_sha256: str) -> None:
     require_no_symlink_ancestors(path, "staged AI review input")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"staged AI review input changed during write: {path}")
+    require_mode(path, 0o600, "staged AI review input")
     if sha256(path) != expected_sha256:
         raise ValueError(f"staged AI review input changed during write: {path}")
 
@@ -147,6 +148,12 @@ def require_sha(value: Any, label: str) -> str:
     return digest
 
 
+def require_mode(path: Path, expected: int, label: str) -> None:
+    observed = path.stat().st_mode & 0o777
+    if observed != expected:
+        raise ValueError(f"{label} mode is not {expected:04o}: {path}")
+
+
 def validate_bundle(bundle_dir: Path) -> dict[str, str]:
     require_real_file(
         bundle_dir / "bundle_manifest.json",
@@ -191,18 +198,23 @@ def reviewer_inventory(
     require_no_symlink_ancestors(directory, label)
     if directory.is_symlink() or not directory.is_dir():
         raise ValueError(f"{label} is not a real directory")
+    require_mode(directory, 0o700, label)
 
     prompt = ROLE_PROMPTS[role]
+    bundle_path = directory / "review_bundle.json"
+    prompt_path = directory / prompt
     require_file(
-        directory / "review_bundle.json",
+        bundle_path,
         hashes["review_bundle.json"],
         f"reviewer {role} review_bundle.json",
     )
     require_file(
-        directory / prompt,
+        prompt_path,
         hashes[prompt],
         f"reviewer {role} {prompt}",
     )
+    require_mode(bundle_path, 0o600, f"reviewer {role} review_bundle.json")
+    require_mode(prompt_path, 0o600, f"reviewer {role} {prompt}")
     observed = sorted(path.name for path in directory.iterdir())
     expected = sorted(("review_bundle.json", prompt))
     if observed != expected:
@@ -213,21 +225,15 @@ def reviewer_inventory(
         "files": {
             "review_bundle.json": {
                 "sha256": hashes["review_bundle.json"],
-                "mode_0600": (
-                    (directory / "review_bundle.json").stat().st_mode & 0o777
-                )
-                == 0o600,
+                "mode_0600": True,
             },
             prompt: {
                 "sha256": hashes[prompt],
-                "mode_0600": (
-                    (directory / prompt).stat().st_mode & 0o777
-                )
-                == 0o600,
+                "mode_0600": True,
             },
         },
         "exact_two_file_inventory": observed,
-        "mode_0700": (directory.stat().st_mode & 0o777) == 0o700,
+        "mode_0700": True,
     }
 
 

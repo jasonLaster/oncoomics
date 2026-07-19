@@ -210,6 +210,29 @@ class StageAiReviewInputsTests(unittest.TestCase):
 
         self.assertFalse(output.exists())
 
+    def test_write_once_removes_output_after_mode_change(self) -> None:
+        output = self.root / "complete.json"
+        real_fsync_directory = STAGE.fsync_directory
+
+        def chmod_after_directory_fsync(path: Path) -> None:
+            real_fsync_directory(path)
+            output.chmod(0o644)
+
+        with (
+            mock.patch.object(
+                STAGE,
+                "fsync_directory",
+                side_effect=chmod_after_directory_fsync,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "staged AI review input mode is not 0600",
+            ),
+        ):
+            STAGE.write_once(output, b"complete\n")
+
+        self.assertFalse(output.exists())
+
     def test_stage_fsyncs_published_input_directories(self) -> None:
         with mock.patch.object(
             STAGE,
@@ -314,6 +337,37 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse((self.output_root / "reviewer-b-input").exists())
         self.assertFalse(self.receipt.exists())
 
+    def test_stage_rechecks_published_input_modes_after_output_root_fsync(
+        self,
+    ) -> None:
+        real_fsync_directory = STAGE.fsync_directory
+
+        def chmod_after_output_root_fsync(path: Path) -> None:
+            real_fsync_directory(path)
+            if path == self.output_root.resolve():
+                (
+                    self.output_root
+                    / "reviewer-a-input"
+                    / "reviewer-a.prompt.md"
+                ).chmod(0o644)
+
+        with (
+            mock.patch.object(
+                STAGE,
+                "fsync_directory",
+                side_effect=chmod_after_output_root_fsync,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "reviewer A reviewer-a.prompt.md mode is not 0600",
+            ),
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse((self.output_root / "reviewer-a-input").exists())
+        self.assertFalse((self.output_root / "reviewer-b-input").exists())
+        self.assertFalse(self.receipt.exists())
+
     def test_rejects_staged_bytes_that_differ_from_bundle_manifest(self) -> None:
         real_write_once = STAGE.write_once
 
@@ -344,6 +398,21 @@ class StageAiReviewInputsTests(unittest.TestCase):
 
         with self.assertRaisesRegex(FileExistsError, "receipt output already exists"):
             STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+    def test_reviewer_inventory_rejects_broad_input_directory_mode(self) -> None:
+        STAGE.stage(self.bundle, self.output_root, self.receipt)
+        directory = self.output_root / "reviewer-a-input"
+        directory.chmod(0o755)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "reviewer A input directory mode is not 0700",
+        ):
+            STAGE.reviewer_inventory(
+                directory,
+                "A",
+                STAGE.validate_bundle(self.bundle),
+            )
 
     def test_rejects_symlinked_custody_paths(self) -> None:
         self.assertFalse(STAGE.is_platform_root_alias(Path("linked-parent")))
