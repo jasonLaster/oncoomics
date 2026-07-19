@@ -307,8 +307,13 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>fc6f06c2885f2baf570c57d1330050434f9f8458</strong>.
-          The latest work is exact input-contract anchor hardening:
+          <strong>9e367c431c2c01ec691a2c698ce92ab24a0b2d91</strong>.
+          The latest work is exact finalized-custody readiness hardening:
+          <code>finalize_input_contract.py</code> now emits a named
+          five-check final custody map and <code>check_contract.py</code>
+          requires that exact map before declaring alias-only scarHRD or SBS3
+          inputs ready for route execution. It follows exact input-contract
+          anchor hardening:
           <code>finalize_input_contract.py</code> now validates deterministic
           final-freeze anchors and cross-check materialization anchors against
           their distinct fixed check maps, and
@@ -321,7 +326,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = fc6f06c</li>
+          <li class="pill">Latest hardening = 9e367c4</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -403,8 +408,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve fc6f06c</strong>
-              <span>Input-contract finalization now rejects final-freeze and cross-check materialization anchors whose create-only receipt proofs are missing, widened, or from the wrong producer contract.</span>
+              <strong>Preserve 9e367c4</strong>
+              <span>The input-contract checker now rejects finalized custody rows whose five source, materialization, cross-check, create-only, and SBS96 derivation checks are missing, widened, or stale.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -452,6 +457,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>9e367c4 Require exact finalized custody checks:</strong>
+                <code>finalize_input_contract.py</code> now emits
+                <code>EXPECTED_FINALIZED_CUSTODY_CHECKS</code> for the five
+                passed gates that bind the final execution freeze,
+                exact-version materialization, cross-check source custody,
+                create-only alias outputs, and SBS96 rederivation. The
+                <code>check_contract.py</code> readiness gate now requires the
+                same exact map before it can mark the alias-only scarHRD/SBS3
+                input contract ready.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
