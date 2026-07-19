@@ -317,18 +317,19 @@
           only, and validators now enforce the pre-route and terminal scopes on
           both sides of the handoff. The terminal runbook now skips the
           pre-route five-packet validator once the blocked packets are rebound
-          to terminal reports, while source-freeze and reviewed-public
-          publication keep the run-specific forbidden-token scan. Diana terminal
-          deterministic artifacts are still absent, compute is GPU-quota blocked,
-          the legacy CPU run remains stopped, and Diana HRD remains
+          to terminal reports, while source-freeze, private/public publication,
+          AI, and Phase 3 packet gates now share one static forbidden-token
+          inventory plus the run-specific scan. Diana terminal deterministic
+          artifacts are still absent, compute is GPU-quota blocked, the legacy
+          CPU run remains stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code>.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = c804438</li>
+          <li class="pill">Latest milestone = bfd447f</li>
           <li class="pill">Public access foundation = ready</li>
           <li class="pill">HCC1395 seven-report stack = passed</li>
-          <li class="pill">Reviewed-public handoff = guarded</li>
+          <li class="pill">Forbidden scans = shared</li>
           <li class="pill">Terminal artifacts = absent</li>
           <li class="pill">Diana deterministic = blocked</li>
           <li class="pill">Diana HRD = partial_evidence / no_call</li>
@@ -479,7 +480,7 @@
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
               <strong>Done · carry run-specific public-safety scans end to end</strong>
-              <span>The reviewed-public renderer receives the canonical forbidden-token inventory and rescans all 20 dry/apply publication commands.</span>
+              <span>The static Diana scan defaults live in one shared module, and the reviewed-public renderer receives the run-specific inventory before rescanning all 20 dry/apply publication commands.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Next · publish only reviewed Diana outputs</strong>
@@ -503,6 +504,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T22:29:46-07:00">Jul 18 · 10:29 PM</time>
+              <span>
+                <strong>bfd447f Share HRD forbidden token defaults:</strong>
+                moved the static Diana HRD scan defaults into the shared
+                forbidden-text module and pointed source-freeze, private
+                publication, public publication, AI handoff, post-success, and
+                Phase 3 packet validation at that one tuple. Local validation
+                passed: 158 focused tests + 144 subtests, then 1,677
+                full-suite tests + 714 subtests with
+                <code>PYTHONPATH=.</code>. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T22:22:49-07:00">Jul 18 · 10:22 PM</time>
               <span>
