@@ -307,11 +307,12 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>0717defb3ba4202433718b6ebbdda33a64a451e9</strong>.
-          The latest work is exact materializer submit hardening:
+          <strong>18b9eea0edbe0215442724a3bc565bd32e11c82f</strong>.
+          The latest work is exact live materializer preflight hardening:
           <code>submit_materializer_v4.py</code> now requires exact
-          shell-literal, command-check, and registration-definition maps before
-          v4 materializer submission can pass preflight and launch.
+          live job-definition, immutable-image, and queue/compute-environment
+          check maps before v4 materializer request rendering or submission can
+          pass.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +320,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 0717def</li>
+          <li class="pill">Latest hardening = 18b9eea</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -332,8 +333,8 @@
           <ol class="tracks" aria-label="Operational progress by lane">
             <li class="track" style="--tone: var(--done)">
               <strong>Source custody hardening</strong>
-              <span>99%</span>
-              <div class="bar" aria-hidden="true" style="--pct: 99%"><span></span></div>
+              <span>99.5%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 99.5%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--blocked)">
               <strong>Deterministic terminal outputs</strong>
@@ -401,8 +402,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 0717def</strong>
-              <span>v4 materializer submit preflight now rejects missing, unexpected, or failed shell-literal, command-check, and registration-definition maps before submitting.</span>
+              <strong>Preserve 18b9eea</strong>
+              <span>Live v4 materializer preflight now rejects missing, unexpected, or failed job-definition, image, and queue maps before rendering or submitting requests.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +451,29 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>18b9eea Require exact live materializer preflight checks:</strong>
+                <code>submit_materializer_v4.py</code> now defines
+                <code>EXPECTED_LIVE_JOB_DEFINITION_CHECKS</code>,
+                <code>EXPECTED_LIVE_IMAGE_CHECKS</code>, and
+                <code>EXPECTED_LIVE_QUEUE_CHECKS</code>; adds
+                <code>require_exact_true_checks()</code> on top of
+                <code>check_map_mismatches()</code>; and routes
+                <code>validate_live_definition()</code>,
+                <code>validate_live_image()</code>, and
+                <code>validate_live_queue()</code> through exact
+                missing, unexpected, and failed-key validation. Live preflight
+                no longer accepts broad all-true read-only maps before v4
+                request rendering or submission, and
+                <code>test_submit_materializer_v4.py</code> now covers missing
+                and unexpected live definition, image, and queue keys plus
+                failed exact values for <code>revision</code>,
+                <code>linux_arm64_only</code>, and
+                <code>queue_live</code>.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
