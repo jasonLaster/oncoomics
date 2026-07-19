@@ -343,8 +343,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = cef0410</li>
-          <li class="pill">Prior source = 0c1c9eb</li>
+          <li class="pill">Latest milestone = 02d3f08</li>
+          <li class="pill">Prior source = cef0410</li>
+          <li class="pill">Pre-route digests = bound</li>
           <li class="pill">Private apply receipts = exact</li>
           <li class="pill">Public results bucket = intentional</li>
           <li class="pill">Route exactness = source maps + review summaries</li>
@@ -389,8 +390,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana Rosalind packet</strong>
-              <span>45% · route exactness guarded</span>
-              <div class="bar" aria-hidden="true" style="--pct: 45%"><span></span></div>
+              <span>50% · pre-route digests guarded</span>
+              <div class="bar" aria-hidden="true" style="--pct: 50%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
@@ -498,6 +499,10 @@
             <li class="item" style="--tone: var(--queued)">
               <strong>In progress · prepare the no-expensive-compute handoff chain</strong>
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind pre-route blocked report digests</strong>
+              <span>Fast-DAG validation now requires each FACETS, CHORD, and HRDetect blocked packet to carry the same deterministic/Rosalind <code>report_manifest</code> SHA-256s in its method spec, report manifest, and review summary before source-freeze or AI review.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact terminal source hashes in blocked reports</strong>
@@ -613,6 +618,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T23:40:00-07:00">Jul 18 · 11:40 PM</time>
+              <span>
+                <strong>02d3f08 Bind pre-route blocked report digests:</strong>
+                fast report validation now rejects FACETS, CHORD, and HRDetect
+                blocked packets when their method spec, report manifest, and
+                review summary name the same pre-route deterministic/Rosalind
+                reports but bind different SHA-256 values. No compute was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T23:35:51-07:00">Jul 18 · 11:35 PM</time>
               <span>
