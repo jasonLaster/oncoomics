@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real staged cross-check hash inputs</li>
+          <li class="pill">Latest milestone = local real AI-bundle hash inputs</li>
+          <li class="pill">AI-bundle hash inputs = real</li>
           <li class="pill">Staged cross-check hash inputs = real</li>
           <li class="pill">Input-contract hash inputs = real</li>
           <li class="pill">Materialized-final hash inputs = real</li>
@@ -1589,6 +1590,10 @@
               <span>AI-bundle construction now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before source report manifests, model-catalog receipts, or staged AI bundle manifests can feed a de-identified independent-review bundle.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real AI-bundle hash inputs</strong>
+              <span>AI-bundle construction now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before de-identified model-review bundles can bind deterministic, Rosalind, and executable cross-check report manifests.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real AI-validation JSON files</strong>
               <span>AI-review validation now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before source, bundle, peer-review, catalog, or review-manifest JSON can feed an independent validation receipt.</span>
             </li>
@@ -2050,6 +2055,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:07-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real AI-bundle hash inputs:</strong>
+                AI-bundle construction now rejects symlinked local SHA-256
+                inputs and hash-input ancestors before de-identified bundles
+                bind deterministic, Rosalind, and executable manifests.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:06-07:00">Jul 19 · local</time>
               <span>

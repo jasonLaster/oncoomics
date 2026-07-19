@@ -493,6 +493,36 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
             self.assertFalse((real_output / "review_bundle.json").exists())
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.txt"
+            real_source.write_text("real source\n", encoding="utf-8")
+            source_link = root / "source-link.txt"
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source-link.txt SHA-256 input must be a real file",
+            ):
+                BUILD.sha256(source_link)
+
+            real_inputs = root / "real-inputs"
+            real_inputs.mkdir()
+            report_manifest = real_inputs / "report_manifest.json"
+            report_manifest.write_text(
+                '{"method_id": "deterministic_full_wgs"}\n',
+                encoding="utf-8",
+            )
+            linked_inputs = root / "linked-inputs"
+            linked_inputs.symlink_to(real_inputs, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report_manifest.json SHA-256 input parent may not be a symlink",
+            ):
+                BUILD.sha256(linked_inputs / "report_manifest.json")
+
     def test_bundle_file_install_revalidates_copied_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
