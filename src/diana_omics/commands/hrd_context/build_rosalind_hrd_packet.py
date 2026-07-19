@@ -1322,10 +1322,8 @@ def diana_wgs_phase3_fast_deterministic_binding(
                 for group, count in sorted(artifact_groups.items())
             },
             "run": dict(review_summary.get("run", {})) if isinstance(review_summary.get("run"), dict) else {},
-            "workflow": (
-                dict(review_summary.get("workflow", {}))
-                if isinstance(review_summary.get("workflow"), dict)
-                else {}
+            "workflow": phase3_fast_workflow_summary(
+                review_summary.get("workflow"),
             ),
             "crosscheck_input_plans": crosscheck_route_states,
             "sequenza_scarhrd_alias_input_contract": sequenza_alias_contract,
@@ -1346,6 +1344,32 @@ def phase3_fast_alias_source_summary(value: Any, label: str) -> dict[str, Any]:
         "version_id": require_version_id(
             value.get("version_id"),
             f"{label} version_id",
+        ),
+    }
+
+
+def phase3_fast_workflow_summary(value: Any) -> dict[str, str]:
+    if not isinstance(value, Mapping) or set(value) != {
+        "name",
+        "parameter_sha256",
+        "source_commit",
+    }:
+        raise ValueError("Phase 3 fast workflow provenance is not exact")
+    workflow_id = require_exact_nonempty_string(
+        value.get("name"),
+        "Phase 3 fast workflow name",
+    )
+    if workflow_id != "phase3_wgs_fast":
+        raise ValueError("Phase 3 fast workflow name is not exact")
+    return {
+        "name": workflow_id,
+        "parameter_sha256": require_sha256(
+            value.get("parameter_sha256"),
+            "Phase 3 fast workflow parameter_sha256",
+        ),
+        "source_commit": require_exact_nonempty_string(
+            value.get("source_commit"),
+            "Phase 3 fast workflow source_commit",
         ),
     }
 
@@ -1455,15 +1479,12 @@ def diana_wgs_report_provenance(deterministic_binding: Mapping[str, Any]) -> dic
             else {}
         )
         workflow = phase3_summary.get("workflow")
-        phase3_summary["workflow"] = (
-            {
-                "workflow_id": str(workflow.get("name", "")),
-                "parameter_sha256": str(workflow.get("parameter_sha256", "")),
-                "source_commit": str(workflow.get("source_commit", "")),
-            }
-            if isinstance(workflow, Mapping)
-            else {}
-        )
+        workflow_summary = phase3_fast_workflow_summary(workflow)
+        phase3_summary["workflow"] = {
+            "workflow_id": workflow_summary["name"],
+            "parameter_sha256": workflow_summary["parameter_sha256"],
+            "source_commit": workflow_summary["source_commit"],
+        }
         sequenza_contract = phase3_summary.get(
             "sequenza_scarhrd_alias_input_contract"
         )
