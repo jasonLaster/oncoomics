@@ -146,7 +146,9 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
         self.assertNotIn("stage_ai_review_inputs.py", text)
 
         previous = -1
-        for index, (method_id, argument) in enumerate(MODULE.METHOD_ARGUMENTS):
+        for index, (method_id, argument) in enumerate(
+            zip(MODULE.REQUIRED_METHOD_IDS, MODULE.MANIFEST_ARGUMENTS)
+        ):
             flag = "--" + argument.replace("_", "-")
             self.assertEqual(method_id, MODULE.REQUIRED_METHOD_IDS[index])
             self.assertEqual(text.count(flag), 1)

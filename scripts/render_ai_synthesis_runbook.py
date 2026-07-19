@@ -22,7 +22,7 @@ from hrd_report_inventory import (
     REQUIRED_METHOD_IDS,
     source_report_manifest_paths,
 )
-from prepare_ai_review_run import METHOD_ARGUMENTS
+from prepare_ai_review_run import MANIFEST_ARGUMENTS
 from publish_reviewed_public_report import (
     non_null_version_id,
     private_report_prefix,
@@ -151,7 +151,11 @@ def report_manifest_paths(
 
 
 def prepare_manifest_flags(paths: dict[str, Path]) -> list[str | Path]:
-    return [token for method_id, argument in METHOD_ARGUMENTS for token in ("--" + argument.replace("_", "-"), paths[method_id])]
+    return [
+        token
+        for method_id, argument in zip(REQUIRED_METHOD_IDS, MANIFEST_ARGUMENTS)
+        for token in ("--" + argument.replace("_", "-"), paths[method_id])
+    ]
 
 
 def expected_source_manifest_flags(
