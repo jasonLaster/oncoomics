@@ -601,6 +601,10 @@ def valid_version_id(value: Any) -> bool:
     )
 
 
+def summary_version_id(value: Any) -> str:
+    return value if valid_version_id(value) else ""
+
+
 def s3_checksums(value: Any) -> dict[str, str]:
     if not isinstance(value, dict):
         return {}
@@ -807,7 +811,7 @@ def validate_stage_provenance(
     return {
         "status": "passed" if all(checks.values()) else "failed",
         "receipt_sha256": receipt_sha,
-        "receipt_version_id": str(anchor.get("receipt_version_id", "")),
+        "receipt_version_id": summary_version_id(anchor.get("receipt_version_id")),
         "object_count": len(rows),
         "checks": checks,
     }
@@ -1148,7 +1152,7 @@ def validate_final_freeze_provenance(
     return {
         "status": "passed" if all(checks.values()) else "failed",
         "receipt_sha256": receipt_sha,
-        "receipt_version_id": str(anchor.get("receipt_version_id", "")),
+        "receipt_version_id": summary_version_id(anchor.get("receipt_version_id")),
         "object_count": len(rows),
         "checks": checks,
     }

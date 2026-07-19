@@ -2852,6 +2852,8 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
 
                 self.assertEqual(evidence["status"], "failed")
                 self.assertIs(evidence["checks"][check_id], False)
+                if check_id == "anchor_content_address":
+                    self.assertEqual(evidence["receipt_version_id"], "")
 
     def test_exact_materialization_rejects_coerced_script_sha256(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
@@ -2907,6 +2909,22 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                 "anchor_schema_status",
             ),
             (
+                "final freeze anchor VersionId",
+                lambda fixture: REPORT_MODULE.validate_final_freeze_provenance(
+                    load_json(fixture.aux / "final-freeze.json"),
+                    {
+                        **load_json(fixture.aux / "final-freeze-anchor.json"),
+                        "receipt_version_id": True,
+                    },
+                    receipt_path=fixture.aux / "final-freeze.json",
+                    execution_path=fixture.aux / "execution.json",
+                    run_id=RUN_ID,
+                    batch_job_id="synthetic-job",
+                    expected_kms_key_arn=KMS_ARN,
+                ),
+                "anchor_content_address",
+            ),
+            (
                 "crosscheck terminal capture",
                 lambda fixture: REPORT_MODULE.validate_crosscheck_terminal_capture(
                     {
@@ -2939,6 +2957,8 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
 
                 self.assertEqual(evidence["status"], "failed")
                 self.assertIs(evidence["checks"][check_id], False)
+                if check_id == "anchor_content_address":
+                    self.assertEqual(evidence["receipt_version_id"], "")
 
     def test_forbidden_token_file_findings_fail_before_report_install(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
