@@ -1009,6 +1009,101 @@ class CustodyHandoffTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     fixture.finalize()
 
+    def test_finalizer_rejects_coerced_version_ids(self):
+        def coerce_freeze_anchor(fixture: CustodyFixture) -> None:
+            fixture.freeze_anchor["receipt_version_id"] = True
+
+        def coerce_final_freeze_destination(fixture: CustodyFixture) -> None:
+            fixture.freeze["objects"][0]["destination"]["version_id"] = True
+            fixture.freeze["destination_inventory"][0]["version_id"] = True
+
+        def coerce_crosscheck_reference(fixture: CustodyFixture) -> None:
+            fixture.pending["reference"]["fasta"]["version_id"] = True
+            fixture.cross["source_custody"]["fasta"]["version_id"] = True
+
+        def coerce_crosscheck_output(fixture: CustodyFixture) -> None:
+            filename = "staged_input_validation.json"
+            fixture.cross["outputs"][filename]["version_id"] = True
+            inventory = next(
+                row
+                for row in fixture.cross["destination_inventory"]
+                if row["filename"] == filename
+            )
+            inventory["version_id"] = True
+
+        for label, mutate, message in (
+            (
+                "freeze_anchor",
+                coerce_freeze_anchor,
+                "final freeze anchor lacks an exact S3 VersionId",
+            ),
+            (
+                "final_freeze_destination",
+                coerce_final_freeze_destination,
+                "frozen destination lacks an exact S3 VersionId",
+            ),
+            (
+                "crosscheck_reference",
+                coerce_crosscheck_reference,
+                "cross-check reference fasta lacks an exact S3 VersionId",
+            ),
+            (
+                "crosscheck_output",
+                coerce_crosscheck_output,
+                "staged_input_validation.json materializer output "
+                "lacks an exact S3 VersionId",
+            ),
+        ):
+            with self.subTest(label=label):
+                fixture = CustodyFixture()
+                mutate(fixture)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    fixture.finalize()
+
+    def test_finalizer_rejects_coerced_exact_materialization_version_id(self):
+        fixture = CustodyFixture()
+        exact = json.loads(json.dumps(fixture.exact))
+        exact["objects"] = exact["objects"][:1]
+        exact["object_count"] = 1
+        exact["passed_count"] = 1
+        row = exact["objects"][0]
+        row["version_id"] = True
+        frozen = json.loads(
+            json.dumps(fixture.freeze["objects"][0]["destination"])
+        )
+        frozen["version_id"] = True
+        freeze_uri = f"s3://{row['bucket']}/{row['key']}"
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "exact-version materialization row lacks an exact S3 VersionId",
+        ):
+            finalizer.validate_exact_materialization(
+                exact,
+                fixture.freeze_sha,
+                {freeze_uri: frozen},
+            )
+
+    def test_finalizer_version_guard_avoids_raw_string_coercion(self):
+        script = ROOT / "scripts/finalize_input_contract.py"
+        source = script.read_text()
+        module = ast.parse(source, filename=str(script))
+        require_version = next(
+            node
+            for node in ast.walk(module)
+            if isinstance(node, ast.FunctionDef) and node.name == "require_version"
+        )
+        raw_string_coercions = [
+            ast.get_source_segment(source, node)
+            for node in ast.walk(require_version)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+        ]
+
+        self.assertEqual(raw_string_coercions, [])
+
     def test_finalizer_rejects_incomplete_materialization_row_checks(self):
         fixture = CustodyFixture()
         fixture.exact["objects"][0]["checks"].pop("checksum_type")
@@ -1246,6 +1341,34 @@ class CustodyHandoffTests(unittest.TestCase):
         with self.assertRaisesRegex(
             ValueError,
             "destination inventory differs",
+        ):
+            finalizer.require_final_destination_inventory(
+                receipt,
+                {"signatures/sbs96.csv": destination},
+            )
+
+    def test_finalizer_rejects_boolean_destination_inventory_version(self):
+        destination = {
+            "key": "runs/subject01/unit/deterministic/final/sbs96.csv",
+            "version_id": True,
+            "bytes": 1,
+            "etag": "destination-etag",
+            "checksums": {"ChecksumType": "FULL_OBJECT", "ChecksumSHA256": "sha256"},
+            "checksum_type": "FULL_OBJECT",
+            "kms_key_id": KMS,
+        }
+        receipt = {
+            "destination_inventory": [
+                {
+                    **destination,
+                    "relative_key": "signatures/sbs96.csv",
+                }
+            ]
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "destination inventory lacks an exact S3 VersionId",
         ):
             finalizer.require_final_destination_inventory(
                 receipt,

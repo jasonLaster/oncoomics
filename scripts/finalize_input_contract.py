@@ -316,10 +316,14 @@ def s3_key(value: Any, label: str) -> str:
 
 
 def require_version(value: Any, label: str) -> str:
-    text = str(value)
-    if not text or text.lower() in {"none", "null"} or any(c.isspace() for c in text):
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.lower() in {"none", "null"}
+        or any(c.isspace() for c in value)
+    ):
         raise ValueError(f"{label} lacks an exact S3 VersionId")
-    return text
+    return value
 
 
 def require_all_true(value: Any, label: str) -> None:
@@ -373,6 +377,10 @@ def require_final_destination_inventory(
         relative = str(row.get("relative_key", ""))
         if not relative:
             raise ValueError("final artifact freeze destination inventory is not exact")
+        require_version(
+            row.get("version_id"),
+            "final artifact freeze destination inventory",
+        )
         if relative in inventory_by_relative:
             raise ValueError("duplicate final artifact freeze destination inventory row")
         inventory_by_relative[relative] = row
@@ -536,6 +544,7 @@ def validate_exact_materialization(
             EXPECTED_MATERIALIZATION_ROW_KEYS,
             "exact-version materialization row",
         )
+        require_version(row.get("version_id"), "exact-version materialization row")
         require_exact_true(
             row.get("checks"),
             EXPECTED_MATERIALIZATION_CHECKS,
@@ -667,6 +676,14 @@ def finalize(
             EXPECTED_CROSSCHECK_INVENTORY_KEYS,
             "cross-check destination inventory",
         )
+        require_version(
+            row.get("version_id"),
+            f"{filename} materializer output",
+        )
+        require_version(
+            inventory.get("version_id"),
+            f"{filename} materializer inventory",
+        )
         if (
             inventory.get("key") != key
             or row.get("version_id") != inventory.get("version_id")
@@ -689,6 +706,7 @@ def finalize(
             EXPECTED_CROSSCHECK_SOURCE_KEYS,
             f"cross-check source custody {source_role}",
         )
+        require_version(row.get("version_id"), f"cross-check source {source_role}")
         exact = exact_by_uri.get(str(row.get("uri", "")))
         if (
             exact is None
@@ -709,9 +727,14 @@ def finalize(
             EXPECTED_CROSSCHECK_SOURCE_KEYS,
             f"cross-check reference custody {source_role}",
         )
+        require_version(row.get("version_id"), f"cross-check reference {source_role}")
         declared = reference.get(reference_role)
         if not isinstance(declared, dict):
             raise ValueError(f"cross-check reference custody omits {source_role}")
+        require_version(
+            declared.get("version_id"),
+            f"declared reference {reference_role}",
+        )
         if (
             row.get("uri") != declared.get("uri")
             or row.get("version_id") != declared.get("version_id")
@@ -747,7 +770,10 @@ def finalize(
             freeze_receipt_sha256, "final freeze receipt"
         ),
         "final_freeze_receipt_uri": freeze_anchor["receipt_uri"],
-        "final_freeze_receipt_version_id": freeze_anchor["receipt_version_id"],
+        "final_freeze_receipt_version_id": require_version(
+            freeze_anchor.get("receipt_version_id"),
+            "final freeze anchor",
+        ),
         "exact_materialization_receipt_sha256": require_hex(
             exact_materialization_sha256, "exact materialization receipt"
         ),
@@ -755,9 +781,10 @@ def finalize(
             crosscheck_receipt_sha256, "cross-check materialization receipt"
         ),
         "crosscheck_materialization_receipt_uri": crosscheck_anchor["receipt_uri"],
-        "crosscheck_materialization_receipt_version_id": crosscheck_anchor[
-            "receipt_version_id"
-        ],
+        "crosscheck_materialization_receipt_version_id": require_version(
+            crosscheck_anchor.get("receipt_version_id"),
+            "cross-check materialization anchor",
+        ),
         "crosscheck_materializer_script_sha256": require_hex(
             expected_crosscheck_materializer_sha256,
             "cross-check materializer script",
