@@ -218,6 +218,10 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def aws_json(region: str, *args: str) -> dict[str, Any]:
     output = subprocess.check_output(
         ["aws", *args, "--region", region, "--output", "json"],
@@ -880,11 +884,15 @@ def validate_exact_receipt(
     checks = {
         "receipt_keys_exact": set(receipt) == expected_receipt_keys,
         "logged_local_sha256_exact": local_sha == location["sha256"],
-        "logged_local_bytes_exact": len(receipt_bytes) == location["bytes"],
+        "logged_local_bytes_exact": exact_int(location["bytes"], len(receipt_bytes)),
         "get_version_exact": get_response.get("VersionId") == location["version_id"],
         "head_version_exact": head_response.get("VersionId") == location["version_id"],
-        "get_bytes_exact": get_response.get("ContentLength") == location["bytes"],
-        "head_bytes_exact": head_response.get("ContentLength") == location["bytes"],
+        "get_bytes_exact": exact_int(
+            get_response.get("ContentLength"), location["bytes"]
+        ),
+        "head_bytes_exact": exact_int(
+            head_response.get("ContentLength"), location["bytes"]
+        ),
         "get_sha256_checksum_exact": (
             decode_sha256(get_response.get("ChecksumSHA256", ""), "GET ChecksumSHA256") == local_sha
             and get_response.get("ChecksumType") == "FULL_OBJECT"

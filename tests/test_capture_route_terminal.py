@@ -1233,6 +1233,49 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                 fixture["submission_environment"],
             )
 
+    def test_exact_receipt_content_lengths_must_be_exact_ints(self):
+        fixture = self.fixture()
+        args = self.args(Path("unused"), fixture)
+        for response_name in ("GET", "HEAD"):
+            with self.subTest(response_name=response_name):
+                get_response = dict(fixture["metadata"])
+                head_response = dict(fixture["metadata"])
+                if response_name == "GET":
+                    get_response["ContentLength"] = float(len(fixture["receipt_bytes"]))
+                    expected_check = "get_bytes_exact"
+                else:
+                    head_response["ContentLength"] = float(len(fixture["receipt_bytes"]))
+                    expected_check = "head_bytes_exact"
+
+                with self.assertRaisesRegex(ValueError, f"failed {expected_check}"):
+                    MODULE.validate_exact_receipt(
+                        fixture["receipt_bytes"],
+                        get_response,
+                        head_response,
+                        self.receipt_history_rows(fixture),
+                        self.receipt_location(fixture),
+                        args,
+                        fixture["submission_environment"],
+                    )
+
+    def test_logged_receipt_bytes_must_be_exact_int(self):
+        fixture = self.fixture()
+        args = self.args(Path("unused"), fixture)
+
+        with self.assertRaisesRegex(ValueError, "logged_local_bytes_exact"):
+            MODULE.validate_exact_receipt(
+                fixture["receipt_bytes"],
+                fixture["metadata"],
+                fixture["metadata"],
+                self.receipt_history_rows(fixture),
+                {
+                    **self.receipt_location(fixture),
+                    "bytes": float(len(fixture["receipt_bytes"])),
+                },
+                args,
+                fixture["submission_environment"],
+            )
+
     def test_route_receipt_requires_exact_schema_version(self):
         fixture = self.fixture()
         args = self.args(Path("unused"), fixture)

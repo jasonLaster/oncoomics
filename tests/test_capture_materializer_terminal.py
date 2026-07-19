@@ -992,6 +992,43 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 self.kms,
             )
 
+    def test_exact_receipt_content_lengths_must_be_exact_ints(self) -> None:
+        for response_name in ("GET", "HEAD"):
+            with self.subTest(response_name=response_name):
+                get_response = dict(self.metadata)
+                head_response = dict(self.metadata)
+                if response_name == "GET":
+                    get_response["ContentLength"] = float(len(self.receipt_bytes))
+                    expected_check = "get_bytes_exact"
+                else:
+                    head_response["ContentLength"] = float(len(self.receipt_bytes))
+                    expected_check = "head_bytes_exact"
+
+                with self.assertRaisesRegex(ValueError, f"failed {expected_check}"):
+                    MODULE.validate_exact_receipt(
+                        self.receipt_bytes,
+                        get_response,
+                        head_response,
+                        self.receipt_history_rows(),
+                        self.receipt_location(),
+                        self.parameters,
+                        self.destination_prefix,
+                        self.kms,
+                    )
+
+    def test_logged_receipt_bytes_must_be_exact_int(self) -> None:
+        with self.assertRaisesRegex(ValueError, "logged_local_bytes_exact"):
+            MODULE.validate_exact_receipt(
+                self.receipt_bytes,
+                self.metadata,
+                self.metadata,
+                self.receipt_history_rows(),
+                {**self.receipt_location(), "bytes": float(len(self.receipt_bytes))},
+                self.parameters,
+                self.destination_prefix,
+                self.kms,
+            )
+
     def test_materializer_receipt_requires_exact_schema_version(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             receipt = json.loads(self.receipt_bytes)
