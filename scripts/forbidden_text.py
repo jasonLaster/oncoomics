@@ -57,6 +57,35 @@ def contains_control_character(value: str) -> bool:
     return any(ord(character) < 32 or ord(character) == 127 for character in value)
 
 
+def normalize_forbidden_token(value: Any, label: str) -> str:
+    """Normalize one forbidden token and fail closed on ambiguous tokens."""
+
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{label} must be a non-empty string")
+    token = value.strip()
+    if len(token) < MIN_TOKEN_LENGTH:
+        raise ValueError(f"{label} must be at least {MIN_TOKEN_LENGTH} characters")
+    if contains_control_character(token):
+        raise ValueError(f"{label} must not contain control characters")
+    return token
+
+
+def normalize_forbidden_tokens(
+    values: Iterable[Any],
+    *,
+    label: str,
+) -> list[str]:
+    """Normalize a forbidden-token inventory into a stable unique list."""
+
+    return sorted(
+        {
+            normalize_forbidden_token(value, f"{label}[{index}]")
+            for index, value in enumerate(values)
+        },
+        key=str.casefold,
+    )
+
+
 def normalize_forbidden_tokens_json(raw: Any) -> list[str]:
     """Load a Phase 3 fast forbidden-token JSON string into a stable list."""
 
@@ -71,18 +100,7 @@ def normalize_forbidden_tokens_json(raw: Any) -> list[str]:
     if not isinstance(payload, list) or not payload:
         raise ValueError("forbidden-token JSON must be a non-empty JSON string array")
 
-    tokens: list[str] = []
-    for index, value in enumerate(payload):
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError(f"forbidden-token JSON[{index}] must be a non-empty string")
-        token = value.strip()
-        if len(token) < MIN_TOKEN_LENGTH:
-            raise ValueError(f"forbidden-token JSON[{index}] must be at least {MIN_TOKEN_LENGTH} characters")
-        if contains_control_character(token):
-            raise ValueError(f"forbidden-token JSON[{index}] must not contain control characters")
-        tokens.append(token)
-
-    return sorted(set(tokens), key=str.casefold)
+    return normalize_forbidden_tokens(payload, label="forbidden-token JSON")
 
 
 def forbidden_token_fingerprints(tokens: Iterable[str]) -> list[str]:
@@ -125,15 +143,15 @@ def merge_forbidden_tokens(
     """Return a stable unique token tuple from explicit values and JSON files."""
 
     return tuple(
-        sorted(
-            {
-                token.strip()
-                for token in (
-                    *tokens,
-                    *(file_token for path in files for file_token in forbidden_tokens_from_file(path)),
-                )
-                if token.strip()
-            },
-            key=str.casefold,
+        normalize_forbidden_tokens(
+            (
+                *tokens,
+                *(
+                    file_token
+                    for path in files
+                    for file_token in forbidden_tokens_from_file(path)
+                ),
+            ),
+            label="forbidden token",
         )
     )

@@ -139,6 +139,28 @@ class ForbiddenTextTests(unittest.TestCase):
                     ):
                         MODULE.forbidden_tokens_from_file(tokens)
 
+    def test_explicit_forbidden_tokens_share_normalization_policy(self) -> None:
+        self.assertEqual(
+            MODULE.merge_forbidden_tokens(
+                [" DirectIdentifier ", "personalis", "DirectIdentifier"]
+            ),
+            ("DirectIdentifier", "personalis"),
+        )
+
+        cases = (
+            ("blank", ["  "], "forbidden token\\[0\\] must be a non-empty string"),
+            ("short", ["ab"], "forbidden token\\[0\\] must be at least 3 characters"),
+            (
+                "control",
+                ["personalis\u0000"],
+                "forbidden token\\[0\\] must not contain control characters",
+            ),
+        )
+        for name, tokens, message in cases:
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, message):
+                    MODULE.merge_forbidden_tokens(tokens)
+
 
 if __name__ == "__main__":
     unittest.main()

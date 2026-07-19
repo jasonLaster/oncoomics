@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real Phase 3 post-join hashes</li>
+          <li class="pill">Latest milestone = local strict explicit forbidden tokens</li>
+          <li class="pill">Explicit forbidden tokens = strict</li>
           <li class="pill">Phase 3 post-join hashes = real</li>
           <li class="pill">Phase 3 evidence-join hashes = real</li>
           <li class="pill">Phase 3 runner receipt hashes = real</li>
@@ -698,6 +699,7 @@
           <li class="pill">Model isolation = manifest-checked</li>
           <li class="pill">Public access foundation = ready</li>
           <li class="pill">HCC1395 seven-report stack = passed</li>
+          <li class="pill">Explicit forbidden tokens = strict</li>
           <li class="pill">Forbidden scans = shared</li>
           <li class="pill">Terminal artifacts = absent</li>
           <li class="pill">Diana deterministic = blocked</li>
@@ -1296,6 +1298,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · normalize explicit forbidden tokens strictly</strong>
+              <span>Explicit <code>--forbidden-token</code> values now share the same strict forbidden-token normalization policy as run-scoped JSON inventories before packet public-safety scans consume them.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · rederive Rosalind source artifacts</strong>
               <span>Generic Rosalind HRD report-manifest verification now rederives exact <code>source_artifact</code> SHA-256 entries from <code>input_evidence_index.json</code>, so every packet flavor preserves present source artifact hashes alongside support hashes.</span>
@@ -2278,6 +2284,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T15:13:16-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Normalize explicit forbidden tokens strictly:</strong>
+                Explicit <code>--forbidden-token</code> values now share the
+                same strict forbidden-token normalization policy as run-scoped
+                JSON inventories before packet public-safety scans consume
+                them.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T15:09:43-07:00">Jul 19 · local</time>
               <span>
