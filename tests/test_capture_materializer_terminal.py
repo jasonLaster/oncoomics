@@ -1135,6 +1135,40 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                         self.kms,
                     )
 
+    def test_exact_receipt_checksums_must_be_exact_strings(self) -> None:
+        class CoercibleChecksum:
+            def __str__(self) -> str:
+                return self.metadata["ChecksumSHA256"]
+
+        for response_name in ("GET", "HEAD"):
+            with self.subTest(response_name=response_name):
+                get_response = dict(self.metadata)
+                head_response = dict(self.metadata)
+                checksum = CoercibleChecksum()
+                checksum.metadata = self.metadata
+                if response_name == "GET":
+                    get_response["ChecksumSHA256"] = checksum
+                    expected_check = "get_sha256_checksum_exact"
+                else:
+                    head_response["ChecksumSHA256"] = checksum
+                    expected_check = "head_sha256_checksum_exact"
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"{response_name} ChecksumSHA256 "
+                    "is not an exact SHA-256 checksum string",
+                ):
+                    MODULE.validate_exact_receipt(
+                        self.receipt_bytes,
+                        get_response,
+                        head_response,
+                        self.receipt_history_rows(),
+                        self.receipt_location(),
+                        self.parameters,
+                        self.destination_prefix,
+                        self.kms,
+                    )
+
     def test_logged_receipt_bytes_must_be_exact_int(self) -> None:
         with self.assertRaisesRegex(ValueError, "logged_local_bytes_exact"):
             MODULE.validate_exact_receipt(
@@ -1244,6 +1278,24 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
         ]
 
         self.assertEqual(raw_schema_version_comparisons, [])
+
+    def test_sha256_checksum_guards_avoid_raw_string_coercion(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "capture_materializer_terminal.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        raw_checksum_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and "ChecksumSHA256" in ast.unparse(node.args[0])
+        ]
+
+        self.assertEqual(raw_checksum_coercions, [])
 
     def test_rejects_symlinked_exact_receipt_download_before_capture(self) -> None:
         def get(region, bucket, key, version_id, destination):

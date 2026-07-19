@@ -201,8 +201,10 @@ def is_platform_root_alias(path: Path) -> bool:
 
 
 def decode_sha256(value: Any, label: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} is not an exact SHA-256 checksum string")
     try:
-        decoded = base64.b64decode(str(value), validate=True)
+        decoded = base64.b64decode(value, validate=True)
     except Exception as error:
         raise ValueError(f"{label} is not valid base64: {error}") from error
     if len(decoded) != 32:
@@ -1197,8 +1199,8 @@ def capture(args: argparse.Namespace) -> dict[str, Any]:
             "local_output": str(args.receipt_output.resolve()),
             "local_sha256": sha256_bytes(downloaded),
             "local_bytes": len(downloaded),
-            "head_checksum_sha256": str(head_response.get("ChecksumSHA256", "")),
-            "get_checksum_sha256": str(get_response.get("ChecksumSHA256", "")),
+            "head_checksum_sha256": head_response["ChecksumSHA256"],
+            "get_checksum_sha256": get_response["ChecksumSHA256"],
             "history": history,
             "checks": receipt_checks,
             "route": receipt["route"],

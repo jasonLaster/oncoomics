@@ -1486,6 +1486,40 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                         fixture["submission_environment"],
                     )
 
+    def test_exact_receipt_checksums_must_be_exact_strings(self):
+        class CoercibleChecksum:
+            def __str__(self) -> str:
+                return fixture["metadata"]["ChecksumSHA256"]
+
+        fixture = self.fixture()
+        args = self.args(Path("unused"), fixture)
+        for response_name in ("GET", "HEAD"):
+            with self.subTest(response_name=response_name):
+                get_response = dict(fixture["metadata"])
+                head_response = dict(fixture["metadata"])
+                checksum = CoercibleChecksum()
+                if response_name == "GET":
+                    get_response["ChecksumSHA256"] = checksum
+                    expected_check = "get_sha256_checksum_exact"
+                else:
+                    head_response["ChecksumSHA256"] = checksum
+                    expected_check = "head_sha256_checksum_exact"
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"{response_name} ChecksumSHA256 "
+                    "is not an exact SHA-256 checksum string",
+                ):
+                    MODULE.validate_exact_receipt(
+                        fixture["receipt_bytes"],
+                        get_response,
+                        head_response,
+                        self.receipt_history_rows(fixture),
+                        self.receipt_location(fixture),
+                        args,
+                        fixture["submission_environment"],
+                    )
+
     def test_logged_receipt_bytes_must_be_exact_int(self):
         fixture = self.fixture()
         args = self.args(Path("unused"), fixture)
@@ -1619,6 +1653,20 @@ class CaptureRouteTerminalTests(unittest.TestCase):
         ]
 
         self.assertEqual(raw_schema_version_comparisons, [])
+
+    def test_sha256_checksum_guards_avoid_raw_string_coercion(self):
+        module = ast.parse(SCRIPT.read_text(encoding="utf-8"))
+        raw_checksum_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and "ChecksumSHA256" in ast.unparse(node.args[0])
+        ]
+
+        self.assertEqual(raw_checksum_coercions, [])
 
     def test_rejects_download_sha_checksum_kms_or_receipt_history_tampering(self):
         fixture = self.fixture()
