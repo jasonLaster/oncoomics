@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import io
 import importlib.util
@@ -97,6 +98,35 @@ GENERATOR.generate = generate
 
 
 class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
+    def test_schema_versions_are_exact_json_integers(self) -> None:
+        for value in (True, 1.0, "1", 2, None):
+            with self.subTest(value=value):
+                self.assertFalse(
+                    GENERATOR.exact_schema_version({"schema_version": value})
+                )
+
+        self.assertTrue(GENERATOR.exact_schema_version({"schema_version": 1}))
+
+    def test_schema_guards_use_exact_integer_helper(self) -> None:
+        source = GENERATOR_SCRIPT.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(GENERATOR_SCRIPT))
+
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "schema_version" not in segment:
+                continue
+            if segment in {
+                'type(payload.get("schema_version")) is int',
+                'payload["schema_version"] == expected',
+            }:
+                continue
+            raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_comparisons, [])
+
     def test_packet_files_are_create_only_fsynced_public_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "report.md"
@@ -344,6 +374,10 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                     "classification_authorized",
                     True,
                 ),
+                "envelope is not exact",
+            ),
+            "float_schema_version": (
+                lambda manifest: manifest.__setitem__("schema_version", 1.0),
                 "envelope is not exact",
             ),
             "extra_source_hash": (

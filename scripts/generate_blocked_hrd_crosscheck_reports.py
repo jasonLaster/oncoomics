@@ -366,6 +366,10 @@ def require_real_nonempty_file(path: Path, label: str) -> None:
         raise ValueError(f"{label} must be a real non-empty file")
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def load_source_report_manifest(path: Path, method_id: str) -> None:
     require_real_nonempty_file(
         path,
@@ -527,7 +531,7 @@ def require_blocked_report_manifest(packet_dir: Path) -> None:
         raise ValueError("blocked cross-check report manifest must be a JSON object")
     if (
         set(manifest) != BLOCKED_REPORT_MANIFEST_KEYS
-        or manifest.get("schema_version") != 1
+        or not exact_schema_version(manifest)
         or manifest.get("method_id") not in BLOCKED_CROSSCHECK_METHOD_IDS
         or manifest.get("report_kind") != "blocked_method"
         or any(manifest.get(key) != value for key, value in STATUS.items())

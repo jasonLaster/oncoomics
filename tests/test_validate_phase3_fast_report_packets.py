@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib.util
 import json
@@ -122,6 +123,35 @@ def write_packet(directory: Path, method_id: str) -> None:
 
 
 class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
+    def test_schema_versions_are_exact_json_integers(self) -> None:
+        for value in (True, 1.0, "1", 2, None):
+            with self.subTest(value=value):
+                self.assertFalse(
+                    VALIDATOR.exact_schema_version({"schema_version": value})
+                )
+
+        self.assertTrue(VALIDATOR.exact_schema_version({"schema_version": 1}))
+
+    def test_schema_guards_use_exact_integer_helper(self) -> None:
+        source = VALIDATOR_SCRIPT.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(VALIDATOR_SCRIPT))
+
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "schema_version" not in segment:
+                continue
+            if segment in {
+                'type(payload.get("schema_version")) is int',
+                'payload["schema_version"] == expected',
+            }:
+                continue
+            raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_comparisons, [])
+
     def write_phase3_fast_packets(self, root: Path) -> dict[str, Path]:
         packet_dirs = {
             "deterministic_full_wgs": root / "deterministic_full_wgs",
@@ -433,11 +463,24 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
 
     def test_rejects_inexact_validation_receipt_envelopes(self) -> None:
         cases = (
-            ("top-level", lambda receipt: receipt.update({"legacy_field": True})),
-            ("packet", lambda receipt: receipt["packets"][0].update({"legacy_file_count": 1})),
+            (
+                "top-level",
+                lambda receipt: receipt.update({"legacy_field": True}),
+                "report packet validation receipt is malformed",
+            ),
+            (
+                "float-schema",
+                lambda receipt: receipt.__setitem__("schema_version", 1.0),
+                "report packet validation receipt is malformed",
+            ),
+            (
+                "packet",
+                lambda receipt: receipt["packets"][0].update({"legacy_file_count": 1}),
+                "packet rows",
+            ),
         )
 
-        for label, mutate in cases:
+        for label, mutate, message in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 packet_dirs = self.write_phase3_fast_packets(root)
@@ -449,9 +492,7 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
 
                 with self.assertRaisesRegex(
                     ValueError,
-                    "report packet validation receipt is malformed"
-                    if label == "top-level"
-                    else "packet rows",
+                    message,
                 ):
                     VALIDATOR.require_validation_receipt_packet_sha256s(receipt)
 

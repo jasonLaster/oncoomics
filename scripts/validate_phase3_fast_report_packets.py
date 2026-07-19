@@ -91,6 +91,10 @@ def require_int(value: Any, label: str) -> int:
     return value
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def canonical_forbidden_tokens(forbidden_tokens_json: str) -> tuple[str, ...]:
     run_tokens = tuple(normalize_forbidden_tokens_json(forbidden_tokens_json))
     return tuple(sorted({*FORBIDDEN_TOKENS, *run_tokens}, key=str.casefold))
@@ -161,7 +165,7 @@ def require_validation_receipt_packet_sha256s(
         raise ValueError("report packet validation receipt must be a JSON object")
     packets = payload.get("packets")
     if (
-        payload.get("schema_version") != 1
+        not exact_schema_version(payload)
         or payload.get("status") != "passed"
         or set(payload) != VALIDATION_RECEIPT_KEYS
         or payload.get("validated_packet_count") != len(PHASE3_FAST_VALIDATED_METHOD_IDS)
