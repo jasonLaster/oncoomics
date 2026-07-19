@@ -222,6 +222,10 @@ def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
 def exact_terminal_timestamps(started_at: Any, stopped_at: Any) -> bool:
     return (
         type(started_at) is int
@@ -726,7 +730,7 @@ def validate_logged_anchor(
         "anchor_schema_status": (exact_schema_version(anchor, 1) and anchor.get("status") == "passed"),
         "anchor_checks_exact": anchor_checks == EXPECTED_PUBLICATION_ANCHOR_CHECKS,
         "receipt_sha256_well_formed": bool(re.fullmatch(r"[0-9a-f]{64}", receipt_sha)),
-        "receipt_bytes_positive": (isinstance(receipt_bytes, int) and not isinstance(receipt_bytes, bool) and receipt_bytes > 0),
+        "receipt_bytes_positive": is_positive_exact_int(receipt_bytes),
         "receipt_version_nonempty": valid_version_id(receipt_version),
         "receipt_uri_content_addressed": (bucket == expected_bucket and key == expected_key),
         "route_output_uri_exact": (anchor.get("route_output_uri") == submission_environment["HRD_CROSSCHECK_ROUTE_OUTPUT_URI"]),
@@ -808,9 +812,7 @@ def validate_output_rows(
             and key == prefix + relative_path
             and bool(re.fullmatch(r"[0-9a-f]{64}", sha))
             and valid_version_id(version_id)
-            and isinstance(row.get("content_length"), int)
-            and not isinstance(row.get("content_length"), bool)
-            and row["content_length"] > 0
+            and is_positive_exact_int(row.get("content_length"))
             and row.get("server_side_encryption") == "aws:kms"
             and row.get("ssekms_key_id") == expected_kms_key_arn
             and row_checks == EXPECTED_OBJECT_CHECKS

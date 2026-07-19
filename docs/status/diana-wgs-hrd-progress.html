@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local CloudWatch timestamp exactness</li>
+          <li class="pill">Latest milestone = local route output byte exactness</li>
+          <li class="pill">Route output bytes = exact</li>
           <li class="pill">CloudWatch timestamps = exact</li>
           <li class="pill">Terminal timestamps = exact</li>
           <li class="pill">Materializer submit bytes = exact</li>
@@ -795,6 +796,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact route output bytes</strong>
+              <span>Terminal SigProfiler/Sequenza route capture now rejects non-exact publication-anchor receipt bytes and route-output content lengths before executable cross-check reports can be replayed for Rosalind or AI/freeform review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer submit bytes</strong>
               <span>Materializer v4 submission now rejects non-exact final-freeze and reference-freeze byte comparisons before preflight, local materialization bindings, or SHA-256 bindings can trust frozen destination rows.</span>
@@ -1285,6 +1290,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T06:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact route output bytes:</strong>
+                terminal SigProfiler/Sequenza route capture now rejects
+                non-exact publication-anchor receipt bytes and route-output
+                content lengths before executable cross-check reports can be
+                replayed for Rosalind or AI/freeform review. No live cloud
+                action, compute action, or replacement run was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T06:15:00-07:00">Jul 19 · local</time>
               <span>

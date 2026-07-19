@@ -1274,6 +1274,22 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                     fixture["kms"],
                 )
 
+    def test_route_output_content_length_must_be_exact_int(self):
+        for value in (True, 101.0, "101"):
+            with self.subTest(value=value):
+                fixture = self.fixture()
+                fixture["receipt"]["objects"][0]["content_length"] = value
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "route receipt output row failed",
+                ):
+                    MODULE.validate_output_rows(
+                        fixture["receipt"],
+                        fixture["route_output"],
+                        fixture["kms"],
+                    )
+
     def test_failed_output_inventory_check_reports_exact_key(self):
         fixture = self.fixture()
         receipt = copy.deepcopy(fixture["receipt"])
@@ -1452,9 +1468,13 @@ class CaptureRouteTerminalTests(unittest.TestCase):
 
     def test_exact_int_rejects_coercible_values(self):
         self.assertTrue(MODULE.exact_int(7, 7))
+        self.assertTrue(MODULE.is_positive_exact_int(7))
         for value in (True, 7.0, "7", 0, None):
-            with self.subTest(value=value):
+            with self.subTest(helper="exact_int", value=value):
                 self.assertFalse(MODULE.exact_int(value, 7))
+        for value in (True, 7.0, "7", 0, -1, None):
+            with self.subTest(helper="is_positive_exact_int", value=value):
+                self.assertFalse(MODULE.is_positive_exact_int(value))
 
     def test_schema_version_checks_use_exact_integer_helper(self):
         cases = (
