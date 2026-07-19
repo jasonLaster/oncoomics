@@ -419,6 +419,97 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
         self.assertEqual(raw_coercions, [])
 
+    def test_run_provenance_rejects_coercible_lane_counts(self) -> None:
+        mutations = (
+            (
+                "summary lanes bool",
+                lambda fixture: self._mutate_json(
+                    fixture.artifacts / "diana_hrd_summary.json",
+                    lambda summary: summary["input"].__setitem__("lanes", True),
+                ),
+            ),
+            (
+                "summary lanes float",
+                lambda fixture: self._mutate_json(
+                    fixture.artifacts / "diana_hrd_summary.json",
+                    lambda summary: summary["input"].__setitem__("lanes", 8.0),
+                ),
+            ),
+            (
+                "summary lanes string",
+                lambda fixture: self._mutate_json(
+                    fixture.artifacts / "diana_hrd_summary.json",
+                    lambda summary: summary["input"].__setitem__("lanes", "8"),
+                ),
+            ),
+            (
+                "preflight lanes bool",
+                lambda fixture: self._mutate_json(
+                    fixture.aux / "preflight.json",
+                    lambda preflight: preflight.__setitem__("wgs_lanes", True),
+                ),
+            ),
+            (
+                "preflight lanes float",
+                lambda fixture: self._mutate_json(
+                    fixture.aux / "preflight.json",
+                    lambda preflight: preflight.__setitem__("wgs_lanes", 8.0),
+                ),
+            ),
+            (
+                "preflight lanes string",
+                lambda fixture: self._mutate_json(
+                    fixture.aux / "preflight.json",
+                    lambda preflight: preflight.__setitem__("wgs_lanes", "8"),
+                ),
+            ),
+        )
+        for name, mutate in mutations:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                mutate(fixture)
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("run_provenance", result.stdout + result.stderr)
+                self.assertFalse((fixture.output / "report.md").exists())
+
+    @staticmethod
+    def _mutate_json(path: Path, mutate: Any) -> None:
+        payload = load_json(path)
+        mutate(payload)
+        write_json(path, payload)
+
+    def test_run_provenance_avoids_raw_int_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "input_payload.get('lanes'",
+                    'input_payload.get("lanes"',
+                    "preflight.get('wgs_lanes'",
+                    'preflight.get("wgs_lanes"',
+                )
+            )
+        ]
+
+        self.assertEqual(raw_coercions, [])
+
     def test_terminal_byte_guards_avoid_raw_int_coercion(self) -> None:
         module = ast.parse(GENERATOR.read_text(encoding="utf-8"))
         raw_byte_coercions = [

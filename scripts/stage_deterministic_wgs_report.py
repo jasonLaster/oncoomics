@@ -1926,7 +1926,18 @@ def main() -> None:
 
     run_ids = {str(summary.get("run_id", "")), str(preflight.get("run_id", "")), str(gather.get("run_id", ""))}
     input_payload = summary.get("input", {}) if isinstance(summary.get("input"), dict) else {}
-    add_check(checks, "run_provenance", len(run_ids) == 1 and "" not in run_ids and preflight.get("status") == "passed" and gather.get("status") == "passed" and int(input_payload.get("lanes", 0)) == 8 and int(preflight.get("wgs_lanes", 0)) == 8 and input_payload.get("source_integrity") == "passed", "Summary, preflight, and gather share one run ID; eight lanes and source integrity are explicit.")
+    add_check(
+        checks,
+        "run_provenance",
+        len(run_ids) == 1
+        and "" not in run_ids
+        and preflight.get("status") == "passed"
+        and gather.get("status") == "passed"
+        and integer_equals(input_payload.get("lanes"), 8)
+        and integer_equals(preflight.get("wgs_lanes"), 8)
+        and input_payload.get("source_integrity") == "passed",
+        "Summary, preflight, and gather share one run ID; eight lanes and source integrity are explicit.",
+    )
 
     execution_batch = execution.get("batch", {}) if isinstance(execution.get("batch"), dict) else {}
     execution_container = execution.get("container", {}) if isinstance(execution.get("container"), dict) else {}
