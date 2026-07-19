@@ -382,6 +382,35 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                     with self.assertRaisesRegex(stage_report.ManifestError, f"{label} parent may not be a symlink"):
                         stage_report.load_report_from_environment()
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_manifest = root / "final-evidence.json"
+            write_json(real_manifest, {"status": "partial_evidence"})
+
+            linked_manifest = root / "final-evidence-link.json"
+            linked_manifest.symlink_to(real_manifest)
+
+            with self.assertRaisesRegex(
+                stage_report.ManifestError,
+                "final-evidence-link\\.json SHA-256 input is missing or a symlink",
+            ):
+                stage_report._sha256_path(linked_manifest)
+
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            parent_manifest = real_parent / "final-evidence.json"
+            write_json(parent_manifest, {"status": "partial_evidence"})
+
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                stage_report.ManifestError,
+                "final-evidence\\.json SHA-256 input parent may not be a symlink",
+            ):
+                stage_report._sha256_path(linked_parent / "final-evidence.json")
+
     def test_rejects_promoted_hrd_boundary(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -201,6 +201,35 @@ class Phase3FastCacheManifestTests(unittest.TestCase):
                     with self.assertRaisesRegex(cache.ManifestError, "replication_receipt"):
                         cache.load_manifest_from_environment()
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_receipt = root / "replication-receipt.json"
+            write_json(real_receipt, applied_receipt())
+
+            linked_receipt = root / "replication-receipt-link.json"
+            linked_receipt.symlink_to(real_receipt)
+
+            with self.assertRaisesRegex(
+                cache.ManifestError,
+                "replication-receipt-link\\.json SHA-256 input is missing or a symlink",
+            ):
+                cache._sha256_path(linked_receipt)
+
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            parent_receipt = real_parent / "replication-receipt.json"
+            write_json(parent_receipt, applied_receipt())
+
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                cache.ManifestError,
+                "replication-receipt\\.json SHA-256 input parent may not be a symlink",
+            ):
+                cache._sha256_path(linked_parent / "replication-receipt.json")
+
 
 if __name__ == "__main__":
     unittest.main()

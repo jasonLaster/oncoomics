@@ -559,6 +559,35 @@ class Phase3FastReplicateInputsTests(unittest.TestCase):
                     with self.assertRaisesRegex(replicate.ManifestError, "replication_plan"):
                         replicate.load_receipt_from_environment()
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_plan = root / "replication-plan.json"
+            write_json(real_plan, replication_plan())
+
+            linked_plan = root / "replication-plan-link.json"
+            linked_plan.symlink_to(real_plan)
+
+            with self.assertRaisesRegex(
+                replicate.ManifestError,
+                "replication-plan-link\\.json SHA-256 input is missing or a symlink",
+            ):
+                replicate._sha256_path(linked_plan)
+
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            parent_plan = real_parent / "replication-plan.json"
+            write_json(parent_plan, replication_plan())
+
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                replicate.ManifestError,
+                "replication-plan\\.json SHA-256 input parent may not be a symlink",
+            ):
+                replicate._sha256_path(linked_parent / "replication-plan.json")
+
 
 if __name__ == "__main__":
     unittest.main()

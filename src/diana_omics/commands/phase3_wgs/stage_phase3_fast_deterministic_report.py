@@ -15,7 +15,11 @@ from ...paths import path_from_root
 from ...utils import read_json
 from .crosscheck_contracts import EXPECTED_CROSSCHECK_BLOCKED_ROUTES, sequenza_alias_input_contract
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import read_real_json, require_no_symlinked_ancestors
+from .safe_json_output import (
+    read_real_json,
+    require_no_symlinked_ancestors,
+    sha256_real_file,
+)
 
 DEFAULT_FINAL_EVIDENCE_MANIFEST = "manifests/phase3_wgs_fast/final_evidence_manifest.json"
 DEFAULT_FINAL_EVIDENCE_ROOT = "workspace/results/phase3_wgs_fast/final"
@@ -97,11 +101,7 @@ def _require_relative_path(value: Any, label: str) -> str:
 
 
 def _sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_real_file(path, ManifestError)
 
 
 def _sha256_bytes(value: bytes) -> str:

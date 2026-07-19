@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import subprocess
@@ -13,7 +12,7 @@ from ...paths import path_from_root
 from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
 from .render_phase3_fast_replication_plan import KMS_KEY_ARN, REGION
-from .safe_json_output import read_real_json, require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path, sha256_real_file
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/replication_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/replication_receipt.json"
@@ -556,11 +555,7 @@ class AwsCliS3CopyClient:
 
 
 def _sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_real_file(path, ManifestError)
 
 
 def _normalize_mode(mode: str) -> str:

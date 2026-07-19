@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -16,7 +15,7 @@ from .render_phase3_fast_input_manifest import (
     normalize_method_parameters,
 )
 from .replicate_phase3_fast_inputs import EXPECTED_REPLICATION_OBJECTS
-from .safe_json_output import read_real_json, require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path, sha256_real_file
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/replication_receipt.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/cache_manifest.json"
@@ -144,11 +143,7 @@ def _index_by_artifact(rows: Sequence[Mapping[str, Any]]) -> dict[str, Mapping[s
 
 
 def _sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_real_file(path, ManifestError)
 
 
 def build_phase3_fast_cache_manifest(
