@@ -408,7 +408,7 @@ def validate_reviewed_public_receipts(
             relative = str(row.get("relative_path", ""))
             key = str(row.get("key", ""))
             digest = row.get("sha256")
-            version_id = str(row.get("version_id", ""))
+            version_id = row.get("version_id")
             checks = row.get("checks")
             size = row.get("bytes")
             if (
@@ -446,7 +446,7 @@ def validate_reviewed_public_receipts(
             relative = str(row.get("relative_path", ""))
             key = str(row.get("key", ""))
             digest = row.get("sha256")
-            version_id = str(row.get("version_id", ""))
+            version_id = row.get("version_id")
             checks = row.get("checks")
             size = row.get("bytes")
             observed_relative_paths.add(relative)

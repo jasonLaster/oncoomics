@@ -299,8 +299,12 @@ def canonical_packet_digest(rows: list[dict[str, Any]]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def non_null_version_id(value: str) -> bool:
-    return value != "null" and VERSION_ID.fullmatch(value) is not None
+def non_null_version_id(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and value != "null"
+        and VERSION_ID.fullmatch(value) is not None
+    )
 
 
 def is_positive_exact_int(value: Any) -> bool:
@@ -612,7 +616,7 @@ def validate_private_receipt(
             raise ValueError(f"private publication receipt repeats {relative}")
         seen.add(relative)
         digest = raw.get("sha256")
-        version_id = str(raw.get("version_id", ""))
+        version_id = raw.get("version_id")
         size = raw.get("bytes")
         checks = raw.get("checks")
         expected_key = prefix + relative

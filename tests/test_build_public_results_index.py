@@ -682,7 +682,7 @@ class PublicIndexTests(unittest.TestCase):
                 "not exact",
             ),
             (
-                lambda row: row.update({"version_id": "null"}),
+                lambda row: row.update({"version_id": 1234567890}),
                 "not exact",
             ),
             (
@@ -765,7 +765,7 @@ class PublicIndexTests(unittest.TestCase):
             ),
             (
                 lambda receipt: receipt["source_objects"][0].update(
-                    {"version_id": "null"}
+                    {"version_id": 1234567890}
                 ),
                 "source object is not exact",
             ),

@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact materializer staged-validation custody</li>
+          <li class="pill">Latest milestone = local exact publication VersionIds</li>
+          <li class="pill">Publication VersionIds = exact</li>
           <li class="pill">Materializer staged validation = exact</li>
           <li class="pill">Materializer submit hashes = exact</li>
           <li class="pill">AI-review prep hashes = exact</li>
@@ -1318,6 +1319,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact publication VersionIds</strong>
+              <span>Private report publication and reviewed-public index validation now reject coerced object VersionId values in private source rows and reviewed-public source/destination rows before public copy/index handoffs.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact runbook receipt hashes</strong>
               <span>The AI-synthesis and reviewed-public runbook renderers now reject coerced SHA-256 summary values before report-manifest or private-receipt hashes can be threaded into post-terminal handoff commands.</span>
             </li>
@@ -1455,6 +1460,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T15:00:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact publication VersionIds:</strong>
+                private report publication and reviewed-public index validation
+                now reject coerced object VersionId values in private source
+                rows and reviewed-public source/destination rows before public
+                copy/index handoffs.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T14:45:00-07:00">Jul 19 · local</time>
               <span>

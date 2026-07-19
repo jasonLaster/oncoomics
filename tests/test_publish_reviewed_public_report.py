@@ -819,14 +819,21 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 ):
                     MODULE.validate_private_receipt(fixture.receipt_path, fixture.method_id)
 
-    def test_rejects_null_private_receipt_version(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            fixture = Fixture(Path(temporary))
-            receipt = json.loads(fixture.receipt_path.read_text())
-            receipt["objects"][0]["version_id"] = "null"
-            fixture.receipt_path.write_text(json.dumps(receipt))
-            with self.assertRaisesRegex(ValueError, "object is not exact"):
-                MODULE.validate_private_receipt(fixture.receipt_path, fixture.method_id)
+    def test_private_receipt_versions_must_be_exact_strings(self) -> None:
+        cases = ("null", 1234567890)
+
+        for value in cases:
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                receipt = json.loads(fixture.receipt_path.read_text())
+                receipt["objects"][0]["version_id"] = value
+                fixture.receipt_path.write_text(json.dumps(receipt))
+
+                with self.assertRaisesRegex(ValueError, "object is not exact"):
+                    MODULE.validate_private_receipt(
+                        fixture.receipt_path,
+                        fixture.method_id,
+                    )
 
     def test_private_receipt_object_hashes_must_be_exact_strings(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
