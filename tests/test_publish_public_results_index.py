@@ -47,6 +47,7 @@ class FakeAws:
         self.versioning_status = "Enabled"
         self.null_version = False
         self.literal_null_version = False
+        self.boolean_version = False
         self.wrong_checksum = False
         self.boolean_content_length = False
 
@@ -72,7 +73,13 @@ class FakeAws:
             if self.value(arguments, "--checksum-sha256") != checksum(payload):
                 raise AssertionError("unexpected put-object checksum")
             self.public = {
-                "VersionId": "null" if self.literal_null_version else "public-index-version-1",
+                "VersionId": (
+                    True
+                    if self.boolean_version
+                    else "null"
+                    if self.literal_null_version
+                    else "public-index-version-1"
+                ),
                 "ContentLength": len(payload),
                 "ChecksumType": MODULE.CHECKSUM_TYPE,
                 "ChecksumSHA256": observed_checksum,
@@ -589,7 +596,7 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 )
 
     def test_apply_rejects_missing_or_null_destination_version(self) -> None:
-        for field in ("null_version", "literal_null_version"):
+        for field in ("null_version", "literal_null_version", "boolean_version"):
             with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 index, receipts = self.write_receipt_bound_index(root)

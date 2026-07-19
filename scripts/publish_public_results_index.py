@@ -106,8 +106,18 @@ def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
-def non_null_version_id(value: str) -> bool:
-    return value != "null" and VERSION_ID.fullmatch(value) is not None
+def non_null_version_id(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and value.lower() not in {"null", "none"}
+        and VERSION_ID.fullmatch(value) is not None
+    )
+
+
+def exact_non_null_version_id(value: Any, label: str) -> str:
+    if not non_null_version_id(value):
+        raise ValueError(f"{label} omitted a non-null VersionId")
+    return value
 
 
 def is_nonnegative_exact_int(value: Any) -> bool:
@@ -368,9 +378,10 @@ def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, 
         ],
         region,
     )
-    version_id = str(response.get("VersionId", ""))
-    if not non_null_version_id(version_id):
-        raise ValueError("public index put omitted a non-null VersionId")
+    version_id = exact_non_null_version_id(
+        response.get("VersionId"),
+        "public index put",
+    )
     exact = head_object(BUCKET, INDEX_KEY, region, version_id)
     current = head_object(BUCKET, INDEX_KEY, region)
     checks = {

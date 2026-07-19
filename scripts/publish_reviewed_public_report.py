@@ -302,9 +302,15 @@ def canonical_packet_digest(rows: list[dict[str, Any]]) -> str:
 def non_null_version_id(value: Any) -> bool:
     return (
         isinstance(value, str)
-        and value != "null"
+        and value.lower() not in {"null", "none"}
         and VERSION_ID.fullmatch(value) is not None
     )
+
+
+def exact_non_null_version_id(value: Any, label: str) -> str:
+    if not non_null_version_id(value):
+        raise ValueError(f"{label} omitted a non-null VersionId")
+    return value
 
 
 def is_positive_exact_int(value: Any) -> bool:
@@ -496,9 +502,14 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
             rows.extend({"history_kind": kind, **row} for row in values)
         if page.get("IsTruncated") is not True:
             break
-        next_key = str(page.get("NextKeyMarker", ""))
-        next_version = str(page.get("NextVersionIdMarker", ""))
-        if not next_key or not next_version:
+        next_key = page.get("NextKeyMarker")
+        next_version = page.get("NextVersionIdMarker")
+        if (
+            not isinstance(next_key, str)
+            or not isinstance(next_version, str)
+            or not next_key
+            or not next_version
+        ):
             raise ValueError(
                 "truncated destination history omitted its next key/version markers"
             )
@@ -867,9 +878,10 @@ def upload_public(
         ],
         region,
     )
-    version_id = str(response.get("VersionId", ""))
-    if not non_null_version_id(version_id):
-        raise ValueError(f"public put omitted a non-null VersionId: {row['relative_path']}")
+    version_id = exact_non_null_version_id(
+        response.get("VersionId"),
+        f"public put {row['relative_path']}",
+    )
     expected_checksum = row["checksum_sha256"]
     exact = head_object(PUBLIC_BUCKET, destination_key, region, version_id)
     current = head_object(PUBLIC_BUCKET, destination_key, region)

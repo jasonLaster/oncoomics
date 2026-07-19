@@ -256,6 +256,7 @@ class FakeAws:
         self.inject_delete_marker = False
         self.null_put_version = False
         self.literal_null_put_version = False
+        self.boolean_put_version = False
         self.wrong_destination_checksum = False
         self.wrong_source_version = False
         self.wrong_source_kms = False
@@ -330,7 +331,13 @@ class FakeAws:
             if self.wrong_destination_checksum:
                 observed_checksum = checksum(b"different")
             self.public[key] = {
-                "VersionId": "null" if self.literal_null_put_version else version,
+                "VersionId": (
+                    True
+                    if self.boolean_put_version
+                    else "null"
+                    if self.literal_null_put_version
+                    else version
+                ),
                 "ContentLength": len(payload),
                 "ChecksumType": "FULL_OBJECT",
                 "ChecksumSHA256": observed_checksum,
@@ -339,7 +346,13 @@ class FakeAws:
                 "ContentType": self.value(arguments, "--content-type"),
             }
             return {
-                "VersionId": "null" if self.literal_null_put_version else version,
+                "VersionId": (
+                    True
+                    if self.boolean_put_version
+                    else "null"
+                    if self.literal_null_put_version
+                    else version
+                ),
                 "ChecksumSHA256": observed_checksum,
             }
         raise AssertionError(f"unexpected AWS call: {arguments}")
@@ -1276,7 +1289,11 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 )
 
     def test_apply_rejects_null_destination_version(self) -> None:
-        for flag in ("null_put_version", "literal_null_put_version"):
+        for flag in (
+            "null_put_version",
+            "literal_null_put_version",
+            "boolean_put_version",
+        ):
             with self.subTest(flag=flag), tempfile.TemporaryDirectory() as temporary:
                 fixture = Fixture(Path(temporary))
                 fake = FakeAws(fixture)
