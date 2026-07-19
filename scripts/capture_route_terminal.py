@@ -210,8 +210,17 @@ def decode_sha256(value: Any, label: str) -> str:
     return decoded.hex()
 
 
-def valid_version_id(value: str) -> bool:
-    return bool(value and value.lower() not in {"none", "null"} and not any(character.isspace() for character in value))
+def valid_sha256(value: Any) -> bool:
+    return isinstance(value, str) and bool(re.fullmatch(r"[0-9a-f]{64}", value))
+
+
+def valid_version_id(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and value.lower() not in {"none", "null"}
+        and not any(character.isspace() for character in value)
+    )
 
 
 def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
@@ -717,19 +726,27 @@ def validate_logged_anchor(
         "checks",
     }
     anchor_checks = anchor.get("checks")
-    receipt_sha = str(anchor.get("receipt_sha256", ""))
+    receipt_sha = anchor.get("receipt_sha256")
     receipt_bytes = anchor.get("receipt_bytes")
-    receipt_uri = str(anchor.get("receipt_uri", ""))
-    receipt_version = str(anchor.get("receipt_version_id", ""))
-    bucket, key = s3_location(receipt_uri)
+    receipt_uri = anchor.get("receipt_uri")
+    receipt_version = anchor.get("receipt_version_id")
+    bucket = ""
+    key = ""
+    if isinstance(receipt_uri, str):
+        with contextlib.suppress(ValueError):
+            bucket, key = s3_location(receipt_uri)
     receipt_prefix = submission_environment["HRD_CROSSCHECK_PUBLICATION_RECEIPT_PREFIX"]
     expected_bucket, expected_prefix_key = s3_location(receipt_prefix + "sentinel")
-    expected_key = expected_prefix_key.removesuffix("sentinel") + receipt_sha + ".json"
+    expected_key = (
+        expected_prefix_key.removesuffix("sentinel") + receipt_sha + ".json"
+        if isinstance(receipt_sha, str)
+        else ""
+    )
     checks = {
         "anchor_keys_exact": set(anchor) == expected_anchor_keys,
         "anchor_schema_status": (exact_schema_version(anchor, 1) and anchor.get("status") == "passed"),
         "anchor_checks_exact": anchor_checks == EXPECTED_PUBLICATION_ANCHOR_CHECKS,
-        "receipt_sha256_well_formed": bool(re.fullmatch(r"[0-9a-f]{64}", receipt_sha)),
+        "receipt_sha256_well_formed": valid_sha256(receipt_sha),
         "receipt_bytes_positive": is_positive_exact_int(receipt_bytes),
         "receipt_version_nonempty": valid_version_id(receipt_version),
         "receipt_uri_content_addressed": (bucket == expected_bucket and key == expected_key),
@@ -743,6 +760,12 @@ def validate_logged_anchor(
         )
     except ValueError as error:
         raise ValueError(f"logged route publication anchor failed: {error}") from error
+    if (
+        not isinstance(receipt_uri, str)
+        or not isinstance(receipt_sha, str)
+        or not isinstance(receipt_version, str)
+    ):
+        raise AssertionError("validated publication anchor has non-string fields")
     return {
         "bucket": bucket,
         "key": key,
@@ -793,8 +816,8 @@ def validate_output_rows(
         relative_path = row.get("relative_path")
         key = row.get("key")
         uri = row.get("uri")
-        sha = str(row.get("sha256", ""))
-        version_id = str(row.get("version_id", ""))
+        sha = row.get("sha256")
+        version_id = row.get("version_id")
         row_bucket = ""
         row_key = ""
         if isinstance(uri, str):
@@ -810,7 +833,7 @@ def validate_output_rows(
             and key == row_key
             and row_bucket == bucket
             and key == prefix + relative_path
-            and bool(re.fullmatch(r"[0-9a-f]{64}", sha))
+            and valid_sha256(sha)
             and valid_version_id(version_id)
             and is_positive_exact_int(row.get("content_length"))
             and row.get("server_side_encryption") == "aws:kms"
@@ -830,6 +853,13 @@ def validate_output_rows(
                 valid = False
         if not valid:
             raise ValueError(f"route receipt output row failed: {relative_path}")
+        if (
+            not isinstance(key, str)
+            or not isinstance(version_id, str)
+            or not isinstance(sha, str)
+            or not isinstance(relative_path, str)
+        ):
+            raise AssertionError("validated route output row has non-string fields")
         binding = (key, version_id, sha)
         if binding in object_bindings or relative_path in relative_paths:
             raise ValueError("route receipt output rows are duplicated")
@@ -839,16 +869,19 @@ def validate_output_rows(
     audit_bindings: set[tuple[str, str, str]] = set()
     for row in audit:
         row_checks = row.get("checks")
-        binding = (
-            str(row.get("key", "")),
-            str(row.get("version_id", "")),
-            str(row.get("sha256", "")),
-        )
+        key = row.get("key")
+        version_id = row.get("version_id")
+        sha = row.get("sha256")
         if (
             set(row) != {"key", "version_id", "sha256", "checks"}
+            or not isinstance(key, str)
+            or not valid_version_id(version_id)
+            or not valid_sha256(sha)
             or row_checks != EXPECTED_HISTORY_AUDIT_CHECKS
-            or binding in audit_bindings
         ):
+            raise ValueError("route receipt history audit row failed")
+        binding = (key, version_id, sha)
+        if binding in audit_bindings:
             raise ValueError("route receipt history audit row failed")
         audit_bindings.add(binding)
     checks = {

@@ -1077,6 +1077,35 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                 fixture["submission_environment"],
             )
 
+    def test_logged_anchor_rejects_coerced_sha256_and_version_id(self):
+        fixture = self.fixture()
+        cases = (
+            (
+                "numeric_sha256",
+                "receipt_sha256",
+                int("1" * 64),
+                "failed receipt_sha256_well_formed",
+            ),
+            (
+                "numeric_version",
+                "receipt_version_id",
+                1234567890,
+                "failed receipt_version_nonempty",
+            ),
+        )
+
+        for label, field, value, error in cases:
+            with self.subTest(label=label):
+                terminal = copy.deepcopy(fixture["terminal"])
+                terminal["publication_anchor"][field] = value
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_logged_anchor(
+                        terminal,
+                        self.args(Path("unused"), fixture),
+                        fixture["submission_environment"],
+                    )
+
     def test_receipt_rejects_contract_route_submission_and_inventory_tampering(self):
         fixture = self.fixture()
         receipts = []
@@ -1284,6 +1313,57 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                     ValueError,
                     "route receipt output row failed",
                 ):
+                    MODULE.validate_output_rows(
+                        fixture["receipt"],
+                        fixture["route_output"],
+                        fixture["kms"],
+                    )
+
+    def test_output_rows_reject_coerced_sha256_and_version_id(self):
+        cases = (
+            (
+                "numeric_object_sha256",
+                lambda receipt: (
+                    receipt["objects"][0].__setitem__("sha256", int("1" * 64)),
+                    receipt["history_audit"][0].__setitem__("sha256", int("1" * 64)),
+                ),
+                "output row",
+            ),
+            (
+                "numeric_object_version",
+                lambda receipt: (
+                    receipt["objects"][0].__setitem__("version_id", 1234567890),
+                    receipt["history_audit"][0].__setitem__(
+                        "version_id",
+                        1234567890,
+                    ),
+                ),
+                "output row",
+            ),
+            (
+                "numeric_history_sha256",
+                lambda receipt: receipt["history_audit"][0].__setitem__(
+                    "sha256",
+                    int("1" * 64),
+                ),
+                "history audit",
+            ),
+            (
+                "numeric_history_version",
+                lambda receipt: receipt["history_audit"][0].__setitem__(
+                    "version_id",
+                    1234567890,
+                ),
+                "history audit",
+            ),
+        )
+
+        for label, mutate, error in cases:
+            with self.subTest(label=label):
+                fixture = self.fixture()
+                mutate(fixture["receipt"])
+
+                with self.assertRaisesRegex(ValueError, error):
                     MODULE.validate_output_rows(
                         fixture["receipt"],
                         fixture["route_output"],
