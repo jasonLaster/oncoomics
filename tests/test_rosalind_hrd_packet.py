@@ -1,9 +1,10 @@
+import ast
 import hashlib
 import json
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 from unittest.mock import patch
 
 from diana_omics import utils
@@ -234,6 +235,23 @@ def write_phase3_fast_deterministic_report(root: Path) -> tuple[Path, Path]:
     return deterministic_root, final_root
 
 
+def mutate_phase3_fast_crosscheck_plans(
+    deterministic_root: Path,
+    mutation: Callable[[dict], None],
+) -> None:
+    plans_path = deterministic_root / "crosscheck_input_plans.json"
+    plans = utils.read_json(plans_path)
+    mutation(plans)
+    utils.write_json(plans_path, plans)
+
+    report_manifest_path = deterministic_root / "report_manifest.json"
+    report_manifest = utils.read_json(report_manifest_path)
+    report_manifest["support_sha256"]["crosscheck_input_plans.json"] = (
+        hashlib.sha256(plans_path.read_bytes()).hexdigest()
+    )
+    utils.write_json(report_manifest_path, report_manifest)
+
+
 def write_staged_rosalind_packet(root: Path) -> list[Path]:
     root.mkdir(parents=True, exist_ok=True)
     for name in packet.PACKET_REPORT_SUPPORT_FILES:
@@ -257,6 +275,31 @@ def write_staged_rosalind_packet(root: Path) -> list[Path]:
 
 
 class RosalindHrdPacketTest(unittest.TestCase):
+    def test_schema_version_checks_use_exact_integer_helper(self):
+        for value, expected, accepted in (
+            (1, 1, True),
+            (2, 2, True),
+            (True, 1, False),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (None, 1, False),
+        ):
+            with self.subTest(value=value):
+                self.assertIs(packet.is_exact_int(value, expected), accepted)
+
+    def test_schema_version_checks_avoid_raw_comparisons(self):
+        source = Path(packet.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(packet.__file__))
+
+        raw_schema_version_comparisons = [
+            f"{node.lineno}: {ast.get_source_segment(source, node)}"
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in (ast.get_source_segment(source, node) or "")
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
+
     def test_packet_file_writes_are_create_only_and_fsynced(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1022,16 +1065,12 @@ class RosalindHrdPacketTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp)
             deterministic_root, final_root = write_phase3_fast_deterministic_report(output_root / "phase3_fast")
-            plans_path = deterministic_root / "crosscheck_input_plans.json"
-            plans = utils.read_json(plans_path)
-            plans["routes"]["sequenza_scarhrd"].pop("alias_input_contract")
-            utils.write_json(plans_path, plans)
-            report_manifest_path = deterministic_root / "report_manifest.json"
-            report_manifest = utils.read_json(report_manifest_path)
-            report_manifest["support_sha256"]["crosscheck_input_plans.json"] = hashlib.sha256(
-                plans_path.read_bytes()
-            ).hexdigest()
-            utils.write_json(report_manifest_path, report_manifest)
+            mutate_phase3_fast_crosscheck_plans(
+                deterministic_root,
+                lambda plans: plans["routes"]["sequenza_scarhrd"].pop(
+                    "alias_input_contract"
+                ),
+            )
 
             with (
                 patch.object(packet, "path_from_root", lambda relative: output_root / relative),
@@ -1046,6 +1085,64 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 self.assertRaisesRegex(ValueError, "lacks an alias input contract"),
             ):
                 packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+    def test_diana_wgs_phase3_fast_packet_rejects_non_exact_plan_schemas(self):
+        cases = (
+            (
+                "crosscheck_input_plans",
+                lambda plans: plans.update({"schema_version": 1.0}),
+                "Phase 3 fast cross-check input plan contract is not exact",
+            ),
+            (
+                "sequenza_alias_contract",
+                lambda plans: plans["routes"]["sequenza_scarhrd"][
+                    "alias_input_contract"
+                ].update({"schema_version": True}),
+                "Phase 3 fast Sequenza alias input contract is not exact",
+            ),
+        )
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                deterministic_root, final_root = (
+                    write_phase3_fast_deterministic_report(
+                        output_root / "phase3_fast"
+                    )
+                )
+                mutate_phase3_fast_crosscheck_plans(deterministic_root, mutation)
+
+                with (
+                    patch.object(
+                        packet,
+                        "path_from_root",
+                        lambda relative: output_root / relative,
+                    ),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(
+                                deterministic_root
+                            ),
+                            "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": (
+                                PHASE3_FAST_FORBIDDEN_TOKENS_JSON
+                            ),
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(
+                        packet.PACKET_SPECS["diana_wgs"],
+                        "phase3-fast",
+                    )
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/phase3-fast/"
+                        "report_manifest.json"
+                    ).exists()
+                )
 
     def test_diana_wgs_phase3_fast_packet_requires_forbidden_token_inventory(self):
         with tempfile.TemporaryDirectory() as tmp:

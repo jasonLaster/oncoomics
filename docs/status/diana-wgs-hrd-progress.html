@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local materializer-v4 submission schema exactness</li>
+          <li class="pill">Latest milestone = local Rosalind Phase 3 fast schema exactness</li>
+          <li class="pill">Rosalind Phase 3 fast schemas = exact</li>
           <li class="pill">Materializer submit schemas = exact</li>
           <li class="pill">Materializer registration schemas = exact</li>
           <li class="pill">Contract checker schemas = exact</li>
@@ -639,6 +640,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Rosalind Phase 3 fast schemas</strong>
+              <span>Diana WGS Rosalind packet building now rejects JSON floats or booleans in the Phase 3 fast cross-check input plan and embedded Sequenza alias-contract schema before producing any Rosalind packet manifest.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer-v4 submit schemas</strong>
               <span>Materializer-v4 dry-run and submission preflight now rejects JSON floats or booleans across final freeze, exact materialization, reference freeze/SHA, registration, script-anchor, and dry-run receipts before a cross-check materializer job can be authorized or submitted.</span>
@@ -1025,6 +1030,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:54:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact Rosalind Phase 3 fast schemas:</strong>
+                Diana WGS Rosalind packet building now rejects non-exact
+                <code>schema_version</code> values in the Phase 3 fast
+                cross-check input plan and embedded Sequenza alias-contract
+                schema before producing any Rosalind packet manifest. No S3,
+                Batch, route, GPU, quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:53:00-07:00">Jul 19 · local</time>
               <span>

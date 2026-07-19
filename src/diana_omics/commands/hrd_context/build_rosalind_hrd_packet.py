@@ -929,6 +929,10 @@ def require_nonnegative_int(value: Any, label: str) -> int:
     return number
 
 
+def is_exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and value == expected
+
+
 def validate_diana_wgs_worker_schema() -> None:
     alignment = read_json_or_empty("alignment/bam_validation_summary.json")
     alignment_rows = alignment.get("rows", []) if isinstance(alignment.get("rows"), list) else []
@@ -1193,7 +1197,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
     crosscheck_input_plans = read_json(paths["crosscheck_input_plans.json"])
     if (
         not isinstance(crosscheck_input_plans, dict)
-        or crosscheck_input_plans.get("schema_version") != 1
+        or not is_exact_int(crosscheck_input_plans.get("schema_version"), 1)
         or crosscheck_input_plans.get("plan_type") != "phase3_fast_crosscheck_input_materialization_plan"
         or crosscheck_input_plans.get("status") != "awaiting_private_results_freeze"
         or crosscheck_input_plans.get("authorized_hrd_state") != "no_call"
@@ -1352,7 +1356,7 @@ def compact_sequenza_alias_contract(route_plan: Mapping[str, Any]) -> dict[str, 
     artifacts = alias_contract.get("artifacts")
 
     if (
-        alias_contract.get("schema_version") != 1
+        not is_exact_int(alias_contract.get("schema_version"), 1)
         or alias_contract.get("route") != "sequenza_scarhrd"
         or alias_contract.get("status") != "blocked"
         or not run_alias
