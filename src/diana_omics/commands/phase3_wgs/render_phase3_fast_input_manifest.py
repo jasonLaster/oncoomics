@@ -51,7 +51,8 @@ def _object_rows(payload: Mapping[str, Any], label: str) -> list[Mapping[str, An
     if not isinstance(rows, list):
         raise ManifestError(f"{label} must contain an objects list")
     result = [_require_mapping(row, f"{label} object") for row in rows]
-    if payload.get("object_count", len(result)) != len(result):
+    object_count = payload.get("object_count")
+    if object_count is not None and (type(object_count) is not int or object_count != len(result)):
         raise ManifestError(f"{label} object_count does not match objects")
     if payload.get("status") != "passed":
         raise ManifestError(f"{label} status must be passed")
@@ -123,7 +124,7 @@ def _require_version(value: Any, label: str) -> str:
 
 
 def _require_positive_int(value: Any, label: str) -> int:
-    if not isinstance(value, int) or value <= 0:
+    if type(value) is not int or value <= 0:
         raise ManifestError(f"{label} bytes must be a positive integer")
     return value
 
@@ -192,10 +193,14 @@ def normalize_frozen_artifacts(
         sha256 = _require_hex(sha_row.get("sha256"), f"{label} {artifact}")
         version_id = _require_version(sha_row.get("version_id"), f"{label} {artifact}")
         bytes_ = _require_positive_int(sha_row.get("bytes"), f"{label} {artifact}")
+        destination_bytes = _require_positive_int(
+            destination.get("bytes"),
+            f"{label} {artifact} destination",
+        )
         crc64nvme = sha_row.get("crc64nvme")
         if not isinstance(crc64nvme, str) or not crc64nvme:
             raise ManifestError(f"{label} {artifact} crc64nvme is required")
-        if destination.get("bytes") != bytes_:
+        if destination_bytes != bytes_:
             raise ManifestError(f"{label} {artifact} freeze and sha256 byte counts differ")
         if destination.get("version_id") != version_id:
             raise ManifestError(f"{label} {artifact} freeze and sha256 version_id values differ")

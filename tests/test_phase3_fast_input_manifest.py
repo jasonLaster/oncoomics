@@ -331,6 +331,53 @@ class Phase3FastInputManifestTests(unittest.TestCase):
                 metadata=metadata(),
             )
 
+    def test_source_receipt_object_counts_must_be_exact_integers(self) -> None:
+        private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
+        private_freeze["object_count"] = float(len(private_freeze["objects"]))
+
+        with self.assertRaisesRegex(render.ManifestError, "object_count"):
+            render.build_phase3_wgs_fast_input_manifest(
+                private_freeze_receipt=private_freeze,
+                private_sha256_receipt=private_sha,
+                reference_freeze_receipt=reference_freeze,
+                reference_sha256_receipt=reference_sha,
+                bam_validation_receipt=validation,
+                contig_compatibility_receipt=contigs,
+                caller_resource_receipt=resources,
+                metadata=metadata(),
+            )
+
+    def test_source_receipt_bytes_must_be_exact_positive_integers(self) -> None:
+        private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
+        private_freeze["objects"][0]["destination"]["bytes"] = 13.0
+
+        with self.assertRaisesRegex(render.ManifestError, "positive integer"):
+            render.build_phase3_wgs_fast_input_manifest(
+                private_freeze_receipt=private_freeze,
+                private_sha256_receipt=private_sha,
+                reference_freeze_receipt=reference_freeze,
+                reference_sha256_receipt=reference_sha,
+                bam_validation_receipt=validation,
+                contig_compatibility_receipt=contigs,
+                caller_resource_receipt=resources,
+                metadata=metadata(),
+            )
+
+        private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
+        resources["objects"][0]["bytes"] = True
+
+        with self.assertRaisesRegex(render.ManifestError, "positive integer"):
+            render.build_phase3_wgs_fast_input_manifest(
+                private_freeze_receipt=private_freeze,
+                private_sha256_receipt=private_sha,
+                reference_freeze_receipt=reference_freeze,
+                reference_sha256_receipt=reference_sha,
+                bam_validation_receipt=validation,
+                contig_compatibility_receipt=contigs,
+                caller_resource_receipt=resources,
+                metadata=metadata(),
+            )
+
     def test_malformed_caller_resource_sha_fails_closed(self) -> None:
         private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
         resources["objects"][0]["sha256"] = "not-a-sha"
