@@ -269,6 +269,71 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             self.assertLess(dry_index, apply_index)
             self.assertLess(apply_index, dry_ref_index)
 
+    def test_reviewed_public_report_checklists_are_concrete(self) -> None:
+        text = render()
+
+        for method_id in MODULE.REPORT_METHOD_IDS:
+            dry_receipt = (
+                "/repo/.codex-tmp/hrd-reports/publication/"
+                f"terminal.{method_id}.public.dry.json"
+            )
+            apply_receipt = (
+                "/repo/.codex-tmp/hrd-reports/publication/"
+                f"terminal.{method_id}.public.json"
+            )
+            review = text.index(
+                f"Review `{dry_receipt}` before public report apply:"
+            )
+            apply = text.index(f"--receipt-output {apply_receipt}", review)
+            checklist = text[review:apply]
+
+            self.assertIn(f"- [ ] `method_id` is `{method_id}`", checklist)
+            self.assertIn("`private_publication_receipt.sha256`", checklist)
+            self.assertIn(
+                f"`destination_prefix` is `{MODULE.destination_prefix(method_id)}`",
+                checklist,
+            )
+            self.assertIn("`expected_files`", checklist)
+            self.assertIn("`source_objects`", checklist)
+            self.assertIn("`destination_initial_history_count` is `0`", checklist)
+            self.assertIn("`destination_objects` is `[]`", checklist)
+            self.assertIn("`checks.private_receipt_exact_and_passed`", checklist)
+            self.assertIn("`checks.source_exact_versions`", checklist)
+            self.assertIn("`checks.source_sha256_and_bytes`", checklist)
+            self.assertIn("`checks.source_exact_kms`", checklist)
+            self.assertIn("`checks.second_forbidden_token_scan`", checklist)
+            self.assertIn("`checks.manifest_no_call_boundary`", checklist)
+            self.assertIn("`checks.destination_initially_empty`", checklist)
+            self.assertIn("`checks.packet_size_bounded`", checklist)
+            self.assertIn("`--apply` command", checklist)
+
+    def test_public_index_checklist_is_concrete(self) -> None:
+        text = render()
+        dry_receipt = "/repo/.codex-tmp/public-index/public-index.terminal.dry.json"
+        apply_receipt = "/repo/.codex-tmp/public-index/public-index.terminal.json"
+
+        review = text.index(f"Review `{dry_receipt}` before public index apply:")
+        apply = text.index(f"--receipt-output {apply_receipt}", review)
+        checklist = text[review:apply]
+
+        self.assertIn(
+            "- [ ] `index.path` is `/repo/.codex-tmp/public-index/objects.json`",
+            checklist,
+        )
+        self.assertIn("`index.sha256`", checklist)
+        self.assertIn("`index.bytes`", checklist)
+        self.assertIn("`index.object_count`", checklist)
+        self.assertIn("`index.total_size`", checklist)
+        self.assertIn("`index.reviewed_public_receipt_count`", checklist)
+        self.assertIn("`destination.bucket`", checklist)
+        self.assertIn("`destination.key`", checklist)
+        self.assertIn("`destination.uri`", checklist)
+        self.assertIn("`checks.index_schema`", checklist)
+        self.assertIn("`checks.index_allowlisted_prefixes`", checklist)
+        self.assertIn("`checks.index_sorted_unique_keys`", checklist)
+        self.assertIn("`checks.index_reviewed_public_receipts`", checklist)
+        self.assertIn("`--apply` command", checklist)
+
     def test_renderer_rebuilds_and_publishes_public_index(self) -> None:
         receipts = [
             Path(f"/receipts/{method_id}.json")

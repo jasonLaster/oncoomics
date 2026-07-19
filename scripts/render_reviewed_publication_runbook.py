@@ -152,6 +152,32 @@ def publish_command(
     return command
 
 
+def reviewed_public_report_checklist(
+    method_id: str,
+    dry_receipt: Path,
+    destination_prefix: str,
+) -> list[str]:
+    return [
+        f"Review `{dry_receipt}` before public report apply:",
+        "",
+        f"- [ ] `method_id` is `{method_id}` and matches the private packet.",
+        "- [ ] `private_publication_receipt.sha256` matches the validated "
+        "private-freeze receipt above.",
+        f"- [ ] `destination_prefix` is `{destination_prefix}`.",
+        "- [ ] `expected_files` and `source_objects` match the method contract.",
+        "- [ ] `destination_initial_history_count` is `0` and "
+        "`destination_objects` is `[]`.",
+        "- [ ] `checks.private_receipt_exact_and_passed`, "
+        "`checks.source_exact_versions`, `checks.source_sha256_and_bytes`, "
+        "`checks.source_exact_kms`, `checks.second_forbidden_token_scan`, "
+        "`checks.manifest_no_call_boundary`, "
+        "`checks.destination_initially_empty`, and "
+        "`checks.packet_size_bounded` are all true.",
+        "- [ ] Running the following `--apply` command is still the intended "
+        "reviewed-public action.",
+    ]
+
+
 def index_commands(root: Path, receipt_stem: str = "terminal") -> list[list[str | Path]]:
     scripts = root / "scripts"
     index = public_index_path(root)
@@ -203,6 +229,27 @@ def public_index_receipt_paths(root: Path, receipt_stem: str) -> tuple[Path, Pat
         receipt_root / f"public-index.{receipt_stem}.dry.json",
         receipt_root / f"public-index.{receipt_stem}.json",
     )
+
+
+def public_index_checklist(root: Path, receipt_stem: str) -> list[str]:
+    dry_receipt, _ = public_index_receipt_paths(root, receipt_stem)
+    return [
+        f"Review `{dry_receipt}` before public index apply:",
+        "",
+        f"- [ ] `index.path` is `{public_index_path(root)}`.",
+        "- [ ] `index.sha256`, `index.bytes`, `index.object_count`, "
+        "`index.total_size`, and `index.reviewed_public_receipt_count` match "
+        "the rebuilt index.",
+        "- [ ] `destination.bucket`, `destination.key`, and `destination.uri` "
+        "point at the public results index.",
+        "- [ ] `checks.index_schema`, `checks.index_allowlisted_prefixes`, "
+        "`checks.index_sorted_unique_keys`, and "
+        "`checks.index_reviewed_public_receipts` are all true.",
+        "- [ ] The ten reviewed-public receipts are exactly the receipts just "
+        "created for the report packets.",
+        "- [ ] Running the following `--apply` command is still the intended "
+        "public-index action.",
+    ]
 
 
 def required_existing(root: Path) -> tuple[Path, ...]:
@@ -329,6 +376,7 @@ def render(
         receipt = paths[index]
         dry_receipt = receipt_output(root, receipt_stem, method_id, ".dry")
         apply_receipt = receipt_output(root, receipt_stem, method_id, "")
+        destination = destination_prefix(method_id)
         lines.extend(
             [
                 f"### {method_id}",
@@ -344,6 +392,12 @@ def render(
                         forbidden_tokens_file=forbidden_tokens_file,
                     )
                 ),
+                *reviewed_public_report_checklist(
+                    method_id,
+                    dry_receipt,
+                    destination,
+                ),
+                "",
                 block(
                     publish_command(
                         scripts,
@@ -359,11 +413,16 @@ def render(
             ]
         )
 
+    index_build, index_dry, index_apply = index_commands(root, receipt_stem)
     lines.extend(
         [
             "## 2. Rebuild and publish the public index",
             "",
-            *[block(command) for command in index_commands(root, receipt_stem)],
+            block(index_build),
+            block(index_dry),
+            *public_index_checklist(root, receipt_stem),
+            "",
+            block(index_apply),
         ]
     )
 
