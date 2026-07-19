@@ -384,9 +384,22 @@ class Phase3FastNextflowTests(unittest.TestCase):
     def test_fast_planning_and_gpu_processes_have_separate_aws_labels(self) -> None:
         main = MAIN_NF.read_text(encoding="utf-8")
         config = NEXTFLOW_CONFIG.read_text(encoding="utf-8")
+        plan_process = main[main.index("process FAST_PARABRICKS_MUTECT_PLAN") :]
+        plan_process = plan_process[: plan_process.index("process FAST_FILTER_MUTECT_PLAN")]
+        execute_process = main[main.index("process FAST_MUTECT_PARABRICKS_FILTER") :]
+        execute_process = execute_process[: execute_process.index("process FAST_BAM_CNV_SV_EVIDENCE")]
 
         self.assertIn("label 'cpu_io'", main)
         self.assertIn("label 'gpu_parabricks'", main)
+        self.assertIn("label 'cpu_io'", plan_process)
+        self.assertNotIn("label 'gpu_parabricks'", plan_process)
+        self.assertIn("cpus 8", plan_process)
+        self.assertIn("memory '16 GB'", plan_process)
+        self.assertNotIn("phase3_fast_parabricks_cpus", plan_process)
+        self.assertNotIn("phase3_fast_parabricks_memory", plan_process)
+        self.assertIn("label 'gpu_parabricks'", execute_process)
+        self.assertIn("params.phase3_fast_parabricks_cpus", execute_process)
+        self.assertIn("params.phase3_fast_parabricks_memory", execute_process)
         self.assertIn("withLabel: cpu_io", config)
         self.assertIn("queue = params.aws_ondemand_queue", config)
         self.assertIn("withLabel: gpu_parabricks", config)

@@ -192,7 +192,7 @@ FAST_REPLICATION_PLAN             immutable copy plan and us-east-2 cache keys
 FAST_REPLICATE_INPUTS              source to us-east-2
 FAST_CACHE_MANIFEST                verified region-local BAM/resource pointers
 FAST_STAGING_PLAN                  exact VersionId to local scratch path map
-FAST_PARABRICKS_MUTECT_PLAN        worker-local S3 materialization, SHA-256 verify, exact Parabricks command plan
+FAST_PARABRICKS_MUTECT_PLAN        CPU-only S3 materialization, SHA-256 verify, exact Parabricks command plan
 FAST_BAM_QC_PLAN                   exact quickcheck, flagstat, and idxstats plan
 FAST_CNV_EVIDENCE_PLAN             exact full-depth bedcov coverage-bin plan
 FAST_FILTER_MUTECT_PLAN            exact contamination/orientation/filter plan
@@ -215,6 +215,10 @@ Implementation rules:
 - Python remains the source of truth; Nextflow owns scheduling, per-process containers, retries, and durable checkpoints.
 - The workflow has one caller: Parabricks. Do not add a backend-selection flag to the first implementation.
 - Map processes to `cpu_io` and `gpu_parabricks` queues.
+- Keep `FAST_PARABRICKS_MUTECT_PLAN` on `cpu_io`; it materializes and
+  verifies scratch inputs and renders exact `pbrun` argument vectors, but must
+  not reserve P5en/H200 capacity until execute mode enters
+  `FAST_MUTECT_PARABRICKS_FILTER`.
 - Keep the current ARM application image for compatible CPU tasks and use a pinned x86 Parabricks image only for GPU tasks.
 - Set the `gpu_parabricks` accelerator request from `phase3_fast_parabricks_num_gpus`; queue placement and a GPU instance type are not enough to reserve or expose H200s to the AWS Batch container.
 - Use `-resume` and content digests. Do not use a timestamp alone as a cache key.
@@ -296,11 +300,11 @@ the original `us-east-1` run prefix directly.
 `aws s3api get-object --version-id` contract with deterministic `/scratch` paths
 for the eventual GPU or distributed CPU workers.
 `FAST_PARABRICKS_MUTECT_PLAN` executes those exact planned `get-object`
-commands through per-file temp paths, atomically renames each successful
-download into place, hashes every staged object, writes the grouped
-`staged_inputs_manifest.json`, then consumes that worker-local manifest to emit the exact
-`pbrun prepon`, `pbrun mutectcaller`, and `pbrun postpon` argument vectors for
-the first GPU short-variant pass without launching Parabricks, with declared BAM
+commands on `cpu_io` through per-file temp paths, atomically renames each
+successful download into place, hashes every staged object, writes the grouped
+`staged_inputs_manifest.json`, then consumes that worker-local manifest to emit
+the exact `pbrun prepon`, `pbrun mutectcaller`, and `pbrun postpon` argument
+vectors for the first GPU short-variant pass without launching Parabricks, with declared BAM
 indexes, FASTA indexes, germline/PoN indexes, and `raw_vcf`, `raw_vcf_stats`,
 `f1r2_tar_gz`, and `pon_annotated_vcf` handoff outputs.
 `FAST_BAM_QC_PLAN` fans out from that same staged-input handoff and records the

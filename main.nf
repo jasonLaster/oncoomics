@@ -1069,10 +1069,10 @@ process FAST_STAGING_PLAN {
 
 process FAST_PARABRICKS_MUTECT_PLAN {
     tag "fast_parabricks_mutect_plan_${params.phase3_fast_run_id}"
-    label 'gpu_parabricks'
-    cpus { params.phase3_fast_parabricks_cpus as int }
-    memory { params.phase3_fast_parabricks_memory }
-    time '4h'
+    label 'cpu_io'
+    cpus 8
+    memory '16 GB'
+    time '2h'
     publishDir "${params.outdir}/phase3_wgs_fast/parabricks_mutect_plan", mode: 'copy', overwrite: true
 
     input:
