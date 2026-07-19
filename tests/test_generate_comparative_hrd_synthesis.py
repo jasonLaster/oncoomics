@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import ast
 import csv
 import hashlib
 import json
@@ -1635,6 +1636,33 @@ class GenerateSynthesisTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(message, result.stdout + result.stderr)
                 self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
+    def test_rejects_non_integer_source_schema(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="hrd-synthesis-source-schema-"
+        ) as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            source_path = fixture.source_manifests[0]
+            payload = json.loads(source_path.read_text(encoding="utf-8"))
+            payload["schema_version"] = 1.0
+            write_json(source_path, payload)
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("unsupported source report schema", result.stdout + result.stderr)
+            self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        module = ast.parse(GENERATOR.read_text(encoding="utf-8"))
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
 
     def test_rejects_symlinked_cli_inputs_without_final_output(self) -> None:
         cases = (

@@ -414,7 +414,7 @@ def verify_sources(
     for index, (source_path, required_method) in enumerate(zip(source_paths, required_methods), 1):
         evidence_id = "E{0:03d}".format(index)
         source = load_object(source_path, evidence_id + " report_manifest.json")
-        if source.get("schema_version") != 1:
+        if not is_exact_int(source.get("schema_version"), 1):
             raise ValueError("unsupported source report schema for " + evidence_id)
         method = str(source.get("method_id") or source.get("route") or "")
         if method != required_method or not METHOD_ID.fullmatch(method):
