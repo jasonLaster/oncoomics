@@ -7,7 +7,6 @@ import argparse
 import hashlib
 import json
 import os
-import shutil
 import stat
 import tempfile
 from contextlib import suppress
@@ -427,10 +426,10 @@ def write_json(path: Path, value: dict[str, Any], *, create: bool = False) -> No
         temporary.unlink(missing_ok=True)
 
 
-def copy_create_only(source: Path, destination: Path) -> None:
-    source = require_real_file(source, "staged cross-check packet")
+def copy_file_create_only(source: Path, destination: Path, label: str) -> None:
+    source = require_real_file(source, label)
     expected_sha256 = sha256(source)
-    destination = require_safe_new_packet(destination)
+    destination = require_safe_new_packet(destination, label)
     with source.open("rb") as source_handle:
         try:
             file_descriptor = os.open(
@@ -439,9 +438,7 @@ def copy_create_only(source: Path, destination: Path) -> None:
                 0o644,
             )
         except FileExistsError as error:
-            raise ValueError(
-                "staged cross-check packet already exists: " + destination.name
-            ) from error
+            raise ValueError(label + " already exists: " + destination.name) from error
 
         try:
             destination_handle = os.fdopen(file_descriptor, "wb")
@@ -461,12 +458,14 @@ def copy_create_only(source: Path, destination: Path) -> None:
                 sha256(source) != expected_sha256
                 or sha256(destination) != expected_sha256
             ):
-                raise ValueError(
-                    "staged cross-check packet changed during copy: " + source.name
-                )
+                raise ValueError(label + " changed during copy: " + source.name)
         except Exception:
             destination.unlink(missing_ok=True)
             raise
+
+
+def copy_create_only(source: Path, destination: Path) -> None:
+    copy_file_create_only(source, destination, "staged cross-check packet")
 
 
 def fsync_directory(path: Path) -> None:
@@ -475,6 +474,21 @@ def fsync_directory(path: Path) -> None:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+
+
+def copy_route_file(source_dir: Path, staging: Path, relative: str) -> None:
+    destination = staging / require_safe_relative_path(
+        relative,
+        "route support path",
+    )
+    require_no_symlinked_ancestors(destination, "exact route replay staging file")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    require_no_symlinked_ancestors(destination, "exact route replay staging file")
+    copy_file_create_only(
+        require_source_file(source_dir, relative),
+        destination,
+        "exact route replay staging file",
+    )
 
 
 def copy_route_support_files(source_dir: Path, staging: Path) -> None:
@@ -488,13 +502,7 @@ def copy_route_support_files(source_dir: Path, staging: Path) -> None:
             continue
         if relative in CORE_REPORT_FILES:
             raise ValueError(f"route support overlaps a core report file: {relative}")
-        source = require_source_file(source_dir, relative)
-        destination = staging / require_safe_relative_path(
-            relative,
-            "route support path",
-        )
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source, destination)
+        copy_route_file(source_dir, staging, relative)
 
 
 def require_staged_report_manifest(packet_dir: Path) -> None:
@@ -652,12 +660,12 @@ def resolve_new_output_dir(output_dir: Path) -> Path:
     return output_dir
 
 
-def require_safe_new_packet(path: Path) -> Path:
-    require_no_symlinked_ancestors(path, "staged cross-check packet")
+def require_safe_new_packet(path: Path, label: str = "staged cross-check packet") -> Path:
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink():
-        raise ValueError("staged cross-check packet may not be a symlink: " + path.name)
+        raise ValueError(label + " may not be a symlink: " + path.name)
     if path.exists():
-        raise ValueError("staged cross-check packet already exists: " + path.name)
+        raise ValueError(label + " already exists: " + path.name)
     return path.resolve()
 
 
@@ -679,11 +687,8 @@ def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: st
         dir=output_dir.parent,
     ) as temporary:
         staging = Path(temporary)
-        shutil.copyfile(require_source_file(source_dir, "report.md"), staging / "report.md")
-        shutil.copyfile(
-            require_source_file(source_dir, "report_manifest.json"),
-            staging / "report_manifest.json",
-        )
+        copy_route_file(source_dir, staging, "report.md")
+        copy_route_file(source_dir, staging, "report_manifest.json")
         copy_route_support_files(source_dir, staging)
         summary = require_download_verification(verification_path, staging, route)
         source_manifest = load_json(

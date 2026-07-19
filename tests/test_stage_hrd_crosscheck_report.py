@@ -421,8 +421,9 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
             def tamper_report_manifest_after_parent_fsync(path: Path) -> None:
                 nonlocal calls
-                calls += 1
                 real_fsync_directory(path)
+                if (path / "method_spec.json").exists():
+                    calls += 1
                 if calls == 2:
                     (path / "report_manifest.json").write_text(
                         '{"tampered": true}\n',
@@ -654,19 +655,52 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             root = Path(temporary)
             source = root / "exact"
             verification = write_route_report(source)
-            real_copy = STAGE.shutil.copyfile
+            real_fsync_directory = STAGE.fsync_directory
 
-            def copy_with_mutated_report(source_path: Path, destination: Path) -> None:
-                real_copy(source_path, destination)
-                if destination.name == "report.md":
-                    destination.write_text("mutated after validation\n", encoding="utf-8")
+            def tamper_report_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                report = path / "report.md"
+                if report.exists() and not (path / "method_spec.json").exists():
+                    report.write_text("mutated after validation\n", encoding="utf-8")
 
             with mock.patch.object(
-                STAGE.shutil,
-                "copyfile",
-                side_effect=copy_with_mutated_report,
+                STAGE,
+                "fsync_directory",
+                side_effect=tamper_report_after_parent_fsync,
             ):
-                with self.assertRaisesRegex(ValueError, "stale for report.md"):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "exact route replay staging file changed during copy",
+                ):
+                    STAGE.stage(
+                        source,
+                        verification,
+                        root / "staged",
+                        "sigprofiler_sbs3",
+                    )
+
+    def test_stage_rejects_support_copy_that_differs_from_exact_replay(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            real_fsync_directory = STAGE.fsync_directory
+
+            def tamper_support_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                support = path / "route_result.json"
+                if support.exists() and not (path / "method_spec.json").exists():
+                    support.write_text('{"mutated": true}\n', encoding="utf-8")
+
+            with mock.patch.object(
+                STAGE,
+                "fsync_directory",
+                side_effect=tamper_support_after_parent_fsync,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "exact route replay staging file changed during copy",
+                ):
                     STAGE.stage(
                         source,
                         verification,
