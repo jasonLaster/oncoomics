@@ -37,7 +37,27 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_no_symlink_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
+def require_real_hash_input(path: Path) -> None:
+    label = f"{path.name} SHA-256 input"
+    require_no_symlink_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
 def sha256(path: Path) -> str:
+    require_real_hash_input(path)
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -101,18 +121,6 @@ def fsync_directory(path: Path) -> None:
 def remove_destination_tree(path: Path) -> None:
     if path.exists() and path.is_dir() and not path.is_symlink():
         shutil.rmtree(path)
-
-
-def is_platform_root_alias(path: Path) -> bool:
-    return path.is_absolute() and path.parent == path.parent.parent
-
-
-def require_no_symlink_ancestors(path: Path, label: str) -> None:
-    for parent in path.parents:
-        if parent.is_symlink() and not is_platform_root_alias(parent):
-            raise ValueError(f"{label} parent may not be a symlink: {parent}")
-        if parent.exists() and not parent.is_dir():
-            raise ValueError(f"{label} parent is not a directory: {parent}")
 
 
 def require_real_or_new_directory(path: Path, label: str) -> Path:

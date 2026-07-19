@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real AI-bundle hash inputs</li>
+          <li class="pill">Latest milestone = local real AI-staging hash inputs</li>
+          <li class="pill">AI-staging hash inputs = real</li>
           <li class="pill">AI-bundle hash inputs = real</li>
           <li class="pill">Staged cross-check hash inputs = real</li>
           <li class="pill">Input-contract hash inputs = real</li>
@@ -1610,6 +1611,10 @@
               <span>AI-review staging now rechecks that the bundle manifest is still a real non-symlink file before the post-validation duplicate-key-safe read, so a redirected manifest leaf cannot feed exact two-file reviewer input staging.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real AI-staging hash inputs</strong>
+              <span>AI-review staging now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before staged per-reviewer inputs can rebind <code>review_bundle.json</code> or reviewer prompt bytes.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact known-answer stack JSON</strong>
               <span>Public known-answer stack assembly now rejects duplicate JSON object names in required source, model, and manifest objects before report or AI-input stack installation can proceed.</span>
             </li>
@@ -2055,6 +2060,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:08-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real AI-staging hash inputs:</strong>
+                AI-review staging now rejects symlinked local SHA-256 inputs
+                and hash-input ancestors before staged per-reviewer inputs
+                rebind review bundles or reviewer prompt bytes.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:07-07:00">Jul 19 · local</time>
               <span>
