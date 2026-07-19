@@ -307,13 +307,12 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>aa88d7e09f8cfd8db5310a17c88030d6a41c19ca</strong>.
-          The latest work is exact AI-review bundle inventory hardening:
-          <code>build_ai_review_bundle.py</code> now requires staged and final
-          model-safe bundle directories to contain exactly
-          <code>review_bundle.json</code>, the two reviewer prompts, and
-          <code>bundle_manifest.json</code> before any prompt SHA-256 or bundle
-          manifest binding can pass.
+          <strong>c59b4691a66399416154981995f8f8465ebd41b9</strong>.
+          The latest work is exact comparative-synthesis packet inventory
+          hardening: <code>generate_comparative_hrd_synthesis.py</code> now
+          requires staged and final synthesis packets to contain exactly
+          <code>report.md</code>, <code>agreement_disagreement.csv</code>, and
+          <code>report_manifest.json</code> before manifest validation can pass.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -321,7 +320,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = aa88d7e</li>
+          <li class="pill">Latest hardening = c59b469</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -403,8 +402,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve aa88d7e</strong>
-              <span>AI-review bundle validation now rejects staged or final model-safe bundle directories unless they contain exactly the four expected bundle files.</span>
+              <strong>Preserve c59b469</strong>
+              <span>Comparative synthesis validation now rejects staged or final synthesis packets unless they contain exactly the three expected report files.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -452,6 +451,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>c59b469 Require exact comparative synthesis inventory:</strong>
+                <code>generate_comparative_hrd_synthesis.py</code> now rejects
+                stray staged or final siblings before trusting
+                <code>report_manifest.json</code>. The same exact three-file
+                check protects staging and final create-only install, so only
+                <code>report.md</code>,
+                <code>agreement_disagreement.csv</code>, and
+                <code>report_manifest.json</code> can survive into the
+                comparative HRD synthesis report handoff.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
