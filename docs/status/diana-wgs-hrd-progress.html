@@ -318,7 +318,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = 2fdd0ef</li>
+          <li class="pill">Latest milestone = 422f0a4</li>
           <li class="pill">Public access foundation = ready</li>
           <li class="pill">HCC1395 seven-report stack = passed</li>
           <li class="pill">Independent reviews = 2 complete</li>
@@ -432,6 +432,10 @@
               <strong>Done · render comparative synthesis</strong>
               <span>The agreement table compares evidence states without converting readiness agreement into biological concordance.</span>
             </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · pin the prepared review inventory</strong>
+              <span>The Diana AI-synthesis runbook now passes <code>--inventory-id diana_wgs_hrd_report_set_v1</code>, and HCC1395 exercises the same atomic <code>prepare_ai_review_run.py</code> wrapper.</span>
+            </li>
           </ol>
 
           <h3>Priority 3 · Diana deterministic evidence</h3>
@@ -462,6 +466,26 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T21:57:49-07:00">Jul 18 · 9:57 PM</time>
+              <span>
+                <strong>422f0a4 Pin AI synthesis prep inventory:</strong>
+                the Diana AI-synthesis handoff now renders the explicit
+                <code>diana_wgs_hrd_report_set_v1</code> inventory, and
+                <code>prepare_ai_review_run.py</code> fails closed if the
+                pinned method list and manifest-argument slots ever diverge.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T21:56:17-07:00">Jul 18 · 9:56 PM</time>
+              <span>
+                <strong>ea9b3de Rehearse HCC HRD review prep atomically:</strong>
+                the disposable HCC1395 builder now runs
+                <code>prepare_ai_review_run.py</code>, hash-binds the prepare
+                and stage receipts, and emits the exact isolated reviewer-input
+                directories used by the Diana post-terminal flow.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T21:49:09-07:00">Jul 18 · 9:49 PM</time>
               <span>
