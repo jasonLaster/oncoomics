@@ -194,6 +194,10 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -1011,7 +1015,7 @@ def main() -> None:
     )
     worker_checks = {
         "receipt_status": (
-            worker_receipt.get("schema_version") == 1
+            exact_schema_version(worker_receipt, 1)
             and worker_receipt.get("status") == "passed"
             and worker_receipt.get("run_id") == args.run_id
             and worker_receipt.get("batch_job_id") == args.job_id
@@ -1024,7 +1028,7 @@ def main() -> None:
             executed_worker_check_maps["freeze_receipt"]
         ),
         "receipt_upload": (
-            worker_receipt_upload.get("schema_version") == 1
+            exact_schema_version(worker_receipt_upload, 1)
             and worker_receipt_upload.get("status") == "passed"
             and executed_worker_check_maps["freeze_receipt_upload"]
             and worker_receipt_upload.get("local_receipt_sha256")
