@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 import sys
@@ -227,6 +228,23 @@ class AiReviewBundleFixture:
 
 
 class BuildAiReviewBundleTests(unittest.TestCase):
+    def test_schema_guards_use_exact_integer_helper(self) -> None:
+        source = (SCRIPT_DIR / "build_ai_review_bundle.py").read_text(
+            encoding="utf-8"
+        )
+        tree = ast.parse(source, filename=str(SCRIPT_DIR / "build_ai_review_bundle.py"))
+
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "schema_version" not in segment:
+                continue
+            raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_comparisons, [])
+
     def test_rejects_stale_model_catalog_receipt_envelope(self) -> None:
         for label, mutate in (
             ("top-level", lambda receipt: receipt.update(legacy=True)),
@@ -258,6 +276,18 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("model catalog receipt schema is unsupported", result.stderr)
             self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_rejects_non_integer_source_packet_schema(self) -> None:
+        for value in (True, 1.0):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as temporary:
+                fixture = AiReviewBundleFixture(Path(temporary))
+                fixture.update_manifest(0, {"schema_version": value})
+
+                result = fixture.run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("unsupported report-manifest schema", result.stderr)
+                self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
     def test_bundle_file_install_is_create_only_and_fsynced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -788,7 +818,6 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             ("extra_legacy_key", {"legacy_support": {}}, {}),
             ("missing_report_kind", {}, {"report_kind"}),
             ("unknown_report_kind", {"report_kind": "unknown_packet"}, {}),
-            ("bool_schema_version", {"schema_version": True}, {}),
         )
 
         for name, patch, remove in cases:

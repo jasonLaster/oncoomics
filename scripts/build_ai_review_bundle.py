@@ -873,7 +873,7 @@ def main() -> None:
                 f"{error}"
             ) from error
         manifest = load_object(path)
-        if manifest.get("schema_version") != 1:
+        if not is_exact_int(manifest.get("schema_version"), 1):
             raise SystemExit(
                 f"Fail-closed: unsupported report-manifest schema in {path.name}"
             )
