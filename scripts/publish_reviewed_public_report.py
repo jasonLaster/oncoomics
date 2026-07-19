@@ -313,6 +313,20 @@ def exact_non_null_version_id(value: Any, label: str) -> str:
     return value
 
 
+def exact_history_key(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} is malformed")
+    return value
+
+
+def exact_version_history_row(row: dict[str, Any], kind: str) -> dict[str, Any]:
+    exact_history_key(row.get("Key"), "destination version history Key")
+    exact_non_null_version_id(
+        row.get("VersionId"), "destination version history row"
+    )
+    return {**row, "history_kind": kind}
+
+
 def is_positive_exact_int(value: Any) -> bool:
     return type(value) is int and value > 0
 
@@ -499,7 +513,7 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
             values = page.get(field, [])
             if not isinstance(values, list) or any(not isinstance(row, dict) for row in values):
                 raise ValueError("destination version history is malformed")
-            rows.extend({"history_kind": kind, **row} for row in values)
+            rows.extend(exact_version_history_row(row, kind) for row in values)
         if page.get("IsTruncated") is not True:
             break
         next_key = page.get("NextKeyMarker")
@@ -521,9 +535,9 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
     return sorted(
         rows,
         key=lambda row: (
-            str(row.get("Key", "")),
-            str(row.get("VersionId", "")),
-            str(row.get("history_kind", "")),
+            row["Key"],
+            row["VersionId"],
+            row["history_kind"],
         ),
     )
 

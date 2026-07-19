@@ -810,6 +810,81 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "did not advance"):
                 MODULE.version_history("bucket", "prefix/", MODULE.REGION)
 
+    def test_version_history_rejects_malformed_rows_without_sort_coercion(self) -> None:
+        cases = (
+            (
+                "boolean Key",
+                {"Versions": [{"Key": True, "VersionId": "v1"}]},
+                "Key",
+            ),
+            (
+                "empty Key",
+                {"Versions": [{"Key": "", "VersionId": "v1"}]},
+                "Key",
+            ),
+            (
+                "boolean VersionId",
+                {"Versions": [{"Key": "prefix/report.md", "VersionId": True}]},
+                "VersionId",
+            ),
+            (
+                "nullish delete marker VersionId",
+                {"DeleteMarkers": [{"Key": "prefix/report.md", "VersionId": "null"}]},
+                "VersionId",
+            ),
+            (
+                "history kind override",
+                {
+                    "Versions": [
+                        {
+                            "Key": "prefix/report.md",
+                            "VersionId": "v1",
+                            "history_kind": True,
+                        }
+                    ]
+                },
+                "",
+            ),
+        )
+        for label, page, expected_error in cases:
+            with self.subTest(label=label):
+                with mock.patch.object(MODULE, "aws_json", return_value=page):
+                    if expected_error:
+                        with self.assertRaisesRegex(ValueError, expected_error):
+                            MODULE.version_history("bucket", "prefix/", MODULE.REGION)
+                    else:
+                        rows = MODULE.version_history(
+                            "bucket", "prefix/", MODULE.REGION
+                        )
+                        self.assertEqual(rows[0]["history_kind"], "version")
+
+    def test_version_history_sort_avoids_raw_string_coercion(self) -> None:
+        module = ast.parse(SCRIPT.read_text(encoding="utf-8"))
+        parent_by_child = {
+            child: parent
+            for parent in ast.walk(module)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def in_version_history(node: ast.AST) -> bool:
+            parent = parent_by_child.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef):
+                    return parent.name == "version_history"
+                parent = parent_by_child.get(parent)
+            return False
+
+        raw_string_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and in_version_history(node)
+        ]
+
+        self.assertEqual(raw_string_coercions, [])
+
     def test_rejects_nonpassed_private_receipt_before_aws(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
