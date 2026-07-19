@@ -129,6 +129,10 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -484,7 +488,7 @@ def validate_publication(
     ):
         raise ValueError("publication receipt contract is not exact")
     if (
-        receipt.get("schema_version") != 1
+        not exact_schema_version(receipt, 1)
         or receipt.get("status") != "passed"
         or receipt.get("route_output_initial_version_history_count") != 0
         or receipt.get("route_output_bucket_versioning") != "Enabled"
@@ -501,7 +505,7 @@ def validate_publication(
     if set(anchor) != PUBLICATION_ANCHOR_KEYS:
         raise ValueError("publication anchor envelope is not exact")
     if (
-        anchor.get("schema_version") != 1
+        not exact_schema_version(anchor, 1)
         or anchor.get("status") != "passed"
         or anchor.get("receipt_sha256") != receipt_hash
         or int(anchor.get("receipt_bytes", -1)) != receipt_path.stat().st_size
@@ -608,7 +612,7 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
     if verification.exists():
         prior = load_object(verification, "verification receipt")
         identity_matches = (
-            prior.get("schema_version") == 1
+            exact_schema_version(prior, 1)
             and prior.get("publication_receipt_sha256")
             == result["publication_receipt_sha256"]
             and prior.get("publication_receipt_uri")

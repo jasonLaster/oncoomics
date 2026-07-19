@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import base64
 import hashlib
 import json
@@ -521,6 +522,33 @@ class ExactReportDownloadTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "anchor envelope"):
                 MODULE.validate_publication(receipt, anchor, KMS)
 
+    def test_rejects_non_exact_publication_schema_versions(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, _, _ = self.fixture(root)
+
+            def rewrite_receipt(payload: dict) -> None:
+                write_json(receipt, payload)
+                anchor_payload = json.loads(anchor.read_text(encoding="utf-8"))
+                anchor_payload["receipt_sha256"] = MODULE.sha256(receipt)
+                anchor_payload["receipt_bytes"] = receipt.stat().st_size
+                write_json(anchor, anchor_payload)
+
+            payload = json.loads(receipt.read_text(encoding="utf-8"))
+            payload["schema_version"] = 1.0
+            rewrite_receipt(payload)
+
+            with self.assertRaisesRegex(ValueError, "incomplete"):
+                MODULE.validate_publication(receipt, anchor, KMS)
+
+            self.fixture(root)
+            payload = json.loads(anchor.read_text(encoding="utf-8"))
+            payload["schema_version"] = 1.0
+            write_json(anchor, payload)
+
+            with self.assertRaisesRegex(ValueError, "anchor"):
+                MODULE.validate_publication(receipt, anchor, KMS)
+
     def test_rejects_unexpected_staging_child_before_local_cutover(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -746,6 +774,99 @@ class ExactReportDownloadTests(unittest.TestCase):
             result = json.loads(verification.read_text(encoding="utf-8"))
             self.assertEqual(result["status"], "passed")
             self.assertTrue(result["recovered_prepared_cutover"])
+
+    def test_prepared_verification_requires_exact_schema_version(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, data, row = self.fixture(root)
+            output = root / "report-tree"
+            staging = root / ".report-tree.staging"
+            staging.mkdir()
+            (staging / "report.md").write_bytes(data)
+            verification = root / "verification.json"
+            MODULE.reserve_json(
+                verification,
+                {
+                    "schema_version": 1.0,
+                    "status": "prepared",
+                    "publication_receipt_sha256": MODULE.sha256(receipt),
+                    "publication_receipt_uri": json.loads(
+                        anchor.read_text(encoding="utf-8")
+                    )["receipt_uri"],
+                    "route_output_uri": f"s3://{BUCKET}/{PREFIX}",
+                    "expected_kms_key_arn": KMS,
+                    "output_dir": str(output.resolve()),
+                    "objects": [
+                        {
+                            "relative_path": "report.md",
+                            "bytes": len(data),
+                            "sha256": hashlib.sha256(data).hexdigest(),
+                        }
+                    ],
+                },
+            )
+
+            with (
+                patch.object(MODULE, "version_history", return_value=self.history(row)),
+                patch.object(MODULE, "get_exact") as get_exact,
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "existing verification receipt belongs to another replay",
+                ),
+            ):
+                MODULE.main(self.args(receipt, anchor, output, verification))
+
+            get_exact.assert_not_called()
+
+    def test_schema_version_checks_use_exact_integer_helper(self) -> None:
+        cases = (
+            (1, 1, True),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (2, 1, False),
+            (None, 1, False),
+            (True, 1, False),
+            (False, 0, False),
+        )
+        for value, expected, accepted in cases:
+            with self.subTest(value=value, expected=expected):
+                self.assertIs(
+                    MODULE.exact_schema_version(
+                        {"schema_version": value},
+                        expected,
+                    ),
+                    accepted,
+                )
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "download_exact_report_tree.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        parent_by_child = {
+            child: parent
+            for parent in ast.walk(module)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def in_exact_schema_helper(node: ast.AST) -> bool:
+            parent = parent_by_child.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef):
+                    return parent.name == "exact_schema_version"
+                parent = parent_by_child.get(parent)
+            return False
+
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+            and not in_exact_schema_helper(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
 
     def test_refuses_symlinked_output_before_verification_reservation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local stage-freeze schema exactness</li>
+          <li class="pill">Latest milestone = local report-tree download schema exactness</li>
+          <li class="pill">Report-tree download schemas = exact</li>
           <li class="pill">Stage-freeze schemas = exact</li>
           <li class="pill">Final-freeze schemas = exact</li>
           <li class="pill">Materialized-final schemas = exact</li>
@@ -625,6 +626,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact report-tree download schemas</strong>
+              <span>Exact report-tree download now rejects JSON floats or booleans in private route publication receipts, publication anchors, and prepared/passed recovery receipts before replaying executable SigProfiler or Sequenza report trees for Rosalind or AI review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact blocked and Phase 3 schemas</strong>
               <span>Blocked FACETS, CHORD, and HRDetect report manifests plus Phase 3 fast report-validation receipts now reject JSON floats or booleans in <code>schema_version</code> before blocked packet generation or source-freeze SHA-256 validation can pass.</span>
@@ -975,6 +980,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:44:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact report-tree download schemas:</strong>
+                exact report-tree replay now rejects non-exact
+                <code>schema_version</code> values in private route
+                publication receipts, publication anchors, and prepared or
+                passed local recovery receipts before executable SigProfiler or
+                Sequenza trees can be staged for Rosalind/AI review. No S3,
+                Batch, route, GPU, quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:43:00-07:00">Jul 19 · local</time>
               <span>
