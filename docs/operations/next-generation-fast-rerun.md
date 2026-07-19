@@ -314,10 +314,11 @@ exact `samtools quickcheck`, `flagstat`, and `idxstats` commands for tumor and
 normal BAMs. Its plan is a QC-only `no_call` artifact; it can feed BAM health
 reporting, but it is not HRD interpretation evidence on its own.
 `run:phase3-fast-bam-qc` clears each declared quickcheck log, flagstat, and
-idxstats file before execution, runs only the pinned `samtools` QC commands,
-permits an empty successful `quickcheck` log, requires non-empty `flagstat` and
-`idxstats` outputs, hashes every role output, and writes a completed SHA-256
-receipt while preserving `qc_only_not_hrd_evidence`.
+idxstats file before execution, runs only the pinned `samtools` QC commands as
+a bounded six-command wave, permits an empty successful `quickcheck` log,
+requires non-empty `flagstat` and `idxstats` outputs, hashes every role output,
+and writes a completed SHA-256 receipt while preserving
+`qc_only_not_hrd_evidence`.
 `FAST_CNV_EVIDENCE_PLAN` reads the staged reference `.fai`, records one
 standard-contig BED shard and exact `samtools bedcov` tumor/normal command per
 contig, and declares the eventual combined bedcov, coverage-bin CSV, and CNV
@@ -338,11 +339,11 @@ CHORD or HRDetect use remains `no_call` until a validated production SV caller
 VCF is present.
 `run:phase3-fast-sv-evidence` clears each declared `idxstats`,
 supplementary-alignment count, and discordant-pair SAM output before execution,
-runs only those pinned `samtools` commands, permits a zero-byte discordant-pair SAM
-when a BAM has no reads with the planned flags, requires non-empty
-`idxstats` and supplementary-count files, parses each count as one non-negative
-integer, hashes every role output, and writes a completed SHA-256 receipt while
-keeping CHORD and HRDetect `no_call`.
+runs only those pinned `samtools` commands as a bounded six-command wave,
+permits a zero-byte discordant-pair SAM when a BAM has no reads with the planned
+flags, requires non-empty `idxstats` and supplementary-count files, parses each
+count as one non-negative integer, hashes every role output, and writes a
+completed SHA-256 receipt while keeping CHORD and HRDetect `no_call`.
 `run:phase3-fast-parabricks-mutect` must consume that plan, run only those three pinned
 argument vectors in order on the same staged GPU worker, and write a completed
 receipt that copies the plan inputs and outputs plus the plan SHA-256 and

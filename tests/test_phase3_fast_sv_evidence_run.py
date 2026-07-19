@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import threading
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -21,11 +22,16 @@ class MaterializingSamtoolsRunner:
         malformed: set[tuple[str, str]] | None = None,
     ) -> None:
         self.commands: list[list[str]] = []
+        self.lock = threading.Lock()
         self.skip = skip or set()
         self.malformed = malformed or set()
 
     def run(self, argv: list[str], *, stdout_path: Path) -> None:
-        self.commands.append(list(argv))
+        with self.lock:
+            self.commands.append(list(argv))
+        self.materialize(stdout_path)
+
+    def materialize(self, stdout_path: Path) -> None:
         role = stdout_path.parent.name
         name = _command_name(stdout_path)
         if (role, name) in self.skip:
@@ -42,6 +48,34 @@ class MaterializingSamtoolsRunner:
             stdout_path.write_bytes(b"")
         else:
             stdout_path.write_bytes(b"read1\t99\tchr1\t1\t60\t1M\t=\t10\t9\tA\t*\n")
+
+
+class BlockingSamtoolsRunner(MaterializingSamtoolsRunner):
+    def __init__(self, *, unblock_after: int) -> None:
+        super().__init__()
+        self.unblock_after = unblock_after
+        self.condition = threading.Condition()
+        self.started = 0
+        self.in_flight = 0
+        self.max_in_flight = 0
+
+    def run(self, argv: list[str], *, stdout_path: Path) -> None:
+        with self.condition:
+            self.commands.append(list(argv))
+            self.started += 1
+            self.in_flight += 1
+            self.max_in_flight = max(self.max_in_flight, self.in_flight)
+            self.condition.notify_all()
+            if not self.condition.wait_for(lambda: self.started >= self.unblock_after, timeout=2):
+                self.in_flight -= 1
+                self.condition.notify_all()
+                raise AssertionError(f"expected {self.unblock_after} concurrent SV evidence commands to start")
+        try:
+            self.materialize(stdout_path)
+        finally:
+            with self.condition:
+                self.in_flight -= 1
+                self.condition.notify_all()
 
 
 class SymlinkSamtoolsRunner(MaterializingSamtoolsRunner):
@@ -93,7 +127,7 @@ class Phase3FastSvEvidenceRunTests(unittest.TestCase):
                 sv_evidence_plan_sha256=SHA_1,
             )
 
-        self.assertEqual(
+        self.assertCountEqual(
             [
                 plan["commands"][role][name]["argv"]
                 for role in run_sv.ROLES
@@ -117,6 +151,22 @@ class Phase3FastSvEvidenceRunTests(unittest.TestCase):
             ["idxstats", "supplementary_alignments", "discordant_mapped_pairs"],
             list(receipt["commands"]["tumor"]),
         )
+
+    def test_runs_samtools_evidence_as_bounded_parallel_wave(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = phase3_fast_sv_evidence_plan(Path(tmp))
+            expected_commands = len(run_sv.ROLES) * len(run_sv.EXPECTED_COMMANDS)
+            runner = BlockingSamtoolsRunner(unblock_after=expected_commands)
+
+            receipt = run_sv.run_phase3_fast_sv_evidence(
+                plan,
+                runner=runner,
+                sv_evidence_plan_sha256=SHA_1,
+            )
+
+        self.assertEqual(expected_commands, runner.max_in_flight)
+        self.assertEqual(expected_commands, len(runner.commands))
+        self.assertEqual("completed", receipt["status"])
 
     def test_environment_command_writes_receipt_after_running_planned_commands(self) -> None:
         with TemporaryDirectory() as tmp:

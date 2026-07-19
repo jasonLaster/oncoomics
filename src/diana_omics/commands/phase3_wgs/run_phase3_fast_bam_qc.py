@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, Mapping, Protocol, Sequence
@@ -241,9 +242,18 @@ def _run_commands(
     commands: Mapping[str, Sequence[tuple[str, Sequence[str], Path | None, Path | None]]],
     runner: SamtoolsRunner,
 ) -> None:
-    for role in ROLES:
-        for _, argv, stdout_path, stderr_path in commands[role]:
-            runner.run(argv, stdout_path=stdout_path, stderr_path=stderr_path)
+    planned = [
+        command
+        for role in ROLES
+        for command in commands[role]
+    ]
+    with ThreadPoolExecutor(max_workers=len(planned)) as executor:
+        futures = [
+            executor.submit(runner.run, argv, stdout_path=stdout_path, stderr_path=stderr_path)
+            for _, argv, stdout_path, stderr_path in planned
+        ]
+        for future in futures:
+            future.result()
 
 
 def _sha256_path(path: Path) -> str:

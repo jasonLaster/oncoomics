@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import threading
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -21,6 +22,7 @@ class MaterializingSamtoolsRunner:
         empty: set[tuple[str, str]] | None = None,
     ) -> None:
         self.commands: list[list[str]] = []
+        self.lock = threading.Lock()
         self.skip = skip or set()
         self.empty = empty or set()
 
@@ -31,7 +33,16 @@ class MaterializingSamtoolsRunner:
         stdout_path: Path | None = None,
         stderr_path: Path | None = None,
     ) -> None:
-        self.commands.append(list(argv))
+        with self.lock:
+            self.commands.append(list(argv))
+        self.materialize(stdout_path=stdout_path, stderr_path=stderr_path)
+
+    def materialize(
+        self,
+        *,
+        stdout_path: Path | None = None,
+        stderr_path: Path | None = None,
+    ) -> None:
         role = (stderr_path or stdout_path).parent.name
         name = _command_name(stdout_path=stdout_path, stderr_path=stderr_path)
         if (role, name) in self.skip:
@@ -49,6 +60,40 @@ class MaterializingSamtoolsRunner:
             )
         else:
             output_path.write_text("chr1\t25\t10\t0\n", encoding="utf-8")
+
+
+class BlockingSamtoolsRunner(MaterializingSamtoolsRunner):
+    def __init__(self, *, unblock_after: int) -> None:
+        super().__init__()
+        self.unblock_after = unblock_after
+        self.condition = threading.Condition()
+        self.started = 0
+        self.in_flight = 0
+        self.max_in_flight = 0
+
+    def run(
+        self,
+        argv: list[str],
+        *,
+        stdout_path: Path | None = None,
+        stderr_path: Path | None = None,
+    ) -> None:
+        with self.condition:
+            self.commands.append(list(argv))
+            self.started += 1
+            self.in_flight += 1
+            self.max_in_flight = max(self.max_in_flight, self.in_flight)
+            self.condition.notify_all()
+            if not self.condition.wait_for(lambda: self.started >= self.unblock_after, timeout=2):
+                self.in_flight -= 1
+                self.condition.notify_all()
+                raise AssertionError(f"expected {self.unblock_after} concurrent BAM QC commands to start")
+        try:
+            self.materialize(stdout_path=stdout_path, stderr_path=stderr_path)
+        finally:
+            with self.condition:
+                self.in_flight -= 1
+                self.condition.notify_all()
 
 
 class SymlinkSamtoolsRunner(MaterializingSamtoolsRunner):
@@ -107,7 +152,7 @@ class Phase3FastBamQcRunTests(unittest.TestCase):
                 bam_qc_plan_sha256=SHA_1,
             )
 
-        self.assertEqual(
+        self.assertCountEqual(
             [
                 plan["commands"][role][name]["argv"]
                 for role in run_qc.ROLES
@@ -126,6 +171,22 @@ class Phase3FastBamQcRunTests(unittest.TestCase):
             ["quickcheck", "flagstat", "idxstats"],
             list(receipt["commands"]["tumor"]),
         )
+
+    def test_runs_samtools_qc_as_bounded_parallel_wave(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = phase3_fast_bam_qc_plan(Path(tmp))
+            expected_commands = len(run_qc.ROLES) * len(run_qc.EXPECTED_COMMANDS)
+            runner = BlockingSamtoolsRunner(unblock_after=expected_commands)
+
+            receipt = run_qc.run_phase3_fast_bam_qc(
+                plan,
+                runner=runner,
+                bam_qc_plan_sha256=SHA_1,
+            )
+
+        self.assertEqual(expected_commands, runner.max_in_flight)
+        self.assertEqual(expected_commands, len(runner.commands))
+        self.assertEqual("completed", receipt["status"])
 
     def test_environment_command_writes_receipt_after_running_planned_commands(self) -> None:
         with TemporaryDirectory() as tmp:
