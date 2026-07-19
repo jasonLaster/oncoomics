@@ -336,13 +336,11 @@ def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, A
     if {field: destination.get(field) for field in expected_destination} != expected_destination:
         raise ValueError("public index dry-run receipt does not match the destination")
     required_checks = {
-        "index_allowlisted_prefixes",
-        "index_schema",
-        "index_sorted_unique_keys",
+        "index_allowlisted_prefixes": True,
+        "index_schema": True,
+        "index_sorted_unique_keys": True,
     }
-    if not required_checks.issubset(checks) or not all(
-        checks[field] is True for field in required_checks
-    ):
+    if checks != required_checks:
         raise ValueError("public index dry-run receipt did not pass preflight checks")
     return {
         "path": str(path.resolve()),

@@ -385,6 +385,37 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                     )
                 )
 
+    def test_apply_rejects_dry_run_receipt_with_extra_failed_check_before_aws(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = self.write_index(root)
+            dry_run_receipt = self.write_dry_run_receipt(root, index)
+            payload = json.loads(dry_run_receipt.read_text(encoding="utf-8"))
+            payload["checks"]["unexpected_late_check"] = False
+            dry_run_receipt.write_text(
+                json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with (
+                self.assertRaisesRegex(ValueError, "did not pass preflight checks"),
+                mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ),
+            ):
+                MODULE.run(
+                    self.args(
+                        index,
+                        root / "apply.json",
+                        apply=True,
+                        dry_run_receipt=dry_run_receipt,
+                    )
+                )
+
+            self.assertFalse((root / "apply.json").exists())
+
     def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_aws(
         self,
     ) -> None:
