@@ -536,6 +536,76 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     MODULE.validate_private_report_receipts(receipts, manifests)
 
+    def test_private_receipt_summary_uses_validated_destination_prefix(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            method_id = MODULE.REQUIRED_METHOD_IDS[0]
+            manifest_dir = root / "reports" / method_id
+            manifest_dir.mkdir(parents=True)
+            report_path = manifest_dir / "report.md"
+            report_path.write_text("# exact private report\n", encoding="utf-8")
+            manifest_path = manifest_dir / "report_manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "method_id": method_id,
+                        "report_sha256": digest(report_path.read_bytes()),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            manifest_sha256 = digest(manifest_path.read_bytes())
+            receipt_path = root / "receipts" / f"{method_id}.json"
+            receipt_path.parent.mkdir()
+            validated_prefix = (
+                f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{MODULE.SUBJECT_ALIAS}/"
+                f"{MODULE.RUN_ID}/reports/{method_id}/revisions/{'1' * 64}/"
+            )
+            private_receipt = {"destination_prefix": validated_prefix}
+            rows = [
+                {
+                    "relative_path": "report_manifest.json",
+                    "version_id": "validated-version",
+                    "sha256": manifest_sha256,
+                }
+            ]
+
+            def load_json_object(path: Path, label: str) -> dict[str, str]:
+                if path == receipt_path:
+                    raise AssertionError("private receipt was reread")
+                self.assertEqual(path, manifest_path)
+                return json.loads(path.read_text(encoding="utf-8"))
+
+            with (
+                patch.object(
+                    MODULE,
+                    "validate_private_receipt",
+                    return_value=(private_receipt, ("report_manifest.json",), rows),
+                ),
+                patch.object(
+                    MODULE,
+                    "load_json_object",
+                    side_effect=load_json_object,
+                ),
+            ):
+                summary = MODULE.validate_private_report_receipt(
+                    receipt_path,
+                    method_id,
+                    manifest_path,
+                )
+
+            self.assertEqual(summary["destination_prefix"], validated_prefix)
+            self.assertEqual(
+                summary["report_manifest_version_id"],
+                "validated-version",
+            )
+            self.assertEqual(summary["report_manifest_sha256"], manifest_sha256)
+
     def test_report_manifest_paths_match_current_blocked_generator_dirs(self) -> None:
         root = Path("/repo")
         paths = MODULE.report_manifest_paths(root)

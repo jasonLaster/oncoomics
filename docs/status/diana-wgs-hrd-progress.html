@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact Rosalind packet counts</li>
+          <li class="pill">Latest milestone = local exact AI-synthesis private summaries</li>
+          <li class="pill">AI-synthesis private summaries = exact</li>
           <li class="pill">Rosalind JSON counts = exact</li>
           <li class="pill">Terminal/materializer scalars = exact</li>
           <li class="pill">Synthesis AI-review envelopes = exact</li>
@@ -1365,6 +1366,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind AI-synthesis summaries to private receipts</strong>
+              <span><code>render_ai_synthesis_runbook.py</code> now carries the already-validated private publication receipt into each seven-method summary and no longer rereads the receipt file for <code>destination_prefix</code> after validation.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind public index rows to reviewed versions</strong>
               <span>The reviewed public object index now projects each reviewed HRD row's exact destination VersionId, SHA-256, and Base64 checksum from publication receipts; the publisher rejects same-key/same-size stale rows before public index handoff.</span>
             </li>
@@ -1510,6 +1515,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T17:10:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind AI-synthesis summaries to private receipts:</strong>
+                <code>render_ai_synthesis_runbook.py</code> now carries the
+                already-validated private publication receipt into each
+                seven-method summary and no longer rereads the receipt file for
+                <code>destination_prefix</code> after validation, keeping
+                source-freeze summaries bound to the validated receipt bytes.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T17:00:00-07:00">Jul 19 · local</time>
               <span>

@@ -93,7 +93,7 @@ def validate_private_report_receipt(
     method_id: str,
     report_manifest_path: Path,
 ) -> dict[str, str | int]:
-    _, expected, rows = validate_private_receipt(receipt_path, method_id)
+    private_receipt, expected, rows = validate_private_receipt(receipt_path, method_id)
     manifest_row = next(
         (row for row in rows if row["relative_path"] == "report_manifest.json"),
         None,
@@ -124,7 +124,7 @@ def validate_private_report_receipt(
     return {
         "method_id": method_id,
         "receipt": str(receipt_path),
-        "destination_prefix": str(load_json_object(receipt_path, f"{method_id} private publication receipt")["destination_prefix"]),
+        "destination_prefix": str(private_receipt["destination_prefix"]),
         "report_manifest_version_id": str(manifest_row["version_id"]),
         "report_manifest_sha256": local_manifest_sha256,
         "object_count": len(expected),
