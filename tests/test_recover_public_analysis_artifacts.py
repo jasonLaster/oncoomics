@@ -149,6 +149,19 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                         "preserved early-look",
                     )
 
+    def test_exact_version_id_rejects_non_string_or_null_versions(self) -> None:
+        self.assertEqual(
+            MODULE.exact_version_id("version-1", "upload VersionId"),
+            "version-1",
+        )
+
+        for value in (True, 1, 1.0, "", "null", None):
+            with (
+                self.subTest(value=value),
+                self.assertRaisesRegex(ValueError, "non-null S3 VersionId"),
+            ):
+                MODULE.exact_version_id(value, "upload VersionId")
+
     def test_source_evidence_requires_exact_s3_sizes(self) -> None:
         head = {
             "ContentLength": 42,
@@ -371,6 +384,140 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                     self.assertRaisesRegex(ValueError, "exact nonnegative S3 size"),
                 ):
                     MODULE.upload(item)
+
+    def test_public_upload_requires_exact_put_version_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = b"# public recovery\n"
+            path = Path(temporary) / "README.md"
+            path.write_bytes(payload)
+            digest = MODULE.hashlib.sha256(payload).hexdigest()
+            item = {
+                "source": None,
+                "destination_key": MODULE.DESTINATION_PREFIX + "README.md",
+                "path": str(path),
+                "bytes": len(payload),
+                "sha256": digest,
+                "content_type": "text/markdown; charset=utf-8",
+                "transformed": False,
+            }
+
+            for value in (True, 1, 1.0, "", "null", None):
+                with (
+                    self.subTest(value=value),
+                    mock.patch.object(
+                        MODULE,
+                        "aws_json",
+                        return_value={"VersionId": value},
+                    ),
+                    mock.patch.object(MODULE, "head") as mocked_head,
+                    self.assertRaisesRegex(ValueError, "non-null S3 VersionId"),
+                ):
+                    MODULE.upload(item)
+
+                mocked_head.assert_not_called()
+
+    def test_final_destination_history_binds_uploaded_versions_and_sizes(
+        self,
+    ) -> None:
+        records = [
+            {
+                "destination_key": MODULE.DESTINATION_PREFIX + "README.md",
+                "bytes": 14,
+                "upload": {"version_id": "readme-version"},
+            },
+            {
+                "destination_key": MODULE.DESTINATION_PREFIX
+                + "early-look/artifacts/summary.json",
+                "bytes": 21,
+                "upload": {"version_id": "summary-version"},
+            },
+        ]
+        versions = [
+            {
+                "Key": MODULE.DESTINATION_PREFIX
+                + "early-look/artifacts/summary.json",
+                "VersionId": "summary-version",
+                "Size": 21,
+                "IsLatest": True,
+            },
+            {
+                "Key": MODULE.DESTINATION_PREFIX + "README.md",
+                "VersionId": "readme-version",
+                "Size": 14,
+                "IsLatest": True,
+            },
+        ]
+
+        MODULE.validate_final_destination_history(versions, [], records)
+
+        cases = (
+            ("delete marker", versions, [{"Key": "deleted"}], records),
+            ("missing row", versions[:-1], [], records),
+            (
+                "duplicate key",
+                [versions[0], {**versions[0], "VersionId": "other-version"}],
+                [],
+                records,
+            ),
+            (
+                "unexpected key",
+                [
+                    versions[0],
+                    {
+                        **versions[1],
+                        "Key": MODULE.DESTINATION_PREFIX + "unexpected.json",
+                    },
+                ],
+                [],
+                records,
+            ),
+            (
+                "non-latest",
+                [versions[0], {**versions[1], "IsLatest": False}],
+                [],
+                records,
+            ),
+            (
+                "wrong VersionId",
+                [versions[0], {**versions[1], "VersionId": "old-version"}],
+                [],
+                records,
+            ),
+            (
+                "boolean VersionId",
+                [versions[0], {**versions[1], "VersionId": True}],
+                [],
+                records,
+            ),
+            (
+                "float Size",
+                [versions[0], {**versions[1], "Size": 14.0}],
+                [],
+                records,
+            ),
+            (
+                "string Size",
+                [versions[0], {**versions[1], "Size": "14"}],
+                [],
+                records,
+            ),
+            (
+                "missing upload evidence",
+                versions,
+                [],
+                [{key: value for key, value in records[0].items() if key != "upload"}],
+            ),
+        )
+        for label, final_versions, final_markers, final_records in cases:
+            with (
+                self.subTest(label=label),
+                self.assertRaisesRegex(ValueError, "final destination"),
+            ):
+                MODULE.validate_final_destination_history(
+                    list(final_versions),
+                    list(final_markers),
+                    list(final_records),
+                )
 
     def test_private_receipt_rejects_output_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as value:

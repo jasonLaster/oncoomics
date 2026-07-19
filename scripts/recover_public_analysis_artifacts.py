@@ -69,12 +69,88 @@ def exact_s3_size(value: Any, label: str) -> int:
     return value
 
 
+def exact_version_id(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value or value == "null":
+        raise ValueError(f"{label} is not a non-null S3 VersionId")
+    return value
+
+
 def inventory_total_bytes(rows: list[dict[str, Any]], label: str) -> int:
     total = 0
     for index, row in enumerate(rows, 1):
         key = str(row.get("Key", f"object {index}"))
         total += exact_s3_size(row.get("Size"), f"{label} {key} Size")
     return total
+
+
+def validate_final_destination_history(
+    versions: list[dict[str, Any]],
+    markers: list[dict[str, Any]],
+    uploaded_records: list[dict[str, Any]],
+) -> None:
+    if markers:
+        raise ValueError("final destination history contains delete markers")
+
+    expected: dict[str, dict[str, Any]] = {}
+    for record in uploaded_records:
+        key = str(record.get("destination_key", ""))
+        if not key.startswith(DESTINATION_PREFIX):
+            raise ValueError(
+                f"final destination record is outside the alias prefix: {key}"
+            )
+        upload = record.get("upload")
+        if not isinstance(upload, dict):
+            raise ValueError(
+                f"final destination record is missing upload evidence: {key}"
+            )
+        if key in expected:
+            raise ValueError(f"final destination record is duplicated: {key}")
+        expected[key] = {
+            "bytes": exact_s3_size(
+                record.get("bytes"),
+                f"final destination {key} bytes",
+            ),
+            "version_id": exact_version_id(
+                upload.get("version_id"),
+                f"final destination {key} upload VersionId",
+            ),
+        }
+
+    if len(versions) != len(expected):
+        raise ValueError("final destination history is not exactly one version per object")
+
+    observed: set[str] = set()
+    for version in versions:
+        key = str(version.get("Key", ""))
+        if key not in expected:
+            raise ValueError(
+                f"final destination history contains an unexpected key: {key}"
+            )
+        if key in observed:
+            raise ValueError(f"final destination history contains a duplicate key: {key}")
+        observed.add(key)
+        if version.get("IsLatest") is not True:
+            raise ValueError(
+                f"final destination history contains a non-latest version: {key}"
+            )
+
+        expected_record = expected[key]
+        observed_version_id = exact_version_id(
+            version.get("VersionId"),
+            f"final destination {key} history VersionId",
+        )
+        if observed_version_id != expected_record["version_id"]:
+            raise ValueError(f"final destination history VersionId differs: {key}")
+
+        observed_size = exact_s3_size(
+            version.get("Size"),
+            f"final destination {key} history Size",
+        )
+        if observed_size != expected_record["bytes"]:
+            raise ValueError(f"final destination history byte count differs: {key}")
+
+    if observed != set(expected):
+        raise ValueError("final destination history is missing an expected object")
 
 
 def aws_json(*arguments: str) -> dict[str, Any]:
@@ -445,9 +521,10 @@ def upload(item: dict[str, Any]) -> dict[str, Any]:
         "--metadata",
         json.dumps(metadata, sort_keys=True, separators=(",", ":")),
     )
-    version_id = str(response.get("VersionId", ""))
-    if not version_id or version_id == "null":
-        raise ValueError(f"put-object returned no version for {item['destination_key']}")
+    version_id = exact_version_id(
+        response.get("VersionId"),
+        f"put-object {item['destination_key']} VersionId",
+    )
     evidence = head(DESTINATION_BUCKET, item["destination_key"])
     destination_size = exact_s3_size(
         evidence.get("ContentLength"),
@@ -630,10 +707,11 @@ def main() -> int:
 
         if args.apply:
             final_versions, final_markers = list_destination_history()
-            if final_markers or len(final_versions) != receipt["publication_object_count"]:
-                raise ValueError("final destination history is not exactly one version per object")
-            if any(version.get("IsLatest") is not True for version in final_versions):
-                raise ValueError("final destination contains a non-latest version")
+            validate_final_destination_history(
+                final_versions,
+                final_markers,
+                receipt["objects"],
+            )
 
         receipt["status"] = "passed" if args.apply else "ready"
         receipt["completed_at_utc"] = now()
