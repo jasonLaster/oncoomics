@@ -348,7 +348,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = ae921a6</li>
+          <li class="pill">Latest milestone = 093287e</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
           <li class="pill">Prior dashboard = 0b44ec7</li>
@@ -374,6 +374,7 @@
           <li class="pill">AI bundle staging = exact</li>
           <li class="pill">Pre-route digests = bound</li>
           <li class="pill">Route report receipts = exact</li>
+          <li class="pill">Staged route replays = exact</li>
           <li class="pill">Private dry-run receipts = exact</li>
           <li class="pill">Private apply receipts = exact</li>
           <li class="pill">Private report receipts = exact</li>
@@ -554,6 +555,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact route report receipts</strong>
               <span>Private cross-check route report replay now rejects non-exact publication receipts, anchors, per-object custody rows, and history-audit rows before materializing a local report tree.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact staged route replays</strong>
+              <span>Compact executable cross-check packet staging now rejects non-exact route replay verification envelopes and downloaded-object rows before installing staged Sequenza or SigProfiler reports.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · validate materializer terminal receipt outputs</strong>
@@ -765,6 +770,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T01:21:49-07:00">Jul 19 · 1:21 AM</time>
+              <span>
+                <strong>093287e Require exact staged route replays:</strong>
+                compact executable cross-check packet staging now rejects
+                non-exact route replay verification envelopes and
+                downloaded-object rows before installing staged Sequenza or
+                SigProfiler reports. Validation passed: 31 focused tests + 19
+                subtests, 188 handoff-adjacent tests + 134 subtests, compileall,
+                import-order lint, and diff checks. No S3, Batch, route, GPU,
+                quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T01:18:21-07:00">Jul 19 · 1:18 AM</time>
               <span>
