@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import base64
+import copy
 import csv
 import hashlib
 import importlib.util
@@ -286,6 +287,43 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                     REPORT_MODULE.build_crosscheck_input_plans(
                         payload,
                         input_contract,
+                    )
+
+        hash_mutations = (
+            (
+                "output hash",
+                lambda payload, contract: payload["outputs"]["sbs96.csv"].__setitem__(
+                    "sha256",
+                    int("1" * 64),
+                ),
+            ),
+            (
+                "input hash",
+                lambda payload, contract: payload["input_sha256"].__setitem__(
+                    "filtered_vcf",
+                    int("1" * 64),
+                ),
+            ),
+            (
+                "sequenza alias hash",
+                lambda payload, contract: contract["artifacts"][
+                    "tumor_bam"
+                ].__setitem__(
+                    "sha256",
+                    int("1" * 64),
+                ),
+            ),
+        )
+        for name, mutate in hash_mutations:
+            with self.subTest(name=name):
+                payload = materialization()
+                contract = copy.deepcopy(input_contract)
+                mutate(payload, contract)
+
+                with self.assertRaisesRegex(ValueError, "SHA-256"):
+                    REPORT_MODULE.build_crosscheck_input_plans(
+                        payload,
+                        contract,
                     )
 
     def test_crosscheck_plan_guards_avoid_raw_validation_coercion(self) -> None:

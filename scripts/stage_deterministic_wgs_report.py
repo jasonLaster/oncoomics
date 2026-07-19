@@ -586,6 +586,12 @@ def require_manifest_sha256(value: Any, name: str) -> str:
     return value
 
 
+def require_sha256(value: Any, label: str) -> str:
+    if not valid_sha256(value):
+        raise ValueError(f"{label} is not an exact SHA-256")
+    return value
+
+
 def valid_version_id(value: Any) -> bool:
     return bool(
         isinstance(value, str)
@@ -1276,8 +1282,30 @@ def crosscheck_output_plan(
             row.get("bytes"),
             f"{name} materialized cross-check output bytes",
         ),
-        "sha256": str(row["sha256"]).lower(),
+        "sha256": require_sha256(
+            row.get("sha256"),
+            f"{name} materialized cross-check output SHA-256",
+        ),
     }
+
+
+def crosscheck_input_sha256(inputs: dict[str, Any], name: str) -> str:
+    return require_sha256(
+        inputs.get(name),
+        f"{name} materialized cross-check input SHA-256",
+    )
+
+
+def sequenza_alias_sha256(input_artifacts: dict[str, Any], name: str) -> str:
+    artifact = (
+        input_artifacts.get(name)
+        if isinstance(input_artifacts.get(name), dict)
+        else {}
+    )
+    return require_sha256(
+        artifact.get("sha256"),
+        f"{name} Sequenza alias artifact SHA-256",
+    )
 
 
 def build_crosscheck_input_plans(
@@ -1344,11 +1372,7 @@ def build_crosscheck_input_plans(
         else {}
     )
     sequenza_inputs = {
-        name: str(
-            (input_artifacts.get(name, {}) if isinstance(input_artifacts.get(name), dict) else {}).get(
-                "sha256", ""
-            )
-        ).lower()
+        name: sequenza_alias_sha256(input_artifacts, name)
         for name in ("tumor_bam", "tumor_bai", "normal_bam", "normal_bai")
     }
     return {
@@ -1376,17 +1400,21 @@ def build_crosscheck_input_plans(
                     ),
                 },
                 "source_sha256": {
-                    "filtered_vcf": str(inputs.get("filtered_vcf", "")).lower(),
-                    "filtered_vcf_index": str(
-                        inputs.get("filtered_vcf_index", "")
-                    ).lower(),
-                    "reference_fai": str(inputs.get("reference_fai", "")).lower(),
-                    "reference_fasta": str(
-                        inputs.get("reference_fasta", "")
-                    ).lower(),
-                    "source_sbs96_matrix": str(
-                        inputs.get("source_sbs96_matrix", "")
-                    ).lower(),
+                    "filtered_vcf": crosscheck_input_sha256(
+                        inputs, "filtered_vcf"
+                    ),
+                    "filtered_vcf_index": crosscheck_input_sha256(
+                        inputs, "filtered_vcf_index"
+                    ),
+                    "reference_fai": crosscheck_input_sha256(
+                        inputs, "reference_fai"
+                    ),
+                    "reference_fasta": crosscheck_input_sha256(
+                        inputs, "reference_fasta"
+                    ),
+                    "source_sbs96_matrix": crosscheck_input_sha256(
+                        inputs, "source_sbs96_matrix"
+                    ),
                 },
                 "validation": {
                     "pass_snv_records": validation_counts["pass_snv_records"],
