@@ -21,6 +21,7 @@ from publish_reviewed_public_report import (
     MAX_FILE_BYTES,
     METHOD_CONTRACTS,
     PRIVATE_BUCKET,
+    PUBLIC_DESTINATION_OBJECT_CHECKS,
     PUBLIC_BUCKET,
     PUBLIC_ROOT,
     REVIEWED_PUBLIC_PREFLIGHT_CHECKS,
@@ -62,6 +63,14 @@ FORBIDDEN_PREFIXES = (
     "runs/rosalind_hrd/cloud-diana-raw-intake-handoff-20260617/",
     "version-history/",
 )
+REVIEWED_PUBLIC_APPLY_CHECKS = {
+    **{check_id: True for check_id in REVIEWED_PUBLIC_PREFLIGHT_CHECKS},
+    "all_destination_writes_create_only": True,
+    "destination_sse_s3": True,
+    "destination_full_object_sha256": True,
+    "destination_non_null_versions": True,
+    "destination_exact_one_version_no_delete_history": True,
+}
 
 
 def list_prefix(prefix: str) -> list[dict[str, Any]]:
@@ -219,15 +228,7 @@ def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> dict[str
             or not isinstance(destination_objects, list)
         ):
             raise RuntimeError(f"{method_id} reviewed-public receipt is incomplete")
-        required_checks = (
-            *REVIEWED_PUBLIC_PREFLIGHT_CHECKS,
-            "all_destination_writes_create_only",
-            "destination_sse_s3",
-            "destination_full_object_sha256",
-            "destination_non_null_versions",
-            "destination_exact_one_version_no_delete_history",
-        )
-        if any(checks.get(check_id) is not True for check_id in required_checks):
+        if checks != REVIEWED_PUBLIC_APPLY_CHECKS:
             raise RuntimeError(f"{method_id} reviewed-public receipt failed required checks")
         if len(source_objects) != len(expected_files) or len(destination_objects) != len(expected_files):
             raise RuntimeError(f"{method_id} reviewed-public receipt has the wrong object count")
@@ -318,9 +319,7 @@ def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> dict[str
                 or row.get("server_side_encryption") != "AES256"
                 or size <= 0
                 or size > MAX_FILE_BYTES
-                or not isinstance(checks, dict)
-                or not checks
-                or not all(value is True for value in checks.values())
+                or checks != PUBLIC_DESTINATION_OBJECT_CHECKS
             ):
                 raise RuntimeError(
                     f"{method_id} reviewed-public destination object is not exact: {relative}"

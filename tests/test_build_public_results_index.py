@@ -33,14 +33,6 @@ def write_public_receipts(root: Path) -> list[Path]:
     receipt_root = root / "receipts"
     receipt_root.mkdir()
     receipts = []
-    required_checks = {
-        **{check_id: True for check_id in PUBLISH.REVIEWED_PUBLIC_PREFLIGHT_CHECKS},
-        "all_destination_writes_create_only": True,
-        "destination_sse_s3": True,
-        "destination_full_object_sha256": True,
-        "destination_non_null_versions": True,
-        "destination_exact_one_version_no_delete_history": True,
-    }
     for method_id in MODULE.REPORT_METHOD_IDS:
         contract = MODULE.METHOD_CONTRACTS[method_id]
         expected_files = tuple(sorted(contract["files"]))
@@ -65,7 +57,7 @@ def write_public_receipts(root: Path) -> list[Path]:
                 f"{PUBLISH.PUBLIC_ROOT}{contract['destination']}"
             ),
             "expected_files": list(expected_files),
-            "checks": required_checks,
+            "checks": dict(MODULE.REVIEWED_PUBLIC_APPLY_CHECKS),
             "private_publication_receipt": {
                 "path": str(receipt_root / f"{method_id}.private.json"),
                 "sha256": hashlib.sha256(
@@ -104,11 +96,7 @@ def write_public_receipts(root: Path) -> list[Path]:
                     "checksum_sha256": PUBLISH.checksum_sha256(digest),
                     "server_side_encryption": "AES256",
                     "status": "passed",
-                    "checks": {
-                        "version_exact": True,
-                        "bytes_exact": True,
-                        "checksum_sha256": True,
-                    },
+                    "checks": dict(PUBLISH.PUBLIC_DESTINATION_OBJECT_CHECKS),
                 }
             )
         path = receipt_root / f"{method_id}.json"
@@ -397,6 +385,19 @@ class PublicIndexTests(unittest.TestCase):
                 ):
                     MODULE.validate_reviewed_public_receipts(receipts)
 
+    def test_reviewed_public_receipts_reject_extra_final_apply_check(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipts = write_public_receipts(Path(temporary))
+            receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+            receipt["checks"]["unexpected_late_check"] = True
+            receipts[0].write_text(
+                json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "failed required checks"):
+                MODULE.validate_reviewed_public_receipts(receipts)
+
     def test_reviewed_public_destination_rows_must_be_exact(self) -> None:
         cases = (
             (
@@ -417,6 +418,14 @@ class PublicIndexTests(unittest.TestCase):
             ),
             (
                 lambda row: row.update({"checks": {"checksum_sha256": False}}),
+                "not exact",
+            ),
+            (
+                lambda row: row.update({"checks": {"version_exact": True}}),
+                "not exact",
+            ),
+            (
+                lambda row: row["checks"].update({"unexpected_late_check": True}),
                 "not exact",
             ),
         )

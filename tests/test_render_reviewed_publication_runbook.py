@@ -52,7 +52,7 @@ def write_receipts(root: Path) -> list[Path]:
                     "server_side_encryption": "aws:kms",
                     "kms_key_id": PUBLISH.PRIVATE_KMS_KEY_ARN,
                     "status": "passed",
-                    "checks": {"version_id": True, "kms": True},
+                    "checks": dict(PUBLISH.PRIVATE_RECEIPT_OBJECT_CHECKS),
                 }
             )
         revision = PUBLISH.canonical_packet_digest(rows)

@@ -102,15 +102,7 @@ class Fixture:
                     "server_side_encryption": "aws:kms",
                     "kms_key_id": MODULE.PRIVATE_KMS_KEY_ARN,
                     "status": "passed",
-                    "checks": {
-                        "bytes": True,
-                        "checksum_sha256": True,
-                        "checksum_type": True,
-                        "kms": True,
-                        "metadata_sha256": True,
-                        "sse": True,
-                        "version_id": True,
-                    },
+                    "checks": dict(MODULE.PRIVATE_RECEIPT_OBJECT_CHECKS),
                 }
             )
         revision = MODULE.canonical_packet_digest(rows)
@@ -716,6 +708,28 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             fixture.receipt_path.write_text(json.dumps(receipt))
             with self.assertRaisesRegex(ValueError, "object is not exact"):
                 MODULE.validate_private_receipt(fixture.receipt_path, fixture.method_id)
+
+    def test_private_receipt_object_checks_must_be_exact(self) -> None:
+        cases = (
+            {"version_id": True},
+            {**MODULE.PRIVATE_RECEIPT_OBJECT_CHECKS, "unexpected_late_check": True},
+        )
+
+        for checks in cases:
+            with self.subTest(checks=checks), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                receipt = json.loads(fixture.receipt_path.read_text())
+                receipt["objects"][0]["checks"] = checks
+                fixture.receipt_path.write_text(
+                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(ValueError, "object is not exact"):
+                    MODULE.validate_private_receipt(
+                        fixture.receipt_path,
+                        fixture.method_id,
+                    )
 
     def test_rejects_destination_outside_exact_method_child(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

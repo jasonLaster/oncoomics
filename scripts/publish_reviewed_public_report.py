@@ -139,6 +139,24 @@ SOURCE_PREFLIGHT_CHECKS = {
     "exact_kms": True,
     "forbidden_token_scan": True,
 }
+PRIVATE_RECEIPT_OBJECT_CHECKS = {
+    "version_id": True,
+    "bytes": True,
+    "checksum_type": True,
+    "checksum_sha256": True,
+    "sse": True,
+    "kms": True,
+    "metadata_sha256": True,
+}
+PUBLIC_DESTINATION_OBJECT_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "checksum_type": True,
+    "checksum_sha256": True,
+    "sse_s3": True,
+    "metadata": True,
+    "content_type": True,
+}
 REVIEWED_PUBLIC_PREFLIGHT_CHECKS = (
     "private_receipt_exact_and_passed",
     "source_exact_versions",
@@ -484,9 +502,7 @@ def validate_private_receipt(
             or raw.get("kms_key_id") != PRIVATE_KMS_KEY_ARN
             or raw.get("checksum_type") != "FULL_OBJECT"
             or raw.get("checksum_sha256") != checksum_sha256(digest)
-            or not isinstance(checks, dict)
-            or not checks
-            or not all(value is True for value in checks.values())
+            or checks != PRIVATE_RECEIPT_OBJECT_CHECKS
         ):
             raise ValueError(f"private publication receipt object is not exact: {relative}")
         total_bytes += size
