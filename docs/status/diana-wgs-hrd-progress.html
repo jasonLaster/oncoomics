@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real AI-prep hash inputs</li>
+          <li class="pill">Latest milestone = local real AI-validation hash inputs</li>
+          <li class="pill">AI-validation hash inputs = real</li>
           <li class="pill">AI-prep hash inputs = real</li>
           <li class="pill">AI-staging hash inputs = real</li>
           <li class="pill">AI-bundle hash inputs = real</li>
@@ -1600,6 +1601,10 @@
               <span>AI-review validation now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before source, bundle, peer-review, catalog, or review-manifest JSON can feed an independent validation receipt.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real AI-validation hash inputs</strong>
+              <span>AI-review validation now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before independent model-review validation can bind bundle inputs, reviewer outputs, peer-review artifacts, and validation receipts.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real AI-finalizer JSON files</strong>
               <span>AI-review finalization now rejects symlinked local JSON leaves inside its duplicate-key-safe loader after the initial file audit and before wrapping validated independent reviews into report manifests.</span>
             </li>
@@ -2065,6 +2070,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:10-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real AI-validation hash inputs:</strong>
+                AI-review validation now rejects symlinked local SHA-256
+                inputs and hash-input ancestors before model-review validation
+                binds bundle, reviewer, peer-review, or validation receipts.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:09-07:00">Jul 19 · local</time>
               <span>

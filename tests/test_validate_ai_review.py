@@ -437,6 +437,36 @@ class ValidateAiReviewTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.txt"
+            real_source.write_text("real source\n", encoding="utf-8")
+            source_link = root / "source-link.txt"
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source-link.txt SHA-256 input must be a real file",
+            ):
+                VALIDATE.sha256(source_link)
+
+            real_inputs = root / "real-inputs"
+            real_inputs.mkdir()
+            review_manifest = real_inputs / "review_manifest.json"
+            review_manifest.write_text(
+                '{"reviewer_id": "A"}\n',
+                encoding="utf-8",
+            )
+            linked_inputs = root / "linked-inputs"
+            linked_inputs.symlink_to(real_inputs, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "review_manifest.json SHA-256 input parent may not be a symlink",
+            ):
+                VALIDATE.sha256(linked_inputs / "review_manifest.json")
+
     def test_validation_receipt_rechecks_mode_after_directory_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "validation.json"
