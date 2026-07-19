@@ -65,6 +65,16 @@ BUNDLE_MANIFEST_BOUND_FILES = {
     "reviewer-a.prompt.md": ("prompt_sha256", "A"),
     "reviewer-b.prompt.md": ("prompt_sha256", "B"),
 }
+BUNDLE_REVIEW_BUNDLE_BOUND_FIELDS = (
+    "schema_version",
+    "subject_alias",
+    "authorized_hrd_state",
+    "required_method_ids",
+    "method_inventory",
+    "method_inventory_sha256",
+    "model_execution_contracts",
+    "model_catalog_receipt_sha256",
+)
 CORE_REPORT_FILES = {"report.md", "report_manifest.json"}
 
 
@@ -477,12 +487,25 @@ def write_staged_bytes(path: Path, payload: bytes) -> None:
 
 
 def require_bundle_manifest(bundle_dir: Path) -> None:
+    bundle = load_object(
+        require_real_input_file(
+            bundle_dir / "review_bundle.json",
+            "AI review bundle file",
+        )
+    )
     manifest = load_object(
         require_real_input_file(
             bundle_dir / "bundle_manifest.json",
             "AI review bundle manifest",
         )
     )
+    for field in BUNDLE_REVIEW_BUNDLE_BOUND_FIELDS:
+        if manifest.get(field) != bundle.get(field):
+            raise ValueError(
+                "AI review bundle manifest differs from review_bundle.json for "
+                + field
+            )
+
     prompt_sha256 = manifest.get("prompt_sha256")
     if not isinstance(prompt_sha256, dict) or set(prompt_sha256) != {"A", "B"}:
         raise ValueError("AI review bundle manifest lacks prompt hashes")

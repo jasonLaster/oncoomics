@@ -30,6 +30,17 @@ def write_bound_review_bundle(fixture: ValidateReviewFixture, value: dict) -> No
     bundle = fixture.bundle_dir / "review_bundle.json"
     write_json(bundle, value)
     bundle_manifest = load_json(fixture.bundle_dir / "bundle_manifest.json")
+    for field in (
+        "schema_version",
+        "subject_alias",
+        "authorized_hrd_state",
+        "required_method_ids",
+        "method_inventory",
+        "method_inventory_sha256",
+        "model_execution_contracts",
+        "model_catalog_receipt_sha256",
+    ):
+        bundle_manifest[field] = value[field]
     bundle_manifest["review_bundle_sha256"] = FINALIZE.sha256(bundle)
     write_json(fixture.bundle_dir / "bundle_manifest.json", bundle_manifest)
 

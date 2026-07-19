@@ -31,13 +31,39 @@ def write_json(path: Path, value: dict) -> None:
 
 def write_staged_bundle(root: Path) -> list[Path]:
     root.mkdir(parents=True, exist_ok=True)
-    BUILD.write_staged_bytes(root / "review_bundle.json", b"{}\n")
+    shared = {
+        "schema_version": 2,
+        "subject_alias": "subject01",
+        "authorized_hrd_state": "no_call",
+        "required_method_ids": list(INVENTORY.REQUIRED_METHOD_IDS),
+        "method_inventory": INVENTORY.inventory_payload(),
+        "method_inventory_sha256": INVENTORY.inventory_sha256(),
+        "model_execution_contracts": {
+            "A": {
+                "provider": "synthetic-provider-a",
+                "model_id": "synthetic-model-a-current",
+                "catalog_verified_at": "2026-07-18T00:00:00+00:00",
+                "latest_available_attested": True,
+            },
+            "B": {
+                "provider": "synthetic-provider-b",
+                "model_id": "synthetic-model-b-current",
+                "catalog_verified_at": "2026-07-18T00:00:00+00:00",
+                "latest_available_attested": True,
+            },
+        },
+        "model_catalog_receipt_sha256": "a" * 64,
+    }
+    BUILD.write_staged_bytes(root / "review_bundle.json", BUILD.json_bytes(shared))
     BUILD.write_staged_bytes(root / "reviewer-a.prompt.md", b"prompt a\n")
     BUILD.write_staged_bytes(root / "reviewer-b.prompt.md", b"prompt b\n")
     BUILD.write_staged_bytes(
         root / "bundle_manifest.json",
         BUILD.json_bytes(
             {
+                **shared,
+                "input_manifest_sha256": {},
+                "forbidden_token_sha256": {},
                 "review_bundle_sha256": BUILD.sha256(root / "review_bundle.json"),
                 "prompt_sha256": {
                     "A": BUILD.sha256(root / "reviewer-a.prompt.md"),
@@ -385,23 +411,7 @@ class BuildAiReviewBundleTests(unittest.TestCase):
     def test_bundle_rejects_stale_staged_prompt_manifest_binding(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             staging = Path(temporary)
-            BUILD.write_staged_bytes(staging / "review_bundle.json", b"{}\n")
-            BUILD.write_staged_bytes(staging / "reviewer-a.prompt.md", b"prompt a\n")
-            BUILD.write_staged_bytes(staging / "reviewer-b.prompt.md", b"prompt b\n")
-            BUILD.write_staged_bytes(
-                staging / "bundle_manifest.json",
-                BUILD.json_bytes(
-                    {
-                        "review_bundle_sha256": BUILD.sha256(
-                            staging / "review_bundle.json",
-                        ),
-                        "prompt_sha256": {
-                            "A": BUILD.sha256(staging / "reviewer-a.prompt.md"),
-                            "B": BUILD.sha256(staging / "reviewer-b.prompt.md"),
-                        },
-                    },
-                ),
-            )
+            write_staged_bundle(staging)
             (staging / "reviewer-a.prompt.md").write_text(
                 "stale prompt\n",
                 encoding="utf-8",
@@ -416,27 +426,11 @@ class BuildAiReviewBundleTests(unittest.TestCase):
     def test_bundle_rejects_stale_staged_bundle_manifest_binding(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             staging = Path(temporary)
-            BUILD.write_staged_bytes(staging / "review_bundle.json", b"{}\n")
-            BUILD.write_staged_bytes(staging / "reviewer-a.prompt.md", b"prompt a\n")
-            BUILD.write_staged_bytes(staging / "reviewer-b.prompt.md", b"prompt b\n")
-            BUILD.write_staged_bytes(
-                staging / "bundle_manifest.json",
-                BUILD.json_bytes(
-                    {
-                        "review_bundle_sha256": BUILD.sha256(
-                            staging / "review_bundle.json",
-                        ),
-                        "prompt_sha256": {
-                            "A": BUILD.sha256(staging / "reviewer-a.prompt.md"),
-                            "B": BUILD.sha256(staging / "reviewer-b.prompt.md"),
-                        },
-                    },
-                ),
-            )
-            (staging / "review_bundle.json").write_text(
-                '{"stale": true}\n',
-                encoding="utf-8",
-            )
+            write_staged_bundle(staging)
+            bundle_path = staging / "review_bundle.json"
+            bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+            bundle["stale"] = True
+            write_json(bundle_path, bundle)
 
             with self.assertRaisesRegex(
                 ValueError,
@@ -512,6 +506,41 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
             self.assertTrue(output.is_dir())
             self.assertEqual([], list(output.iterdir()))
+
+    def test_bundle_install_rejects_manifest_that_differs_from_review_bundle(
+        self,
+    ) -> None:
+        cases = {
+            "subject_alias": "subject02",
+            "authorized_hrd_state": "positive",
+            "required_method_ids": ["deterministic_full_wgs"],
+            "method_inventory_sha256": "0" * 64,
+            "model_execution_contracts": {},
+            "model_catalog_receipt_sha256": "0" * 64,
+        }
+        for field, replacement in cases.items():
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                staging = root / "staging"
+                output = root / "ai-review"
+                output.mkdir()
+                staged_paths = write_staged_bundle(staging)
+
+                manifest_path = staging / "bundle_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                self.assertNotEqual(manifest[field], replacement)
+                manifest[field] = replacement
+                write_json(manifest_path, manifest)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "AI review bundle manifest differs from "
+                    f"review_bundle.json for {field}",
+                ):
+                    BUILD.install_bundle_create_only(staged_paths, output)
+
+                self.assertTrue(output.is_dir())
+                self.assertEqual([], list(output.iterdir()))
 
     def test_builds_bundle_for_staged_two_file_reviewer_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
