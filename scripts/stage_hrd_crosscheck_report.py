@@ -19,6 +19,35 @@ from hrd_report_inventory import EXECUTABLE_CROSSCHECK_METHOD_IDS
 SUPPORTED_ROUTES = set(EXECUTABLE_CROSSCHECK_METHOD_IDS)
 SHA256_HEX = set("0123456789abcdef")
 CORE_REPORT_FILES = {"report.md", "report_manifest.json"}
+METHOD_SPEC_KEYS = {
+    "schema_version",
+    "method_id",
+    "route",
+    "report_kind",
+    "evidence_status",
+    "authorized_hrd_state",
+    "classification_authorized",
+    "classification_qc_status",
+    "source_object_count",
+    "source_report_manifest_sha256",
+    "source_report_sha256",
+    "download_verification_sha256",
+    "source_review_summary",
+}
+REPORT_MANIFEST_KEYS = {
+    "schema_version",
+    "method_id",
+    "report_kind",
+    "route",
+    "evidence_status",
+    "authorized_hrd_state",
+    "classification_authorized",
+    "classification_qc_status",
+    "review_summary",
+    "source_sha256",
+    "support_sha256",
+    "report_sha256",
+}
 EXPECTED_DOWNLOAD_LIVE_HISTORY_CHECKS = {
     "version_count_exact": True,
     "all_entries_are_versions": True,
@@ -367,6 +396,10 @@ def require_staged_report_manifest(packet_dir: Path) -> None:
     report = require_real_file(packet_dir / "report.md", "staged cross-check report")
 
     route = str(manifest.get("route", ""))
+    if set(manifest) != REPORT_MANIFEST_KEYS:
+        raise ValueError("staged cross-check report manifest envelope is not exact")
+    if set(method_spec) != METHOD_SPEC_KEYS:
+        raise ValueError("staged cross-check method spec envelope is not exact")
     if (
         manifest.get("schema_version") != 1
         or manifest.get("method_id") != route

@@ -68,6 +68,7 @@ def write_packet_dirs(paths: dict[str, Path]) -> None:
                         "authorized_hrd_state": "no_call",
                         "classification_authorized": False,
                         "classification_qc_status": "not_applicable",
+                        "source_object_count": 2,
                         "download_verification_sha256": source_sha256[
                             "download_verification"
                         ],
