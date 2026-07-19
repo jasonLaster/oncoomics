@@ -219,6 +219,30 @@ class Fixture:
         return output
 
 
+def readdress_private_receipt(
+    receipt: dict[str, object],
+    method_id: str,
+    revision_rows: list[dict[str, object]],
+) -> None:
+    revision = MODULE.canonical_packet_digest(revision_rows)
+    prefix = (
+        f"runs/{MODULE.SUBJECT_ALIAS}/{MODULE.RUN_ID}/reports/{method_id}/"
+        f"revisions/{revision}/"
+    )
+    receipt["packet_revision"] = revision
+    receipt["destination_prefix"] = f"s3://{MODULE.PRIVATE_BUCKET}/{prefix}"
+    dry_run = receipt["dry_run_receipt"]
+    assert isinstance(dry_run, dict)
+    dry_run["packet_revision"] = revision
+
+    rows = receipt["objects"]
+    assert isinstance(rows, list)
+    for row in rows:
+        assert isinstance(row, dict)
+        row["key"] = prefix + str(row["relative_path"])
+        row["uri"] = f"s3://{MODULE.PRIVATE_BUCKET}/{row['key']}"
+
+
 class FakeAws:
     def __init__(self, fixture: Fixture) -> None:
         self.fixture = fixture
@@ -850,6 +874,49 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                     "packet_revision", "0" * 64
                 ),
                 "dry-run receipt summary is not exact",
+            ),
+        )
+
+        for label, mutate, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                receipt = json.loads(fixture.receipt_path.read_text())
+                mutate(receipt)
+                fixture.receipt_path.write_text(
+                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_private_receipt(
+                        fixture.receipt_path,
+                        fixture.method_id,
+                    )
+
+    def test_private_receipt_integer_fields_must_be_exact(self) -> None:
+        cases = (
+            (
+                "forbidden token count bool",
+                lambda receipt: receipt.__setitem__("forbidden_token_count", True),
+                "not exact and passed",
+            ),
+            (
+                "object bytes bool",
+                lambda receipt: (
+                    receipt["objects"][0].__setitem__("bytes", True),
+                    readdress_private_receipt(
+                        receipt,
+                        str(receipt["method_id"]),
+                        [
+                            {
+                                **row,
+                                "bytes": int(row["bytes"]),
+                            }
+                            for row in receipt["objects"]
+                        ],
+                    ),
+                ),
+                "object is not exact",
             ),
         )
 

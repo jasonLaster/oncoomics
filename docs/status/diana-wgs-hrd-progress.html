@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local public index integers</li>
+          <li class="pill">Latest milestone = local reviewed-public publisher integers</li>
+          <li class="pill">Private report integers = exact</li>
           <li class="pill">Reviewed-public integers = exact</li>
           <li class="pill">AI stage receipts = exact</li>
           <li class="pill">Terminal report kinds = exact</li>
@@ -369,7 +370,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = eab2244</li>
+          <li class="pill">Prior dashboard = 9c8a05d</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -795,6 +796,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact private publication integers</strong>
+              <span>The reviewed-public publisher now rejects private publication receipts whose forbidden-token count or per-object byte counts are JSON booleans or otherwise non-exact positive integers before reviewed-public copy planning.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact reviewed-public integer fields</strong>
               <span>The public results index now rejects reviewed-public receipts whose forbidden-token count, source-object bytes, or destination-object bytes are JSON booleans or otherwise non-exact positive integers before those receipts can feed public index construction.</span>
             </li>
@@ -860,6 +865,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:21:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact private publication integers:</strong>
+                the reviewed-public publisher now rejects JSON booleans and
+                other non-exact positive integers in private
+                <code>forbidden_token_count</code> and
+                <code>objects[].bytes</code> fields before reviewed-public copy
+                planning. No S3, Batch, route, GPU, quota, or replacement
+                compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:20:00-07:00">Jul 19 · local</time>
               <span>

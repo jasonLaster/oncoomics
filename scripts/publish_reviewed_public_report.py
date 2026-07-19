@@ -298,6 +298,10 @@ def non_null_version_id(value: str) -> bool:
     return value != "null" and VERSION_ID.fullmatch(value) is not None
 
 
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
 def load_json(path: Path, label: str) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -566,9 +570,7 @@ def validate_private_receipt(
         or not receipt.get("completed_at_utc")
         or not isinstance(receipt.get("source_packet_dir"), str)
         or not receipt.get("source_packet_dir")
-        or not isinstance(receipt.get("forbidden_token_count"), int)
-        or isinstance(receipt.get("forbidden_token_count"), bool)
-        or receipt.get("forbidden_token_count") <= 0
+        or not is_positive_exact_int(receipt.get("forbidden_token_count"))
         or not isinstance(forbidden_hashes, list)
         or not forbidden_hashes
         or any(
@@ -595,7 +597,7 @@ def validate_private_receipt(
         seen.add(relative)
         digest = str(raw.get("sha256", ""))
         version_id = str(raw.get("version_id", ""))
-        size = int(raw.get("bytes", -1))
+        size = raw.get("bytes")
         checks = raw.get("checks")
         expected_key = prefix + relative
         if (
@@ -605,7 +607,7 @@ def validate_private_receipt(
             or raw.get("uri") != f"s3://{bucket}/{expected_key}"
             or not non_null_version_id(version_id)
             or not SHA256_HEX.fullmatch(digest)
-            or size <= 0
+            or not is_positive_exact_int(size)
             or size > MAX_FILE_BYTES
             or raw.get("server_side_encryption") != "aws:kms"
             or raw.get("kms_key_id") != PRIVATE_KMS_KEY_ARN
