@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local final-freeze source inventory exactness</li>
+          <li class="pill">Latest milestone = local input-contract cross-check bytes exactness</li>
+          <li class="pill">Input-contract cross-check bytes = exact</li>
           <li class="pill">Final-freeze source bytes = exact</li>
           <li class="pill">Freeze Batch attempts = exact</li>
           <li class="pill">Final-freeze destination bytes = exact</li>
@@ -670,6 +671,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact input-contract publication bytes</strong>
               <span>HRD input-contract publication now rejects non-exact post-upload HEAD/GET <code>ContentLength</code> values and exact-version destination history <code>Size</code> values before the content-addressed contract anchor can be marked passed for SigProfiler, Sequenza, Rosalind, or AI/freeform consumers.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact input-contract cross-check bytes</strong>
+              <span>HRD input-contract finalization now exact-checks final-freeze destination bytes and cross-check output bytes against destination inventory before the alias-only contract can feed Rosalind, AI, or freeform consumers.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact cross-check materializer bytes</strong>
@@ -1265,6 +1270,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T05:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact input-contract cross-check bytes:</strong>
+                HRD input-contract finalization now exact-checks final-freeze
+                destination bytes and cross-check output bytes against
+                destination inventory before the alias-only contract can feed
+                Rosalind, AI, or freeform consumers. No live cloud action,
+                compute action, or replacement run was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T05:15:00-07:00">Jul 19 · local</time>
               <span>

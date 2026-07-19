@@ -259,6 +259,10 @@ def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
@@ -480,9 +484,7 @@ def validate_freeze(
             raise ValueError("final artifact freeze destination is not private")
         require_version(destination.get("version_id"), "frozen destination")
         if (
-            not isinstance(destination.get("bytes"), int)
-            or isinstance(destination.get("bytes"), bool)
-            or int(destination.get("bytes")) <= 0
+            not is_positive_exact_int(destination.get("bytes"))
             or destination.get("checksum_type") != "FULL_OBJECT"
             or not isinstance(destination.get("checksums"), dict)
             or not destination.get("checksums")
@@ -661,7 +663,8 @@ def finalize(
         if (
             inventory.get("key") != key
             or row.get("version_id") != inventory.get("version_id")
-            or row.get("bytes") != inventory.get("bytes")
+            or not is_positive_exact_int(row.get("bytes"))
+            or not exact_int(row.get("bytes"), inventory.get("bytes"))
             or row.get("sha256") != inventory.get("sha256")
             or row.get("checksums") != inventory.get("checksums")
         ):

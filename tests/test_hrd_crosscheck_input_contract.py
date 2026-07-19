@@ -1188,6 +1188,21 @@ class CustodyHandoffTests(unittest.TestCase):
         ):
             fixture.finalize()
 
+    def test_finalizer_rejects_boolean_crosscheck_output_and_inventory_bytes(self):
+        fixture = CustodyFixture()
+        filename = finalizer.FINAL_OUTPUTS["somatic_vcf"]
+        fixture.cross["outputs"][filename]["bytes"] = True
+        for row in fixture.cross["destination_inventory"]:
+            if row["filename"] == filename:
+                row["bytes"] = True
+                break
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "cross-check destination inventory differs",
+        ):
+            fixture.finalize()
+
     def test_finalizer_accepts_exact_materialization_recovery_metadata(self):
         fixture = CustodyFixture()
         fixture.exact.update(
