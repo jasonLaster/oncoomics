@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local source-freeze private checklists</li>
+          <li class="pill">Latest milestone = local materializer dry-run checklist</li>
+          <li class="pill">Materializer dry-run checklist = explicit</li>
           <li class="pill">Source-freeze checklists = explicit</li>
           <li class="pill">AI private-apply checklists = explicit</li>
           <li class="pill">Isolated-reviewer checklists = explicit</li>
@@ -1506,6 +1507,10 @@
               <span>Executable SigProfiler and Sequenza packet staging now rejects JSON floats or booleans in download-verification receipts, source route <code>report_manifest.json</code>, staged executable <code>report_manifest.json</code>, and staged <code>method_spec.json</code> schema versions before packets can be installed for Rosalind or AI review.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require materializer dry-run checklist</strong>
+              <span>Post-success runbook rendering now adds an explicit dry-run review checklist before alias-only materializer submission, so request-receipt no-call authorization, final/materialized/reference/script/registration/job-definition input hashes, one-attempt job requests, active definition/image/queue checks, empty destination/receipt histories, and dry-run behavior are reviewed before the one-shot materializer submit command.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require explicit executable review stops</strong>
               <span>Post-success runbook rendering now inserts an explicit review stop between each executable cross-check dry-run request and submit command, so method-contract, license, and cost acceptance are reviewed before Sequenza/SigProfiler submission.</span>
             </li>
@@ -2155,6 +2160,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:01:26-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Add materializer dry-run checklist:</strong>
+                Post-success runbook rendering now adds an explicit dry-run
+                review checklist before alias-only materializer submission,
+                covering request authorization, final/materialized/reference/
+                script/registration/job-definition input hashes, one-attempt
+                requests, active definition/image/queue checks, empty
+                destination/receipt histories, and dry-run behavior before
+                one-shot submission.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T13:59:41-07:00">Jul 19 · local</time>
               <span>

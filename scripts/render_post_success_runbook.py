@@ -244,6 +244,40 @@ def materializer_command(
     return command
 
 
+def materializer_review_checklist(deterministic: Path) -> list[str]:
+    dry_request = deterministic / "terminal.materializer.request.dry.json"
+    return [
+        f"Review `{dry_request}` before materializer submission:",
+        "",
+        "- [ ] `scope` is `private one-shot materializer-v4 submission "
+        "preflight`, `authorized_hrd_state` is `no_call`, and "
+        "`classification_authorization` is `none`.",
+        "- [ ] `input_receipts.final_freeze`, "
+        "`input_receipts.final_freeze_anchor`, "
+        "`input_receipts.exact_materialization`, "
+        "`input_receipts.reference_freeze`, "
+        "`input_receipts.reference_sha256`, "
+        "`input_receipts.materializer_script_anchor`, "
+        "`input_receipts.registration_v4`, and "
+        "`input_receipts.job_definition_v4` match the immediately preceding "
+        "freeze and materialization receipts.",
+        "- [ ] `submit_job_request.jobName` is a fresh one-shot submission and "
+        "`submit_job_request.retryStrategy` is one-attempt.",
+        "- [ ] `checks.receipt_hashes_cross_bound`, "
+        "`checks.three_exact_source_versions_and_local_sha256`, "
+        "`checks.two_exact_reference_versions_and_aws_sha256`, "
+        "`checks.exact_active_revision_4`, "
+        "`checks.immutable_arm64_image`, and "
+        "`checks.exact_live_arm_queue` are all true.",
+        "- [ ] `checks.zero_existing_exact_job_name`, "
+        "`checks.empty_destination_history`, "
+        "`checks.empty_receipt_history`, and "
+        "`checks.default_dry_run_behavior_preserved` are all true.",
+        "- [ ] Running the following `--submit` command is still the intended "
+        "one-shot materializer action.",
+    ]
+
+
 def stage_deterministic_command(
     scripts: Path,
     deterministic: Path,
@@ -766,6 +800,7 @@ def render(root: Path, terminal_job_id: str) -> str:
                 request_output=deterministic / "terminal.materializer.request.dry.json",
             )
         ),
+        *materializer_review_checklist(deterministic),
         block(
             materializer_command(
                 scripts,

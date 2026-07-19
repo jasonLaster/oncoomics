@@ -317,6 +317,47 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
                 dry_run_receipt=dry_receipt,
             )
 
+    def test_materializer_review_checklist_is_concrete(self) -> None:
+        text = render()
+        review = text.index(
+            "Review `/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.materializer.request.dry.json` before materializer "
+            "submission:"
+        )
+        apply = text.index("terminal.materializer.request.json", review)
+        checklist = text[review:apply]
+
+        self.assertIn("private one-shot materializer-v4 submission preflight", checklist)
+        self.assertIn("`authorized_hrd_state` is `no_call`", checklist)
+        self.assertIn("`classification_authorization` is `none`", checklist)
+        self.assertIn("`input_receipts.final_freeze`", checklist)
+        self.assertIn("`input_receipts.final_freeze_anchor`", checklist)
+        self.assertIn("`input_receipts.exact_materialization`", checklist)
+        self.assertIn("`input_receipts.reference_freeze`", checklist)
+        self.assertIn("`input_receipts.reference_sha256`", checklist)
+        self.assertIn("`input_receipts.materializer_script_anchor`", checklist)
+        self.assertIn("`input_receipts.registration_v4`", checklist)
+        self.assertIn("`input_receipts.job_definition_v4`", checklist)
+        self.assertIn("`submit_job_request.jobName`", checklist)
+        self.assertIn("`submit_job_request.retryStrategy`", checklist)
+        self.assertIn("`checks.receipt_hashes_cross_bound`", checklist)
+        self.assertIn(
+            "`checks.three_exact_source_versions_and_local_sha256`",
+            checklist,
+        )
+        self.assertIn(
+            "`checks.two_exact_reference_versions_and_aws_sha256`",
+            checklist,
+        )
+        self.assertIn("`checks.exact_active_revision_4`", checklist)
+        self.assertIn("`checks.immutable_arm64_image`", checklist)
+        self.assertIn("`checks.exact_live_arm_queue`", checklist)
+        self.assertIn("`checks.zero_existing_exact_job_name`", checklist)
+        self.assertIn("`checks.empty_destination_history`", checklist)
+        self.assertIn("`checks.empty_receipt_history`", checklist)
+        self.assertIn("`checks.default_dry_run_behavior_preserved`", checklist)
+        self.assertIn("`--submit` command", checklist)
+
     def test_input_contract_apply_is_bound_to_dry_run_receipt(self) -> None:
         text = render()
 
