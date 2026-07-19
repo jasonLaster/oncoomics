@@ -45,6 +45,16 @@ def write_json(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    current = f'  "{key}": {json.dumps(payload[key], sort_keys=True)}'
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
@@ -1644,6 +1654,32 @@ class CustodyHandoffTests(unittest.TestCase):
                     finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
                 )
 
+    def test_finalizer_rejects_duplicate_input_json_object_names(self):
+        for label, payload, key, stale in (
+            (
+                "pending contract",
+                CustodyFixture().pending,
+                "run_alias",
+                "subject99",
+            ),
+            (
+                "exact materialization",
+                CustodyFixture().exact,
+                "schema_version",
+                0,
+            ),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                path = Path(temporary) / f"{label.replace(' ', '-')}.json"
+                write_json(path, payload)
+                write_duplicate_json_field(path, key, stale)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"duplicate JSON object name in {label}: {key}",
+                ):
+                    finalizer.load_object(path, label)
+
     def test_contract_check_rejects_symlinked_contract_without_writing_readiness(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -2050,6 +2086,41 @@ class CustodyHandoffTests(unittest.TestCase):
                 publisher.EXPECTED_CONTRACT_PREFLIGHT_CHECKS,
             )
 
+    def test_contract_publication_rejects_duplicate_contract_json_before_aws(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            write_duplicate_json_field(contract, "run_alias", "subject99")
+            anchor = root / "anchor.dry.json"
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    publisher,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "duplicate JSON object name in contract: run_alias",
+                ),
+            ):
+                publisher.main()
+
+            self.assertFalse(anchor.exists())
+
     def test_contract_publication_apply_requires_dry_run_receipt_before_aws(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -2148,6 +2219,50 @@ class CustodyHandoffTests(unittest.TestCase):
                     side_effect=AssertionError("put called"),
                 ),
                 self.assertRaisesRegex(SystemExit, "stale or missing metadata"),
+            ):
+                publisher.main()
+
+            self.assertFalse(anchor.exists())
+
+    def test_contract_publication_rejects_duplicate_dry_run_json_before_put(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            dry_run = root / "anchor.dry.json"
+            anchor = root / "anchor.json"
+            write_json(contract, CustodyFixture().finalize())
+            self.write_contract_dry_run_receipt(dry_run, contract)
+            write_duplicate_json_field(dry_run, "status", "failed")
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+                "--dry-run-receipt",
+                str(dry_run),
+                "--apply",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                patch.object(
+                    publisher,
+                    "put_create_only",
+                    side_effect=AssertionError("put called"),
+                ),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    (
+                        "duplicate JSON object name in "
+                        "contract publication dry-run receipt: status"
+                    ),
+                ),
             ):
                 publisher.main()
 
@@ -2387,6 +2502,70 @@ class CustodyHandoffTests(unittest.TestCase):
             self.assertEqual(value["status"], "passed")
             self.assertEqual(value["receipt_version_id"], version)
             self.assertTrue(value["recovered_existing_version"])
+
+    def test_contract_publication_rejects_duplicate_existing_anchor_json_before_recovery(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            anchor_path = root / "anchor.json"
+            contract_sha = publisher.sha256(contract)
+            prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
+            key = f"{prefix}{contract_sha}.json"
+            publisher.reserve_json(
+                anchor_path,
+                {
+                    "schema_version": 1,
+                    "status": "in_progress",
+                    "receipt_sha256": contract_sha,
+                    "receipt_bytes": contract.stat().st_size,
+                    "receipt_uri": f"s3://{BUCKET}/{key}",
+                    "receipt_version_id": "",
+                    "bucket_versioning": "Enabled",
+                    "initial_version_history_count": 0,
+                    "publication_strategy": "sha256_content_addressed_create_only",
+                    "kms_key_arn": KMS,
+                    "checks": {},
+                },
+            )
+            write_duplicate_json_field(anchor_path, "status", "failed")
+            dry_run = self.write_contract_dry_run_receipt(
+                root / "anchor.dry.json", contract, prefix=prefix
+            )
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/{prefix}",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor_path),
+                "--dry-run-receipt",
+                str(dry_run),
+                "--apply",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                patch.object(
+                    publisher,
+                    "put_create_only",
+                    side_effect=AssertionError("put called"),
+                ),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    (
+                        "duplicate JSON object name in "
+                        "existing contract publication anchor: status"
+                    ),
+                ),
+            ):
+                publisher.main()
 
     def test_contract_publication_rejects_coerced_recovery_version_without_second_put(self):
         cases = (True, "null", "none", "has whitespace")

@@ -14,6 +14,10 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 from check_contract import validate
 
 S3_PREFIX = re.compile(
@@ -206,7 +210,15 @@ def load_contract(path: Path) -> dict[str, Any]:
     require_no_symlinked_ancestors(path, "contract")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"contract must be a real JSON file: {path}")
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in contract: {error}") from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError("invalid JSON in contract") from error
     if not isinstance(value, dict):
         raise ValueError("contract is not a JSON object")
     return value
@@ -302,7 +314,15 @@ def require_real_downloaded_file(path: Path, label: str) -> None:
 
 def load_real_json(path: Path, label: str) -> dict[str, Any]:
     require_real_downloaded_file(path, label)
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} is not a JSON object")
     return value
@@ -500,10 +520,14 @@ def main() -> int:
             )
         anchor["checks"] = dict(EXPECTED_CONTRACT_PREFLIGHT_CHECKS)
     if args.anchor_output.exists():
-        existing = json.loads(args.anchor_output.read_text(encoding="utf-8"))
-        if not isinstance(existing, dict) or not publication_identity_matches(
-            existing, anchor
-        ):
+        try:
+            existing = load_real_json(
+                args.anchor_output,
+                "existing contract publication anchor",
+            )
+        except (OSError, ValueError) as error:
+            raise SystemExit(f"Fail-closed: {error}") from error
+        if not publication_identity_matches(existing, anchor):
             raise SystemExit(
                 "Fail-closed: existing contract anchor belongs to another publication"
             )

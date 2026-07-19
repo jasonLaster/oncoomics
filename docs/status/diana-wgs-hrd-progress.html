@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact cross-check staging JSON</li>
+          <li class="pill">Latest milestone = local exact input-contract JSON</li>
+          <li class="pill">Input-contract JSON = exact</li>
           <li class="pill">Cross-check staging JSON = exact</li>
           <li class="pill">Private dry-run receipts = exact</li>
           <li class="pill">Reviewed-public publication JSON = exact</li>
@@ -814,6 +815,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact input-contract JSON</strong>
+              <span>Input-contract finalization and publication now reject duplicate JSON object names while loading pending contracts, custody receipts, finalized contracts, dry-run receipts, verification copies, and recovery anchors before binding or publishing alias-only cross-check inputs.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact executed-worker ETags</strong>
               <span>Terminal worker capture now exact-validates executed-worker HEAD/GET ETags, records the frozen worker ETag through the exact ETag guard, and mirrors <code>exact_etag</code> into deterministic staging so worker-check contract drift fails before deterministic, Rosalind, cross-check, AI synthesis, or reviewed-public report packets can trust worker custody.</span>
@@ -1880,6 +1885,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T02:40:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact input-contract JSON:</strong>
+                Input-contract finalization and publication now reject duplicate
+                JSON object names in contract, custody, verification, dry-run,
+                and recovery-anchor inputs.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T02:35:00-07:00">Jul 20 · local</time>
               <span>
