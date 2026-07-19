@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local AI run-prep schema exactness</li>
+          <li class="pill">Latest milestone = local AI validator schema exactness</li>
+          <li class="pill">AI validator custody schemas = exact</li>
           <li class="pill">AI run-prep schemas = exact</li>
           <li class="pill">AI stage bundle schemas = exact</li>
           <li class="pill">AI bundle ingress schemas = exact</li>
@@ -725,6 +726,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI validator custody schemas</strong>
+              <span>AI review validation now requires exact integer schemas at validator-side custody gates for source <code>report_manifest.json</code> files, reviewer A validation receipts consumed by reviewer B, and reviewer-authored <code>review_manifest.json</code> files.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI run-prep schemas</strong>
               <span>AI review run preparation now rejects JSON floats or booleans in source <code>report_manifest.json</code> files and rebased <code>stage_ai_review_inputs_receipt.json</code> files, with a static guard that keeps raw <code>schema_version</code> comparisons out of <code>prepare_ai_review_run.py</code>.</span>
             </li>
@@ -950,6 +955,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:39:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI validator custody schemas:</strong>
+                AI review validation now rejects non-exact
+                <code>schema_version</code> values in source
+                <code>report_manifest.json</code> files, reviewer A validation
+                receipts consumed by reviewer B, and reviewer-authored
+                <code>review_manifest.json</code> files. No S3, Batch, route,
+                GPU, quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:38:00-07:00">Jul 19 · local</time>
               <span>

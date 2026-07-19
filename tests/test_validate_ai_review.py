@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import csv
 import json
 import shutil
@@ -24,6 +25,9 @@ from tests.test_build_ai_review_bundle import (  # noqa: E402
     AiReviewBundleFixture,
     write_json,
 )
+
+
+VALIDATE_SCRIPT = SCRIPT_DIR / "validate_ai_review.py"
 
 
 def sha256(path: Path) -> str:
@@ -279,6 +283,17 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("model catalog receipt schema is unsupported", result.stderr)
             self.assertFalse((review / "validation.json").exists())
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        module = ast.parse(VALIDATE_SCRIPT.read_text(encoding="utf-8"))
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
 
     def test_validation_receipt_is_born_private_create_only_and_fsynced(
         self,
@@ -590,6 +605,11 @@ class ValidateAiReviewTests(unittest.TestCase):
                 ),
                 "review invocation envelope is not exact",
             ),
+            (
+                "non-exact schema",
+                lambda manifest: manifest.__setitem__("schema_version", 2.0),
+                "review manifest schema or reviewer ID mismatch",
+            ),
         )
         for label, mutate, message in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
@@ -788,6 +808,24 @@ class ValidateAiReviewTests(unittest.TestCase):
             )
 
     def test_rechecks_source_report_hash_and_output_location_leaks(self) -> None:
+        source = {
+            "schema_version": 1.0,
+            "report_sha256": "0" * 64,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            source_path = Path(temporary) / "report_manifest.json"
+            write_json(source_path, source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "unsupported source-manifest schema for E001",
+            ):
+                VALIDATE.validate_source_manifests(
+                    [source_path],
+                    [{}],
+                    {"E001": sha256(source_path)},
+                )
+
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))
             fixture.build()
@@ -1053,6 +1091,38 @@ class ValidateAiReviewTests(unittest.TestCase):
 
             self.assertNotEqual(copied.returncode, 0)
             self.assertIn("share an invocation ID", copied.stderr)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review_a = Path(temporary) / "review-a"
+            fixture.write_review(review_a, reviewer="A")
+            self.assertEqual(fixture.validate(review_a).returncode, 0)
+            validation_path = review_a / "validation.json"
+            validation = json.loads(validation_path.read_text(encoding="utf-8"))
+            validation["schema_version"] = 2.0
+            write_json(validation_path, validation)
+
+            review_b = Path(temporary) / "review-b"
+            fixture.write_review(
+                review_b,
+                reviewer="B",
+                body="The missing allele-specific copy-number gate remains unresolved [C001|E001].",
+                claim="The missing allele-specific copy number prevents a categorical conclusion.",
+            )
+
+            non_exact_other = fixture.validate(
+                review_b,
+                reviewer="B",
+                other_review_dir=review_a,
+            )
+
+            self.assertNotEqual(non_exact_other.returncode, 0)
+            self.assertIn(
+                "other review is not a passed reviewer A validation",
+                non_exact_other.stderr,
+            )
+            self.assertFalse((review_b / "validation.json").exists())
 
     def test_reviewer_b_rejects_symlinked_reviewer_a_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

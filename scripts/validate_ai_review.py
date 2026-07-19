@@ -340,7 +340,7 @@ def validate_source_manifests(
             raise ValueError(f"source-manifest hash mismatch for {evidence_id}")
 
         source = load_object(path)
-        if source.get("schema_version") != 1:
+        if not is_exact_int(source.get("schema_version"), 1):
             raise ValueError(f"unsupported source-manifest schema for {evidence_id}")
 
         report_hash = str(source.get("report_sha256", "")).lower()
@@ -464,7 +464,7 @@ def validate_other_reviewer(
     other_validation = load_object(paths["validation"])
     other_manifest = load_object(paths["manifest"])
     if (
-        other_validation.get("schema_version") != 2
+        not is_exact_int(other_validation.get("schema_version"), 2)
         or other_validation.get("status") != "passed"
         or other_validation.get("reviewer_id") != "A"
     ):
@@ -914,7 +914,10 @@ def validate_review_manifest(
 ) -> tuple[dict[str, str], dict[str, Any]]:
     if set(review_manifest) != REVIEW_MANIFEST_KEYS:
         raise ValueError("review manifest envelope is not exact")
-    if review_manifest.get("schema_version") != 2 or review_manifest.get("reviewer_id") != reviewer:
+    if (
+        not is_exact_int(review_manifest.get("schema_version"), 2)
+        or review_manifest.get("reviewer_id") != reviewer
+    ):
         raise ValueError("review manifest schema or reviewer ID mismatch")
 
     invocation = review_manifest.get("invocation", {})
