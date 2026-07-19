@@ -282,7 +282,7 @@ def valid_version(value: Any) -> bool:
 
 
 def valid_sha(value: Any) -> bool:
-    return bool(HEX64.fullmatch(str(value)))
+    return isinstance(value, str) and bool(HEX64.fullmatch(value))
 
 
 def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:

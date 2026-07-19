@@ -690,13 +690,19 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         aws.assert_not_called()
 
     def test_tampered_local_sha_or_version_fails_before_aws(self) -> None:
-        value = json.loads(self.exact_materialization.read_text(encoding="utf-8"))
-        value["objects"][0]["sha256"] = "BAD"
-        self._write(self.exact_materialization, value)
-        with mock.patch.object(MODULE, "aws_json") as aws:
-            with self.assertRaisesRegex(ValueError, "does not bind frozen row"):
-                MODULE.preflight(self.args())
-        aws.assert_not_called()
+        cases = ("BAD", "A" * 64, int("1" * 64))
+        for sha256 in cases:
+            with self.subTest(sha256=sha256):
+                self._write_final_receipts()
+                value = json.loads(self.exact_materialization.read_text(encoding="utf-8"))
+                value["objects"][0]["sha256"] = sha256
+                self._write(self.exact_materialization, value)
+
+                with mock.patch.object(MODULE, "aws_json") as aws:
+                    with self.assertRaisesRegex(ValueError, "does not bind frozen row"):
+                        MODULE.preflight(self.args())
+
+                aws.assert_not_called()
 
     def test_exact_materialization_bytes_must_be_exact_before_aws(self) -> None:
         value = json.loads(self.exact_materialization.read_text(encoding="utf-8"))
@@ -747,6 +753,44 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                 MODULE.preflight(self.args())
 
         aws.assert_not_called()
+
+    def test_reference_sha_values_must_be_exact_before_aws(self) -> None:
+        cases = (
+            (
+                "numeric_row_sha",
+                lambda receipt: receipt["objects"][0].__setitem__(
+                    "sha256",
+                    int("1" * 64),
+                ),
+            ),
+            (
+                "numeric_cloudwatch_sha",
+                lambda receipt: receipt["execution"].__setitem__(
+                    "cloudwatch_events_sha256",
+                    int("2" * 64),
+                ),
+            ),
+            (
+                "numeric_script_sha",
+                lambda receipt: receipt.__setitem__(
+                    "script_sha256",
+                    int("3" * 64),
+                ),
+            ),
+        )
+
+        for name, mutate in cases:
+            with self.subTest(name=name):
+                self._write_reference_receipts()
+                receipt = json.loads(self.reference_sha.read_text(encoding="utf-8"))
+                mutate(receipt)
+                self._write(self.reference_sha, receipt)
+
+                with mock.patch.object(MODULE, "aws_json") as aws:
+                    with self.assertRaisesRegex(ValueError, "reference SHA-256"):
+                        MODULE.preflight(self.args())
+
+                aws.assert_not_called()
 
     def test_registration_hash_must_bind_exact_definition(self) -> None:
         altered = self.root / "definition.json"
