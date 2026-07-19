@@ -348,7 +348,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 25f2bf3</li>
+          <li class="pill">Latest milestone = 501c4ea</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
           <li class="pill">Prior dashboard = 0b44ec7</li>
@@ -358,6 +358,7 @@
           <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
           <li class="pill">Deterministic staging receipts = exact</li>
+          <li class="pill">Materializer download receipts = exact</li>
           <li class="pill">Materializer receipts = alias-exact</li>
           <li class="pill">Private handoff dry-runs = required</li>
           <li class="pill">Stage freeze dry-run = exact</li>
@@ -547,6 +548,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · validate materializer terminal receipt outputs</strong>
               <span>Terminal materializer capture now rejects schema-2 receipts unless they exactly prove the four alias-only final outputs, source custody/input SHA-256 binding, and destination inventory before downstream handoff.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer download receipts</strong>
+              <span>Staged-validation download now rejects non-exact schema-2 materializer receipt envelopes and non-exact <code>staged_input_validation.json</code> custody rows before choosing a versioned object to download.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require private handoff dry-run receipts</strong>
@@ -750,6 +755,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T01:14:41-07:00">Jul 19 · 1:14 AM</time>
+              <span>
+                <strong>501c4ea Require exact materializer download receipts:</strong>
+                staged-validation download now reuses schema-2 materializer
+                receipt envelope and output custody key sets before choosing a
+                versioned validation object. It rejects extra legacy fields at
+                the receipt and <code>staged_input_validation.json</code>
+                output-row levels. Validation passed: 21 focused tests + 14
+                subtests, 116 handoff-adjacent tests + 108 subtests, compileall,
+                import-order lint, and diff checks. No S3, Batch, route, GPU,
+                quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T01:12:40-07:00">Jul 19 · 1:12 AM</time>
               <span>
