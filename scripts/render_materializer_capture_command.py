@@ -23,6 +23,8 @@ import shlex
 from pathlib import Path
 from typing import Any, Iterable
 
+from submit_materializer_v4 import REQUEST_DRY_RUN_RECEIPT_KEYS
+
 REGION = "us-east-1"
 ACCOUNT_ID = "172630973301"
 SUBJECT_ALIAS = "subject01"
@@ -60,6 +62,26 @@ REQUIRED_RESPONSE_CHECKS = frozenset(
         "one_shot_no_retry",
     )
 )
+RESPONSE_RECEIPT_KEYS = frozenset(
+    (
+        "schema_version",
+        "status",
+        "submitted_at_utc",
+        "run_id",
+        "request_receipt",
+        "submit_job_request_sha256",
+        "response",
+        "checks",
+        "classification_authorization",
+        "authorized_hrd_state",
+    )
+)
+REQUEST_RECEIPT_SUMMARY_KEYS = frozenset(("path", "sha256"))
+SUBMIT_JOB_REQUEST_KEYS = frozenset(
+    ("jobName", "jobQueue", "jobDefinition", "parameters", "retryStrategy")
+)
+BATCH_RESPONSE_KEYS = frozenset(("jobName", "jobId", "jobArn"))
+EXPECTED_RESPONSE_CHECKS = {name: True for name in REQUIRED_RESPONSE_CHECKS}
 JOB_ID_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 )
@@ -188,6 +210,22 @@ def validate_parameters(value: Any) -> dict[str, str]:
 def validate_receipts(
     request_path: Path, request: dict[str, Any], response: dict[str, Any]
 ) -> tuple[str, dict[str, str]]:
+    if (
+        set(request) != REQUEST_DRY_RUN_RECEIPT_KEYS
+        or request.get("schema_version") != 1
+        or request.get("run_id") != RUN_ID
+        or request.get("classification_authorization") != "none"
+        or request.get("authorized_hrd_state") != "no_call"
+    ):
+        raise ValueError("request receipt envelope is not exact")
+    if (
+        set(response) != RESPONSE_RECEIPT_KEYS
+        or response.get("schema_version") != 1
+        or response.get("run_id") != RUN_ID
+        or response.get("classification_authorization") != "none"
+        or response.get("authorized_hrd_state") != "no_call"
+    ):
+        raise ValueError("response receipt envelope is not exact")
     if request.get("status") != "submission_authorized":
         raise ValueError("request receipt was not an authorized submission")
     if response.get("status") != "submitted":
@@ -196,6 +234,8 @@ def validate_receipts(
     request_summary = require_object(
         response.get("request_receipt"), "response.request_receipt"
     )
+    if set(request_summary) != REQUEST_RECEIPT_SUMMARY_KEYS:
+        raise ValueError("response request receipt summary is not exact")
     request_sha256 = sha256_path(request_path)
     if request_summary.get("sha256") != request_sha256:
         raise ValueError("response receipt is not bound to the request receipt bytes")
@@ -203,6 +243,8 @@ def validate_receipts(
     submit_request = require_object(
         request.get("submit_job_request"), "submit_job_request"
     )
+    if set(submit_request) != SUBMIT_JOB_REQUEST_KEYS:
+        raise ValueError("SubmitJob request envelope is not exact")
     expected_submit_sha256 = sha256_bytes(canonical_bytes(submit_request))
     if response.get("submit_job_request_sha256") != expected_submit_sha256:
         raise ValueError("response receipt is not bound to the submit_job_request")
@@ -210,16 +252,14 @@ def validate_receipts(
         raise ValueError("materializer SubmitJob request must be one-shot")
 
     checks = require_object(response.get("checks"), "response.checks")
-    missing_or_false = sorted(
-        name for name in REQUIRED_RESPONSE_CHECKS if checks.get(name) is not True
-    )
-    if missing_or_false:
+    if checks != EXPECTED_RESPONSE_CHECKS:
         raise ValueError(
-            "response receipt is missing required true checks: "
-            + ", ".join(missing_or_false)
+            "response receipt checks are not exact"
         )
 
     batch_response = require_object(response.get("response"), "response.response")
+    if set(batch_response) != BATCH_RESPONSE_KEYS:
+        raise ValueError("Batch response envelope is not exact")
     if batch_response.get("jobName") != submit_request.get("jobName"):
         raise ValueError("Batch response jobName does not match SubmitJob request")
     job_id = batch_response.get("jobId")

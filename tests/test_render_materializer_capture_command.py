@@ -47,14 +47,41 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
             "reference_fai_version_id": "reference-fai-version",
         }
         self.request = {
+            "schema_version": 1,
             "status": "submission_authorized",
+            "generated_at_utc": "2026-07-18T00:00:00Z",
+            "scope": "private one-shot materializer-v4 submission preflight",
             "run_id": MODULE.RUN_ID,
+            "classification_authorization": "none",
+            "authorized_hrd_state": "no_call",
+            "input_receipts": {},
+            "custody": {},
+            "live_preflight": {},
             "submit_job_request": {
                 "jobName": "diana-wgs-hrd-materialize-20260716T033101Z",
+                "jobQueue": "diana-omics-prod-use1-ondemand",
+                "jobDefinition": (
+                    "arn:aws:batch:us-east-1:172630973301:job-definition/"
+                    "diana-wgs-hrd-materialize-crosscheck-inputs:4"
+                ),
                 "retryStrategy": {"attempts": 1},
                 "parameters": {
                     name: self.parameters[name] for name in MODULE.PARAMETER_NAMES
                 },
+            },
+            "checks": {
+                "receipt_hashes_cross_bound": True,
+                "three_exact_source_versions_and_local_sha256": True,
+                "two_exact_reference_versions_and_aws_sha256": True,
+                "exact_active_revision_4": True,
+                "immutable_arm64_image": True,
+                "exact_live_arm_queue": True,
+                "one_attempt": True,
+                "zero_existing_exact_job_name": True,
+                "empty_destination_history": True,
+                "empty_receipt_history": True,
+                "default_dry_run_behavior_preserved": True,
+                "submission_guard_satisfied": True,
             },
         }
         self.response = self.bound_response(self.request)
@@ -70,6 +97,7 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
         return {
             "schema_version": 1,
             "status": "submitted",
+            "submitted_at_utc": "2026-07-18T00:01:00Z",
             "run_id": MODULE.RUN_ID,
             "request_receipt": {
                 "path": str(self.request_path.resolve()),
@@ -89,6 +117,8 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
                 "job_id_and_arn": True,
                 "one_shot_no_retry": True,
             },
+            "classification_authorization": "none",
+            "authorized_hrd_state": "no_call",
         }
 
     def args(self) -> object:
@@ -176,6 +206,69 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "not bound to the request"):
             MODULE.render_from_files(self.args())
+
+    def test_rejects_inexact_submit_and_response_receipt_envelopes(self) -> None:
+        original_request = copy.deepcopy(self.request)
+        cases = (
+            (
+                "request",
+                lambda: self.request.__setitem__("legacy_note", "accepted"),
+                True,
+                "request receipt envelope is not exact",
+            ),
+            (
+                "submit_job_request",
+                lambda: self.request["submit_job_request"].__setitem__(
+                    "containerOverrides",
+                    {},
+                ),
+                True,
+                "SubmitJob request envelope is not exact",
+            ),
+            (
+                "response",
+                lambda: self.response.__setitem__("legacy_note", "accepted"),
+                False,
+                "response receipt envelope is not exact",
+            ),
+            (
+                "request_summary",
+                lambda: self.response["request_receipt"].__setitem__(
+                    "legacy_note",
+                    "accepted",
+                ),
+                False,
+                "response request receipt summary is not exact",
+            ),
+            (
+                "response_checks",
+                lambda: self.response["checks"].__setitem__(
+                    "legacy_check",
+                    True,
+                ),
+                False,
+                "response receipt checks are not exact",
+            ),
+            (
+                "batch_response",
+                lambda: self.response["response"].__setitem__(
+                    "ResponseMetadata",
+                    {},
+                ),
+                False,
+                "Batch response envelope is not exact",
+            ),
+        )
+        for label, mutate, rebind_response, message in cases:
+            with self.subTest(label=label):
+                self.request = copy.deepcopy(original_request)
+                self.response = self.bound_response(self.request)
+                mutate()
+                if rebind_response:
+                    self.response = self.bound_response(self.request)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    MODULE.render_from_files(self.args())
 
     def test_rejects_request_below_symlinked_parent(self) -> None:
         args = self.args()
