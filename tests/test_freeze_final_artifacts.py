@@ -128,6 +128,42 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         ]
         self.assertEqual(suspicious_calls, [])
 
+    def test_version_guards_avoid_raw_string_coercion(self) -> None:
+        source = Path(MODULE.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        guarded_fields = (
+            "current.get('VersionId'",
+            'current.get("VersionId"',
+            "version.get('VersionId'",
+            'version.get("VersionId"',
+            "before.get('VersionId'",
+            'before.get("VersionId"',
+            "initial_row.get('version_id'",
+            'initial_row.get("version_id"',
+            "copy_result.get('VersionId'",
+            'copy_result.get("VersionId"',
+            "after_source.get('VersionId'",
+            'after_source.get("VersionId"',
+            "destination.get('VersionId'",
+            'destination.get("VersionId"',
+            "uploaded.get('VersionId'",
+            'uploaded.get("VersionId"',
+            "anchored.get('VersionId'",
+            'anchored.get("VersionId"',
+            "get_result.get('VersionId'",
+            'get_result.get("VersionId"',
+        )
+        suspicious_calls = [
+            ast.unparse(node)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(field in ast.unparse(node.args[0]) for field in guarded_fields)
+        ]
+        self.assertEqual(suspicious_calls, [])
+
     def test_parse_s3_rejects_bucket_only(self) -> None:
         self.assertEqual(MODULE.parse_s3("s3://private-bucket/path/to/tree"), ("private-bucket", "path/to/tree"))
         with self.assertRaises(ValueError):
@@ -162,6 +198,12 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 {"ChecksumCRC64NVME": "same", "ChecksumType": "FULL_OBJECT"},
             )
         )
+        self.assertFalse(
+            MODULE.common_checksum_matches(
+                {"ChecksumSHA256": True, "ChecksumType": "FULL_OBJECT"},
+                {"ChecksumSHA256": "True", "ChecksumType": "FULL_OBJECT"},
+            )
+        )
 
     def test_relative_key_rejects_traversal_and_backslash(self) -> None:
         self.assertEqual(MODULE.safe_relative_key("variants/final.vcf.gz"), "variants/final.vcf.gz")
@@ -182,6 +224,25 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "no supported checksum"):
             MODULE.preferred_checksum_algorithm({})
+        with self.assertRaisesRegex(ValueError, "no supported checksum"):
+            MODULE.preferred_checksum_algorithm({"ChecksumSHA256": True})
+
+    def test_version_id_helpers_reject_raw_string_coercion(self) -> None:
+        for value in ("", True, None, "None", "null", " NULL ", "has space"):
+            with self.subTest(value=value):
+                self.assertFalse(MODULE.non_null_version_id(value))
+        self.assertTrue(MODULE.non_null_version_id("version-1"))
+        self.assertTrue(MODULE.source_version_id("null"))
+        self.assertTrue(MODULE.source_version_id("version-1"))
+        self.assertFalse(MODULE.source_version_id(True))
+        self.assertEqual(
+            MODULE.exact_non_null_version_id("version-1", "destination"),
+            "version-1",
+        )
+        with self.assertRaisesRegex(RuntimeError, "non-null S3 VersionId"):
+            MODULE.exact_non_null_version_id(True, "destination")
+        with self.assertRaisesRegex(RuntimeError, "exact S3 VersionId"):
+            MODULE.exact_source_version_id(True, "source")
 
     def test_copy_uses_exact_source_version_etag_checksum_and_kms(self) -> None:
         with patch.object(
@@ -520,6 +581,18 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(RuntimeError, "next key/version markers"):
                 MODULE.version_history("bucket", "prefix/", "us-east-1")
+        with patch.object(
+            MODULE,
+            "aws_json",
+            return_value={
+                "Versions": [{"Key": "prefix/a", "VersionId": "v1"}],
+                "IsTruncated": True,
+                "NextKeyMarker": "prefix/a",
+                "NextVersionIdMarker": True,
+            },
+        ):
+            with self.assertRaisesRegex(RuntimeError, "next key/version markers"):
+                MODULE.version_history("bucket", "prefix/", "us-east-1")
 
     def test_version_history_rejects_stalled_pagination(self) -> None:
         stalled = {
@@ -563,6 +636,23 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         ]
         with patch.object(MODULE, "version_history", return_value=duplicate):
             with self.assertRaisesRegex(RuntimeError, "multiple versions"):
+                MODULE.snapshot_destination("bucket", "prefix/", "kms", "us-east-1")
+        malformed = [
+            {
+                "history_kind": "version",
+                "Key": "prefix/a",
+                "VersionId": True,
+                "IsLatest": True,
+            }
+        ]
+        with patch.object(
+            MODULE, "version_history", return_value=malformed
+        ), patch.object(
+            MODULE,
+            "list_objects",
+            return_value=[{"Key": "prefix/a", "Size": 1, "ETag": '"a"'}],
+        ):
+            with self.assertRaisesRegex(RuntimeError, "invalid key/version"):
                 MODULE.snapshot_destination("bucket", "prefix/", "kms", "us-east-1")
 
     def test_destination_snapshot_matches_receipt_exactly(self) -> None:
@@ -1347,6 +1437,34 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, "exact integer"):
                         MODULE.snapshot_inventory("bucket", "prefix/", "us-east-1")
 
+    def test_snapshot_inventory_requires_exact_version_id_and_string_checksum(
+        self,
+    ) -> None:
+        listed = [{"Key": "prefix/a", "Size": 10, "ETag": '"a"'}]
+        current = {
+            "ContentLength": 10,
+            "ETag": '"a"',
+            "VersionId": "v1",
+            "ChecksumType": "FULL_OBJECT",
+            "ChecksumSHA256": "sha",
+        }
+        cases = (
+            ("bool_version", {**current, "VersionId": True}, "VersionId"),
+            ("none_version", {**current, "VersionId": None}, "VersionId"),
+            ("none_string_version", {**current, "VersionId": "None"}, "VersionId"),
+            ("spaced_version", {**current, "VersionId": "has space"}, "VersionId"),
+            ("bool_checksum", {**current, "ChecksumSHA256": True}, "checksum"),
+        )
+        for label, head_response, message in cases:
+            with self.subTest(label=label):
+                with patch.object(
+                    MODULE,
+                    "list_objects",
+                    return_value=listed,
+                ), patch.object(MODULE, "head", return_value=head_response):
+                    with self.assertRaisesRegex(RuntimeError, message):
+                        MODULE.snapshot_inventory("bucket", "prefix/", "us-east-1")
+
     def test_inventory_identity_detects_added_or_replaced_object(self) -> None:
         original = [
             {
@@ -1385,6 +1503,18 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "exact integer"):
                     MODULE.inventory_identity([malformed])
                 with self.assertRaisesRegex(RuntimeError, "exact integer"):
+                    MODULE.dry_run_objects(
+                        [malformed],
+                        "source",
+                        "destination",
+                        "final/",
+                    )
+        for value in (True, None, "None", "has space"):
+            with self.subTest(version_id=value):
+                malformed = {**row, "version_id": value}
+                with self.assertRaisesRegex(RuntimeError, "exact S3 VersionId"):
+                    MODULE.inventory_identity([malformed])
+                with self.assertRaisesRegex(RuntimeError, "exact S3 VersionId"):
                     MODULE.dry_run_objects(
                         [malformed],
                         "source",

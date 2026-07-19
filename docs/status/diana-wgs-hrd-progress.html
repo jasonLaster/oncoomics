@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact stage-freeze scalars</li>
+          <li class="pill">Latest milestone = local exact final-freeze scalars</li>
+          <li class="pill">Final-freeze VersionIds/checksums = exact</li>
           <li class="pill">Stage-freeze VersionIds/checksums = exact</li>
           <li class="pill">Executed-worker VersionIds/checksums = exact</li>
           <li class="pill">Input-contract receipt VersionIds = exact</li>
@@ -716,6 +717,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact final-freeze scalars</strong>
+              <span><code>freeze_final_artifacts.py</code> now requires exact source, destination, and receipt VersionIds plus string-only checksum scalars before freezing the deterministic final artifact tree.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact stage-freeze scalars</strong>
               <span><code>freeze_stage_provenance.py</code> now requires exact object VersionIds and string-only checksum scalars before freezing stage provenance.</span>
@@ -1550,6 +1555,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact final-freeze scalars:</strong>
+                <code>freeze_final_artifacts.py</code> now requires exact
+                source, destination, and receipt VersionIds plus string-only
+                checksum scalars before freezing the deterministic final
+                artifact tree.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:20:00-07:00">Jul 19 · local</time>
               <span>

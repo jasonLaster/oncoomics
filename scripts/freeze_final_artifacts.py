@@ -121,6 +121,37 @@ def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
+def non_null_version_id(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and value
+        and value.lower() not in {"null", "none"}
+        and not any(character.isspace() for character in value)
+    )
+
+
+def source_version_id(value: Any) -> bool:
+    return value == "null" or non_null_version_id(value)
+
+
+def exact_non_null_version_id(value: Any, label: str) -> str:
+    if not non_null_version_id(value):
+        raise RuntimeError(f"{label} omitted an exact non-null S3 VersionId")
+    return value
+
+
+def exact_source_version_id(value: Any, label: str) -> str:
+    if not source_version_id(value):
+        raise RuntimeError(f"{label} omitted an exact S3 VersionId")
+    return value
+
+
+def exact_nonempty_marker(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise RuntimeError(f"{label} must be a non-empty string")
+    return value
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -237,9 +268,9 @@ def parse_s3(uri: str) -> tuple[str, str]:
 
 def checksums(head: dict[str, Any]) -> dict[str, str]:
     return {
-        field: str(head[field])
+        field: value
         for field in CHECKSUM_FIELDS
-        if str(head.get(field, "")).strip()
+        if isinstance((value := head.get(field)), str) and value.strip()
     }
 
 
@@ -319,12 +350,19 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
             rows.extend({**row, "history_kind": kind} for row in values)
         if page.get("IsTruncated") is not True:
             return rows
-        key_marker = str(page.get("NextKeyMarker", ""))
-        version_id_marker = str(page.get("NextVersionIdMarker", ""))
-        if not key_marker or not version_id_marker:
+        try:
+            key_marker = exact_nonempty_marker(
+                page.get("NextKeyMarker"),
+                "truncated version history next key marker",
+            )
+            version_id_marker = exact_nonempty_marker(
+                page.get("NextVersionIdMarker"),
+                "truncated version history next version marker",
+            )
+        except RuntimeError as error:
             raise RuntimeError(
                 "truncated version history omitted its next key/version markers"
-            )
+            ) from error
         marker = (key_marker, version_id_marker)
         if marker in seen_markers:
             raise RuntimeError("S3 version history pagination did not advance")
@@ -442,7 +480,10 @@ def snapshot_inventory(bucket: str, prefix: str, region: str) -> list[dict[str, 
         if not relative or relative == source_key:
             raise RuntimeError(f"source key is outside declared prefix: {source_key}")
         current = head(bucket, source_key, region)
-        version_id = str(current.get("VersionId", ""))
+        version_id = exact_source_version_id(
+            current.get("VersionId"),
+            f"source object {relative}",
+        )
         size = exact_s3_size(current.get("ContentLength"))
         etag = str(current.get("ETag", ""))
         listed_size = exact_s3_size(listed_row.get("Size"))
@@ -453,7 +494,6 @@ def snapshot_inventory(bucket: str, prefix: str, region: str) -> list[dict[str, 
             not listed_stable
             or size <= 0
             or size > MAX_SINGLE_COPY_BYTES
-            or version_id in {"", "None"}
             or current.get("ChecksumType") != "FULL_OBJECT"
             or not checksums(current)
         ):
@@ -484,7 +524,10 @@ def inventory_identity(snapshot: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "key": str(row["key"]),
             "bytes": exact_s3_size(row.get("bytes")),
             "etag": str(row["etag"]),
-            "version_id": str(row["version_id"]),
+            "version_id": exact_source_version_id(
+                row.get("version_id"),
+                "inventory identity",
+            ),
         }
         for row in snapshot
     ]
@@ -502,7 +545,10 @@ def dry_run_objects(
             "source": {
                 "bucket": source_bucket,
                 "key": str(row["key"]),
-                "version_id": str(row["version_id"]),
+                "version_id": exact_source_version_id(
+                    row.get("version_id"),
+                    "dry-run source object",
+                ),
                 "bytes": exact_s3_size(row.get("bytes")),
                 "etag": str(row["etag"]),
                 "checksums": row["checksums"],
@@ -595,18 +641,18 @@ def snapshot_destination(
     for version in history:
         key = str(version.get("Key", ""))
         relative = safe_relative_key(key.removeprefix(prefix))
-        version_id = str(version.get("VersionId", ""))
+        version_id = version.get("VersionId")
         if (
             not relative
             or relative == key
-            or version_id in {"", "null", "None"}
+            or not non_null_version_id(version_id)
             or version.get("IsLatest") is not True
         ):
             raise RuntimeError("destination history contains an invalid key/version")
         current = head(bucket, key, region, version_id)
         size = exact_s3_size(current.get("ContentLength"))
         if (
-            str(current.get("VersionId", "")) != version_id
+            current.get("VersionId") != version_id
             or size <= 0
             or current.get("ChecksumType") != "FULL_OBJECT"
             or not checksums(current)
@@ -950,12 +996,14 @@ def main() -> int:
             relative = str(initial_row["relative_key"])
             destination_key = destination_prefix + relative
             before = head(source_bucket, source_key, args.region)
-            source_version_id = str(before.get("VersionId", ""))
+            source_version_id = exact_source_version_id(
+                before.get("VersionId"),
+                f"source object {relative}",
+            )
             before_size = exact_s3_size(before.get("ContentLength"))
             if (
                 before_size <= 0
                 or before_size > MAX_SINGLE_COPY_BYTES
-                or source_version_id in {"", "None"}
                 or before.get("ChecksumType") != "FULL_OBJECT"
                 or not checksums(before)
             ):
@@ -966,7 +1014,7 @@ def main() -> int:
             listed_stable = (
                 exact_s3_size(initial_row.get("bytes")) == before_size
                 and str(initial_row.get("etag", "")) == str(before.get("ETag", ""))
-                and str(initial_row.get("version_id", "")) == source_version_id
+                and initial_row.get("version_id") == source_version_id
             )
             if not listed_stable:
                 raise RuntimeError(f"source inventory changed before freeze: {relative}")
@@ -998,16 +1046,15 @@ def main() -> int:
                     preferred_checksum_algorithm(before),
                     args.region,
                 )
-                copied_version_id = str(copy_result.get("VersionId", ""))
+                copied_version_id = exact_non_null_version_id(
+                    copy_result.get("VersionId"),
+                    f"copy response {relative}",
+                )
                 row["copy_result"] = {
                     "version_id": copied_version_id,
                     "checksum_algorithm": preferred_checksum_algorithm(before),
                 }
                 write_json_atomic(args.output, receipt)
-                if copied_version_id in {"", "null", "None"}:
-                    raise RuntimeError(
-                        f"copy response omitted a durable VersionId: {relative}"
-                    )
                 after_source = head(source_bucket, source_key, args.region)
                 destination = head(
                     destination_bucket,
@@ -1020,7 +1067,7 @@ def main() -> int:
                 source_stable = (
                     before_size == after_source_size
                     and str(before.get("ETag", "")) == str(after_source.get("ETag", ""))
-                    and source_version_id == str(after_source.get("VersionId", ""))
+                    and source_version_id == after_source.get("VersionId")
                     and checksums(before) == checksums(after_source)
                     and before.get("ChecksumType") == after_source.get("ChecksumType") == "FULL_OBJECT"
                 )
@@ -1030,15 +1077,18 @@ def main() -> int:
                     destination.get("ServerSideEncryption") == "aws:kms"
                     and destination.get("SSEKMSKeyId") == args.kms_key_arn
                 )
-                versioned = str(destination.get("VersionId", "")) not in {"", "null", "None"}
+                destination_version_id = destination.get("VersionId")
+                versioned = non_null_version_id(destination_version_id)
                 copy_version_matches = (
                     versioned
                     and copied_version_id
-                    == str(destination.get("VersionId", ""))
+                    == destination_version_id
                 )
                 row["destination"].update(
                     {
-                        "version_id": str(destination.get("VersionId", "")),
+                        "version_id": (
+                            destination_version_id if versioned else ""
+                        ),
                         "bytes": destination_size,
                         "etag": str(destination.get("ETag", "")),
                         "checksums": checksums(destination),
@@ -1147,11 +1197,12 @@ def main() -> int:
                 args.kms_key_arn,
                 args.region,
             )
-            version_id = str(uploaded.get("VersionId", ""))
+            version_id = exact_non_null_version_id(
+                uploaded.get("VersionId"),
+                "receipt upload",
+            )
             anchor["receipt_version_id"] = version_id
             write_json_atomic(args.anchor_output, anchor)
-            if version_id in {"", "null", "None"}:
-                raise RuntimeError("receipt upload omitted a durable VersionId")
             anchored = head(
                 destination_bucket, receipt_key, args.region, version_id
             )
