@@ -307,13 +307,13 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>c2dc4da6afda1bf00f8cf60c099c6a2e4feaaf9b</strong>.
-          The latest work is exact final-freeze custody hardening:
-          <code>finalize_input_contract.py</code> now requires the deterministic
-          final artifact freeze receipt and every frozen object row to carry
-          the exact all-true checks already expected by the v4 cross-check
-          materializer submitter before alias-only HRD cross-check inputs can
-          trust the private VCF, index, and SBS96 matrix identities.
+          <strong>8b728a7b7817efce4e314040cec548305aed55e1</strong>.
+          The latest work is exact cross-check materializer custody hardening:
+          <code>materialize_crosscheck_inputs.py</code> now names its receipt
+          and upload check contracts, and <code>finalize_input_contract.py</code>
+          now requires those exact all-true maps before alias-only HRD
+          cross-check inputs can trust PASS-SNV VCF, VCF index, SBS96, or
+          staged validation outputs.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -321,7 +321,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = c2dc4da</li>
+          <li class="pill">Latest hardening = 8b728a7</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -403,8 +403,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve c2dc4da</strong>
-              <span>Final deterministic freeze receipts now require the exact top-level and per-object copy-check inventories before alias-only HRD cross-check input contracts can bind private final VCF, index, and SBS96 identities.</span>
+              <strong>Preserve 8b728a7</strong>
+              <span>Cross-check materializer receipts and output rows now require named exact-check inventories before alias-only HRD cross-check input contracts can bind PASS-SNV VCF, index, SBS96, or staged validation objects.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -452,6 +452,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>8b728a7 Require exact crosscheck materializer checks:</strong>
+                <code>materialize_crosscheck_inputs.py</code> now exposes
+                <code>EXPECTED_RECEIPT_CHECKS</code> for the six source,
+                alias-only, SBS96, destination-emptiness, create-only, and
+                history guards, plus <code>EXPECTED_UPLOAD_CHECKS</code> for
+                each create-only output. <code>finalize_input_contract.py</code>
+                now requires the same exact maps for the cross-check receipt
+                and for every materialized PASS-SNV VCF, VCF index, SBS96, and
+                staged-validation object before finalizing the HRD cross-check
+                input contract.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
