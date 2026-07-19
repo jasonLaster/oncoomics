@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local materializer registration schema exactness</li>
+          <li class="pill">Latest milestone = local materializer-v4 submission schema exactness</li>
+          <li class="pill">Materializer submit schemas = exact</li>
           <li class="pill">Materializer registration schemas = exact</li>
           <li class="pill">Contract checker schemas = exact</li>
           <li class="pill">Input-contract schemas = exact</li>
@@ -638,6 +639,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer-v4 submit schemas</strong>
+              <span>Materializer-v4 dry-run and submission preflight now rejects JSON floats or booleans across final freeze, exact materialization, reference freeze/SHA, registration, script-anchor, and dry-run receipts before a cross-check materializer job can be authorized or submitted.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer registration schemas</strong>
               <span>Materializer-v4 registration validation now rejects JSON floats or booleans in the schema-1 script-freeze anchor before trusting a registered-not-submitted cross-check materializer revision.</span>
@@ -1020,6 +1025,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:53:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact materializer-v4 submit schemas:</strong>
+                materializer-v4 dry-run and submission preflight now rejects
+                non-exact <code>schema_version</code> values across final
+                freeze, exact materialization, reference freeze/SHA,
+                registration, script-anchor, and dry-run receipts before
+                authorizing or submitting a cross-check materializer job. No
+                S3, Batch, route, GPU, quota, or replacement compute was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:52:00-07:00">Jul 19 · local</time>
               <span>

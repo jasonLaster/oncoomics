@@ -284,6 +284,10 @@ def valid_sha(value: Any) -> bool:
     return bool(HEX64.fullmatch(str(value)))
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def parse_s3(uri: Any) -> tuple[str, str]:
     match = S3_URI.fullmatch(str(uri))
     if not match:
@@ -315,7 +319,7 @@ def require_anchor(
     _bucket, key = require_private_uri(uri)
     expected_suffix = f"/{receipt_sha}.json"
     checks = {
-        "schema_status": anchor.get("schema_version") == 1 and anchor.get("status") == "passed",
+        "schema_status": exact_schema_version(anchor, 1) and anchor.get("status") == "passed",
         "receipt_hash": anchor.get("receipt_sha256") == receipt_sha,
         "receipt_bytes": anchor.get("receipt_bytes") == receipt_bytes,
         "content_addressed_uri": key.endswith(expected_suffix.lstrip("/")) or uri.endswith(expected_suffix),
@@ -387,7 +391,7 @@ def validate_final_sources(
         label="final freeze destination inventory",
     )
     freeze_checks = {
-        "schema_status": freeze.get("schema_version") == 1 and freeze.get("status") == "passed",
+        "schema_status": exact_schema_version(freeze, 1) and freeze.get("status") == "passed",
         "run_id": freeze.get("run_id") == run_id,
         "batch_job_id": bool(job_id),
         "batch_status": freeze.get("batch_status") == "SUCCEEDED",
@@ -469,7 +473,7 @@ def validate_final_sources(
         label="exact local materialization",
     )
     materialized_checks = {
-        "schema_status": materialized.get("schema_version") == 1 and materialized.get("status") == "passed",
+        "schema_status": exact_schema_version(materialized, 1) and materialized.get("status") == "passed",
         "run_id": materialized.get("run_id") == run_id,
         "batch_job_id": materialized.get("batch_job_id") == job_id,
         "freeze_hash": materialized.get("freeze_receipt_sha256") == sha256_path(freeze_path),
@@ -571,7 +575,7 @@ def validate_reference_sources(
     if set(by_artifact) != {"reference.fa", "reference.fa.fai", "reference.dict"} or len(kms_values) != 1:
         raise ValueError("reference freeze inventory or KMS identity is ambiguous")
     kms = next(iter(kms_values))
-    if freeze.get("schema_version") != 1 or freeze.get("status") != "passed":
+    if not exact_schema_version(freeze, 1) or freeze.get("status") != "passed":
         raise ValueError("reference freeze schema/status is not passed")
 
     sha_count = sha_receipt.get("object_count")
@@ -582,7 +586,7 @@ def validate_reference_sources(
         label="reference SHA-256 receipt",
     )
     sha_checks = {
-        "schema_status": sha_receipt.get("schema_version") == 1 and sha_receipt.get("status") == "passed",
+        "schema_status": exact_schema_version(sha_receipt, 1) and sha_receipt.get("status") == "passed",
         "count": sha_count == 3,
         "freeze_hash": sha_receipt.get("freeze_receipt_sha256") == sha256_path(freeze_path),
         "algorithm": sha_receipt.get("algorithm") == "sha256_full_object_aws_side_stream",
@@ -711,11 +715,11 @@ def validate_registration(
     )
     expected_binding = {f"${index}": name for index, name in enumerate(expected_refs, start=1)}
     checks = {
-        "schema_status": receipt.get("schema_version") == 3 and receipt.get("status") == "registered_not_submitted",
+        "schema_status": exact_schema_version(receipt, 3) and receipt.get("status") == "registered_not_submitted",
         "no_call_boundary": receipt.get("classification_authorization") == "none" and receipt.get("authorized_hrd_state") == "no_call",
         "receipt_checks": passed_checks(receipt.get("checks"), exact=EXPECTED_REGISTRATION_CHECKS),
         "script_anchor_hash": receipt_script.get("anchor_sha256") == sha256_path(script_anchor_path),
-        "script_status": script_anchor.get("schema_version") == 1 and script_anchor.get("status") == "passed",
+        "script_status": exact_schema_version(script_anchor, 1) and script_anchor.get("status") == "passed",
         "script_sha": script_source.get("sha256") == EXPECTED_MATERIALIZER_SHA256,
         "script_object_version": valid_version(script_object.get("version_id")),
         "script_checks": passed_checks(script_anchor.get("checks"), exact=EXPECTED_SCRIPT_ANCHOR_CHECKS),
@@ -1329,7 +1333,7 @@ def validate_dry_run_receipt(
         raise ValueError("materializer dry-run request receipt must be a JSON object")
     if (
         set(dry_run) != REQUEST_DRY_RUN_RECEIPT_KEYS
-        or dry_run.get("schema_version") != 1
+        or not exact_schema_version(dry_run, 1)
         or dry_run.get("status") != "rendered_only"
         or not dry_run.get("generated_at_utc")
         or dry_run.get("scope") != "private one-shot materializer-v4 submission preflight"

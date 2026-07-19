@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import hashlib
 import json
@@ -737,6 +738,67 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                 MODULE.preflight(args)
         aws.assert_not_called()
 
+    def test_preflight_rejects_non_integer_schema_versions_before_aws(self) -> None:
+        cases = (
+            (
+                "final freeze anchor",
+                self.final_anchor,
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+                "freeze anchor does not bind",
+            ),
+            (
+                "final freeze receipt",
+                self.final_freeze,
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+                "final freeze receipt is incomplete",
+            ),
+            (
+                "exact materialization",
+                self.exact_materialization,
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+                "exact local materialization is incomplete",
+            ),
+            (
+                "reference freeze",
+                self.reference_freeze,
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+                "reference freeze schema/status is not passed",
+            ),
+            (
+                "reference SHA-256 receipt",
+                self.reference_sha,
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+                "reference SHA-256 receipt is incomplete",
+            ),
+            (
+                "materializer script anchor",
+                self.script_anchor,
+                lambda payload: payload.__setitem__("schema_version", 1.0),
+                "materializer registration receipt/definition is not exact",
+            ),
+            (
+                "registration receipt",
+                self.registration,
+                lambda payload: payload.__setitem__("schema_version", 3.0),
+                "materializer registration receipt/definition is not exact",
+            ),
+        )
+
+        for label, path, mutate, message in cases:
+            with self.subTest(label=label):
+                value = json.loads(path.read_text(encoding="utf-8"))
+                mutate(value)
+                self._write(path, value)
+
+                with mock.patch.object(MODULE, "aws_json") as aws:
+                    with self.assertRaisesRegex(ValueError, message):
+                        MODULE.preflight(self.args())
+
+                aws.assert_not_called()
+                self._write_final_receipts()
+                self._write_reference_receipts()
+                self._write_registration_receipts()
+
     def test_registration_command_check_map_must_be_exact(self) -> None:
         cases = (
             (
@@ -1283,6 +1345,16 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         self.assertFalse(self.request_output.exists())
         self.assertFalse(self.response_output.exists())
 
+    def test_submit_rejects_non_integer_dry_run_schema_version(self) -> None:
+        request = self.preflight_receipt()
+        dry_run = self.write_dry_run_receipt(request)
+        stale = json.loads(dry_run.read_text(encoding="utf-8"))
+        stale["schema_version"] = 1.0
+        dry_run.write_text(json.dumps(stale, indent=2, sort_keys=True) + "\n")
+
+        with self.assertRaisesRegex(ValueError, "contract is malformed"):
+            MODULE.validate_dry_run_receipt(dry_run, request)
+
     def test_submit_writes_distinct_request_and_response_receipts(self) -> None:
         response = {
             "jobName": "diana-wgs-hrd-materialize-20260716T033101Z",
@@ -1337,6 +1409,57 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         submitter.assert_called_once()
         self.assertTrue(self.response_output.exists())
         self.assertEqual(self.response_output.stat().st_mode & 0o777, 0o600)
+
+    def test_schema_version_checks_use_exact_integer_helper(self) -> None:
+        cases = (
+            (1, 1, True),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (2, 1, False),
+            (None, 1, False),
+            (True, 1, False),
+            (False, 0, False),
+            (3.0, 3, False),
+        )
+        for value, expected, accepted in cases:
+            with self.subTest(value=value, expected=expected):
+                self.assertIs(
+                    MODULE.exact_schema_version(
+                        {"schema_version": value},
+                        expected,
+                    ),
+                    accepted,
+                )
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "submit_materializer_v4.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        parent_by_child = {
+            child: parent
+            for parent in ast.walk(module)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def in_exact_schema_helper(node: ast.AST) -> bool:
+            parent = parent_by_child.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef):
+                    return parent.name == "exact_schema_version"
+                parent = parent_by_child.get(parent)
+            return False
+
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+            and not in_exact_schema_helper(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
 
     def test_request_and_response_paths_may_not_traverse_symlinks(self) -> None:
         real_parent = self.root / "real-parent"
