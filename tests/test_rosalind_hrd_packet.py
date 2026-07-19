@@ -1460,6 +1460,44 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertIn("no state promotion", alignment["blocker"])
 
     def test_diana_wgs_packet_rejects_deterministic_or_worker_tampering(self):
+        for tool, value in (
+            ("bcftools", ""),
+            ("bwa", True),
+            ("gatk", "gatk\n4.6.1.0"),
+            ("samtools", " samtools 1.20"),
+        ):
+            with self.subTest(tool=tool), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+                output_root = Path(tmp)
+                artifact_root = Path(artifacts)
+                write_diana_wgs_worker_artifacts(artifact_root)
+                tools_path = artifact_root / "tool_versions.json"
+                tools = utils.read_json(tools_path)
+                tools[tool] = value
+                utils.write_json(tools_path, tools)
+                deterministic_root = write_deterministic_report(
+                    output_root / "deterministic",
+                    artifact_root,
+                )
+                output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        },
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        f"Diana WGS {tool} tool version must be a non-empty unpadded single-line string",
+                    ),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+                self.assertFalse((output_dir / "report_manifest.json").exists())
+
         for field, value in (
             ("freeze_receipt_version_id", True),
             ("stage_provenance_receipt_version_id", " stage-version-unit"),

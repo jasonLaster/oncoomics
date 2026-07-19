@@ -939,6 +939,17 @@ def require_version_id(value: Any, label: str) -> str:
     return value
 
 
+def require_exact_nonempty_string(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or any(character in value for character in "\r\n")
+    ):
+        raise ValueError(f"{label} must be a non-empty unpadded single-line string")
+    return value
+
+
 def is_exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and value == expected
 
@@ -1151,12 +1162,15 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     if not custody_hashes:
         raise ValueError("deterministic custody lacks hash-bound receipts")
     tools = read_json(artifact_path_from_root("tool_versions.json"))
-    if (
-        not isinstance(tools, dict)
-        or set(tools) != {"bwa", "samtools", "bcftools", "gatk"}
-        or any(not str(value).strip() for value in tools.values())
-    ):
+    if not isinstance(tools, dict) or set(tools) != {"bwa", "samtools", "bcftools", "gatk"}:
         raise ValueError("Diana WGS tool version inventory is missing or malformed")
+    tool_versions = {
+        key: require_exact_nonempty_string(
+            tools.get(key),
+            f"Diana WGS {key} tool version",
+        )
+        for key in ("bcftools", "bwa", "gatk", "samtools")
+    }
     return {
         "binding_kind": "terminal_worker",
         "deterministic_report_sha256": sha256_file(paths["report.md"]),
@@ -1170,7 +1184,7 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
             **custody_version_ids,
             **custody_hashes,
         },
-        "tool_versions": {str(key): str(value) for key, value in sorted(tools.items())},
+        "tool_versions": tool_versions,
     }
 
 

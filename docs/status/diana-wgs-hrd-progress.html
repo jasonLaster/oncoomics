@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact terminal-worker Rosalind VersionIds</li>
+          <li class="pill">Latest milestone = local exact terminal-worker Rosalind tool versions</li>
+          <li class="pill">Terminal-worker Rosalind tool versions = exact</li>
           <li class="pill">Terminal-worker Rosalind VersionIds = exact</li>
           <li class="pill">AI review invocation strings = exact</li>
           <li class="pill">Cross-check materialization SHA-256s = exact</li>
@@ -1064,6 +1065,10 @@
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact terminal-worker Rosalind tool versions</strong>
+              <span>Diana WGS Rosalind packet building now requires the terminal-worker <code>bcftools</code>, <code>bwa</code>, <code>gatk</code>, and <code>samtools</code> versions to be exact non-empty unpadded single-line strings before copying them into packet provenance.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact terminal-worker Rosalind VersionIds</strong>
               <span>Diana WGS Rosalind packet building now requires terminal-worker freeze and stage-provenance receipt VersionIds to be exact non-empty unpadded strings before copying them into packet custody.</span>
             </li>
@@ -1725,6 +1730,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:05:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact terminal-worker Rosalind tool versions:</strong>
+                Diana WGS Rosalind packet building now rejects non-string,
+                empty, padded, or multiline terminal-worker tool versions
+                before copying the exact four-tool inventory into packet
+                provenance.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:00:00-07:00">Jul 20 · local</time>
               <span>
