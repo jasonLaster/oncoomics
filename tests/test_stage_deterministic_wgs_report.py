@@ -1257,8 +1257,10 @@ class SyntheticFixture:
                 "status": "passed",
                 "run_id": RUN_ID,
                 "batch_job_id": "synthetic-job",
+                "script_sha256": "f" * 64,
                 "freeze_receipt_sha256": sha256(freeze_receipt),
                 "expected_kms_key_arn": KMS_ARN,
+                "materialization_dir": str(self.artifacts),
                 "object_count": len(freeze_rows),
                 "passed_count": len(freeze_rows),
                 "objects": [
@@ -2145,6 +2147,49 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("exact_version_materialization", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_stale_exact_version_materialization_envelope_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "exact-materialization.json"
+            base_receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+
+            for label, mutate in (
+                (
+                    "missing-script",
+                    lambda receipt: receipt.pop("script_sha256"),
+                ),
+                (
+                    "extra-legacy",
+                    lambda receipt: receipt.__setitem__("legacy_note", "accepted"),
+                ),
+                (
+                    "missing-row-checks",
+                    lambda receipt: receipt["objects"][0].pop("checks"),
+                ),
+                (
+                    "extra-row",
+                    lambda receipt: receipt["objects"][0].__setitem__(
+                        "legacy_note",
+                        "accepted",
+                    ),
+                ),
+            ):
+                with self.subTest(label=label):
+                    receipt = json.loads(json.dumps(base_receipt))
+                    mutate(receipt)
+                    write_json(receipt_path, receipt)
+
+                    result = subprocess.run(
+                        fixture.command(), text=True, capture_output=True
+                    )
+
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(
+                        "exact_version_materialization",
+                        result.stdout + result.stderr,
+                    )
+                    self.assertFalse((fixture.output / "report.md").exists())
 
     def test_missing_exact_version_materialization_check_fails_before_report_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:

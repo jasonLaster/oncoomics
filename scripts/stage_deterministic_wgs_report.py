@@ -19,6 +19,7 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
+import finalize_input_contract as INPUT_CONTRACT
 from capture_materializer_terminal import (
     EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS as EXPECTED_CROSSCHECK_RECEIPT_DOWNLOAD_CHECKS,
 )
@@ -170,15 +171,6 @@ EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS: dict[str, bool] = {
     "full_object_sha256": True,
     "local_sha256_matches_s3_checksum": True,
     "metadata": True,
-}
-EXPECTED_EXACT_MATERIALIZATION_ROW_CHECKS: dict[str, bool] = {
-    "version_id": True,
-    "content_length": True,
-    "local_bytes": True,
-    "checksums": True,
-    "checksum_type": True,
-    "sse": True,
-    "kms": True,
 }
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 S3_CHECKSUM_FIELDS = {
@@ -611,6 +603,16 @@ def integer_equals(value: Any, expected: int) -> bool:
         return int(value) == expected
     except (TypeError, ValueError):
         return False
+
+
+def exact_materialization_receipt_envelope(receipt: dict[str, Any]) -> bool:
+    observed = set(receipt)
+    unexpected = (
+        observed
+        - INPUT_CONTRACT.EXPECTED_MATERIALIZATION_KEYS
+        - INPUT_CONTRACT.OPTIONAL_MATERIALIZATION_RECOVERY_KEYS
+    )
+    return observed >= INPUT_CONTRACT.EXPECTED_MATERIALIZATION_KEYS and not unexpected
 
 
 def validate_stage_provenance(
@@ -2116,6 +2118,9 @@ def main() -> None:
     exact_materialization_valid = (
         not duplicate_materialized_keys
         and bool(consumed_artifacts)
+        and exact_materialization_receipt_envelope(exact_materialization)
+        and valid_sha256(exact_materialization.get("script_sha256"))
+        and str(exact_materialization.get("materialization_dir", "")).strip()
         and set(materialized_by_relative) == set(freeze_by_relative)
     )
     for relative_key, row in materialized_by_relative.items():
@@ -2124,6 +2129,7 @@ def main() -> None:
         row_checks = row.get("checks", {}) if isinstance(row.get("checks"), dict) else {}
         if not (
             local_path.is_file()
+            and set(row) == INPUT_CONTRACT.EXPECTED_MATERIALIZATION_ROW_KEYS
             and row.get("version_id") == freeze_destination.get("version_id")
             and row.get("bucket") == freeze_destination.get("bucket")
             and row.get("key") == freeze_destination.get("key")
@@ -2135,7 +2141,7 @@ def main() -> None:
             and row.get("kms_key_id") == args.expected_kms_key_arn
             and isinstance(row.get("checksums"), dict)
             and bool(row.get("checksums"))
-            and row_checks == EXPECTED_EXACT_MATERIALIZATION_ROW_CHECKS
+            and row_checks == INPUT_CONTRACT.EXPECTED_MATERIALIZATION_CHECKS
         ):
             exact_materialization_valid = False
     add_check(

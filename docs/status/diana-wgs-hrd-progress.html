@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local freeze consumers</li>
+          <li class="pill">Latest milestone = exact materialization staging</li>
+          <li class="pill">Exact materialization = envelope-bound</li>
           <li class="pill">Freeze worker checks = shared</li>
           <li class="pill">Batch worker metadata = exact</li>
           <li class="pill">Batch worker envelopes = exact</li>
@@ -361,7 +362,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 405dd91</li>
+          <li class="pill">Prior dashboard = 4215607</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -526,6 +527,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact exact-version materialization envelopes</strong>
+              <span>Deterministic staging now imports the materialization receipt contract from input-contract finalization and rejects stale top-level or per-object exact-version materialization metadata before writing <code>deterministic_full_wgs</code> report packets for Rosalind or AI review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · align post-terminal freeze helpers with exact Batch worker checks</strong>
               <span>Stage-provenance and final-artifact freezes now import the exact worker check map from Batch provenance capture, so fresh <code>terminal.execution.succeeded.json</code> receipts can pass while legacy pre-envelope worker check maps still fail closed before any private copy.</span>
@@ -820,6 +825,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T01:49:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind exact-version materialization envelopes:</strong>
+                <code>stage_deterministic_wgs_report.py</code> now shares the
+                exact materialization top-level, per-row, and check contracts
+                with <code>finalize_input_contract.py</code>. Stale extra or
+                missing metadata in <code>terminal.materialize.json</code> now
+                fails before deterministic report publication, keeping the
+                materialized-final tree exact before Rosalind or AI-review
+                packets can consume it.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T01:48:00-07:00">Jul 19 · local</time>
               <span>
