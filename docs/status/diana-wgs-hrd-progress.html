@@ -307,11 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>258d0f3577eb36fc3238414e9cc481f0a28df85f</strong>.
-          The latest work is exact materializer registration hardening:
-          <code>validate_materializer_registration.py</code> now requires exact
-          script-anchor, command, and registration check maps before emitting a
-          schema-3 registered-not-submitted receipt.
+          <strong>0717defb3ba4202433718b6ebbdda33a64a451e9</strong>.
+          The latest work is exact materializer submit hardening:
+          <code>submit_materializer_v4.py</code> now requires exact
+          shell-literal, command-check, and registration-definition maps before
+          v4 materializer submission can pass preflight and launch.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 258d0f3</li>
+          <li class="pill">Latest hardening = 0717def</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -332,8 +332,8 @@
           <ol class="tracks" aria-label="Operational progress by lane">
             <li class="track" style="--tone: var(--done)">
               <strong>Source custody hardening</strong>
-              <span>98%</span>
-              <div class="bar" aria-hidden="true" style="--pct: 98%"><span></span></div>
+              <span>99%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 99%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--blocked)">
               <strong>Deterministic terminal outputs</strong>
@@ -401,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 258d0f3</strong>
-              <span>Materializer registration now rejects missing, unexpected, or failed script-anchor, command, and registration maps before producing the registered-not-submitted receipt.</span>
+              <strong>Preserve 0717def</strong>
+              <span>v4 materializer submit preflight now rejects missing, unexpected, or failed shell-literal, command-check, and registration-definition maps before submitting.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +450,28 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>0717def Require exact materializer submit checks:</strong>
+                <code>submit_materializer_v4.py</code> now defines
+                <code>EXPECTED_SHELL_VALUES</code>,
+                <code>EXPECTED_BASE_COMMAND_CHECKS</code>, and
+                <code>EXPECTED_REGISTRATION_DEFINITION_CHECKS</code>; reuses
+                <code>require_exact_keys()</code> and
+                <code>check_map_mismatches()</code>; derives shell checks with
+                <code>expected_command_checks()</code>; and preserves
+                <code>command_errors</code> as a separate nested exact-map
+                failure channel. Submit preflight now rejects missing,
+                unexpected, or failed shell-literal, command, and
+                registration-definition checks before any v4 materializer
+                launch. <code>test_submit_materializer_v4.py</code> covers
+                missing or unexpected command keys, missing or unexpected shell
+                literal keys, missing or unexpected top-level
+                registration-definition keys, failed shell literal binding, and
+                failed <code>no_call_boundary</code> binding.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
