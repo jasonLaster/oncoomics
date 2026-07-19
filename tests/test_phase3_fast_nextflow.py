@@ -464,6 +464,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             '--source-report-manifest "rosalind_diana_wgs=${rosalind_report_manifest}"',
             process,
         )
+        self.assertIn("--allow-pre-route-source-reports", process)
         self.assertIn(
             "path(deterministic_report_manifest, name: 'deterministic_full_wgs/report_manifest.json')",
             process,
@@ -478,6 +479,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
             process,
         )
         self.assertIn('"source_report_manifests"', process)
+        self.assertIn('"source_report_binding_scope":"pre_route_deterministic_rosalind"', process)
         self.assertIn('"deterministic_full_wgs_report_manifest"', process)
         self.assertIn('"rosalind_diana_wgs_report_manifest"', process)
         self.assertIn('"classification_qc_status":"not_applicable"', process)

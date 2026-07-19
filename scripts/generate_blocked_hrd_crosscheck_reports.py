@@ -306,6 +306,7 @@ SOURCE_REPORT_METHOD_IDS = (
 )
 if SOURCE_REPORT_METHOD_IDS != REQUIRED_METHOD_IDS[: len(SOURCE_REPORT_METHOD_IDS)]:
     raise ValueError("blocked method source reports drifted from the HRD inventory")
+PRE_ROUTE_SOURCE_REPORT_METHOD_IDS = SOURCE_REPORT_METHOD_IDS[:2]
 
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 
@@ -366,7 +367,22 @@ def load_source_report_manifest(path: Path, method_id: str) -> None:
         raise ValueError(f"source report manifest review_summary is required: {method_id}")
 
 
-def load_source_report_manifests(values: Sequence[str]) -> dict[str, str]:
+def source_report_binding_scope(method_ids: Sequence[str]) -> str:
+    observed = tuple(method_ids)
+    if observed == SOURCE_REPORT_METHOD_IDS:
+        return "terminal_source_reports"
+    if observed == PRE_ROUTE_SOURCE_REPORT_METHOD_IDS:
+        return "pre_route_deterministic_rosalind"
+    raise ValueError(
+        f"unsupported blocked source-report binding: {list(observed)!r}"
+    )
+
+
+def load_source_report_manifests(
+    values: Sequence[str],
+    *,
+    allow_pre_route_source_reports: bool = False,
+) -> dict[str, str]:
     manifests: dict[str, str] = {}
     for value in values:
         method_id, separator, raw_path = value.partition("=")
@@ -380,17 +396,49 @@ def load_source_report_manifests(values: Sequence[str]) -> dict[str, str]:
         path = Path(raw_path)
         load_source_report_manifest(path, method_id)
         manifests[method_id] = sha256_file(path)
-    return validate_source_report_manifests(manifests)
+    return validate_source_report_manifests(
+        manifests,
+        allow_pre_route_source_reports=allow_pre_route_source_reports,
+    )
 
 
-def validate_source_report_manifests(value: Mapping[str, str]) -> dict[str, str]:
+def validate_source_report_manifests(
+    value: Mapping[str, str],
+    *,
+    allow_pre_route_source_reports: bool = False,
+) -> dict[str, str]:
     manifests = dict(value)
     for method_id, digest in manifests.items():
         if method_id not in REQUIRED_METHOD_IDS:
             raise ValueError(f"unexpected source report method: {method_id}")
         if SHA256_HEX.fullmatch(digest) is None:
             raise ValueError(f"source report manifest SHA-256 is malformed: {method_id}")
-    if tuple(manifests) != SOURCE_REPORT_METHOD_IDS:
+
+    observed = tuple(manifests)
+    if observed == SOURCE_REPORT_METHOD_IDS or (
+        allow_pre_route_source_reports
+        and observed == PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+    ):
+        return {method_id: manifests[method_id] for method_id in observed}
+
+    if allow_pre_route_source_reports:
+        expected_orders = (
+            SOURCE_REPORT_METHOD_IDS,
+            PRE_ROUTE_SOURCE_REPORT_METHOD_IDS,
+        )
+        expected_methods = set().union(*(set(order) for order in expected_orders))
+        missing = sorted(expected_methods - set(manifests))
+        unexpected = sorted(set(manifests) - expected_methods)
+        raise ValueError(
+            "source report manifests must bind either the four terminal "
+            "upstream report packets or the two pre-route deterministic/"
+            "Rosalind packets in exact order; "
+            f"expected={[list(order) for order in expected_orders]!r} "
+            f"observed={list(manifests)!r} missing={missing!r} "
+            f"unexpected={unexpected!r}"
+        )
+
+    if observed != SOURCE_REPORT_METHOD_IDS:
         missing = sorted(set(SOURCE_REPORT_METHOD_IDS) - set(manifests))
         unexpected = sorted(set(manifests) - set(SOURCE_REPORT_METHOD_IDS))
         raise ValueError(
@@ -399,7 +447,7 @@ def validate_source_report_manifests(value: Mapping[str, str]) -> dict[str, str]
             f"observed={list(manifests)!r} missing={missing!r} "
             f"unexpected={unexpected!r}"
         )
-    return {method_id: manifests[method_id] for method_id in SOURCE_REPORT_METHOD_IDS}
+    raise AssertionError("unreachable source-report manifest validation state")
 
 
 def require_safe_new_packet(path: Path) -> Path:
@@ -503,6 +551,7 @@ def render_report(
     *,
     run_id: str,
     source_report_manifests: Mapping[str, str],
+    source_report_binding_scope: str,
 ) -> str:
     lines = [
         f"# {spec['title']} — blocked method report",
@@ -513,6 +562,7 @@ def render_report(
         f"- classification_authorization: `{STATUS['classification_authorization']}`",
         f"- patient_result: `{STATUS['patient_result']}`",
         f"- generated_at: `{generated_at}`",
+        f"- source_report_binding_scope: `{source_report_binding_scope}`",
         "",
         (
             "The method was not run. This artifact contains no patient result, "
@@ -570,8 +620,13 @@ def generate(
     *,
     run_id: str = "",
     source_report_manifests: Mapping[str, str],
+    allow_pre_route_source_reports: bool = False,
 ) -> list[Path]:
-    source_report_manifests = validate_source_report_manifests(source_report_manifests)
+    source_report_manifests = validate_source_report_manifests(
+        source_report_manifests,
+        allow_pre_route_source_reports=allow_pre_route_source_reports,
+    )
+    binding_scope = source_report_binding_scope(source_report_manifests)
     output_root = prepare_output_root(output_root)
     generator_hash = sha256_file(Path(__file__).resolve())
     written: list[Path] = []
@@ -605,6 +660,7 @@ def generate(
                 "next_gate": method["next_gate"],
                 "sources": method["sources"],
                 "run_id": run_id,
+                "source_report_binding_scope": binding_scope,
                 "source_report_manifests": dict(source_report_manifests),
             }
             spec_path = target / "method_spec.json"
@@ -617,6 +673,7 @@ def generate(
                     generated_at,
                     run_id=run_id,
                     source_report_manifests=source_report_manifests,
+                    source_report_binding_scope=binding_scope,
                 ).encode("utf-8"),
             )
             manifest = {
@@ -636,8 +693,10 @@ def generate(
                 "next_gate": method["next_gate"],
                 "sources": method["sources"],
                 "run_id": run_id,
+                "source_report_binding_scope": binding_scope,
                 "review_summary": {
                     "evidence_scope": f"{method['title']} blocked-method specification",
+                    "source_report_binding_scope": binding_scope,
                     "source_report_manifests": dict(source_report_manifests),
                     "readiness": {
                         "execution_status": "not_run",
@@ -693,6 +752,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=("Hash-bind an upstream report manifest into each blocked packet; may be passed more than once."),
     )
     parser.add_argument(
+        "--allow-pre-route-source-reports",
+        action="store_true",
+        help=(
+            "Allow the two-report deterministic/Rosalind pre-route binding "
+            "used by the fast DAG before Sequenza and SigProfiler reports "
+            "exist. Omit this for terminal private-freeze packets."
+        ),
+    )
+    parser.add_argument(
         "--generated-at",
         default=datetime.now(timezone.utc).isoformat(),
         help=("Timestamp recorded in reports and manifests; pass a fixed value for reproducible tests."),
@@ -703,7 +771,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.output_dir,
             args.generated_at,
             run_id=args.run_id,
-            source_report_manifests=load_source_report_manifests(args.source_report_manifest),
+            source_report_manifests=load_source_report_manifests(
+                args.source_report_manifest,
+                allow_pre_route_source_reports=args.allow_pre_route_source_reports,
+            ),
+            allow_pre_route_source_reports=args.allow_pre_route_source_reports,
         )
     except (FileExistsError, ValueError) as error:
         raise SystemExit(f"Fail-closed: {error}") from error

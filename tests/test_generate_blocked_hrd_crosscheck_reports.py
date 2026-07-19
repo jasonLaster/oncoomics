@@ -371,10 +371,75 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                     {f"{method_id}_report_manifest": digest for method_id, digest in source_manifests.items()},
                     {key: digest for key, digest in manifest["source_sha256"].items() if key.endswith("_report_manifest")},
                 )
+                self.assertEqual(
+                    manifest["source_report_binding_scope"],
+                    "terminal_source_reports",
+                )
+                self.assertEqual(
+                    spec["source_report_binding_scope"],
+                    "terminal_source_reports",
+                )
+                self.assertEqual(
+                    manifest["review_summary"]["source_report_binding_scope"],
+                    "terminal_source_reports",
+                )
                 self.assertEqual(source_manifests, manifest["review_summary"]["source_report_manifests"])
 
             serialized = "\n".join(path.read_text(encoding="utf-8") for path in output.rglob("*.*"))
             self.assertNotIn(str(root), serialized)
+
+    def test_pre_route_generation_binds_deterministic_and_rosalind_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source_manifest_paths = []
+            for method_id in GENERATOR.PRE_ROUTE_SOURCE_REPORT_METHOD_IDS:
+                path = root / "upstream" / method_id / "report_manifest.json"
+                write_source_report_manifest(path, method_id=method_id)
+                source_manifest_paths.append(f"{method_id}={path}")
+            output = root / "blocked"
+            source_manifests = GENERATOR.load_source_report_manifests(
+                source_manifest_paths,
+                allow_pre_route_source_reports=True,
+            )
+
+            GENERATOR.generate(
+                output,
+                "2026-07-17T00:00:00+00:00",
+                run_id="diana-wgs-hrd-unit",
+                source_report_manifests=source_manifests,
+                allow_pre_route_source_reports=True,
+            )
+
+            for method in GENERATOR.METHODS:
+                directory = output / method["directory"]
+                report = (directory / "report.md").read_text(encoding="utf-8")
+                manifest = json.loads((directory / "report_manifest.json").read_text(encoding="utf-8"))
+                spec = json.loads((directory / "method_spec.json").read_text(encoding="utf-8"))
+
+                self.assertIn(
+                    "source_report_binding_scope: `pre_route_deterministic_rosalind`",
+                    report,
+                )
+                self.assertEqual(
+                    spec["source_report_binding_scope"],
+                    "pre_route_deterministic_rosalind",
+                )
+                self.assertEqual(
+                    manifest["source_report_binding_scope"],
+                    "pre_route_deterministic_rosalind",
+                )
+                self.assertEqual(
+                    tuple(spec["source_report_manifests"]),
+                    GENERATOR.PRE_ROUTE_SOURCE_REPORT_METHOD_IDS,
+                )
+                self.assertNotIn(
+                    "sequenza_scarhrd_report_manifest",
+                    manifest["source_sha256"],
+                )
+                self.assertNotIn(
+                    "sigprofiler_sbs3_report_manifest",
+                    manifest["source_sha256"],
+                )
 
     def test_generation_is_reproducible_with_fixed_timestamp(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -577,6 +642,27 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                     output,
                     "2026-07-17T00:00:00+00:00",
                     source_report_manifests={},
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_generation_rejects_pre_route_manifests_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source_manifests = {
+                method_id: "a" * 64
+                for method_id in GENERATOR.PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+            }
+            output = root / "blocked"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source report manifests must bind the four upstream report packets",
+            ):
+                ORIGINAL_GENERATE(
+                    output,
+                    "2026-07-17T00:00:00+00:00",
+                    source_report_manifests=source_manifests,
                 )
 
             self.assertFalse(output.exists())

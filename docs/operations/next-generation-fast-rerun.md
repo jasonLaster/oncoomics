@@ -427,16 +427,15 @@ internal, privately published `forbidden_tokens.json` work artifact before the P
 BAM/CNV/SV evidence jobs can start; `FAST_STAGE_ROSALIND_PACKET` then consumes
 the canonicalized file rather than the raw Nextflow parameter.
 `FAST_STAGE_BLOCKED_CROSSCHECKS` consumes the Rosalind packet as an ordering
-barrier and runs `scripts/generate_blocked_hrd_crosscheck_reports.py` to emit
-the final three canonical no-call method packets: FACETS→scarHRD,
-Oncoanalyser→CHORD, and HRDetect. These tiny reports contain no patient-derived
-result; they only document the exact route prerequisites, current blockers,
-source revisions, and next validation gates required before those methods can
-be executed or compared against the deterministic and Rosalind reports. Each
-blocked report also records the fast run ID plus the upstream deterministic and
-Rosalind `report_manifest.json` SHA-256 values, so the seven-method bundle can
-prove the blocked methods were staged for the same deterministic/Rosalind
-evidence handoff.
+barrier and runs `scripts/generate_blocked_hrd_crosscheck_reports.py` in
+explicit pre-route mode to emit FACETS→scarHRD, Oncoanalyser→CHORD, and
+HRDetect no-call method packets for the fast DAG's five-packet validation gate.
+These tiny reports contain no patient-derived result; they only document the
+exact route prerequisites, current blockers, source revisions, and next
+validation gates required before those methods can be executed or compared
+against the deterministic and Rosalind reports. Each blocked report also
+records the fast run ID plus the upstream deterministic and Rosalind
+`report_manifest.json` SHA-256 values.
 `FAST_VALIDATE_REPORT_PACKETS` is the final cheap execute-mode gate: it runs
 `scripts/validate_phase3_fast_report_packets.py` against the deterministic
 packet, the Diana WGS Rosalind packet, and the three blocked cross-check
@@ -449,18 +448,41 @@ source-freeze runbook then passes that `forbidden_tokens.json` path into every
 `publish_private_report.py` command so the upload-time packet validation uses
 the same static-plus-run scan set without inlining private identifiers into the
 runbook text.
-At that point the fast DAG has staged five of the seven source packets required
-by `scripts/render_source_report_freeze_runbook.py`. It must still withhold the
-private-freeze, independent AI-review, comparative-synthesis, and
-reviewed-public handoffs until `sequenza_scarhrd` and `sigprofiler_sbs3` have
-real executable-route report packets backed by a published, versioned,
-alias-only cross-check input contract. Once those two executable reports exist,
-render the seven-source freezer with the nested packet directories that
-Nextflow publishes under the Phase 3 fast outdir:
+At that point the fast DAG has staged five draft source packets for local
+validation. It must still withhold the private-freeze, independent AI-review,
+comparative-synthesis, and reviewed-public handoffs until:
+
+1. `sequenza_scarhrd` and `sigprofiler_sbs3` have real executable-route report
+   packets backed by a published, versioned, alias-only cross-check input
+   contract.
+2. `scripts/generate_blocked_hrd_crosscheck_reports.py` has been rerun in its
+   default terminal mode, with deterministic, Rosalind, Sequenza→scarHRD, and
+   SigProfiler SBS3 source report manifests. That replaces the fast DAG's
+   `pre_route_deterministic_rosalind` blocked packets with
+   `terminal_source_reports` packets that are bound to all four upstream
+   packets.
+
+Once those seven packets exist, render the seven-source freezer with the nested
+packet directories that Nextflow publishes under the Phase 3 fast outdir plus
+the terminal blocked packet directory:
 
 ```sh
 FAST_ROOT=/path/to/phase3_wgs_fast
+TERMINAL_BLOCKED_ROOT=/path/to/terminal-blocked-crosschecks
 RUN_ID=diana-wgs-hrd-20260716T033101Z
+
+python3 scripts/generate_blocked_hrd_crosscheck_reports.py \
+  --output-dir "$TERMINAL_BLOCKED_ROOT" \
+  --run-id "$RUN_ID" \
+  --source-report-manifest \
+    "deterministic_full_wgs=$FAST_ROOT/deterministic_report/workspace/results/phase3_wgs_fast/deterministic_report/report_manifest.json" \
+  --source-report-manifest \
+    "rosalind_diana_wgs=$FAST_ROOT/rosalind_hrd/workspace/results/rosalind_hrd/diana_wgs/${RUN_ID}/report_manifest.json" \
+  --source-report-manifest \
+    "sequenza_scarhrd=/path/to/sequenza_scarhrd/report_manifest.json" \
+  --source-report-manifest \
+    "sigprofiler_sbs3=/path/to/sigprofiler_sbs3/report_manifest.json" \
+  --generated-at <terminal-iso8601>
 
 python3 scripts/render_source_report_freeze_runbook.py \
   --output .codex-tmp/hrd-reports/deterministic-full/source-freeze.${RUN_ID}.md \
@@ -469,14 +491,13 @@ python3 scripts/render_source_report_freeze_runbook.py \
     "$FAST_ROOT/deterministic_report/workspace/results/phase3_wgs_fast/deterministic_report" \
   --rosalind-report-dir \
     "$FAST_ROOT/rosalind_hrd/workspace/results/rosalind_hrd/diana_wgs/${RUN_ID}" \
-  --blocked-crosscheck-root \
-    "$FAST_ROOT/blocked_crosschecks/workspace/results/phase3_wgs_fast/blocked_crosschecks" \
   --phase3-fast-report-packet-validation \
     "$FAST_ROOT/report_packet_validation/workspace/manifests/phase3_wgs_fast/report_packet_validation.json" \
   --phase3-fast-forbidden-tokens-file \
     "$FAST_ROOT/forbidden_tokens/workspace/manifests/phase3_wgs_fast/forbidden_tokens.json" \
   --sequenza-report-dir /path/to/sequenza_scarhrd \
-  --sigprofiler-report-dir /path/to/sigprofiler_sbs3
+  --sigprofiler-report-dir /path/to/sigprofiler_sbs3 \
+  --blocked-crosscheck-root "$TERMINAL_BLOCKED_ROOT"
 ```
 
 ### Gate 1: P5en and Parabricks smoke

@@ -28,10 +28,16 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("FAST_STAGE_BLOCKED_CROSSCHECKS", text)
         self.assertIn("FAST_VALIDATE_REPORT_PACKETS", text)
         self.assertIn("report_packet_validation.json", text)
-        self.assertIn("five of the seven source packets", text)
+        self.assertIn("five draft source packets for local\nvalidation", text)
+        self.assertIn("explicit pre-route mode", text)
+        self.assertIn("pre_route_deterministic_rosalind", text)
+        self.assertIn("default terminal mode", text)
+        self.assertIn("terminal_source_reports", text)
+        self.assertIn("Once those seven packets exist", text)
         self.assertIn("scripts/render_source_report_freeze_runbook.py", text)
         self.assertIn("sequenza_scarhrd", text)
         self.assertIn("sigprofiler_sbs3", text)
+        self.assertIn("TERMINAL_BLOCKED_ROOT=/path/to/terminal-blocked-crosschecks", text)
         self.assertIn("--deterministic-report-dir", text)
         self.assertIn("--rosalind-report-dir", text)
         self.assertIn("--blocked-crosscheck-root", text)
@@ -43,10 +49,12 @@ class FastRerunDocsTests(unittest.TestCase):
             "$FAST_ROOT/rosalind_hrd/workspace/results/rosalind_hrd/diana_wgs/${RUN_ID}",
             text,
         )
-        self.assertIn(
+        self.assertNotIn(
             "$FAST_ROOT/blocked_crosschecks/workspace/results/phase3_wgs_fast/blocked_crosschecks",
             text,
         )
+        self.assertIn('--output-dir "$TERMINAL_BLOCKED_ROOT"', text)
+        self.assertIn('--blocked-crosscheck-root "$TERMINAL_BLOCKED_ROOT"', text)
         self.assertIn("--phase3-fast-report-packet-validation", text)
         self.assertIn("--phase3-fast-forbidden-tokens-file", text)
         self.assertIn(
@@ -58,7 +66,7 @@ class FastRerunDocsTests(unittest.TestCase):
             text,
         )
         self.assertIn("static-plus-run scan set without inlining private identifiers", text)
-        self.assertIn("published, versioned,\nalias-only cross-check input contract", text)
+        self.assertIn("published, versioned, alias-only cross-check input", text)
         self.assertIn("evidence_join_manifest.json", text)
         self.assertIn("final_evidence_manifest.json", text)
         self.assertIn("generate_blocked_hrd_crosscheck_reports.py", text)

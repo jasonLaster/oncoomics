@@ -1941,6 +1941,7 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
         --run-id "${params.phase3_fast_run_id}" \
         --source-report-manifest "deterministic_full_wgs=${deterministic_report_manifest}" \
         --source-report-manifest "rosalind_diana_wgs=${rosalind_report_manifest}" \
+        --allow-pre-route-source-reports \
         --generated-at "${params.phase3_fast_generated_at}"
     """
 
@@ -1959,7 +1960,7 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
       report="\$output/\$method_id/report.md"
       report_manifest="\$output/\$method_id/report_manifest.json"
       cat > "\$method_spec" <<JSON
-    {"schema_version":1,"method_id":"\$method_id","execution_status":"not_run","evidence_status":"blocked","interpretation_status":"no_call","patient_result":"none","source_report_manifests":{"deterministic_full_wgs":"\$deterministic_manifest_sha","rosalind_diana_wgs":"\$rosalind_manifest_sha"}}
+    {"schema_version":1,"method_id":"\$method_id","execution_status":"not_run","evidence_status":"blocked","interpretation_status":"no_call","patient_result":"none","source_report_binding_scope":"pre_route_deterministic_rosalind","source_report_manifests":{"deterministic_full_wgs":"\$deterministic_manifest_sha","rosalind_diana_wgs":"\$rosalind_manifest_sha"}}
     JSON
       cat > "\$report" <<'MD'
     # Blocked HRD cross-check report
@@ -1969,7 +1970,7 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
       method_spec_sha="\$(shasum -a 256 "\$method_spec" | awk '{print \$1}')"
       report_sha="\$(shasum -a 256 "\$report" | awk '{print \$1}')"
       cat > "\$report_manifest" <<JSON
-    {"schema_version":1,"method_id":"\$method_id","report_kind":"blocked_method","evidence_status":"blocked","authorized_hrd_state":"no_call","classification_authorized":false,"classification_qc_status":"not_applicable","source_sha256":{"deterministic_full_wgs_report_manifest":"\$deterministic_manifest_sha","rosalind_diana_wgs_report_manifest":"\$rosalind_manifest_sha"},"support_sha256":{"method_spec.json":"\$method_spec_sha"},"report_sha256":"\$report_sha","review_summary":{"source_report_manifests":{"deterministic_full_wgs":"\$deterministic_manifest_sha","rosalind_diana_wgs":"\$rosalind_manifest_sha"}}}
+    {"schema_version":1,"method_id":"\$method_id","report_kind":"blocked_method","evidence_status":"blocked","authorized_hrd_state":"no_call","classification_authorized":false,"classification_qc_status":"not_applicable","source_report_binding_scope":"pre_route_deterministic_rosalind","source_sha256":{"deterministic_full_wgs_report_manifest":"\$deterministic_manifest_sha","rosalind_diana_wgs_report_manifest":"\$rosalind_manifest_sha"},"support_sha256":{"method_spec.json":"\$method_spec_sha"},"report_sha256":"\$report_sha","review_summary":{"source_report_binding_scope":"pre_route_deterministic_rosalind","source_report_manifests":{"deterministic_full_wgs":"\$deterministic_manifest_sha","rosalind_diana_wgs":"\$rosalind_manifest_sha"}}}
     JSON
     done
     """
