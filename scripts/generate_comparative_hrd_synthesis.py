@@ -920,6 +920,36 @@ def require_string_list(value: Any, label: str) -> List[str]:
     return value
 
 
+def require_reviewer_model_summary(model: Any, reviewer: str) -> None:
+    if (
+        not isinstance(model, dict)
+        or set(model) != {
+            "provider",
+            "model_id",
+            "catalog_verified_at",
+            "latest_available_attested",
+        }
+        or not str(model.get("provider", "")).strip()
+        or not str(model.get("model_id", "")).strip()
+        or model.get("latest_available_attested") is not True
+    ):
+        raise ValueError(
+            f"comparative synthesis reviewer {reviewer} model summary is not exact"
+        )
+    try:
+        verified_at = datetime.fromisoformat(
+            str(model["catalog_verified_at"]).replace("Z", "+00:00")
+        )
+    except ValueError as error:
+        raise ValueError(
+            f"comparative synthesis reviewer {reviewer} model summary is not exact"
+        ) from error
+    if verified_at.tzinfo is None:
+        raise ValueError(
+            f"comparative synthesis reviewer {reviewer} model summary is not exact"
+        )
+
+
 def require_synthesis_review_summary(manifest: Dict[str, Any]) -> Tuple[str, ...]:
     summary = manifest.get("review_summary")
     if not isinstance(summary, dict) or not summary:
@@ -981,11 +1011,9 @@ def require_synthesis_review_summary(manifest: Dict[str, Any]) -> Tuple[str, ...
         model = row.get("model")
         claim_count = row.get("claim_count")
         disagreement_count = row.get("disagreement_claim_count")
+        require_reviewer_model_summary(model, reviewer)
         if (
-            not isinstance(model, dict)
-            or not str(model.get("provider", "")).strip()
-            or not str(model.get("model_id", "")).strip()
-            or not isinstance(claim_count, int)
+            not isinstance(claim_count, int)
             or claim_count < 1
             or not isinstance(disagreement_count, int)
             or disagreement_count < 0

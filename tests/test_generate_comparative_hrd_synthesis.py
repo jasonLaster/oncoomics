@@ -104,6 +104,8 @@ def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
                 {
                     "reviewer_id": "A",
                     "model": {
+                        "catalog_verified_at": "2026-07-17T00:00:00+00:00",
+                        "latest_available_attested": True,
                         "provider": "synthetic-provider-a",
                         "model_id": "latest-model-a",
                     },
@@ -113,6 +115,8 @@ def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
                 {
                     "reviewer_id": "B",
                     "model": {
+                        "catalog_verified_at": "2026-07-17T00:00:00+00:00",
+                        "latest_available_attested": True,
                         "provider": "synthetic-provider-b",
                         "model_id": "latest-model-b",
                     },
@@ -963,6 +967,73 @@ class GenerateSynthesisTests(unittest.TestCase):
                 [f"E{index:03d}" for index in range(1, 8)],
             )
             self.assertIn("source_not_comparable", rows[4]["structured_disagreement_types"])
+
+    def test_synthesis_manifest_rejects_incomplete_reviewer_model_summary(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            manifest_path = fixture.output_dir / "report_manifest.json"
+
+            for label, mutate_model in (
+                (
+                    "missing catalog timestamp",
+                    lambda model: model.pop("catalog_verified_at"),
+                ),
+                (
+                    "non-attested model",
+                    lambda model: model.__setitem__("latest_available_attested", False),
+                ),
+                (
+                    "malformed catalog timestamp",
+                    lambda model: model.__setitem__("catalog_verified_at", "not-iso8601"),
+                ),
+            ):
+                with self.subTest(label):
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    mutate_model(manifest["review_summary"]["reviewers"][0]["model"])
+                    write_json(manifest_path, manifest)
+
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "comparative synthesis reviewer A model summary is not exact",
+                    ):
+                        GENERATE.require_synthesis_report_manifest(
+                            fixture.output_dir
+                        )
+
+    def test_synthesis_manifest_preserves_reviewer_model_contracts(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            manifest = json.loads(
+                (fixture.output_dir / "report_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                [
+                    row["model"]
+                    for row in manifest["review_summary"]["reviewers"]
+                ],
+                [
+                    {
+                        "catalog_verified_at": "2026-07-17T00:00:00+00:00",
+                        "latest_available_attested": True,
+                        "model_id": "latest-model-a",
+                        "provider": "synthetic-provider-a",
+                    },
+                    {
+                        "catalog_verified_at": "2026-07-17T00:00:00+00:00",
+                        "latest_available_attested": True,
+                        "model_id": "latest-model-b",
+                        "provider": "synthetic-provider-b",
+                    },
+                ],
+            )
 
     def test_hcc1395_inventory_generates_hcc_bound_synthesis(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-hcc-") as temporary:
