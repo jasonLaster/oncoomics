@@ -6,6 +6,7 @@ import json
 import sys
 import tempfile
 import unittest
+from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
 
@@ -687,8 +688,10 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                         },
                         "container": {"task_arn": job["container"]["taskArn"]},
                         "worker": {
-                            "kms_key_id": "arn:aws:kms:us-east-1:172630973301:key/test",
-                            "checks": {"task_identity": True},
+                            "kms_key_id": (
+                                "arn:aws:kms:us-east-1:172630973301:key/test"
+                            ),
+                            "checks": dict(MODULE.EXPECTED_BATCH_WORKER_CHECKS),
                         },
                     }
                 ),
@@ -858,7 +861,7 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             "container": {"task_arn": job["container"]["taskArn"]},
             "worker": {
                 "kms_key_id": "arn:aws:kms:us-east-1:172630973301:key/test",
-                "checks": {"task_identity": True, "sha256": True},
+                "checks": dict(MODULE.EXPECTED_BATCH_WORKER_CHECKS),
             },
         }
         kwargs = {
@@ -904,6 +907,16 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 },
                 **kwargs,
             )
+        for label, mutate in (
+            ("missing", lambda checks: checks.pop("receipt_upload")),
+            ("unexpected", lambda checks: checks.__setitem__("forged_extra", True)),
+            ("failed", lambda checks: checks.__setitem__("live_freeze_command", False)),
+        ):
+            with self.subTest(label=label):
+                candidate = deepcopy(receipt)
+                mutate(candidate["worker"]["checks"])
+                with self.assertRaisesRegex(ValueError, "exact successful Batch job"):
+                    MODULE.validate_execution_binding(candidate, **kwargs)
 
 
 if __name__ == "__main__":

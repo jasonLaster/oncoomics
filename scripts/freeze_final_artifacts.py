@@ -23,6 +23,22 @@ from typing import Any
 from urllib.parse import quote
 
 S3_URI = re.compile(r"^s3://([^/]+)/(.+)$")
+EXPECTED_BATCH_WORKER_CHECKS = {
+    "receipt_status": True,
+    "receipt_checks": True,
+    "receipt_upload": True,
+    "task_identity": True,
+    "task_host_mapping": True,
+    "hash_command_definition": True,
+    "freeze_command_definition": True,
+    "live_hash_command": True,
+    "live_freeze_command": True,
+    "exact_version": True,
+    "bytes": True,
+    "sha256": True,
+    "full_object_checksum": True,
+    "kms": True,
+}
 CHECKSUM_FIELDS = (
     "ChecksumCRC64NVME",
     "ChecksumSHA256",
@@ -595,9 +611,7 @@ def validate_execution_binding(
         or normalized_attempts[0].get("exit_code") != 0
         or captured_container.get("task_arn") != live_container.get("taskArn")
         or batch.get("log_stream") != live_container.get("logStreamName")
-        or not isinstance(worker_checks, dict)
-        or not worker_checks
-        or not all(value is True for value in worker_checks.values())
+        or worker_checks != EXPECTED_BATCH_WORKER_CHECKS
     ):
         raise ValueError("execution receipt does not match the exact successful Batch job")
 

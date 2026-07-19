@@ -118,7 +118,7 @@ def execution_fixture() -> tuple[dict, dict]:
                     "ascii"
                 )
             },
-            "checks": {"task_identity": True, "sha256": True},
+            "checks": dict(MODULE.EXPECTED_BATCH_WORKER_CHECKS),
         },
     }
     return receipt, job
@@ -201,6 +201,15 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         wrong_effective_timeout = deepcopy(receipt)
         wrong_effective_timeout["batch"]["timeout"]["attemptDurationSeconds"] = 64800
         tampered.append(wrong_effective_timeout)
+        missing_worker_check = deepcopy(receipt)
+        missing_worker_check["worker"]["checks"].pop("receipt_upload")
+        tampered.append(missing_worker_check)
+        unexpected_worker_check = deepcopy(receipt)
+        unexpected_worker_check["worker"]["checks"]["forged_extra"] = True
+        tampered.append(unexpected_worker_check)
+        failed_worker_check = deepcopy(receipt)
+        failed_worker_check["worker"]["checks"]["live_freeze_command"] = False
+        tampered.append(failed_worker_check)
         for candidate in tampered:
             with self.subTest(candidate=candidate):
                 with self.assertRaisesRegex(ValueError, "exact successful"):

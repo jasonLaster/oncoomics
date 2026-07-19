@@ -26,6 +26,22 @@ from urllib.parse import quote
 SOURCE_NAMES = ("preflight.json", "gather.json")
 REFERENCE_LABEL = "ucsc_hg38_analysis_set_full"
 PREFLIGHT_REFERENCE_LABEL = "UCSC hg38 analysis set full"
+EXPECTED_BATCH_WORKER_CHECKS = {
+    "receipt_status": True,
+    "receipt_checks": True,
+    "receipt_upload": True,
+    "task_identity": True,
+    "task_host_mapping": True,
+    "hash_command_definition": True,
+    "freeze_command_definition": True,
+    "live_hash_command": True,
+    "live_freeze_command": True,
+    "exact_version": True,
+    "bytes": True,
+    "sha256": True,
+    "full_object_checksum": True,
+    "kms": True,
+}
 CHECKSUM_FIELDS = (
     "ChecksumCRC64NVME",
     "ChecksumSHA256",
@@ -433,9 +449,7 @@ def validate_execution(
         or int(worker.get("bytes", 0)) <= 0
         or worker.get("server_side_encryption") != "aws:kms"
         or worker.get("kms_key_id") != kms_key_arn
-        or not isinstance(worker_checks, dict)
-        or not worker_checks
-        or not all(value is True for value in worker_checks.values())
+        or worker_checks != EXPECTED_BATCH_WORKER_CHECKS
     ):
         raise ValueError("execution receipt does not match the exact successful Batch job")
     expected_worker_checksum = base64.b64encode(bytes.fromhex(worker_sha)).decode("ascii")
