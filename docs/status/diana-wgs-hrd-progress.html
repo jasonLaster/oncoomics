@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact runbook receipt hashes</li>
+          <li class="pill">Latest milestone = local exact final contract hashes</li>
+          <li class="pill">Final contract hashes = exact</li>
           <li class="pill">Runbook receipt hashes = exact</li>
           <li class="pill">Deterministic report hashes = exact</li>
           <li class="pill">Cross-check route hashes = exact</li>
@@ -888,6 +889,10 @@
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact final contract hashes</strong>
+              <span>The alias-only HRD cross-check input finalizer now rejects coerced SHA-256 values in anchor receipts, exact materialization receipts, materializer script receipts, and source custody rows before terminal final artifacts can be bound into the downstream cross-check input contract.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact cross-check route hashes</strong>
               <span>The cross-check report stager now rejects coerced SHA-256 values in route download-verification rows and route report manifests before staging alias-only PASS-SNV/SBS96, scarHRD, or HRDetect cross-check packets for synthesis.</span>
             </li>
@@ -1425,6 +1430,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T13:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact final contract hashes:</strong>
+                the alias-only HRD cross-check input finalizer now rejects
+                coerced SHA-256 values in anchor receipts, exact materialization
+                receipts, materializer script receipts, and source custody rows
+                before terminal final artifacts can be bound into the downstream
+                cross-check input contract. No live cloud action, compute
+                action, or replacement run was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T13:15:00-07:00">Jul 19 · local</time>
               <span>

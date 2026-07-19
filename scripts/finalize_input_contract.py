@@ -302,10 +302,9 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
 
 
 def require_hex(value: Any, label: str) -> str:
-    text = str(value).lower()
-    if not HEX64.fullmatch(text):
+    if not isinstance(value, str) or not HEX64.fullmatch(value):
         raise ValueError(f"{label} is not an exact SHA-256")
-    return text
+    return value
 
 
 def s3_key(value: Any, label: str) -> str:
@@ -411,7 +410,8 @@ def validate_anchor(
     if (
         not exact_schema_version(anchor, 1)
         or anchor.get("status") != "passed"
-        or str(anchor.get("receipt_sha256", "")).lower() != receipt_hash
+        or require_hex(anchor.get("receipt_sha256"), f"{label} anchor receipt")
+        != receipt_hash
         or not exact_int(anchor.get("receipt_bytes"), receipt_path.stat().st_size)
         or not str(anchor.get("receipt_uri", "")).startswith(
             "s3://diana-omics-private-results-"
@@ -518,7 +518,11 @@ def validate_exact_materialization(
     if (
         not exact_schema_version(receipt, 1)
         or receipt.get("status") != "passed"
-        or str(receipt.get("freeze_receipt_sha256", "")).lower() != freeze_sha256
+        or require_hex(
+            receipt.get("freeze_receipt_sha256"),
+            "exact-version materialization freeze receipt",
+        )
+        != freeze_sha256
         or not isinstance(rows, list)
         or not rows
         or not exact_int(receipt.get("object_count"), len(rows))
@@ -603,7 +607,10 @@ def finalize(
         or crosscheck_receipt.get("destination_initial_version_history_count") != 0
         or crosscheck_receipt.get("receipt_anchor_strategy")
         != "sha256_content_addressed_create_only"
-        or str(crosscheck_receipt.get("script_sha256", "")).lower()
+        or require_hex(
+            crosscheck_receipt.get("script_sha256"),
+            "cross-check materializer script",
+        )
         != require_hex(
             expected_crosscheck_materializer_sha256,
             "expected cross-check materializer script",
@@ -686,8 +693,14 @@ def finalize(
         if (
             exact is None
             or row.get("version_id") != exact.get("version_id")
-            or str(row.get("sha256", "")).lower()
-            != str(exact.get("sha256", "")).lower()
+            or require_hex(
+                row.get("sha256"),
+                f"cross-check source {source_role}",
+            )
+            != require_hex(
+                exact.get("sha256"),
+                f"exact final freeze {source_role}",
+            )
         ):
             raise ValueError(f"cross-check source {source_role} is not the exact final freeze")
     for source_role, reference_role in REFERENCE_ROLES.items():
@@ -702,8 +715,14 @@ def finalize(
         if (
             row.get("uri") != declared.get("uri")
             or row.get("version_id") != declared.get("version_id")
-            or str(row.get("sha256", "")).lower()
-            != str(declared.get("sha256", "")).lower()
+            or require_hex(
+                row.get("sha256"),
+                f"cross-check reference {source_role}",
+            )
+            != require_hex(
+                declared.get("sha256"),
+                f"declared reference {reference_role}",
+            )
         ):
             raise ValueError(f"cross-check reference {source_role} differs from contract")
 

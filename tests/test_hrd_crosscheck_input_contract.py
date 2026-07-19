@@ -970,6 +970,45 @@ class CustodyHandoffTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not the exact final freeze"):
             fixture.finalize()
 
+    def test_finalizer_rejects_coerced_crosscheck_custody_hashes(self):
+        numeric_sha256 = int("1" * 64)
+
+        def coerce_exact_freeze_hash(fixture: CustodyFixture) -> None:
+            fixture.freeze_sha = "1" * 64
+            fixture.freeze_anchor["receipt_sha256"] = "1" * 64
+            fixture.exact["freeze_receipt_sha256"] = numeric_sha256
+
+        def coerce_crosscheck_script(fixture: CustodyFixture) -> None:
+            fixture.materializer_sha = "1" * 64
+            fixture.cross["script_sha256"] = numeric_sha256
+
+        def coerce_reference_source(fixture: CustodyFixture) -> None:
+            fixture.cross["source_custody"]["fasta"]["sha256"] = numeric_sha256
+
+        for label, mutate, message in (
+            (
+                "exact_freeze_hash",
+                coerce_exact_freeze_hash,
+                "exact-version materialization freeze receipt is not an exact SHA-256",
+            ),
+            (
+                "crosscheck_script",
+                coerce_crosscheck_script,
+                "cross-check materializer script is not an exact SHA-256",
+            ),
+            (
+                "reference_source",
+                coerce_reference_source,
+                "cross-check reference fasta is not an exact SHA-256",
+            ),
+        ):
+            with self.subTest(label=label):
+                fixture = CustodyFixture()
+                mutate(fixture)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    fixture.finalize()
+
     def test_finalizer_rejects_incomplete_materialization_row_checks(self):
         fixture = CustodyFixture()
         fixture.exact["objects"][0]["checks"].pop("checksum_type")
