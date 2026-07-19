@@ -307,6 +307,8 @@ SOURCE_REPORT_METHOD_IDS = (
 if SOURCE_REPORT_METHOD_IDS != REQUIRED_METHOD_IDS[: len(SOURCE_REPORT_METHOD_IDS)]:
     raise ValueError("blocked method source reports drifted from the HRD inventory")
 PRE_ROUTE_SOURCE_REPORT_METHOD_IDS = SOURCE_REPORT_METHOD_IDS[:2]
+TERMINAL_SOURCE_REPORT_BINDING_SCOPE = "terminal_source_reports"
+PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE = "pre_route_deterministic_rosalind"
 
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 
@@ -370,9 +372,9 @@ def load_source_report_manifest(path: Path, method_id: str) -> None:
 def source_report_binding_scope(method_ids: Sequence[str]) -> str:
     observed = tuple(method_ids)
     if observed == SOURCE_REPORT_METHOD_IDS:
-        return "terminal_source_reports"
+        return TERMINAL_SOURCE_REPORT_BINDING_SCOPE
     if observed == PRE_ROUTE_SOURCE_REPORT_METHOD_IDS:
-        return "pre_route_deterministic_rosalind"
+        return PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE
     raise ValueError(
         f"unsupported blocked source-report binding: {list(observed)!r}"
     )

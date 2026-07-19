@@ -13,6 +13,11 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from forbidden_text import normalize_forbidden_tokens_json
+from generate_blocked_hrd_crosscheck_reports import (
+    PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE,
+    PRE_ROUTE_SOURCE_REPORT_METHOD_IDS,
+)
+from hrd_report_inventory import BLOCKED_CROSSCHECK_METHOD_IDS
 from publish_private_report import canonical_packet_digest, validate_packet_dir
 from render_ai_synthesis_runbook import FORBIDDEN_TOKENS
 from runbook_io import require_real_input_file, require_safe_output_path
@@ -179,17 +184,82 @@ def validate_validation_receipt_matches_packets(
     packet_dirs: Mapping[str, Path],
     forbidden_tokens: tuple[str, ...],
     expected_forbidden_tokens_sha256: str | None = None,
+    method_ids: tuple[str, ...] = PHASE3_FAST_VALIDATED_METHOD_IDS,
 ) -> None:
     observed = load_validation_receipt_packet_sha256s(
         path,
         expected_forbidden_tokens_sha256,
     )
+    unexpected = sorted(set(method_ids) - set(PHASE3_FAST_VALIDATED_METHOD_IDS))
+    if unexpected:
+        raise ValueError(
+            "unexpected Phase 3 fast validation methods: " + ", ".join(unexpected)
+        )
+
     expected = {}
-    for method_id in PHASE3_FAST_VALIDATED_METHOD_IDS:
+    for method_id in method_ids:
         rows = validate_packet_dir(packet_dirs[method_id], method_id, forbidden_tokens)
         expected[method_id] = canonical_packet_digest(rows)
-    if observed != expected:
+    observed_subset = {method_id: observed.get(method_id, "") for method_id in method_ids}
+    if observed_subset != expected:
         raise ValueError("report packet validation receipt does not match current packets")
+
+
+def load_packet_json(packet_dir: Path, name: str, label: str) -> dict[str, Any]:
+    path = packet_dir / name
+    require_real_input_file(path, label)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return payload
+
+
+def validate_pre_route_blocked_packet(packet_dir: Path, method_id: str) -> None:
+    manifest = load_packet_json(
+        packet_dir,
+        "report_manifest.json",
+        f"{method_id} blocked report manifest",
+    )
+    method_spec = load_packet_json(
+        packet_dir,
+        "method_spec.json",
+        f"{method_id} blocked method spec",
+    )
+    review_summary = manifest.get("review_summary")
+    source_sha256 = manifest.get("source_sha256")
+    method_spec_manifests = method_spec.get("source_report_manifests")
+    review_summary_manifests = (
+        review_summary.get("source_report_manifests")
+        if isinstance(review_summary, dict)
+        else None
+    )
+    source_report_sha256 = (
+        {
+            key.removesuffix("_report_manifest"): value
+            for key, value in source_sha256.items()
+            if isinstance(key, str) and key.endswith("_report_manifest")
+        }
+        if isinstance(source_sha256, dict)
+        else {}
+    )
+    if (
+        method_spec.get("source_report_binding_scope")
+        != PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE
+        or manifest.get("source_report_binding_scope")
+        != PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE
+        or not isinstance(review_summary, dict)
+        or review_summary.get("source_report_binding_scope")
+        != PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE
+        or not isinstance(method_spec_manifests, dict)
+        or tuple(method_spec_manifests) != PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+        or not isinstance(review_summary_manifests, dict)
+        or tuple(review_summary_manifests) != PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+        or tuple(source_report_sha256) != PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+    ):
+        raise ValueError(
+            f"{method_id} blocked packet must use "
+            f"{PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE} source binding"
+        )
 
 
 def validate_packets(
@@ -206,6 +276,8 @@ def validate_packets(
     packets = []
     for _, method_id in PACKET_ARG_TO_METHOD:
         rows = validate_packet_dir(packet_dirs[method_id], method_id, forbidden_tokens)
+        if method_id in BLOCKED_CROSSCHECK_METHOD_IDS:
+            validate_pre_route_blocked_packet(packet_dirs[method_id], method_id)
         packets.append(
             {
                 "method_id": method_id,

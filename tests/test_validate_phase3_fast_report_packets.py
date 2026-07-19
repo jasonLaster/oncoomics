@@ -51,6 +51,24 @@ def write_packet(directory: Path, method_id: str) -> None:
                 encoding="utf-8",
             )
 
+    source_report_manifests = {
+        "deterministic_full_wgs": "b" * 64,
+        "rosalind_diana_wgs": "c" * 64,
+    }
+    if method_id.endswith("_blocked"):
+        method_spec_path = directory / "method_spec.json"
+        method_spec = json.loads(method_spec_path.read_text(encoding="utf-8"))
+        method_spec.update(
+            {
+                "source_report_binding_scope": "pre_route_deterministic_rosalind",
+                "source_report_manifests": source_report_manifests,
+            }
+        )
+        method_spec_path.write_text(
+            json.dumps(method_spec, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
     support_names = set(PUBLISH.METHOD_CONTRACTS[method_id]["files"]) - {
         "report.md",
         "report_manifest.json",
@@ -63,10 +81,35 @@ def write_packet(directory: Path, method_id: str) -> None:
         "authorized_hrd_state": "no_call",
         "classification_authorized": False,
         "classification_qc_status": "not_applicable",
-        "source_sha256": {"unit_source": "a" * 64},
+        **(
+            {
+                "source_report_binding_scope": "pre_route_deterministic_rosalind",
+            }
+            if method_id.endswith("_blocked")
+            else {}
+        ),
+        "source_sha256": {
+            **{"unit_source": "a" * 64},
+            **(
+                {
+                    f"{source_id}_report_manifest": digest
+                    for source_id, digest in source_report_manifests.items()
+                }
+                if method_id.endswith("_blocked")
+                else {}
+            ),
+        },
         "support_sha256": {name: sha256(directory / name) for name in sorted(support_names)},
         "report_sha256": sha256(directory / "report.md"),
         "review_summary": {
+            **(
+                {
+                    "source_report_binding_scope": "pre_route_deterministic_rosalind",
+                    "source_report_manifests": source_report_manifests,
+                }
+                if method_id.endswith("_blocked")
+                else {}
+            ),
             "overall": {
                 "authorized_hrd_state": "no_call",
             }
@@ -139,6 +182,40 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                 set(written["packets"][0]["files"][0]),
             )
             self.assertNotIn("path", written["packets"][0]["files"][0])
+
+    def test_rejects_terminal_bound_blocked_packets_in_fast_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            blocked = packet_dirs["facets_scarhrd_blocked"]
+
+            method_spec_path = blocked / "method_spec.json"
+            method_spec = json.loads(method_spec_path.read_text(encoding="utf-8"))
+            method_spec["source_report_binding_scope"] = "terminal_source_reports"
+            method_spec_path.write_text(
+                json.dumps(method_spec, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            manifest_path = blocked / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["source_report_binding_scope"] = "terminal_source_reports"
+            manifest["review_summary"]["source_report_binding_scope"] = (
+                "terminal_source_reports"
+            )
+            manifest["support_sha256"]["method_spec.json"] = sha256(method_spec_path)
+            manifest_path.write_text(
+                json.dumps(manifest, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "must use pre_route_deterministic_rosalind",
+            ):
+                VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
 
     def test_rejects_run_supplied_forbidden_token_leak(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

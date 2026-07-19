@@ -88,6 +88,7 @@ def bind_blocked_reports(paths: dict[str, Path]) -> None:
             continue
         path = paths[method_id]
         method_spec = json.loads((path / "method_spec.json").read_text(encoding="utf-8"))
+        method_spec["source_report_binding_scope"] = "terminal_source_reports"
         method_spec["source_report_manifests"] = manifests
         (path / "method_spec.json").write_text(
             json.dumps(method_spec, indent=2, sort_keys=True) + "\n",
@@ -114,6 +115,10 @@ def bind_blocked_reports(paths: dict[str, Path]) -> None:
         manifest = json.loads(
             (path / "report_manifest.json").read_text(encoding="utf-8")
         )
+        manifest["source_report_binding_scope"] = "terminal_source_reports"
+        manifest["review_summary"][
+            "source_report_binding_scope"
+        ] = "terminal_source_reports"
         manifest["review_summary"]["source_report_manifests"] = manifests
         manifest["source_sha256"].update(
             {
@@ -136,7 +141,27 @@ def write_phase3_fast_validation_receipt(
     output: Path,
     forbidden_tokens: list[str] | None = None,
 ) -> None:
-    packet_dirs = {method_id: paths[method_id] for method_id in PHASE3_FAST_VALIDATOR.PHASE3_FAST_VALIDATED_METHOD_IDS}
+    fast_blocked_root = output.parent / "pre-route-blocked"
+    BLOCKED_GENERATOR.generate(
+        fast_blocked_root,
+        generated_at="2026-07-17T00:00:00+00:00",
+        source_report_manifests={
+            method_id: MODULE.sha256(paths[method_id] / "report_manifest.json")
+            for method_id in BLOCKED_GENERATOR.PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+        },
+        allow_pre_route_source_reports=True,
+    )
+    packet_dirs = {
+        method_id: paths[method_id]
+        for method_id in PHASE3_FAST_VALIDATOR.PHASE3_FAST_VALIDATED_METHOD_IDS
+        if method_id not in MODULE.BLOCKED_CROSSCHECK_METHOD_IDS
+    }
+    packet_dirs.update(
+        {
+            method["method_id"]: fast_blocked_root / method["directory"]
+            for method in BLOCKED_GENERATOR.METHODS
+        }
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(
@@ -486,10 +511,12 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             validation = root / "report_packet_validation.json"
             forbidden_tokens = root / "forbidden_tokens.json"
             write_phase3_fast_forbidden_tokens(forbidden_tokens)
-            wrong_token_receipt = PHASE3_FAST_VALIDATOR.validate_packets(
-                {method_id: paths[method_id] for method_id in PHASE3_FAST_VALIDATOR.PHASE3_FAST_VALIDATED_METHOD_IDS},
-                json.dumps(["Other-Private-Token"]),
+            write_phase3_fast_validation_receipt(
+                paths,
+                validation,
+                forbidden_tokens=["Other-Private-Token"],
             )
+            wrong_token_receipt = json.loads(validation.read_text(encoding="utf-8"))
             wrong_token_receipt["forbidden_tokens_sha256"] = PHASE3_FAST_VALIDATOR.expected_forbidden_tokens_sha256(
                 forbidden_tokens.read_text(encoding="utf-8"),
             )
@@ -611,6 +638,35 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             ):
                 MODULE.validate_packet_dirs(paths)
 
+    def test_validate_packet_dirs_rejects_pre_route_blocked_reports(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            blocked_method_ids = set(MODULE.BLOCKED_CROSSCHECK_METHOD_IDS)
+            source_paths = {
+                method_id: path
+                for method_id, path in paths.items()
+                if method_id not in blocked_method_ids
+            }
+            write_packet_dirs(source_paths)
+            BLOCKED_GENERATOR.generate(
+                root / ".codex-tmp/hrd-reports/blocked-crosschecks",
+                generated_at="2026-07-17T00:00:00+00:00",
+                source_report_manifests={
+                    method_id: MODULE.sha256(
+                        paths[method_id] / "report_manifest.json"
+                    )
+                    for method_id in BLOCKED_GENERATOR.PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+                },
+                allow_pre_route_source_reports=True,
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "not bound to current upstream report manifests",
+            ):
+                MODULE.validate_packet_dirs(paths)
+
     def test_current_blocked_generator_satisfies_renderer_packet_dirs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -644,6 +700,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                 "/repo/scripts/hrd_report_inventory.py",
                 "/repo/scripts/ai_model_catalog.py",
                 "/repo/scripts/forbidden_text.py",
+                "/repo/scripts/generate_blocked_hrd_crosscheck_reports.py",
                 "/repo/scripts/publish_private_report.py",
                 "/repo/scripts/validate_phase3_fast_report_packets.py",
                 "/repo/scripts/render_ai_synthesis_runbook.py",

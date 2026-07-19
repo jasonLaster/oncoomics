@@ -9,6 +9,9 @@ import json
 from pathlib import Path
 from typing import Iterable
 
+from generate_blocked_hrd_crosscheck_reports import (
+    TERMINAL_SOURCE_REPORT_BINDING_SCOPE,
+)
 from hrd_report_inventory import (
     BLOCKED_CROSSCHECK_METHOD_IDS,
     EXECUTABLE_CROSSCHECK_METHOD_IDS,
@@ -145,6 +148,7 @@ def validate_packet_dirs(
             paths,
             forbidden_tokens,
             expected_forbidden_tokens_sha256,
+            ("deterministic_full_wgs", "rosalind_diana_wgs"),
         )
 
 
@@ -187,8 +191,14 @@ def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
         } if isinstance(source_sha256, dict) else {}
         if (
             method_spec.get("source_report_manifests") != expected
+            or method_spec.get("source_report_binding_scope")
+            != TERMINAL_SOURCE_REPORT_BINDING_SCOPE
+            or manifest.get("source_report_binding_scope")
+            != TERMINAL_SOURCE_REPORT_BINDING_SCOPE
             or not isinstance(review_summary, dict)
             or review_summary.get("source_report_manifests") != expected
+            or review_summary.get("source_report_binding_scope")
+            != TERMINAL_SOURCE_REPORT_BINDING_SCOPE
             or observed != expected_source_sha256
             or "source_report_manifests: `not_bound`" in report
             or not expected_lines.issubset(set(report.splitlines()))
@@ -289,6 +299,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
         (
             scripts / "hrd_report_inventory.py",
             scripts / "forbidden_text.py",
+            scripts / "generate_blocked_hrd_crosscheck_reports.py",
             scripts / "publish_private_report.py",
             scripts / "validate_phase3_fast_report_packets.py",
             scripts / "render_ai_synthesis_runbook.py",
