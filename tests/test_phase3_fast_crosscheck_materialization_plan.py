@@ -313,6 +313,30 @@ class Phase3FastCrosscheckMaterializationPlanTests(unittest.TestCase):
                 with self.assertRaisesRegex(crosscheck_plan.ManifestError, "final evidence parent may not be a symlink"):
                     crosscheck_plan.load_plan_from_environment()
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+
+            real_final = root / "real-final-evidence.json"
+            real_final.write_text("{}\n", encoding="utf-8")
+            symlinked_final = root / "final-evidence.json"
+            symlinked_final.symlink_to(real_final)
+
+            parent_final = real_parent / "final-evidence.json"
+            parent_final.write_text("{}\n", encoding="utf-8")
+            symlinked_parent = root / "symlinked-parent"
+            symlinked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            cases = (
+                (symlinked_final, "SHA-256 input"),
+                (symlinked_parent / parent_final.name, "parent may not be a symlink"),
+            )
+            for hash_input, message in cases:
+                with self.subTest(hash_input=hash_input), self.assertRaisesRegex(crosscheck_plan.ManifestError, message):
+                    crosscheck_plan._sha256_path(hash_input)
+
     def test_plan_output_rejects_symlinked_parent(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

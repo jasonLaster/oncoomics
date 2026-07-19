@@ -163,6 +163,30 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
                 with self.assertRaisesRegex(final_evidence.ManifestError, "evidence_join parent may not be a symlink"):
                     final_evidence.load_manifest_from_environment()
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+
+            real_join = root / "real-join.json"
+            real_join.write_text("{}\n", encoding="utf-8")
+            symlinked_join = root / "join.json"
+            symlinked_join.symlink_to(real_join)
+
+            parent_join = real_parent / "join.json"
+            parent_join.write_text("{}\n", encoding="utf-8")
+            symlinked_parent = root / "symlinked-parent"
+            symlinked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            cases = (
+                (symlinked_join, "SHA-256 input"),
+                (symlinked_parent / parent_join.name, "parent may not be a symlink"),
+            )
+            for hash_input, message in cases:
+                with self.subTest(hash_input=hash_input), self.assertRaisesRegex(final_evidence.ManifestError, message):
+                    final_evidence._sha256_path(hash_input)
+
     def test_rejects_non_completed_join(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

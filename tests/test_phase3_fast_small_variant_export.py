@@ -150,6 +150,32 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
 
                 self.assertFalse(output_root.exists())
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+
+            real_receipt = root / "real-parabricks.json"
+            real_receipt.write_text("{}\n", encoding="utf-8")
+            symlinked_receipt = root / "parabricks.json"
+            symlinked_receipt.symlink_to(real_receipt)
+
+            parent_receipt = real_parent / "parabricks.json"
+            parent_receipt.write_text("{}\n", encoding="utf-8")
+            symlinked_parent = root / "symlinked-parent"
+            symlinked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            cases = (
+                (symlinked_receipt, "SHA-256 input"),
+                (symlinked_parent / parent_receipt.name, "parent may not be a symlink"),
+            )
+            for hash_input, message in cases:
+                with self.subTest(hash_input=hash_input), self.assertRaisesRegex(
+                    export_small_variants.ManifestError, message
+                ):
+                    export_small_variants._sha256_path(hash_input)
+
     def test_rejects_parabricks_file_that_changed_after_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

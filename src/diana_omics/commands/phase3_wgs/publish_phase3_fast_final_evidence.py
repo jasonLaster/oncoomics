@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import shutil
@@ -11,7 +10,12 @@ from typing import Any, Mapping
 from ...paths import path_from_root
 from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import read_real_json, require_no_symlinked_ancestors, require_safe_output_path
+from .safe_json_output import (
+    read_real_json,
+    require_no_symlinked_ancestors,
+    require_safe_output_path,
+    sha256_real_file,
+)
 
 DEFAULT_EVIDENCE_JOIN = "manifests/phase3_wgs_fast/evidence_join_manifest.json"
 DEFAULT_SMALL_VARIANT_ARTIFACT_ROOT = "workspace/results/phase3_wgs_fast/small_variant_execution/artifacts"
@@ -62,11 +66,7 @@ def _safe_segment(value: str, label: str) -> str:
 
 
 def _sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_real_file(path, ManifestError)
 
 
 def _read_evidence_join(path: Path) -> Mapping[str, Any]:
