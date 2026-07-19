@@ -97,6 +97,17 @@ def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def require_version_id(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.lower() in {"none", "null"}
+        or any(character.isspace() for character in value)
+    ):
+        raise ValueError(f"{label} omitted an exact VersionId")
+    return value
+
+
 def aws_json(arguments: list[str], region: str) -> dict[str, Any]:
     value = json.loads(
         subprocess.check_output(
@@ -515,14 +526,21 @@ def main() -> int:
                 or observed_history[0].get("history_kind") != "version"
                 or observed_history[0].get("Key") != key
                 or observed_history[0].get("IsLatest") is not True
-                or not str(observed_history[0].get("VersionId", ""))
             ):
                 raise ValueError(
                     "recovery history is not the single expected contract version"
                 )
-            version_id = str(observed_history[0]["VersionId"])
-            anchored_version = str(anchor.get("receipt_version_id", ""))
-            if anchored_version and anchored_version != version_id:
+            version_id = require_version_id(
+                observed_history[0].get("VersionId"),
+                "recovery history",
+            )
+            anchored_raw = anchor.get("receipt_version_id", "")
+            anchored_version = (
+                require_version_id(anchored_raw, "reserved contract anchor")
+                if anchored_raw
+                else ""
+            )
+            if anchored_version != "" and anchored_version != version_id:
                 raise ValueError("recovery history differs from reserved contract VersionId")
             anchor["receipt_version_id"] = version_id
             anchor["recovered_existing_version"] = True
@@ -531,9 +549,10 @@ def main() -> int:
             response = put_create_only(
                 args.contract, bucket, key, args.kms_key_arn, args.region
             )
-            version_id = str(response.get("VersionId", ""))
-            if not version_id or version_id.lower() in {"none", "null"}:
-                raise ValueError("create-only put response omitted VersionId")
+            version_id = require_version_id(
+                response.get("VersionId"),
+                "create-only put response",
+            )
             anchor["receipt_version_id"] = version_id
             write_json_atomic(args.anchor_output, anchor)
         anchor["checks"] = verify_publication(

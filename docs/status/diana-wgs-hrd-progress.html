@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact AI-review bundle hashes</li>
+          <li class="pill">Latest milestone = local exact input-contract VersionIds</li>
+          <li class="pill">Input-contract receipt VersionIds = exact</li>
           <li class="pill">AI-review bundle hashes = exact</li>
           <li class="pill">Materialized-final VersionIds/checksums = exact</li>
           <li class="pill">Rosalind alias VersionIds = exact</li>
@@ -713,6 +714,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact input-contract VersionIds</strong>
+              <span><code>publish_input_contract.py</code> now rejects create-only put responses and recovery histories whose object VersionId is a boolean, sentinel, empty, or whitespace-containing before it can set the deterministic cross-check input-contract <code>receipt_version_id</code>.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materialized-final scalars</strong>
               <span><code>materialize_frozen_artifacts.py</code> now requires frozen destinations to carry string, non-sentinel, whitespace-free VersionIds plus string checksum fields before exact local materialization can validate or install the recovered <code>materialized-final</code> tree.</span>
@@ -1535,6 +1540,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:00:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact input-contract VersionIds:</strong>
+                <code>publish_input_contract.py</code> now rejects create-only
+                put responses and recovery histories whose object VersionId is
+                a boolean, sentinel, empty, or whitespace-containing before it
+                can set the deterministic cross-check input-contract
+                <code>receipt_version_id</code>.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T17:50:00-07:00">Jul 19 · local</time>
               <span>

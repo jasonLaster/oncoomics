@@ -1636,6 +1636,62 @@ class CustodyHandoffTests(unittest.TestCase):
             self.assertTrue(all(value["checks"].values()))
             self.assertIn(contract_sha, value["receipt_uri"])
 
+    def test_contract_publication_rejects_coerced_put_version_before_verification(self):
+        cases = (True, "null", "none", "has whitespace")
+        for version_id in cases:
+            with self.subTest(version_id=version_id), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                contract = root / "contract.json"
+                write_json(contract, CustodyFixture().finalize())
+                anchor = root / "anchor.json"
+                prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
+                dry_run = self.write_contract_dry_run_receipt(
+                    root / "anchor.dry.json", contract, prefix=prefix
+                )
+                argv = [
+                    "publish_input_contract.py",
+                    "--contract",
+                    str(contract),
+                    "--destination-prefix",
+                    f"s3://{BUCKET}/{prefix}",
+                    "--kms-key-arn",
+                    KMS,
+                    "--anchor-output",
+                    str(anchor),
+                    "--dry-run-receipt",
+                    str(dry_run),
+                    "--apply",
+                ]
+
+                with (
+                    patch.object(sys, "argv", argv),
+                    patch.object(
+                        publisher,
+                        "aws_json",
+                        return_value={"Status": "Enabled"},
+                    ),
+                    patch.object(publisher, "version_history", side_effect=[[], []]),
+                    patch.object(
+                        publisher,
+                        "put_create_only",
+                        return_value={"VersionId": version_id},
+                    ),
+                    patch.object(
+                        publisher,
+                        "verify_publication",
+                        side_effect=AssertionError("verification reached"),
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "create-only put response omitted an exact VersionId",
+                    ),
+                ):
+                    publisher.main()
+
+                value = json.loads(anchor.read_text(encoding="utf-8"))
+                self.assertEqual(value["status"], "failed")
+                self.assertEqual(value["receipt_version_id"], "")
+
     def test_contract_publication_verify_publication_emits_expected_checks(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -2208,6 +2264,89 @@ class CustodyHandoffTests(unittest.TestCase):
             self.assertEqual(value["status"], "passed")
             self.assertEqual(value["receipt_version_id"], version)
             self.assertTrue(value["recovered_existing_version"])
+
+    def test_contract_publication_rejects_coerced_recovery_version_without_second_put(self):
+        cases = (True, "null", "none", "has whitespace")
+        for version_id in cases:
+            with self.subTest(version_id=version_id), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                contract = root / "contract.json"
+                write_json(contract, CustodyFixture().finalize())
+                anchor_path = root / "anchor.json"
+                contract_sha = publisher.sha256(contract)
+                prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
+                key = f"{prefix}{contract_sha}.json"
+                uri = f"s3://{BUCKET}/{key}"
+                reserved = {
+                    "schema_version": 1,
+                    "status": "in_progress",
+                    "receipt_sha256": contract_sha,
+                    "receipt_bytes": contract.stat().st_size,
+                    "receipt_uri": uri,
+                    "receipt_version_id": "",
+                    "bucket_versioning": "Enabled",
+                    "initial_version_history_count": 0,
+                    "publication_strategy": "sha256_content_addressed_create_only",
+                    "kms_key_arn": KMS,
+                    "checks": {},
+                }
+                publisher.reserve_json(anchor_path, reserved)
+                dry_run = self.write_contract_dry_run_receipt(
+                    root / "anchor.dry.json", contract, prefix=prefix
+                )
+                history = [
+                    {
+                        "history_kind": "version",
+                        "Key": key,
+                        "VersionId": version_id,
+                        "IsLatest": True,
+                        "Size": contract.stat().st_size,
+                    }
+                ]
+                argv = [
+                    "publish_input_contract.py",
+                    "--contract",
+                    str(contract),
+                    "--destination-prefix",
+                    f"s3://{BUCKET}/{prefix}",
+                    "--kms-key-arn",
+                    KMS,
+                    "--anchor-output",
+                    str(anchor_path),
+                    "--dry-run-receipt",
+                    str(dry_run),
+                    "--apply",
+                ]
+
+                with (
+                    patch.object(sys, "argv", argv),
+                    patch.object(
+                        publisher,
+                        "aws_json",
+                        return_value={"Status": "Enabled"},
+                    ),
+                    patch.object(
+                        publisher,
+                        "version_history",
+                        side_effect=[history, history],
+                    ),
+                    patch.object(publisher, "put_create_only") as put,
+                    patch.object(
+                        publisher,
+                        "verify_publication",
+                        side_effect=AssertionError("verification reached"),
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "recovery history omitted an exact VersionId",
+                    ),
+                ):
+                    publisher.main()
+
+                put.assert_not_called()
+                value = json.loads(anchor_path.read_text(encoding="utf-8"))
+                self.assertEqual(value["status"], "failed")
+                self.assertEqual(value["receipt_version_id"], "")
 
     def test_contract_publication_rejects_symlinked_exact_download(self):
         with tempfile.TemporaryDirectory() as temporary:
