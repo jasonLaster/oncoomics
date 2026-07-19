@@ -307,12 +307,12 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>889838c248713b599ba0be3d0c90259c87c5e18f</strong>.
-          The latest work is exact Batch worker report hardening:
+          <strong>506333f1b2e277956124f4d4032519cefd8ea495</strong>.
+          The latest work is exact cross-check output custody hardening:
           <code>stage_deterministic_wgs_report.py</code> now names and requires
-          the complete worker custody map emitted by
-          <code>capture_batch_provenance.py</code> before exact Batch worker
-          bytes can support the staged WGS report packet.
+          the per-output upload map emitted by
+          <code>materialize_crosscheck_inputs.py</code> before canonical
+          cross-check outputs can support the staged WGS report packet.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -320,7 +320,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 889838c</li>
+          <li class="pill">Latest hardening = 506333f</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -402,8 +402,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 889838c</strong>
-              <span>Deterministic report staging now rejects missing, unexpected, or failed Batch worker custody checks before exact worker bytes can support a WGS report packet.</span>
+              <strong>Preserve 506333f</strong>
+              <span>Deterministic report staging now rejects missing, unexpected, or failed cross-check output checks before versioned canonical VCF, index, SBS96, or staged-validation outputs can support a WGS report packet.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -451,6 +451,27 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>506333f Require exact crosscheck output checks:</strong>
+                <code>stage_deterministic_wgs_report.py</code> now defines
+                <code>EXPECTED_CROSSCHECK_OUTPUT_CHECKS</code> and requires the
+                exact per-output upload map from the materialized cross-check
+                receipt instead of accepting arbitrary all-true
+                <code>outputs[*].checks</code>. The new map mirrors
+                <code>materialize_crosscheck_inputs.py</code>
+                <code>EXPECTED_UPLOAD_CHECKS</code> for
+                <code>create_only_put</code>, <code>version_exact</code>,
+                <code>bytes_exact</code>,
+                <code>sha256_checksum_exact</code>,
+                <code>metadata_sha256_exact</code>, <code>exact_kms</code>,
+                and <code>single_version_history</code>; the synthetic fixture
+                now imports that map instead of hardcoding it, and tests reject
+                missing, unexpected, or failed output checks before
+                <code>report.md</code> can be published.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
