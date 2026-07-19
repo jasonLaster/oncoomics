@@ -197,10 +197,9 @@ def require_real_directory(path: Path, label: str) -> Path:
 
 
 def checked_hash(value: Any, label: str) -> str:
-    text = str(value).lower()
-    if not HEX64.fullmatch(text):
+    if not isinstance(value, str) or not HEX64.fullmatch(value):
         raise ValueError("malformed SHA-256 for " + label)
-    return text
+    return value
 
 
 def is_nonnegative_exact_int(value: Any) -> bool:

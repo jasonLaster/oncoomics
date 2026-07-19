@@ -490,6 +490,36 @@ class SynthesisFixture:
 
 
 class GenerateSynthesisTests(unittest.TestCase):
+    def test_rejects_non_lowercase_ai_bundle_manifest_hashes(self) -> None:
+        cases = (
+            ("review_bundle", ("review_bundle_sha256",), "AI bundle"),
+            (
+                "source_manifest",
+                ("input_manifest_sha256", "E001"),
+                "E001 source manifest",
+            ),
+            ("reviewer_prompt", ("prompt_sha256", "A"), "reviewer A prompt"),
+        )
+
+        for name, path, message in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-uppercase-hash-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                target = manifest
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = target[path[-1]].upper()
+                write_json(manifest_path, manifest)
+
+                result = fixture.run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("malformed SHA-256 for " + message, result.stderr)
+                self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
     def test_rejects_inexact_ai_bundle_envelopes_before_rendering(self) -> None:
         cases = (
             (
