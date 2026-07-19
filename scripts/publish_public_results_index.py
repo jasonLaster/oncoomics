@@ -19,6 +19,8 @@ from build_public_results_index import (
     BUCKET,
     FORBIDDEN_PREFIXES,
     PUBLIC_PREFIXES,
+    ReviewedPublicObject,
+    reviewed_public_index_binding,
     validate_reviewed_public_current_versions,
     validate_reviewed_public_receipts,
     validate_reviewed_public_s3_state,
@@ -65,10 +67,18 @@ PUBLIC_INDEX_KEYS = {
     "reviewed_public_receipts",
     "objects",
 }
-PUBLIC_INDEX_OBJECT_KEYS = {
+LEGACY_PUBLIC_INDEX_OBJECT_KEYS = {
     "key",
     "size",
     "last_modified",
+}
+REVIEWED_PUBLIC_INDEX_BINDING_KEYS = {
+    "version_id",
+    "sha256",
+    "checksum_sha256",
+}
+REVIEWED_PUBLIC_INDEX_OBJECT_KEYS = LEGACY_PUBLIC_INDEX_OBJECT_KEYS | {
+    "reviewed_public",
 }
 
 
@@ -196,14 +206,25 @@ def require_installed_private_output(path: Path, expected_sha256: str) -> None:
         raise ValueError(f"private output changed during write: {path}")
 
 
-def public_index_object(row: Any) -> dict[str, Any]:
+def public_index_object(
+    row: Any,
+    reviewed_public_objects: dict[str, ReviewedPublicObject],
+) -> dict[str, Any]:
     if not isinstance(row, dict):
         raise ValueError("public index contains a malformed object row")
-    if set(row) != PUBLIC_INDEX_OBJECT_KEYS:
-        raise ValueError("public index object envelope is not exact")
     key = row.get("key")
     size = row.get("size")
     last_modified = row.get("last_modified")
+    expected_reviewed_public = (
+        reviewed_public_objects.get(key) if isinstance(key, str) else None
+    )
+    expected_envelope = (
+        REVIEWED_PUBLIC_INDEX_OBJECT_KEYS
+        if expected_reviewed_public is not None
+        else LEGACY_PUBLIC_INDEX_OBJECT_KEYS
+    )
+    if set(row) != expected_envelope:
+        raise ValueError("public index object envelope is not exact")
     if (
         not isinstance(key, str)
         or not key
@@ -215,7 +236,19 @@ def public_index_object(row: Any) -> dict[str, Any]:
         or not last_modified
     ):
         raise ValueError(f"public index object is not allowlisted: {row}")
-    return {"key": key, "size": size, "last_modified": last_modified}
+    output = {"key": key, "size": size, "last_modified": last_modified}
+    if expected_reviewed_public is not None:
+        reviewed_public = row.get("reviewed_public")
+        if (
+            not isinstance(reviewed_public, dict)
+            or set(reviewed_public) != REVIEWED_PUBLIC_INDEX_BINDING_KEYS
+            or size != expected_reviewed_public["bytes"]
+            or reviewed_public
+            != reviewed_public_index_binding(expected_reviewed_public)
+        ):
+            raise ValueError("public index reviewed-public object binding is stale")
+        output["reviewed_public"] = reviewed_public
+    return output
 
 
 def validate_public_index(
@@ -245,7 +278,9 @@ def validate_public_index(
         or not is_nonnegative_exact_int(total_size)
     ):
         raise ValueError("public index contract is malformed")
-    normalized = [public_index_object(row) for row in objects]
+    normalized = [
+        public_index_object(row, reviewed_public_objects) for row in objects
+    ]
     keys = [row["key"] for row in normalized]
     if (
         len(keys) != len(set(keys))

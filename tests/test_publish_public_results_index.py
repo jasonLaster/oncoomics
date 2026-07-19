@@ -1122,6 +1122,70 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                     )
                 )
 
+    def test_rejects_index_with_stale_reviewed_public_row_binding_before_aws(
+        self,
+    ) -> None:
+        cases = (
+            (
+                lambda row: row["reviewed_public"].__setitem__(
+                    "version_id",
+                    "old-version-same-size",
+                ),
+                "binding is stale",
+            ),
+            (
+                lambda row: row["reviewed_public"].__setitem__(
+                    "sha256",
+                    "0" * 64,
+                ),
+                "binding is stale",
+            ),
+            (
+                lambda row: row.pop("reviewed_public"),
+                "object envelope is not exact",
+            ),
+            (
+                lambda row: row["reviewed_public"].__setitem__(
+                    "sha256",
+                    "A" * 64,
+                ),
+                "binding is stale",
+            ),
+            (
+                lambda row: row["reviewed_public"].__setitem__(
+                    "version_id",
+                    True,
+                ),
+                "binding is stale",
+            ),
+        )
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                index, receipts = self.write_receipt_bound_index(root)
+                payload = json.loads(index.read_text(encoding="utf-8"))
+                mutate(payload["objects"][0])
+                index.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with (
+                    self.assertRaisesRegex(ValueError, message),
+                    mock.patch.object(
+                        MODULE,
+                        "aws_json",
+                        side_effect=AssertionError("AWS called"),
+                    ),
+                ):
+                    MODULE.run(
+                        self.args(
+                            index,
+                            root / "receipt.json",
+                            reviewed_public_receipts=receipts,
+                        )
+                    )
+
     def test_rejects_index_with_reviewed_public_object_drift_before_aws(
         self,
     ) -> None:

@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact synthesis method summaries</li>
+          <li class="pill">Latest milestone = local exact public-index reviewed versions</li>
+          <li class="pill">Public-index reviewed versions = exact</li>
           <li class="pill">Synthesis method summaries = exact</li>
           <li class="pill">Blocked source binding = exact</li>
           <li class="pill">Materializer-capture anchors = exact</li>
@@ -1344,6 +1345,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind public index rows to reviewed versions</strong>
+              <span>The reviewed public object index now projects each reviewed HRD row's exact destination VersionId, SHA-256, and Base64 checksum from publication receipts; the publisher rejects same-key/same-size stale rows before public index handoff.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact publication VersionIds</strong>
               <span>Private report publication and reviewed-public index validation now reject coerced object VersionId values in private source rows and reviewed-public source/destination rows before public copy/index handoffs.</span>
             </li>
@@ -1485,6 +1490,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T16:20:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind public index rows to reviewed versions:</strong>
+                the reviewed public object index now projects each reviewed HRD
+                row's exact destination VersionId, SHA-256, and Base64 checksum
+                from publication receipts; the publisher rejects
+                same-key/same-size stale rows before public index handoff.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T16:10:00-07:00">Jul 19 · local</time>
               <span>

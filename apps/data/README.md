@@ -15,7 +15,12 @@ The index schema is:
     {
       "key": "runs/public-validation/example.json",
       "size": 1234,
-      "last_modified": "2026-07-17T00:00:00Z"
+      "last_modified": "2026-07-17T00:00:00Z",
+      "reviewed_public": {
+        "version_id": "3Lg...",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "checksum_sha256": "ASNFZ4mrze8BI0VniavN7wEjRWeJq83vASNFZ4mrze8="
+      }
     }
   ]
 }

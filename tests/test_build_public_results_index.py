@@ -131,9 +131,26 @@ def expected_public_objects(receipts: list[Path]) -> list[dict[str, object]]:
                     "key": row["key"],
                     "size": row["bytes"],
                     "last_modified": "2026-07-17T00:00:00Z",
+                    "reviewed_public": {
+                        "version_id": row["version_id"],
+                        "sha256": row["sha256"],
+                        "checksum_sha256": row["checksum_sha256"],
+                    },
                 }
             )
     return sorted(objects, key=lambda row: str(row["key"]))
+
+
+def public_listing_objects(receipts: list[Path]) -> list[dict[str, object]]:
+    objects = expected_public_objects(receipts)
+    return [
+        {
+            "key": row["key"],
+            "size": row["size"],
+            "last_modified": row["last_modified"],
+        }
+        for row in objects
+    ]
 
 
 def expected_public_heads(receipts: list[Path]) -> dict[str, dict[str, object]]:
@@ -155,7 +172,7 @@ def expected_public_heads(receipts: list[Path]) -> dict[str, dict[str, object]]:
 
 
 def expected_public_prefix_pages(receipts: list[Path]) -> list[list[dict[str, object]]]:
-    objects = expected_public_objects(receipts)
+    objects = public_listing_objects(receipts)
     return [
         [row for row in objects if str(row["key"]).startswith(prefix)]
         for prefix in MODULE.PUBLIC_PREFIXES
@@ -822,6 +839,10 @@ class PublicIndexTests(unittest.TestCase):
             payload = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual(payload["objects"], expected_public_objects(receipts))
             self.assertEqual(payload["object_count"], len(expected_public_objects(receipts)))
+            self.assertEqual(
+                set(payload["objects"][0]["reviewed_public"]),
+                {"version_id", "sha256", "checksum_sha256"},
+            )
             self.assertEqual(
                 [row["method_id"] for row in payload["reviewed_public_receipts"]],
                 list(MODULE.REPORT_METHOD_IDS),

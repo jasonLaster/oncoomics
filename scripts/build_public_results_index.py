@@ -136,6 +136,26 @@ REVIEWED_PUBLIC_DESTINATION_OBJECT_KEYS = {
 ReviewedPublicObject = dict[str, Union[int, str]]
 
 
+def reviewed_public_index_binding(
+    expected: ReviewedPublicObject,
+) -> dict[str, str]:
+    return {
+        "version_id": str(expected["version_id"]),
+        "sha256": str(expected["sha256"]),
+        "checksum_sha256": str(expected["checksum_sha256"]),
+    }
+
+
+def bind_reviewed_public_index_objects(
+    objects: Sequence[dict[str, Any]],
+    expected_objects: dict[str, ReviewedPublicObject],
+) -> None:
+    for row in objects:
+        expected = expected_objects.get(str(row["key"]))
+        if expected is not None:
+            row["reviewed_public"] = reviewed_public_index_binding(expected)
+
+
 def list_prefix(prefix: str) -> list[dict[str, Any]]:
     objects: list[dict[str, Any]] = []
     continuation_token = ""
@@ -620,6 +640,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise RuntimeError("Public prefix overlap produced duplicate keys")
     validate_reviewed_public_s3_state(objects, expected_reviewed_public_objects)
     validate_reviewed_public_current_versions(expected_reviewed_public_objects)
+    bind_reviewed_public_index_objects(objects, expected_reviewed_public_objects)
 
     payload = {
         "schema_version": 1,
