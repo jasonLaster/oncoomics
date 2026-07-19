@@ -348,8 +348,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 6262a7e</li>
-          <li class="pill">Prior dashboard = a379f78</li>
+          <li class="pill">Latest milestone = 39dd1ac</li>
+          <li class="pill">Prior dashboard = 9dc2695</li>
+          <li class="pill">Phase 3 blocked source hashes = exact</li>
           <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
           <li class="pill">Private handoff dry-runs = required</li>
@@ -545,6 +546,10 @@
               <span>Live input-contract publication now requires the matching dry-run receipt and rejects stale metadata, failed preflight checks, or contract SHA-256, byte-size, URI, and KMS drift before create-only publication.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Phase 3 blocked source hashes</strong>
+              <span>Pre-route blocked packets now require exactly the blocked-report generator plus deterministic and Rosalind report-manifest hashes, rejecting unrelated hidden source hashes instead of validating only the projected report-manifest keys.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind pre-route blocked report digests</strong>
               <span>Fast-DAG validation now requires each FACETS, CHORD, and HRDetect blocked packet to carry the same deterministic/Rosalind <code>report_manifest</code> SHA-256s in its method spec, report manifest, and review summary before source-freeze or AI review.</span>
             </li>
@@ -682,6 +687,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:38:37-07:00">Jul 19 · 12:38 AM</time>
+              <span>
+                <strong>39dd1ac Require exact Phase 3 blocked source hashes:</strong>
+                Phase 3 fast validation now requires each pre-route blocked
+                packet source-hash map to equal the blocked-report generator
+                plus deterministic and Rosalind report-manifest hashes exactly.
+                Regression coverage proves an unrelated hidden source hash now
+                fails the existing pre-route-scope gate. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:32:48-07:00">Jul 19 · 12:32 AM</time>
               <span>
