@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import importlib.util
 import json
 import stat
@@ -32,6 +33,7 @@ def sha256(path: Path) -> str:
 
 
 def write_source_report_manifest(path: Path, **updates: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     report = path.parent / "report.md"
     report.write_text("# Source report\n\nNo-call source packet.\n", encoding="utf-8")
     payload = {
@@ -52,6 +54,46 @@ def write_source_report_manifest(path: Path, **updates: object) -> None:
     }
     payload.update(updates)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def write_source_report_manifests(root: Path) -> dict[str, str]:
+    values = []
+    for method_id in GENERATOR.SOURCE_REPORT_METHOD_IDS:
+        path = root / "sources" / method_id / "report_manifest.json"
+        write_source_report_manifest(path, method_id=method_id)
+        values.append(f"{method_id}={path}")
+    return GENERATOR.load_source_report_manifests(values)
+
+
+def source_report_manifest_args(root: Path) -> list[str]:
+    args: list[str] = []
+    for method_id in GENERATOR.SOURCE_REPORT_METHOD_IDS:
+        path = root / "sources" / method_id / "report_manifest.json"
+        write_source_report_manifest(path, method_id=method_id)
+        args.extend(["--source-report-manifest", f"{method_id}={path}"])
+    return args
+
+
+ORIGINAL_GENERATE = GENERATOR.generate
+
+
+def generate(
+    output_root: Path,
+    generated_at: str,
+    **kwargs: object,
+) -> list[Path]:
+    if "source_report_manifests" in kwargs:
+        return ORIGINAL_GENERATE(output_root, generated_at, **kwargs)
+    with tempfile.TemporaryDirectory() as temporary:
+        return ORIGINAL_GENERATE(
+            output_root,
+            generated_at,
+            source_report_manifests=write_source_report_manifests(Path(temporary)),
+            **kwargs,
+        )
+
+
+GENERATOR.generate = generate
 
 
 class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
@@ -294,28 +336,21 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
     def test_reports_bind_upstream_report_manifests_without_exposing_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            deterministic = root / "deterministic" / "report_manifest.json"
-            rosalind = root / "rosalind" / "report_manifest.json"
-            deterministic.parent.mkdir()
-            rosalind.parent.mkdir()
-            write_source_report_manifest(deterministic, method_id="deterministic_full_wgs")
-            write_source_report_manifest(rosalind, method_id="rosalind_diana_wgs")
+            source_manifest_paths = []
+            for method_id in GENERATOR.SOURCE_REPORT_METHOD_IDS:
+                path = root / "upstream" / method_id / "report_manifest.json"
+                write_source_report_manifest(path, method_id=method_id)
+                source_manifest_paths.append(f"{method_id}={path}")
             output = root / "blocked"
-            source_manifests = {
-                "deterministic_full_wgs": sha256(deterministic),
-                "rosalind_diana_wgs": sha256(rosalind),
-            }
+            source_manifests = GENERATOR.load_source_report_manifests(
+                source_manifest_paths
+            )
 
             GENERATOR.generate(
                 output,
                 "2026-07-17T00:00:00+00:00",
                 run_id="diana-wgs-hrd-unit",
-                source_report_manifests=GENERATOR.load_source_report_manifests(
-                    [
-                        f"deterministic_full_wgs={deterministic}",
-                        f"rosalind_diana_wgs={rosalind}",
-                    ]
-                ),
+                source_report_manifests=source_manifests,
             )
 
             for method in GENERATOR.METHODS:
@@ -325,8 +360,11 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 spec = json.loads((directory / "method_spec.json").read_text(encoding="utf-8"))
 
                 self.assertIn("diana-wgs-hrd-unit", report)
-                self.assertIn("deterministic_full_wgs report_manifest_sha256", report)
-                self.assertIn("rosalind_diana_wgs report_manifest_sha256", report)
+                for method_id in GENERATOR.SOURCE_REPORT_METHOD_IDS:
+                    self.assertIn(
+                        f"{method_id} report_manifest_sha256",
+                        report,
+                    )
                 self.assertEqual("diana-wgs-hrd-unit", manifest["run_id"])
                 self.assertEqual(source_manifests, spec["source_report_manifests"])
                 self.assertEqual(
@@ -478,6 +516,7 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                     [
                         "--output-dir",
                         str(output),
+                        *source_report_manifest_args(root),
                         "--generated-at",
                         "2026-07-17T00:00:00+00:00",
                     ]
@@ -500,6 +539,44 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                         "--source-report-manifest",
                         "rosalind_diana_wgs",
                     ]
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_cli_requires_source_report_manifests_before_writing_packets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+
+            with (
+                self.assertRaises(SystemExit) as raised,
+                mock.patch("sys.stderr", new=io.StringIO()),
+            ):
+                GENERATOR.main(
+                    [
+                        "--output-dir",
+                        str(output),
+                        "--generated-at",
+                        "2026-07-17T00:00:00+00:00",
+                    ]
+                )
+
+            self.assertEqual(raised.exception.code, 2)
+            self.assertFalse(output.exists())
+
+    def test_generation_requires_exact_upstream_manifests_before_writing_packets(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source report manifests must bind the four upstream report packets",
+            ):
+                ORIGINAL_GENERATE(
+                    output,
+                    "2026-07-17T00:00:00+00:00",
+                    source_report_manifests={},
                 )
 
             self.assertFalse(output.exists())

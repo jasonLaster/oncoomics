@@ -577,6 +577,32 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             BLOCKED_GENERATOR.generate(
                 root / ".codex-tmp/hrd-reports/blocked-crosschecks",
                 generated_at="2026-07-17T00:00:00+00:00",
+                source_report_manifests=source_report_manifests(source_paths),
+            )
+            blocked_dir = (
+                root
+                / ".codex-tmp/hrd-reports/blocked-crosschecks"
+                / "facets_scarhrd_blocked"
+            )
+            method_spec_path = blocked_dir / "method_spec.json"
+            method_spec = json.loads(method_spec_path.read_text(encoding="utf-8"))
+            method_spec["source_report_manifests"] = {}
+            method_spec_path.write_text(
+                json.dumps(method_spec, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            manifest_path = blocked_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["review_summary"]["source_report_manifests"] = {}
+            manifest["source_sha256"] = {
+                "generator": manifest["source_sha256"]["generator"],
+            }
+            manifest["support_sha256"]["method_spec.json"] = MODULE.sha256(
+                method_spec_path
+            )
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
             )
 
             with self.assertRaisesRegex(

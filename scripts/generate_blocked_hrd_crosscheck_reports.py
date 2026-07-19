@@ -18,7 +18,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from hrd_report_inventory import BLOCKED_CROSSCHECK_METHOD_IDS, REQUIRED_METHOD_IDS
+from hrd_report_inventory import (
+    BLOCKED_CROSSCHECK_METHOD_IDS,
+    EXECUTABLE_CROSSCHECK_METHOD_IDS,
+    REQUIRED_METHOD_IDS,
+)
 
 STATUS = {
     "execution_status": "not_run",
@@ -295,6 +299,14 @@ METHODS: tuple[dict[str, Any], ...] = (
 if tuple(method["method_id"] for method in METHODS) != BLOCKED_CROSSCHECK_METHOD_IDS:
     raise ValueError("blocked method generator drifted from the HRD report inventory")
 
+SOURCE_REPORT_METHOD_IDS = (
+    "deterministic_full_wgs",
+    "rosalind_diana_wgs",
+    *EXECUTABLE_CROSSCHECK_METHOD_IDS,
+)
+if SOURCE_REPORT_METHOD_IDS != REQUIRED_METHOD_IDS[: len(SOURCE_REPORT_METHOD_IDS)]:
+    raise ValueError("blocked method source reports drifted from the HRD inventory")
+
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -368,19 +380,26 @@ def load_source_report_manifests(values: Sequence[str]) -> dict[str, str]:
         path = Path(raw_path)
         load_source_report_manifest(path, method_id)
         manifests[method_id] = sha256_file(path)
-    return manifests
+    return validate_source_report_manifests(manifests)
 
 
-def validate_source_report_manifests(value: Mapping[str, str] | None) -> dict[str, str]:
-    if value is None:
-        return {}
+def validate_source_report_manifests(value: Mapping[str, str]) -> dict[str, str]:
     manifests = dict(value)
     for method_id, digest in manifests.items():
         if method_id not in REQUIRED_METHOD_IDS:
             raise ValueError(f"unexpected source report method: {method_id}")
         if SHA256_HEX.fullmatch(digest) is None:
             raise ValueError(f"source report manifest SHA-256 is malformed: {method_id}")
-    return {method_id: manifests[method_id] for method_id in REQUIRED_METHOD_IDS if method_id in manifests}
+    if tuple(manifests) != SOURCE_REPORT_METHOD_IDS:
+        missing = sorted(set(SOURCE_REPORT_METHOD_IDS) - set(manifests))
+        unexpected = sorted(set(manifests) - set(SOURCE_REPORT_METHOD_IDS))
+        raise ValueError(
+            "source report manifests must bind the four upstream report packets "
+            f"in exact order; expected={list(SOURCE_REPORT_METHOD_IDS)!r} "
+            f"observed={list(manifests)!r} missing={missing!r} "
+            f"unexpected={unexpected!r}"
+        )
+    return {method_id: manifests[method_id] for method_id in SOURCE_REPORT_METHOD_IDS}
 
 
 def require_safe_new_packet(path: Path) -> Path:
@@ -510,10 +529,10 @@ def render_report(
         "",
         f"- run_id: `{run_id or 'not_recorded'}`",
     ]
-    if source_report_manifests:
-        lines.extend(f"- {method_id} report_manifest_sha256: `{digest}`" for method_id, digest in source_report_manifests.items())
-    else:
-        lines.append("- source_report_manifests: `not_bound`")
+    lines.extend(
+        f"- {method_id} report_manifest_sha256: `{digest}`"
+        for method_id, digest in source_report_manifests.items()
+    )
     lines.extend(
         [
             "",
@@ -550,11 +569,11 @@ def generate(
     generated_at: str,
     *,
     run_id: str = "",
-    source_report_manifests: Mapping[str, str] | None = None,
+    source_report_manifests: Mapping[str, str],
 ) -> list[Path]:
+    source_report_manifests = validate_source_report_manifests(source_report_manifests)
     output_root = prepare_output_root(output_root)
     generator_hash = sha256_file(Path(__file__).resolve())
-    source_report_manifests = validate_source_report_manifests(source_report_manifests)
     written: list[Path] = []
     created_targets: list[Path] = []
 
@@ -669,7 +688,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--source-report-manifest",
         action="append",
-        default=[],
+        required=True,
         metavar="METHOD_ID=PATH",
         help=("Hash-bind an upstream report manifest into each blocked packet; may be passed more than once."),
     )
