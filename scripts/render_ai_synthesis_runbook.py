@@ -78,6 +78,16 @@ def sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def require_summary_sha256(value: object, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{label} SHA-256 is malformed")
+    return value
+
+
 def validate_private_report_receipt(
     receipt_path: Path,
     method_id: str,
@@ -216,9 +226,10 @@ def require_receipt_summaries(
             raise ValueError(
                 f"{method_id} private receipt object count is malformed"
             )
-        digest = str(summary.get("report_manifest_sha256", ""))
-        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
-            raise ValueError(f"{summary['method_id']} report_manifest.json SHA-256 is malformed")
+        require_summary_sha256(
+            summary.get("report_manifest_sha256"),
+            f"{summary['method_id']} report_manifest.json",
+        )
     return summaries
 
 

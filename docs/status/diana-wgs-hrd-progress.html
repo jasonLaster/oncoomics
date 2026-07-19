@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact deterministic report hashes</li>
+          <li class="pill">Latest milestone = local exact runbook receipt hashes</li>
+          <li class="pill">Runbook receipt hashes = exact</li>
           <li class="pill">Deterministic report hashes = exact</li>
           <li class="pill">Cross-check route hashes = exact</li>
           <li class="pill">AI-review source hashes = exact</li>
@@ -1287,6 +1288,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact runbook receipt hashes</strong>
+              <span>The AI-synthesis and reviewed-public runbook renderers now reject coerced SHA-256 summary values before report-manifest or private-receipt hashes can be threaded into post-terminal handoff commands.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact private-publication object hashes</strong>
               <span>The reviewed-public report publisher now rejects non-string SHA-256 values in private publication receipt object rows before a private deterministic/Rosalind/cross-check/AI/synthesis report packet can be copied into the reviewed public alias tree.</span>
             </li>
@@ -1420,6 +1425,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T13:15:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact runbook receipt hashes:</strong>
+                the AI-synthesis and reviewed-public runbook renderers now
+                reject coerced SHA-256 summary values before report-manifest or
+                private-receipt hashes can be threaded into post-terminal
+                handoff commands. No live cloud action, compute action, or
+                replacement run was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T13:00:00-07:00">Jul 19 · local</time>
               <span>

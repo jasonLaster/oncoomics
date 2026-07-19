@@ -793,6 +793,11 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 "not-a-sha",
                 "SHA-256 is malformed",
             ),
+            (
+                "report_manifest_sha256",
+                int("1" * 64),
+                "SHA-256 is malformed",
+            ),
             ("object_count", 0, "object count is malformed"),
             ("object_count", True, "object count is malformed"),
         ):
