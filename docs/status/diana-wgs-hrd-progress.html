@@ -312,13 +312,16 @@
           <code>no_call</code> ceiling; two isolated AI reviewers validated and
           finalized schema-1 packets; comparative synthesis rendered an
           agreement table. HCC1395 remains a public known-answer workflow
-          rehearsal, never a Diana result. Diana deterministic compute is still
-          GPU-quota blocked, the legacy CPU run remains stopped, and Diana HRD
-          remains <code>partial_evidence</code> / <code>no_call</code>.
+          rehearsal, never a Diana result. The fast DAG now labels its
+          deterministic-plus-Rosalind blocked packets as pre-route validation
+          only; terminal freeze still requires four-source rebinding after exact
+          Sequenza and SigProfiler route reports exist. Diana deterministic
+          compute is still GPU-quota blocked, the legacy CPU run remains stopped,
+          and Diana HRD remains <code>partial_evidence</code> / <code>no_call</code>.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = 422f0a4</li>
+          <li class="pill">Latest milestone = 462ee36</li>
           <li class="pill">Public access foundation = ready</li>
           <li class="pill">HCC1395 seven-report stack = passed</li>
           <li class="pill">Independent reviews = 2 complete</li>
@@ -343,7 +346,7 @@
               <div class="bar" aria-hidden="true" style="--pct: 100%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--done)">
-              <strong>Seven-method reporting stack</strong>
+              <strong>HCC1395 seven-method reporting stack</strong>
               <span>100% · done</span>
               <div class="bar" aria-hidden="true" style="--pct: 100%"><span></span></div>
             </li>
@@ -351,6 +354,11 @@
               <strong>Independent AI reviewers / synthesis</strong>
               <span>100% · done</span>
               <div class="bar" aria-hidden="true" style="--pct: 100%"><span></span></div>
+            </li>
+            <li class="track" style="--tone: var(--queued)">
+              <strong>Diana blocked-packet binding</strong>
+              <span>50% · terminal next</span>
+              <div class="bar" aria-hidden="true" style="--pct: 50%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--blocked)">
               <strong>Next-generation GPU / distributed architecture</strong>
@@ -444,9 +452,17 @@
               <strong>Blocked · keep the legacy CPU run stopped</strong>
               <span>Legacy v2 failed after FilterMutectCalls in the strict UTF-8 <code>samtools --version</code> check; patched v4 restored 23 Mutect2 shards and was intentionally stopped at paired contamination pileups.</span>
             </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · separate pre-route packet validation</strong>
+              <span>The fast DAG’s deterministic-plus-Rosalind five-packet gate is explicitly scoped <code>pre_route_deterministic_rosalind</code> and cannot enter terminal freeze.</span>
+            </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Next · freeze real terminal artifacts</strong>
               <span>Only after a successful new run: capture immutable inputs, then build the Diana packet and eligible method reports.</span>
+            </li>
+            <li class="item" style="--tone: var(--queued)">
+              <strong>Next · rebuild terminal blocked packets</strong>
+              <span>After exact Sequenza and SigProfiler reports exist, rerun the default four-source binding as <code>terminal_source_reports</code> and pass that root into source-freeze.</span>
             </li>
           </ol>
 
@@ -466,6 +482,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T22:04:01-07:00">Jul 18 · 10:04 PM</time>
+              <span>
+                <strong>462ee36 Split pre-route and terminal HRD blocked packets:</strong>
+                the fast DAG’s explicit
+                <code>--allow-pre-route-source-reports</code> mode binds its
+                five local-validation packets as
+                <code>pre_route_deterministic_rosalind</code>. The default
+                four-source mode remains <code>terminal_source_reports</code>
+                and must be rerun after exact Sequenza and SigProfiler reports
+                exist before source-freeze. All 1,671 tests passed; no compute
+                was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T21:57:49-07:00">Jul 18 · 9:57 PM</time>
               <span>
