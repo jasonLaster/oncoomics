@@ -592,6 +592,31 @@ class PublishPrivateReportTests(unittest.TestCase):
 
             self.assertFalse(fixture.receipt_path.exists())
 
+    def test_apply_rejects_dry_run_receipt_with_stale_extra_metadata_before_aws(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
+            payload = json.loads(dry_run_receipt.read_text(encoding="utf-8"))
+            payload["stale_packet_revision"] = "0" * 64
+            dry_run_receipt.write_text(
+                json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with (
+                self.assertRaisesRegex(ValueError, "contract is malformed"),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_run_receipt))
+
+            self.assertFalse(fixture.receipt_path.exists())
+
     def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_aws(
         self,
     ) -> None:

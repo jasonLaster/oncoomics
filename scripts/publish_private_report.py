@@ -41,6 +41,27 @@ from publish_reviewed_public_report import (
 )
 
 CLASSIFICATION = "private-reviewed-hrd-report"
+PRIVATE_DRY_RUN_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "generated_at_utc",
+    "apply",
+    "subject_alias",
+    "run_id",
+    "method_id",
+    "packet_revision",
+    "source_packet_dir",
+    "destination_prefix",
+    "kms_key_arn",
+    "expected_files",
+    "object_count",
+    "passed_count",
+    "forbidden_token_count",
+    "forbidden_token_sha256",
+    "objects",
+    "checks",
+    "completed_at_utc",
+}
 
 
 def require_private_object_checks_exact(
@@ -207,6 +228,11 @@ def validate_dry_run_receipt(
         dry_run.get("schema_version") != 1
         or dry_run.get("status") != "dry_run"
         or dry_run.get("apply") is not False
+        or set(dry_run) != PRIVATE_DRY_RUN_RECEIPT_KEYS
+        or not isinstance(dry_run.get("generated_at_utc"), str)
+        or not dry_run.get("generated_at_utc")
+        or not isinstance(dry_run.get("completed_at_utc"), str)
+        or not dry_run.get("completed_at_utc")
         or dry_run.get("passed_count") != 0
         or dry_run.get("objects") != []
     ):
