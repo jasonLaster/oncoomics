@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -14,7 +13,7 @@ from .run_phase3_fast_cnv_evidence import MATERIALIZED_OUTPUTS as CNV_OUTPUTS
 from .run_phase3_fast_filter_mutect import MATERIALIZED_OUTPUTS as FILTER_MUTECT_OUTPUTS
 from .run_phase3_fast_parabricks_mutect import MATERIALIZED_OUTPUTS as PARABRICKS_MUTECT_OUTPUTS
 from .run_phase3_fast_sv_evidence import EXPECTED_COMMANDS as SV_OUTPUTS
-from .safe_json_output import read_real_json, require_safe_output_path
+from .safe_json_output import read_real_json, require_safe_output_path, sha256_real_file
 
 DEFAULT_SMALL_VARIANT_EXPORT = "manifests/phase3_wgs_fast/small_variant_artifact_export.json"
 DEFAULT_BAM_QC_RECEIPT = "manifests/phase3_wgs_fast/bam_qc_receipt.json"
@@ -50,11 +49,7 @@ def _require_hex(value: Any, label: str) -> str:
 
 
 def _sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_real_file(path, ManifestError)
 
 
 def _read_receipt(path: Path, label: str) -> Mapping[str, Any]:

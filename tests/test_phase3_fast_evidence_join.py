@@ -198,6 +198,30 @@ class Phase3FastEvidenceJoinTests(unittest.TestCase):
                     with self.assertRaisesRegex(join_evidence.ManifestError, f"{key} parent may not be a symlink"):
                         join_evidence.load_manifest_from_environment()
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+
+            real_receipt = root / "real-bam-qc.json"
+            real_receipt.write_text("{}\n", encoding="utf-8")
+            symlinked_receipt = root / "bam-qc.json"
+            symlinked_receipt.symlink_to(real_receipt)
+
+            parent_receipt = real_parent / "bam-qc.json"
+            parent_receipt.write_text("{}\n", encoding="utf-8")
+            symlinked_parent = root / "symlinked-parent"
+            symlinked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            cases = (
+                (symlinked_receipt, "SHA-256 input"),
+                (symlinked_parent / parent_receipt.name, "parent may not be a symlink"),
+            )
+            for hash_input, message in cases:
+                with self.subTest(hash_input=hash_input), self.assertRaisesRegex(join_evidence.ManifestError, message):
+                    join_evidence._sha256_path(hash_input)
+
     def test_rejects_non_completed_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
             receipts = list(phase3_fast_receipts(Path(tmp)))
