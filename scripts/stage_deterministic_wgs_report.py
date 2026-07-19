@@ -113,6 +113,15 @@ EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS: dict[str, bool] = {
     "exact_kms": True,
     "single_create_only_version": True,
 }
+EXPECTED_EXACT_MATERIALIZATION_ROW_CHECKS: dict[str, bool] = {
+    "version_id": True,
+    "content_length": True,
+    "local_bytes": True,
+    "checksums": True,
+    "checksum_type": True,
+    "sse": True,
+    "kms": True,
+}
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 S3_CHECKSUM_FIELDS = {
     "ChecksumCRC64NVME",
@@ -2049,8 +2058,7 @@ def main() -> None:
             and row.get("kms_key_id") == args.expected_kms_key_arn
             and isinstance(row.get("checksums"), dict)
             and bool(row.get("checksums"))
-            and row_checks
-            and all(value is True for value in row_checks.values())
+            and row_checks == EXPECTED_EXACT_MATERIALIZATION_ROW_CHECKS
         ):
             exact_materialization_valid = False
     add_check(

@@ -1210,6 +1210,7 @@ class SyntheticFixture:
                             "content_length": True,
                             "local_bytes": True,
                             "checksums": True,
+                            "checksum_type": True,
                             "sse": True,
                             "kms": True,
                         },
@@ -2023,6 +2024,42 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             receipt_path = fixture.aux / "exact-materialization.json"
             receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
             receipt["objects"][0]["sha256"] = "0" * 64
+            write_json(receipt_path, receipt)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("exact_version_materialization", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_missing_exact_version_materialization_check_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "exact-materialization.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["objects"][0]["checks"].pop("checksum_type")
+            write_json(receipt_path, receipt)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("exact_version_materialization", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_unexpected_exact_version_materialization_check_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "exact-materialization.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["objects"][0]["checks"]["future_check"] = True
+            write_json(receipt_path, receipt)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("exact_version_materialization", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_failed_exact_version_materialization_check_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "exact-materialization.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["objects"][0]["checks"]["checksum_type"] = False
             write_json(receipt_path, receipt)
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
             self.assertNotEqual(result.returncode, 0)
