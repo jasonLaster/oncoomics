@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local early BAM-QC count exactness</li>
+          <li class="pill">Latest milestone = local SBS96 skipped-SNV exactness</li>
+          <li class="pill">SBS96 skipped-SNVs = exact</li>
           <li class="pill">Early BAM-QC counts = exact</li>
           <li class="pill">Early-look counts = exact</li>
           <li class="pill">SV counts = exact</li>
@@ -675,6 +676,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact SBS96 skipped-SNV counts</strong>
+              <span>Deterministic WGS report staging now rejects non-exact skipped-SNV records before SBS96 evidence can pass, then carries the post-validation value into the report review summary.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact early-look BAM-QC counts</strong>
               <span>Deterministic WGS report staging now rejects non-exact early-look tumor/normal BAM-QC read counts before descriptive alignment rows can feed the first terminal report; these rows are not LOH, biallelic loss, scalar HRD, or a treatment trigger.</span>
@@ -1345,6 +1350,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T09:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact SBS96 skipped-SNV counts:</strong>
+                deterministic WGS report staging now requires exact
+                nonnegative skipped-SNV counts before SBS96 evidence can pass
+                and carries the post-validation value into the review summary.
+                No live cloud action, compute action, or replacement run was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T09:15:00-07:00">Jul 19 · local</time>
               <span>

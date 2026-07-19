@@ -2835,6 +2835,20 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                 "sbs96_matrix",
             ),
             (
+                "signature skipped alleles string",
+                lambda fixture: mutate_signature_json_count(
+                    fixture, "skipped_snv_records", "0"
+                ),
+                "sbs96_matrix",
+            ),
+            (
+                "signature skipped alleles bool",
+                lambda fixture: mutate_signature_json_count(
+                    fixture, "skipped_snv_records", False
+                ),
+                "sbs96_matrix",
+            ),
+            (
                 "staged contexts string",
                 lambda fixture: mutate_staged_sbs96_json_count(
                     fixture, "contexts", "96"
@@ -2890,6 +2904,10 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                     'signatures.get("sbs96_rows"',
                     "signatures.get('usable_snv_records'",
                     'signatures.get("usable_snv_records"',
+                    "signatures.get('skipped_snv_records'",
+                    'signatures.get("skipped_snv_records"',
+                    "signatures['skipped_snv_records'",
+                    'signatures["skipped_snv_records"',
                     "staged_sbs96.get('contexts'",
                     'staged_sbs96.get("contexts"',
                     "staged_sbs96.get('usable_pass_snv_alleles'",

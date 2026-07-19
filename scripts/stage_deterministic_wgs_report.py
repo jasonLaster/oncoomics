@@ -2626,7 +2626,23 @@ def main() -> None:
     sbs_counts = [int(row.get("count", -1)) for row in sbs_rows]
     sbs_count_sum = sum(sbs_counts)
     sbs_keys = {(row.get("mutation_type", ""), row.get("trinucleotide", "")) for row in sbs_rows}
-    add_check(checks, "sbs96_matrix", signatures.get("status") == "partial_evidence" and len(sbs_rows) == 96 and integer_equals(signatures.get("sbs96_rows"), len(sbs_rows)) and sbs_keys == EXPECTED_SBS96 and min(sbs_counts, default=-1) >= 0 and integer_equals(signatures.get("usable_snv_records"), sbs_count_sum) and str(signatures.get("sbs3_status", "")).startswith("no_call") and signatures.get("source_vcf") == paths["filtered_vcf"].name, "SBS96 has exactly the 96 canonical nonnegative channels summing to the summary count; SBS3 remains no_call.")
+    sbs96_matrix_match = (
+        signatures.get("status") == "partial_evidence"
+        and len(sbs_rows) == 96
+        and integer_equals(signatures.get("sbs96_rows"), len(sbs_rows))
+        and sbs_keys == EXPECTED_SBS96
+        and min(sbs_counts, default=-1) >= 0
+        and integer_equals(signatures.get("usable_snv_records"), sbs_count_sum)
+        and nonnegative_int(signatures.get("skipped_snv_records"))
+        and str(signatures.get("sbs3_status", "")).startswith("no_call")
+        and signatures.get("source_vcf") == paths["filtered_vcf"].name
+    )
+    add_check(
+        checks,
+        "sbs96_matrix",
+        sbs96_matrix_match,
+        "SBS96 has exactly the 96 canonical nonnegative channels summing to the summary count; SBS3 remains no_call.",
+    )
     add_check(
         checks,
         "independent_vcf_sbs96_validation",
@@ -2718,6 +2734,8 @@ def main() -> None:
     contamination_error = safe_float(contamination_rows[0]["error"])
     early_contamination = safe_float(early.get("contamination", {}).get("contamination"))
     brca_counts = Counter(row.get("region_label", "") for row in brca_rows)
+    usable_snv_records = signatures["usable_snv_records"]
+    skipped_snv_records = signatures["skipped_snv_records"]
     neutral_bins = cnv_classes["neutral_or_low_signal"]
     early_tumor_total_reads = early_tumor_bam_qc["total_reads"]
     early_normal_total_reads = early_normal_bam_qc["total_reads"]
@@ -2818,7 +2836,7 @@ def main() -> None:
             "",
             "## 7. SBS96 input",
             "",
-            f"The SBS96 matrix has {format_int(len(sbs_rows))} canonical channels summing to {format_int(signatures['usable_snv_records'])} usable PASS SNV alleles; {format_int(signatures['skipped_snv_records'])} SNV records/alleles were skipped by the context rules. Assignment readiness is `{signatures.get('sigprofiler_assignment_status')}`. SBS3 remains `no_call` because signature assignment and threshold policy are not validated and locked.",
+            f"The SBS96 matrix has {format_int(len(sbs_rows))} canonical channels summing to {format_int(usable_snv_records)} usable PASS SNV alleles; {format_int(skipped_snv_records)} SNV records/alleles were skipped by the context rules. Assignment readiness is `{signatures.get('sigprofiler_assignment_status')}`. SBS3 remains `no_call` because signature assignment and threshold policy are not validated and locked.",
             "",
             "A separate verifier re-read the indexed PASS-SNV VCF against the exact indexed FASTA, confirmed VCF/reference compatibility, and reproduced all 96 matrix channels exactly. This establishes matrix derivation consistency; it does not validate signature attribution or an SBS3 threshold.",
             "",
@@ -2955,8 +2973,8 @@ def main() -> None:
         },
         "sbs96": {
             "canonical_channels": len(sbs_rows),
-            "usable_pass_snv_alleles": int(signatures["usable_snv_records"]),
-            "skipped_snv_alleles": int(signatures["skipped_snv_records"]),
+            "usable_pass_snv_alleles": usable_snv_records,
+            "skipped_snv_alleles": skipped_snv_records,
             "matrix_equivalence": "passed",
             "sbs3_state": "no_call",
         },
