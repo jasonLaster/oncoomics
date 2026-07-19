@@ -343,8 +343,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = 02d3f08</li>
-          <li class="pill">Prior source = cef0410</li>
+          <li class="pill">Latest milestone = 6c1ddab</li>
+          <li class="pill">Prior source = 02d3f08</li>
+          <li class="pill">AI bundle staging = exact</li>
           <li class="pill">Pre-route digests = bound</li>
           <li class="pill">Private apply receipts = exact</li>
           <li class="pill">Public results bucket = intentional</li>
@@ -395,8 +396,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
-              <span>55% · exact support guarded</span>
-              <div class="bar" aria-hidden="true" style="--pct: 55%"><span></span></div>
+              <span>60% · exact input staging guarded</span>
+              <div class="bar" aria-hidden="true" style="--pct: 60%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
@@ -537,6 +538,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI review bundle staging</strong>
+              <span>The reviewer-input stager now rejects contaminated source bundles with unbound scratch files before copying the exact <code>review_bundle.json</code> plus reviewer-specific prompt into either isolated reviewer directory.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require the exact synthesis support inventory</strong>
               <span>Final synthesis validation now accepts only the agreement CSV support hash and rejects extra stale support entries before the packet can move forward.</span>
             </li>
@@ -618,6 +623,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T23:44:00-07:00">Jul 18 · 11:44 PM</time>
+              <span>
+                <strong>6c1ddab Require exact AI review bundle staging:</strong>
+                reviewer-input staging now rejects unbound scratch files in the
+                AI bundle before copying the exact review bundle and
+                reviewer-specific prompts into isolated A/B input directories.
+                No model invocation or compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T23:40:00-07:00">Jul 18 · 11:40 PM</time>
               <span>
