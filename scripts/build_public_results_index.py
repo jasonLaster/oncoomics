@@ -280,6 +280,10 @@ def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
     return value
 
 
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
 def validate_reviewed_public_receipts(
     paths: Sequence[pathlib.Path],
 ) -> tuple[dict[str, ReviewedPublicObject], list[dict[str, Any]]]:
@@ -312,8 +316,7 @@ def validate_reviewed_public_receipts(
             or not SHA256_HEX.fullmatch(str(receipt.get("script_sha256", "")))
             or receipt.get("destination_prefix") != expected_prefix
             or tuple(receipt.get("expected_files", ())) != expected_files
-            or not isinstance(receipt.get("forbidden_token_count"), int)
-            or int(receipt.get("forbidden_token_count", 0)) <= 0
+            or not is_positive_exact_int(receipt.get("forbidden_token_count"))
             or not isinstance(forbidden_token_sha256, list)
             or not forbidden_token_sha256
             or any(
@@ -391,10 +394,7 @@ def validate_reviewed_public_receipts(
             digest = str(row.get("sha256", ""))
             version_id = str(row.get("version_id", ""))
             checks = row.get("checks")
-            try:
-                size = int(row.get("bytes", -1))
-            except (TypeError, ValueError):
-                size = -1
+            size = row.get("bytes")
             if (
                 relative in source_by_relative
                 or row.get("bucket") != PRIVATE_BUCKET
@@ -403,7 +403,7 @@ def validate_reviewed_public_receipts(
                 or not non_null_version_id(version_id)
                 or not SHA256_HEX.fullmatch(digest)
                 or row.get("checksum_sha256") != checksum_sha256(digest)
-                or size <= 0
+                or not is_positive_exact_int(size)
                 or size > MAX_FILE_BYTES
                 or checks != SOURCE_PREFLIGHT_CHECKS
             ):
@@ -432,10 +432,7 @@ def validate_reviewed_public_receipts(
             digest = str(row.get("sha256", ""))
             version_id = str(row.get("version_id", ""))
             checks = row.get("checks")
-            try:
-                size = int(row.get("bytes", -1))
-            except (TypeError, ValueError):
-                size = -1
+            size = row.get("bytes")
             observed_relative_paths.add(relative)
             observed_keys.add(key)
             if (
@@ -447,7 +444,7 @@ def validate_reviewed_public_receipts(
                 or not SHA256_HEX.fullmatch(digest)
                 or row.get("checksum_sha256") != checksum_sha256(digest)
                 or row.get("server_side_encryption") != "AES256"
-                or size <= 0
+                or not is_positive_exact_int(size)
                 or size > MAX_FILE_BYTES
                 or checks != PUBLIC_DESTINATION_OBJECT_CHECKS
             ):

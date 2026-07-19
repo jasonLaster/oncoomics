@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local AI stage receipts</li>
+          <li class="pill">Latest milestone = local public index integers</li>
+          <li class="pill">Reviewed-public integers = exact</li>
           <li class="pill">AI stage receipts = exact</li>
           <li class="pill">Terminal report kinds = exact</li>
           <li class="pill">Cross-check receipts = schema-2 exact</li>
@@ -368,7 +369,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 64daf27</li>
+          <li class="pill">Prior dashboard = eab2244</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -794,6 +795,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact reviewed-public integer fields</strong>
+              <span>The public results index now rejects reviewed-public receipts whose forbidden-token count, source-object bytes, or destination-object bytes are JSON booleans or otherwise non-exact positive integers before those receipts can feed public index construction.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact public index payloads</strong>
               <span>Public index dry-run and apply now reject <code>objects.json</code> payloads with stale top-level fields or per-object fields before final public index publication can call AWS.</span>
             </li>
@@ -855,6 +860,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:20:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact reviewed-public integer fields:</strong>
+                public index construction now rejects JSON booleans and other
+                non-exact positive integers in reviewed-public
+                <code>forbidden_token_count</code>,
+                <code>source_objects[].bytes</code>, and
+                <code>destination_objects[].bytes</code> before receipts can
+                feed <code>objects.json</code>. No S3, Batch, route, GPU,
+                quota, or replacement compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:19:00-07:00">Jul 19 · local</time>
               <span>
