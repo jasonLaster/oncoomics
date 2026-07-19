@@ -205,6 +205,15 @@ EXPECTED_CROSSCHECK_RECEIPT_DOWNLOAD_CHECKS: dict[str, bool] = {
     "receipt_checks_passed": True,
     "receipt_boundary_no_call": True,
 }
+EXPECTED_CROSSCHECK_OUTPUT_CHECKS: dict[str, bool] = {
+    "create_only_put": True,
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_version_history": True,
+}
 EXPECTED_STAGED_VALIDATION_DOWNLOAD_CHECKS: dict[str, bool] = {
     "version_exact": True,
     "bytes_exact": True,
@@ -2237,8 +2246,7 @@ def main() -> None:
                 output_row.get("checksums"),
                 output_row.get("sha256"),
             )
-            and bool(output_checks)
-            and all(value is True for value in output_checks.values())
+            and output_checks == EXPECTED_CROSSCHECK_OUTPUT_CHECKS
         ):
             crosscheck_outputs_valid = False
     staged_output = (

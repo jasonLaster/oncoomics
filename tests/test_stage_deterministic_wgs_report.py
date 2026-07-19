@@ -1296,15 +1296,7 @@ class SyntheticFixture:
                 },
                 "sha256": digest,
                 "kms_key_arn": KMS_ARN,
-                "checks": {
-                    "create_only_put": True,
-                    "version_exact": True,
-                    "bytes_exact": True,
-                    "sha256_checksum_exact": True,
-                    "metadata_sha256_exact": True,
-                    "exact_kms": True,
-                    "single_version_history": True,
-                },
+                "checks": dict(REPORT_MODULE.EXPECTED_CROSSCHECK_OUTPUT_CHECKS),
             }
             for index, (name, digest) in enumerate(output_digests.items(), 1)
         }
@@ -2142,6 +2134,50 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             receipt["outputs"]["sbs96.csv"]["checksums"]["ChecksumSHA256"] = (
                 base64.b64encode(bytes.fromhex("0" * 64)).decode("ascii")
             )
+            write_json(receipt_path, receipt)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "crosscheck_materialization_custody", result.stdout + result.stderr
+            )
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_missing_crosscheck_output_check_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "crosscheck-materialization.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["outputs"]["sbs96.csv"]["checks"].pop(
+                "single_version_history"
+            )
+            write_json(receipt_path, receipt)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "crosscheck_materialization_custody", result.stdout + result.stderr
+            )
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_unexpected_crosscheck_output_check_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "crosscheck-materialization.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["outputs"]["sbs96.csv"]["checks"]["future_check"] = True
+            write_json(receipt_path, receipt)
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "crosscheck_materialization_custody", result.stdout + result.stderr
+            )
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_failed_crosscheck_output_check_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            receipt_path = fixture.aux / "crosscheck-materialization.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["outputs"]["sbs96.csv"]["checks"]["version_exact"] = False
             write_json(receipt_path, receipt)
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
             self.assertNotEqual(result.returncode, 0)
