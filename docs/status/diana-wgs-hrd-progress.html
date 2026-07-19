@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact staged-validation checksums</li>
+          <li class="pill">Latest milestone = local exact final-freeze checksum maps</li>
+          <li class="pill">Final-freeze checksum maps = exact</li>
           <li class="pill">Staged-validation checksum maps = exact</li>
           <li class="pill">S3 checksum maps = exact</li>
           <li class="pill">Stage/final anchor VersionIds = exact</li>
@@ -735,6 +736,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact final-freeze checksum maps</strong>
+              <span><code>freeze_final_artifacts.py</code> now requires dry-run receipt checksum maps to contain exact string S3 checksums and source/destination snapshots to carry exact <code>FULL_OBJECT</code> checksum types before final artifact freeze custody can pass.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact staged-validation checksum maps</strong>
               <span><code>download_materializer_staged_validation.py</code> now rejects non-string S3 checksum map values before staged-validation materializer receipts or exact HEAD/GET downloads can feed deterministic report staging.</span>
@@ -1645,6 +1650,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T21:40:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact final-freeze checksum maps:</strong>
+                <code>freeze_final_artifacts.py</code> now requires exact
+                string S3 checksum maps and exact <code>FULL_OBJECT</code>
+                checksum types while snapshotting source/destination rows and
+                re-emitting final-freeze dry-run source rows, closing the
+                remaining inventory checksum string-coercion seam.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T21:30:00-07:00">Jul 19 · local</time>
               <span>
@@ -5433,7 +5449,7 @@
 
       <footer>
         Static, dependency-free, and source-controlled. No network calls, no
-        external assets, no credential material, and no private object payloads.
+        external assets, no sensitive material, and no private object payloads.
       </footer>
     </main>
   </body>

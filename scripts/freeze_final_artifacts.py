@@ -146,6 +146,25 @@ def exact_source_version_id(value: Any, label: str) -> str:
     return value
 
 
+def exact_full_object_checksum_type(value: Any, label: str) -> str:
+    if not isinstance(value, str) or value != "FULL_OBJECT":
+        raise RuntimeError(f"{label} omitted an exact full-object checksum type")
+    return value
+
+
+def exact_checksum_map(value: Any, label: str) -> dict[str, str]:
+    if not isinstance(value, dict):
+        raise RuntimeError(f"{label} omitted exact string S3 checksums")
+    checks = {
+        field: checksum
+        for field in CHECKSUM_FIELDS
+        if isinstance((checksum := value.get(field)), str) and checksum.strip()
+    }
+    if not checks or set(checks) != set(value):
+        raise RuntimeError(f"{label} omitted exact string S3 checksums")
+    return checks
+
+
 def exact_nonempty_marker(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise RuntimeError(f"{label} must be a non-empty string")
@@ -485,6 +504,8 @@ def snapshot_inventory(bucket: str, prefix: str, region: str) -> list[dict[str, 
             f"source object {relative}",
         )
         size = exact_s3_size(current.get("ContentLength"))
+        checksum_type = current.get("ChecksumType")
+        checksum_values = checksums(current)
         etag = str(current.get("ETag", ""))
         listed_size = exact_s3_size(listed_row.get("Size"))
         listed_stable = (
@@ -494,8 +515,8 @@ def snapshot_inventory(bucket: str, prefix: str, region: str) -> list[dict[str, 
             not listed_stable
             or size <= 0
             or size > MAX_SINGLE_COPY_BYTES
-            or current.get("ChecksumType") != "FULL_OBJECT"
-            or not checksums(current)
+            or checksum_type != "FULL_OBJECT"
+            or not checksum_values
         ):
             raise RuntimeError(
                 "source object changed during inventory or lacks a positive single-copy "
@@ -508,8 +529,10 @@ def snapshot_inventory(bucket: str, prefix: str, region: str) -> list[dict[str, 
                 "bytes": size,
                 "etag": etag,
                 "version_id": version_id,
-                "checksums": checksums(current),
-                "checksum_type": str(current.get("ChecksumType", "")),
+                "checksums": checksum_values,
+                "checksum_type": exact_full_object_checksum_type(
+                    checksum_type, f"source object {relative}"
+                ),
             }
         )
     snapshot.sort(key=lambda row: row["relative_key"])
@@ -551,8 +574,12 @@ def dry_run_objects(
                 ),
                 "bytes": exact_s3_size(row.get("bytes")),
                 "etag": str(row["etag"]),
-                "checksums": row["checksums"],
-                "checksum_type": str(row["checksum_type"]),
+                "checksums": exact_checksum_map(
+                    row.get("checksums"), "dry-run source object"
+                ),
+                "checksum_type": exact_full_object_checksum_type(
+                    row.get("checksum_type"), "dry-run source object"
+                ),
             },
             "destination": {
                 "bucket": destination_bucket,
@@ -651,11 +678,13 @@ def snapshot_destination(
             raise RuntimeError("destination history contains an invalid key/version")
         current = head(bucket, key, region, version_id)
         size = exact_s3_size(current.get("ContentLength"))
+        checksum_type = current.get("ChecksumType")
+        checksum_values = checksums(current)
         if (
             current.get("VersionId") != version_id
             or size <= 0
-            or current.get("ChecksumType") != "FULL_OBJECT"
-            or not checksums(current)
+            or checksum_type != "FULL_OBJECT"
+            or not checksum_values
             or current.get("ServerSideEncryption") != "aws:kms"
             or current.get("SSEKMSKeyId") != kms_key_arn
         ):
@@ -669,8 +698,10 @@ def snapshot_destination(
                 "version_id": version_id,
                 "bytes": size,
                 "etag": str(current.get("ETag", "")),
-                "checksums": checksums(current),
-                "checksum_type": str(current.get("ChecksumType", "")),
+                "checksums": checksum_values,
+                "checksum_type": exact_full_object_checksum_type(
+                    checksum_type, f"destination object {relative}"
+                ),
                 "kms_key_id": str(current.get("SSEKMSKeyId", "")),
             }
         )
@@ -1001,11 +1032,13 @@ def main() -> int:
                 f"source object {relative}",
             )
             before_size = exact_s3_size(before.get("ContentLength"))
+            before_checksum_type = before.get("ChecksumType")
+            before_checksums = checksums(before)
             if (
                 before_size <= 0
                 or before_size > MAX_SINGLE_COPY_BYTES
-                or before.get("ChecksumType") != "FULL_OBJECT"
-                or not checksums(before)
+                or before_checksum_type != "FULL_OBJECT"
+                or not before_checksums
             ):
                 raise RuntimeError(
                     "source object lacks a positive single-copy size, current VersionId, "
@@ -1026,8 +1059,10 @@ def main() -> int:
                     "version_id": source_version_id,
                     "bytes": before_size,
                     "etag": str(before.get("ETag", "")),
-                    "checksums": checksums(before),
-                    "checksum_type": str(before.get("ChecksumType", "")),
+                    "checksums": before_checksums,
+                    "checksum_type": exact_full_object_checksum_type(
+                        before_checksum_type, f"source object {relative}"
+                    ),
                 },
                 "destination": {"bucket": destination_bucket, "key": destination_key},
                 "status": "in_progress" if args.apply else "dry_run",
@@ -1064,6 +1099,7 @@ def main() -> int:
                 )
                 after_source_size = exact_s3_size(after_source.get("ContentLength"))
                 destination_size = exact_s3_size(destination.get("ContentLength"))
+                destination_checksum_type = destination.get("ChecksumType")
                 source_stable = (
                     before_size == after_source_size
                     and str(before.get("ETag", "")) == str(after_source.get("ETag", ""))
@@ -1092,7 +1128,11 @@ def main() -> int:
                         "bytes": destination_size,
                         "etag": str(destination.get("ETag", "")),
                         "checksums": checksums(destination),
-                        "checksum_type": str(destination.get("ChecksumType", "")),
+                        "checksum_type": (
+                            destination_checksum_type
+                            if isinstance(destination_checksum_type, str)
+                            else ""
+                        ),
                         "server_side_encryption": str(destination.get("ServerSideEncryption", "")),
                         "kms_key_id": str(destination.get("SSEKMSKeyId", "")),
                     }

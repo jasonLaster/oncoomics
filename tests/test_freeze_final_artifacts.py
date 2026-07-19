@@ -164,6 +164,32 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         ]
         self.assertEqual(suspicious_calls, [])
 
+    def test_checksum_guards_avoid_raw_string_coercion(self) -> None:
+        source = Path(MODULE.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        guarded_fields = (
+            "current.get('ChecksumType'",
+            'current.get("ChecksumType"',
+            "before.get('ChecksumType'",
+            'before.get("ChecksumType"',
+            "destination.get('ChecksumType'",
+            'destination.get("ChecksumType"',
+            "row['checksum_type'",
+            'row["checksum_type"',
+            "row.get('checksum_type'",
+            'row.get("checksum_type"',
+        )
+        suspicious_calls = [
+            ast.unparse(node)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(field in ast.unparse(node.args[0]) for field in guarded_fields)
+        ]
+        self.assertEqual(suspicious_calls, [])
+
     def test_parse_s3_rejects_bucket_only(self) -> None:
         self.assertEqual(MODULE.parse_s3("s3://private-bucket/path/to/tree"), ("private-bucket", "path/to/tree"))
         with self.assertRaises(ValueError):
@@ -1515,6 +1541,28 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "exact S3 VersionId"):
                     MODULE.inventory_identity([malformed])
                 with self.assertRaisesRegex(RuntimeError, "exact S3 VersionId"):
+                    MODULE.dry_run_objects(
+                        [malformed],
+                        "source",
+                        "destination",
+                        "final/",
+                    )
+        for value in (True, None, "", "COMPOSITE"):
+            with self.subTest(checksum_type=value):
+                malformed = {**row, "checksum_type": value}
+                with self.assertRaisesRegex(
+                    RuntimeError, "full-object checksum type"
+                ):
+                    MODULE.dry_run_objects(
+                        [malformed],
+                        "source",
+                        "destination",
+                        "final/",
+                    )
+        for value in (True, None, {}, {"ChecksumSHA256": True}, {"Bogus": "sha"}):
+            with self.subTest(checksums=value):
+                malformed = {**row, "checksums": value}
+                with self.assertRaisesRegex(RuntimeError, "string S3 checksums"):
                     MODULE.dry_run_objects(
                         [malformed],
                         "source",
