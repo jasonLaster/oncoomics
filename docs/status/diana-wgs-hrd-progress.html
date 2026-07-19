@@ -307,14 +307,14 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>03a0ce029fb6213e2d77337f8bc2a8acc5e33b79</strong>.
-          The latest work is publication dry-run receipt hardening:
-          <code>publish_private_report.py</code> and
-          <code>publish_reviewed_public_report.py</code> now require exact
-          passed check dictionaries when an apply run consumes a dry-run
-          receipt. A stale dry-run receipt that carries an unexpected failed
-          check is rejected before AWS or S3 access, so private freezes and
-          reviewed-public publication keep their dry-run/apply contract exact.
+          <strong>a77960ba62e5ee57c46acb0ceae1472b657b5831</strong>.
+          The latest work is final public-index dry-run receipt hardening:
+          <code>publish_public_results_index.py</code> now requires the
+          <code>objects.json</code> apply run to consume an exact dry-run check
+          dictionary. A stale public-index dry-run receipt that carries an
+          unexpected failed check is rejected before AWS or S3 access, so the
+          last reviewed-public index upload keeps its dry-run/apply contract
+          exact.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -322,7 +322,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 03a0ce0</li>
+          <li class="pill">Latest hardening = a77960b</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -404,8 +404,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 03a0ce0</strong>
-              <span>Private and reviewed-public publication apply runs now reject dry-run receipts whose check inventories are not exact.</span>
+              <strong>Preserve a77960b</strong>
+              <span>The final public-index apply run now rejects dry-run receipts whose check inventories are not exact.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -453,6 +453,23 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>a77960b Require exact public index dry-run checks:</strong>
+                <code>publish_public_results_index.py</code> now requires the
+                public-index dry-run receipt to contain exactly
+                <code>index_schema</code>,
+                <code>index_allowlisted_prefixes</code>, and
+                <code>index_sorted_unique_keys</code> before
+                <code>--apply</code> can upload the reviewed
+                <code>objects.json</code>. The new
+                <code>test_apply_rejects_dry_run_receipt_with_extra_failed_check_before_aws</code>
+                regression appends <code>unexpected_late_check: false</code> to
+                an otherwise valid dry-run receipt and proves final index
+                publication fails before AWS access.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
