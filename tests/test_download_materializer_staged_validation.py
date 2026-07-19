@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import hashlib
 import json
@@ -109,6 +110,13 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
         ] = "COMPOSITE"
         with self.assertRaisesRegex(ValueError, "lacks exact"):
             MODULE.validate_receipt(composite_checksum, KMS)
+
+    def test_validate_receipt_rejects_non_integer_schema_version(self) -> None:
+        payload = receipt(b'{"schema_version":1}\n')
+        payload["schema_version"] = 2.0
+
+        with self.assertRaisesRegex(ValueError, "incomplete or not passed"):
+            MODULE.validate_receipt(payload, KMS)
 
     def test_validate_receipt_rejects_missing_unexpected_or_failed_check_maps(
         self,
@@ -456,6 +464,70 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                         region="us-east-1",
                     )
                 )
+
+    def test_materialize_rejects_non_integer_downloaded_schema_version(self) -> None:
+        payload = json.dumps({"schema_version": 1.0, "status": "passed"}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            output = root / "staged_input_validation.json"
+            verification = root / "verification.json"
+            receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            def get_object(
+                _bucket: str,
+                _key: str,
+                _version_id: str,
+                destination: Path,
+                _region: str,
+            ) -> dict:
+                destination.write_bytes(payload)
+                return {
+                    "VersionId": "version-1",
+                    "ContentLength": len(payload),
+                    "ChecksumSHA256": checksum(payload),
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                }
+
+            with patch.object(
+                MODULE,
+                "head_object",
+                return_value={
+                    "VersionId": "version-1",
+                    "ContentLength": len(payload),
+                    "ChecksumSHA256": checksum(payload),
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                },
+            ), patch.object(MODULE, "get_object", side_effect=get_object):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"{MODULE.OUTPUT_NAME} is not a schema-1 JSON object",
+                ):
+                    MODULE.materialize(
+                        argparse.Namespace(
+                            materializer_receipt=receipt_path,
+                            output=output,
+                            verification_output=verification,
+                            expected_kms_key_arn=KMS,
+                            region="us-east-1",
+                        )
+                    )
+
+            self.assertFalse(output.exists())
+            failed = json.loads(verification.read_text(encoding="utf-8"))
+            self.assertEqual(failed["status"], "failed")
+            self.assertIn(
+                "ValueError: staged_input_validation.json is not a schema-1 JSON object",
+                failed["error"],
+            )
 
     def test_download_mismatch_records_failed_receipt(self) -> None:
         good = json.dumps({"schema_version": 1}).encode()
@@ -1031,6 +1103,57 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
             self.assertFalse(
                 (real_parent / "existing" / "staged_input_validation.json").exists()
             )
+
+    def test_schema_version_checks_use_exact_integer_helper(self) -> None:
+        cases = (
+            (1, 1, True),
+            (1.0, 1, False),
+            ("1", 1, False),
+            (2, 1, False),
+            (None, 1, False),
+            (True, 1, False),
+            (False, 0, False),
+        )
+        for value, expected, accepted in cases:
+            with self.subTest(value=value, expected=expected):
+                self.assertIs(
+                    MODULE.exact_schema_version(
+                        {"schema_version": value},
+                        expected,
+                    ),
+                    accepted,
+                )
+
+    def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "download_materializer_staged_validation.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        parent_by_child = {
+            child: parent
+            for parent in ast.walk(module)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def in_exact_schema_helper(node: ast.AST) -> bool:
+            parent = parent_by_child.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef):
+                    return parent.name == "exact_schema_version"
+                parent = parent_by_child.get(parent)
+            return False
+
+        raw_schema_version_comparisons = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Compare)
+            and "schema_version" in ast.unparse(node)
+            and not in_exact_schema_helper(node)
+        ]
+
+        self.assertEqual(raw_schema_version_comparisons, [])
+
 
 if __name__ == "__main__":
     unittest.main()

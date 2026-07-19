@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local Batch provenance schema exactness</li>
+          <li class="pill">Latest milestone = local staged-validation download schema exactness</li>
+          <li class="pill">Staged-validation schemas = exact</li>
           <li class="pill">Batch provenance schemas = exact</li>
           <li class="pill">Route capture schemas = exact</li>
           <li class="pill">Materializer capture schemas = exact</li>
@@ -633,6 +634,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact staged-validation download schemas</strong>
+              <span>Staged-validation download now rejects JSON floats or booleans in schema-2 materializer receipts and downloaded <code>staged_input_validation.json</code> schema-1 payloads before SigProfiler/Sequenza staged-input validation can consume them.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact route capture schemas</strong>
               <span>Terminal SigProfiler and Sequenza route capture now rejects JSON floats or booleans in logged publication anchors and exact route publication receipts before executable cross-check report trees can be replayed, staged, and handed to Rosalind or AI review.</span>
@@ -995,6 +1000,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T02:48:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact staged-validation download schemas:</strong>
+                staged-validation download now rejects non-exact
+                <code>schema_version</code> values in schema-2 materializer
+                receipts and downloaded schema-1
+                <code>staged_input_validation.json</code> payloads before
+                SigProfiler/Sequenza staged-input validation can consume them.
+                No S3, Batch, route, GPU, quota, or replacement compute was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T02:47:00-07:00">Jul 19 · local</time>
               <span>

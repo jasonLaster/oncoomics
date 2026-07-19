@@ -78,6 +78,10 @@ def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -307,7 +311,7 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
     if set(receipt) != EXPECTED_MATERIALIZER_RECEIPT_KEYS:
         raise ValueError("materializer receipt envelope is not exact")
     if (
-        receipt.get("schema_version") != 2
+        not exact_schema_version(receipt, 2)
         or receipt.get("status") != "passed"
         or not isinstance(outputs, dict)
         or not outputs
@@ -437,7 +441,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
         resolve_real_file(staging, f"downloaded {OUTPUT_NAME}")
         local_sha = sha256_path(staging)
         downloaded = json.loads(staging.read_text(encoding="utf-8"))
-        if not isinstance(downloaded, dict) or downloaded.get("schema_version") != 1:
+        if not isinstance(downloaded, dict) or not exact_schema_version(downloaded, 1):
             raise ValueError(f"{OUTPUT_NAME} is not a schema-1 JSON object")
         checks = validate_download(
             row, head, get, staging, args.expected_kms_key_arn
