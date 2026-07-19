@@ -793,8 +793,142 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
     def test_live_definition_drift_is_rejected(self) -> None:
         definition = self.live_definition()
         definition["containerProperties"]["memory"] += 1
-        with self.assertRaisesRegex(ValueError, "live materializer revision 4"):
+        with self.assertRaisesRegex(ValueError, "failed exact_payload"):
             self.run_preflight(aws=self.aws_side_effect(definition=definition))
+
+    def test_live_definition_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                {
+                    *MODULE.EXPECTED_LIVE_JOB_DEFINITION_CHECKS,
+                    "future_live_definition_check",
+                },
+                "missing future_live_definition_check",
+            ),
+            (
+                {
+                    name
+                    for name in MODULE.EXPECTED_LIVE_JOB_DEFINITION_CHECKS
+                    if name != "immutable_image"
+                },
+                "unexpected immutable_image",
+            ),
+        )
+
+        local = json.loads(self.job_definition.read_text(encoding="utf-8"))
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(
+                    MODULE,
+                    "EXPECTED_LIVE_JOB_DEFINITION_CHECKS",
+                    expected,
+                ),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    return_value={"jobDefinitions": [self.live_definition()]},
+                ),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.validate_live_definition(local, MODULE.REGION)
+
+    def test_failed_live_definition_check_reports_exact_key(self) -> None:
+        local = json.loads(self.job_definition.read_text(encoding="utf-8"))
+        live = self.live_definition()
+        live["revision"] = 3
+
+        with (
+            mock.patch.object(
+                MODULE,
+                "aws_json",
+                return_value={"jobDefinitions": [live]},
+            ),
+            self.assertRaisesRegex(ValueError, "failed revision"),
+        ):
+            MODULE.validate_live_definition(local, MODULE.REGION)
+
+    def test_live_image_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                {*MODULE.EXPECTED_LIVE_IMAGE_CHECKS, "future_live_image_check"},
+                "missing future_live_image_check",
+            ),
+            (
+                {
+                    name
+                    for name in MODULE.EXPECTED_LIVE_IMAGE_CHECKS
+                    if name != "index_media_type"
+                },
+                "unexpected index_media_type",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(MODULE, "EXPECTED_LIVE_IMAGE_CHECKS", expected),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=self.aws_side_effect(),
+                ),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.validate_live_image(MODULE.REGION)
+
+    def test_failed_live_image_check_reports_exact_key(self) -> None:
+        with (
+            mock.patch.object(
+                MODULE,
+                "aws_json",
+                side_effect=self.aws_side_effect(
+                    image_platform={"architecture": "amd64", "os": "linux"}
+                ),
+            ),
+            self.assertRaisesRegex(ValueError, "failed linux_arm64_only"),
+        ):
+            MODULE.validate_live_image(MODULE.REGION)
+
+    def test_live_queue_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                {*MODULE.EXPECTED_LIVE_QUEUE_CHECKS, "future_live_queue_check"},
+                "missing future_live_queue_check",
+            ),
+            (
+                {
+                    name
+                    for name in MODULE.EXPECTED_LIVE_QUEUE_CHECKS
+                    if name != "ce_arm_instances"
+                },
+                "unexpected ce_arm_instances",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(MODULE, "EXPECTED_LIVE_QUEUE_CHECKS", expected),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=self.aws_side_effect(),
+                ),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                MODULE.validate_live_queue(MODULE.REGION)
+
+    def test_failed_live_queue_check_reports_exact_key(self) -> None:
+        with (
+            mock.patch.object(
+                MODULE,
+                "aws_json",
+                side_effect=self.aws_side_effect(queue_status="INVALID"),
+            ),
+            self.assertRaisesRegex(ValueError, "failed queue_live"),
+        ):
+            MODULE.validate_live_queue(MODULE.REGION)
 
     def test_x86_image_or_invalid_queue_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "ARM64-only"):

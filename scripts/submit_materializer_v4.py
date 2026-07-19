@@ -167,6 +167,30 @@ EXPECTED_REGISTRATION_DEFINITION_CHECKS = {
     "command",
     "normalized_definition",
 }
+EXPECTED_LIVE_JOB_DEFINITION_CHECKS = {
+    "arn",
+    "revision",
+    "active",
+    "exact_payload",
+    "one_attempt",
+    "immutable_image",
+}
+EXPECTED_LIVE_IMAGE_CHECKS = {
+    "digest",
+    "index_media_type",
+    "one_runnable_manifest",
+    "linux_arm64_only",
+    "other_manifests_are_attestations",
+}
+EXPECTED_LIVE_QUEUE_CHECKS = {
+    "queue_identity",
+    "queue_live",
+    "queue_exact_ce",
+    "ce_identity",
+    "ce_live",
+    "ce_ec2",
+    "ce_arm_instances",
+}
 
 
 def now() -> str:
@@ -223,6 +247,12 @@ def require_exact_keys(value: dict[str, Any], expected: set[str], label: str) ->
     mismatches = check_map_mismatches({key: True for key in value}, expected)
     if mismatches:
         raise ValueError(f"{label} is not exact: {'; '.join(mismatches)}")
+
+
+def require_exact_true_checks(value: dict[str, Any], expected: set[str], label: str) -> None:
+    mismatches = check_map_mismatches(value, expected)
+    if mismatches:
+        raise ValueError(f"{label} check map is not exact: {'; '.join(mismatches)}")
 
 
 def expected_command_checks() -> set[str]:
@@ -742,8 +772,16 @@ def validate_live_definition(local: dict[str, Any], region: str) -> dict[str, An
         "one_attempt": (live.get("retryStrategy") or {}).get("attempts") == 1,
         "immutable_image": (live.get("containerProperties") or {}).get("image") == EXPECTED_IMAGE,
     }
-    if not all(checks.values()):
-        raise ValueError(f"live materializer revision 4 differs from frozen payload: {checks}")
+    try:
+        require_exact_true_checks(
+            checks,
+            EXPECTED_LIVE_JOB_DEFINITION_CHECKS,
+            "live materializer revision 4",
+        )
+    except ValueError as error:
+        raise ValueError(
+            f"live materializer revision 4 differs from frozen payload: {error}"
+        ) from error
     return {"job_definition_arn": JOB_DEFINITION_ARN, "checks": checks}
 
 
@@ -794,8 +832,14 @@ def validate_live_image(region: str) -> dict[str, Any]:
         "linux_arm64_only": len(runnable) == 1 and runnable[0].get("platform") == {"architecture": "arm64", "os": "linux"},
         "other_manifests_are_attestations": attestation_valid,
     }
-    if not all(checks.values()):
-        raise ValueError(f"immutable materializer image is not ARM64-only: {checks}")
+    try:
+        require_exact_true_checks(
+            checks,
+            EXPECTED_LIVE_IMAGE_CHECKS,
+            "immutable materializer image",
+        )
+    except ValueError as error:
+        raise ValueError(f"immutable materializer image is not ARM64-only: {error}") from error
     return {
         "image": EXPECTED_IMAGE,
         "runnable_digest": runnable[0].get("digest"),
@@ -837,8 +881,16 @@ def validate_live_queue(region: str) -> dict[str, Any]:
         "ce_arm_instances": isinstance(resources.get("instanceTypes"), list)
         and sorted(str(value) for value in resources["instanceTypes"]) == sorted(EXPECTED_INSTANCE_TYPES),
     }
-    if not all(checks.values()):
-        raise ValueError(f"live materializer queue/compute environment is not exact: {checks}")
+    try:
+        require_exact_true_checks(
+            checks,
+            EXPECTED_LIVE_QUEUE_CHECKS,
+            "live materializer queue/compute environment",
+        )
+    except ValueError as error:
+        raise ValueError(
+            f"live materializer queue/compute environment is not exact: {error}"
+        ) from error
     return {
         "job_queue_arn": QUEUE_ARN,
         "compute_environment_arn": COMPUTE_ENVIRONMENT_ARN,
