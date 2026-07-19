@@ -29,7 +29,7 @@ from publish_reviewed_public_report import (
     REGION,
     RUN_ID,
     SUBJECT_ALIAS,
-    non_null_version_id,
+    exact_non_null_version_id,
     private_report_prefix,
     validate_private_receipt,
 )
@@ -120,12 +120,16 @@ def validate_private_report_receipt(
     local_manifest_sha256 = sha256_path(report_manifest_path)
     if manifest_row["sha256"] != local_manifest_sha256:
         raise ValueError(f"{method_id} local report_manifest.json is not receipt-bound")
+    version_id = exact_non_null_version_id(
+        manifest_row.get("version_id"),
+        f"{method_id} report_manifest.json",
+    )
 
     return {
         "method_id": method_id,
         "receipt": str(receipt_path),
         "destination_prefix": str(private_receipt["destination_prefix"]),
-        "report_manifest_version_id": str(manifest_row["version_id"]),
+        "report_manifest_version_id": version_id,
         "report_manifest_sha256": local_manifest_sha256,
         "object_count": len(expected),
     }
@@ -216,11 +220,15 @@ def require_receipt_summaries(
             raise ValueError(
                 f"{method_id} private receipt destination is malformed"
             ) from error
-        version_id = str(summary.get("report_manifest_version_id", ""))
-        if not non_null_version_id(version_id):
+        try:
+            exact_non_null_version_id(
+                summary.get("report_manifest_version_id"),
+                f"{method_id} report_manifest.json",
+            )
+        except ValueError as error:
             raise ValueError(
                 f"{method_id} report_manifest.json VersionId is malformed"
-            )
+            ) from error
         object_count = summary.get("object_count")
         if type(object_count) is not int or object_count <= 0:
             raise ValueError(

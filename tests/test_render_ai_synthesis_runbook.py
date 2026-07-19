@@ -859,6 +859,11 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 "VersionId is malformed",
             ),
             (
+                "report_manifest_version_id",
+                True,
+                "VersionId is malformed",
+            ),
+            (
                 "report_manifest_sha256",
                 "not-a-sha",
                 "SHA-256 is malformed",
