@@ -307,14 +307,14 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>5878de8e48515fd79136d0c7d95f90408a720481</strong>.
-          The latest work is exact reviewed-public object-check hardening:
-          <code>publish_reviewed_public_report.py</code> now reuses
-          <code>PUBLIC_DESTINATION_OBJECT_CHECKS</code> and fails each public
-          destination upload unless the live verification map exactly matches
-          the seven required version, byte count, checksum, SSE-S3, metadata,
-          and content-type checks before a passed object receipt can be
-          serialized.
+          <strong>a804f826fe31e68a990135958fc02c8b730630bb</strong>.
+          The latest work is exact public-index object-check hardening:
+          <code>publish_public_results_index.py</code> now uses
+          <code>PUBLIC_INDEX_DESTINATION_CHECKS</code> and fails the final
+          <code>public-index/objects.json</code> upload unless the live
+          verification map exactly matches the eight required version, byte
+          count, checksum, SSE-S3, metadata, cache-control, and content-type
+          checks before a passed index receipt can be serialized.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -322,7 +322,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 5878de8</li>
+          <li class="pill">Latest hardening = a804f82</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -404,8 +404,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 5878de8</strong>
-              <span>Reviewed-public publication now rejects missing, unexpected, or lagging public per-object verification maps before any passed object receipt can feed the public index.</span>
+              <strong>Preserve a804f82</strong>
+              <span>Final public-index publication now rejects missing, unexpected, or lagging index verification maps before any passed receipt can advertise reviewed public reports.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -453,6 +453,24 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>a804f82 Require exact public index object checks:</strong>
+                <code>publish_public_results_index.py</code> now calls
+                <code>require_public_index_destination_checks_exact()</code>
+                before serializing a passed <code>public-index/objects.json</code>
+                destination receipt. The index upload must prove its live
+                verification map exactly equals
+                <code>PUBLIC_INDEX_DESTINATION_CHECKS</code> for
+                <code>version_exact</code>, <code>bytes_exact</code>,
+                <code>checksum_type</code>, <code>checksum_sha256</code>,
+                <code>sse_s3</code>, <code>metadata</code>,
+                <code>cache_control</code>, and <code>content_type</code>; the
+                new tests cover missing checks, unexpected checks, and apply
+                code that lags a newly added expected check.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
