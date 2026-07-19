@@ -545,6 +545,64 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ec2_instance"):
             MODULE.validate_host_binding(task, wrong_host, source, "cluster-1")
 
+    def test_executed_worker_receipt_check_maps_are_exact(self) -> None:
+        self.assertEqual(
+            MODULE.exact_executed_worker_check_maps(
+                dict(MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS),
+                dict(MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS),
+            ),
+            {"freeze_receipt": True, "freeze_receipt_upload": True},
+        )
+
+        for location, label, mutate, failed_check in (
+            (
+                "freeze",
+                "missing",
+                lambda checks: checks.pop("container_file_uploaded_directly"),
+                "freeze_receipt",
+            ),
+            (
+                "freeze",
+                "unexpected",
+                lambda checks: checks.__setitem__("forged_extra", True),
+                "freeze_receipt",
+            ),
+            (
+                "freeze",
+                "failed",
+                lambda checks: checks.__setitem__("s3_exact_version_present", False),
+                "freeze_receipt",
+            ),
+            (
+                "upload",
+                "missing",
+                lambda checks: checks.pop("local_sha256_matches_s3_checksum"),
+                "freeze_receipt_upload",
+            ),
+            (
+                "upload",
+                "unexpected",
+                lambda checks: checks.__setitem__("forged_extra", True),
+                "freeze_receipt_upload",
+            ),
+            (
+                "upload",
+                "failed",
+                lambda checks: checks.__setitem__("exact_version", False),
+                "freeze_receipt_upload",
+            ),
+        ):
+            freeze_checks = dict(MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS)
+            upload_checks = dict(MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS)
+            mutate(freeze_checks if location == "freeze" else upload_checks)
+
+            with self.subTest(location=location, label=label):
+                result = MODULE.exact_executed_worker_check_maps(
+                    freeze_checks,
+                    upload_checks,
+                )
+                self.assertFalse(result[failed_check])
+
 
 if __name__ == "__main__":
     unittest.main()

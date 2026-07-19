@@ -20,6 +20,25 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS = {
+    "active_task_identity_matches_batch_job": True,
+    "container_file_hash_and_size_captured": True,
+    "container_file_uploaded_directly": True,
+    "s3_bytes_match_container_bytes": True,
+    "s3_exact_kms_key_matches": True,
+    "s3_exact_version_present": True,
+    "s3_full_object_sha256_matches_container_sha256": True,
+    "s3_metadata_sha256_matches_container_sha256": True,
+}
+EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS = {
+    "bytes": True,
+    "exact_kms": True,
+    "exact_version": True,
+    "full_object_sha256": True,
+    "local_sha256_matches_s3_checksum": True,
+    "metadata": True,
+}
+
 
 def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
@@ -410,6 +429,21 @@ def validate_host_binding(
     }
 
 
+def exact_executed_worker_check_maps(
+    worker_receipt_checks: Any,
+    worker_receipt_upload_checks: Any,
+) -> dict[str, bool]:
+    return {
+        "freeze_receipt": (
+            worker_receipt_checks == EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS
+        ),
+        "freeze_receipt_upload": (
+            worker_receipt_upload_checks
+            == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS
+        ),
+    }
+
+
 def validate_ssm_command(
     command: dict[str, Any],
     invocation: dict[str, Any],
@@ -797,6 +831,10 @@ def main() -> None:
         raise SystemExit(
             f"Fail-closed: executed worker checksum is malformed: {error}"
         ) from error
+    executed_worker_check_maps = exact_executed_worker_check_maps(
+        worker_receipt_checks,
+        worker_receipt_upload_checks,
+    )
     worker_checks = {
         "receipt_status": (
             worker_receipt.get("schema_version") == 1
@@ -805,16 +843,12 @@ def main() -> None:
             and worker_receipt.get("batch_job_id") == args.job_id
         ),
         "receipt_checks": (
-            isinstance(worker_receipt_checks, dict)
-            and bool(worker_receipt_checks)
-            and all(value is True for value in worker_receipt_checks.values())
+            executed_worker_check_maps["freeze_receipt"]
         ),
         "receipt_upload": (
             worker_receipt_upload.get("schema_version") == 1
             and worker_receipt_upload.get("status") == "passed"
-            and isinstance(worker_receipt_upload_checks, dict)
-            and bool(worker_receipt_upload_checks)
-            and all(value is True for value in worker_receipt_upload_checks.values())
+            and executed_worker_check_maps["freeze_receipt_upload"]
             and worker_receipt_upload.get("local_receipt_sha256")
             == sha256(args.executed_worker_freeze_receipt)
             and receipt_upload_head.get("VersionId")
