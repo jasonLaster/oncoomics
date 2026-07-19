@@ -1245,6 +1245,31 @@ class ExactReportDownloadTests(unittest.TestCase):
                 self.assertFalse(output.exists())
                 self.assertFalse(verification.exists())
 
+    def test_sha256_requires_real_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, _anchor, data, _row = self.fixture(root)
+
+            receipt_link = root / "publication-link.json"
+            receipt_link.symlink_to(receipt)
+            with self.assertRaisesRegex(
+                ValueError,
+                "publication-link\\.json SHA-256 input must be a real file",
+            ):
+                MODULE.sha256(receipt_link)
+
+            real_parent = root / "real-report"
+            real_parent.mkdir()
+            linked_parent = root / "linked-report"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            (real_parent / "report.md").write_bytes(data)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report\\.md SHA-256 input parent may not be a symlink",
+            ):
+                MODULE.sha256(linked_parent / "report.md")
+
     def test_rejects_duplicate_receipt_object_names_before_download(self) -> None:
         cases = (
             (
