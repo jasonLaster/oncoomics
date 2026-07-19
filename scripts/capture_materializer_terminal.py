@@ -481,17 +481,27 @@ def version_history(region: str, bucket: str, key: str) -> list[dict[str, Any]]:
             rows.extend({**value, "history_kind": kind} for value in values)
         if page.get("IsTruncated") is not True:
             return rows
-        key_marker = str(page.get("NextKeyMarker", ""))
-        version_marker = str(page.get("NextVersionIdMarker", ""))
-        if not key_marker or not version_marker:
-            raise ValueError(
-                "truncated receipt history omitted its next key/version markers"
-            )
+        key_marker, version_marker = require_next_version_history_markers(page)
         marker = (key_marker, version_marker)
         if marker in seen_markers:
             raise ValueError("S3 receipt history pagination did not advance")
         seen_markers.add(marker)
     raise ValueError("S3 receipt history pagination exceeded the safety limit")
+
+
+def require_next_version_history_markers(page: dict[str, Any]) -> tuple[str, str]:
+    key_marker = page.get("NextKeyMarker")
+    version_marker = page.get("NextVersionIdMarker")
+    if (
+        not isinstance(key_marker, str)
+        or not isinstance(version_marker, str)
+        or not key_marker
+        or not version_marker
+    ):
+        raise ValueError(
+            "truncated receipt history omitted its next key/version markers"
+        )
+    return key_marker, version_marker
 
 
 def validate_job(

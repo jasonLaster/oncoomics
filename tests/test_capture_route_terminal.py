@@ -453,15 +453,33 @@ class CaptureRouteTerminalTests(unittest.TestCase):
 
     def test_receipt_history_rejects_missing_or_stalled_markers(self):
         fixture = self.fixture()
-        missing_version = {
-            "IsTruncated": True,
-            "Versions": [],
-            "DeleteMarkers": [],
-            "NextKeyMarker": fixture["receipt_key"],
-        }
-        with mock.patch.object(MODULE, "aws_json", return_value=missing_version):
-            with self.assertRaisesRegex(ValueError, "key/version markers"):
-                MODULE.version_history(MODULE.REGION, "bucket", fixture["receipt_key"])
+        cases = (
+            {"NextKeyMarker": fixture["receipt_key"]},
+            {"NextKeyMarker": True, "NextVersionIdMarker": "v1"},
+            {
+                "NextKeyMarker": fixture["receipt_key"],
+                "NextVersionIdMarker": True,
+            },
+        )
+        for case in cases:
+            with self.subTest(case=case):
+                missing_or_malformed = {
+                    "IsTruncated": True,
+                    "Versions": [],
+                    "DeleteMarkers": [],
+                    **case,
+                }
+                with mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    return_value=missing_or_malformed,
+                ):
+                    with self.assertRaisesRegex(ValueError, "key/version markers"):
+                        MODULE.version_history(
+                            MODULE.REGION,
+                            "bucket",
+                            fixture["receipt_key"],
+                        )
 
         stalled = {
             "IsTruncated": True,

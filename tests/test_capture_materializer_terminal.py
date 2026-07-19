@@ -461,15 +461,26 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
         )
 
     def test_receipt_history_rejects_missing_or_stalled_markers(self) -> None:
-        missing_version = {
-            "IsTruncated": True,
-            "Versions": [],
-            "DeleteMarkers": [],
-            "NextKeyMarker": self.key,
-        }
-        with mock.patch.object(MODULE, "aws_json", return_value=missing_version):
-            with self.assertRaisesRegex(ValueError, "key/version markers"):
-                MODULE.version_history(MODULE.REGION, "bucket", self.key)
+        cases = (
+            {"NextKeyMarker": self.key},
+            {"NextKeyMarker": True, "NextVersionIdMarker": "v1"},
+            {"NextKeyMarker": self.key, "NextVersionIdMarker": True},
+        )
+        for case in cases:
+            with self.subTest(case=case):
+                missing_or_malformed = {
+                    "IsTruncated": True,
+                    "Versions": [],
+                    "DeleteMarkers": [],
+                    **case,
+                }
+                with mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    return_value=missing_or_malformed,
+                ):
+                    with self.assertRaisesRegex(ValueError, "key/version markers"):
+                        MODULE.version_history(MODULE.REGION, "bucket", self.key)
 
         stalled = {
             "IsTruncated": True,
