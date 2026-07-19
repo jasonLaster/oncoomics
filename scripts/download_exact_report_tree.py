@@ -23,6 +23,30 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlparse
 
+EXPECTED_PUBLICATION_RECEIPT_CHECKS = {
+    "exact_contract_version_bound": True,
+    "route_prefix_initially_empty": True,
+    "all_outputs_create_only": True,
+    "all_output_versions_exact": True,
+    "no_extra_versions_or_delete_markers": True,
+}
+EXPECTED_PUBLICATION_ANCHOR_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_create_only_version": True,
+}
+EXPECTED_PUBLICATION_OBJECT_CHECKS = {
+    "create_only_put": True,
+    "version_exact": True,
+    "bytes_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+}
+
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -352,9 +376,7 @@ def validate_publication(
         != "one_shot_create_only_exact_version_history"
         or not isinstance(rows, list)
         or not rows
-        or not isinstance(receipt_checks, dict)
-        or not receipt_checks
-        or any(value is not True for value in receipt_checks.values())
+        or receipt_checks != EXPECTED_PUBLICATION_RECEIPT_CHECKS
     ):
         raise ValueError("publication receipt is incomplete or not passed")
 
@@ -368,9 +390,7 @@ def validate_publication(
             "s3://diana-omics-private-results-"
         )
         or not str(anchor.get("receipt_version_id", ""))
-        or not isinstance(anchor_checks, dict)
-        or not anchor_checks
-        or any(value is not True for value in anchor_checks.values())
+        or anchor_checks != EXPECTED_PUBLICATION_ANCHOR_CHECKS
     ):
         raise ValueError("publication anchor does not bind the exact receipt")
 
@@ -397,6 +417,7 @@ def validate_publication(
             or not str(row.get("sha256", ""))
             or int(row.get("content_length", -1)) <= 0
             or row.get("ssekms_key_id") != kms_key_arn
+            or row.get("checks") != EXPECTED_PUBLICATION_OBJECT_CHECKS
         ):
             raise ValueError(f"report row lacks exact custody: {relative}")
 

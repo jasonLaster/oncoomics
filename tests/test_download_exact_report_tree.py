@@ -42,6 +42,7 @@ class ExactReportDownloadTests(unittest.TestCase):
             "content_length": len(data),
             "checksum_sha256": checksum_sha256(data),
             "ssekms_key_id": KMS,
+            "checks": dict(MODULE.EXPECTED_PUBLICATION_OBJECT_CHECKS),
         }
 
         receipt = root / "publication.json"
@@ -55,7 +56,7 @@ class ExactReportDownloadTests(unittest.TestCase):
                 "route_output_bucket_versioning": "Enabled",
                 "publication_strategy": "one_shot_create_only_exact_version_history",
                 "objects": [row],
-                "checks": {"exact": True},
+                "checks": dict(MODULE.EXPECTED_PUBLICATION_RECEIPT_CHECKS),
             },
         )
         anchor = root / "anchor.json"
@@ -72,7 +73,7 @@ class ExactReportDownloadTests(unittest.TestCase):
                 ),
                 "receipt_version_id": "publication-version",
                 "route_output_uri": f"s3://{BUCKET}/{PREFIX}",
-                "checks": {"exact": True},
+                "checks": dict(MODULE.EXPECTED_PUBLICATION_ANCHOR_CHECKS),
             },
         )
         return receipt, anchor, data, row
@@ -224,6 +225,108 @@ class ExactReportDownloadTests(unittest.TestCase):
             self.assertEqual(result["status"], "passed")
             self.assertTrue(all(result["objects"][0]["checks"].values()))
             self.assertEqual(stat.S_IMODE(verification.stat().st_mode), 0o600)
+
+    def test_rejects_missing_unexpected_or_failed_publication_check_maps(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, _, _ = self.fixture(root)
+
+            def rewrite_receipt(payload: dict) -> None:
+                write_json(receipt, payload)
+                anchor_payload = json.loads(anchor.read_text(encoding="utf-8"))
+                anchor_payload["receipt_sha256"] = MODULE.sha256(receipt)
+                anchor_payload["receipt_bytes"] = receipt.stat().st_size
+                write_json(anchor, anchor_payload)
+
+            for location, label, mutate, error in (
+                (
+                    "receipt",
+                    "missing",
+                    lambda payload: payload["checks"].pop("all_outputs_create_only"),
+                    "incomplete",
+                ),
+                (
+                    "receipt",
+                    "unexpected",
+                    lambda payload: payload["checks"].__setitem__(
+                        "forged_extra",
+                        True,
+                    ),
+                    "incomplete",
+                ),
+                (
+                    "receipt",
+                    "failed",
+                    lambda payload: payload["checks"].__setitem__(
+                        "all_output_versions_exact",
+                        False,
+                    ),
+                    "incomplete",
+                ),
+                (
+                    "anchor",
+                    "missing",
+                    lambda payload: payload["checks"].pop("sha256_exact"),
+                    "anchor",
+                ),
+                (
+                    "anchor",
+                    "unexpected",
+                    lambda payload: payload["checks"].__setitem__(
+                        "forged_extra",
+                        True,
+                    ),
+                    "anchor",
+                ),
+                (
+                    "anchor",
+                    "failed",
+                    lambda payload: payload["checks"].__setitem__(
+                        "exact_kms",
+                        False,
+                    ),
+                    "anchor",
+                ),
+                (
+                    "object",
+                    "missing",
+                    lambda payload: payload["objects"][0]["checks"].pop(
+                        "create_only_put"
+                    ),
+                    "exact custody",
+                ),
+                (
+                    "object",
+                    "unexpected",
+                    lambda payload: payload["objects"][0]["checks"].__setitem__(
+                        "forged_extra",
+                        True,
+                    ),
+                    "exact custody",
+                ),
+                (
+                    "object",
+                    "failed",
+                    lambda payload: payload["objects"][0]["checks"].__setitem__(
+                        "version_exact",
+                        False,
+                    ),
+                    "exact custody",
+                ),
+            ):
+                with self.subTest(location=location, label=label):
+                    self.fixture(root)
+                    if location == "anchor":
+                        payload = json.loads(anchor.read_text(encoding="utf-8"))
+                        mutate(payload)
+                        write_json(anchor, payload)
+                    else:
+                        payload = json.loads(receipt.read_text(encoding="utf-8"))
+                        mutate(payload)
+                        rewrite_receipt(payload)
+
+                    with self.assertRaisesRegex(ValueError, error):
+                        MODULE.validate_publication(receipt, anchor, KMS)
 
     def test_rejects_unexpected_staging_child_before_local_cutover(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
