@@ -165,6 +165,17 @@ def exact_checksum_map(value: Any, label: str) -> dict[str, str]:
     return checks
 
 
+def exact_s3_etag(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or any(character.isspace() for character in value)
+        or value.lower() in {"none", "null"}
+    ):
+        raise RuntimeError(f"{label} omitted an exact S3 ETag")
+    return value
+
+
 def exact_nonempty_marker(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise RuntimeError(f"{label} must be a non-empty string")
@@ -506,11 +517,13 @@ def snapshot_inventory(bucket: str, prefix: str, region: str) -> list[dict[str, 
         size = exact_s3_size(current.get("ContentLength"))
         checksum_type = current.get("ChecksumType")
         checksum_values = checksums(current)
-        etag = str(current.get("ETag", ""))
+        etag = exact_s3_etag(current.get("ETag"), f"source object {relative}")
         listed_size = exact_s3_size(listed_row.get("Size"))
-        listed_stable = (
-            listed_size == size and str(listed_row.get("ETag", "")) == etag
+        listed_etag = exact_s3_etag(
+            listed_row.get("ETag"),
+            f"listed source object {relative}",
         )
+        listed_stable = listed_size == size and listed_etag == etag
         if (
             not listed_stable
             or size <= 0
@@ -546,7 +559,7 @@ def inventory_identity(snapshot: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "relative_key": str(row["relative_key"]),
             "key": str(row["key"]),
             "bytes": exact_s3_size(row.get("bytes")),
-            "etag": str(row["etag"]),
+            "etag": exact_s3_etag(row.get("etag"), "inventory identity"),
             "version_id": exact_source_version_id(
                 row.get("version_id"),
                 "inventory identity",
@@ -573,7 +586,7 @@ def dry_run_objects(
                     "dry-run source object",
                 ),
                 "bytes": exact_s3_size(row.get("bytes")),
-                "etag": str(row["etag"]),
+                "etag": exact_s3_etag(row.get("etag"), "dry-run source object"),
                 "checksums": exact_checksum_map(
                     row.get("checksums"), "dry-run source object"
                 ),
@@ -697,7 +710,10 @@ def snapshot_destination(
                 "key": key,
                 "version_id": version_id,
                 "bytes": size,
-                "etag": str(current.get("ETag", "")),
+                "etag": exact_s3_etag(
+                    current.get("ETag"),
+                    f"destination object {relative}",
+                ),
                 "checksums": checksum_values,
                 "checksum_type": exact_full_object_checksum_type(
                     checksum_type, f"destination object {relative}"
@@ -1034,6 +1050,7 @@ def main() -> int:
             before_size = exact_s3_size(before.get("ContentLength"))
             before_checksum_type = before.get("ChecksumType")
             before_checksums = checksums(before)
+            before_etag = exact_s3_etag(before.get("ETag"), f"source object {relative}")
             if (
                 before_size <= 0
                 or before_size > MAX_SINGLE_COPY_BYTES
@@ -1046,7 +1063,8 @@ def main() -> int:
                 )
             listed_stable = (
                 exact_s3_size(initial_row.get("bytes")) == before_size
-                and str(initial_row.get("etag", "")) == str(before.get("ETag", ""))
+                and exact_s3_etag(initial_row.get("etag"), "initial inventory")
+                == before_etag
                 and initial_row.get("version_id") == source_version_id
             )
             if not listed_stable:
@@ -1058,7 +1076,7 @@ def main() -> int:
                     "key": source_key,
                     "version_id": source_version_id,
                     "bytes": before_size,
-                    "etag": str(before.get("ETag", "")),
+                    "etag": before_etag,
                     "checksums": before_checksums,
                     "checksum_type": exact_full_object_checksum_type(
                         before_checksum_type, f"source object {relative}"
@@ -1074,7 +1092,7 @@ def main() -> int:
                     source_bucket,
                     source_key,
                     source_version_id,
-                    str(before.get("ETag", "")),
+                    before_etag,
                     destination_bucket,
                     destination_key,
                     args.kms_key_arn,
@@ -1100,9 +1118,17 @@ def main() -> int:
                 after_source_size = exact_s3_size(after_source.get("ContentLength"))
                 destination_size = exact_s3_size(destination.get("ContentLength"))
                 destination_checksum_type = destination.get("ChecksumType")
+                after_source_etag = exact_s3_etag(
+                    after_source.get("ETag"),
+                    f"source object {relative} after copy",
+                )
+                destination_etag = exact_s3_etag(
+                    destination.get("ETag"),
+                    f"destination object {relative}",
+                )
                 source_stable = (
                     before_size == after_source_size
-                    and str(before.get("ETag", "")) == str(after_source.get("ETag", ""))
+                    and before_etag == after_source_etag
                     and source_version_id == after_source.get("VersionId")
                     and checksums(before) == checksums(after_source)
                     and before.get("ChecksumType") == after_source.get("ChecksumType") == "FULL_OBJECT"
@@ -1126,7 +1152,7 @@ def main() -> int:
                             destination_version_id if versioned else ""
                         ),
                         "bytes": destination_size,
-                        "etag": str(destination.get("ETag", "")),
+                        "etag": destination_etag,
                         "checksums": checksums(destination),
                         "checksum_type": (
                             destination_checksum_type

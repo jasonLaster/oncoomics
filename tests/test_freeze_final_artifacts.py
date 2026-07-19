@@ -190,6 +190,38 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         ]
         self.assertEqual(suspicious_calls, [])
 
+    def test_etag_guards_avoid_raw_string_coercion(self) -> None:
+        source = Path(MODULE.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        guarded_fields = (
+            "listed_row.get('ETag'",
+            'listed_row.get("ETag"',
+            "current.get('ETag'",
+            'current.get("ETag"',
+            "before.get('ETag'",
+            'before.get("ETag"',
+            "initial_row.get('etag'",
+            'initial_row.get("etag"',
+            "after_source.get('ETag'",
+            'after_source.get("ETag"',
+            "destination.get('ETag'",
+            'destination.get("ETag"',
+            "row['etag'",
+            'row["etag"',
+            "row.get('etag'",
+            'row.get("etag"',
+        )
+        suspicious_calls = [
+            ast.unparse(node)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(field in ast.unparse(node.args[0]) for field in guarded_fields)
+        ]
+        self.assertEqual(suspicious_calls, [])
+
     def test_parse_s3_rejects_bucket_only(self) -> None:
         self.assertEqual(MODULE.parse_s3("s3://private-bucket/path/to/tree"), ("private-bucket", "path/to/tree"))
         with self.assertRaises(ValueError):
@@ -730,6 +762,36 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
         self.assertFalse(
             MODULE.destination_matches_receipt(source, destination, receipt)
         )
+
+    def test_destination_snapshot_requires_exact_string_etags(self) -> None:
+        history = [
+            {
+                "history_kind": "version",
+                "Key": "prefix/a",
+                "VersionId": "v1",
+                "IsLatest": True,
+            }
+        ]
+        current = {
+            "VersionId": "v1",
+            "ContentLength": 10,
+            "ETag": True,
+            "ChecksumType": "FULL_OBJECT",
+            "ChecksumSHA256": "sha",
+            "ServerSideEncryption": "aws:kms",
+            "SSEKMSKeyId": "kms",
+        }
+        with (
+            patch.object(MODULE, "version_history", return_value=history),
+            patch.object(
+                MODULE,
+                "list_objects",
+                return_value=[{"Key": "prefix/a", "Size": 10, "ETag": '"etag"'}],
+            ),
+            patch.object(MODULE, "head", return_value=current),
+            self.assertRaisesRegex(RuntimeError, "exact S3 ETag"),
+        ):
+            MODULE.snapshot_destination("bucket", "prefix/", "kms", "us-east-1")
 
     def test_destination_snapshot_receipt_match_requires_exact_bytes(self) -> None:
         source = [{"relative_key": "a", "bytes": 10}]
@@ -1499,6 +1561,36 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, message):
                         MODULE.snapshot_inventory("bucket", "prefix/", "us-east-1")
 
+    def test_snapshot_inventory_requires_exact_string_etags(self) -> None:
+        listed = [{"Key": "prefix/a", "Size": 10, "ETag": '"a"'}]
+        current = {
+            "ContentLength": 10,
+            "ETag": '"a"',
+            "VersionId": "v1",
+            "ChecksumType": "FULL_OBJECT",
+            "ChecksumSHA256": "sha",
+        }
+        cases = (
+            ("listed_bool_etag", [{**listed[0], "ETag": True}], current),
+            ("listed_null_etag", [{**listed[0], "ETag": "null"}], current),
+            ("head_bool_etag", listed, {**current, "ETag": True}),
+            ("head_empty_etag", listed, {**current, "ETag": ""}),
+            (
+                "matching_bool_etags",
+                [{**listed[0], "ETag": True}],
+                {**current, "ETag": True},
+            ),
+        )
+        for label, listed_rows, head_response in cases:
+            with self.subTest(label=label):
+                with patch.object(
+                    MODULE,
+                    "list_objects",
+                    return_value=listed_rows,
+                ), patch.object(MODULE, "head", return_value=head_response):
+                    with self.assertRaisesRegex(RuntimeError, "exact S3 ETag"):
+                        MODULE.snapshot_inventory("bucket", "prefix/", "us-east-1")
+
     def test_inventory_identity_detects_added_or_replaced_object(self) -> None:
         original = [
             {
@@ -1549,6 +1641,18 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "exact S3 VersionId"):
                     MODULE.inventory_identity([malformed])
                 with self.assertRaisesRegex(RuntimeError, "exact S3 VersionId"):
+                    MODULE.dry_run_objects(
+                        [malformed],
+                        "source",
+                        "destination",
+                        "final/",
+                    )
+        for value in (True, None, "", "None", "has space"):
+            with self.subTest(etag=value):
+                malformed = {**row, "etag": value}
+                with self.assertRaisesRegex(RuntimeError, "exact S3 ETag"):
+                    MODULE.inventory_identity([malformed])
+                with self.assertRaisesRegex(RuntimeError, "exact S3 ETag"):
                     MODULE.dry_run_objects(
                         [malformed],
                         "source",
