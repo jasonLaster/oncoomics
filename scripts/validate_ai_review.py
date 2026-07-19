@@ -176,6 +176,7 @@ def sha256(path: Path) -> str:
 
 
 def load_object(path: Path) -> dict[str, Any]:
+    path = resolve_real_file(path, path.name)
     try:
         value = json.loads(
             path.read_text(encoding="utf-8"),

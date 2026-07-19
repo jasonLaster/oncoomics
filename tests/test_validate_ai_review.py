@@ -1112,6 +1112,41 @@ class ValidateAiReviewTests(unittest.TestCase):
             )
             self.assertFalse((review / "validation.json").exists())
 
+    def test_rejects_symlinked_review_manifest_at_parse_time(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = ValidateReviewFixture(root)
+            fixture.build()
+            review = root / "review-a"
+            fixture.write_review(review)
+            real_load_object = VALIDATE.load_object
+            swapped = False
+
+            def swap_review_manifest_before_parse(path: Path) -> dict:
+                nonlocal swapped
+                if path.name == "review_manifest.json" and not swapped:
+                    relocated = root / "review_manifest.real.json"
+                    path.rename(relocated)
+                    path.symlink_to(relocated)
+                    swapped = True
+                return real_load_object(path)
+
+            with (
+                mock.patch.object(
+                    VALIDATE,
+                    "load_object",
+                    side_effect=swap_review_manifest_before_parse,
+                ),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "review_manifest.json is missing or a symlink",
+                ),
+            ):
+                VALIDATE.main(fixture.validate_argv(review))
+
+            self.assertTrue(swapped)
+            self.assertFalse((review / "validation.json").exists())
+
     def test_rejects_symlinked_custody_inputs(self) -> None:
         cases = (
             (
