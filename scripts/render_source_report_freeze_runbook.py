@@ -41,6 +41,9 @@ from runbook_io import (
     unique_paths,
     write_once,
 )
+from stage_hrd_crosscheck_report import (
+    require_staged_report_manifest as require_staged_executable_report_manifest,
+)
 from validate_phase3_fast_report_packets import (
     canonical_forbidden_tokens,
     sha256_forbidden_tokens,
@@ -144,6 +147,7 @@ def validate_packet_dirs(
         except ValueError as error:
             raise ValueError(f"{method_id} packet directory is invalid: {error}") from error
     validate_blocked_source_bindings(paths)
+    validate_executable_source_bindings(paths)
     if phase3_fast_report_packet_validation is not None:
         assert expected_forbidden_tokens_sha256 is not None
         validate_validation_receipt_matches_packets(
@@ -215,6 +219,17 @@ def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
                 f"{blocked_method_id} packet is not bound to current upstream "
                 "report manifests"
             )
+
+
+def validate_executable_source_bindings(paths: dict[str, Path]) -> None:
+    for method_id in EXECUTABLE_CROSSCHECK_METHOD_IDS:
+        try:
+            require_staged_executable_report_manifest(paths[method_id])
+        except ValueError as error:
+            raise ValueError(
+                f"{method_id} packet directory is not an exact staged executable "
+                f"route packet: {error}"
+            ) from error
 
 
 def receipt_path(root: Path, receipt_stem: str, method_id: str) -> Path:
@@ -312,6 +327,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
             scripts / "forbidden_text.py",
             scripts / "generate_blocked_hrd_crosscheck_reports.py",
             scripts / "publish_private_report.py",
+            scripts / "stage_hrd_crosscheck_report.py",
             scripts / "validate_phase3_fast_report_packets.py",
             scripts / "render_ai_synthesis_runbook.py",
             *ai_required_existing(root),

@@ -40,6 +40,49 @@ def write_packet_dirs(paths: dict[str, Path]) -> None:
             else:
                 (path / relative).write_text(f"# {method_id}\n\nNo-call support packet.\n", encoding="utf-8")
 
+        review_summary = {
+            "overall": {
+                "authorized_hrd_state": "no_call",
+                "evidence_status": "partial_evidence",
+            }
+        }
+        source_sha256 = {"fixture": "a" * 64}
+        report_kind = "blocked_crosscheck_method" if method_id.endswith("_blocked") else "report"
+        route = None
+        if method_id in MODULE.EXECUTABLE_CROSSCHECK_METHOD_IDS:
+            source_sha256 = {
+                "download_verification": "b" * 64,
+                "source_report": "c" * 64,
+                "source_report_manifest": "d" * 64,
+            }
+            report_kind = "executable_crosscheck_method"
+            route = method_id
+            (path / "method_spec.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "method_id": method_id,
+                        "route": method_id,
+                        "report_kind": report_kind,
+                        "evidence_status": "partial_evidence",
+                        "authorized_hrd_state": "no_call",
+                        "classification_authorized": False,
+                        "classification_qc_status": "not_applicable",
+                        "download_verification_sha256": source_sha256[
+                            "download_verification"
+                        ],
+                        "source_report_sha256": source_sha256["source_report"],
+                        "source_report_manifest_sha256": source_sha256[
+                            "source_report_manifest"
+                        ],
+                        "source_review_summary": review_summary,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
         support = {
             relative: hashlib.sha256((path / relative).read_bytes()).hexdigest()
             for relative in MODULE.METHOD_CONTRACTS[method_id]["files"]
@@ -49,20 +92,18 @@ def write_packet_dirs(paths: dict[str, Path]) -> None:
         manifest = {
             "schema_version": 1,
             "method_id": method_id,
+            "report_kind": report_kind,
             "evidence_status": "blocked" if method_id.endswith("_blocked") else "partial_evidence",
             "authorized_hrd_state": "no_call",
             "classification_authorized": False,
             "classification_qc_status": "not_applicable",
             "report_sha256": hashlib.sha256(report.read_bytes()).hexdigest(),
             "support_sha256": support,
-            "source_sha256": {"fixture": "a" * 64},
-            "review_summary": {
-                "overall": {
-                    "authorized_hrd_state": "no_call",
-                    "evidence_status": "partial_evidence",
-                }
-            },
+            "source_sha256": source_sha256,
+            "review_summary": review_summary,
         }
+        if route is not None:
+            manifest["route"] = route
         (path / "report_manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
@@ -775,6 +816,65 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             ):
                 MODULE.validate_packet_dirs(paths)
 
+    def test_validate_packet_dirs_rejects_extra_stale_executable_source_hash(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+
+            manifest_path = paths["sequenza_scarhrd"] / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["source_sha256"]["stale_source_report"] = "0" * 64
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            bind_blocked_reports(paths)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged cross-check report manifest source hashes are not exact",
+            ):
+                MODULE.validate_packet_dirs(paths)
+
+    def test_validate_packet_dirs_rejects_rebound_stale_executable_method_spec(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+
+            packet_dir = paths["sigprofiler_sbs3"]
+            method_spec_path = packet_dir / "method_spec.json"
+            method_spec = json.loads(method_spec_path.read_text(encoding="utf-8"))
+            method_spec["source_review_summary"] = {
+                "stale": "review summary from another executable route"
+            }
+            method_spec_path.write_text(
+                json.dumps(method_spec, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            manifest_path = packet_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["support_sha256"]["method_spec.json"] = MODULE.sha256(
+                method_spec_path
+            )
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            bind_blocked_reports(paths)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "staged cross-check method spec differs from the manifest",
+            ):
+                MODULE.validate_packet_dirs(paths)
+
     def test_current_blocked_generator_satisfies_renderer_packet_dirs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -810,6 +910,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                 "/repo/scripts/forbidden_text.py",
                 "/repo/scripts/generate_blocked_hrd_crosscheck_reports.py",
                 "/repo/scripts/publish_private_report.py",
+                "/repo/scripts/stage_hrd_crosscheck_report.py",
                 "/repo/scripts/validate_phase3_fast_report_packets.py",
                 "/repo/scripts/render_ai_synthesis_runbook.py",
                 "/repo/scripts/prepare_ai_review_run.py",
