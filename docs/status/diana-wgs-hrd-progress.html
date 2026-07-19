@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact AI synthesis CSV fields</li>
+          <li class="pill">Latest milestone = local exact AI validation CSV fields</li>
+          <li class="pill">AI validation CSV fields = exact</li>
           <li class="pill">AI synthesis CSV fields = exact</li>
           <li class="pill">Phase 3 manifest hash guards = real inputs</li>
           <li class="pill">Input-contract checker hash guard = real inputs</li>
@@ -1682,6 +1683,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI validation CSV fields</strong>
+              <span><code>validate_ai_review.py</code> now rejects padded, multiline, NUL-containing, or semicolon-list-padded reviewer <code>claims.csv</code> fields before a claims table can receive <code>validation.json</code> and feed reviewer finalization or comparative synthesis.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI synthesis CSV fields</strong>
               <span><code>generate_comparative_hrd_synthesis.py</code> now rejects padded, multiline, NUL-containing, or semicolon-list-padded reviewer <code>claims.csv</code> and generated <code>agreement_disagreement.csv</code> fields before independent AI claims or comparative agreement rows can feed synthesis manifests.</span>
             </li>
@@ -2215,6 +2220,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:37:53-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact AI validation CSV fields:</strong>
+                <code>validate_ai_review.py</code> now rejects padded,
+                multiline, NUL-containing, or semicolon-list-padded reviewer
+                <code>claims.csv</code> fields before a claims table can receive
+                <code>validation.json</code> and feed reviewer finalization or
+                comparative synthesis.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T14:34:26-07:00">Jul 19 · local</time>
               <span>

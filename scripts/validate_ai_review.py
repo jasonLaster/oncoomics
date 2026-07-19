@@ -256,6 +256,37 @@ def exact_nonempty_string(value: Any) -> str:
     return value
 
 
+def require_exact_claim_row(
+    row: dict[str, Any],
+    row_number: int,
+) -> dict[str, str]:
+    if None in row or any(
+        not isinstance(row.get(field), str) for field in CLAIMS_FIELDS
+    ):
+        raise ValueError(f"claims.csv row does not match schema at row {row_number}")
+    for field in CLAIMS_FIELDS:
+        value = row[field]
+        if (
+            value != value.strip()
+            or "\n" in value
+            or "\r" in value
+            or "\0" in value
+        ):
+            raise ValueError(
+                f"claims.csv field is not exact at row {row_number}: {field}"
+            )
+    return {field: row[field] for field in CLAIMS_FIELDS}
+
+
+def split_semicolon(value: str, label: str, row_number: int) -> tuple[str, ...]:
+    if not value or value != value.strip():
+        raise ValueError(f"{label} is not exact at row {row_number}")
+    parts = tuple(value.split(";"))
+    if any(not item or item != item.strip() for item in parts):
+        raise ValueError(f"{label} is not exact at row {row_number}")
+    return parts
+
+
 def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str:
     if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
         raise ValueError("model catalog receipt is missing or empty")
@@ -879,18 +910,28 @@ def validate_report_and_claims(
     covered_evidence: set[str] = set()
     claim_fact_ids: dict[str, set[str]] = {}
     claim_numeric_text: dict[str, str] = {}
-    for row_number, row in enumerate(claims, 2):
-        if None in row or any(not isinstance(row.get(field), str) for field in CLAIMS_FIELDS):
-            raise ValueError(f"claims.csv row does not match schema at row {row_number}")
-
-        claim_id = row["claim_id"].strip()
+    for row_number, raw_row in enumerate(claims, 2):
+        row = require_exact_claim_row(raw_row, row_number)
+        claim_id = row["claim_id"]
         if not CLAIM_ID.fullmatch(claim_id) or claim_id in claim_ids:
             raise ValueError(f"invalid or duplicate claim_id at row {row_number}")
         claim_ids.add(claim_id)
 
-        evidence_ids = tuple(item.strip() for item in row["evidence_ids"].split(";") if item.strip())
-        source_methods = tuple(item.strip() for item in row["source_methods"].split(";") if item.strip())
-        evidence_states = tuple(item.strip() for item in row["evidence_states"].split(";") if item.strip())
+        evidence_ids = split_semicolon(
+            row["evidence_ids"],
+            "evidence_ids",
+            row_number,
+        )
+        source_methods = split_semicolon(
+            row["source_methods"],
+            "source_methods",
+            row_number,
+        )
+        evidence_states = split_semicolon(
+            row["evidence_states"],
+            "evidence_states",
+            row_number,
+        )
         if not evidence_ids or len(set(evidence_ids)) != len(evidence_ids):
             raise ValueError(f"empty or duplicate evidence_ids at row {row_number}")
         if any(evidence_id not in evidence for evidence_id in evidence_ids):
@@ -904,10 +945,10 @@ def validate_report_and_claims(
             raise ValueError(f"report evidence citation does not match {claim_id}")
         covered_evidence.update(evidence_ids)
 
-        support = row["support_level"].strip()
-        disposition = row["disposition"].strip()
-        proposed = row["proposed_hrd_state"].strip()
-        disagreement = row["disagreement_status"].strip()
+        support = row["support_level"]
+        disposition = row["disposition"]
+        proposed = row["proposed_hrd_state"]
+        disagreement = row["disagreement_status"]
         if support not in SUPPORT_LEVELS or disposition not in DISPOSITIONS:
             raise ValueError(f"invalid support level or disposition at row {row_number}")
         if disposition == "supported" and support != "direct":
@@ -920,10 +961,10 @@ def validate_report_and_claims(
             raise ValueError(f"HRD classification promotion at row {row_number}")
         if authorized == "no_call" and proposed != "no_call":
             raise ValueError(f"no_call bundle cannot be promoted at row {row_number}")
-        if not row["claim"].strip() or not row["caveat"].strip():
+        if not row["claim"] or not row["caveat"]:
             raise ValueError(f"claim and caveat are required at row {row_number}")
 
-        raw_fact_ids = row["quantitative_fact_ids"].strip()
+        raw_fact_ids = row["quantitative_fact_ids"]
         fact_id_list = [] if raw_fact_ids == "none" else raw_fact_ids.split(";")
         fact_ids = set(fact_id_list)
         if any(not QUANTITATIVE_FACT_ID.fullmatch(item) for item in fact_ids) or len(fact_ids) != len(fact_id_list):
@@ -934,13 +975,13 @@ def validate_report_and_claims(
                 raise ValueError(f"quantitative fact is not bound to cited evidence at row {row_number}")
         claim_fact_ids[claim_id] = fact_ids
 
-        raw_disagreement_ids = row["disagreement_evidence_ids"].strip()
+        raw_disagreement_ids = row["disagreement_evidence_ids"]
         disagreement_ids = () if raw_disagreement_ids == "none" else tuple(raw_disagreement_ids.split(";"))
         if disagreement not in DISAGREEMENT_STATUSES:
             raise ValueError(f"invalid disagreement status at row {row_number}")
         if any(item not in evidence_ids for item in disagreement_ids) or len(set(disagreement_ids)) != len(disagreement_ids):
             raise ValueError(f"disagreement evidence is not bound to claim at row {row_number}")
-        resolution = row["resolution_needed"].strip()
+        resolution = row["resolution_needed"]
         if disagreement == "none":
             if disagreement_ids or resolution != "not_applicable" or support == "conflicting":
                 raise ValueError(f"disagreement fields are inconsistent at row {row_number}")
@@ -1310,7 +1351,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "model_catalog_receipt_sha256": catalog_receipt_hash,
         "claim_count": len(claims),
         "covered_evidence_ids": sorted(covered_evidence),
-        "disagreement_claim_count": sum(row["disagreement_status"].strip() != "none" for row in claims),
+        "disagreement_claim_count": sum(
+            row["disagreement_status"] != "none" for row in claims
+        ),
         "review_bundle_sha256": bundle_hash,
         "prompt_sha256": prompt_hash,
         "report_sha256": expected_outputs["report.md"],

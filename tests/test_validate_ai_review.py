@@ -763,6 +763,38 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertNotEqual(failed.returncode, 0)
             self.assertIn("classification promotion", failed.stderr)
 
+    def test_rejects_non_exact_claim_csv_fields(self) -> None:
+        cases = (
+            (
+                lambda rows: rows[0].update({"proposed_hrd_state": " no_call"}),
+                "claims.csv field is not exact at row 2: proposed_hrd_state",
+            ),
+            (
+                lambda rows: rows[0].update({"evidence_ids": "E001; E002"}),
+                "evidence_ids is not exact at row 2",
+            ),
+            (
+                lambda rows: rows[0].update(
+                    {"caveat": "Purity is unavailable.\nHidden carryover."}
+                ),
+                "claims.csv field is not exact at row 2: caveat",
+            ),
+        )
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                fixture = ValidateReviewFixture(Path(temporary))
+                fixture.build()
+                review = Path(temporary) / "review-a"
+                fixture.write_review(review)
+                mutate_claims(review / "claims.csv", mutate)
+                fixture.refresh_output_hashes(review)
+
+                failed = fixture.validate(review)
+
+                self.assertNotEqual(failed.returncode, 0)
+                self.assertIn(message, failed.stderr)
+                self.assertFalse((review / "validation.json").exists())
+
     def test_rejects_no_call_bundle_that_authorizes_classification(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))
