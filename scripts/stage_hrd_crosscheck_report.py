@@ -109,10 +109,9 @@ def load_json(path: Path, label: str) -> dict[str, Any]:
 
 
 def require_sha(value: Any, label: str) -> str:
-    digest = str(value)
-    if len(digest) != 64 or set(digest) - SHA256_HEX:
+    if not isinstance(value, str) or len(value) != 64 or set(value) - SHA256_HEX:
         raise ValueError(f"{label} must be a lowercase SHA-256")
-    return digest
+    return value
 
 
 def require_safe_relative_path(relative: str, label: str) -> Path:
@@ -251,7 +250,11 @@ def require_download_verification(
             row is None
             or type(row.get("bytes")) is not int
             or row.get("bytes") != local.stat().st_size
-            or str(row.get("sha256", "")) != sha256(local)
+            or require_sha(
+                row.get("sha256"),
+                f"download verification {relative} SHA-256",
+            )
+            != sha256(local)
         ):
             raise ValueError(f"download verification is stale for {relative}")
 
@@ -298,7 +301,11 @@ def require_download_verification(
             row is None
             or type(row.get("bytes")) is not int
             or row.get("bytes") != local.stat().st_size
-            or str(row.get("sha256", "")) != observed_sha256
+            or require_sha(
+                row.get("sha256"),
+                f"download verification support {relative} SHA-256",
+            )
+            != observed_sha256
         ):
             raise ValueError(f"download verification is stale for support {relative}")
         if expected_sha256 != observed_sha256:

@@ -618,6 +618,110 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     "sigprofiler_sbs3",
                 )
 
+    def test_stage_rejects_coerced_download_verification_hashes(self) -> None:
+        digest = "1" * 64
+        cases = (
+            (
+                "core",
+                lambda payload: payload["objects"][0].__setitem__(
+                    "sha256",
+                    int(digest),
+                ),
+                "download verification report.md SHA-256",
+            ),
+            (
+                "support",
+                lambda payload: payload["objects"][2].__setitem__(
+                    "sha256",
+                    int(digest),
+                ),
+                "download verification support route_result.json SHA-256",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "exact"
+                verification = write_route_report(source)
+                manifest_path = source / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["report_sha256"] = digest
+                manifest["support_sha256"]["route_result.json"] = digest
+                manifest["source_sha256"]["route_result.json"] = digest
+                write_json(manifest_path, manifest)
+
+                payload = json.loads(verification.read_text(encoding="utf-8"))
+                for row in payload["objects"]:
+                    row["sha256"] = digest
+                mutate(payload)
+                write_json(verification, payload)
+
+                with (
+                    mock.patch.object(STAGE, "sha256", return_value=digest),
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    STAGE.require_download_verification(
+                        verification,
+                        source,
+                        "sigprofiler_sbs3",
+                    )
+
+    def test_stage_rejects_coerced_route_manifest_hashes(self) -> None:
+        digest = "1" * 64
+        cases = (
+            (
+                "report",
+                lambda manifest: manifest.__setitem__("report_sha256", int(digest)),
+                "route report_sha256",
+            ),
+            (
+                "support",
+                lambda manifest: manifest["support_sha256"].__setitem__(
+                    "route_result.json",
+                    int(digest),
+                ),
+                "support_sha256.route_result.json",
+            ),
+            (
+                "source",
+                lambda manifest: manifest["source_sha256"].__setitem__(
+                    "route_result.json",
+                    int(digest),
+                ),
+                "source_sha256.route_result.json",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "exact"
+                verification = write_route_report(source)
+                manifest_path = source / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["report_sha256"] = digest
+                manifest["support_sha256"]["route_result.json"] = digest
+                manifest["source_sha256"]["route_result.json"] = digest
+                mutate(manifest)
+                write_json(manifest_path, manifest)
+
+                payload = json.loads(verification.read_text(encoding="utf-8"))
+                for row in payload["objects"]:
+                    row["bytes"] = (source / row["relative_path"]).stat().st_size
+                    row["sha256"] = digest
+                write_json(verification, payload)
+
+                with (
+                    mock.patch.object(STAGE, "sha256", return_value=digest),
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    STAGE.require_download_verification(
+                        verification,
+                        source,
+                        "sigprofiler_sbs3",
+                    )
+
     def test_stage_rejects_route_manifest_that_does_not_bind_support(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
