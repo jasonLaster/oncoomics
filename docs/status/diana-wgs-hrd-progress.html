@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local runbook summaries</li>
+          <li class="pill">Latest milestone = local public index payloads</li>
+          <li class="pill">Public index payloads = exact</li>
           <li class="pill">Publication summaries = exact</li>
           <li class="pill">Reviewed-public rows = exact</li>
           <li class="pill">AI model-catalog receipts = exact</li>
@@ -357,7 +358,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = f4cc76b</li>
+          <li class="pill">Prior dashboard = abf95ad</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -743,6 +744,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact public index payloads</strong>
+              <span>Public index dry-run and apply now reject <code>objects.json</code> payloads with stale top-level fields or per-object fields before final public index publication can call AWS.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact publication runbook summaries</strong>
               <span>AI synthesis and reviewed-publication runbook rendering now reject stale private receipt-summary fields before downstream private/public publication commands can be rendered.</span>
             </li>
@@ -801,9 +806,20 @@
           <h2>Changelog</h2>
           <ol class="changelog">
             <li class="item">
-              <time datetime="2026-07-19T01:43:00-07:00">Jul 19 · local</time>
+              <time datetime="2026-07-19T01:45:00-07:00">Jul 19 · local</time>
               <span>
-                <strong>Local patch · Require exact publication runbook summaries:</strong>
+                <strong>Local patch · Require exact public index payloads:</strong>
+                final public-index dry-run and apply now reject
+                <code>objects.json</code> payloads with extra or missing
+                top-level fields, or stale extra per-object fields, before
+                AWS can be called. No S3, Batch, route, GPU, quota, or
+                replacement compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19T01:39:57-07:00">Jul 19 · 1:39 AM</time>
+              <span>
+                <strong>abf95ad Require exact publication runbook summaries:</strong>
                 AI synthesis and reviewed-publication runbook renderers now
                 require exact private receipt-summary key sets before
                 producing downstream private/public publication handoffs. No

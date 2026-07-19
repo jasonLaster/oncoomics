@@ -13,6 +13,8 @@ from unittest import mock
 
 from tests.test_build_public_results_index import (
     MODULE as BUILD_INDEX,
+)
+from tests.test_build_public_results_index import (
     expected_public_heads,
     expected_public_prefix_pages,
     write_public_receipts,
@@ -93,6 +95,7 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             "prefixes": list(MODULE.PUBLIC_PREFIXES),
             "object_count": 2,
             "total_size": 30,
+            "reviewed_public_receipts": [],
             "objects": [
                 {
                     "key": MODULE.PUBLIC_PREFIXES[0] + "a.json",
@@ -355,6 +358,47 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                             index,
                             root / "receipt.json",
                             reviewed_public_receipts=write_public_receipts(root),
+                        )
+                    )
+
+    def test_rejects_stale_public_index_envelopes_before_aws(self) -> None:
+        cases = (
+            (
+                lambda payload: payload.__setitem__("legacy_receipt_sha256", "0" * 64),
+                "public index contract is malformed",
+            ),
+            (
+                lambda payload: payload["objects"][0].__setitem__(
+                    "legacy_version_id",
+                    "old-public-version",
+                ),
+                "public index object envelope is not exact",
+            ),
+        )
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                index, receipts = self.write_receipt_bound_index(root)
+                payload = json.loads(index.read_text(encoding="utf-8"))
+                mutate(payload)
+                index.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with (
+                    self.assertRaisesRegex(ValueError, message),
+                    mock.patch.object(
+                        MODULE,
+                        "aws_json",
+                        side_effect=AssertionError("AWS called"),
+                    ),
+                ):
+                    MODULE.run(
+                        self.args(
+                            index,
+                            root / "receipt.json",
+                            reviewed_public_receipts=receipts,
                         )
                     )
 

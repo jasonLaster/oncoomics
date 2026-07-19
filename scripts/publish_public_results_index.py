@@ -53,6 +53,22 @@ PUBLIC_INDEX_DRY_RUN_RECEIPT_KEYS = {
     "checks",
     "completed_at_utc",
 }
+PUBLIC_INDEX_KEYS = {
+    "schema_version",
+    "bucket",
+    "classification",
+    "generated_at",
+    "prefixes",
+    "object_count",
+    "total_size",
+    "reviewed_public_receipts",
+    "objects",
+}
+PUBLIC_INDEX_OBJECT_KEYS = {
+    "key",
+    "size",
+    "last_modified",
+}
 
 
 def now() -> str:
@@ -178,6 +194,8 @@ def require_installed_private_output(path: Path, expected_sha256: str) -> None:
 def public_index_object(row: Any) -> dict[str, Any]:
     if not isinstance(row, dict):
         raise ValueError("public index contains a malformed object row")
+    if set(row) != PUBLIC_INDEX_OBJECT_KEYS:
+        raise ValueError("public index object envelope is not exact")
     key = row.get("key")
     size = row.get("size")
     last_modified = row.get("last_modified")
@@ -210,7 +228,8 @@ def validate_public_index(
     payload = load_json(path)
     objects = payload.get("objects")
     if (
-        payload.get("schema_version") != 1
+        set(payload) != PUBLIC_INDEX_KEYS
+        or payload.get("schema_version") != 1
         or payload.get("bucket") != BUCKET
         or payload.get("classification")
         != "reviewed_public_validation_and_alias_only_analysis_outputs"
