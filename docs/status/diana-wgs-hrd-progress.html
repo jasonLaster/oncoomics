@@ -307,20 +307,20 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>39df9b9d0b02b072ef46b2741508c7d5567bc9b3</strong>.
-          The latest work is AI-synthesis receipt-gate hardening:
-          <code>render_ai_synthesis_runbook.py</code> now fails closed when the
-          seven receipt-bound source summaries carry malformed private destination prefixes,
-          null or missing report_manifest VersionIds,
-          malformed report_manifest SHA-256s, or bogus object counts. This is
-          still source/test/dashboard work only. No deterministic final
-          artifacts yet; no real Diana WGS Rosalind packet, executable
-          cross-check packets, AI-review inputs, model-review outputs, or
-          comparative synthesis have been produced.
+          <strong>e51b9beabafc1df8e6ba442b9bca2e38dbc63049</strong>.
+          The latest work is public-index receipt/source binding:
+          <code>build_public_results_index.py</code> now requires every
+          reviewed-public receipt to bind the private publication receipt and
+          exact private source objects before any public destination object can
+          feed <code>public-index/objects.json</code>. This is still
+          source/test/dashboard work only. No deterministic final artifacts yet;
+          no real Diana WGS Rosalind packet, executable cross-check packets,
+          AI-review inputs, model-review outputs, or comparative synthesis have
+          been produced.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 39df9b9</li>
+          <li class="pill">Latest hardening = e51b9be</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -402,8 +402,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 39df9b9</strong>
-              <span>AI-synthesis runbook rendering now rejects malformed private receipt summaries before handoff packets can consume them.</span>
+              <strong>Preserve e51b9be</strong>
+              <span>Public indexing now rejects reviewed-public receipts unless their public rows match validated private source rows byte-for-byte.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -451,6 +451,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>e51b9be Bind public index receipts to sources:</strong>
+                <code>build_public_results_index.py</code> now requires each
+                reviewed-public receipt to bind its private publication receipt
+                and exact private <code>source_objects</code>. Private source
+                rows must be content-addressed, versioned, SHA-256/checksum
+                valid, size-checked, and carry the full
+                <code>SOURCE_PREFLIGHT_CHECKS</code> set; reviewed-public
+                destination rows must match those source bytes and checksums
+                before the data-browser index can use them.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
