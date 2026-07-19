@@ -348,8 +348,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 2d585c7</li>
-          <li class="pill">Prior dashboard = 7c1a339</li>
+          <li class="pill">Latest milestone = 6281d09</li>
+          <li class="pill">Prior dashboard = 7589071</li>
+          <li class="pill">Batch submits = dry-run-bound</li>
           <li class="pill">Private handoff dry-runs = required</li>
           <li class="pill">Stage freeze dry-run = exact</li>
           <li class="pill">Final freeze dry-run = exact</li>
@@ -518,6 +519,10 @@
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind Batch submits to dry-run requests</strong>
+              <span>Materializer and route submits now require an exact matching dry-run request receipt before Batch submission, and reject stale live preflight or job-request drift before submit.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require private handoff dry-run receipts</strong>
               <span>The source-freeze and AI/freeform private-publish renderers now fail fast if a live private apply command is built without its matching dry-run receipt, and regressions prove each generated source, reviewer, and synthesis apply stays receipt-bound.</span>
             </li>
@@ -667,6 +672,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:24:22-07:00">Jul 19 · 12:24 AM</time>
+              <span>
+                <strong>6281d09 Bind Batch submits to dry-run requests:</strong>
+                materializer and route submits now require an exact matching
+                dry-run request receipt before Batch submission, rejecting
+                stale live preflight or job-request drift before submit.
+                Validation passed: 79 focused tests + 21 subtests, then 1,720
+                full-suite tests + 748 subtests; compileall and scoped diff
+                checks also passed. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:18:42-07:00">Jul 19 · 12:18 AM</time>
               <span>
