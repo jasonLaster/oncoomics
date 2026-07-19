@@ -394,6 +394,18 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
 
         self.assertFalse((real_parent / "materializer-registration-receipt.json").exists())
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        real_input = self.root / "real-definition.json"
+        linked_input = self.root / "job-definition-link.json"
+        real_input.write_text("{}\n", encoding="utf-8")
+        linked_input.symlink_to(real_input)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "job-definition-link.json SHA-256 input must be a real file",
+        ):
+            module.sha256_path(linked_input)
+
     def test_output_rehashes_after_parent_fsync(self) -> None:
         real_fsync_directory = module.fsync_directory
 
