@@ -11,7 +11,7 @@ import re
 import sys
 from pathlib import Path
 
-HEX64 = re.compile(r"^[0-9a-fA-F]{64}$")
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
 S3_URI = re.compile(r"^s3://[^/]+/.+")
 ALIAS = re.compile(r"^subject[0-9]{2,}$")
 KMS_ARN = re.compile(r"^arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/[A-Za-z0-9-]+$")
@@ -52,7 +52,9 @@ def private_input(uri: str) -> bool:
 
 
 def valid_version_id(value: object) -> bool:
-    version_id = str(value)
+    if not isinstance(value, str):
+        return False
+    version_id = value
     return bool(
         version_id
         and version_id.lower() not in {"none", "null"}
@@ -60,12 +62,18 @@ def valid_version_id(value: object) -> bool:
     )
 
 
+def valid_sha256(value: object) -> bool:
+    return isinstance(value, str) and HEX64.fullmatch(value) is not None
+
+
 def valid_blob(value: object) -> bool:
     if not isinstance(value, dict):
         return False
+    uri = value.get("uri")
     return (
-        private_input(str(value.get("uri", "")))
-        and bool(HEX64.match(str(value.get("sha256", ""))))
+        isinstance(uri, str)
+        and private_input(uri)
+        and valid_sha256(value.get("sha256"))
         and valid_version_id(value.get("version_id"))
     )
 
@@ -133,7 +141,7 @@ def validate(contract: dict) -> dict:
             "crosscheck_materialization_receipt_sha256",
             "crosscheck_materializer_script_sha256",
         ):
-            if not HEX64.match(str(custody.get(key, ""))):
+            if not valid_sha256(custody.get(key)):
                 shared.append(f"custody.{key} must be an exact SHA-256")
         for key in (
             "final_freeze_receipt_version_id",

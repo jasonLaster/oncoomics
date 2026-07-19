@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact public-index hashes</li>
+          <li class="pill">Latest milestone = local exact cross-check contract hashes</li>
+          <li class="pill">Cross-check contract hashes = exact</li>
           <li class="pill">Public-index hashes = exact</li>
           <li class="pill">Synthesis bundle hashes = exact</li>
           <li class="pill">AI source digests = exact</li>
@@ -876,6 +877,10 @@
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact cross-check contract hashes</strong>
+              <span>The alias-only HRD cross-check contract checker now rejects non-string or lowercase-inexact SHA-256 values and non-string version IDs before route-submission readiness.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact cross-check source object counts</strong>
               <span>Executable cross-check packet staging now rejects non-exact source-object counts before compact SigProfiler/SBS3 or Sequenza/scarHRD packets can enter the terminal source-freeze handoff.</span>
             </li>
@@ -1385,6 +1390,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T11:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact cross-check contract hashes:</strong>
+                the alias-only HRD cross-check contract checker now rejects
+                non-string or lowercase-inexact SHA-256 values and non-string
+                version IDs before route-submission readiness. No live cloud
+                action, compute action, or replacement run was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T11:15:00-07:00">Jul 19 · local</time>
               <span>

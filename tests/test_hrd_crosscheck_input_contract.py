@@ -790,6 +790,76 @@ class CustodyHandoffTests(unittest.TestCase):
             )
         )
 
+    def test_contract_check_hash_and_version_fields_must_be_exact_strings(self):
+        numeric_sha256 = int("1" * 64)
+        cases = (
+            (
+                "reference_sha256",
+                lambda contract: contract["reference"]["fasta"].update(
+                    {"sha256": numeric_sha256}
+                ),
+                (
+                    "reference.fasta must have an approved private Diana S3 URI, "
+                    "exact VersionId, and 64-hex SHA-256"
+                ),
+            ),
+            (
+                "artifact_sha256",
+                lambda contract: contract["artifacts"]["sbs96_matrix"].update(
+                    {"sha256": numeric_sha256}
+                ),
+                (
+                    "artifacts.sbs96_matrix requires an approved private Diana "
+                    "S3 URI, exact VersionId, and 64-hex SHA-256"
+                ),
+            ),
+            (
+                "artifact_version",
+                lambda contract: contract["artifacts"]["sbs96_matrix"].update(
+                    {"version_id": 1234567890}
+                ),
+                (
+                    "artifacts.sbs96_matrix requires an approved private Diana "
+                    "S3 URI, exact VersionId, and 64-hex SHA-256"
+                ),
+            ),
+            (
+                "custody_sha256",
+                lambda contract: contract["custody"].update(
+                    {"finalizer_script_sha256": numeric_sha256}
+                ),
+                "custody.finalizer_script_sha256 must be an exact SHA-256",
+            ),
+            (
+                "custody_version",
+                lambda contract: contract["custody"].update(
+                    {"final_freeze_receipt_version_id": 1234567890}
+                ),
+                "custody.final_freeze_receipt_version_id must be an exact S3 VersionId",
+            ),
+        )
+
+        for label, mutate, reason in cases:
+            with self.subTest(label=label):
+                contract = CustodyFixture().finalize()
+                mutate(contract)
+
+                result = checker.validate(contract)
+
+                self.assertEqual(result["overall_status"], "blocked")
+                self.assertTrue(
+                    any(
+                        reason == observed
+                        for route in result["routes"].values()
+                        for observed in route["reasons"]
+                    )
+                )
+
+    def test_contract_check_sha256_helper_requires_lowercase_strings(self):
+        self.assertTrue(checker.valid_sha256("a" * 64))
+        self.assertFalse(checker.valid_sha256("A" * 64))
+        self.assertFalse(checker.valid_sha256(int("1" * 64)))
+
     def test_contract_check_rejects_non_integer_custody_schema_version(self):
         contract = CustodyFixture().finalize()
         contract["custody"]["schema_version"] = 1.0
