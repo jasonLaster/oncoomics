@@ -54,6 +54,38 @@ CHECKSUM_ALGORITHMS = {
     "ChecksumCRC32": "CRC32",
 }
 MAX_SINGLE_COPY_BYTES = 5_000_000_000
+EXPECTED_DRY_RUN_CHECKS = {
+    "execution_receipt_bound": True,
+    "complete_source_inventory_unchanged": True,
+}
+EXPECTED_DRY_RUN_RECEIPT_KEYS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "generated_at",
+        "run_id",
+        "batch_job_id",
+        "batch_status",
+        "execution_receipt",
+        "source_prefix",
+        "destination_prefix",
+        "kms_key_arn",
+        "script_sha256",
+        "destination_bucket_versioning",
+        "destination_initial_version_history_count",
+        "receipt_anchor_strategy",
+        "object_count",
+        "initial_inventory_identity",
+        "objects",
+        "final_inventory_identity",
+        "checks",
+        "completed_at",
+        "passed_count",
+    }
+)
+EXPECTED_DRY_RUN_OBJECT_KEYS = frozenset(
+    {"relative_key", "source", "destination", "status"}
+)
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -449,6 +481,91 @@ def inventory_identity(snapshot: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def dry_run_objects(
+    inventory: list[dict[str, Any]],
+    source_bucket: str,
+    destination_bucket: str,
+    destination_prefix: str,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "relative_key": str(row["relative_key"]),
+            "source": {
+                "bucket": source_bucket,
+                "key": str(row["key"]),
+                "version_id": str(row["version_id"]),
+                "bytes": int(row["bytes"]),
+                "etag": str(row["etag"]),
+                "checksums": row["checksums"],
+                "checksum_type": str(row["checksum_type"]),
+            },
+            "destination": {
+                "bucket": destination_bucket,
+                "key": destination_prefix + str(row["relative_key"]),
+            },
+            "status": "dry_run",
+        }
+        for row in inventory
+    ]
+
+
+def validate_dry_run_receipt(path: Path, expected: dict[str, Any]) -> None:
+    receipt = load_json(path)
+    observed_keys = set(receipt)
+    if observed_keys != EXPECTED_DRY_RUN_RECEIPT_KEYS:
+        raise ValueError(
+            "final artifact freeze dry-run receipt has stale or missing metadata: "
+            f"missing={sorted(EXPECTED_DRY_RUN_RECEIPT_KEYS - observed_keys)} "
+            f"unexpected={sorted(observed_keys - EXPECTED_DRY_RUN_RECEIPT_KEYS)}"
+        )
+    if (
+        receipt.get("schema_version") != 1
+        or receipt.get("status") != "dry_run"
+        or receipt.get("batch_status") != "SUCCEEDED"
+        or receipt.get("passed_count") != 0
+        or not isinstance(receipt.get("generated_at"), str)
+        or not receipt.get("generated_at")
+        or not isinstance(receipt.get("completed_at"), str)
+        or not receipt.get("completed_at")
+        or receipt.get("checks") != EXPECTED_DRY_RUN_CHECKS
+    ):
+        raise ValueError("final artifact freeze dry-run receipt did not pass preflight")
+
+    bound_fields = (
+        "run_id",
+        "batch_job_id",
+        "execution_receipt",
+        "source_prefix",
+        "destination_prefix",
+        "kms_key_arn",
+        "script_sha256",
+        "destination_bucket_versioning",
+        "destination_initial_version_history_count",
+        "receipt_anchor_strategy",
+        "object_count",
+        "initial_inventory_identity",
+        "final_inventory_identity",
+    )
+    if any(receipt.get(field) != expected.get(field) for field in bound_fields):
+        raise ValueError(
+            "final artifact freeze dry-run receipt does not match this apply"
+        )
+
+    observed_objects = receipt.get("objects")
+    expected_objects = expected.get("objects")
+    if not isinstance(observed_objects, list) or observed_objects != expected_objects:
+        raise ValueError(
+            "final artifact freeze dry-run receipt object inventory does not "
+            "match this apply"
+        )
+    for row in observed_objects:
+        if not isinstance(row, dict) or set(row) != EXPECTED_DRY_RUN_OBJECT_KEYS:
+            raise ValueError(
+                "final artifact freeze dry-run receipt has stale or malformed "
+                "object metadata"
+            )
+
+
 def snapshot_destination(
     bucket: str, prefix: str, kms_key_arn: str, region: str
 ) -> list[dict[str, Any]]:
@@ -684,7 +801,13 @@ def main() -> int:
     parser.add_argument("--anchor-output", required=True, type=Path)
     parser.add_argument("--region", default="us-east-1")
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--dry-run-receipt", type=Path)
     args = parser.parse_args()
+
+    if args.dry_run_receipt is not None and not args.apply:
+        raise SystemExit("Fail-closed: --dry-run-receipt is only valid with --apply")
+    if args.apply and args.dry_run_receipt is None:
+        raise SystemExit("Fail-closed: --apply requires --dry-run-receipt")
 
     resolved_paths = {
         args.execution_receipt.resolve(),
@@ -778,6 +901,25 @@ def main() -> int:
         "initial_inventory_identity": inventory_identity(initial_inventory),
         "objects": [],
     }
+    dry_run_receipt = {
+        **receipt,
+        "status": "dry_run",
+        "objects": dry_run_objects(
+            initial_inventory,
+            source_bucket,
+            destination_bucket,
+            destination_prefix,
+        ),
+        "final_inventory_identity": receipt["initial_inventory_identity"],
+        "checks": dict(EXPECTED_DRY_RUN_CHECKS),
+        "completed_at": "dry-run-preflight",
+        "passed_count": 0,
+    }
+    if args.dry_run_receipt is not None:
+        try:
+            validate_dry_run_receipt(args.dry_run_receipt, dry_run_receipt)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            raise SystemExit(f"Fail-closed: {error}") from error
     write_json_atomic(args.output, receipt, create=True)
 
     try:

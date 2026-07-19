@@ -22,6 +22,79 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+def final_freeze_dry_run_receipt(
+    execution: Path,
+    source_rows: list[dict],
+    *,
+    run_id: str = "run-id",
+    job_id: str = "job-id",
+    kms_key_arn: str = "arn:aws:kms:us-east-1:172630973301:key/test",
+) -> dict:
+    source_bucket = "diana-omics-work-172630973301-us-east-1"
+    destination_bucket = "diana-omics-private-results-172630973301-us-east-1"
+    destination_prefix = f"runs/subject01/{run_id}/deterministic/final/"
+    inventory = MODULE.inventory_identity(source_rows)
+    return {
+        "schema_version": 1,
+        "status": "dry_run",
+        "generated_at": "2026-07-19T00:00:00+00:00",
+        "run_id": run_id,
+        "batch_job_id": job_id,
+        "batch_status": "SUCCEEDED",
+        "execution_receipt": {
+            "path": str(execution.resolve()),
+            "sha256": MODULE.sha256(execution),
+        },
+        "source_prefix": (
+            f"s3://{source_bucket}/runs/diana-hrd/{run_id}/private-results/"
+            "final/artifacts/"
+        ),
+        "destination_prefix": f"s3://{destination_bucket}/{destination_prefix}",
+        "kms_key_arn": kms_key_arn,
+        "script_sha256": MODULE.sha256(Path(MODULE.__file__)),
+        "destination_bucket_versioning": "Enabled",
+        "destination_initial_version_history_count": 0,
+        "receipt_anchor_strategy": "sha256_content_addressed_create_only",
+        "object_count": len(source_rows),
+        "initial_inventory_identity": inventory,
+        "objects": MODULE.dry_run_objects(
+            source_rows,
+            source_bucket,
+            destination_bucket,
+            destination_prefix,
+        ),
+        "final_inventory_identity": inventory,
+        "checks": dict(MODULE.EXPECTED_DRY_RUN_CHECKS),
+        "completed_at": "2026-07-19T00:01:00+00:00",
+        "passed_count": 0,
+    }
+
+
+def write_final_freeze_dry_run_receipt(
+    path: Path,
+    execution: Path,
+    source_rows: list[dict],
+    *,
+    run_id: str = "run-id",
+    job_id: str = "job-id",
+) -> Path:
+    path.write_text(
+        json.dumps(
+            final_freeze_dry_run_receipt(
+                execution,
+                source_rows,
+                run_id=run_id,
+                job_id=job_id,
+            ),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
 class FreezeFinalArtifactsTests(unittest.TestCase):
     def test_parse_s3_rejects_bucket_only(self) -> None:
         self.assertEqual(MODULE.parse_s3("s3://private-bucket/path/to/tree"), ("private-bucket", "path/to/tree"))
@@ -152,6 +225,130 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             "source-bucket/private-results/final/artifacts/README.md?versionId=null",
             arguments,
         )
+
+    def test_apply_requires_dry_run_receipt_before_aws(self) -> None:
+        with (
+            patch.object(
+                sys,
+                "argv",
+                [
+                    "freeze_final_artifacts.py",
+                    "--job-id",
+                    "job-id",
+                    "--run-id",
+                    "run-id",
+                    "--execution-receipt",
+                    "execution.json",
+                    "--source-prefix",
+                    "s3://source/final/",
+                    "--destination-prefix",
+                    "s3://destination/final/",
+                    "--kms-key-arn",
+                    "arn:aws:kms:us-east-1:172630973301:key/test",
+                    "--output",
+                    "freeze.json",
+                    "--anchor-output",
+                    "anchor.json",
+                    "--apply",
+                ],
+            ),
+            patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            self.assertRaisesRegex(SystemExit, "requires --dry-run-receipt"),
+        ):
+            MODULE.main()
+
+    def test_dry_run_receipt_is_only_valid_with_apply_before_aws(self) -> None:
+        with (
+            patch.object(
+                sys,
+                "argv",
+                [
+                    "freeze_final_artifacts.py",
+                    "--job-id",
+                    "job-id",
+                    "--run-id",
+                    "run-id",
+                    "--execution-receipt",
+                    "execution.json",
+                    "--source-prefix",
+                    "s3://source/final/",
+                    "--destination-prefix",
+                    "s3://destination/final/",
+                    "--kms-key-arn",
+                    "arn:aws:kms:us-east-1:172630973301:key/test",
+                    "--output",
+                    "freeze.json",
+                    "--anchor-output",
+                    "anchor.json",
+                    "--dry-run-receipt",
+                    "freeze.dry.json",
+                ],
+            ),
+            patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
+            self.assertRaisesRegex(SystemExit, "only valid with --apply"),
+        ):
+            MODULE.main()
+
+    def test_validate_dry_run_receipt_rejects_stale_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            execution = root / "execution.json"
+            execution.write_text("{}\n", encoding="utf-8")
+            source_rows = [
+                {
+                    "relative_key": "variants/final.vcf.gz",
+                    "key": (
+                        "runs/diana-hrd/run-id/private-results/final/artifacts/"
+                        "variants/final.vcf.gz"
+                    ),
+                    "bytes": 10,
+                    "etag": '"etag"',
+                    "version_id": "source-version",
+                    "checksums": {"ChecksumSHA256": "source-checksum"},
+                    "checksum_type": "FULL_OBJECT",
+                }
+            ]
+            receipt = final_freeze_dry_run_receipt(execution, source_rows)
+            path = root / "freeze.dry.json"
+
+            for label, mutate, message in (
+                (
+                    "extra-top-level",
+                    lambda payload: payload.__setitem__("stale_receipt_sha256", "0" * 64),
+                    "stale or missing metadata",
+                ),
+                (
+                    "failed-check",
+                    lambda payload: payload["checks"].__setitem__(
+                        "complete_source_inventory_unchanged", False
+                    ),
+                    "did not pass preflight",
+                ),
+                (
+                    "stale-inventory",
+                    lambda payload: payload["initial_inventory_identity"][0].__setitem__(
+                        "version_id", "stale-version"
+                    ),
+                    "does not match this apply",
+                ),
+                (
+                    "stale-object-row",
+                    lambda payload: payload["objects"][0].__setitem__(
+                        "stale", "metadata"
+                    ),
+                    "object inventory does not match this apply",
+                ),
+            ):
+                with self.subTest(label=label):
+                    mutated = deepcopy(receipt)
+                    mutate(mutated)
+                    path.write_text(
+                        json.dumps(mutated, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaisesRegex(ValueError, message):
+                        MODULE.validate_dry_run_receipt(path, receipt)
 
     def test_list_objects_consumes_every_page(self) -> None:
         pages = [
@@ -697,6 +894,13 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            dry_run = write_final_freeze_dry_run_receipt(
+                root / "freeze.dry.json",
+                execution,
+                [source_row],
+                run_id=run_id,
+                job_id=job_id,
+            )
             argv = [
                 "freeze_final_artifacts.py",
                 "--job-id",
@@ -715,6 +919,8 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 str(output),
                 "--anchor-output",
                 str(anchor),
+                "--dry-run-receipt",
+                str(dry_run),
                 "--apply",
             ]
             with patch.object(sys, "argv", argv), patch.object(

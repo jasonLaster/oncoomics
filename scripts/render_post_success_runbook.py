@@ -698,6 +698,8 @@ def render(root: Path, terminal_job_id: str) -> str:
                 deterministic / "terminal.final-freeze.json",
                 "--anchor-output",
                 deterministic / "terminal.final-freeze.anchor.json",
+                "--dry-run-receipt",
+                deterministic / "terminal.final-freeze.dry.json",
                 "--region",
                 REGION,
                 "--apply",
