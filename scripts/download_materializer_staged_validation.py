@@ -23,6 +23,23 @@ CHECKSUM_FIELDS = (
     "ChecksumCRC32C",
     "ChecksumCRC32",
 )
+EXPECTED_RECEIPT_CHECKS = {
+    "all_sources_exact_version_and_sha256": True,
+    "alias_only_pass_snv_vcf": True,
+    "sbs96_matches_independent_pass_vcf_derivation": True,
+    "destination_prefix_initially_empty": True,
+    "all_outputs_create_only": True,
+    "destination_exact_single_version_history": True,
+}
+EXPECTED_OUTPUT_CHECKS = {
+    "create_only_put": True,
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_checksum_exact": True,
+    "metadata_sha256_exact": True,
+    "exact_kms": True,
+    "single_version_history": True,
+}
 
 
 def now() -> str:
@@ -287,9 +304,7 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
         or receipt.get("status") != "passed"
         or not isinstance(outputs, dict)
         or not outputs
-        or not isinstance(checks, dict)
-        or not checks
-        or any(value is not True for value in checks.values())
+        or checks != EXPECTED_RECEIPT_CHECKS
     ):
         raise ValueError("materializer receipt is incomplete or not passed")
     row = outputs.get(OUTPUT_NAME)
@@ -303,8 +318,7 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
         not uri
         or not version_id
         or version_id.lower() in {"none", "null"}
-        or not isinstance(row_checks, dict)
-        or any(value is not True for value in row_checks.values())
+        or row_checks != EXPECTED_OUTPUT_CHECKS
         or row.get("kms_key_arn") != expected_kms
         or not isinstance(row.get("bytes"), int)
         or int(row.get("bytes", 0)) <= 0

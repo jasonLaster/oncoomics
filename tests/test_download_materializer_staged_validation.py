@@ -47,21 +47,10 @@ def receipt(payload: bytes) -> dict:
                     "ChecksumType": "FULL_OBJECT",
                     "ChecksumSHA256": checksum(payload),
                 },
-                "checks": {
-                    "create_only_put": True,
-                    "version_exact": True,
-                    "bytes_exact": True,
-                    "metadata_sha256_exact": True,
-                    "exact_kms": True,
-                    "single_version_history": True,
-                },
+                "checks": dict(MODULE.EXPECTED_OUTPUT_CHECKS),
             }
         },
-        "checks": {
-            "all_sources_exact_version_and_sha256": True,
-            "all_outputs_create_only": True,
-            "destination_exact_single_version_history": True,
-        },
+        "checks": dict(MODULE.EXPECTED_RECEIPT_CHECKS),
     }
 
 
@@ -103,6 +92,66 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
         ] = "COMPOSITE"
         with self.assertRaisesRegex(ValueError, "lacks exact"):
             MODULE.validate_receipt(composite_checksum, KMS)
+
+    def test_validate_receipt_rejects_missing_unexpected_or_failed_check_maps(
+        self,
+    ) -> None:
+        for location, label, mutate, error in (
+            (
+                "receipt",
+                "missing",
+                lambda payload: payload["checks"].pop("alias_only_pass_snv_vcf"),
+                "incomplete",
+            ),
+            (
+                "receipt",
+                "unexpected",
+                lambda payload: payload["checks"].__setitem__(
+                    "forged_extra",
+                    True,
+                ),
+                "incomplete",
+            ),
+            (
+                "receipt",
+                "failed",
+                lambda payload: payload["checks"].__setitem__(
+                    "sbs96_matches_independent_pass_vcf_derivation",
+                    False,
+                ),
+                "incomplete",
+            ),
+            (
+                "output",
+                "missing",
+                lambda payload: payload["outputs"][MODULE.OUTPUT_NAME]["checks"].pop(
+                    "sha256_checksum_exact"
+                ),
+                "lacks exact",
+            ),
+            (
+                "output",
+                "unexpected",
+                lambda payload: payload["outputs"][MODULE.OUTPUT_NAME][
+                    "checks"
+                ].__setitem__("forged_extra", True),
+                "lacks exact",
+            ),
+            (
+                "output",
+                "failed",
+                lambda payload: payload["outputs"][MODULE.OUTPUT_NAME][
+                    "checks"
+                ].__setitem__("single_version_history", False),
+                "lacks exact",
+            ),
+        ):
+            with self.subTest(location=location, label=label):
+                payload = receipt(b"{}")
+                mutate(payload)
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_receipt(payload, KMS)
 
     def test_head_and_get_request_exact_version_with_checksum_mode(self) -> None:
         with patch.object(MODULE, "aws_json", return_value={"ok": True}) as aws:
