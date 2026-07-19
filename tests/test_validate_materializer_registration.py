@@ -50,6 +50,13 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
     def write(self, path: Path, value: dict) -> None:
         path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
+    def rewrite_materializer_script_hash(self, definition: dict, digest: str) -> None:
+        shell = definition["containerProperties"]["command"][2]
+        definition["containerProperties"]["command"][2] = shell.replace(
+            'test "$actual" = ' + "a" * 64,
+            f'test "$actual" = {digest}',
+        )
+
     def validate(
         self,
         *,
@@ -244,6 +251,21 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
             "materializer script anchor must be schema 1 and passed",
         ):
             self.validate(script_anchor=anchor)
+
+    def test_script_anchor_rejects_coerced_source_sha256(self) -> None:
+        digest = "1" * 64
+        anchor = json.loads(self.script_anchor.read_text(encoding="utf-8"))
+        anchor["source"]["sha256"] = int(digest)
+        definition = json.loads(self.definition.read_text(encoding="utf-8"))
+        live = json.loads(self.live.read_text(encoding="utf-8"))
+        self.rewrite_materializer_script_hash(definition, digest)
+        self.rewrite_materializer_script_hash(live["jobDefinitions"][0], digest)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "materializer source SHA-256 must be a lowercase SHA-256",
+        ):
+            self.validate(script_anchor=anchor, definition=definition, live=live)
 
     def test_materializer_command_check_map_must_be_exact(self) -> None:
         cases = (

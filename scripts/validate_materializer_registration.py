@@ -207,10 +207,9 @@ def require_passed_checks(value: Any, expected: frozenset[str], label: str) -> N
 
 
 def require_hex(value: Any, label: str) -> str:
-    text = str(value)
-    if not HEX64.fullmatch(text):
+    if not isinstance(value, str) or not HEX64.fullmatch(value):
         raise ValueError(f"{label} must be a lowercase SHA-256")
-    return text
+    return value
 
 
 def normalize_definition(value: dict[str, Any]) -> dict[str, Any]:
