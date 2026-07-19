@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local route output byte exactness</li>
+          <li class="pill">Latest milestone = local Batch runtime exactness</li>
+          <li class="pill">Batch runtime = exact</li>
           <li class="pill">Route output bytes = exact</li>
           <li class="pill">CloudWatch timestamps = exact</li>
           <li class="pill">Terminal timestamps = exact</li>
@@ -691,6 +692,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Batch provenance controls</strong>
               <span>Terminal Batch provenance capture now rejects non-exact effective retry attempts, timeout seconds, and live job-definition revisions before execution provenance receipts can feed deterministic WGS staging.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Batch runtime evidence</strong>
+              <span>Terminal Batch provenance capture now rejects non-exact attempt timestamps, attempt exit codes, command response codes, and top-level runtime timestamps before execution receipts can feed stage/final freezes or deterministic staging.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Batch provenance worker bytes</strong>
@@ -1290,6 +1295,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T06:45:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact Batch runtime evidence:</strong>
+                terminal Batch provenance capture now rejects non-exact attempt
+                timestamps, attempt exit codes, command response codes, and
+                top-level runtime timestamps before execution receipts can feed
+                stage/final freezes or deterministic staging. No live cloud
+                action, compute action, or replacement run was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T06:30:00-07:00">Jul 19 · local</time>
               <span>

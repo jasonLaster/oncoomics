@@ -381,6 +381,34 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not a list"):
             MODULE.summarize_attempts({})
 
+    def test_attempt_summary_requires_exact_runtime_integers(self) -> None:
+        cases = (
+            ("startedAt", True),
+            ("startedAt", 10.0),
+            ("startedAt", "10"),
+            ("stoppedAt", True),
+            ("stoppedAt", 20.0),
+            ("stoppedAt", "20"),
+            ("exitCode", True),
+            ("exitCode", 0.0),
+            ("exitCode", "0"),
+        )
+
+        for field, value in cases:
+            with self.subTest(field=field, value=value):
+                attempt = {
+                    "startedAt": 10,
+                    "stoppedAt": 20,
+                    "container": {"exitCode": 0},
+                }
+                if field == "exitCode":
+                    attempt["container"][field] = value
+                else:
+                    attempt[field] = value
+
+                with self.assertRaisesRegex(ValueError, "exact nonnegative"):
+                    MODULE.summarize_attempts([attempt])
+
     def test_effective_job_controls_preserve_submit_overrides(self) -> None:
         retry, timeout = MODULE.effective_job_controls(
             {
@@ -426,6 +454,17 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                     MODULE.require_positive_exact_int(
                         value,
                         "Batch job definition revision",
+                    )
+
+    def test_nonnegative_runtime_helper_requires_exact_integer(self) -> None:
+        self.assertEqual(
+            MODULE.require_nonnegative_exact_int(0, "Batch attempt exitCode"), 0
+        )
+        for value in (True, 0.0, "0", -1, None):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "exact nonnegative"):
+                    MODULE.require_nonnegative_exact_int(
+                        value, "Batch attempt exitCode"
                     )
 
     def test_ssm_evidence_persists_exact_commands_and_hashes(self) -> None:
@@ -536,6 +575,28 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 expected_commands=expected,
                 label="hash",
             )
+
+    def test_ssm_command_response_code_must_be_exact_zero(self) -> None:
+        command_id = "command-1"
+        instance_id = "i-task-host"
+        expected = MODULE.expected_hash_commands("runtime-id")
+
+        for value in (True, 0.0, "0", None):
+            with self.subTest(value=value):
+                invocation = self._invocation(command_id, instance_id)
+                invocation["ResponseCode"] = value
+
+                with self.assertRaisesRegex(
+                    ValueError, "invocation_response_code"
+                ):
+                    MODULE.validate_ssm_command(
+                        self._command(command_id, instance_id, expected),
+                        invocation,
+                        command_id=command_id,
+                        instance_id=instance_id,
+                        expected_commands=expected,
+                        label="hash",
+                    )
 
     def test_ssm_command_rejects_extra_or_changed_command_body(self) -> None:
         command_id = "command-1"
@@ -939,6 +1000,33 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
         ]
 
         self.assertEqual(raw_byte_coercions, [])
+
+    def test_batch_runtime_guards_avoid_raw_int_coercion(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "capture_batch_provenance.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        raw_runtime_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "createdAt",
+                    "startedAt",
+                    "stoppedAt",
+                    "exitCode",
+                    "ResponseCode",
+                )
+            )
+        ]
+
+        self.assertEqual(raw_runtime_coercions, [])
 
     def test_schema_version_checks_avoid_raw_comparisons(self) -> None:
         module = ast.parse(

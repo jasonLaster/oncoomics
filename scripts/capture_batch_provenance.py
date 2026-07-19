@@ -208,6 +208,12 @@ def require_positive_exact_int(value: Any, label: str) -> int:
     return value
 
 
+def require_nonnegative_exact_int(value: Any, label: str) -> int:
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{label} must be an exact nonnegative integer")
+    return value
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -485,15 +491,25 @@ def summarize_attempts(value: Any) -> list[dict[str, Any]]:
         exit_code = container.get("exitCode")
         result.append(
             {
-                "started_at_epoch_ms": int(row.get("startedAt", 0)),
-                "stopped_at_epoch_ms": int(row.get("stoppedAt", 0)),
+                "started_at_epoch_ms": require_nonnegative_exact_int(
+                    row.get("startedAt", 0), "Batch attempt startedAt"
+                ),
+                "stopped_at_epoch_ms": require_nonnegative_exact_int(
+                    row.get("stoppedAt", 0), "Batch attempt stoppedAt"
+                ),
                 "status_reason": str(row.get("statusReason", "")),
                 "container_instance_arn": str(
                     container.get("containerInstanceArn", "")
                 ),
                 "task_arn": str(container.get("taskArn", "")),
                 "log_stream": str(container.get("logStreamName", "")),
-                "exit_code": int(exit_code) if exit_code is not None else None,
+                "exit_code": (
+                    require_nonnegative_exact_int(
+                        exit_code, "Batch attempt exitCode"
+                    )
+                    if exit_code is not None
+                    else None
+                ),
                 "reason": str(container.get("reason", "")),
             }
         )
@@ -661,10 +677,6 @@ def validate_ssm_command(
         if isinstance(instance_ids, list)
         else []
     )
-    try:
-        response_code = int(invocation.get("ResponseCode", -1))
-    except (TypeError, ValueError):
-        response_code = -1
     checks = {
         "command_id": command.get("CommandId") == command_id,
         "document": command.get("DocumentName") == "AWS-RunShellScript",
@@ -674,7 +686,7 @@ def validate_ssm_command(
         "invocation_command_id": invocation.get("CommandId") == command_id,
         "invocation_instance_id": invocation.get("InstanceId") == instance_id,
         "invocation_status": invocation.get("Status") == "Success",
-        "invocation_response_code": response_code == 0,
+        "invocation_response_code": exact_int(invocation.get("ResponseCode"), 0),
     }
     if checks != EXPECTED_SSM_COMMAND_BINDING_CHECKS:
         raise ValueError(f"{label} SSM command binding failed: {checks}")
@@ -1077,13 +1089,13 @@ def main() -> None:
         ),
         "live_hash_command": (
             hash_invocation.get("Status") == "Success"
-            and int(hash_invocation.get("ResponseCode", -1)) == 0
+            and exact_int(hash_invocation.get("ResponseCode"), 0)
             and command_sha256 == worker_source.get("sha256")
             and exact_int(worker_source.get("bytes"), command_bytes)
         ),
         "live_freeze_command": (
             freeze_invocation.get("Status") == "Success"
-            and int(freeze_invocation.get("ResponseCode", -1)) == 0
+            and exact_int(freeze_invocation.get("ResponseCode"), 0)
             and freeze_output.get("VersionId") == worker_version
             and freeze_output.get("ChecksumSHA256")
             == worker_freeze.get("checksum_sha256_base64")
@@ -1137,9 +1149,15 @@ def main() -> None:
             "job_name": str(job.get("jobName", "")),
             "status": str(job.get("status", "")),
             "status_reason": str(job.get("statusReason", "")),
-            "created_at_epoch_ms": int(job.get("createdAt", 0)),
-            "started_at_epoch_ms": int(job.get("startedAt", 0)),
-            "stopped_at_epoch_ms": int(job.get("stoppedAt", 0)),
+            "created_at_epoch_ms": require_nonnegative_exact_int(
+                job.get("createdAt", 0), "Batch job createdAt"
+            ),
+            "started_at_epoch_ms": require_nonnegative_exact_int(
+                job.get("startedAt", 0), "Batch job startedAt"
+            ),
+            "stopped_at_epoch_ms": require_nonnegative_exact_int(
+                job.get("stoppedAt", 0), "Batch job stoppedAt"
+            ),
             "attempt_count": len(attempts),
             "attempts": attempts,
             "retry_strategy": retry_strategy,
