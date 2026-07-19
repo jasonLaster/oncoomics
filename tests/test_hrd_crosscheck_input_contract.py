@@ -37,6 +37,10 @@ def write_json(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def checksum_sha256(digest: str) -> str:
+    return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
+
+
 def private_blob(relative: str, sha256: str, version: str) -> dict:
     return {
         "uri": f"s3://{BUCKET}/runs/subject01/{RUN}/{relative}",
@@ -136,13 +140,16 @@ class CustodyFixture:
             key = uri.split(f"s3://{BUCKET}/", 1)[1]
             version = f"frozen-version-{index}"
             digest = f"{index:064x}"
-            checksum = base64.b64encode(bytes.fromhex(digest)).decode("ascii")
+            checksum = checksum_sha256(digest)
             destination = {
                 "bucket": BUCKET,
                 "key": key,
                 "version_id": version,
                 "bytes": index + 10,
-                "checksums": {"ChecksumSHA256": checksum},
+                "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": checksum,
+                },
                 "checksum_type": "FULL_OBJECT",
                 "kms_key_id": KMS,
             }
@@ -161,7 +168,10 @@ class CustodyFixture:
                     "key": key,
                     "version_id": version,
                     "bytes": index + 10,
-                    "checksums": {"ChecksumSHA256": checksum},
+                    "checksums": {
+                        "ChecksumType": "FULL_OBJECT",
+                        "ChecksumSHA256": checksum,
+                    },
                     "kms_key_id": KMS,
                     "sha256": digest,
                     "checks": {"exact": True},
@@ -212,21 +222,45 @@ class CustodyFixture:
         outputs = {}
         for index, (artifact, filename) in enumerate(finalizer.FINAL_OUTPUTS.items(), 11):
             uri = self.pending["artifacts"][artifact]["uri"]
+            digest = f"{index:064x}"
             outputs[filename] = {
                 "uri": uri,
                 "version_id": f"alias-version-{index}",
-                "sha256": f"{index:064x}",
+                "sha256": digest,
                 "bytes": index + 100,
-                "checksums": {"ChecksumSHA256": f"checksum-{index}"},
-                "checks": {"single": True},
+                "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": checksum_sha256(digest),
+                },
+                "checks": {
+                    "create_only_put": True,
+                    "version_exact": True,
+                    "bytes_exact": True,
+                    "sha256_checksum_exact": True,
+                    "metadata_sha256_exact": True,
+                    "exact_kms": True,
+                    "single_version_history": True,
+                },
             }
+        validation_digest = "f" * 64
         outputs["staged_input_validation.json"] = {
             "uri": f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/final/staged_input_validation.json",
             "version_id": "alias-validation-version",
-            "sha256": "f" * 64,
+            "sha256": validation_digest,
             "bytes": 101,
-            "checksums": {"ChecksumSHA256": "validation-checksum"},
-            "checks": {"single": True},
+            "checksums": {
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": checksum_sha256(validation_digest),
+            },
+            "checks": {
+                "create_only_put": True,
+                "version_exact": True,
+                "bytes_exact": True,
+                "sha256_checksum_exact": True,
+                "metadata_sha256_exact": True,
+                "exact_kms": True,
+                "single_version_history": True,
+            },
         }
         destination_inventory = [
             {
@@ -580,6 +614,32 @@ class CustodyHandoffTests(unittest.TestCase):
         fixture = CustodyFixture()
         fixture.cross["source_custody"]["vcf"]["version_id"] = "raced-version"
         with self.assertRaisesRegex(ValueError, "not the exact final freeze"):
+            fixture.finalize()
+
+    def test_finalizer_rejects_crosscheck_output_without_exact_sha256_checksum(self):
+        fixture = CustodyFixture()
+        fixture.cross["outputs"]["sbs96.csv"]["checksums"]["ChecksumSHA256"] = (
+            checksum_sha256("0" * 64)
+        )
+        with self.assertRaisesRegex(ValueError, "full-object SHA-256"):
+            fixture.finalize()
+
+    def test_finalizer_rejects_staged_validation_output_without_full_object_checksum(
+        self,
+    ):
+        fixture = CustodyFixture()
+        fixture.cross["outputs"]["staged_input_validation.json"]["checksums"][
+            "ChecksumType"
+        ] = "COMPOSITE"
+        with self.assertRaisesRegex(ValueError, "full-object SHA-256"):
+            fixture.finalize()
+
+    def test_finalizer_rejects_staged_validation_output_with_failed_checks(self):
+        fixture = CustodyFixture()
+        fixture.cross["outputs"]["staged_input_validation.json"]["checks"][
+            "sha256_checksum_exact"
+        ] = False
+        with self.assertRaisesRegex(ValueError, "did not pass every custody check"):
             fixture.finalize()
 
     def test_finalizer_rejects_incomplete_freeze_or_history(self):

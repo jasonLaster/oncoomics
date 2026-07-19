@@ -11,6 +11,7 @@ freeze and exact-version local materialization receipts.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -53,6 +54,22 @@ def canonical_json_bytes(value: dict[str, Any]) -> bytes:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def checksum_sha256(digest: str) -> str:
+    return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
+
+
+def require_full_object_sha256(value: dict[str, Any], label: str) -> str:
+    digest = require_hex(value.get("sha256"), label)
+    checksums = value.get("checksums")
+    if (
+        not isinstance(checksums, dict)
+        or checksums.get("ChecksumType") != "FULL_OBJECT"
+        or checksums.get("ChecksumSHA256") != checksum_sha256(digest)
+    ):
+        raise ValueError(f"{label} lacks exact full-object SHA-256")
+    return digest
 
 
 def require_no_symlinked_ancestors(path: Path, label: str) -> None:
@@ -195,10 +212,11 @@ def output_blob(row: dict[str, Any], expected_uri: str, label: str) -> dict[str,
     if row.get("uri") != expected_uri:
         raise ValueError(f"{label} URI differs from the pending contract")
     require_all_true(row.get("checks"), f"{label} published output")
+    digest = require_full_object_sha256(row, label)
     return {
         "uri": expected_uri,
         "version_id": require_version(row.get("version_id"), label),
-        "sha256": require_hex(row.get("sha256"), label),
+        "sha256": digest,
         **({"derived_from_final_pass_vcf": True} if label == "sbs96_matrix" else {}),
     }
 
@@ -266,6 +284,10 @@ def finalize(
     if set(inventory_by_name) != set(outputs):
         raise ValueError("cross-check destination inventory differs from outputs")
     for filename, row in outputs.items():
+        if not isinstance(row, dict):
+            raise ValueError("cross-check materialization output is malformed")
+        require_all_true(row.get("checks"), f"{filename} materializer output")
+        require_full_object_sha256(row, f"{filename} materializer output")
         inventory = inventory_by_name[filename]
         if (
             row.get("version_id") != inventory.get("version_id")
