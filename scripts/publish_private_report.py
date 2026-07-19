@@ -9,6 +9,10 @@ import subprocess
 from pathlib import Path
 from typing import Any, Sequence
 
+from build_ai_review_bundle import (
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
+)
 from forbidden_text import (
     DEFAULT_FORBIDDEN_TOKENS,
     forbidden_token_fingerprints,
@@ -225,7 +229,17 @@ def validate_dry_run_receipt(
     path: Path, receipt: dict[str, Any]
 ) -> dict[str, str]:
     path = require_real_input_file(path, "private report dry-run receipt")
-    dry_run = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        dry_run = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(
+            f"duplicate JSON object name in private report dry-run receipt: {error}"
+        ) from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError("invalid JSON in private report dry-run receipt") from error
     if not isinstance(dry_run, dict):
         raise ValueError("private report dry-run receipt must be a JSON object")
     if (

@@ -629,6 +629,35 @@ class PublishPrivateReportTests(unittest.TestCase):
             ):
                 MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_run_receipt))
 
+    def test_apply_rejects_dry_run_receipt_with_duplicate_json_object_names_before_aws(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
+            payload = json.loads(dry_run_receipt.read_text(encoding="utf-8"))
+            text = json.dumps(payload, indent=2, sort_keys=True)
+            status = f'  "status": "{payload["status"]}"'
+            self.assertEqual(text.count(status), 1)
+            text = text.replace(status, f'  "status": "failed",\n{status}', 1)
+            dry_run_receipt.write_text(text + "\n", encoding="utf-8")
+
+            with (
+                self.assertRaisesRegex(
+                    ValueError,
+                    (
+                        "duplicate JSON object name in "
+                        "private report dry-run receipt: status"
+                    ),
+                ),
+                mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_run_receipt))
+
+            self.assertFalse(fixture.receipt_path.exists())
+
     def test_apply_rejects_dry_run_receipt_with_extra_failed_check_before_aws(
         self,
     ) -> None:
