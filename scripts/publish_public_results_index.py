@@ -23,7 +23,7 @@ from build_public_results_index import (
     validate_reviewed_public_receipts,
     validate_reviewed_public_s3_state,
 )
-from publish_reviewed_public_report import exact_schema_version, exact_int
+from publish_reviewed_public_report import exact_int, exact_schema_version
 
 REGION = "us-east-1"
 INDEX_KEY = "public-index/objects.json"
@@ -400,7 +400,18 @@ def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, A
         "total_size": custody["total_size"],
         "reviewed_public_receipt_count": custody["reviewed_public_receipt_count"],
     }
-    if index != expected_index:
+    if (
+        set(index) != set(expected_index)
+        or index.get("path") != expected_index["path"]
+        or index.get("sha256") != expected_index["sha256"]
+        or not exact_int(index.get("bytes"), expected_index["bytes"])
+        or not exact_int(index.get("object_count"), expected_index["object_count"])
+        or not exact_int(index.get("total_size"), expected_index["total_size"])
+        or not exact_int(
+            index.get("reviewed_public_receipt_count"),
+            expected_index["reviewed_public_receipt_count"],
+        )
+    ):
         raise ValueError("public index dry-run receipt does not match the index")
     expected_destination = {
         "bucket": BUCKET,

@@ -761,6 +761,35 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 "does not match the index",
             ),
             (
+                "index bytes float",
+                lambda payload: payload["index"].__setitem__(
+                    "bytes", float(payload["index"]["bytes"])
+                ),
+                "does not match the index",
+            ),
+            (
+                "index object_count float",
+                lambda payload: payload["index"].__setitem__(
+                    "object_count", float(payload["index"]["object_count"])
+                ),
+                "does not match the index",
+            ),
+            (
+                "index total_size string",
+                lambda payload: payload["index"].__setitem__(
+                    "total_size", str(payload["index"]["total_size"])
+                ),
+                "does not match the index",
+            ),
+            (
+                "index reviewed_public_receipt_count float",
+                lambda payload: payload["index"].__setitem__(
+                    "reviewed_public_receipt_count",
+                    float(payload["index"]["reviewed_public_receipt_count"]),
+                ),
+                "does not match the index",
+            ),
+            (
                 "nested destination",
                 lambda payload: payload["destination"].update(
                     {"old_uri": f"s3://{MODULE.BUCKET}/public-index/old.json"}

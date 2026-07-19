@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local public-index reviewed-public history count exactness</li>
+          <li class="pill">Latest milestone = local public-index dry-run nested-index exactness</li>
+          <li class="pill">Public-index dry-run index = exact</li>
           <li class="pill">Public-index reviewed-public histories = exact</li>
           <li class="pill">Reviewed-public private counts = exact</li>
           <li class="pill">Private report dry-run counts = exact</li>
@@ -1094,6 +1095,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact public-index dry-run index</strong>
+              <span>Public-index dry-run receipts now validate nested index <code>bytes</code>, <code>object_count</code>, <code>total_size</code>, and <code>reviewed_public_receipt_count</code> as exact integers instead of relying on permissive Python dict equality.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact public-index reviewed-public histories</strong>
               <span>Public-index rebuilds now reject non-exact reviewed-public destination initial/final history counts before binding the ten deterministic, Rosalind, cross-check, and AI public receipts into <code>objects.json</code>.</span>
             </li>
@@ -1195,6 +1200,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:28:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact public-index dry-run index:</strong>
+                public-index dry-run receipts now validate nested
+                <code>index</code> <code>bytes</code>,
+                <code>object_count</code>, <code>total_size</code>, and
+                <code>reviewed_public_receipt_count</code> values as exact
+                integers instead of relying on permissive Python dict equality.
+                No S3, Batch, route, GPU, quota, replacement compute, or
+                AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:27:00-07:00">Jul 19 · local</time>
               <span>
