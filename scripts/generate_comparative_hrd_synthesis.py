@@ -118,6 +118,24 @@ REQUIRED_ATTESTATION = {
 }
 REVIEW_FILES = {"validation.json", "review_manifest.json", "report.md", "claims.csv"}
 OUTPUT_FILES = {"report.md", "agreement_disagreement.csv", "report_manifest.json"}
+REPORT_MANIFEST_KEYS = {
+    "schema_version",
+    "report_kind",
+    "method_id",
+    "generated_at",
+    "subject_alias",
+    "evidence_status",
+    "interpretation_status",
+    "authorized_hrd_state",
+    "classification_authorized",
+    "classification_authorization",
+    "classification_qc_status",
+    "report_sha256",
+    "agreement_disagreement_sha256",
+    "support_sha256",
+    "source_sha256",
+    "review_summary",
+}
 
 
 def sha256(path: Path) -> str:
@@ -1167,6 +1185,8 @@ def require_synthesis_report_manifest(
         )
 
     manifest = load_object(packet_dir / "report_manifest.json", "synthesis packet")
+    if set(manifest) != REPORT_MANIFEST_KEYS:
+        raise ValueError("comparative synthesis manifest envelope is not exact")
     if (
         manifest.get("schema_version") != 1
         or manifest.get("report_kind") != "comparative_synthesis"

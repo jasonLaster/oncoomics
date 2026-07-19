@@ -60,6 +60,8 @@ def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
         "schema_version": 1,
         "report_kind": "comparative_synthesis",
         "method_id": "comparative_hrd_synthesis",
+        "generated_at": "2026-07-18T00:00:00+00:00",
+        "subject_alias": "subject01",
         "evidence_status": "partial_evidence",
         "interpretation_status": "no_call",
         "authorized_hrd_state": "no_call",
@@ -623,6 +625,24 @@ class GenerateSynthesisTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError,
                 "comparative synthesis manifest is stale for agreement_disagreement.csv",
+            ):
+                GENERATE.require_synthesis_report_manifest(staging)
+
+    def test_synthesis_rejects_non_exact_report_manifest_envelope(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            write_synthesis_agreement(agreement)
+            payload = write_synthesis_manifest(manifest, report, agreement)
+            payload["legacy_note"] = "accepted"
+            write_json(manifest, payload)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis manifest envelope is not exact",
             ):
                 GENERATE.require_synthesis_report_manifest(staging)
 
