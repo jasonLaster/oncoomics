@@ -15,6 +15,11 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from capture_materializer_terminal import (
+    EXPECTED_MATERIALIZER_RECEIPT_KEYS,
+    EXPECTED_OUTPUT_CUSTODY_KEYS,
+)
+
 OUTPUT_NAME = "staged_input_validation.json"
 CHECKSUM_FIELDS = (
     "ChecksumSHA256",
@@ -299,6 +304,8 @@ def checksums(value: dict[str, Any]) -> dict[str, str]:
 def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, Any]:
     outputs = receipt.get("outputs")
     checks = receipt.get("checks")
+    if set(receipt) != EXPECTED_MATERIALIZER_RECEIPT_KEYS:
+        raise ValueError("materializer receipt envelope is not exact")
     if (
         receipt.get("schema_version") != 2
         or receipt.get("status") != "passed"
@@ -310,6 +317,8 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
     row = outputs.get(OUTPUT_NAME)
     if not isinstance(row, dict):
         raise ValueError(f"materializer receipt does not contain {OUTPUT_NAME}")
+    if set(row) != EXPECTED_OUTPUT_CUSTODY_KEYS:
+        raise ValueError(f"{OUTPUT_NAME} lacks exact materializer custody")
     uri = str(row.get("uri", ""))
     version_id = str(row.get("version_id", ""))
     digest = str(row.get("sha256", ""))

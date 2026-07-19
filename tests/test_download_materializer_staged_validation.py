@@ -36,11 +36,25 @@ def receipt(payload: bytes) -> dict:
     return {
         "schema_version": 2,
         "status": "passed",
+        "generated_at_utc": "2026-07-18T00:00:00+00:00",
+        "run_alias": "diana-wgs-hrd-test",
+        "script_sha256": "a" * 64,
+        "destination_prefix": (
+            "s3://diana-omics-private-results-172630973301-us-east-1/"
+            "runs/subject01/diana-wgs-hrd-test/deterministic/final/"
+        ),
+        "destination_bucket_versioning": "Enabled",
+        "destination_initial_version_history_count": 0,
+        "receipt_anchor_strategy": "sha256_content_addressed_create_only",
+        "source_custody": {},
+        "validation": {},
+        "input_sha256": {},
         "outputs": {
             "staged_input_validation.json": {
                 "uri": URI,
                 "version_id": "version-1",
                 "bytes": len(payload),
+                "etag": '"synthetic-etag"',
                 "sha256": sha(payload),
                 "kms_key_arn": KMS,
                 "checksums": {
@@ -50,7 +64,10 @@ def receipt(payload: bytes) -> dict:
                 "checks": dict(MODULE.EXPECTED_OUTPUT_CHECKS),
             }
         },
+        "destination_inventory": [],
         "checks": dict(MODULE.EXPECTED_RECEIPT_CHECKS),
+        "classification_authorization": {},
+        "authorized_hrd_state": "no_call",
     }
 
 
@@ -148,6 +165,30 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
         ):
             with self.subTest(location=location, label=label):
                 payload = receipt(b"{}")
+                mutate(payload)
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_receipt(payload, KMS)
+
+    def test_validate_receipt_rejects_inexact_receipt_and_output_envelopes(self) -> None:
+        cases = (
+            (
+                "receipt",
+                lambda payload: payload.__setitem__("legacy_note", "accepted"),
+                "receipt envelope is not exact",
+            ),
+            (
+                "output",
+                lambda payload: payload["outputs"][MODULE.OUTPUT_NAME].__setitem__(
+                    "legacy_note",
+                    "accepted",
+                ),
+                "lacks exact",
+            ),
+        )
+        for location, mutate, error in cases:
+            with self.subTest(location=location):
+                payload = receipt(b'{"schema_version":1}\n')
                 mutate(payload)
 
                 with self.assertRaisesRegex(ValueError, error):
