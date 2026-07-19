@@ -873,6 +873,9 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 int("1" * 64),
                 "SHA-256 is malformed",
             ),
+            ("receipt", True, "private receipt path is malformed"),
+            ("receipt", " receipt.json", "private receipt path is malformed"),
+            ("receipt", "receipt.json\n", "private receipt path is malformed"),
             ("object_count", 0, "object count is malformed"),
             ("object_count", True, "object count is malformed"),
         ):

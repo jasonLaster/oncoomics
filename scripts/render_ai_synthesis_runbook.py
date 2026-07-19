@@ -88,6 +88,20 @@ def require_summary_sha256(value: object, label: str) -> str:
     return value
 
 
+def require_summary_receipt(value: object, method_id: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.strip() != value
+        or "\n" in value
+        or "\r" in value
+        or "\0" in value
+        or value.lower() in {"null", "none"}
+    ):
+        raise ValueError(f"{method_id} private receipt path is malformed")
+    return value
+
+
 def validate_private_report_receipt(
     receipt_path: Path,
     method_id: str,
@@ -229,6 +243,7 @@ def require_receipt_summaries(
             raise ValueError(
                 f"{method_id} report_manifest.json VersionId is malformed"
             ) from error
+        require_summary_receipt(summary.get("receipt"), method_id)
         object_count = summary.get("object_count")
         if type(object_count) is not int or object_count <= 0:
             raise ValueError(
