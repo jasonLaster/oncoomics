@@ -93,6 +93,37 @@ class Phase3FastCacheManifestTests(unittest.TestCase):
                 replication_receipt_sha256=SHA_1,
             )
 
+    def test_receipt_counts_must_be_exact_integers(self) -> None:
+        receipt = applied_receipt()
+        receipt["object_count"] = float(receipt["object_count"])
+
+        with self.assertRaisesRegex(cache.ManifestError, "object_count"):
+            cache.build_phase3_fast_cache_manifest(
+                receipt,
+                replication_receipt_sha256=SHA_1,
+            )
+
+        receipt = applied_receipt()
+        receipt["total_bytes"] = float(receipt["total_bytes"])
+
+        with self.assertRaisesRegex(cache.ManifestError, "total_bytes"):
+            cache.build_phase3_fast_cache_manifest(
+                receipt,
+                replication_receipt_sha256=SHA_1,
+            )
+
+    def test_receipt_bytes_must_be_exact_positive_integers(self) -> None:
+        receipt = applied_receipt()
+        old_bytes = receipt["copy_results"][0]["bytes"]
+        receipt["copy_results"][0]["bytes"] = True
+        receipt["total_bytes"] = receipt["total_bytes"] - old_bytes + 1
+
+        with self.assertRaisesRegex(cache.ManifestError, "positive integer"):
+            cache.build_phase3_fast_cache_manifest(
+                receipt,
+                replication_receipt_sha256=SHA_1,
+            )
+
     def test_environment_command_writes_cache_manifest(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

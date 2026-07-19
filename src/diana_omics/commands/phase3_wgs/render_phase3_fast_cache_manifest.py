@@ -60,7 +60,7 @@ def _require_hex(value: Any, label: str) -> str:
 
 
 def _require_positive_int(value: Any, label: str) -> int:
-    if not isinstance(value, int) or value <= 0:
+    if type(value) is not int or value <= 0:
         raise ManifestError(f"{label} bytes must be a positive integer")
     return value
 
@@ -165,9 +165,9 @@ def build_phase3_fast_cache_manifest(
 
     object_count = len(rows)
     total_bytes = sum(int(row["bytes"]) for row in rows)
-    if replication_receipt.get("object_count") != object_count:
+    if type(replication_receipt.get("object_count")) is not int or replication_receipt.get("object_count") != object_count:
         raise ManifestError("replication receipt object_count does not match copy_results")
-    if replication_receipt.get("total_bytes") != total_bytes:
+    if type(replication_receipt.get("total_bytes")) is not int or replication_receipt.get("total_bytes") != total_bytes:
         raise ManifestError("replication receipt total_bytes does not match copy_results")
 
     return {

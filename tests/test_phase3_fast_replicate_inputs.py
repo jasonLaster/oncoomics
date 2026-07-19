@@ -400,6 +400,40 @@ class Phase3FastReplicateInputsTests(unittest.TestCase):
                 replication_plan_sha256=SHA_3,
             )
 
+    def test_plan_counts_must_be_exact_integers(self) -> None:
+        plan = replication_plan()
+        plan["object_count"] = float(plan["object_count"])
+
+        with self.assertRaisesRegex(replicate.ManifestError, "object_count"):
+            replicate.build_phase3_fast_replication_receipt(
+                plan,
+                mode="dry_run",
+                replication_plan_sha256=SHA_3,
+            )
+
+        plan = replication_plan()
+        plan["total_bytes"] = float(plan["total_bytes"])
+
+        with self.assertRaisesRegex(replicate.ManifestError, "total_bytes"):
+            replicate.build_phase3_fast_replication_receipt(
+                plan,
+                mode="dry_run",
+                replication_plan_sha256=SHA_3,
+            )
+
+    def test_plan_bytes_must_be_exact_positive_integers(self) -> None:
+        plan = replication_plan()
+        old_bytes = plan["copy_plan"][0]["bytes"]
+        plan["copy_plan"][0]["bytes"] = True
+        plan["total_bytes"] = plan["total_bytes"] - old_bytes + 1
+
+        with self.assertRaisesRegex(replicate.ManifestError, "positive integer"):
+            replicate.build_phase3_fast_replication_receipt(
+                plan,
+                mode="dry_run",
+                replication_plan_sha256=SHA_3,
+            )
+
     def test_environment_command_writes_replication_receipt(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -91,7 +91,7 @@ def _require_hex(value: Any, label: str) -> str:
 
 
 def _require_positive_int(value: Any, label: str) -> int:
-    if not isinstance(value, int) or value <= 0:
+    if type(value) is not int or value <= 0:
         raise ManifestError(f"{label} bytes must be a positive integer")
     return value
 
@@ -107,7 +107,7 @@ def _require_part_size(value: str | None) -> int:
 
 
 def _require_part_size_bytes(value: Any, label: str) -> int:
-    if not isinstance(value, int):
+    if type(value) is not int:
         raise ManifestError(f"{label} must be an integer")
     if value < S3_MIN_MULTIPART_PART_SIZE_BYTES:
         raise ManifestError(f"{label} must be at least {S3_MIN_MULTIPART_PART_SIZE_BYTES} bytes")
@@ -580,9 +580,9 @@ def build_phase3_fast_replication_receipt(
         raise ManifestError("replication receipt contains duplicate destination URIs")
 
     total_bytes = sum(int(row["bytes"]) for row in rows)
-    if replication_plan.get("object_count") != len(rows):
+    if type(replication_plan.get("object_count")) is not int or replication_plan.get("object_count") != len(rows):
         raise ManifestError("replication plan object_count does not match copy_plan")
-    if replication_plan.get("total_bytes") != total_bytes:
+    if type(replication_plan.get("total_bytes")) is not int or replication_plan.get("total_bytes") != total_bytes:
         raise ManifestError("replication plan total_bytes does not match copy_plan")
 
     return {

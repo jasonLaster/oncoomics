@@ -88,6 +88,19 @@ class Phase3FastReplicationPlanTests(unittest.TestCase):
                 input_manifest_sha256=SHA_3,
             )
 
+    def test_copy_plan_bytes_must_be_exact_positive_integers(self) -> None:
+        manifest = input_manifest()
+        manifest["bam_pair"]["tumor"]["bam"]["bytes"] = True
+
+        with self.assertRaisesRegex(render_plan.ManifestError, "positive integer"):
+            render_plan.build_phase3_fast_replication_plan(
+                manifest,
+                cache_prefix="s3://diana-omics-private-cache-us-east-2/wgs-v2",
+                cache_kms_key_arn="arn:aws:kms:us-east-2:172630973301:key/12345678-abcd-1234-abcd-123456789abc",
+                cache_region="us-east-2",
+                input_manifest_sha256=SHA_3,
+            )
+
     def test_cache_kms_key_must_match_cache_region(self) -> None:
         with self.assertRaisesRegex(render_plan.ManifestError, "KMS"):
             render_plan.build_phase3_fast_replication_plan(
