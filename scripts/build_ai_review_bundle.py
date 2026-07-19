@@ -77,6 +77,20 @@ BUNDLE_REVIEW_BUNDLE_BOUND_FIELDS = (
     "model_execution_contracts",
     "model_catalog_receipt_sha256",
 )
+BUNDLE_REVIEW_BUNDLE_KEYS = set(BUNDLE_REVIEW_BUNDLE_BOUND_FIELDS) | {
+    "generated_at",
+    "purpose",
+    "evidence_sources",
+    "quantitative_facts",
+    "policy",
+}
+BUNDLE_MANIFEST_KEYS = set(BUNDLE_REVIEW_BUNDLE_BOUND_FIELDS) | {
+    "generated_at",
+    "input_manifest_sha256",
+    "forbidden_token_sha256",
+    "review_bundle_sha256",
+    "prompt_sha256",
+}
 CORE_REPORT_FILES = {"report.md", "report_manifest.json"}
 
 
@@ -515,6 +529,10 @@ def require_bundle_manifest(bundle_dir: Path) -> None:
             "AI review bundle manifest",
         )
     )
+    if set(bundle) != BUNDLE_REVIEW_BUNDLE_KEYS or bundle.get("schema_version") != 2:
+        raise ValueError("AI review bundle envelope is not exact")
+    if set(manifest) != BUNDLE_MANIFEST_KEYS or manifest.get("schema_version") != 2:
+        raise ValueError("AI review bundle manifest envelope is not exact")
     for field in BUNDLE_REVIEW_BUNDLE_BOUND_FIELDS:
         if manifest.get(field) != bundle.get(field):
             raise ValueError(

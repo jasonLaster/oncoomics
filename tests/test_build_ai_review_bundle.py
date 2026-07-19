@@ -54,7 +54,25 @@ def write_staged_bundle(root: Path) -> list[Path]:
         },
         "model_catalog_receipt_sha256": "a" * 64,
     }
-    BUILD.write_staged_bytes(root / "review_bundle.json", BUILD.json_bytes(shared))
+    review_bundle = {
+        **shared,
+        "generated_at": "2026-07-18T00:00:00+00:00",
+        "purpose": "deidentified_independent_narrative_crosscheck",
+        "evidence_sources": [],
+        "quantitative_facts": [],
+        "policy": {
+            "raw_inputs_prohibited": True,
+            "external_research_prohibited": True,
+            "reviewers_independent": True,
+            "other_reviewer_outputs_prohibited": True,
+            "numerical_results_immutable": True,
+            "classification_may_not_exceed_authorized_state": True,
+        },
+    }
+    BUILD.write_staged_bytes(
+        root / "review_bundle.json",
+        BUILD.json_bytes(review_bundle),
+    )
     BUILD.write_staged_bytes(root / "reviewer-a.prompt.md", b"prompt a\n")
     BUILD.write_staged_bytes(root / "reviewer-b.prompt.md", b"prompt b\n")
     BUILD.write_staged_bytes(
@@ -62,6 +80,7 @@ def write_staged_bundle(root: Path) -> list[Path]:
         BUILD.json_bytes(
             {
                 **shared,
+                "generated_at": "2026-07-18T00:00:01+00:00",
                 "input_manifest_sha256": {},
                 "forbidden_token_sha256": {},
                 "review_bundle_sha256": BUILD.sha256(root / "review_bundle.json"),
@@ -429,7 +448,7 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             write_staged_bundle(staging)
             bundle_path = staging / "review_bundle.json"
             bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
-            bundle["stale"] = True
+            bundle["generated_at"] = "2026-07-18T00:00:02+00:00"
             write_json(bundle_path, bundle)
 
             with self.assertRaisesRegex(
@@ -437,6 +456,38 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 "AI review bundle manifest is stale for review_bundle.json",
             ):
                 BUILD.require_staged_bundle_manifest(staging)
+
+    def test_bundle_rejects_non_exact_staged_envelopes(self) -> None:
+        cases = (
+            (
+                "review bundle",
+                "review_bundle.json",
+                "AI review bundle envelope is not exact",
+            ),
+            (
+                "bundle manifest",
+                "bundle_manifest.json",
+                "AI review bundle manifest envelope is not exact",
+            ),
+        )
+        for label, relative, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                staging = Path(temporary)
+                write_staged_bundle(staging)
+
+                path = staging / relative
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload["legacy_note"] = "accepted"
+                write_json(path, payload)
+
+                if relative == "review_bundle.json":
+                    manifest_path = staging / "bundle_manifest.json"
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    manifest["review_bundle_sha256"] = BUILD.sha256(path)
+                    write_json(manifest_path, manifest)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    BUILD.require_staged_bundle_manifest(staging)
 
     def test_bundle_rejects_inexact_staged_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
