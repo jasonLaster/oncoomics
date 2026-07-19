@@ -118,7 +118,12 @@ def _require_matching_image_digest(metadata: Mapping[str, str]) -> str:
 
 
 def _require_version(value: Any, label: str) -> str:
-    if not isinstance(value, str) or value in {"", "null", "None"} or VERSION_ID.fullmatch(value) is None:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.lower() in {"none", "null"}
+        or VERSION_ID.fullmatch(value) is None
+    ):
         raise ManifestError(f"{label} version_id must be a non-null S3 VersionId")
     return value
 

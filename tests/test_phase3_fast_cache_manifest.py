@@ -73,15 +73,37 @@ class Phase3FastCacheManifestTests(unittest.TestCase):
                 replication_receipt_sha256=SHA_1,
             )
 
-    def test_rejects_rows_without_durable_destination_version(self) -> None:
-        receipt = applied_receipt()
-        receipt["copy_results"][0]["destination_version_id"] = "null"
+    def test_rejects_rows_without_durable_source_or_destination_version(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "source",
+                lambda row, version_id: row.__setitem__(
+                    "source_version_id",
+                    version_id,
+                ),
+            ),
+            (
+                "destination",
+                lambda row, version_id: row.__setitem__(
+                    "destination_version_id",
+                    version_id,
+                ),
+            ),
+        )
 
-        with self.assertRaisesRegex(cache.ManifestError, "durable"):
-            cache.build_phase3_fast_cache_manifest(
-                receipt,
-                replication_receipt_sha256=SHA_1,
-            )
+        for field, mutate in cases:
+            for version_id in ("null", "None", "none", "has space"):
+                with self.subTest(field=field, version_id=version_id):
+                    receipt = applied_receipt()
+                    mutate(receipt["copy_results"][0], version_id)
+
+                    with self.assertRaisesRegex(cache.ManifestError, "durable"):
+                        cache.build_phase3_fast_cache_manifest(
+                            receipt,
+                            replication_receipt_sha256=SHA_1,
+                        )
 
     def test_rejects_rows_without_destination_metadata_check(self) -> None:
         receipt = applied_receipt()

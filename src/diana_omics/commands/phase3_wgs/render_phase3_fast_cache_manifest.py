@@ -66,7 +66,12 @@ def _require_positive_int(value: Any, label: str) -> int:
 
 
 def _require_version_id(value: Any, label: str) -> str:
-    if not isinstance(value, str) or value in {"", "null", "None"}:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.lower() in {"none", "null"}
+        or any(character.isspace() for character in value)
+    ):
         raise ManifestError(f"{label} must be a durable VersionId")
     return value
 

@@ -298,21 +298,31 @@ class Phase3FastInputManifestTests(unittest.TestCase):
                 metadata=metadata(),
             )
 
-    def test_null_private_version_fails_closed(self) -> None:
-        private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()
-        private_sha["objects"][1]["version_id"] = "null"
+    def test_nullish_and_whitespace_private_versions_fail_closed(self) -> None:
+        for version_id in ("null", "None", "none", "has space"):
+            with self.subTest(version_id=version_id):
+                (
+                    private_freeze,
+                    private_sha,
+                    reference_freeze,
+                    reference_sha,
+                    validation,
+                    contigs,
+                    resources,
+                ) = receipts()
+                private_sha["objects"][1]["version_id"] = version_id
 
-        with self.assertRaisesRegex(render.ManifestError, "version_id"):
-            render.build_phase3_wgs_fast_input_manifest(
-                private_freeze_receipt=private_freeze,
-                private_sha256_receipt=private_sha,
-                reference_freeze_receipt=reference_freeze,
-                reference_sha256_receipt=reference_sha,
-                bam_validation_receipt=validation,
-                contig_compatibility_receipt=contigs,
-                caller_resource_receipt=resources,
-                metadata=metadata(),
-            )
+                with self.assertRaisesRegex(render.ManifestError, "version_id"):
+                    render.build_phase3_wgs_fast_input_manifest(
+                        private_freeze_receipt=private_freeze,
+                        private_sha256_receipt=private_sha,
+                        reference_freeze_receipt=reference_freeze,
+                        reference_sha256_receipt=reference_sha,
+                        bam_validation_receipt=validation,
+                        contig_compatibility_receipt=contigs,
+                        caller_resource_receipt=resources,
+                        metadata=metadata(),
+                    )
 
     def test_missing_bam_index_mate_fails_closed(self) -> None:
         private_freeze, private_sha, reference_freeze, reference_sha, validation, contigs, resources = receipts()

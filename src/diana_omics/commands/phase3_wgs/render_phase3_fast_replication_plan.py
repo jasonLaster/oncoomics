@@ -17,6 +17,7 @@ DEFAULT_INPUT = "manifests/phase3_wgs_fast/input_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/replication_plan.json"
 KMS_KEY_ARN = re.compile(r"^arn:aws:kms:([a-z]{2}-[a-z]+-\d):(\d{12}):key/[A-Za-z0-9-]+$")
 REGION = re.compile(r"^[a-z]{2}-[a-z]+-\d$")
+VERSION_ID = re.compile(r"^\S+$")
 
 
 def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
@@ -44,7 +45,12 @@ def _require_positive_int(value: Any, label: str) -> int:
 
 
 def _require_version(value: Any, label: str) -> str:
-    if not isinstance(value, str) or value in {"", "null", "None"}:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.lower() in {"none", "null"}
+        or VERSION_ID.fullmatch(value) is None
+    ):
         raise ManifestError(f"{label} version_id must be a non-null S3 VersionId")
     return value
 
