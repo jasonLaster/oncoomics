@@ -307,13 +307,13 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>1cbef45548dbbc531410e8239d2553222b474a02</strong>.
-          The latest work is exact frozen-materialization custody hardening:
-          <code>materialize_frozen_artifacts.py</code> and
-          <code>finalize_input_contract.py</code> now require every
-          exact-version materialization row to carry exactly the seven
-          all-true checks expected by the v4 cross-check materializer submitter
-          before alias-only HRD cross-check inputs can be finalized.
+          <strong>c2dc4da6afda1bf00f8cf60c099c6a2e4feaaf9b</strong>.
+          The latest work is exact final-freeze custody hardening:
+          <code>finalize_input_contract.py</code> now requires the deterministic
+          final artifact freeze receipt and every frozen object row to carry
+          the exact all-true checks already expected by the v4 cross-check
+          materializer submitter before alias-only HRD cross-check inputs can
+          trust the private VCF, index, and SBS96 matrix identities.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -321,7 +321,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 1cbef45</li>
+          <li class="pill">Latest hardening = c2dc4da</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -403,8 +403,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 1cbef45</strong>
-              <span>Frozen private downloads now require the exact seven-check materialization map before alias-only HRD cross-check input contracts can bind version, byte, full-object checksum, SSE-KMS, KMS-key, and local SHA-256 evidence.</span>
+              <strong>Preserve c2dc4da</strong>
+              <span>Final deterministic freeze receipts now require the exact top-level and per-object copy-check inventories before alias-only HRD cross-check input contracts can bind private final VCF, index, and SBS96 identities.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -452,6 +452,23 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>c2dc4da Require exact final freeze checks:</strong>
+                <code>finalize_input_contract.py</code> now requires
+                <code>EXPECTED_FINAL_FREEZE_CHECKS</code> for the deterministic
+                final artifact freeze receipt and
+                <code>EXPECTED_FINAL_ROW_CHECKS</code> for every frozen object
+                row. Each row must also bind a positive byte count, full-object
+                checksum metadata, <code>server_side_encryption == aws:kms</code>,
+                and the freeze receipt KMS key before the alias-only cross-check
+                input contract can trust private final VCF, index, or SBS96
+                identities. The new tests reject missing, unexpected, and
+                failed freeze checks and keep the finalizer aligned with the v4
+                cross-check materializer submitter.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
