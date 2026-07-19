@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local Batch provenance byte exactness</li>
+          <li class="pill">Latest milestone = local deterministic terminal byte exactness</li>
+          <li class="pill">Deterministic terminal bytes = exact</li>
           <li class="pill">Batch provenance worker bytes = exact</li>
           <li class="pill">Stage-freeze byte counts = exact</li>
           <li class="pill">Final-freeze copy-time bytes = exact</li>
@@ -635,6 +636,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact deterministic terminal bytes</strong>
+              <span>No-compute deterministic report staging now rejects non-exact terminal custody bytes from Batch worker, stable input snapshot, final-freeze, exact materialization, cross-check source/output, staged-validation, and intake-audit receipts before the first deterministic report can trust frozen WGS artifacts.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Batch provenance worker bytes</strong>
               <span>Batch provenance capture now rejects non-exact executed-worker receipt-upload bytes, worker source bytes, worker freeze bytes, and executed-worker HEAD/GET ContentLength metadata before terminal.execution.succeeded.json can bind the worker source consumed by stage and final freezes.</span>
@@ -1145,6 +1150,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:18:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact deterministic terminal bytes:</strong>
+                deterministic report staging now rejects non-exact Batch worker
+                bytes, stable input snapshot counts, final-freeze destination
+                bytes, exact-version materialization bytes, cross-check source
+                or output bytes, staged-validation bytes, and intake-audit WGS
+                byte totals before <code>deterministic_full_wgs</code> packets
+                can consume frozen WGS artifacts. No S3, Batch, route, GPU,
+                quota, replacement compute, or AWS-side verification was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:17:00-07:00">Jul 19 · local</time>
               <span>

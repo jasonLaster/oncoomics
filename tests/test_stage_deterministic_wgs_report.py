@@ -147,6 +147,59 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
         self.assertTrue(REPORT_MODULE.exact_schema_status({"schema_version": 2, "status": "passed"}, 2))
         self.assertFalse(REPORT_MODULE.exact_schema_status({"schema_version": 2.0, "status": "passed"}, 2))
 
+    def test_terminal_integer_helpers_reject_coercible_values(self) -> None:
+        self.assertTrue(REPORT_MODULE.positive_int(1))
+        self.assertTrue(REPORT_MODULE.nonnegative_int(0))
+        self.assertTrue(REPORT_MODULE.integer_equals(7, 7))
+
+        for value in (True, 1.0, "1", 0, -1, None):
+            with self.subTest(helper="positive_int", value=value):
+                self.assertFalse(REPORT_MODULE.positive_int(value))
+        for value in (True, 1.0, "1", -1, None):
+            with self.subTest(helper="nonnegative_int", value=value):
+                self.assertFalse(REPORT_MODULE.nonnegative_int(value))
+        for value in (True, 7.0, "7", 0, None):
+            with self.subTest(helper="integer_equals", value=value):
+                self.assertFalse(REPORT_MODULE.integer_equals(value, 7))
+
+    def test_terminal_byte_guards_avoid_raw_int_coercion(self) -> None:
+        module = ast.parse(GENERATOR.read_text(encoding="utf-8"))
+        raw_byte_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "audit.get('bytes_streamed'",
+                    'audit.get("bytes_streamed"',
+                    "destination.get('bytes'",
+                    'destination.get("bytes"',
+                    "execution_worker.get('bytes'",
+                    'execution_worker.get("bytes"',
+                    "input_snapshot.get('file_count'",
+                    'input_snapshot.get("file_count"',
+                    "materialized.get('bytes'",
+                    'materialized.get("bytes"',
+                    "preflight.get('wgs_bytes'",
+                    'preflight.get("wgs_bytes"',
+                    "row.get('actual_size_bytes'",
+                    'row.get("actual_size_bytes"',
+                    "row.get('bytes'",
+                    'row.get("bytes"',
+                    "source.get('bytes'",
+                    'source.get("bytes"',
+                    "staged_output.get('bytes'",
+                    'staged_output.get("bytes"',
+                )
+            )
+        ]
+
+        self.assertEqual(raw_byte_coercions, [])
+
     def test_terminal_schema_guards_use_exact_integer_helper(self) -> None:
         source = GENERATOR.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(GENERATOR))

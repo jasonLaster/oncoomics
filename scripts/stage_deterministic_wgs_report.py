@@ -609,17 +609,15 @@ def s3_key(value: Any) -> str:
 
 
 def positive_int(value: Any) -> bool:
-    try:
-        return int(value) > 0
-    except (TypeError, ValueError):
-        return False
+    return type(value) is int and value > 0
+
+
+def nonnegative_int(value: Any) -> bool:
+    return type(value) is int and value >= 0
 
 
 def integer_equals(value: Any, expected: int) -> bool:
-    try:
-        return int(value) == expected
-    except (TypeError, ValueError):
-        return False
+    return type(value) is int and type(expected) is int and value == expected
 
 
 def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
@@ -1055,7 +1053,7 @@ def validate_final_freeze_provenance(
             and destination.get("kms_key_id") == expected_kms_key_arn
             and inventory.get("key") == destination.get("key")
             and inventory.get("version_id") == destination.get("version_id")
-            and integer_equals(inventory.get("bytes"), int(destination.get("bytes", -1)))
+            and integer_equals(inventory.get("bytes"), destination.get("bytes"))
             and s3_checksums(inventory.get("checksums"))
             == s3_checksums(destination.get("checksums"))
             and inventory.get("checksum_type") == "FULL_OBJECT"
@@ -1711,9 +1709,8 @@ def main() -> None:
     except ValueError as error:
         raise SystemExit(f"Fail-closed: {error}") from error
     if (
-        output == source_artifact_root
+        output in (source_artifact_root, source_early_root)
         or output.is_relative_to(source_artifact_root)
-        or output == source_early_root
         or output.is_relative_to(source_early_root)
     ):
         raise SystemExit("Fail-closed: report output must be outside input trees")
@@ -1883,12 +1880,12 @@ def main() -> None:
         exact_schema_status(input_snapshot)
         and input_snapshot.get("snapshot_strategy")
         == "open_no_follow_fstat_copy_global_restat"
-        and len(snapshot_rows) == int(input_snapshot.get("file_count", -1))
+        and integer_equals(input_snapshot.get("file_count"), len(snapshot_rows))
         and len(snapshot_ids) == len(set(snapshot_ids))
         and all(
             isinstance(row, dict)
             and bool(row.get("input_id"))
-            and int(row.get("bytes", -1)) >= 0
+            and nonnegative_int(row.get("bytes"))
             and valid_sha256(row.get("sha256"))
             for row in snapshot_rows
         ),
@@ -2025,7 +2022,7 @@ def main() -> None:
         and execution_worker.get("server_side_encryption") == "aws:kms"
         and execution_worker.get("kms_key_id") == args.expected_kms_key_arn
         and worker_freeze_object.get("kms_key_id") == args.expected_kms_key_arn
-        and int(execution_worker.get("bytes", 0)) > 0
+        and positive_int(execution_worker.get("bytes"))
         and len(str(execution_worker.get("sha256", ""))) == 64
         and bool(execution_worker.get("etag"))
         and bool(execution_worker.get("last_modified"))
@@ -2082,7 +2079,7 @@ def main() -> None:
         if not (
             local_path.is_file()
             and row.get("status") == "passed"
-            and int(destination.get("bytes", -1)) == local_path.stat().st_size
+            and integer_equals(destination.get("bytes"), local_path.stat().st_size)
             and version_id not in {"", "null", "None"}
             and destination.get("server_side_encryption") == "aws:kms"
             and destination.get("kms_key_id") == args.expected_kms_key_arn
@@ -2145,7 +2142,7 @@ def main() -> None:
             and row.get("version_id") == freeze_destination.get("version_id")
             and row.get("bucket") == freeze_destination.get("bucket")
             and row.get("key") == freeze_destination.get("key")
-            and int(row.get("bytes", -1)) == local_path.stat().st_size
+            and integer_equals(row.get("bytes"), local_path.stat().st_size)
             and row.get("sha256") == sha256(local_path)
             and row.get("checksums") == freeze_destination.get("checksums")
             and row.get("checksum_type") == freeze_destination.get("checksum_type") == "FULL_OBJECT"
@@ -2233,7 +2230,7 @@ def main() -> None:
             and source.get("version_id") == freeze_destination.get("version_id")
             and source.get("version_id") == materialized.get("version_id")
             and positive_int(source.get("bytes"))
-            and int(source.get("bytes", -1)) == int(materialized.get("bytes", -2))
+            and integer_equals(source.get("bytes"), materialized.get("bytes"))
             and valid_sha256(source_sha256)
             and source_sha256 == materialized.get("sha256")
             and source_sha256 == crosscheck_inputs.get(input_name)
@@ -2371,8 +2368,10 @@ def main() -> None:
     crosscheck_outputs_valid = (
         crosscheck_outputs_valid
         and staged_output.get("sha256") == sha256(paths["staged_input_validation"])
-        and int(staged_output.get("bytes", -1))
-        == paths["staged_input_validation"].stat().st_size
+        and integer_equals(
+            staged_output.get("bytes"),
+            paths["staged_input_validation"].stat().st_size,
+        )
     )
     crosscheck_validation_valid = (
         crosscheck_validation.get("status") == "passed"
@@ -2429,30 +2428,38 @@ def main() -> None:
         audit.get("objects", []) if isinstance(audit.get("objects"), list) else []
     )
     audit_rows = [row for row in audit_objects if isinstance(row, dict)]
-    audit_rows_exact = len(audit_rows) == len(audit_objects)
-    audit_bytes = sum(int(row.get("actual_size_bytes", 0)) for row in audit_rows)
+    audit_byte_values = [row.get("actual_size_bytes") for row in audit_rows]
+    audit_rows_exact = (
+        len(audit_rows) == len(audit_objects)
+        and all(nonnegative_int(value) for value in audit_byte_values)
+    )
+    audit_bytes = sum(value for value in audit_byte_values if nonnegative_int(value))
     audit_passed = sum(row.get("status") == "passed" for row in audit_rows)
     audit_matches = audit_rows_exact and all(
         row.get("size_matches") is True and row.get("sha256_matches") is True
         for row in audit_rows
     )
     wgs_objects = [row for row in audit_rows if row.get("dataset") == "wgs"]
-    wgs_bytes = sum(int(row.get("actual_size_bytes", 0)) for row in wgs_objects)
+    wgs_bytes = sum(
+        row["actual_size_bytes"]
+        for row in wgs_objects
+        if nonnegative_int(row.get("actual_size_bytes"))
+    )
     add_check(
         checks,
         "intake_sha256",
         audit.get("status") == "passed"
         and audit.get("algorithm") == "sha256"
         and audit_rows_exact
-        and len(audit_rows) == int(audit.get("object_count", -1))
+        and integer_equals(audit.get("object_count"), len(audit_rows))
         and audit_passed == len(audit_rows)
-        and audit_passed == int(audit.get("passed_count", -1))
-        and int(audit.get("failed_count", -1)) == 0
-        and audit_bytes == int(audit.get("bytes_streamed", -1))
+        and integer_equals(audit.get("passed_count"), audit_passed)
+        and integer_equals(audit.get("failed_count"), 0)
+        and integer_equals(audit.get("bytes_streamed"), audit_bytes)
         and audit_matches,
         "Audit totals and all per-object size/SHA-256 comparisons pass.",
     )
-    add_check(checks, "wgs_provenance", len(wgs_objects) == 16 and all(row.get("data_type") == "FASTQ" and row.get("status") == "passed" for row in wgs_objects) and wgs_bytes == int(preflight.get("wgs_bytes", -1)), "Sixteen WGS FASTQs passed SHA-256 and their bytes match preflight.")
+    add_check(checks, "wgs_provenance", len(wgs_objects) == 16 and all(row.get("data_type") == "FASTQ" and row.get("status") == "passed" for row in wgs_objects) and integer_equals(preflight.get("wgs_bytes"), wgs_bytes), "Sixteen WGS FASTQs passed SHA-256 and their bytes match preflight.")
 
     alignment_json_rows = alignment.get("rows", []) if isinstance(alignment.get("rows"), list) else []
     alignment_by_role = {str(row.get("role", "")): row for row in alignment_json_rows if isinstance(row, dict)}
