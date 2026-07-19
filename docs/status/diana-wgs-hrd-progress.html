@@ -348,8 +348,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = 6281d09</li>
-          <li class="pill">Prior dashboard = 7589071</li>
+          <li class="pill">Latest milestone = c9a0aec</li>
+          <li class="pill">Prior dashboard = ad84c40</li>
+          <li class="pill">Executable source-freeze = staged-exact</li>
           <li class="pill">Batch submits = dry-run-bound</li>
           <li class="pill">Private handoff dry-runs = required</li>
           <li class="pill">Stage freeze dry-run = exact</li>
@@ -519,6 +520,10 @@
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · validate executable packets at source freeze</strong>
+              <span>Terminal source-freeze now revalidates Sequenza and SigProfiler staged executable route manifests, rejecting stale source hash maps or internally rebound stale method specifications before private freeze or AI review.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind Batch submits to dry-run requests</strong>
               <span>Materializer and route submits now require an exact matching dry-run request receipt before Batch submission, and reject stale live preflight or job-request drift before submit.</span>
             </li>
@@ -672,6 +677,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T00:28:30-07:00">Jul 19 · 12:28 AM</time>
+              <span>
+                <strong>c9a0aec Validate executable packets at source freeze:</strong>
+                terminal source-freeze now revalidates Sequenza and SigProfiler
+                staged executable route manifests and rejects stale source hash
+                maps or internally rebound stale method specifications before
+                private freeze or AI review. Validation passed: 32 focused
+                source-freeze tests; 156 handoff-adjacent tests + 54 subtests;
+                then 1,722 full-suite tests + 748 subtests. Compileall and scoped
+                diff checks also passed. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T00:24:22-07:00">Jul 19 · 12:24 AM</time>
               <span>
