@@ -115,18 +115,30 @@ class Fixture:
         receipt = {
             "schema_version": 1,
             "status": "passed",
+            "generated_at_utc": MODULE.now(),
             "apply": True,
             "subject_alias": MODULE.SUBJECT_ALIAS,
             "run_id": MODULE.RUN_ID,
             "method_id": self.method_id,
             "packet_revision": revision,
+            "source_packet_dir": str(self.packet.resolve()),
             "destination_prefix": f"s3://{MODULE.PRIVATE_BUCKET}/{self.private_prefix}",
             "kms_key_arn": MODULE.PRIVATE_KMS_KEY_ARN,
             "expected_files": list(self.files),
             "object_count": len(rows),
             "passed_count": len(rows),
+            "forbidden_token_count": 1,
+            "forbidden_token_sha256": ["b" * 64],
             "objects": rows,
             "checks": dict(MODULE.PRIVATE_RECEIPT_APPLY_CHECKS),
+            "dry_run_receipt": {
+                "path": str((self.root / "private-publication.dry.json").resolve()),
+                "sha256": "c" * 64,
+                "packet_revision": revision,
+                "status": "dry_run",
+            },
+            "destination_final_history_count": len(rows),
+            "completed_at_utc": MODULE.now(),
         }
         self.receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
 
@@ -808,6 +820,50 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 )
 
                 with self.assertRaisesRegex(ValueError, "not exact and passed"):
+                    MODULE.validate_private_receipt(
+                        fixture.receipt_path,
+                        fixture.method_id,
+                    )
+
+    def test_private_receipt_apply_envelope_must_be_exact(self) -> None:
+        cases = (
+            (
+                "extra top-level key",
+                lambda receipt: receipt.__setitem__("legacy_receipt", {}),
+                "not exact and passed",
+            ),
+            (
+                "missing dry-run summary",
+                lambda receipt: receipt.pop("dry_run_receipt"),
+                "not exact and passed",
+            ),
+            (
+                "extra object key",
+                lambda receipt: receipt["objects"][0].__setitem__(
+                    "legacy_etag", "abc123"
+                ),
+                "object envelope is not exact",
+            ),
+            (
+                "stale dry-run revision",
+                lambda receipt: receipt["dry_run_receipt"].__setitem__(
+                    "packet_revision", "0" * 64
+                ),
+                "dry-run receipt summary is not exact",
+            ),
+        )
+
+        for label, mutate, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                receipt = json.loads(fixture.receipt_path.read_text())
+                mutate(receipt)
+                fixture.receipt_path.write_text(
+                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(ValueError, error):
                     MODULE.validate_private_receipt(
                         fixture.receipt_path,
                         fixture.method_id,

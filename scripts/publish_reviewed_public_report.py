@@ -168,6 +168,50 @@ PRIVATE_RECEIPT_APPLY_CHECKS = {
     "destination_non_null_versions": True,
     "destination_exact_one_version_no_delete_history": True,
 }
+PRIVATE_RECEIPT_APPLY_KEYS = {
+    "schema_version",
+    "status",
+    "generated_at_utc",
+    "apply",
+    "subject_alias",
+    "run_id",
+    "method_id",
+    "packet_revision",
+    "source_packet_dir",
+    "destination_prefix",
+    "kms_key_arn",
+    "expected_files",
+    "object_count",
+    "passed_count",
+    "forbidden_token_count",
+    "forbidden_token_sha256",
+    "objects",
+    "checks",
+    "dry_run_receipt",
+    "destination_final_history_count",
+    "completed_at_utc",
+}
+PRIVATE_RECEIPT_OBJECT_KEYS = {
+    "relative_path",
+    "bucket",
+    "key",
+    "uri",
+    "version_id",
+    "bytes",
+    "sha256",
+    "checksum_sha256",
+    "checksum_type",
+    "server_side_encryption",
+    "kms_key_id",
+    "status",
+    "checks",
+}
+PRIVATE_DRY_RUN_SUMMARY_KEYS = {
+    "path",
+    "sha256",
+    "packet_revision",
+    "status",
+}
 PUBLIC_DESTINATION_OBJECT_CHECKS = {
     "version_exact": True,
     "bytes_exact": True,
@@ -502,8 +546,10 @@ def validate_private_receipt(
     )
     rows = receipt.get("objects")
     checks = receipt.get("checks")
+    forbidden_hashes = receipt.get("forbidden_token_sha256")
     if (
-        receipt.get("schema_version") != 1
+        set(receipt) != PRIVATE_RECEIPT_APPLY_KEYS
+        or receipt.get("schema_version") != 1
         or receipt.get("status") != "passed"
         or receipt.get("apply") is not True
         or receipt.get("subject_alias") != SUBJECT_ALIAS
@@ -513,6 +559,22 @@ def validate_private_receipt(
         or receipt.get("expected_files") != list(expected)
         or receipt.get("object_count") != len(expected)
         or receipt.get("passed_count") != len(expected)
+        or receipt.get("destination_final_history_count") != len(expected)
+        or not isinstance(receipt.get("generated_at_utc"), str)
+        or not receipt.get("generated_at_utc")
+        or not isinstance(receipt.get("completed_at_utc"), str)
+        or not receipt.get("completed_at_utc")
+        or not isinstance(receipt.get("source_packet_dir"), str)
+        or not receipt.get("source_packet_dir")
+        or not isinstance(receipt.get("forbidden_token_count"), int)
+        or isinstance(receipt.get("forbidden_token_count"), bool)
+        or receipt.get("forbidden_token_count") <= 0
+        or not isinstance(forbidden_hashes, list)
+        or not forbidden_hashes
+        or any(
+            not isinstance(digest, str) or not SHA256_HEX.fullmatch(digest)
+            for digest in forbidden_hashes
+        )
         or not isinstance(rows, list)
         or len(rows) != len(expected)
         or checks != PRIVATE_RECEIPT_APPLY_CHECKS
@@ -525,6 +587,8 @@ def validate_private_receipt(
     for raw in rows:
         if not isinstance(raw, dict):
             raise ValueError("private publication receipt object is not an object")
+        if set(raw) != PRIVATE_RECEIPT_OBJECT_KEYS:
+            raise ValueError("private publication receipt object envelope is not exact")
         relative = safe_relative(raw.get("relative_path"))
         if relative in seen:
             raise ValueError(f"private publication receipt repeats {relative}")
@@ -574,6 +638,18 @@ def validate_private_receipt(
         or prefix != expected_revision_prefix
     ):
         raise ValueError("private publication receipt packet revision is not content addressed")
+    dry_run = receipt.get("dry_run_receipt")
+    if (
+        not isinstance(dry_run, dict)
+        or set(dry_run) != PRIVATE_DRY_RUN_SUMMARY_KEYS
+        or dry_run.get("status") != "dry_run"
+        or dry_run.get("packet_revision") != packet_revision
+        or not isinstance(dry_run.get("path"), str)
+        or not dry_run.get("path")
+        or not isinstance(dry_run.get("sha256"), str)
+        or not SHA256_HEX.fullmatch(dry_run.get("sha256", ""))
+    ):
+        raise ValueError("private publication dry-run receipt summary is not exact")
     return receipt, expected, sorted(normalized, key=lambda row: row["relative_path"])
 
 
