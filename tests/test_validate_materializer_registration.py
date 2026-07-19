@@ -49,6 +49,31 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
     def write(self, path: Path, value: dict) -> None:
         path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
+    def validate(
+        self,
+        *,
+        script_anchor: dict | None = None,
+        definition: dict | None = None,
+        registration: dict | None = None,
+        live: dict | None = None,
+    ) -> dict:
+        return module.validate(
+            script_anchor=script_anchor
+            if script_anchor is not None
+            else json.loads(self.script_anchor.read_text(encoding="utf-8")),
+            definition=definition
+            if definition is not None
+            else json.loads(self.definition.read_text(encoding="utf-8")),
+            registration=registration
+            if registration is not None
+            else json.loads(self.response.read_text(encoding="utf-8")),
+            live=live
+            if live is not None
+            else json.loads(self.live.read_text(encoding="utf-8")),
+            script_anchor_sha256="a" * 64,
+            definition_sha256="b" * 64,
+        )
+
     def render_args(self) -> argparse.Namespace:
         base = (
             "s3://diana-omics-private-results-172630973301-us-east-1/"
@@ -151,28 +176,14 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
         self.write(self.response, response)
 
         with self.assertRaisesRegex(ValueError, "one active materializer revision"):
-            module.validate(
-                script_anchor=json.loads(self.script_anchor.read_text(encoding="utf-8")),
-                definition=json.loads(self.definition.read_text(encoding="utf-8")),
-                registration=response,
-                live=json.loads(self.live.read_text(encoding="utf-8")),
-                script_anchor_sha256="a" * 64,
-                definition_sha256="b" * 64,
-            )
+            self.validate(registration=response)
 
     def test_live_definition_must_match_local_payload(self) -> None:
         live = json.loads(self.live.read_text(encoding="utf-8"))
         live["jobDefinitions"][0]["containerProperties"]["memory"] += 1
 
         with self.assertRaisesRegex(ValueError, "differs from local payload"):
-            module.validate(
-                script_anchor=json.loads(self.script_anchor.read_text(encoding="utf-8")),
-                definition=json.loads(self.definition.read_text(encoding="utf-8")),
-                registration=json.loads(self.response.read_text(encoding="utf-8")),
-                live=live,
-                script_anchor_sha256="a" * 64,
-                definition_sha256="b" * 64,
-            )
+            self.validate(live=live)
 
     def test_stale_receipt_uri_shape_is_rejected(self) -> None:
         definition = json.loads(self.definition.read_text(encoding="utf-8"))
@@ -182,15 +193,112 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
         live = json.loads(self.live.read_text(encoding="utf-8"))
         live["jobDefinitions"][0]["containerProperties"]["command"][2] = shell
 
-        with self.assertRaisesRegex(ValueError, "not exact"):
-            module.validate(
-                script_anchor=json.loads(self.script_anchor.read_text(encoding="utf-8")),
-                definition=definition,
-                registration=json.loads(self.response.read_text(encoding="utf-8")),
-                live=live,
-                script_anchor_sha256="a" * 64,
-                definition_sha256="b" * 64,
-            )
+        with self.assertRaisesRegex(ValueError, "failed receipt_prefix"):
+            self.validate(definition=definition, live=live)
+
+    def test_script_anchor_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                "missing",
+                lambda checks: checks.pop("exact_kms"),
+                "missing exact_kms",
+            ),
+            (
+                "unexpected",
+                lambda checks: checks.update({"future_anchor_check": True}),
+                "unexpected future_anchor_check",
+            ),
+            (
+                "failed",
+                lambda checks: checks.update({"exact_kms": False}),
+                "failed exact_kms",
+            ),
+        )
+
+        for label, mutate, error in cases:
+            with self.subTest(label=label):
+                anchor = json.loads(self.script_anchor.read_text(encoding="utf-8"))
+                mutate(anchor["checks"])
+
+                with self.assertRaisesRegex(ValueError, error):
+                    self.validate(script_anchor=anchor)
+
+    def test_materializer_command_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                frozenset((*module.EXPECTED_COMMAND_CHECKS, "future_command_check")),
+                "missing future_command_check",
+            ),
+            (
+                frozenset(
+                    name
+                    for name in module.EXPECTED_COMMAND_CHECKS
+                    if name != "checksum_mode"
+                ),
+                "unexpected checksum_mode",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(module, "EXPECTED_COMMAND_CHECKS", expected),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                self.validate()
+
+    def test_failed_materializer_command_check_is_rejected(self) -> None:
+        definition = json.loads(self.definition.read_text(encoding="utf-8"))
+        shell = definition["containerProperties"]["command"][2]
+        definition["containerProperties"]["command"][2] = shell.replace(
+            "set -euo pipefail;",
+            "set -eo pipefail;",
+        )
+        live = json.loads(self.live.read_text(encoding="utf-8"))
+        live["jobDefinitions"][0]["containerProperties"]["command"][2] = (
+            definition["containerProperties"]["command"][2]
+        )
+
+        with self.assertRaisesRegex(ValueError, "failed strict"):
+            self.validate(definition=definition, live=live)
+
+    def test_registration_check_map_must_be_exact(self) -> None:
+        cases = (
+            (
+                frozenset(
+                    (*module.EXPECTED_REGISTRATION_CHECKS, "future_registration_check")
+                ),
+                "missing future_registration_check",
+            ),
+            (
+                frozenset(
+                    name
+                    for name in module.EXPECTED_REGISTRATION_CHECKS
+                    if name != "no_job_submitted"
+                ),
+                "unexpected no_job_submitted",
+            ),
+        )
+
+        for expected, error in cases:
+            with (
+                self.subTest(error=error),
+                mock.patch.object(module, "EXPECTED_REGISTRATION_CHECKS", expected),
+                self.assertRaisesRegex(ValueError, error),
+            ):
+                self.validate()
+
+    def test_failed_registration_check_is_rejected(self) -> None:
+        definition = json.loads(self.definition.read_text(encoding="utf-8"))
+        definition["retryStrategy"] = {"attempts": 2}
+        live = json.loads(self.live.read_text(encoding="utf-8"))
+        live["jobDefinitions"][0]["retryStrategy"] = {
+            "attempts": 2,
+            "evaluateOnExit": [],
+        }
+
+        with self.assertRaisesRegex(ValueError, "failed one_attempt"):
+            self.validate(definition=definition, live=live)
 
     def test_output_below_symlinked_parent_is_rejected(self) -> None:
         real_parent = self.root / "real"

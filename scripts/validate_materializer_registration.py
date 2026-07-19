@@ -55,6 +55,19 @@ EXPECTED_SCRIPT_ANCHOR_CHECKS = frozenset(
         "no_delete_markers",
     )
 )
+EXPECTED_COMMAND_CHECKS = frozenset(
+    (
+        "shape",
+        "strict",
+        "script_bucket",
+        "script_key",
+        "script_version",
+        "script_sha",
+        "checksum_mode",
+        "receipt_prefix",
+        "source_sha_parameters",
+    )
+)
 EXPECTED_REGISTRATION_CHECKS = frozenset(
     (
         "exact_active_revision",
@@ -158,7 +171,31 @@ def require_installed_output(path: Path, expected_sha256: str) -> None:
 
 
 def passed_checks(value: Any, expected: frozenset[str]) -> bool:
-    return isinstance(value, dict) and set(value) == set(expected) and all(item is True for item in value.values())
+    if not isinstance(value, dict):
+        return False
+    return not check_map_mismatches(value, expected)
+
+
+def check_map_mismatches(value: dict[str, Any], expected: frozenset[str]) -> list[str]:
+    missing = sorted(expected - set(value))
+    unexpected = sorted(set(value) - expected)
+    failed = sorted(key for key in expected & set(value) if value[key] is not True)
+    errors: list[str] = []
+    if missing:
+        errors.append("missing " + ",".join(missing))
+    if unexpected:
+        errors.append("unexpected " + ",".join(unexpected))
+    if failed:
+        errors.append("failed " + ",".join(failed))
+    return errors
+
+
+def require_passed_checks(value: Any, expected: frozenset[str], label: str) -> None:
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} check map must be a JSON object")
+    errors = check_map_mismatches(value, expected)
+    if errors:
+        raise ValueError(f"{label} check map is not exact: {'; '.join(errors)}")
 
 
 def require_hex(value: Any, label: str) -> str:
@@ -219,8 +256,11 @@ def validate(
     source_sha = require_hex(source.get("sha256"), "materializer source SHA-256")
     if script_anchor.get("schema_version") != 1 or script_anchor.get("status") != "passed":
         raise ValueError("materializer script anchor must be schema 1 and passed")
-    if not passed_checks(script_anchor.get("checks"), EXPECTED_SCRIPT_ANCHOR_CHECKS):
-        raise ValueError("materializer script anchor checks are incomplete")
+    require_passed_checks(
+        script_anchor.get("checks"),
+        EXPECTED_SCRIPT_ANCHOR_CHECKS,
+        "materializer script anchor",
+    )
 
     live_row = live_definition(live)
     revision = registration.get("revision")
@@ -278,11 +318,23 @@ def validate(
         "eight_runtime_substitutions": command_checks["shape"],
         "no_job_submitted": True,
     }
+    try:
+        require_passed_checks(
+            command_checks,
+            EXPECTED_COMMAND_CHECKS,
+            "materializer command",
+        )
+        require_passed_checks(
+            checks,
+            EXPECTED_REGISTRATION_CHECKS,
+            "materializer registration",
+        )
+    except ValueError as error:
+        raise ValueError(f"materializer registration is not exact: {error}") from error
+
     runtime = definition.get("containerProperties") if isinstance(definition.get("containerProperties"), dict) else {}
     if (
         normalized_definition != definition
-        or not all(command_checks.values())
-        or not all(checks.values())
         or definition.get("jobDefinitionName") != JOB_DEFINITION_NAME
         or runtime.get("vcpus") != 8
         or runtime.get("memory") != 32000
