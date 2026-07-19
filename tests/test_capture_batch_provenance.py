@@ -704,6 +704,11 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
         freeze_receipt["freeze"] = {
             key: "value" for key in MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_KEYS
         }
+        freeze_receipt["freeze"]["checksum_sha256_hex"] = "a" * 64
+        freeze_receipt["freeze"]["metadata"] = {
+            **MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_METADATA,
+            "sha256": "a" * 64,
+        }
         upload_receipt = {
             key: "value" for key in MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_KEYS
         }
@@ -711,6 +716,9 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             key: "value"
             for key in MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_OBJECT_KEYS
         }
+        upload_receipt["object"]["metadata"] = (
+            MODULE.EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_METADATA
+        )
 
         self.assertEqual(
             MODULE.exact_executed_worker_receipt_envelopes(
@@ -721,8 +729,10 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 "receipt_envelope": True,
                 "receipt_source_envelope": True,
                 "receipt_freeze_envelope": True,
+                "receipt_freeze_metadata": True,
                 "receipt_upload_envelope": True,
                 "receipt_upload_object_envelope": True,
+                "receipt_upload_metadata": True,
             },
         )
 
@@ -767,6 +777,30 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 "receipt_freeze_envelope",
             ),
             (
+                "freeze",
+                "missing-metadata",
+                lambda receipt: receipt["freeze"]["metadata"].pop("source"),
+                "receipt_freeze_metadata",
+            ),
+            (
+                "freeze",
+                "stale-metadata",
+                lambda receipt: receipt["freeze"]["metadata"].__setitem__(
+                    "classification",
+                    "public",
+                ),
+                "receipt_freeze_metadata",
+            ),
+            (
+                "freeze",
+                "unexpected-metadata",
+                lambda receipt: receipt["freeze"]["metadata"].__setitem__(
+                    "legacy_metadata",
+                    True,
+                ),
+                "receipt_freeze_metadata",
+            ),
+            (
                 "upload",
                 "missing",
                 lambda receipt: receipt.pop("local_receipt_sha256"),
@@ -792,6 +826,21 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                     True,
                 ),
                 "receipt_upload_object_envelope",
+            ),
+            (
+                "upload_object",
+                "missing-metadata",
+                lambda receipt: receipt["object"]["metadata"].pop("artifact"),
+                "receipt_upload_metadata",
+            ),
+            (
+                "upload_object",
+                "unexpected-metadata",
+                lambda receipt: receipt["object"]["metadata"].__setitem__(
+                    "legacy_metadata",
+                    True,
+                ),
+                "receipt_upload_metadata",
             ),
         ):
             freeze = json.loads(json.dumps(freeze_receipt))

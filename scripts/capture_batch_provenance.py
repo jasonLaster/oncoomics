@@ -98,6 +98,14 @@ EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_OBJECT_KEYS = {
     "kms_key_id",
     "metadata",
 }
+EXPECTED_EXECUTED_WORKER_FREEZE_METADATA = {
+    "classification": "private",
+    "source": "active-ecs-task",
+}
+EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_METADATA = {
+    "artifact": "executed-worker-freeze-receipt",
+    "classification": "private",
+}
 EXPECTED_TASK_HOST_BINDING_CHECKS = {
     "receipt_cluster_matches_task": True,
     "receipt_container_instance_matches_task": True,
@@ -120,10 +128,12 @@ EXPECTED_BATCH_WORKER_CHECKS = {
     "receipt_envelope": True,
     "receipt_source_envelope": True,
     "receipt_freeze_envelope": True,
+    "receipt_freeze_metadata": True,
     "receipt_checks": True,
     "receipt_upload": True,
     "receipt_upload_envelope": True,
     "receipt_upload_object_envelope": True,
+    "receipt_upload_metadata": True,
     "task_identity": True,
     "task_host_mapping": True,
     "hash_command_definition": True,
@@ -555,6 +565,12 @@ def exact_executed_worker_receipt_envelopes(
     worker_receipt_upload_object = worker_receipt_upload.get("object")
     if not isinstance(worker_receipt_upload_object, dict):
         worker_receipt_upload_object = {}
+    worker_freeze_metadata = worker_freeze.get("metadata")
+    if not isinstance(worker_freeze_metadata, dict):
+        worker_freeze_metadata = {}
+    worker_receipt_upload_metadata = worker_receipt_upload_object.get("metadata")
+    if not isinstance(worker_receipt_upload_metadata, dict):
+        worker_receipt_upload_metadata = {}
     return {
         "receipt_envelope": (
             set(worker_receipt) == EXPECTED_EXECUTED_WORKER_FREEZE_RECEIPT_KEYS
@@ -565,12 +581,21 @@ def exact_executed_worker_receipt_envelopes(
         "receipt_freeze_envelope": (
             set(worker_freeze) == EXPECTED_EXECUTED_WORKER_FREEZE_KEYS
         ),
+        "receipt_freeze_metadata": worker_freeze_metadata
+        == {
+            **EXPECTED_EXECUTED_WORKER_FREEZE_METADATA,
+            "sha256": worker_freeze.get("checksum_sha256_hex"),
+        },
         "receipt_upload_envelope": (
             set(worker_receipt_upload) == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_KEYS
         ),
         "receipt_upload_object_envelope": (
             set(worker_receipt_upload_object)
             == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_OBJECT_KEYS
+        ),
+        "receipt_upload_metadata": (
+            worker_receipt_upload_metadata
+            == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_METADATA
         ),
     }
 
