@@ -307,11 +307,11 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>627991fed79654249b7a1b12972224a805f4cdca</strong>.
-          The latest work binds public index publication to reviewed receipts:
-          <code>objects.json</code> build, dry-run publication, and apply
-          publication now share the canonical ten-method reviewed-public
-          receipt set.
+          <strong>c35f1afb3b1c6e2bd6d92ceaaa54b00ff8845bbd</strong>.
+          The latest work requires receipts when building the public index:
+          <code>build_public_results_index.py</code> now needs the canonical
+          ten reviewed-public receipts and checks the HRD
+          <code>objects.json</code> subset against them before writing.
           This is still source/test/dashboard work only. No deterministic final
           artifacts yet; no real Diana WGS Rosalind packet, executable
           cross-check packets, AI-review inputs, model-review outputs, or
@@ -319,7 +319,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 627991f</li>
+          <li class="pill">Latest hardening = c35f1af</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -401,8 +401,8 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 627991f</strong>
-              <span>Public-index build, dry-run, and apply paths now stay bound to the same ten reviewed-public receipts before index publication.</span>
+              <strong>Preserve c35f1af</strong>
+              <span>Public-index builds now fail closed unless the ten reviewed-public receipts are present and the HRD object subset matches them.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -450,6 +450,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>c35f1af Require receipts when building public index:</strong>
+                <code>build_public_results_index.py</code> now requires the
+                ten reviewed-public publication receipts whenever it builds
+                <code>objects.json</code>, validates those receipts first, and
+                always checks the HRD subset of <code>objects.json</code>
+                against the receipt-derived object map before writing the
+                public index.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
