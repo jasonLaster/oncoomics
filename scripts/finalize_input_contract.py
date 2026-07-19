@@ -91,6 +91,13 @@ EXPECTED_CROSSCHECK_ANCHOR_CHECKS = {
     "exact_kms": True,
     "single_create_only_version": True,
 }
+EXPECTED_FINALIZED_CUSTODY_CHECKS = {
+    "successful_execution_freeze_bound": True,
+    "full_freeze_exactly_materialized": True,
+    "crosscheck_sources_match_exact_freeze": True,
+    "alias_only_outputs_have_single_create_only_versions": True,
+    "sbs96_independently_rederived_from_final_pass_vcf": True,
+}
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -461,13 +468,7 @@ def finalize(
             "cross-check materializer script",
         ),
         "final_primary_artifacts": bound_outputs,
-        "checks": {
-            "successful_execution_freeze_bound": True,
-            "full_freeze_exactly_materialized": True,
-            "crosscheck_sources_match_exact_freeze": True,
-            "alias_only_outputs_have_single_create_only_versions": True,
-            "sbs96_independently_rederived_from_final_pass_vcf": True,
-        },
+        "checks": dict(EXPECTED_FINALIZED_CUSTODY_CHECKS),
     }
     return finalized
 

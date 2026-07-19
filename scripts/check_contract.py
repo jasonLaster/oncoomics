@@ -29,6 +29,13 @@ ROUTE_REQUIREMENTS = {
     ],
     "oncoanalyser_chord": [],
 }
+EXPECTED_CUSTODY_CHECKS = {
+    "successful_execution_freeze_bound": True,
+    "full_freeze_exactly_materialized": True,
+    "crosscheck_sources_match_exact_freeze": True,
+    "alias_only_outputs_have_single_create_only_versions": True,
+    "sbs96_independently_rederived_from_final_pass_vcf": True,
+}
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -131,12 +138,8 @@ def validate(contract: dict) -> dict:
             if not valid_version_id(custody.get(key)):
                 shared.append(f"custody.{key} must be an exact S3 VersionId")
         checks = custody.get("checks")
-        if (
-            not isinstance(checks, dict)
-            or not checks
-            or any(value is not True for value in checks.values())
-        ):
-            shared.append("custody.checks must be present and all true")
+        if checks != EXPECTED_CUSTODY_CHECKS:
+            shared.append("custody.checks must exactly match the finalization checks")
         primary = custody.get("final_primary_artifacts")
         if not isinstance(primary, dict):
             shared.append("custody.final_primary_artifacts must bind final outputs")

@@ -600,10 +600,35 @@ class CustodyHandoffTests(unittest.TestCase):
         self.assertTrue(contract["attestations"]["final_primary_wgs_artifacts"])
         self.assertEqual(contract["custody"]["status"], "passed")
         self.assertEqual(
+            contract["custody"]["checks"],
+            finalizer.EXPECTED_FINALIZED_CUSTODY_CHECKS,
+        )
+        self.assertEqual(
             contract["custody"]["final_primary_artifacts"],
             {key: contract["artifacts"][key] for key in finalizer.FINAL_OUTPUTS},
         )
         self.assertEqual(checker.validate(contract)["overall_status"], "ready")
+
+    def test_contract_check_requires_exact_finalized_custody_checks(self):
+        contract = CustodyFixture().finalize()
+        contract["custody"]["checks"]["future_check"] = True
+
+        result = checker.validate(contract)
+
+        self.assertEqual(result["overall_status"], "blocked")
+        self.assertTrue(
+            any(
+                "custody.checks must exactly match" in reason
+                for route in result["routes"].values()
+                for reason in route["reasons"]
+            )
+        )
+
+    def test_finalized_custody_check_inventory_matches_checker(self):
+        self.assertEqual(
+            finalizer.EXPECTED_FINALIZED_CUSTODY_CHECKS,
+            checker.EXPECTED_CUSTODY_CHECKS,
+        )
 
     def test_finalizer_rejects_crosscheck_source_not_in_exact_freeze(self):
         fixture = CustodyFixture()
