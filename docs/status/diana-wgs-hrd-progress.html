@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact AI model-catalog strings</li>
+          <li class="pill">Latest milestone = local exact deterministic final SHA-256s</li>
+          <li class="pill">Deterministic final SHA-256s = exact</li>
           <li class="pill">AI model-catalog strings = exact</li>
           <li class="pill">GPU smoke parameter strings = exact</li>
           <li class="pill">Parabricks mirror strings = exact</li>
@@ -779,6 +780,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact deterministic final SHA-256s</strong>
+              <span>Phase 3 fast deterministic report staging now requires final artifact hashes, cross-check source hashes, and the final manifest hash to be exact lowercase SHA-256 strings before installing <code>report_manifest.json</code>.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer output VersionIds</strong>
               <span><code>capture_materializer_terminal.py</code> now applies one exact VersionId predicate to expected source/reference parameters, the logged receipt anchor, and materializer output rows so nullish mirrored output versions fail <code>receipt_outputs_exact</code>.</span>
@@ -1705,6 +1710,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:40:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact deterministic final SHA-256s:</strong>
+                Phase 3 fast deterministic report staging now rejects
+                non-lowercase final artifact, cross-check source, and
+                final-manifest SHA-256 strings before installing the
+                deterministic report manifest.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:30:00-07:00">Jul 19 · local</time>
               <span>

@@ -495,6 +495,65 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                     output_dir=root / "deterministic",
                 )
 
+    def test_rejects_non_lowercase_sha256_before_install(self) -> None:
+        cases = (
+            (
+                "final-artifact",
+                lambda final_manifest, materialization_plan: final_manifest[
+                    "artifacts"
+                ]["small_variants"]["filter_mutect"]["filtered_vcf"].__setitem__(
+                    "sha256",
+                    final_manifest["artifacts"]["small_variants"]["filter_mutect"][
+                        "filtered_vcf"
+                    ]["sha256"].upper(),
+                ),
+                lambda manifest_path: _sha256_path(manifest_path),
+            ),
+            (
+                "crosscheck-source",
+                lambda final_manifest, materialization_plan: materialization_plan[
+                    "sigprofiler_sbs3"
+                ]["final_sources"]["source_vcf"].__setitem__(
+                    "sha256",
+                    final_manifest["artifacts"]["small_variants"]["filter_mutect"][
+                        "filtered_vcf"
+                    ]["sha256"].upper(),
+                ),
+                lambda manifest_path: _sha256_path(manifest_path),
+            ),
+            (
+                "final-manifest",
+                lambda final_manifest, materialization_plan: None,
+                lambda manifest_path: _sha256_path(manifest_path).upper(),
+            ),
+        )
+
+        for label, mutate, manifest_sha256 in cases:
+            with self.subTest(label=label), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                manifest_path, final_root, final_manifest = _write_final_manifest(root)
+                materialization_plan = _crosscheck_materialization_plan(
+                    final_manifest,
+                    manifest_path,
+                )
+                mutate(final_manifest, materialization_plan)
+                output = root / "deterministic"
+
+                with self.assertRaisesRegex(
+                    stage_report.ManifestError,
+                    "must be 64 hex characters",
+                ):
+                    stage_report.stage_phase3_fast_deterministic_report(
+                        final_manifest,
+                        materialization_plan,
+                        final_manifest_sha256=manifest_sha256(manifest_path),
+                        final_manifest_bytes=manifest_path.stat().st_size,
+                        final_root=final_root,
+                        output_dir=output,
+                    )
+
+                self.assertFalse((output / "report_manifest.json").exists())
+
     def test_rejects_boolean_crosscheck_plan_final_source_bytes(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
