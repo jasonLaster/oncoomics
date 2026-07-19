@@ -873,6 +873,27 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("output already exists", result.stderr)
 
+    def test_rebase_stage_receipt_rejects_symlinked_stage_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            final = root / "ai-review"
+            staging.mkdir()
+            real_receipt = root / "stage-receipt.real.json"
+            real_receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            stage_receipt = staging / "stage_ai_review_inputs_receipt.json"
+            stage_receipt.symlink_to(real_receipt)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "stage_ai_review_inputs_receipt.json must be a real non-empty file",
+            ):
+                PREPARE.rebase_stage_receipt(stage_receipt, staging, final)
+
+            self.assertFalse(
+                any(staging.glob(".stage_ai_review_inputs_receipt.json.*.tmp"))
+            )
+
     def test_rebase_stage_receipt_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
