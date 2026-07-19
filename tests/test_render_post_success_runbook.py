@@ -390,6 +390,42 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             apply.index("--dry-run-receipt") + text.index(apply),
         )
 
+    def test_final_freeze_review_checklist_is_concrete(self) -> None:
+        text = render()
+        review = text.index(
+            "Review `/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.final-freeze.dry.json` before final-artifact freeze "
+            "apply:"
+        )
+        apply = text.index("terminal.final-freeze.json", review)
+        dry = text.index(
+            "--output /repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.final-freeze.dry.json"
+        )
+        checklist = text[review:apply]
+
+        self.assertLess(dry, review)
+        self.assertIn("`batch_status` is `SUCCEEDED`", checklist)
+        self.assertIn("`execution_receipt.sha256`", checklist)
+        self.assertIn("terminal.execution.succeeded.json", checklist)
+        self.assertIn("`destination_bucket_versioning` is `Enabled`", checklist)
+        self.assertIn(
+            "`destination_initial_version_history_count` is `0`",
+            checklist,
+        )
+        self.assertIn("`receipt_anchor_strategy`", checklist)
+        self.assertIn("`sha256_content_addressed_create_only`", checklist)
+        self.assertIn("`initial_inventory_identity`", checklist)
+        self.assertIn("`final_inventory_identity`", checklist)
+        self.assertIn("`object_count`", checklist)
+        self.assertIn("`checks.execution_receipt_bound`", checklist)
+        self.assertIn("`checks.complete_source_inventory_unchanged`", checklist)
+        self.assertIn("full-object checksums", checklist)
+        self.assertIn("exact KMS", checklist)
+        self.assertIn("one-version-per-key destination snapshot", checklist)
+        self.assertIn("content-addressed receipt anchor", checklist)
+        self.assertIn("`--apply` command", checklist)
+
     def test_stage_freeze_apply_is_bound_to_dry_run_receipt(self) -> None:
         text = render()
 
@@ -405,6 +441,44 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             text.index("terminal.stage-freeze.dry.json"),
             apply.index("--dry-run-receipt") + text.index(apply),
         )
+
+    def test_stage_freeze_review_checklist_is_concrete(self) -> None:
+        text = render()
+        review = text.index(
+            "Review `/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.stage-freeze.dry.json` before stage-provenance freeze "
+            "apply:"
+        )
+        apply = text.index("terminal.stage-freeze.json", review)
+        dry = text.index(
+            "--output /repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.stage-freeze.dry.json"
+        )
+        checklist = text[review:apply]
+
+        self.assertLess(dry, review)
+        self.assertIn("`batch_status` is `SUCCEEDED`", checklist)
+        self.assertIn("`batch_job_id`", checklist)
+        self.assertIn("`terminal.execution.succeeded.json`", checklist)
+        self.assertIn("`execution_receipt_sha256`", checklist)
+        self.assertIn("`source_bucket_versioning` is `Suspended`", checklist)
+        self.assertIn("`destination_bucket_versioning` is `Enabled`", checklist)
+        self.assertIn(
+            "`destination_initial_version_history_count` is `0`",
+            checklist,
+        )
+        self.assertIn("`preflight.json` and `gather.json`", checklist)
+        self.assertIn("`passed_count` is `0`", checklist)
+        self.assertIn("`checks.get_matches_head`", checklist)
+        self.assertIn("`checks.local_bytes_exact`", checklist)
+        self.assertIn("`checks.semantic_binding`", checklist)
+        self.assertIn("`checks.source_kms_exact`", checklist)
+        self.assertIn("destination VersionId", checklist)
+        self.assertIn("equal source/destination SHA-256", checklist)
+        self.assertIn("full-object checksums", checklist)
+        self.assertIn("exact final destination history", checklist)
+        self.assertIn("content-addressed receipt anchor", checklist)
+        self.assertIn("`--apply` command", checklist)
 
     def test_render_source_handoff_follows_all_packet_staging(self) -> None:
         text = render()

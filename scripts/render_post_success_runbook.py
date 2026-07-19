@@ -278,6 +278,56 @@ def materializer_review_checklist(deterministic: Path) -> list[str]:
     ]
 
 
+def stage_freeze_review_checklist(deterministic: Path) -> list[str]:
+    dry_receipt = deterministic / "terminal.stage-freeze.dry.json"
+    return [
+        f"Review `{dry_receipt}` before stage-provenance freeze apply:",
+        "",
+        "- [ ] `batch_status` is `SUCCEEDED`, `batch_job_id` matches "
+        "`terminal.execution.succeeded.json`, and "
+        "`execution_receipt_sha256` matches the execution receipt on disk.",
+        "- [ ] `source_bucket_versioning` is `Suspended`, "
+        "`destination_bucket_versioning` is `Enabled`, and "
+        "`destination_initial_version_history_count` is `0`.",
+        "- [ ] `object_count` covers only `preflight.json` and `gather.json`, "
+        "`passed_count` is `0`, and every object is still `dry_run`.",
+        "- [ ] Every object has `checks.get_matches_head`, "
+        "`checks.local_bytes_exact`, `checks.semantic_binding`, and "
+        "`checks.source_kms_exact` set true.",
+        "- [ ] The matching apply will enforce destination VersionId, "
+        "destination GET/head agreement, equal source/destination SHA-256, "
+        "full-object checksums, exact KMS, exact final destination history, "
+        "and a content-addressed receipt anchor.",
+        "- [ ] Running the following `--apply` command is still the intended "
+        "stage-provenance freeze action.",
+    ]
+
+
+def final_freeze_review_checklist(deterministic: Path) -> list[str]:
+    dry_receipt = deterministic / "terminal.final-freeze.dry.json"
+    return [
+        f"Review `{dry_receipt}` before final-artifact freeze apply:",
+        "",
+        "- [ ] `batch_status` is `SUCCEEDED` and `execution_receipt.sha256` "
+        "matches `terminal.execution.succeeded.json`.",
+        "- [ ] `destination_bucket_versioning` is `Enabled`, "
+        "`destination_initial_version_history_count` is `0`, and "
+        "`receipt_anchor_strategy` is "
+        "`sha256_content_addressed_create_only`.",
+        "- [ ] `initial_inventory_identity` equals "
+        "`final_inventory_identity`, `object_count` matches `objects`, "
+        "and every object is still `dry_run`.",
+        "- [ ] `checks.execution_receipt_bound` and "
+        "`checks.complete_source_inventory_unchanged` are both true.",
+        "- [ ] The matching apply will enforce exact source versions and "
+        "full-object checksums, exact KMS, exact source/destination byte "
+        "identity, a one-version-per-key destination snapshot, and a "
+        "content-addressed receipt anchor.",
+        "- [ ] Running the following `--apply` command is still the intended "
+        "final-artifact freeze action.",
+    ]
+
+
 def stage_deterministic_command(
     scripts: Path,
     deterministic: Path,
@@ -701,6 +751,7 @@ def render(root: Path, terminal_job_id: str) -> str:
                 REGION,
             ]
         ),
+        *stage_freeze_review_checklist(deterministic),
         block(
             [
                 "python3",
@@ -748,6 +799,7 @@ def render(root: Path, terminal_job_id: str) -> str:
                 REGION,
             ]
         ),
+        *final_freeze_review_checklist(deterministic),
         block(
             [
                 "python3",

@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local materializer dry-run checklist</li>
+          <li class="pill">Latest milestone = local freeze dry-run checklists</li>
+          <li class="pill">Freeze dry-run checklists = explicit</li>
           <li class="pill">Materializer dry-run checklist = explicit</li>
           <li class="pill">Source-freeze checklists = explicit</li>
           <li class="pill">AI private-apply checklists = explicit</li>
@@ -1575,6 +1576,10 @@
               <span>Source-freeze runbook rendering now adds explicit dry-run review checklists before private publication of seven source HRD packets, so each source packet's method identity, packet inventory, forbidden-token fingerprinting, no-call boundary checks, destination emptiness, dry-run receipt binding, and exact encryption/checksum/version checks are reviewed before source private-freeze apply.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require freeze dry-run checklists</strong>
+              <span>Post-success runbook rendering now adds explicit dry-run review checklists before stage-provenance and final-artifact freeze applies, so terminal execution binding, initial empty histories, stage preflight/gather evidence, final inventory identity, no-call boundary checks, and exact checksum/encryption/version-history expectations are reviewed before private freeze apply commands.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind stage freeze apply to its dry-run receipt</strong>
               <span>Live stage-provenance freeze now requires its matching dry-run receipt and rejects stale top-level metadata, failed source-object checks, run/KMS/source/destination/script drift, or preflight/gather object drift before any provenance copy.</span>
             </li>
@@ -2160,6 +2165,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:04:28-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Add freeze dry-run checklists:</strong>
+                Post-success runbook rendering now adds dry-run review
+                checklists before stage-provenance and final-artifact
+                freeze applies, covering terminal execution binding,
+                initial empty histories, preflight/gather evidence,
+                final inventory identity, no-call boundaries, and exact
+                checksum/encryption/version-history expectations.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T14:01:26-07:00">Jul 19 · local</time>
               <span>
