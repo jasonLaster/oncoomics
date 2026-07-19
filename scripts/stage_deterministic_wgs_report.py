@@ -1266,7 +1266,10 @@ def crosscheck_output_plan(
     row = outputs[name] if isinstance(outputs.get(name), dict) else {}
     return {
         "path": name,
-        "bytes": int(row["bytes"]),
+        "bytes": require_nonnegative_exact_int(
+            row.get("bytes"),
+            f"{name} materialized cross-check output bytes",
+        ),
         "sha256": str(row["sha256"]).lower(),
     }
 

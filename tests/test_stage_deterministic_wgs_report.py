@@ -272,6 +272,22 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                         input_contract,
                     )
 
+        output_mutations = (
+            ("bytes bool", True),
+            ("bytes float", 1.0),
+            ("bytes string", "1"),
+        )
+        for name, value in output_mutations:
+            with self.subTest(name=name):
+                payload = materialization()
+                payload["outputs"]["sbs96.csv"]["bytes"] = value
+
+                with self.assertRaisesRegex(ValueError, "not an exact"):
+                    REPORT_MODULE.build_crosscheck_input_plans(
+                        payload,
+                        input_contract,
+                    )
+
     def test_crosscheck_plan_guards_avoid_raw_validation_coercion(self) -> None:
         source = GENERATOR.read_text(encoding="utf-8")
         module = ast.parse(source)
@@ -282,7 +298,11 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             and isinstance(node.func, ast.Name)
             and node.func.id in {"bool", "int"}
             and node.args
-            and "validation.get" in ast.unparse(node.args[0])
+            and (
+                "validation.get" in ast.unparse(node.args[0])
+                or 'row["bytes"]' in ast.unparse(node.args[0])
+                or "row['bytes']" in ast.unparse(node.args[0])
+            )
         ]
 
         self.assertEqual(raw_coercions, [])

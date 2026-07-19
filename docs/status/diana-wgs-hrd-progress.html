@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact snapshot file-count reuse</li>
+          <li class="pill">Latest milestone = local exact cross-check output bytes</li>
+          <li class="pill">Cross-check output bytes = exact</li>
           <li class="pill">Snapshot file count = exact</li>
           <li class="pill">Alignment manifest copies = exact</li>
           <li class="pill">SBS96 skipped-SNVs = exact</li>
@@ -678,6 +679,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact cross-check output bytes</strong>
+              <span>Deterministic WGS report staging now rejects non-exact materialized cross-check output bytes before SigProfiler/SBS96 and scarHRD input planning can trust alias-only side evidence.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact snapshot file-count reuse</strong>
               <span>Deterministic WGS report staging now reuses the already-validated stable-snapshot file count for report prose and evidence checks instead of re-coercing it at output time.</span>
@@ -1360,6 +1365,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T10:15:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact cross-check output bytes:</strong>
+                deterministic WGS report staging now rejects non-exact
+                materialized cross-check output bytes before SigProfiler/SBS96
+                and scarHRD input planning can trust alias-only side evidence.
+                No live cloud action, compute action, or replacement run was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T10:00:00-07:00">Jul 19 · local</time>
               <span>
