@@ -589,6 +589,14 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                 "report packet validation receipt is malformed",
             ),
             (
+                "float-validated-packet-count",
+                lambda receipt: receipt.__setitem__(
+                    "validated_packet_count",
+                    float(receipt["validated_packet_count"]),
+                ),
+                "validated packet count",
+            ),
+            (
                 "packet",
                 lambda receipt: receipt["packets"][0].update({"legacy_file_count": 1}),
                 "packet rows",

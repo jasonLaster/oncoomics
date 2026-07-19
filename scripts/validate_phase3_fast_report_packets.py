@@ -187,7 +187,10 @@ def require_validation_receipt_packet_sha256s(
         not exact_schema_version(payload)
         or payload.get("status") != "passed"
         or set(payload) != VALIDATION_RECEIPT_KEYS
-        or payload.get("validated_packet_count") != len(PHASE3_FAST_VALIDATED_METHOD_IDS)
+        or require_int(
+            payload.get("validated_packet_count"),
+            "validated packet count",
+        ) != len(PHASE3_FAST_VALIDATED_METHOD_IDS)
         or not isinstance(packets, list)
         or len(packets) != len(PHASE3_FAST_VALIDATED_METHOD_IDS)
         or not isinstance(payload.get("forbidden_tokens_sha256"), str)

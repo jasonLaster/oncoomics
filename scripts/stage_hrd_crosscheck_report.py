@@ -168,6 +168,15 @@ def require_positive_exact_int(value: Any, label: str) -> int:
     return value
 
 
+def valid_version_id(value: Any) -> bool:
+    return bool(
+        isinstance(value, str)
+        and value
+        and value.lower() not in {"none", "null"}
+        and not any(character.isspace() for character in value)
+    )
+
+
 def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
@@ -234,7 +243,7 @@ def require_download_verification(
         require_safe_relative_path(relative, "download verification path")
         if relative in expected:
             raise ValueError(f"download verification repeats {relative}")
-        if not str(row.get("version_id", "")):
+        if not valid_version_id(row.get("version_id")):
             raise ValueError(f"download verification lacks a VersionId for {relative}")
         require_exact_check_map(
             row.get("checks"),

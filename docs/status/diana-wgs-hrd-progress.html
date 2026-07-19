@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact AI-synthesis private summaries</li>
+          <li class="pill">Latest milestone = local exact source-freeze scalars</li>
+          <li class="pill">Cross-check/Phase 3 source-freeze scalars = exact</li>
           <li class="pill">AI-synthesis private summaries = exact</li>
           <li class="pill">Rosalind JSON counts = exact</li>
           <li class="pill">Terminal/materializer scalars = exact</li>
@@ -909,6 +910,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact source-freeze scalars</strong>
+              <span><code>stage_hrd_crosscheck_report.py</code> now rejects non-string, sentinel, or whitespace-only download-verification VersionIds before staging scarHRD/SBS3 route packets, and <code>validate_phase3_fast_report_packets.py</code> now requires <code>validated_packet_count</code> to be an exact JSON integer before source-freeze handoff.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Rosalind JSON counts</strong>
               <span>The Diana WGS Rosalind packet builder now parses CSV count and byte fields as CSV text while requiring JSON counts and bytes from deterministic manifests, artifact groups, worker summaries, and Sequenza/scarHRD alias contracts to be exact integers.</span>
@@ -1515,6 +1520,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T17:20:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact source-freeze scalars:</strong>
+                <code>stage_hrd_crosscheck_report.py</code> now rejects
+                non-string, sentinel, or whitespace-only download-verification
+                VersionIds before staging scarHRD/SBS3 route packets, and
+                <code>validate_phase3_fast_report_packets.py</code> now
+                requires <code>validated_packet_count</code> to be an exact
+                JSON integer before source-freeze handoff.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T17:10:00-07:00">Jul 19 · local</time>
               <span>

@@ -556,23 +556,24 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             self.assertFalse((root / "staged").exists())
 
     def test_stage_rejects_download_verification_row_without_version_id(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            source = root / "exact"
-            verification = write_route_report(source)
-            payload = json.loads(verification.read_text(encoding="utf-8"))
-            payload["objects"][0]["version_id"] = ""
-            write_json(verification, payload)
+        for value in ("", "null", "none", "space separated", True):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "exact"
+                verification = write_route_report(source)
+                payload = json.loads(verification.read_text(encoding="utf-8"))
+                payload["objects"][0]["version_id"] = value
+                write_json(verification, payload)
 
-            with self.assertRaisesRegex(ValueError, "lacks a VersionId"):
-                STAGE.stage(
-                    source,
-                    verification,
-                    root / "staged",
-                    "sigprofiler_sbs3",
-                )
+                with self.assertRaisesRegex(ValueError, "lacks a VersionId"):
+                    STAGE.stage(
+                        source,
+                        verification,
+                        root / "staged",
+                        "sigprofiler_sbs3",
+                    )
 
-            self.assertFalse((root / "staged").exists())
+                self.assertFalse((root / "staged").exists())
 
     def test_stage_rejects_copy_that_differs_from_exact_replay(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
