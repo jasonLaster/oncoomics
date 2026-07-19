@@ -114,6 +114,20 @@ def write_final_freeze_dry_run_receipt(
 
 
 class FreezeFinalArtifactsTests(unittest.TestCase):
+    def test_receipt_anchor_byte_guard_avoids_raw_int_coercion(self) -> None:
+        source = Path(MODULE.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        suspicious_calls = [
+            ast.get_source_segment(source, node)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and "ContentLength" in (ast.get_source_segment(source, node) or "")
+        ]
+        self.assertEqual(suspicious_calls, [])
+
     def test_parse_s3_rejects_bucket_only(self) -> None:
         self.assertEqual(MODULE.parse_s3("s3://private-bucket/path/to/tree"), ("private-bucket", "path/to/tree"))
         with self.assertRaises(ValueError):

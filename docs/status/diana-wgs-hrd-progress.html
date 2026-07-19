@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local deterministic terminal count exactness</li>
+          <li class="pill">Latest milestone = local final-freeze receipt-anchor ContentLength exactness</li>
+          <li class="pill">Final-freeze receipt-anchor ContentLength = exact</li>
           <li class="pill">Deterministic terminal counts = exact</li>
           <li class="pill">Input-contract publication bytes = exact</li>
           <li class="pill">Cross-check materializer bytes = exact</li>
@@ -641,6 +642,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact final-freeze receipt-anchor ContentLength</strong>
+              <span>Final artifact freezing now exact-checks receipt-anchor HEAD and GET ContentLength values before final-freeze anchors can pass <code>bytes_exact</code>, preventing raw integer coercion from treating non-exact ContentLength metadata as valid anchored receipt bytes.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact deterministic terminal counts</strong>
               <span>No-compute deterministic report staging now rejects non-exact final-freeze <code>object_count</code>/<code>passed_count</code> values and exact-materialization <code>object_count</code>/<code>passed_count</code> values before a terminal deterministic report can summarize frozen WGS artifacts for Rosalind, source-freeze, route, or AI/freeform handoffs.</span>
@@ -1175,6 +1180,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:24:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact final-freeze receipt-anchor ContentLength:</strong>
+                final artifact freezing now exact-checks final-freeze
+                receipt-anchor HEAD and GET ContentLength values before
+                <code>bytes_exact</code> can pass, and keeps raw integer
+                coercion from accepting non-exact ContentLength metadata as
+                valid anchored receipt bytes. No S3, Batch, route, GPU, quota,
+                replacement compute, or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:23:00-07:00">Jul 19 · local</time>
               <span>

@@ -1157,7 +1157,8 @@ def main() -> int:
                 "version_exact": anchored.get("VersionId")
                 == get_result.get("VersionId")
                 == version_id,
-                "bytes_exact": int(anchored.get("ContentLength", -1))
+                "bytes_exact": exact_s3_size(anchored.get("ContentLength"))
+                == exact_s3_size(get_result.get("ContentLength"))
                 == downloaded_bytes
                 == args.output.stat().st_size,
                 "sha256_exact": downloaded_sha == receipt_sha,
