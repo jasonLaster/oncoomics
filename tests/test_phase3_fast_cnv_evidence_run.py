@@ -144,6 +144,30 @@ class Phase3FastCnvEvidenceRunTests(unittest.TestCase):
 
         self.assertEqual([], runner.commands)
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+
+            real_plan = root / "real-cnv-plan.json"
+            real_plan.write_text("{}\n", encoding="utf-8")
+            symlinked_plan = root / "cnv-plan.json"
+            symlinked_plan.symlink_to(real_plan)
+
+            real_parent_plan = real_parent / "cnv-plan.json"
+            real_parent_plan.write_text("{}\n", encoding="utf-8")
+            symlinked_parent = root / "symlinked-parent"
+            symlinked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            cases = (
+                (symlinked_plan, "SHA-256 input"),
+                (symlinked_parent / real_parent_plan.name, "parent may not be a symlink"),
+            )
+            for hash_input, message in cases:
+                with self.subTest(hash_input=hash_input), self.assertRaisesRegex(run_cnv.ManifestError, message):
+                    run_cnv._sha256_path(hash_input)
+
     def test_rejects_missing_planned_command(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_cnv_evidence_plan(Path(tmp))

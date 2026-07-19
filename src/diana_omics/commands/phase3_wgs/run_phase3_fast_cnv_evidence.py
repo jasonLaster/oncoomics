@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import os
@@ -14,7 +13,12 @@ from ...paths import path_from_root
 from ...utils import ensure_parent, round_value, write_csv
 from .cnv_contigs import require_no_standard_autosome_gaps
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import read_real_json, require_no_symlinked_ancestors, require_safe_output_path
+from .safe_json_output import (
+    read_real_json,
+    require_no_symlinked_ancestors,
+    require_safe_output_path,
+    sha256_real_file,
+)
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/cnv_evidence_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/cnv_evidence_receipt.json"
@@ -359,11 +363,7 @@ def _summary_row(
 
 
 def _sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_real_file(path, ManifestError)
 
 
 def _hash_materialized(path: Path, key: str) -> dict[str, Any]:

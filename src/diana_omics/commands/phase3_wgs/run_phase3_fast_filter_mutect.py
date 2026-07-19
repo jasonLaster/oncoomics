@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import hashlib
 import json
 import os
 import subprocess
@@ -13,7 +12,12 @@ from typing import Any, Iterable, Mapping, Protocol, Sequence
 from ...paths import path_from_root
 from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
-from .safe_json_output import read_real_json, require_no_symlinked_ancestors, require_safe_output_path
+from .safe_json_output import (
+    read_real_json,
+    require_no_symlinked_ancestors,
+    require_safe_output_path,
+    sha256_real_file,
+)
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/filter_mutect_plan.json"
 DEFAULT_PARABRICKS_RECEIPT = "manifests/phase3_wgs_fast/parabricks_mutect_receipt.json"
@@ -430,11 +434,7 @@ def _require_argv(value: Any, name: str, plan: Mapping[str, Any]) -> list[str]:
 
 
 def _sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_real_file(path, ManifestError)
 
 
 def _require_safe_output_path(path: Path, key: str) -> None:

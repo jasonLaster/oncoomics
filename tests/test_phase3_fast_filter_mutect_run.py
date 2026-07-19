@@ -293,6 +293,30 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
 
             self.assertEqual([], runner.commands)
 
+    def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+
+            real_plan = root / "real-filter-plan.json"
+            real_plan.write_text("{}\n", encoding="utf-8")
+            symlinked_plan = root / "filter-plan.json"
+            symlinked_plan.symlink_to(real_plan)
+
+            real_parent_plan = real_parent / "filter-plan.json"
+            real_parent_plan.write_text("{}\n", encoding="utf-8")
+            symlinked_parent = root / "symlinked-parent"
+            symlinked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            cases = (
+                (symlinked_plan, "SHA-256 input"),
+                (symlinked_parent / real_parent_plan.name, "parent may not be a symlink"),
+            )
+            for hash_input, message in cases:
+                with self.subTest(hash_input=hash_input), self.assertRaisesRegex(run_filter.ManifestError, message):
+                    run_filter._sha256_path(hash_input)
+
     def test_rejects_mismatched_parabricks_plan_sha(self) -> None:
         with TemporaryDirectory() as tmp:
             plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
