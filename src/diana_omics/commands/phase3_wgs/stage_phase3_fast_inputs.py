@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Mapping, Protocol
 
@@ -18,6 +19,7 @@ from .verify_phase3_fast_staged_inputs import build_phase3_fast_staged_inputs_ma
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staging_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
+STAGED_INPUT_DOWNLOAD_WORKERS = 4
 EXPECTED_STAGED_ARTIFACTS = set(BAM_CACHE_ARTIFACTS) | set(REFERENCE_CACHE_ARTIFACTS) | set(CALLER_RESOURCES)
 
 
@@ -157,37 +159,43 @@ def _require_safe_output_path(path: Path, label: str) -> None:
     require_safe_output_path(path, label, ManifestError)
 
 
+def _materialize_staged_input(row: Mapping[str, Any], client: S3GetObjectClient) -> None:
+    artifact = _require_string(row.get("artifact"), "staged artifact")
+    local_path = _require_absolute_path(row.get("local_path"), f"{artifact} local_path")
+    _require_safe_output_path(local_path, f"{artifact} local_path")
+    ensure_parent(local_path)
+    fd, tmp_name = tempfile.mkstemp(
+        dir=local_path.parent,
+        prefix=f".{local_path.name}.",
+        suffix=".tmp",
+    )
+    os.close(fd)
+    temp_path = Path(tmp_name)
+    temp_path.unlink(missing_ok=True)
+    command = _require_string_list(row.get("get_object_command"), f"{artifact} get_object_command")
+    temp_row = dict(row)
+    temp_row["local_path"] = str(temp_path)
+    temp_row["get_object_command"] = [*command[:-1], str(temp_path)]
+    try:
+        client.get_object(temp_row)
+        _require_safe_output_path(temp_path, f"{artifact} temporary local_path")
+        if not temp_path.is_file():
+            raise ManifestError(f"{artifact} temporary local_path must exist after get-object: {temp_path}")
+        temp_path.replace(local_path)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
+
+
 def materialize_phase3_fast_staged_inputs(
     staging_plan: Mapping[str, Any],
     client: S3GetObjectClient,
 ) -> None:
     rows = _preflight_staging_plan(staging_plan)
-    for row in rows:
-        artifact = _require_string(row.get("artifact"), "staged artifact")
-        local_path = _require_absolute_path(row.get("local_path"), f"{artifact} local_path")
-        _require_safe_output_path(local_path, f"{artifact} local_path")
-        ensure_parent(local_path)
-        fd, tmp_name = tempfile.mkstemp(
-            dir=local_path.parent,
-            prefix=f".{local_path.name}.",
-            suffix=".tmp",
-        )
-        os.close(fd)
-        temp_path = Path(tmp_name)
-        temp_path.unlink(missing_ok=True)
-        command = _require_string_list(row.get("get_object_command"), f"{artifact} get_object_command")
-        temp_row = dict(row)
-        temp_row["local_path"] = str(temp_path)
-        temp_row["get_object_command"] = [*command[:-1], str(temp_path)]
-        try:
-            client.get_object(temp_row)
-            _require_safe_output_path(temp_path, f"{artifact} temporary local_path")
-            if not temp_path.is_file():
-                raise ManifestError(f"{artifact} temporary local_path must exist after get-object: {temp_path}")
-            temp_path.replace(local_path)
-        except Exception:
-            temp_path.unlink(missing_ok=True)
-            raise
+    with ThreadPoolExecutor(max_workers=STAGED_INPUT_DOWNLOAD_WORKERS) as executor:
+        futures = [executor.submit(_materialize_staged_input, row, client) for row in rows]
+        for future in futures:
+            future.result()
 
 
 def stage_phase3_fast_inputs(

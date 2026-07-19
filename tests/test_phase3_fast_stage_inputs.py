@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import threading
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -45,10 +46,36 @@ class FakeS3GetObjectClient:
     def __init__(self, payloads: Mapping[str, bytes]) -> None:
         self.payloads = payloads
         self.commands: list[list[str]] = []
+        self.lock = threading.Lock()
 
     def get_object(self, row: Mapping[str, Any]) -> None:
-        self.commands.append(list(row["get_object_command"]))
+        with self.lock:
+            self.commands.append(list(row["get_object_command"]))
         Path(row["local_path"]).write_bytes(self.payloads[str(row["artifact"])])
+
+
+class BlockingS3GetObjectClient(FakeS3GetObjectClient):
+    def __init__(self, payloads: Mapping[str, bytes], *, unblock_after: int) -> None:
+        super().__init__(payloads)
+        self.unblock_after = unblock_after
+        self.condition = threading.Condition()
+        self.started: list[str] = []
+        self.in_flight = 0
+        self.max_in_flight = 0
+
+    def get_object(self, row: Mapping[str, Any]) -> None:
+        with self.condition:
+            self.started.append(str(row["artifact"]))
+            self.in_flight += 1
+            self.max_in_flight = max(self.max_in_flight, self.in_flight)
+            self.condition.notify_all()
+            if not self.condition.wait_for(lambda: len(self.started) >= self.unblock_after, timeout=2):
+                raise AssertionError(f"expected {self.unblock_after} concurrent get-object downloads to start")
+        try:
+            super().get_object(row)
+        finally:
+            with self.condition:
+                self.in_flight -= 1
 
 
 class FailingS3GetObjectClient:
@@ -74,7 +101,7 @@ class Phase3FastStageInputsTests(unittest.TestCase):
                 staging_plan_sha256=SHA_1,
             )
 
-            self.assertEqual(
+            self.assertCountEqual(
                 [row["get_object_command"][:-1] for row in plan["staged_objects"]],
                 [command[:-1] for command in client.commands],
             )
@@ -85,6 +112,24 @@ class Phase3FastStageInputsTests(unittest.TestCase):
             self.assertEqual(15, manifest["object_count"])
             self.assertEqual("subject01_tumor", manifest["bam_pair"]["tumor"]["bam"]["sample_id"])
             self.assertTrue(Path(manifest["bam_pair"]["tumor"]["bam"]["local_path"]).is_file())
+
+    def test_stage_inputs_runs_get_object_downloads_as_bounded_parallel_wave(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, payloads = downloadable_staging_plan(Path(tmp))
+            client = BlockingS3GetObjectClient(
+                payloads,
+                unblock_after=stage.STAGED_INPUT_DOWNLOAD_WORKERS,
+            )
+
+            manifest = stage.stage_phase3_fast_inputs(
+                plan,
+                client=client,
+                staging_plan_sha256=SHA_1,
+            )
+
+            self.assertEqual(stage.STAGED_INPUT_DOWNLOAD_WORKERS, client.max_in_flight)
+            self.assertGreaterEqual(len(client.commands), stage.STAGED_INPUT_DOWNLOAD_WORKERS)
+            self.assertEqual("ready", manifest["status"])
 
     def test_rejects_drifted_get_object_command_before_download(self) -> None:
         with TemporaryDirectory() as tmp:
