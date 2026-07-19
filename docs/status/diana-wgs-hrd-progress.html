@@ -343,8 +343,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest source = 4a8484f</li>
-          <li class="pill">Prior dashboard = c32b33a</li>
+          <li class="pill">Latest milestone = 98047dc</li>
+          <li class="pill">Prior dashboard = 08c2e92</li>
+          <li class="pill">In flight = dry post-deterministic chain</li>
           <li class="pill">Reviewer identities = explicit</li>
           <li class="pill">Catalog timestamps = in synthesis</li>
           <li class="pill">Model isolation = manifest-checked</li>
@@ -388,13 +389,13 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
-              <span>35% · workflow rehearsed</span>
-              <div class="bar" aria-hidden="true" style="--pct: 35%"><span></span></div>
+              <span>50% · self-check closed</span>
+              <div class="bar" aria-hidden="true" style="--pct: 50%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
-              <span>55% · handoff guarded</span>
-              <div class="bar" aria-hidden="true" style="--pct: 55%"><span></span></div>
+              <span>60% · source-only chain prep</span>
+              <div class="bar" aria-hidden="true" style="--pct: 60%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Public / private boundary posture</strong>
@@ -484,6 +485,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--queued)">
+              <strong>In progress · prepare the no-expensive-compute handoff chain</strong>
+              <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · enforce the pre-route / terminal packet split</strong>
               <span>Fast-DAG validation now requires <code>pre_route_deterministic_rosalind</code> on blocked packets, terminal source-freeze independently requires <code>terminal_source_reports</code>, and the terminal runbook no longer sends terminal packets through the pre-route gate.</span>
@@ -504,6 +509,10 @@
 
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind synthesis summaries to the agreement CSV</strong>
+              <span>Final packet validation now re-derives agreement-status counts and structured disagreements from the exact agreement CSV, rejecting either summary when it becomes stale.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · prove distinct reviewer model summaries</strong>
               <span>The comparative synthesis manifest checker now rejects duplicated reviewer provider/model pairs and split catalog timestamps before the synthesis packet can be installed.</span>
@@ -562,6 +571,38 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T22:57:55-07:00">Jul 18 · 10:57 PM</time>
+              <span>
+                <strong>98047dc Bind HRD synthesis summaries to agreement CSV:</strong>
+                final comparative-synthesis validation now re-derives
+                agreement-status counts and structured disagreements from the
+                exact agreement CSV, rejecting stale summaries before packet
+                installation. Validation passed: 42 focused tests + 20
+                subtests, then 289 broad handoff tests + 187 subtests. No
+                compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T22:56:17-07:00">Jul 18 · 10:56 PM</time>
+              <span>
+                <strong>Working plan · Close the AI-synthesis self-check gap:</strong>
+                the next source-only work is to harden the final synthesis
+                self-check and dry-review the deterministic-to-Rosalind-to-AI
+                publication chain. Terminal artifacts remain absent; no route,
+                replacement CPU, GPU, or other expensive compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T22:54:43-07:00">Jul 18 · 10:54 PM</time>
+              <span>
+                <strong>08c2e92 Refresh HRD dashboard for distinct AI models:</strong>
+                published the distinct-model and attestation safeguards while
+                preserving the stopped legacy CPU run, absent terminal
+                artifacts, and Diana <code>partial_evidence</code> /
+                <code>no_call</code> boundary. No compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T22:54:31-07:00">Jul 18 · 10:54 PM</time>
               <span>
