@@ -217,6 +217,59 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                     json.dumps(["Run-Private-Token"]),
                 )
 
+    def test_rejects_pre_route_blocked_packet_source_digest_drift(self) -> None:
+        def drift_method_spec(method_spec: dict, manifest: dict) -> None:
+            method_spec["source_report_manifests"]["deterministic_full_wgs"] = "d" * 64
+
+        def drift_manifest_source(method_spec: dict, manifest: dict) -> None:
+            manifest["source_sha256"]["deterministic_full_wgs_report_manifest"] = (
+                "d" * 64
+            )
+
+        def drift_review_summary(method_spec: dict, manifest: dict) -> None:
+            manifest["review_summary"]["source_report_manifests"][
+                "deterministic_full_wgs"
+            ] = "d" * 64
+
+        cases = (
+            ("method_spec", drift_method_spec),
+            ("manifest_source", drift_manifest_source),
+            ("review_summary", drift_review_summary),
+        )
+
+        for label, mutate in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                packet_dirs = self.write_phase3_fast_packets(root)
+                blocked = packet_dirs["facets_scarhrd_blocked"]
+
+                method_spec_path = blocked / "method_spec.json"
+                method_spec = json.loads(method_spec_path.read_text(encoding="utf-8"))
+                manifest_path = blocked / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+                mutate(method_spec, manifest)
+                method_spec_path.write_text(
+                    json.dumps(method_spec, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                manifest["support_sha256"]["method_spec.json"] = sha256(
+                    method_spec_path,
+                )
+                manifest_path.write_text(
+                    json.dumps(manifest, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "must use pre_route_deterministic_rosalind",
+                ):
+                    VALIDATOR.validate_packets(
+                        packet_dirs,
+                        json.dumps(["Run-Private-Token"]),
+                    )
+
     def test_rejects_run_supplied_forbidden_token_leak(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

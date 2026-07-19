@@ -234,7 +234,7 @@ def validate_pre_route_blocked_packet(packet_dir: Path, method_id: str) -> None:
         if isinstance(review_summary, dict)
         else None
     )
-    source_report_sha256 = (
+    source_report_manifests_from_sha256 = (
         {
             key.removesuffix("_report_manifest"): value
             for key, value in source_sha256.items()
@@ -255,7 +255,10 @@ def validate_pre_route_blocked_packet(packet_dir: Path, method_id: str) -> None:
         or tuple(method_spec_manifests) != PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
         or not isinstance(review_summary_manifests, dict)
         or tuple(review_summary_manifests) != PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
-        or tuple(source_report_sha256) != PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+        or tuple(source_report_manifests_from_sha256)
+        != PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+        or source_report_manifests_from_sha256 != method_spec_manifests
+        or source_report_manifests_from_sha256 != review_summary_manifests
     ):
         raise ValueError(
             f"{method_id} blocked packet must use "
