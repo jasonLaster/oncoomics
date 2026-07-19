@@ -2189,13 +2189,33 @@ def main() -> None:
         "The report consumed the exact terminal Batch materializer capture, its CloudWatch receipt anchor, its downloaded receipt bytes, and the exact staged-input-validation download receipt.",
     )
 
-    audit_objects = audit.get("objects", []) if isinstance(audit.get("objects"), list) else []
-    audit_bytes = sum(int(row.get("actual_size_bytes", 0)) for row in audit_objects if isinstance(row, dict))
-    audit_passed = sum(row.get("status") == "passed" for row in audit_objects if isinstance(row, dict))
-    audit_matches = all(row.get("size_matches") is True and row.get("sha256_matches") is True for row in audit_objects if isinstance(row, dict))
-    wgs_objects = [row for row in audit_objects if isinstance(row, dict) and row.get("dataset") == "wgs"]
+    audit_objects = (
+        audit.get("objects", []) if isinstance(audit.get("objects"), list) else []
+    )
+    audit_rows = [row for row in audit_objects if isinstance(row, dict)]
+    audit_rows_exact = len(audit_rows) == len(audit_objects)
+    audit_bytes = sum(int(row.get("actual_size_bytes", 0)) for row in audit_rows)
+    audit_passed = sum(row.get("status") == "passed" for row in audit_rows)
+    audit_matches = audit_rows_exact and all(
+        row.get("size_matches") is True and row.get("sha256_matches") is True
+        for row in audit_rows
+    )
+    wgs_objects = [row for row in audit_rows if row.get("dataset") == "wgs"]
     wgs_bytes = sum(int(row.get("actual_size_bytes", 0)) for row in wgs_objects)
-    add_check(checks, "intake_sha256", audit.get("status") == "passed" and audit.get("algorithm") == "sha256" and len(audit_objects) == int(audit.get("object_count", -1)) and audit_passed == int(audit.get("passed_count", -1)) and int(audit.get("failed_count", -1)) == 0 and audit_bytes == int(audit.get("bytes_streamed", -1)) and audit_matches, "Audit totals and all per-object size/SHA-256 comparisons pass.")
+    add_check(
+        checks,
+        "intake_sha256",
+        audit.get("status") == "passed"
+        and audit.get("algorithm") == "sha256"
+        and audit_rows_exact
+        and len(audit_rows) == int(audit.get("object_count", -1))
+        and audit_passed == len(audit_rows)
+        and audit_passed == int(audit.get("passed_count", -1))
+        and int(audit.get("failed_count", -1)) == 0
+        and audit_bytes == int(audit.get("bytes_streamed", -1))
+        and audit_matches,
+        "Audit totals and all per-object size/SHA-256 comparisons pass.",
+    )
     add_check(checks, "wgs_provenance", len(wgs_objects) == 16 and all(row.get("data_type") == "FASTQ" and row.get("status") == "passed" for row in wgs_objects) and wgs_bytes == int(preflight.get("wgs_bytes", -1)), "Sixteen WGS FASTQs passed SHA-256 and their bytes match preflight.")
 
     alignment_json_rows = alignment.get("rows", []) if isinstance(alignment.get("rows"), list) else []

@@ -1917,6 +1917,21 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertIn("batch_execution_provenance", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
 
+    def test_malformed_sha_audit_row_fails_before_report_publication(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            audit_path = fixture.aux / "sha-audit.json"
+            audit = json.loads(audit_path.read_text(encoding="utf-8"))
+            audit["objects"].append("not-a-row")
+            audit["object_count"] += 1
+            write_json(audit_path, audit)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("intake_sha256", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
     def test_missing_frozen_version_fails_before_report_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
             fixture = SyntheticFixture(Path(temporary))
