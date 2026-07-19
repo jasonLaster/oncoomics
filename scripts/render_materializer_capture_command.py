@@ -185,6 +185,10 @@ def require_object(value: Any, label: str) -> dict[str, Any]:
     return value
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
 def validate_parameters(value: Any) -> dict[str, str]:
     parameters = require_object(value, "submit_job_request.parameters")
     if set(parameters) != set(PARAMETER_NAMES):
@@ -212,7 +216,7 @@ def validate_receipts(
 ) -> tuple[str, dict[str, str]]:
     if (
         set(request) != REQUEST_DRY_RUN_RECEIPT_KEYS
-        or request.get("schema_version") != 1
+        or not exact_schema_version(request, 1)
         or request.get("run_id") != RUN_ID
         or request.get("classification_authorization") != "none"
         or request.get("authorized_hrd_state") != "no_call"
@@ -220,7 +224,7 @@ def validate_receipts(
         raise ValueError("request receipt envelope is not exact")
     if (
         set(response) != RESPONSE_RECEIPT_KEYS
-        or response.get("schema_version") != 1
+        or not exact_schema_version(response, 1)
         or response.get("run_id") != RUN_ID
         or response.get("classification_authorization") != "none"
         or response.get("authorized_hrd_state") != "no_call"
