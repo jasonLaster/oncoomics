@@ -495,6 +495,30 @@ class SynthesisFixture:
         write_json(manifest_path, manifest)
 
 
+def run_synthesis_main(fixture: SynthesisFixture) -> None:
+    argv = [str(GENERATOR)]
+    for source_manifest in fixture.source_manifests:
+        argv.extend(["--source-manifest", str(source_manifest)])
+    for method_id in fixture.methods:
+        argv.extend(["--require-method", method_id])
+    argv.extend(
+        [
+            "--review-bundle",
+            str(fixture.bundle_dir / "review_bundle.json"),
+            "--bundle-manifest",
+            str(fixture.bundle_dir / "bundle_manifest.json"),
+            "--reviewer-a-dir",
+            str(fixture.review_a),
+            "--reviewer-b-dir",
+            str(fixture.review_b),
+            "--output-dir",
+            str(fixture.output_dir),
+        ]
+    )
+    with mock.patch.object(sys, "argv", argv):
+        GENERATE.main()
+
+
 class GenerateSynthesisTests(unittest.TestCase):
     def test_rejects_non_lowercase_ai_bundle_manifest_hashes(self) -> None:
         cases = (
@@ -1349,6 +1373,89 @@ class GenerateSynthesisTests(unittest.TestCase):
                 [f"E{index:03d}" for index in range(1, 8)],
             )
             self.assertIn("source_not_comparable", rows[4]["structured_disagreement_types"])
+
+    def test_synthesis_source_hashes_stay_bound_to_verified_bundle_manifest(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+            verified_hash = sha256(bundle_manifest_path)
+            real_verify_sources = GENERATE.verify_sources
+
+            def tamper_after_bundle_verification(*args, **kwargs):
+                rows, hashes = real_verify_sources(*args, **kwargs)
+                manifest = json.loads(
+                    bundle_manifest_path.read_text(encoding="utf-8")
+                )
+                manifest["generated_at"] = "2026-07-18T00:00:00+00:00"
+                write_json(bundle_manifest_path, manifest)
+                return rows, hashes
+
+            with mock.patch.object(
+                GENERATE,
+                "verify_sources",
+                side_effect=tamper_after_bundle_verification,
+            ):
+                run_synthesis_main(fixture)
+
+            manifest = json.loads(
+                (fixture.output_dir / "report_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                manifest["source_sha256"]["bundle_manifest.json"],
+                verified_hash,
+            )
+            self.assertNotEqual(
+                manifest["source_sha256"]["bundle_manifest.json"],
+                sha256(bundle_manifest_path),
+            )
+
+    def test_synthesis_source_hashes_stay_bound_to_verified_source_manifests(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            source_manifest_path = fixture.source_manifests[0]
+            verified_hash = sha256(source_manifest_path)
+            real_verify_review = GENERATE.verify_review
+            tampered = False
+
+            def tamper_after_source_verification(*args, **kwargs):
+                nonlocal tampered
+                if not tampered:
+                    manifest = json.loads(
+                        source_manifest_path.read_text(encoding="utf-8")
+                    )
+                    manifest["review_summary"]["limitations"].append(
+                        "Late unverified source mutation."
+                    )
+                    write_json(source_manifest_path, manifest)
+                    tampered = True
+                return real_verify_review(*args, **kwargs)
+
+            with mock.patch.object(
+                GENERATE,
+                "verify_review",
+                side_effect=tamper_after_source_verification,
+            ):
+                run_synthesis_main(fixture)
+
+            manifest = json.loads(
+                (fixture.output_dir / "report_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                manifest["source_sha256"]["E001_report_manifest.json"],
+                verified_hash,
+            )
+            self.assertNotEqual(
+                manifest["source_sha256"]["E001_report_manifest.json"],
+                sha256(source_manifest_path),
+            )
 
     def test_synthesis_manifest_rejects_inexact_support_inventory(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:

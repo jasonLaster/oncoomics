@@ -487,7 +487,8 @@ def verify_bundle(
         raise ValueError("source-manifest hash inventory is missing or altered")
     for evidence_id in expected_ids:
         checked_hash(input_hashes[evidence_id], evidence_id + " source manifest")
-    return bundle, manifest, bundle_hash, inventory_id
+    bundle_manifest_hash = sha256(bundle_manifest_path)
+    return bundle, manifest, bundle_hash, bundle_manifest_hash, inventory_id
 
 
 def verify_sources(
@@ -495,10 +496,11 @@ def verify_sources(
     required_methods: Sequence[str],
     bundle: Dict[str, Any],
     bundle_manifest: Dict[str, Any],
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     if len(source_paths) != len(required_methods):
         raise ValueError("source manifests and required methods must have equal non-zero length")
     rows = []
+    source_manifest_hashes: Dict[str, str] = {}
     evidence_rows = bundle["evidence_sources"]
     input_hashes = bundle_manifest["input_manifest_sha256"]
     for index, (source_path, required_method) in enumerate(zip(source_paths, required_methods), 1):
@@ -509,8 +511,12 @@ def verify_sources(
         method = str(source.get("method_id") or source.get("route") or "")
         if method != required_method or not METHOD_ID.fullmatch(method):
             raise ValueError("source method does not match ordered required inventory at " + evidence_id)
-        if sha256(source_path) != checked_hash(input_hashes[evidence_id], evidence_id + " source manifest"):
+        source_manifest_hash = sha256(source_path)
+        if source_manifest_hash != checked_hash(input_hashes[evidence_id], evidence_id + " source manifest"):
             raise ValueError("source manifest changed after AI bundle construction at " + evidence_id)
+        source_manifest_hashes[
+            "E{0:03d}_report_manifest.json".format(index)
+        ] = source_manifest_hash
         report_hash = checked_hash(source.get("report_sha256"), method + " report")
         report_path = require_real_nonempty_file(
             source_path.parent / "report.md",
@@ -560,7 +566,7 @@ def verify_sources(
     derived = derive_authorized_state(rows)
     if bundle.get("authorized_hrd_state") != derived or bundle_manifest.get("authorized_hrd_state") != derived:
         raise ValueError("AI bundle authorization exceeds the deterministic authorized ceiling")
-    return rows
+    return rows, source_manifest_hashes
 
 
 def require_exact_review_invocation(invocation: Any, reviewer: str) -> Dict[str, str]:
@@ -1527,10 +1533,16 @@ def main() -> None:
     ):
         raise SystemExit("Fail-closed: required method inventory is empty, malformed, or duplicated")
     try:
-        bundle, bundle_manifest, bundle_hash, inventory_id = verify_bundle(
+        (
+            bundle,
+            bundle_manifest,
+            bundle_hash,
+            bundle_manifest_hash,
+            inventory_id,
+        ) = verify_bundle(
             args.review_bundle, args.bundle_manifest, required_methods
         )
-        evidence_rows = verify_sources(
+        evidence_rows, source_manifest_hashes = verify_sources(
             args.source_manifest,
             required_methods,
             bundle,
@@ -1583,11 +1595,10 @@ def main() -> None:
         source_hashes = {
             "generator": sha256(Path(__file__).resolve()),
             "review_bundle.json": bundle_hash,
-            "bundle_manifest.json": sha256(args.bundle_manifest.resolve()),
+            "bundle_manifest.json": bundle_manifest_hash,
             "agreement_disagreement.csv": sha256(agreement_path),
+            **source_manifest_hashes,
         }
-        for index, source_path in enumerate(args.source_manifest, 1):
-            source_hashes["E{0:03d}_report_manifest.json".format(index)] = sha256(source_path.resolve())
         for review in (review_a, review_b):
             reviewer = review["reviewer_id"]
             for filename, digest in review["hashes"].items():
