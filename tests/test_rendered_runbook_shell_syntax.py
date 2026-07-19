@@ -12,6 +12,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import render_ai_synthesis_runbook as AI_SYNTHESIS  # noqa: E402
+import publish_reviewed_public_report as PUBLISH  # noqa: E402
 import render_post_success_runbook as POST_SUCCESS  # noqa: E402
 import render_reviewed_publication_runbook as REVIEWED_PUBLICATION  # noqa: E402
 import render_source_report_freeze_runbook as SOURCE_REPORT_FREEZE  # noqa: E402
@@ -25,7 +26,11 @@ def ai_receipt_summaries() -> tuple[dict[str, str | int], ...]:
         {
             "method_id": method_id,
             "receipt": f"{method_id}.private.json",
-            "destination_prefix": f"s3://private/{method_id}/",
+            "destination_prefix": (
+                f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{AI_SYNTHESIS.SUBJECT_ALIAS}/"
+                f"{AI_SYNTHESIS.RUN_ID}/reports/{method_id}/"
+                f"revisions/{index:064x}/"
+            ),
             "report_manifest_version_id": f"version-{index}",
             "report_manifest_sha256": f"{index:064x}",
             "object_count": 5,
@@ -48,7 +53,7 @@ def reviewed_publication_receipt_summaries(
             "object_count": 3,
         }
         for index, (method_id, receipt_path) in enumerate(
-            zip(REVIEWED_PUBLICATION.REPORT_METHOD_IDS, receipt_paths, strict=True),
+            zip(REVIEWED_PUBLICATION.REPORT_METHOD_IDS, receipt_paths),
             1,
         )
     )

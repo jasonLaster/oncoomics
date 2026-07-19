@@ -112,7 +112,11 @@ def receipt_summaries() -> tuple[dict[str, str | int], ...]:
         {
             "method_id": method_id,
             "receipt": f"{method_id}.private.json",
-            "destination_prefix": f"s3://private/{method_id}/",
+            "destination_prefix": (
+                f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{MODULE.SUBJECT_ALIAS}/"
+                f"{MODULE.RUN_ID}/reports/{method_id}/"
+                f"revisions/{index:064x}/"
+            ),
             "report_manifest_version_id": f"version-{index}",
             "report_manifest_sha256": f"{index:064x}",
             "object_count": 5,
@@ -658,15 +662,11 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
 
     def test_receipt_summaries_pin_prepare_source_manifest_sha256(self) -> None:
         summaries = tuple(
-            {
-                "method_id": method_id,
-                "receipt": f"{method_id}.private.json",
-                "destination_prefix": f"s3://private/{method_id}/",
-                "report_manifest_version_id": f"version-{index}",
-                "report_manifest_sha256": f"{index + 1:064x}",
-                "object_count": 5,
-            }
-            for index, method_id in enumerate(MODULE.REQUIRED_METHOD_IDS)
+            dict(
+                summary,
+                report_manifest_sha256=f"{index + 1:064x}",
+            )
+            for index, summary in enumerate(receipt_summaries())
         )
 
         text = MODULE.render(
@@ -686,6 +686,33 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
     def test_render_refuses_missing_receipt_summaries(self) -> None:
         with self.assertRaisesRegex(ValueError, "requires seven"):
             MODULE.render(Path("/repo"), "unit")
+
+    def test_render_refuses_malformed_receipt_summaries(self) -> None:
+        for field, value, message in (
+            ("destination_prefix", "s3://wrong/", "destination is malformed"),
+            (
+                "report_manifest_version_id",
+                "null",
+                "VersionId is malformed",
+            ),
+            (
+                "report_manifest_sha256",
+                "not-a-sha",
+                "SHA-256 is malformed",
+            ),
+            ("object_count", 0, "object count is malformed"),
+            ("object_count", True, "object count is malformed"),
+        ):
+            with self.subTest(field=field, value=value):
+                summaries = [dict(summary) for summary in receipt_summaries()]
+                summaries[0][field] = value
+
+                with self.assertRaisesRegex(ValueError, message):
+                    MODULE.render(
+                        Path("/repo"),
+                        "unit",
+                        receipt_summaries=tuple(summaries),
+                    )
 
     def test_renderer_has_no_template_placeholders(self) -> None:
         text = render(receipt_stem="unit")

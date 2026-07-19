@@ -14,6 +14,8 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+import publish_reviewed_public_report as PUBLISH  # noqa: E402
+
 REPO_ROOT = SCRIPT_DIR.parent
 RUNBOOK_ROOT = Path("/repo")
 LOCAL_MODULES = {
@@ -82,7 +84,11 @@ def ai_receipt_summaries(
         {
             "method_id": method_id,
             "receipt": f"{method_id}.private.json",
-            "destination_prefix": f"s3://private/{method_id}/",
+            "destination_prefix": (
+                f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{ai_synthesis.SUBJECT_ALIAS}/"
+                f"{ai_synthesis.RUN_ID}/reports/{method_id}/"
+                f"revisions/{index:064x}/"
+            ),
             "report_manifest_version_id": f"version-{index}",
             "report_manifest_sha256": f"{index:064x}",
             "object_count": 5,
@@ -104,7 +110,7 @@ def reviewed_publication_receipt_summaries(
             "object_count": 3,
         }
         for index, (method_id, receipt_path) in enumerate(
-            zip(reviewed_publication.REPORT_METHOD_IDS, receipt_paths, strict=True),
+            zip(reviewed_publication.REPORT_METHOD_IDS, receipt_paths),
             1,
         )
     )

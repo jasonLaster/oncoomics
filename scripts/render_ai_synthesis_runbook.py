@@ -24,6 +24,8 @@ from hrd_report_inventory import (
 )
 from prepare_ai_review_run import METHOD_ARGUMENTS
 from publish_reviewed_public_report import (
+    non_null_version_id,
+    private_report_prefix,
     REGION,
     RUN_ID,
     SUBJECT_ALIAS,
@@ -175,6 +177,26 @@ def require_receipt_summaries(
             f"AI synthesis rendering requires seven receipt-bound source manifests in canonical order; observed={method_ids!r}"
         )
     for summary in summaries:
+        method_id = str(summary["method_id"])
+        try:
+            private_report_prefix(
+                method_id,
+                str(summary.get("destination_prefix", "")),
+            )
+        except ValueError as error:
+            raise ValueError(
+                f"{method_id} private receipt destination is malformed"
+            ) from error
+        version_id = str(summary.get("report_manifest_version_id", ""))
+        if not non_null_version_id(version_id):
+            raise ValueError(
+                f"{method_id} report_manifest.json VersionId is malformed"
+            )
+        object_count = summary.get("object_count")
+        if type(object_count) is not int or object_count <= 0:
+            raise ValueError(
+                f"{method_id} private receipt object count is malformed"
+            )
         digest = str(summary.get("report_manifest_sha256", ""))
         if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
             raise ValueError(f"{summary['method_id']} report_manifest.json SHA-256 is malformed")

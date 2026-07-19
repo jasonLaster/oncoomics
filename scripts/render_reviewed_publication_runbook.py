@@ -238,7 +238,7 @@ def require_receipt_paths(
     if len(paths) != len(REPORT_METHOD_IDS):
         raise ValueError("reviewed-public rendering requires ten private receipts")
 
-    for summary, path in zip(receipt_summaries, paths, strict=True):
+    for summary, path in zip(receipt_summaries, paths):
         if str(summary.get("receipt", "")) != str(path):
             raise ValueError(
                 f"{summary['method_id']} private receipt path is not bound to "
