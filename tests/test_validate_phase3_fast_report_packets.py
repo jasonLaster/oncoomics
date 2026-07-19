@@ -34,7 +34,11 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def write_packet(directory: Path, method_id: str) -> None:
+def write_packet(
+    directory: Path,
+    method_id: str,
+    source_report_manifests: dict[str, str] | None = None,
+) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     for name in PUBLISH.METHOD_CONTRACTS[method_id]["files"]:
         if name == "report_manifest.json":
@@ -52,11 +56,9 @@ def write_packet(directory: Path, method_id: str) -> None:
                 encoding="utf-8",
             )
 
-    source_report_manifests = {
-        "deterministic_full_wgs": "b" * 64,
-        "rosalind_diana_wgs": "c" * 64,
-    }
     if method_id.endswith("_blocked"):
+        if source_report_manifests is None:
+            raise AssertionError("blocked test packets need source report manifests")
         method_spec_path = directory / "method_spec.json"
         method_spec = json.loads(method_spec_path.read_text(encoding="utf-8"))
         method_spec.update(
@@ -219,8 +221,18 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
             "oncoanalyser_chord_blocked": root / "oncoanalyser_chord_blocked",
             "hrdetect_blocked": root / "hrdetect_blocked",
         }
+        pre_route_methods = set(VALIDATOR.PRE_ROUTE_SOURCE_REPORT_METHOD_IDS)
         for method_id, directory in packet_dirs.items():
-            write_packet(directory, method_id)
+            if method_id in pre_route_methods:
+                write_packet(directory, method_id)
+
+        source_report_manifests = {
+            method_id: sha256(packet_dirs[method_id] / "report_manifest.json")
+            for method_id in VALIDATOR.PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+        }
+        for method_id, directory in packet_dirs.items():
+            if method_id not in pre_route_methods:
+                write_packet(directory, method_id, source_report_manifests)
         return packet_dirs
 
     def test_validates_all_five_phase3_fast_report_packets(self) -> None:
@@ -368,6 +380,50 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
             manifest_path = blocked / "report_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["source_sha256"]["legacy_unit_source"] = "0" * 64
+            manifest_path.write_text(
+                json.dumps(manifest, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "must use pre_route_deterministic_rosalind",
+            ):
+                VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
+
+    def test_rejects_pre_route_blocked_packet_stale_source_pair(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            blocked = packet_dirs["oncoanalyser_chord_blocked"]
+            stale_manifests = {
+                "deterministic_full_wgs": "d" * 64,
+                "rosalind_diana_wgs": "e" * 64,
+            }
+
+            method_spec_path = blocked / "method_spec.json"
+            method_spec = json.loads(method_spec_path.read_text(encoding="utf-8"))
+            method_spec["source_report_manifests"] = stale_manifests
+            method_spec_path.write_text(
+                json.dumps(method_spec, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            manifest_path = blocked / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["review_summary"]["source_report_manifests"] = stale_manifests
+            manifest["source_sha256"].update(
+                {
+                    f"{method_id}_report_manifest": digest
+                    for method_id, digest in stale_manifests.items()
+                }
+            )
+            manifest["support_sha256"]["method_spec.json"] = sha256(
+                method_spec_path,
+            )
             manifest_path.write_text(
                 json.dumps(manifest, sort_keys=True) + "\n",
                 encoding="utf-8",

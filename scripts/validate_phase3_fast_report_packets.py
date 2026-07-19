@@ -259,7 +259,25 @@ def load_packet_json(packet_dir: Path, name: str, label: str) -> dict[str, Any]:
     return payload
 
 
-def validate_pre_route_blocked_packet(packet_dir: Path, method_id: str) -> None:
+def pre_route_source_report_manifests(
+    packet_dirs: Mapping[str, Path],
+) -> dict[str, str]:
+    manifests: dict[str, str] = {}
+    for method_id in PRE_ROUTE_SOURCE_REPORT_METHOD_IDS:
+        manifest_path = packet_dirs[method_id] / "report_manifest.json"
+        require_real_input_file(
+            manifest_path,
+            f"{method_id} source report manifest",
+        )
+        manifests[method_id] = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    return manifests
+
+
+def validate_pre_route_blocked_packet(
+    packet_dir: Path,
+    method_id: str,
+    expected_source_report_manifests: Mapping[str, str],
+) -> None:
     manifest = load_packet_json(
         packet_dir,
         "report_manifest.json",
@@ -287,21 +305,17 @@ def validate_pre_route_blocked_packet(packet_dir: Path, method_id: str) -> None:
         if isinstance(source_sha256, dict)
         else {}
     )
-    expected_source_sha256 = (
-        {
-            "generator": hashlib.sha256(
-                Path(__file__).with_name(
-                    "generate_blocked_hrd_crosscheck_reports.py"
-                ).read_bytes()
-            ).hexdigest(),
-            **{
-                f"{source_method_id}_report_manifest": digest
-                for source_method_id, digest in method_spec_manifests.items()
-            },
-        }
-        if isinstance(method_spec_manifests, dict)
-        else {}
-    )
+    expected_source_sha256 = {
+        "generator": hashlib.sha256(
+            Path(__file__).with_name(
+                "generate_blocked_hrd_crosscheck_reports.py"
+            ).read_bytes()
+        ).hexdigest(),
+        **{
+            f"{source_method_id}_report_manifest": digest
+            for source_method_id, digest in expected_source_report_manifests.items()
+        },
+    }
     if (
         method_spec.get("source_report_binding_scope")
         != PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE
@@ -317,6 +331,7 @@ def validate_pre_route_blocked_packet(packet_dir: Path, method_id: str) -> None:
         or tuple(source_report_manifests_from_sha256)
         != PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
         or not isinstance(source_sha256, dict)
+        or dict(expected_source_report_manifests) != method_spec_manifests
         or source_sha256 != expected_source_sha256
         or source_report_manifests_from_sha256 != method_spec_manifests
         or source_report_manifests_from_sha256 != review_summary_manifests
@@ -337,13 +352,22 @@ def validate_packets(
 
     run_tokens = tuple(normalize_forbidden_tokens_json(forbidden_tokens_json))
     forbidden_tokens = canonical_forbidden_tokens(forbidden_tokens_json)
+    expected_pre_route_source_report_manifests: dict[str, str] | None = None
 
     packets = []
     for _, method_id in PACKET_ARG_TO_METHOD:
         rows = validate_packet_dir(packet_dirs[method_id], method_id, forbidden_tokens)
         serialized_rows = serializable_rows(rows)
         if method_id in BLOCKED_CROSSCHECK_METHOD_IDS:
-            validate_pre_route_blocked_packet(packet_dirs[method_id], method_id)
+            if expected_pre_route_source_report_manifests is None:
+                expected_pre_route_source_report_manifests = (
+                    pre_route_source_report_manifests(packet_dirs)
+                )
+            validate_pre_route_blocked_packet(
+                packet_dirs[method_id],
+                method_id,
+                expected_pre_route_source_report_manifests,
+            )
         packets.append(
             {
                 "method_id": method_id,
