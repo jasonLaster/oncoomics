@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real input-contract hash inputs</li>
+          <li class="pill">Latest milestone = local real staged cross-check hash inputs</li>
+          <li class="pill">Staged cross-check hash inputs = real</li>
           <li class="pill">Input-contract hash inputs = real</li>
           <li class="pill">Materialized-final hash inputs = real</li>
           <li class="pill">Freeze hash inputs = real</li>
@@ -1228,6 +1229,10 @@
               <span>Executable cross-check staging now rejects duplicate JSON object names while loading download verification, source report manifests, and staged self-check JSON before installing executable report packets.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real staged cross-check hash inputs</strong>
+              <span>Executable cross-check staging now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before staged report packets can bind source reports or verification receipts for AI/freeform review.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · reject Rosalind tool-version pipes</strong>
               <span>Diana WGS Rosalind packet building now rejects pipe-bearing terminal-worker tool-version strings before copying the four exact tool versions into JSON provenance, keeping reviewer-table escaping from hiding a Markdown/JSON disagreement.</span>
             </li>
@@ -2045,6 +2050,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:06-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real staged cross-check hash inputs:</strong>
+                Executable cross-check staging now rejects symlinked local
+                SHA-256 inputs and hash-input ancestors before staged report
+                packets can bind source reports or verification receipts.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:05-07:00">Jul 19 · local</time>
               <span>

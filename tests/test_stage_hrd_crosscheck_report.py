@@ -290,6 +290,33 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.txt"
+            real_source.write_text("real source\n", encoding="utf-8")
+            source_link = root / "source-link.txt"
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source-link.txt SHA-256 input must be a real file",
+            ):
+                STAGE.sha256(source_link)
+
+            real_inputs = root / "real-inputs"
+            real_inputs.mkdir()
+            route_result = real_inputs / "route_result.json"
+            route_result.write_text('{"route": "sigprofiler_sbs3"}\n', encoding="utf-8")
+            linked_inputs = root / "linked-inputs"
+            linked_inputs.symlink_to(real_inputs, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "route_result.json SHA-256 input parent may not be a symlink",
+            ):
+                STAGE.sha256(linked_inputs / "route_result.json")
+
     def test_stage_compacts_route_tree_and_remains_publishable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -822,6 +849,26 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             manifest["support_sha256"] = {"support/route_result.json": support_hash}
             manifest["source_sha256"] = {"support/route_result.json": support_hash}
             write_json(manifest_path, manifest)
+            verification_rows = []
+            for relative in (
+                "report.md",
+                "report_manifest.json",
+                "support/route_result.json",
+            ):
+                if relative == "support/route_result.json":
+                    path = support
+                else:
+                    path = source / relative
+                verification_rows.append(
+                    {
+                        "relative_path": relative,
+                        "version_id": f"{relative}-version",
+                        "bytes": path.stat().st_size,
+                        "sha256": STAGE.sha256(path),
+                        "checks": dict(STAGE.EXPECTED_DOWNLOAD_OBJECT_CHECKS),
+                    }
+                )
+
             write_json(
                 verification,
                 {
@@ -840,20 +887,7 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                         STAGE.EXPECTED_DOWNLOAD_LIVE_HISTORY_CHECKS
                     ),
                     "output_dir": str(source),
-                    "objects": [
-                        {
-                            "relative_path": relative,
-                            "version_id": f"{relative}-version",
-                            "bytes": (source / relative).stat().st_size,
-                            "sha256": STAGE.sha256(source / relative),
-                            "checks": dict(STAGE.EXPECTED_DOWNLOAD_OBJECT_CHECKS),
-                        }
-                        for relative in (
-                            "report.md",
-                            "report_manifest.json",
-                            "support/route_result.json",
-                        )
-                    ],
+                    "objects": verification_rows,
                 },
             )
 

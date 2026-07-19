@@ -94,7 +94,27 @@ DOWNLOAD_VERIFICATION_OBJECT_KEYS = {
 }
 
 
+def is_platform_root_alias(path: Path) -> bool:
+    return path.is_absolute() and path.parent == path.parent.parent
+
+
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
+def require_real_hash_input(path: Path) -> None:
+    label = f"{path.name} SHA-256 input"
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
 def sha256(path: Path) -> str:
+    require_real_hash_input(path)
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
@@ -620,18 +640,6 @@ def resolve_real_source_dir(source_dir: Path) -> Path:
     if source_dir.is_symlink() or not source_dir.is_dir():
         raise ValueError("exact route replay must be a real directory")
     return source_dir.resolve()
-
-
-def is_platform_root_alias(path: Path) -> bool:
-    return path.is_absolute() and path.parent == path.parent.parent
-
-
-def require_no_symlinked_ancestors(path: Path, label: str) -> None:
-    for parent in path.parents:
-        if parent.is_symlink() and not is_platform_root_alias(parent):
-            raise ValueError(f"{label} parent may not be a symlink: {parent}")
-        if parent.exists() and not parent.is_dir():
-            raise ValueError(f"{label} parent is not a directory: {parent}")
 
 
 def resolve_new_output_dir(output_dir: Path) -> Path:
