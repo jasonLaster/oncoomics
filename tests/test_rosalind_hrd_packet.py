@@ -545,6 +545,58 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertIn("does not support a genome-wide HRD scar", reviewer)
             self.assertIn("no_call", {row["state"] for row in adapter_rows})
 
+    def test_hcc1395_wes_packet_rejects_incomplete_source_hashes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            utils.write_json(
+                root / "results/full_wes_benchmark/full_wes_benchmark_summary.json",
+                {
+                    "status": "passed",
+                    "bamValidationStatus": "passed",
+                    "exactPassTruthMatches": 1122,
+                    "exactPassRecall": 0.8585,
+                    "exactPassPrecision": 0.9842,
+                    "contaminationStatus": "passed",
+                    "contaminationEstimate": "0.0",
+                },
+            )
+            utils.write_json(
+                root / "results/full_wes_benchmark/truth_overlap_benchmark_summary.json",
+                {"status": "passed"},
+            )
+            utils.write_csv(
+                root / "results/full_wes_benchmark/full_wes_fastq_validation.csv",
+                [
+                    {"status": "passed"},
+                    {"status": "passed"},
+                    {"status": "passed"},
+                    {"status": "passed"},
+                ],
+            )
+            utils.write_csv(
+                root / "results/full_wes_benchmark/full_wes_bam_validation.csv",
+                [{"status": "passed"}, {"status": "passed"}],
+            )
+            utils.write_json(
+                root / "results/clinicalization/known_answer_runs/expanded_cohort/hcc1395_wes_summary.json",
+                {"status": "expanded_non_dry_passed"},
+            )
+
+            with patch.object(packet, "path_from_root", lambda relative: root / relative):
+                packet.write_packet(packet.PACKET_SPECS["hcc1395_wes"], "unit")
+
+            output_dir = root / "results/rosalind_hrd/hcc1395_wes/unit"
+            manifest_path = output_dir / "report_manifest.json"
+            manifest = utils.read_json(manifest_path)
+            manifest["source_sha256"].pop("source_artifact_001")
+            utils.write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "Rosalind report manifest source_sha256 is not exact",
+            ):
+                packet.require_rosalind_report_manifest(output_dir)
+
     def test_hcc1395_wgs_packet_blocks_metadata_only_sv_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

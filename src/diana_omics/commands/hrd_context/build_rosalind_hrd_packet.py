@@ -2328,6 +2328,49 @@ def require_bound_packet_file(packet_dir: Path, name: str, digest: Any) -> None:
         raise ValueError(f"Rosalind report manifest is stale for {name}")
 
 
+def expected_generic_source_sha256(packet_dir: Path) -> dict[str, str]:
+    payload = read_json_file(
+        require_real_nonempty_file(
+            packet_dir / "input_evidence_index.json",
+            "Rosalind input evidence index",
+        ),
+        "Rosalind input evidence index",
+    )
+    artifacts = payload.get("artifacts") if isinstance(payload, Mapping) else None
+    if not isinstance(artifacts, list):
+        raise ValueError("Rosalind input evidence index artifacts are not exact")
+
+    expected: dict[str, str] = {}
+    for index, row in enumerate(artifacts, 1):
+        if not isinstance(row, Mapping) or set(row) != {
+            "path",
+            "resolved_path",
+            "exists",
+            "bytes",
+            "sha256",
+        }:
+            raise ValueError("Rosalind input evidence index artifacts are not exact")
+        source_id = f"source_artifact_{index:03d}"
+        exists = row.get("exists")
+        if exists == "yes":
+            require_json_nonnegative_int(
+                row.get("bytes"),
+                f"Rosalind {source_id} bytes",
+            )
+            expected[source_id] = require_sha256(
+                row.get("sha256"),
+                f"Rosalind {source_id}",
+            )
+        elif exists == "no":
+            if row.get("bytes") != "" or row.get("sha256") != "":
+                raise ValueError(
+                    "Rosalind input evidence index absent artifacts are not exact"
+                )
+        else:
+            raise ValueError("Rosalind input evidence index artifacts are not exact")
+    return expected
+
+
 def require_rosalind_report_manifest(packet_dir: Path) -> None:
     manifest = read_json_file(
         require_real_nonempty_file(
@@ -2350,6 +2393,10 @@ def require_rosalind_report_manifest(packet_dir: Path) -> None:
         if not isinstance(name, str):
             raise ValueError("Rosalind report manifest support files changed")
         require_bound_packet_file(packet_dir, name, digest)
+
+    if manifest.get("method_id") != "rosalind_diana_wgs":
+        if manifest.get("source_sha256") != expected_generic_source_sha256(packet_dir):
+            raise ValueError("Rosalind report manifest source_sha256 is not exact")
 
 
 def prepare_diana_wgs_output_dir(output: Path, expected_files: Iterable[str]) -> None:
