@@ -46,6 +46,21 @@ EXPECTED_PUBLICATION_OBJECT_CHECKS = {
     "metadata_sha256_exact": True,
     "exact_kms": True,
 }
+EXPECTED_LIVE_HISTORY_CHECKS = {
+    "version_count_exact": True,
+    "all_entries_are_versions": True,
+    "key_inventory_exact": True,
+    "all_version_ids_exact": True,
+    "all_versions_latest": True,
+}
+EXPECTED_DOWNLOAD_OBJECT_CHECKS = {
+    "version_exact": True,
+    "bytes_exact": True,
+    "sha256_exact": True,
+    "checksum_sha256_exact": True,
+    "checksum_type_full_object": True,
+    "exact_kms": True,
+}
 
 
 def sha256(path: Path) -> str:
@@ -325,6 +340,41 @@ def version_history(bucket: str, prefix: str, region: str) -> list[dict[str, Any
         seen_markers.add(marker)
 
 
+def require_exact_checks(
+    checks: dict[str, Any], expected: dict[str, Any], error: str
+) -> None:
+    if checks != expected:
+        raise ValueError(f"{error}: {checks}")
+
+
+def validate_live_history(
+    history: list[dict[str, Any]], rows: list[dict[str, Any]]
+) -> dict[str, bool]:
+    expected_by_key = {str(row["key"]): row for row in rows}
+    history_by_key = {str(row.get("Key", "")): row for row in history}
+    checks = {
+        "version_count_exact": len(history) == len(rows),
+        "all_entries_are_versions": all(
+            row.get("history_kind") == "version" for row in history
+        ),
+        "key_inventory_exact": set(history_by_key) == set(expected_by_key),
+        "all_version_ids_exact": all(
+            history_by_key.get(key, {}).get("VersionId") == row.get("version_id")
+            for key, row in expected_by_key.items()
+        ),
+        "all_versions_latest": all(
+            history_by_key.get(key, {}).get("IsLatest") is True
+            for key in expected_by_key
+        ),
+    }
+    require_exact_checks(
+        checks,
+        EXPECTED_LIVE_HISTORY_CHECKS,
+        "live report version history differs from receipt",
+    )
+    return checks
+
+
 def get_exact(
     bucket: str, key: str, version_id: str, destination: Path, region: str
 ) -> dict[str, Any]:
@@ -438,20 +488,10 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
         args.kms_key_arn,
     )
 
-    history = version_history(bucket, prefix, args.region)
-    expected_by_key = {str(row["key"]): row for row in rows}
-    history_by_key = {str(row.get("Key", "")): row for row in history}
-    if (
-        len(history) != len(rows)
-        or any(row.get("history_kind") != "version" for row in history)
-        or set(history_by_key) != set(expected_by_key)
-        or any(
-            history_by_key[key].get("VersionId") != row.get("version_id")
-            or history_by_key[key].get("IsLatest") is not True
-            for key, row in expected_by_key.items()
-        )
-    ):
-        raise ValueError("live report version history differs from receipt")
+    history_checks = validate_live_history(
+        version_history(bucket, prefix, args.region),
+        rows,
+    )
 
     output.parent.mkdir(parents=True, exist_ok=True)
     staging = output.with_name(f".{output.name}.staging")
@@ -464,6 +504,7 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
         )["receipt_uri"],
         "route_output_uri": receipt["route_output_uri"],
         "expected_kms_key_arn": args.kms_key_arn,
+        "live_history_checks": history_checks,
         "output_dir": str(output),
         "objects": [],
     }
@@ -550,10 +591,11 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
                     and response.get("SSEKMSKeyId") == args.kms_key_arn
                 ),
             }
-            if not all(checks.values()):
-                raise ValueError(
-                    f"exact report download failed for {relative}: {checks}"
-                )
+            require_exact_checks(
+                checks,
+                EXPECTED_DOWNLOAD_OBJECT_CHECKS,
+                f"exact report download failed for {relative}",
+            )
 
             result["objects"].append(
                 {

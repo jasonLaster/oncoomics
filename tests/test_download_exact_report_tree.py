@@ -223,8 +223,134 @@ class ExactReportDownloadTests(unittest.TestCase):
             self.assertEqual((output / "report.md").read_bytes(), data)
             result = json.loads(verification.read_text(encoding="utf-8"))
             self.assertEqual(result["status"], "passed")
-            self.assertTrue(all(result["objects"][0]["checks"].values()))
+            self.assertEqual(
+                result["live_history_checks"],
+                MODULE.EXPECTED_LIVE_HISTORY_CHECKS,
+            )
+            self.assertEqual(
+                result["objects"][0]["checks"],
+                MODULE.EXPECTED_DOWNLOAD_OBJECT_CHECKS,
+            )
             self.assertEqual(stat.S_IMODE(verification.stat().st_mode), 0o600)
+
+    def test_rejects_missing_unexpected_or_failed_live_history_check_maps(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _, _, _, row = self.fixture(root)
+            expected_without_latest = dict(MODULE.EXPECTED_LIVE_HISTORY_CHECKS)
+            expected_without_latest.pop("all_versions_latest")
+
+            for label, history, expected in (
+                (
+                    "missing",
+                    self.history(row),
+                    expected_without_latest,
+                ),
+                (
+                    "unexpected",
+                    self.history(row),
+                    {
+                        **MODULE.EXPECTED_LIVE_HISTORY_CHECKS,
+                        "forged_extra": True,
+                    },
+                ),
+                (
+                    "failed",
+                    [],
+                    MODULE.EXPECTED_LIVE_HISTORY_CHECKS,
+                ),
+            ):
+                with self.subTest(label=label), patch.object(
+                    MODULE,
+                    "EXPECTED_LIVE_HISTORY_CHECKS",
+                    expected,
+                ), self.assertRaisesRegex(
+                    ValueError,
+                    "live report version history differs from receipt",
+                ):
+                    MODULE.validate_live_history(history, [row])
+
+    def test_rejects_missing_unexpected_or_failed_download_check_maps(
+        self,
+    ) -> None:
+        expected_without_kms = dict(MODULE.EXPECTED_DOWNLOAD_OBJECT_CHECKS)
+        expected_without_kms.pop("exact_kms")
+
+        for label, expected, break_response in (
+            (
+                "missing",
+                expected_without_kms,
+                False,
+            ),
+            (
+                "unexpected",
+                {
+                    **MODULE.EXPECTED_DOWNLOAD_OBJECT_CHECKS,
+                    "forged_extra": True,
+                },
+                False,
+            ),
+            (
+                "failed",
+                MODULE.EXPECTED_DOWNLOAD_OBJECT_CHECKS,
+                True,
+            ),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                receipt, anchor, data, row = self.fixture(root)
+                output = root / "report-tree"
+                verification = root / "verification.json"
+
+                def fake_get(
+                    _bucket: str,
+                    _key: str,
+                    version_id: str,
+                    destination: Path,
+                    _region: str,
+                ) -> dict:
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(data)
+                    return {
+                        "VersionId": version_id,
+                        "ContentLength": len(data),
+                        "ChecksumSHA256": (
+                            "wrong" if break_response else row["checksum_sha256"]
+                        ),
+                        "ChecksumType": "FULL_OBJECT",
+                        "ServerSideEncryption": "aws:kms",
+                        "SSEKMSKeyId": KMS,
+                    }
+
+                with (
+                    patch.object(
+                        MODULE,
+                        "EXPECTED_DOWNLOAD_OBJECT_CHECKS",
+                        expected,
+                    ),
+                    patch.object(
+                        MODULE,
+                        "version_history",
+                        return_value=self.history(row),
+                    ),
+                    patch.object(MODULE, "get_exact", side_effect=fake_get),
+                    self.assertRaisesRegex(
+                        SystemExit,
+                        "exact report download failed for report.md",
+                    ),
+                ):
+                    MODULE.main(
+                        self.args(receipt, anchor, output, verification)
+                    )
+
+                self.assertFalse(output.exists())
+                self.assertFalse((root / ".report-tree.staging").exists())
+                self.assertEqual(
+                    json.loads(verification.read_text(encoding="utf-8"))["status"],
+                    "failed",
+                )
 
     def test_rejects_missing_unexpected_or_failed_publication_check_maps(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
