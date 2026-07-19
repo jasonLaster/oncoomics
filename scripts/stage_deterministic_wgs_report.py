@@ -19,6 +19,9 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
+from capture_materializer_terminal import (
+    EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS as EXPECTED_CROSSCHECK_RECEIPT_DOWNLOAD_CHECKS,
+)
 from forbidden_text import merge_forbidden_tokens
 
 EXPECTED_READINESS = {
@@ -61,6 +64,19 @@ OUTPUT_NAMES = (
     "input_sha256.csv",
     "report_manifest.json",
 )
+REPORT_MANIFEST_KEYS = {
+    "schema_version",
+    "method_id",
+    "report_kind",
+    "evidence_status",
+    "authorized_hrd_state",
+    "classification_authorized",
+    "classification_qc_status",
+    "support_sha256",
+    "source_sha256",
+    "report_sha256",
+    "review_summary",
+}
 SBS_MUTATION_TYPES = ("C>A", "C>G", "C>T", "T>A", "T>C", "T>G")
 SBS_BASES = "ACGT"
 EXPECTED_SBS96 = {
@@ -204,25 +220,6 @@ EXPECTED_CROSSCHECK_ANCHOR_CHECKS: dict[str, bool] = {
     "metadata_sha256_exact": True,
     "exact_kms": True,
     "single_create_only_version": True,
-}
-EXPECTED_CROSSCHECK_RECEIPT_DOWNLOAD_CHECKS: dict[str, bool] = {
-    "logged_local_sha256_exact": True,
-    "logged_local_bytes_exact": True,
-    "get_version_exact": True,
-    "head_version_exact": True,
-    "get_bytes_exact": True,
-    "head_bytes_exact": True,
-    "get_sha256_checksum_exact": True,
-    "head_sha256_checksum_exact": True,
-    "get_kms_exact": True,
-    "head_kms_exact": True,
-    "get_metadata_sha256_exact": True,
-    "head_metadata_sha256_exact": True,
-    "single_version_no_delete_history": True,
-    "receipt_schema_status": True,
-    "receipt_script_exact": True,
-    "receipt_checks_passed": True,
-    "receipt_boundary_no_call": True,
 }
 EXPECTED_CROSSCHECK_OUTPUT_CHECKS: dict[str, bool] = {
     "create_only_put": True,
@@ -1513,18 +1510,45 @@ def require_report_manifest(packet_dir: Path) -> None:
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("report manifest must be a JSON object")
+    if set(payload) != REPORT_MANIFEST_KEYS:
+        raise ValueError("report manifest envelope is not exact")
+    if (
+        payload.get("schema_version") != 1
+        or payload.get("method_id") != "deterministic_full_wgs"
+        or payload.get("report_kind") != "deterministic_baseline"
+        or payload.get("evidence_status") != "partial_evidence"
+        or payload.get("authorized_hrd_state") != "no_call"
+        or payload.get("classification_authorized") is not False
+        or payload.get("classification_qc_status") != "not_applicable"
+        or not isinstance(payload.get("review_summary"), dict)
+    ):
+        raise ValueError("report manifest identity is not exact")
+
     support_hashes = payload.get("support_sha256")
-    if not isinstance(support_hashes, dict):
-        raise ValueError("report manifest lacks support hashes")
+    support_names = {
+        "crosscheck_input_plans.json",
+        "evidence_checks.json",
+        "input_sha256.csv",
+        "readiness.csv",
+    }
+    if not isinstance(support_hashes, dict) or set(support_hashes) != support_names:
+        raise ValueError("report manifest support SHA-256 inventory is not exact")
+
+    source_hashes = payload.get("source_sha256")
+    if (
+        not isinstance(source_hashes, dict)
+        or not source_hashes
+        or any(
+            not isinstance(key, str) or not HEX64.fullmatch(str(value))
+            for key, value in source_hashes.items()
+        )
+    ):
+        raise ValueError("report manifest source SHA-256 inventory is not exact")
+
     expected = [("report.md", str(payload.get("report_sha256", "")))]
     expected.extend(
         (name, str(support_hashes.get(name, "")))
-        for name in (
-            "crosscheck_input_plans.json",
-            "evidence_checks.json",
-            "input_sha256.csv",
-            "readiness.csv",
-        )
+        for name in sorted(support_names)
     )
     for name, expected_sha256 in expected:
         if not HEX64.fullmatch(expected_sha256):

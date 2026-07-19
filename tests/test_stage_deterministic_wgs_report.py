@@ -81,6 +81,13 @@ def write_minimal_report_packet(staging: Path) -> None:
     REPORT_MODULE.write_staged_json(
         staging / "report_manifest.json",
         {
+            "schema_version": 1,
+            "method_id": "deterministic_full_wgs",
+            "report_kind": "deterministic_baseline",
+            "evidence_status": "partial_evidence",
+            "authorized_hrd_state": "no_call",
+            "classification_authorized": False,
+            "classification_qc_status": "not_applicable",
             "report_sha256": sha256(staging / "report.md"),
             "support_sha256": {
                 name: sha256(staging / name)
@@ -91,6 +98,8 @@ def write_minimal_report_packet(staging: Path) -> None:
                     "readiness.csv",
                 )
             },
+            "source_sha256": {"somatic_vcf": "a" * 64},
+            "review_summary": {"overall": {"authorized_hrd_state": "no_call"}},
         },
     )
 
@@ -402,6 +411,38 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                 "report manifest is stale for readiness.csv",
             ):
                 REPORT_MODULE.require_report_manifest(staging)
+
+    def test_staged_report_manifest_requires_exact_envelope(self) -> None:
+        mutations = {
+            "extra_top_level": lambda manifest: manifest.__setitem__(
+                "legacy_note", "accepted"
+            ),
+            "missing_no_call_boundary": lambda manifest: manifest.pop(
+                "authorized_hrd_state"
+            ),
+            "extra_support_file": lambda manifest: manifest[
+                "support_sha256"
+            ].__setitem__("legacy_support.json", "a" * 64),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-install-"
+            ) as temporary:
+                staging = Path(temporary)
+                write_minimal_report_packet(staging)
+                manifest_path = staging / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                mutate(manifest)
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "report manifest (envelope|support SHA-256 inventory) is not exact",
+                ):
+                    REPORT_MODULE.require_report_manifest(staging)
 
     def test_failed_packet_install_removes_only_installed_packet_files(self) -> None:
         with tempfile.TemporaryDirectory(
@@ -2357,6 +2398,41 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             capture_path = fixture.aux / "crosscheck-materialization-capture.json"
             capture = json.loads(capture_path.read_text(encoding="utf-8"))
             capture["receipt"]["checks"]["future_check"] = True
+            write_json(capture_path, capture)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_stale_terminal_receipt_download_checks_fail_before_report_publication(
+        self,
+    ) -> None:
+        stale_pre_materializer_schema2_checks = {
+            "logged_local_sha256_exact": True,
+            "logged_local_bytes_exact": True,
+            "get_version_exact": True,
+            "head_version_exact": True,
+            "get_bytes_exact": True,
+            "head_bytes_exact": True,
+            "get_sha256_checksum_exact": True,
+            "head_sha256_checksum_exact": True,
+            "get_kms_exact": True,
+            "head_kms_exact": True,
+            "get_metadata_sha256_exact": True,
+            "head_metadata_sha256_exact": True,
+            "single_version_no_delete_history": True,
+            "receipt_schema_status": True,
+            "receipt_script_exact": True,
+            "receipt_checks_passed": True,
+            "receipt_boundary_no_call": True,
+        }
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            capture_path = fixture.aux / "crosscheck-materialization-capture.json"
+            capture = json.loads(capture_path.read_text(encoding="utf-8"))
+            capture["receipt"]["checks"] = stale_pre_materializer_schema2_checks
             write_json(capture_path, capture)
 
             result = subprocess.run(fixture.command(), text=True, capture_output=True)
