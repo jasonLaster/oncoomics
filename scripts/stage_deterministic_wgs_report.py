@@ -1946,28 +1946,30 @@ def main() -> None:
         exact_schema_version(execution, 1)
         and execution.get("run_id") == summary.get("run_id")
         and execution_batch.get("status") == "SUCCEEDED"
-        and int(execution_batch.get("started_at_epoch_ms", 0)) > 0
-        and int(execution_batch.get("stopped_at_epoch_ms", 0)) >= int(execution_batch.get("started_at_epoch_ms", 0))
+        and positive_int(execution_batch.get("started_at_epoch_ms"))
+        and nonnegative_int(execution_batch.get("stopped_at_epoch_ms"))
+        and execution_batch["stopped_at_epoch_ms"] >= execution_batch["started_at_epoch_ms"]
         and bool(execution_batch.get("job_id"))
         and bool(execution_batch.get("job_queue_arn"))
         and bool(execution_batch.get("job_definition_arn"))
         and bool(execution_batch.get("log_stream"))
-        and int(execution_batch.get("attempt_count", 0)) == 1
+        and integer_equals(execution_batch.get("attempt_count"), 1)
         and len(execution_attempts) == 1
-        and int(execution_attempt.get("started_at_epoch_ms", 0)) > 0
-        and int(execution_attempt.get("stopped_at_epoch_ms", 0)) >= int(execution_attempt.get("started_at_epoch_ms", 0))
-        and execution_attempt.get("exit_code") == 0
+        and positive_int(execution_attempt.get("started_at_epoch_ms"))
+        and nonnegative_int(execution_attempt.get("stopped_at_epoch_ms"))
+        and execution_attempt["stopped_at_epoch_ms"] >= execution_attempt["started_at_epoch_ms"]
+        and integer_equals(execution_attempt.get("exit_code"), 0)
         and execution_attempt.get("task_arn") == execution_container.get("task_arn")
         and execution_attempt.get("log_stream") == execution_batch.get("log_stream")
-        and int(execution_timeout.get("attemptDurationSeconds", 0)) > 0
-        and int(execution_retry.get("attempts", 0)) == 1
+        and positive_int(execution_timeout.get("attemptDurationSeconds"))
+        and integer_equals(execution_retry.get("attempts"), 1)
         and image_digest.startswith("sha256:")
         and len(image_digest) == 71
         and len(worker_sha) == 64
         and all(character in "0123456789abcdef" for character in worker_sha)
         and summary.get("run_id") in " ".join(str(value) for value in execution_command)
         and execution_queue.get("status") == "VALID"
-        and int(execution_definition.get("revision", 0)) > 0,
+        and positive_int(execution_definition.get("revision")),
         "The single successful Batch attempt, effective timeout/retry controls, queue, definition revision, command, log stream, immutable container digest, and worker SHA-256 are captured.",
     )
     stage_provenance_evidence = validate_stage_provenance(

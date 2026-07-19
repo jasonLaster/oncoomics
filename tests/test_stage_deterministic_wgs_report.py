@@ -287,6 +287,138 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
         self.assertEqual(raw_coercions, [])
 
+    def test_batch_execution_provenance_rejects_coercible_integers(self) -> None:
+        mutations = (
+            (
+                "batch started bool",
+                lambda execution: execution["batch"].__setitem__(
+                    "started_at_epoch_ms",
+                    True,
+                ),
+            ),
+            (
+                "batch stopped float",
+                lambda execution: execution["batch"].__setitem__(
+                    "stopped_at_epoch_ms",
+                    2.0,
+                ),
+            ),
+            (
+                "batch attempt count string",
+                lambda execution: execution["batch"].__setitem__(
+                    "attempt_count",
+                    "1",
+                ),
+            ),
+            (
+                "attempt started bool",
+                lambda execution: execution["batch"]["attempts"][0].__setitem__(
+                    "started_at_epoch_ms",
+                    True,
+                ),
+            ),
+            (
+                "attempt stopped string",
+                lambda execution: execution["batch"]["attempts"][0].__setitem__(
+                    "stopped_at_epoch_ms",
+                    "2",
+                ),
+            ),
+            (
+                "attempt exit bool",
+                lambda execution: execution["batch"]["attempts"][0].__setitem__(
+                    "exit_code",
+                    False,
+                ),
+            ),
+            (
+                "attempt exit float",
+                lambda execution: execution["batch"]["attempts"][0].__setitem__(
+                    "exit_code",
+                    0.0,
+                ),
+            ),
+            (
+                "timeout bool",
+                lambda execution: execution["batch"]["timeout"].__setitem__(
+                    "attemptDurationSeconds",
+                    True,
+                ),
+            ),
+            (
+                "retry attempts string",
+                lambda execution: execution["batch"]["retry_strategy"].__setitem__(
+                    "attempts",
+                    "1",
+                ),
+            ),
+            (
+                "job definition revision float",
+                lambda execution: execution["job_definition"].__setitem__(
+                    "revision",
+                    1.0,
+                ),
+            ),
+        )
+        for name, mutate in mutations:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                execution = load_json(fixture.aux / "execution.json")
+                mutate(execution)
+                write_json(fixture.aux / "execution.json", execution)
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "batch_execution_provenance",
+                    result.stdout + result.stderr,
+                )
+                self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_batch_execution_provenance_avoids_raw_int_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "execution_batch.get('started_at_epoch_ms'",
+                    'execution_batch.get("started_at_epoch_ms"',
+                    "execution_batch.get('stopped_at_epoch_ms'",
+                    'execution_batch.get("stopped_at_epoch_ms"',
+                    "execution_batch.get('attempt_count'",
+                    'execution_batch.get("attempt_count"',
+                    "execution_attempt.get('started_at_epoch_ms'",
+                    'execution_attempt.get("started_at_epoch_ms"',
+                    "execution_attempt.get('stopped_at_epoch_ms'",
+                    'execution_attempt.get("stopped_at_epoch_ms"',
+                    "execution_attempt.get('exit_code'",
+                    'execution_attempt.get("exit_code"',
+                    "execution_timeout.get('attemptDurationSeconds'",
+                    'execution_timeout.get("attemptDurationSeconds"',
+                    "execution_retry.get('attempts'",
+                    'execution_retry.get("attempts"',
+                    "execution_definition.get('revision'",
+                    'execution_definition.get("revision"',
+                )
+            )
+        ]
+
+        self.assertEqual(raw_coercions, [])
+
     def test_terminal_byte_guards_avoid_raw_int_coercion(self) -> None:
         module = ast.parse(GENERATOR.read_text(encoding="utf-8"))
         raw_byte_coercions = [
