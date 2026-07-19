@@ -20,14 +20,17 @@ from publish_reviewed_public_report import (
 from publish_reviewed_public_report import (
     MAX_FILE_BYTES,
     METHOD_CONTRACTS,
+    PRIVATE_BUCKET,
     PUBLIC_BUCKET,
     PUBLIC_ROOT,
     REVIEWED_PUBLIC_PREFLIGHT_CHECKS,
     RUN_ID,
     SHA256_HEX,
+    SOURCE_PREFLIGHT_CHECKS,
     SUBJECT_ALIAS,
     checksum_sha256,
     non_null_version_id,
+    private_report_prefix,
 )
 
 REGION = "us-east-1"
@@ -206,8 +209,15 @@ def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> dict[str
             raise RuntimeError(f"{method_id} reviewed-public receipt is not exact")
 
         checks = receipt.get("checks")
+        private_publication_receipt = receipt.get("private_publication_receipt")
+        source_objects = receipt.get("source_objects")
         destination_objects = receipt.get("destination_objects")
-        if not isinstance(checks, dict) or not isinstance(destination_objects, list):
+        if (
+            not isinstance(checks, dict)
+            or not isinstance(private_publication_receipt, dict)
+            or not isinstance(source_objects, list)
+            or not isinstance(destination_objects, list)
+        ):
             raise RuntimeError(f"{method_id} reviewed-public receipt is incomplete")
         required_checks = (
             *REVIEWED_PUBLIC_PREFLIGHT_CHECKS,
@@ -219,14 +229,68 @@ def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> dict[str
         )
         if any(checks.get(check_id) is not True for check_id in required_checks):
             raise RuntimeError(f"{method_id} reviewed-public receipt failed required checks")
-        if len(destination_objects) != len(expected_files):
+        if len(source_objects) != len(expected_files) or len(destination_objects) != len(expected_files):
             raise RuntimeError(f"{method_id} reviewed-public receipt has the wrong object count")
+        try:
+            private_bucket, private_prefix = private_report_prefix(
+                method_id,
+                str(private_publication_receipt.get("destination_prefix", "")),
+            )
+        except ValueError as error:
+            raise RuntimeError(
+                f"{method_id} reviewed-public private receipt is not exact"
+            ) from error
+        private_receipt_sha256 = str(private_publication_receipt.get("sha256", ""))
+        if private_bucket != PRIVATE_BUCKET or not SHA256_HEX.fullmatch(
+            private_receipt_sha256
+        ):
+            raise RuntimeError(f"{method_id} reviewed-public private receipt is not exact")
 
+        expected_private_key_by_relative = {
+            relative: f"{private_prefix}{relative}"
+            for relative in expected_files
+        }
         expected_key_by_relative = {
             relative: f"{PUBLIC_ROOT}{contract['destination']}{relative}"
             for relative in expected_files
         }
         expected_keys = set(expected_key_by_relative.values())
+        source_by_relative: dict[str, dict[str, int | str]] = {}
+        for row in source_objects:
+            if not isinstance(row, dict) or row.get("status") != "passed":
+                raise RuntimeError(f"{method_id} reviewed-public source object is incomplete")
+            relative = str(row.get("relative_path", ""))
+            key = str(row.get("key", ""))
+            digest = str(row.get("sha256", ""))
+            version_id = str(row.get("version_id", ""))
+            checks = row.get("checks")
+            try:
+                size = int(row.get("bytes", -1))
+            except (TypeError, ValueError):
+                size = -1
+            if (
+                relative in source_by_relative
+                or row.get("bucket") != PRIVATE_BUCKET
+                or relative not in expected_private_key_by_relative
+                or key != expected_private_key_by_relative[relative]
+                or not non_null_version_id(version_id)
+                or not SHA256_HEX.fullmatch(digest)
+                or row.get("checksum_sha256") != checksum_sha256(digest)
+                or size <= 0
+                or size > MAX_FILE_BYTES
+                or checks != SOURCE_PREFLIGHT_CHECKS
+            ):
+                raise RuntimeError(
+                    f"{method_id} reviewed-public source object is not exact: {relative}"
+                )
+            source_by_relative[relative] = {
+                "bytes": size,
+                "sha256": digest,
+                "checksum_sha256": str(row.get("checksum_sha256", "")),
+            }
+        if set(source_by_relative) != set(expected_files):
+            raise RuntimeError(f"{method_id} reviewed-public source objects do not match the public contract")
+
         observed_relative_paths = set()
         observed_keys = set()
         for row in destination_objects:
@@ -260,6 +324,15 @@ def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> dict[str
             ):
                 raise RuntimeError(
                     f"{method_id} reviewed-public destination object is not exact: {relative}"
+                )
+            source = source_by_relative[relative]
+            if (
+                size != source["bytes"]
+                or digest != source["sha256"]
+                or row.get("checksum_sha256") != source["checksum_sha256"]
+            ):
+                raise RuntimeError(
+                    f"{method_id} reviewed-public destination object is not source-bound: {relative}"
                 )
             if key in receipt_objects:
                 raise RuntimeError(f"{method_id} reviewed-public destination key is duplicated: {key}")

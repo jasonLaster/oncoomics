@@ -44,6 +44,14 @@ def write_public_receipts(root: Path) -> list[Path]:
     for method_id in MODULE.REPORT_METHOD_IDS:
         contract = MODULE.METHOD_CONTRACTS[method_id]
         expected_files = tuple(sorted(contract["files"]))
+        private_destination = (
+            f"s3://{PUBLISH.PRIVATE_BUCKET}/runs/{PUBLISH.SUBJECT_ALIAS}/"
+            f"{PUBLISH.RUN_ID}/reports/{method_id}/revisions/"
+            f"{hashlib.sha256(method_id.encode()).hexdigest()}/"
+        )
+        private_prefix = private_destination.removeprefix(
+            f"s3://{PUBLISH.PRIVATE_BUCKET}/"
+        )
         receipt = {
             "schema_version": 1,
             "status": "passed",
@@ -58,11 +66,32 @@ def write_public_receipts(root: Path) -> list[Path]:
             ),
             "expected_files": list(expected_files),
             "checks": required_checks,
+            "private_publication_receipt": {
+                "path": str(receipt_root / f"{method_id}.private.json"),
+                "sha256": hashlib.sha256(
+                    f"private/{method_id}".encode()
+                ).hexdigest(),
+                "destination_prefix": private_destination,
+            },
+            "source_objects": [],
             "destination_objects": [],
         }
         for index, relative in enumerate(expected_files, 1):
             digest = hashlib.sha256(f"{method_id}/{relative}".encode()).hexdigest()
+            private_key = f"{private_prefix}{relative}"
             key = f"{PUBLISH.PUBLIC_ROOT}{contract['destination']}{relative}"
+            source_row = {
+                "relative_path": relative,
+                "bucket": PUBLISH.PRIVATE_BUCKET,
+                "key": private_key,
+                "version_id": f"{method_id}-private-version-{index}",
+                "bytes": 100 + index,
+                "sha256": digest,
+                "checksum_sha256": PUBLISH.checksum_sha256(digest),
+                "status": "passed",
+                "checks": dict(PUBLISH.SOURCE_PREFLIGHT_CHECKS),
+            }
+            receipt["source_objects"].append(source_row)
             receipt["destination_objects"].append(
                 {
                     "relative_path": relative,
@@ -398,6 +427,61 @@ class PublicIndexTests(unittest.TestCase):
                 receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
                 mutate(receipt["destination_objects"][0])
                 receipts[0].write_text(json.dumps(receipt), encoding="utf-8")
+
+                with self.assertRaisesRegex(RuntimeError, message):
+                    MODULE.validate_reviewed_public_receipts(receipts)
+
+    def test_reviewed_public_receipts_must_bind_source_objects(self) -> None:
+        cases = (
+            (
+                lambda receipt: receipt.update(
+                    {
+                        "private_publication_receipt": {
+                            "sha256": "0" * 64,
+                            "destination_prefix": "s3://wrong/",
+                        }
+                    }
+                ),
+                "private receipt is not exact",
+            ),
+            (
+                lambda receipt: receipt["source_objects"][0].update(
+                    {"relative_path": "raw.fastq.gz"}
+                ),
+                "source object is not exact",
+            ),
+            (
+                lambda receipt: receipt["source_objects"][0].update(
+                    {"checks": {"exact_version_head": False}}
+                ),
+                "source object is not exact",
+            ),
+            (
+                lambda receipt: receipt["source_objects"][0].update(
+                    {"version_id": "null"}
+                ),
+                "source object is not exact",
+            ),
+            (
+                lambda receipt: receipt["destination_objects"][0].update(
+                    {
+                        "sha256": "0" * 64,
+                        "checksum_sha256": PUBLISH.checksum_sha256("0" * 64),
+                    }
+                ),
+                "destination object is not source-bound",
+            ),
+        )
+
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                receipts = write_public_receipts(Path(temporary))
+                receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+                mutate(receipt)
+                receipts[0].write_text(
+                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
 
                 with self.assertRaisesRegex(RuntimeError, message):
                     MODULE.validate_reviewed_public_receipts(receipts)
