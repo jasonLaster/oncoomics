@@ -28,6 +28,10 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             "runs/subject01/unit/deterministic/provenance/"
             "crosscheck-materialization-receipts"
         )
+        self.destination_prefix = (
+            "s3://diana-omics-private-results-172630973301-us-east-1/"
+            "runs/subject01/unit/deterministic/final/"
+        )
         self.parameters = {
             "source_vcf_version_id": "vcf-version",
             "source_vcf_index_version_id": "index-version",
@@ -38,12 +42,84 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             "reference_fasta_version_id": "fasta-version",
             "reference_fai_version_id": "fai-version",
         }
+        self.source_sha256 = {
+            "vcf": self.parameters["source_vcf_sha256"],
+            "vcf_index": self.parameters["source_vcf_index_sha256"],
+            "matrix": self.parameters["source_matrix_sha256"],
+            "fasta": "d" * 64,
+            "fai": "e" * 64,
+        }
+        self.outputs = {}
+        for index, filename in enumerate(MODULE.EXPECTED_MATERIALIZER_OUTPUTS):
+            sha256 = f"{index + 1}" * 64
+            self.outputs[filename] = {
+                "uri": f"{self.destination_prefix}{filename}",
+                "version_id": f"output-version-{index}",
+                "bytes": 100 + index,
+                "etag": f'"etag-{index}"',
+                "checksums": {
+                    "ChecksumSHA256": base64.b64encode(
+                        bytes.fromhex(sha256)
+                    ).decode(),
+                    "ChecksumType": "FULL_OBJECT",
+                },
+                "sha256": sha256,
+                "kms_key_arn": self.kms,
+                "checks": dict(MODULE.EXPECTED_RECEIPT_UPLOAD_CHECKS),
+            }
+        source_custody = {}
+        for source_name, version_parameter in MODULE.EXPECTED_SOURCE_VERSION_PARAMETERS.items():
+            expected_sha256 = self.source_sha256[source_name]
+            source_custody[source_name] = {
+                "uri": (
+                    "s3://diana-omics-private-results-172630973301-us-east-1/"
+                    f"runs/subject01/unit/source/{source_name}"
+                ),
+                "version_id": self.parameters[version_parameter],
+                "bytes": 200 + len(source_custody),
+                "etag": f'"source-etag-{source_name}"',
+                "checksums": {},
+                "sha256": expected_sha256,
+                "expected_sha256": (
+                    expected_sha256
+                    if source_name not in {"fasta", "fai"}
+                    else None
+                ),
+                "kms_key_arn": self.kms,
+            }
         self.receipt_bytes = (
             json.dumps(
                 {
                     "schema_version": 2,
                     "status": "passed",
+                    "generated_at_utc": "2026-07-19T00:00:00Z",
+                    "run_alias": "subject01",
                     "script_sha256": MODULE.EXPECTED_MATERIALIZER_SHA256,
+                    "destination_prefix": self.destination_prefix,
+                    "destination_bucket_versioning": "Enabled",
+                    "destination_initial_version_history_count": 0,
+                    "receipt_anchor_strategy": "sha256_content_addressed_create_only",
+                    "source_custody": source_custody,
+                    "validation": {"status": "passed"},
+                    "input_sha256": {
+                        "filtered_vcf": self.source_sha256["vcf"],
+                        "filtered_vcf_index": self.source_sha256["vcf_index"],
+                        "source_sbs96_matrix": self.source_sha256["matrix"],
+                        "reference_fasta": self.source_sha256["fasta"],
+                        "reference_fai": self.source_sha256["fai"],
+                    },
+                    "outputs": self.outputs,
+                    "destination_inventory": [
+                        {
+                            "filename": filename,
+                            "key": output["uri"].split("/", 3)[3],
+                            "version_id": output["version_id"],
+                            "bytes": output["bytes"],
+                            "sha256": output["sha256"],
+                            "checksums": output["checksums"],
+                        }
+                        for filename, output in sorted(self.outputs.items())
+                    ],
                     "checks": dict(MODULE.EXPECTED_MATERIALIZER_RECEIPT_CHECKS),
                     "classification_authorization": "none",
                     "authorized_hrd_state": "no_call",
@@ -87,7 +163,7 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 "receipt_version_id": self.version_id,
                 "checks": dict(MODULE.EXPECTED_RECEIPT_ANCHOR_CHECKS),
             },
-            "outputs": {"somatic.pass.vcf.gz": {"version_id": "output-version"}},
+            "outputs": copy.deepcopy(self.outputs),
         }
         self.log_stream = "diana-wgs-hrd-materialize/default/exact-task"
         self.job = {
@@ -271,6 +347,48 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             return copy.deepcopy(response)
 
         return invoke
+
+    def encode_receipt(self, receipt: dict) -> bytes:
+        return (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode(
+            "utf-8"
+        )
+
+    def run_capture_with_receipt(self, root: Path, receipt: dict):
+        receipt_bytes = self.encode_receipt(receipt)
+        receipt_sha = hashlib.sha256(receipt_bytes).hexdigest()
+        checksum = base64.b64encode(bytes.fromhex(receipt_sha)).decode()
+        metadata = {
+            **self.metadata,
+            "ContentLength": len(receipt_bytes),
+            "ChecksumSHA256": checksum,
+            "Metadata": {"sha256": receipt_sha},
+        }
+        terminal = copy.deepcopy(self.terminal)
+        terminal["receipt"]["bytes"] = len(receipt_bytes)
+        terminal["receipt"]["checksums"]["ChecksumSHA256"] = checksum
+        terminal["receipt"]["sha256"] = receipt_sha
+        terminal["receipt"]["uri"] = f"{self.prefix}/{receipt_sha}.json"
+        terminal["receipt_anchor"]["receipt_bytes"] = len(receipt_bytes)
+        terminal["receipt_anchor"]["receipt_sha256"] = receipt_sha
+        terminal["receipt_anchor"]["receipt_uri"] = terminal["receipt"]["uri"]
+
+        receipt_key = terminal["receipt_anchor"]["receipt_uri"].split("/", 3)[3]
+        history = copy.deepcopy(self.history)
+        history["Versions"][0]["Key"] = receipt_key
+        return self.run_capture(
+            self.args(root),
+            aws=self.aws_side_effect(
+                events=self.events(terminal),
+                metadata=metadata,
+                history=history,
+                key=receipt_key,
+            ),
+            get=self.get_side_effect(
+                receipt_bytes=receipt_bytes,
+                metadata=metadata,
+                key=receipt_key,
+            ),
+        )
 
     def run_capture(self, args, *, aws=None, get=None):
         aws = self.aws_side_effect() if aws is None else aws
@@ -762,43 +880,53 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary:
             for label, receipt_bytes in cases.items():
-                receipt_sha = hashlib.sha256(receipt_bytes).hexdigest()
-                checksum = base64.b64encode(bytes.fromhex(receipt_sha)).decode()
-                metadata = {
-                    **self.metadata,
-                    "ContentLength": len(receipt_bytes),
-                    "ChecksumSHA256": checksum,
-                    "Metadata": {"sha256": receipt_sha},
-                }
-                terminal = copy.deepcopy(self.terminal)
-                terminal["receipt"]["bytes"] = len(receipt_bytes)
-                terminal["receipt"]["checksums"]["ChecksumSHA256"] = checksum
-                terminal["receipt"]["sha256"] = receipt_sha
-                terminal["receipt_anchor"]["receipt_bytes"] = len(receipt_bytes)
-                terminal["receipt_anchor"]["receipt_sha256"] = receipt_sha
-                terminal["receipt_anchor"]["receipt_uri"] = f"{self.prefix}/{receipt_sha}.json"
-                terminal["receipt"]["uri"] = terminal["receipt_anchor"]["receipt_uri"]
-                receipt_key = terminal["receipt_anchor"]["receipt_uri"].split("/", 3)[3]
-                history = copy.deepcopy(self.history)
-                history["Versions"][0]["Key"] = receipt_key
-
                 with self.subTest(label=label), self.assertRaisesRegex(
                     ValueError,
                     "receipt verification failed",
                 ):
-                    self.run_capture(
-                        self.args(Path(temporary) / label),
-                        aws=self.aws_side_effect(
-                            events=self.events(terminal),
-                            metadata=metadata,
-                            history=history,
-                            key=receipt_key,
-                        ),
-                        get=self.get_side_effect(
-                            receipt_bytes=receipt_bytes,
-                            metadata=metadata,
-                            key=receipt_key,
-                        ),
+                    self.run_capture_with_receipt(
+                        Path(temporary) / label,
+                        json.loads(receipt_bytes),
+                    )
+
+    def test_rejects_materializer_receipt_with_missing_source_or_output_custody(
+        self,
+    ) -> None:
+        cases = {
+            "missing-output": lambda receipt: receipt["outputs"].pop("sbs96.csv"),
+            "wrong-source-sha": lambda receipt: receipt["source_custody"][
+                "matrix"
+            ].__setitem__("sha256", "f" * 64),
+            "stale-inventory-row": lambda receipt: receipt[
+                "destination_inventory"
+            ].append(
+                {
+                    "filename": "stale.tmp",
+                    "key": "runs/subject01/unit/deterministic/final/stale.tmp",
+                    "version_id": "stale-version",
+                    "bytes": 1,
+                    "sha256": "f" * 64,
+                    "checksums": {
+                        "ChecksumSHA256": base64.b64encode(
+                            bytes.fromhex("f" * 64)
+                        ).decode(),
+                        "ChecksumType": "FULL_OBJECT",
+                    },
+                }
+            ),
+        }
+
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, mutate in cases.items():
+                receipt = json.loads(self.receipt_bytes)
+                mutate(receipt)
+                with self.subTest(label=label), self.assertRaisesRegex(
+                    ValueError,
+                    "receipt verification failed",
+                ):
+                    self.run_capture_with_receipt(
+                        Path(temporary) / label,
+                        receipt,
                     )
 
     def test_exact_receipt_download_check_map_must_be_exact(self) -> None:
@@ -836,6 +964,9 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                     self.metadata,
                     self.receipt_history_rows(),
                     self.receipt_location(),
+                    self.parameters,
+                    self.destination_prefix,
+                    self.kms,
                 )
 
     def test_failed_exact_receipt_download_check_reports_exact_key(self) -> None:
@@ -848,6 +979,9 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 self.metadata,
                 self.receipt_history_rows(),
                 self.receipt_location(),
+                self.parameters,
+                self.destination_prefix,
+                self.kms,
             )
 
     def test_rejects_symlinked_exact_receipt_download_before_capture(self) -> None:

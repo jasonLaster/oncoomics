@@ -33,6 +33,12 @@ EXPECTED_QUEUE_ARN = "arn:aws:batch:us-east-1:172630973301:job-queue/diana-omics
 EXPECTED_COMPUTE_ENVIRONMENT = "arn:aws:batch:us-east-1:172630973301:compute-environment/diana-omics-prod-use1-ondemand"
 EXPECTED_ARM_INSTANCE_TYPES = ("c7g", "c7gn", "m7g", "r7g")
 EXPECTED_MATERIALIZER_SHA256 = "513c55b347a4c57e5f7231642e851d03aa4dcdac9159781e4d1a79815dc1f35f"
+EXPECTED_MATERIALIZER_OUTPUTS = (
+    "somatic.pass.vcf.gz",
+    "somatic.pass.vcf.gz.tbi",
+    "sbs96.csv",
+    "staged_input_validation.json",
+)
 PARAMETER_NAMES = (
     "source_vcf_version_id",
     "source_vcf_index_version_id",
@@ -47,6 +53,79 @@ SHA_PARAMETER_NAMES = {
     "source_vcf_sha256",
     "source_vcf_index_sha256",
     "source_matrix_sha256",
+}
+EXPECTED_SOURCE_VERSION_PARAMETERS = {
+    "vcf": "source_vcf_version_id",
+    "vcf_index": "source_vcf_index_version_id",
+    "matrix": "source_matrix_version_id",
+    "fasta": "reference_fasta_version_id",
+    "fai": "reference_fai_version_id",
+}
+EXPECTED_SOURCE_SHA_PARAMETERS = {
+    "vcf": "source_vcf_sha256",
+    "vcf_index": "source_vcf_index_sha256",
+    "matrix": "source_matrix_sha256",
+}
+EXPECTED_INPUT_SHA256_KEYS = {
+    "filtered_vcf",
+    "filtered_vcf_index",
+    "source_sbs96_matrix",
+    "reference_fasta",
+    "reference_fai",
+}
+INPUT_SHA256_SOURCE_FIELDS = {
+    "vcf": "filtered_vcf",
+    "vcf_index": "filtered_vcf_index",
+    "matrix": "source_sbs96_matrix",
+    "fasta": "reference_fasta",
+    "fai": "reference_fai",
+}
+EXPECTED_SOURCE_CUSTODY_KEYS = {
+    "uri",
+    "version_id",
+    "bytes",
+    "etag",
+    "checksums",
+    "sha256",
+    "expected_sha256",
+    "kms_key_arn",
+}
+EXPECTED_OUTPUT_CUSTODY_KEYS = {
+    "uri",
+    "version_id",
+    "bytes",
+    "etag",
+    "checksums",
+    "sha256",
+    "kms_key_arn",
+    "checks",
+}
+EXPECTED_DESTINATION_INVENTORY_KEYS = {
+    "filename",
+    "key",
+    "version_id",
+    "bytes",
+    "sha256",
+    "checksums",
+}
+EXPECTED_MATERIALIZER_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "generated_at_utc",
+    "run_alias",
+    "script_sha256",
+    "destination_prefix",
+    "destination_bucket_versioning",
+    "destination_initial_version_history_count",
+    "receipt_anchor_strategy",
+    "source_custody",
+    "validation",
+    "input_sha256",
+    "outputs",
+    "destination_inventory",
+    "checks",
+    "classification_authorization",
+    "authorized_hrd_state",
 }
 EXPECTED_RECEIPT_UPLOAD_CHECKS = {
     "create_only_put": True,
@@ -120,6 +199,12 @@ EXPECTED_EXACT_RECEIPT_DOWNLOAD_CHECKS = {
     "receipt_schema_status": True,
     "receipt_script_exact": True,
     "receipt_checks_exact": True,
+    "receipt_keys_exact": True,
+    "receipt_destination_exact": True,
+    "receipt_source_custody_exact": True,
+    "receipt_input_sha256_exact": True,
+    "receipt_outputs_exact": True,
+    "receipt_destination_inventory_exact": True,
     "receipt_boundary_no_call": True,
 }
 
@@ -149,6 +234,32 @@ def decode_sha256(value: Any, label: str) -> str:
     if len(decoded) != 32:
         raise ValueError(f"{label} is not a SHA-256 checksum")
     return decoded.hex()
+
+
+def encode_sha256(value: str) -> str:
+    return base64.b64encode(bytes.fromhex(value)).decode("ascii")
+
+
+def is_nonempty_text(value: Any) -> bool:
+    return isinstance(value, str) and bool(value) and bool(re.fullmatch(r"\S+", value))
+
+
+def is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
+def is_positive_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def s3_key_or_none(uri: Any) -> str | None:
+    if not isinstance(uri, str):
+        return None
+    try:
+        _, key = s3_location(uri)
+    except ValueError:
+        return None
+    return key
 
 
 def aws_json(region: str, *args: str) -> dict[str, Any]:
@@ -522,12 +633,155 @@ def validate_logged_anchor(
     }
 
 
+def materializer_destination_prefix(expected_receipt_prefix: str) -> str:
+    bucket, sentinel = s3_location(expected_receipt_prefix.rstrip("/") + "/sentinel")
+    receipt_prefix = sentinel.removesuffix("/sentinel").rstrip("/")
+    receipt_suffix = "/deterministic/provenance/crosscheck-materialization-receipts"
+    if not receipt_prefix.endswith(receipt_suffix):
+        raise ValueError(
+            "expected receipt prefix is not the materializer provenance prefix"
+        )
+    run_prefix = receipt_prefix[: -len(receipt_suffix)]
+    return f"s3://{bucket}/{run_prefix}/deterministic/final/"
+
+
+def upload_checksum_exact(output: dict[str, Any]) -> bool:
+    sha256 = output.get("sha256")
+    if not is_sha256(sha256):
+        return False
+    return output.get("checksums") == {
+        "ChecksumSHA256": encode_sha256(sha256),
+        "ChecksumType": "FULL_OBJECT",
+    }
+
+
+def source_custody_is_exact(
+    receipt: dict[str, Any],
+    expected_parameters: dict[str, str],
+    expected_kms_key_arn: str,
+) -> bool:
+    source_custody = receipt.get("source_custody")
+    input_sha256 = receipt.get("input_sha256")
+    if not isinstance(source_custody, dict) or not isinstance(input_sha256, dict):
+        return False
+    if set(source_custody) != set(EXPECTED_SOURCE_VERSION_PARAMETERS):
+        return False
+
+    for source_name, version_parameter in EXPECTED_SOURCE_VERSION_PARAMETERS.items():
+        row = source_custody.get(source_name)
+        if not isinstance(row, dict) or set(row) != EXPECTED_SOURCE_CUSTODY_KEYS:
+            return False
+        sha256 = row.get("sha256")
+        expected_sha256 = row.get("expected_sha256")
+        input_field = INPUT_SHA256_SOURCE_FIELDS[source_name]
+        if (
+            not is_nonempty_text(row.get("uri"))
+            or s3_key_or_none(row.get("uri")) is None
+            or row.get("version_id") != expected_parameters[version_parameter]
+            or not is_positive_int(row.get("bytes"))
+            or not is_nonempty_text(row.get("etag"))
+            or not isinstance(row.get("checksums"), dict)
+            or not is_sha256(sha256)
+            or row.get("kms_key_arn") != expected_kms_key_arn
+            or input_sha256.get(input_field) != sha256
+        ):
+            return False
+        sha_parameter = EXPECTED_SOURCE_SHA_PARAMETERS.get(source_name)
+        if sha_parameter is not None:
+            if (
+                sha256 != expected_parameters[sha_parameter]
+                or expected_sha256 != expected_parameters[sha_parameter]
+            ):
+                return False
+        elif expected_sha256 not in {None, sha256}:
+            return False
+    return True
+
+
+def input_sha256_is_exact(receipt: dict[str, Any]) -> bool:
+    source_custody = receipt.get("source_custody")
+    input_sha256 = receipt.get("input_sha256")
+    if not isinstance(source_custody, dict) or not isinstance(input_sha256, dict):
+        return False
+    if set(input_sha256) != EXPECTED_INPUT_SHA256_KEYS:
+        return False
+    for source_name, input_field in INPUT_SHA256_SOURCE_FIELDS.items():
+        row = source_custody.get(source_name)
+        if not isinstance(row, dict) or input_sha256.get(input_field) != row.get("sha256"):
+            return False
+    return True
+
+
+def outputs_are_exact(
+    receipt: dict[str, Any],
+    expected_destination_prefix: str,
+    expected_kms_key_arn: str,
+) -> bool:
+    outputs = receipt.get("outputs")
+    if not isinstance(outputs, dict) or set(outputs) != set(EXPECTED_MATERIALIZER_OUTPUTS):
+        return False
+    expected_prefix = expected_destination_prefix.rstrip("/") + "/"
+    for filename in EXPECTED_MATERIALIZER_OUTPUTS:
+        output = outputs.get(filename)
+        if not isinstance(output, dict) or set(output) != EXPECTED_OUTPUT_CUSTODY_KEYS:
+            return False
+        expected_uri = expected_prefix + filename
+        if (
+            output.get("uri") != expected_uri
+            or not is_nonempty_text(output.get("version_id"))
+            or not is_positive_int(output.get("bytes"))
+            or not is_nonempty_text(output.get("etag"))
+            or not is_sha256(output.get("sha256"))
+            or output.get("kms_key_arn") != expected_kms_key_arn
+            or output.get("checks") != EXPECTED_RECEIPT_UPLOAD_CHECKS
+            or not upload_checksum_exact(output)
+            or s3_key_or_none(output.get("uri")) is None
+        ):
+            return False
+    return True
+
+
+def destination_inventory_is_exact(receipt: dict[str, Any]) -> bool:
+    outputs = receipt.get("outputs")
+    inventory = receipt.get("destination_inventory")
+    if (
+        not isinstance(outputs, dict)
+        or not isinstance(inventory, list)
+        or len(inventory) != len(EXPECTED_MATERIALIZER_OUTPUTS)
+        or any(not isinstance(row, dict) for row in inventory)
+    ):
+        return False
+    by_filename = {str(row.get("filename", "")): row for row in inventory}
+    if set(by_filename) != set(EXPECTED_MATERIALIZER_OUTPUTS):
+        return False
+
+    for filename in EXPECTED_MATERIALIZER_OUTPUTS:
+        output = outputs.get(filename)
+        row = by_filename[filename]
+        if not isinstance(output, dict) or set(row) != EXPECTED_DESTINATION_INVENTORY_KEYS:
+            return False
+        key = s3_key_or_none(output.get("uri"))
+        if (
+            key is None
+            or row.get("key") != key
+            or row.get("version_id") != output.get("version_id")
+            or row.get("bytes") != output.get("bytes")
+            or row.get("sha256") != output.get("sha256")
+            or row.get("checksums") != output.get("checksums")
+        ):
+            return False
+    return True
+
+
 def validate_exact_receipt(
     receipt_bytes: bytes,
     get_response: dict[str, Any],
     head_response: dict[str, Any],
     history: list[dict[str, Any]],
     location: dict[str, Any],
+    expected_parameters: dict[str, str],
+    expected_destination_prefix: str,
+    expected_kms_key_arn: str,
 ) -> tuple[dict[str, Any], dict[str, bool]]:
     local_sha = sha256_bytes(receipt_bytes)
     try:
@@ -575,6 +829,27 @@ def validate_exact_receipt(
         "receipt_schema_status": (receipt.get("schema_version") == 2 and receipt.get("status") == "passed"),
         "receipt_script_exact": receipt.get("script_sha256") == EXPECTED_MATERIALIZER_SHA256,
         "receipt_checks_exact": receipt_checks == EXPECTED_MATERIALIZER_RECEIPT_CHECKS,
+        "receipt_keys_exact": set(receipt) == EXPECTED_MATERIALIZER_RECEIPT_KEYS,
+        "receipt_destination_exact": (
+            receipt.get("destination_prefix") == expected_destination_prefix
+            and receipt.get("destination_bucket_versioning") == "Enabled"
+            and receipt.get("destination_initial_version_history_count") == 0
+            and receipt.get("receipt_anchor_strategy") == "sha256_content_addressed_create_only"
+        ),
+        "receipt_source_custody_exact": source_custody_is_exact(
+            receipt,
+            expected_parameters,
+            expected_kms_key_arn,
+        ),
+        "receipt_input_sha256_exact": input_sha256_is_exact(receipt),
+        "receipt_outputs_exact": outputs_are_exact(
+            receipt,
+            expected_destination_prefix,
+            expected_kms_key_arn,
+        ),
+        "receipt_destination_inventory_exact": destination_inventory_is_exact(
+            receipt
+        ),
         "receipt_boundary_no_call": (
             receipt.get("classification_authorization") == "none" and receipt.get("authorized_hrd_state") == "no_call"
         ),
@@ -742,6 +1017,7 @@ def capture(args: argparse.Namespace) -> dict[str, Any]:
     events = collect_log_events(args.region, batch["log_stream"])
     terminal_payload, terminal_json = parse_terminal_payload(events)
     location = validate_logged_anchor(terminal_payload, args.expected_receipt_prefix, args.expected_kms_key_arn)
+    expected_destination_prefix = materializer_destination_prefix(args.expected_receipt_prefix)
     versioning = aws_json(
         args.region,
         "s3api",
@@ -776,7 +1052,16 @@ def capture(args: argparse.Namespace) -> dict[str, Any]:
         )
         require_real_downloaded_file(temporary_path, "downloaded materialization receipt")
         downloaded = temporary_path.read_bytes()
-    receipt, receipt_checks = validate_exact_receipt(downloaded, get_response, head_response, history, location)
+    receipt, receipt_checks = validate_exact_receipt(
+        downloaded,
+        get_response,
+        head_response,
+        history,
+        location,
+        expected_parameters,
+        expected_destination_prefix,
+        args.expected_kms_key_arn,
+    )
     event_messages = [str(event.get("message", "")) for event in events]
     capture_payload = {
         "schema_version": 1,
