@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact public PUT VersionIds</li>
+          <li class="pill">Latest milestone = local exact private PUT VersionIds</li>
+          <li class="pill">Private report PUT VersionIds = exact</li>
           <li class="pill">Reviewed-public/index PUT VersionIds = exact</li>
           <li class="pill">Cross-check materializer VersionIds/checksums = exact</li>
           <li class="pill">Final-freeze VersionIds/checksums = exact</li>
@@ -1412,6 +1413,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact private PUT VersionIds</strong>
+              <span><code>publish_private_report.py</code> now requires exact private PUT response VersionIds before validating private report publication objects.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact public PUT VersionIds</strong>
               <span><code>publish_reviewed_public_report.py</code> and <code>publish_public_results_index.py</code> now require exact public PUT response VersionIds before validating reviewed-public report objects or the static public index.</span>
             </li>
@@ -1565,6 +1570,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T19:00:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact private PUT VersionIds:</strong>
+                <code>publish_private_report.py</code> now requires exact
+                private PUT response VersionIds before validating private
+                report publication objects.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:50:00-07:00">Jul 19 · local</time>
               <span>

@@ -30,9 +30,9 @@ from publish_reviewed_public_report import (
     content_type,
     exact_final_history,
     exact_int,
+    exact_non_null_version_id,
     exact_schema_version,
     head_object,
-    non_null_version_id,
     now,
     private_report_prefix,
     scan_text,
@@ -187,9 +187,10 @@ def upload_private(
         ],
         region,
     )
-    version_id = str(response.get("VersionId", ""))
-    if not non_null_version_id(version_id):
-        raise ValueError(f"private put omitted a non-null VersionId: {row['relative_path']}")
+    version_id = exact_non_null_version_id(
+        response.get("VersionId"),
+        f"private put {row['relative_path']}",
+    )
     exact = head_object(bucket, destination_key, region, version_id)
     current = head_object(bucket, destination_key, region)
     checks = {

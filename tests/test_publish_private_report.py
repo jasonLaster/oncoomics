@@ -116,6 +116,7 @@ class FakeAws:
         self.put_calls: list[list[str]] = []
         self.preexisting_history: list[dict[str, object]] = []
         self.literal_null_version = False
+        self.boolean_version = False
         self.wrong_checksum = False
         self.boolean_content_length = False
 
@@ -154,7 +155,13 @@ class FakeAws:
             if self.value(arguments, "--checksum-sha256") != checksum(payload):
                 raise AssertionError("unexpected put-object checksum")
             self.public[key] = {
-                "VersionId": "null" if self.literal_null_version else f"private-v{len(self.public) + 1}",
+                "VersionId": (
+                    True
+                    if self.boolean_version
+                    else "null"
+                    if self.literal_null_version
+                    else f"private-v{len(self.public) + 1}"
+                ),
                 "ContentLength": len(payload),
                 "ChecksumType": "FULL_OBJECT",
                 "ChecksumSHA256": observed_checksum,
@@ -475,21 +482,25 @@ class PublishPrivateReportTests(unittest.TestCase):
             self.assertEqual(json.loads(fixture.receipt_path.read_text())["status"], "failed")
 
     def test_apply_rejects_null_destination_version(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            fixture = Fixture(Path(temporary))
-            fake = FakeAws()
-            fake.literal_null_version = True
-            dry_run_receipt = self.write_dry_run_receipt(fixture)
+        for flag in ("literal_null_version", "boolean_version"):
+            with self.subTest(flag=flag), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                fake = FakeAws()
+                setattr(fake, flag, True)
+                dry_run_receipt = self.write_dry_run_receipt(fixture)
 
-            with self.assertRaisesRegex(ValueError, "non-null VersionId"):
-                self.execute(
-                    fixture,
-                    fake,
-                    apply=True,
-                    dry_run_receipt=dry_run_receipt,
+                with self.assertRaisesRegex(ValueError, "non-null VersionId"):
+                    self.execute(
+                        fixture,
+                        fake,
+                        apply=True,
+                        dry_run_receipt=dry_run_receipt,
+                    )
+
+                self.assertEqual(
+                    json.loads(fixture.receipt_path.read_text())["status"],
+                    "failed",
                 )
-
-            self.assertEqual(json.loads(fixture.receipt_path.read_text())["status"], "failed")
 
     def test_apply_rejects_destination_checksum_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
