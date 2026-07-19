@@ -1136,8 +1136,13 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
         "freeze_receipt_version_id",
         "stage_provenance_receipt_version_id",
     )
-    if any(not str(custody.get(field, "")).strip() for field in version_fields):
-        raise ValueError("deterministic custody lacks exact receipt VersionIds")
+    custody_version_ids = {
+        field: require_version_id(
+            custody.get(field),
+            f"deterministic custody {field}",
+        )
+        for field in version_fields
+    }
     custody_hashes = {
         key: require_sha256(value, f"deterministic custody {key}")
         for key, value in custody.items()
@@ -1162,7 +1167,7 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
         "custody": {
             "private_freeze_status": "passed",
             "exact_kms_match": True,
-            **{field: str(custody[field]) for field in version_fields},
+            **custody_version_ids,
             **custody_hashes,
         },
         "tool_versions": {str(key): str(value) for key, value in sorted(tools.items())},
