@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local deterministic stager hash guard</li>
+          <li class="pill">Latest milestone = local cross-check materializer hash guard</li>
+          <li class="pill">Cross-check materializer hash guard = real inputs</li>
           <li class="pill">Deterministic stager hash guard = real inputs</li>
           <li class="pill">Input-contract checklist = explicit</li>
           <li class="pill">Freeze dry-run checklists = explicit</li>
@@ -880,6 +881,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require real deterministic report hash inputs</strong>
               <span><code>stage_deterministic_wgs_report.py</code> now passes its generic SHA-256 helper through the same nonempty real-file/no-symlink leaf/no-symlink parent guard used by its JSON/CSV readers before deterministic receipt, materialization, staged support, and packet-copy hashes can be trusted.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real materializer hash inputs</strong>
+              <span><code>materialize_crosscheck_inputs.py</code> now passes exact frozen input, alias-only output, script, and materialization-receipt SHA-256 reads through the same no-symlink leaf/no-symlink parent real-file guard used by its local file custody checks before alias-only cross-check materialization or receipt upload can trust hashes.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require real materializer input files</strong>
@@ -2175,6 +2180,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T14:13:14-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real materializer hash inputs:</strong>
+                <code>materialize_crosscheck_inputs.py</code> now guards
+                exact frozen input, alias-only output, script, and
+                materialization-receipt SHA-256 reads with no-symlink leaf,
+                no-symlink parent, and real-file checks before alias-only
+                cross-check materialization or receipt upload can trust hashes.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T14:10:27-07:00">Jul 19 · local</time>
               <span>

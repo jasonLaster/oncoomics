@@ -335,8 +335,34 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "2bfef7c7e09b302c803f6f3e44302166aab5633e1fe1eea999bba8ebf794ed42",
+            "f3ccd6b06f42690166496dc5401d7f9b9480023ff8500a3ccc40ba883e499d3a",
         )
+
+    def test_sha256_rejects_symlinked_hash_inputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_source = root / "real-receipt.json"
+            receipt = root / "materialization-receipt.json"
+            real_source.write_text('{"status":"passed"}\n', encoding="utf-8")
+            receipt.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "materialization-receipt.json SHA-256 input may not be a symlink",
+            ):
+                module.sha256(receipt)
+
+            real_parent = root / "real-inputs"
+            real_parent.mkdir()
+            (real_parent / "source.vcf.gz").write_bytes(b"exact-vcf-bytes\n")
+            linked_parent = root / "linked-inputs"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source.vcf.gz SHA-256 input parent may not be a symlink",
+            ):
+                module.sha256(linked_parent / "source.vcf.gz")
 
     def test_json_output_removes_partial_file_after_file_fsync_failure(self):
         with tempfile.TemporaryDirectory() as tmp:

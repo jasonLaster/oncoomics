@@ -77,6 +77,7 @@ def now() -> str:
 
 
 def sha256(path: Path) -> str:
+    require_real_local_file(path, f"{path.name} SHA-256 input")
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
