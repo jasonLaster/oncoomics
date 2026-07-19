@@ -927,6 +927,13 @@ def render(root: Path, terminal_job_id: str) -> str:
                 "",
                 bash_block([submission_id_assign(submission_id, route)]),
                 block(submit_route_command(aws_dir, deterministic, route)),
+                (
+                    f"Review `{deterministic / f'terminal.{route}.request.dry.json'}` "
+                    "against the checked-in method contract, route license, "
+                    "and expected cost before running the submit command below. "
+                    "Do not submit the route solely because the dry-run request rendered."
+                ),
+                "",
                 block(
                     submit_route_command(
                         aws_dir,

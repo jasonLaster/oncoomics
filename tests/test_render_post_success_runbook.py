@@ -179,6 +179,11 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
 
         for route in MODULE.EXECUTABLE_CROSSCHECK_METHOD_IDS:
             dry = text.index(f"terminal.{route}.request.dry.json")
+            review = text.index(
+                f"Review `/repo/.codex-tmp/hrd-reports/deterministic-full/"
+                f"terminal.{route}.request.dry.json`",
+                dry,
+            )
             submit = text.index(
                 f"terminal.{route}.request.json --dry-run-receipt"
             )
@@ -191,8 +196,9 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
                 wait,
             )
             capture = text.index(f"capture_route_terminal.py --route {route}", wait)
+            self.assertLess(dry, review)
+            self.assertLess(review, submit)
             self.assertLess(submit, wait)
-            self.assertLess(dry, submit)
             self.assertLess(wait, waiter)
             self.assertLess(waiter, capture)
 

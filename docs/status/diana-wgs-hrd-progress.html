@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real materializer definitions</li>
+          <li class="pill">Latest milestone = local executable review stops</li>
+          <li class="pill">Executable review stops = explicit</li>
           <li class="pill">Materializer definitions = real</li>
           <li class="pill">Rosalind provenance strings = exact</li>
           <li class="pill">AI catalog receipt hashes = real</li>
@@ -1499,6 +1500,10 @@
               <strong>Done · require exact route stager schemas</strong>
               <span>Executable SigProfiler and Sequenza packet staging now rejects JSON floats or booleans in download-verification receipts, source route <code>report_manifest.json</code>, staged executable <code>report_manifest.json</code>, and staged <code>method_spec.json</code> schema versions before packets can be installed for Rosalind or AI review.</span>
             </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require explicit executable review stops</strong>
+              <span>Post-success runbook rendering now inserts an explicit review stop between each executable cross-check dry-run request and submit command, so method-contract, license, and cost acceptance are reviewed before Sequenza/SigProfiler submission.</span>
+            </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>In progress · prepare the no-expensive-compute handoff chain</strong>
               <span>Review deterministic staging, Rosalind, exact route receipts, source-freeze, AI, and reviewed-public runbooks with local dry fixtures only; launch no route or replacement compute.</span>
@@ -2125,6 +2130,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T13:48:20-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Add executable cross-check review stops:</strong>
+                Post-success runbook rendering now inserts an explicit review
+                stop between each executable cross-check dry-run request and
+                submit command so method-contract, license, and cost acceptance
+                are reviewed before Sequenza/SigProfiler submission.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T13:45:54-07:00">Jul 19 · local</time>
               <span>
