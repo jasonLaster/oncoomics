@@ -218,6 +218,22 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertIn("HRD_CROSSCHECK_LICENSE_REVIEWED=YES", apply)
         self.assertEqual(apply[-1], "--submit")
 
+    def test_input_contract_apply_is_bound_to_dry_run_receipt(self) -> None:
+        text = render()
+
+        apply = text[text.index("terminal.input-contract.publication.json") :]
+
+        self.assertIn(
+            "--dry-run-receipt "
+            "/repo/.codex-tmp/hrd-reports/deterministic-full/"
+            "terminal.input-contract.publication.dry.json",
+            apply,
+        )
+        self.assertLess(
+            text.index("terminal.input-contract.publication.dry.json"),
+            text.index("--dry-run-receipt"),
+        )
+
     def test_render_source_handoff_follows_all_packet_staging(self) -> None:
         text = render()
 

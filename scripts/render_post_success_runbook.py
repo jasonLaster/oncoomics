@@ -860,6 +860,8 @@ def render(root: Path, terminal_job_id: str) -> str:
                 PRIVATE_KMS_KEY_ARN,
                 "--anchor-output",
                 deterministic / "terminal.input-contract.publication.json",
+                "--dry-run-receipt",
+                deterministic / "terminal.input-contract.publication.dry.json",
                 "--region",
                 REGION,
                 "--apply",

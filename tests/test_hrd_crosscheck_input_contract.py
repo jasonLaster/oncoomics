@@ -307,6 +307,34 @@ class CustodyFixture:
 
 
 class CustodyHandoffTests(unittest.TestCase):
+    def write_contract_dry_run_receipt(
+        self,
+        path: Path,
+        contract: Path,
+        *,
+        prefix: str | None = None,
+        kms_key_arn: str = KMS,
+    ) -> Path:
+        prefix = prefix or f"runs/subject01/{RUN}/deterministic/contracts/"
+        contract_sha = publisher.sha256(contract)
+        write_json(
+            path,
+            {
+                "schema_version": 1,
+                "status": "dry_run",
+                "receipt_sha256": contract_sha,
+                "receipt_bytes": contract.stat().st_size,
+                "receipt_uri": f"s3://{BUCKET}/{prefix}{contract_sha}.json",
+                "receipt_version_id": "",
+                "bucket_versioning": "Enabled",
+                "initial_version_history_count": 0,
+                "publication_strategy": "sha256_content_addressed_create_only",
+                "kms_key_arn": kms_key_arn,
+                "checks": dict(publisher.EXPECTED_CONTRACT_PREFLIGHT_CHECKS),
+            },
+        )
+        return path
+
     def assert_contract_publication_rejects_checks(
         self, checks: dict[str, bool]
     ) -> None:
@@ -319,6 +347,9 @@ class CustodyHandoffTests(unittest.TestCase):
             version = "contract-version"
             prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
             key = f"{prefix}{contract_sha}.json"
+            dry_run = self.write_contract_dry_run_receipt(
+                root / "anchor.dry.json", contract, prefix=prefix
+            )
             history = [
                 {
                     "history_kind": "version",
@@ -337,6 +368,8 @@ class CustodyHandoffTests(unittest.TestCase):
                 KMS,
                 "--anchor-output",
                 str(anchor),
+                "--dry-run-receipt",
+                str(dry_run),
                 "--apply",
             ]
 
@@ -1029,6 +1062,10 @@ class CustodyHandoffTests(unittest.TestCase):
                 "SSEKMSKeyId": KMS,
                 "Metadata": {"sha256": contract_sha},
             }
+            prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
+            dry_run = self.write_contract_dry_run_receipt(
+                root / "anchor.dry.json", contract, prefix=prefix
+            )
 
             def fake_get(bucket, key, version_id, destination, region):
                 destination.write_bytes(contract.read_bytes())
@@ -1039,11 +1076,13 @@ class CustodyHandoffTests(unittest.TestCase):
                 "--contract",
                 str(contract),
                 "--destination-prefix",
-                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                f"s3://{BUCKET}/{prefix}",
                 "--kms-key-arn",
                 KMS,
                 "--anchor-output",
                 str(anchor),
+                "--dry-run-receipt",
+                str(dry_run),
                 "--apply",
             ]
             history = [
@@ -1117,6 +1156,227 @@ class CustodyHandoffTests(unittest.TestCase):
                 )
 
             self.assertEqual(checks, publisher.EXPECTED_CONTRACT_ANCHOR_CHECKS)
+
+    def test_contract_publication_dry_run_emits_exact_preflight_checks(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            anchor = root / "anchor.dry.json"
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                patch.object(publisher, "version_history", return_value=[]),
+                patch.object(publisher, "put_create_only") as put_create_only,
+            ):
+                self.assertEqual(publisher.main(), 0)
+
+            put_create_only.assert_not_called()
+            self.assertEqual(
+                json.loads(anchor.read_text(encoding="utf-8"))["checks"],
+                publisher.EXPECTED_CONTRACT_PREFLIGHT_CHECKS,
+            )
+
+    def test_contract_publication_apply_requires_dry_run_receipt_before_aws(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(root / "anchor.json"),
+                "--apply",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    publisher,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+                self.assertRaisesRegex(SystemExit, "requires the matching"),
+            ):
+                publisher.main()
+
+    def test_contract_publication_rejects_dry_run_receipt_without_apply_before_aws(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            dry_run = root / "anchor.dry.json"
+            write_json(contract, CustodyFixture().finalize())
+            self.write_contract_dry_run_receipt(dry_run, contract)
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(root / "anchor.json"),
+                "--dry-run-receipt",
+                str(dry_run),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    publisher,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+                self.assertRaisesRegex(SystemExit, "only valid with --apply"),
+            ):
+                publisher.main()
+
+    def test_contract_publication_rejects_stale_dry_run_metadata_before_put(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            dry_run = root / "anchor.dry.json"
+            anchor = root / "anchor.json"
+            write_json(contract, CustodyFixture().finalize())
+            self.write_contract_dry_run_receipt(dry_run, contract)
+            receipt = json.loads(dry_run.read_text(encoding="utf-8"))
+            receipt["stale_receipt_sha256"] = "0" * 64
+            write_json(dry_run, receipt)
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+                "--dry-run-receipt",
+                str(dry_run),
+                "--apply",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                patch.object(
+                    publisher,
+                    "put_create_only",
+                    side_effect=AssertionError("put called"),
+                ),
+                self.assertRaisesRegex(SystemExit, "stale or missing metadata"),
+            ):
+                publisher.main()
+
+            self.assertFalse(anchor.exists())
+
+    def test_contract_publication_rejects_failed_dry_run_preflight_before_put(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            dry_run = root / "anchor.dry.json"
+            anchor = root / "anchor.json"
+            write_json(contract, CustodyFixture().finalize())
+            self.write_contract_dry_run_receipt(dry_run, contract)
+            receipt = json.loads(dry_run.read_text(encoding="utf-8"))
+            receipt["checks"]["destination_history_empty"] = False
+            write_json(dry_run, receipt)
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+                "--dry-run-receipt",
+                str(dry_run),
+                "--apply",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                patch.object(
+                    publisher,
+                    "put_create_only",
+                    side_effect=AssertionError("put called"),
+                ),
+                self.assertRaisesRegex(SystemExit, "preflight checks failed"),
+            ):
+                publisher.main()
+
+            self.assertFalse(anchor.exists())
+
+    def test_contract_publication_rejects_stale_dry_run_identity_before_put(self):
+        for field, replacement in (
+            ("receipt_sha256", "0" * 64),
+            ("receipt_bytes", 1),
+            ("receipt_uri", f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/stale.json"),
+            ("kms_key_arn", KMS.replace("45aa", "0000")),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                contract = root / "contract.json"
+                dry_run = root / "anchor.dry.json"
+                anchor = root / "anchor.json"
+                write_json(contract, CustodyFixture().finalize())
+                self.write_contract_dry_run_receipt(dry_run, contract)
+                receipt = json.loads(dry_run.read_text(encoding="utf-8"))
+                receipt[field] = replacement
+                write_json(dry_run, receipt)
+                argv = [
+                    "publish_input_contract.py",
+                    "--contract",
+                    str(contract),
+                    "--destination-prefix",
+                    f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                    "--kms-key-arn",
+                    KMS,
+                    "--anchor-output",
+                    str(anchor),
+                    "--dry-run-receipt",
+                    str(dry_run),
+                    "--apply",
+                ]
+
+                with (
+                    patch.object(sys, "argv", argv),
+                    patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                    patch.object(
+                        publisher,
+                        "put_create_only",
+                        side_effect=AssertionError("put called"),
+                    ),
+                    self.assertRaisesRegex(SystemExit, "differs from requested"),
+                ):
+                    publisher.main()
+
+                self.assertFalse(anchor.exists())
 
     def test_contract_publication_rejects_missing_verification_check(self):
         checks = dict(publisher.EXPECTED_CONTRACT_ANCHOR_CHECKS)
@@ -1221,6 +1481,9 @@ class CustodyHandoffTests(unittest.TestCase):
                 "checks": {},
             }
             publisher.reserve_json(anchor_path, reserved)
+            dry_run = self.write_contract_dry_run_receipt(
+                root / "anchor.dry.json", contract, prefix=prefix
+            )
             history = [
                 {
                     "history_kind": "version",
@@ -1244,6 +1507,8 @@ class CustodyHandoffTests(unittest.TestCase):
                 KMS,
                 "--anchor-output",
                 str(anchor_path),
+                "--dry-run-receipt",
+                str(dry_run),
                 "--apply",
             ]
             with (
@@ -1296,6 +1561,9 @@ class CustodyHandoffTests(unittest.TestCase):
                 return dict(metadata)
 
             anchor_path = root / "anchor.json"
+            dry_run = self.write_contract_dry_run_receipt(
+                root / "anchor.dry.json", contract, prefix=prefix
+            )
             argv = [
                 "publish_input_contract.py",
                 "--contract",
@@ -1306,6 +1574,8 @@ class CustodyHandoffTests(unittest.TestCase):
                 KMS,
                 "--anchor-output",
                 str(anchor_path),
+                "--dry-run-receipt",
+                str(dry_run),
                 "--apply",
             ]
             with (

@@ -30,6 +30,28 @@ EXPECTED_CONTRACT_ANCHOR_CHECKS: dict[str, bool] = {
     "exact_kms": True,
     "single_create_only_version": True,
 }
+EXPECTED_CONTRACT_PREFLIGHT_CHECKS: dict[str, bool] = {
+    "contract_ready": True,
+    "finalized_custody_exact": True,
+    "publication_prefix_matches_contract": True,
+    "bucket_versioning_enabled": True,
+    "destination_history_empty": True,
+}
+EXPECTED_DRY_RUN_ANCHOR_KEYS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "receipt_sha256",
+        "receipt_bytes",
+        "receipt_uri",
+        "receipt_version_id",
+        "bucket_versioning",
+        "initial_version_history_count",
+        "publication_strategy",
+        "kms_key_arn",
+        "checks",
+    }
+)
 EXPECTED_FINALIZED_CUSTODY_CHECKS: dict[str, bool] = {
     "successful_execution_freeze_bound": True,
     "full_freeze_exactly_materialized": True,
@@ -253,6 +275,25 @@ def require_real_downloaded_file(path: Path, label: str) -> None:
         raise ValueError(f"{label} must be a real file: {path}")
 
 
+def load_real_json(path: Path, label: str) -> dict[str, Any]:
+    require_real_downloaded_file(path, label)
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} is not a JSON object")
+    return value
+
+
+def require_exact_keys(value: dict[str, Any], expected: frozenset[str], label: str) -> None:
+    observed = set(value)
+    if observed != expected:
+        missing = sorted(expected - observed)
+        unexpected = sorted(observed - expected)
+        raise ValueError(
+            f"{label} has stale or missing metadata: "
+            f"missing={missing} unexpected={unexpected}"
+        )
+
+
 def publication_identity_matches(
     observed: dict[str, Any], expected: dict[str, Any]
 ) -> bool:
@@ -324,6 +365,28 @@ def require_contract_anchor_checks(checks: dict[str, bool]) -> None:
         raise ValueError(f"contract publication verification failed: {checks}")
 
 
+def validate_dry_run_anchor(path: Path, expected: dict[str, Any]) -> None:
+    observed = load_real_json(path, "contract publication dry-run receipt")
+    require_exact_keys(
+        observed,
+        EXPECTED_DRY_RUN_ANCHOR_KEYS,
+        "contract publication dry-run receipt",
+    )
+    if (
+        observed.get("status") != "dry_run"
+        or observed.get("receipt_version_id") != ""
+        or not publication_identity_matches(observed, expected)
+    ):
+        raise ValueError(
+            "contract publication dry-run receipt differs from requested publication"
+        )
+    if observed.get("checks") != EXPECTED_CONTRACT_PREFLIGHT_CHECKS:
+        raise ValueError(
+            "contract publication dry-run receipt preflight checks failed: "
+            f"{observed.get('checks')}"
+        )
+
+
 def require_finalized_custody(custody: Any) -> None:
     if (
         not isinstance(custody, dict)
@@ -341,7 +404,15 @@ def main() -> int:
     parser.add_argument("--anchor-output", required=True, type=Path)
     parser.add_argument("--region", default="us-east-1")
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--dry-run-receipt", type=Path)
     args = parser.parse_args()
+
+    if args.dry_run_receipt and not args.apply:
+        raise SystemExit("Fail-closed: --dry-run-receipt is only valid with --apply")
+    if args.apply and not args.dry_run_receipt:
+        raise SystemExit(
+            "Fail-closed: --apply requires the matching --dry-run-receipt"
+        )
 
     try:
         contract = load_contract(args.contract)
@@ -386,7 +457,22 @@ def main() -> int:
         "kms_key_arn": args.kms_key_arn,
         "checks": {},
     }
+    dry_run_anchor = dict(anchor)
+    dry_run_anchor["status"] = "dry_run"
+    dry_run_anchor["checks"] = dict(EXPECTED_CONTRACT_PREFLIGHT_CHECKS)
+    if args.dry_run_receipt:
+        try:
+            validate_dry_run_anchor(args.dry_run_receipt, dry_run_anchor)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            raise SystemExit(f"Fail-closed: {error}") from error
     recovering = False
+    if not args.apply:
+        observed_history = version_history(bucket, prefix, args.region)
+        if observed_history:
+            raise SystemExit(
+                "Fail-closed: contract publication prefix has prior history"
+            )
+        anchor["checks"] = dict(EXPECTED_CONTRACT_PREFLIGHT_CHECKS)
     if args.anchor_output.exists():
         existing = json.loads(args.anchor_output.read_text(encoding="utf-8"))
         if not isinstance(existing, dict) or not publication_identity_matches(
