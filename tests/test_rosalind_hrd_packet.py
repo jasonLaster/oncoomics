@@ -2023,6 +2023,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
     def test_diana_wgs_packet_rejects_deterministic_or_worker_tampering(self):
         for tool, value in (
             ("bcftools", ""),
+            ("bcftools", "bcftools\t1.20"),
             ("bwa", True),
             ("gatk", "gatk\n4.6.1.0"),
             ("gatk", "gatk|4.6.1.0"),

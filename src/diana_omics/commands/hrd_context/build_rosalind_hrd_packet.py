@@ -1022,7 +1022,7 @@ def require_exact_nonempty_string(value: Any, label: str) -> str:
         not isinstance(value, str)
         or not value
         or value != value.strip()
-        or any(character in value for character in "\r\n")
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
         or "|" in value
     ):
         raise ValueError(f"{label} must be a non-empty unpadded single-line string")
