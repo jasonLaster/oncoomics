@@ -457,7 +457,9 @@ def collect_log_events(region: str, log_stream: str) -> list[dict[str, Any]]:
         if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
             raise ValueError("CloudWatch events are malformed")
         events.extend(rows)
-        next_token = str(page.get("nextForwardToken", ""))
+        next_token = page.get("nextForwardToken")
+        if not isinstance(next_token, str) or not next_token:
+            raise ValueError("CloudWatch nextForwardToken is malformed")
         if not next_token or next_token == token:
             return events
         if next_token in observed_tokens:

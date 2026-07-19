@@ -50,6 +50,7 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             "fasta": "d" * 64,
             "fai": "e" * 64,
         }
+
         self.outputs = {}
         for index, filename in enumerate(MODULE.EXPECTED_MATERIALIZER_OUTPUTS):
             sha256 = f"{index + 1}" * 64
@@ -235,6 +236,27 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             "DeleteMarkers": [],
             "IsTruncated": False,
         }
+
+    def test_collect_log_events_rejects_malformed_next_token(self) -> None:
+        for value in (None, True):
+            with self.subTest(nextForwardToken=value):
+                calls: list[tuple[str, ...]] = []
+
+                def invoke(region, *arguments):
+                    self.assertEqual(region, MODULE.REGION)
+                    calls.append(arguments)
+                    return {"events": [], "nextForwardToken": value}
+
+                with (
+                    mock.patch.object(MODULE, "aws_json", side_effect=invoke),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "CloudWatch nextForwardToken is malformed",
+                    ),
+                ):
+                    MODULE.collect_log_events(MODULE.REGION, self.log_stream)
+
+                self.assertEqual(len(calls), 1)
 
     def args(self, root: Path) -> argparse.Namespace:
         return argparse.Namespace(

@@ -29,6 +29,27 @@ DOWNLOAD_SPEC.loader.exec_module(DOWNLOAD_MODULE)
 
 
 class CaptureRouteTerminalTests(unittest.TestCase):
+    def test_collect_log_events_rejects_malformed_next_token(self) -> None:
+        for value in (None, True):
+            with self.subTest(nextForwardToken=value):
+                calls: list[tuple[str, ...]] = []
+
+                def invoke(region, *arguments):
+                    self.assertEqual(region, MODULE.REGION)
+                    calls.append(arguments)
+                    return {"events": [], "nextForwardToken": value}
+
+                with (
+                    mock.patch.object(MODULE, "aws_json", side_effect=invoke),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "CloudWatch nextForwardToken is malformed",
+                    ),
+                ):
+                    MODULE.collect_log_events(MODULE.REGION, "unit-stream")
+
+                self.assertEqual(len(calls), 1)
+
     def fixture(self, route: str = "sigprofiler_sbs3") -> dict:
         config = MODULE.ROUTES[route]
         kms = "arn:aws:kms:us-east-1:172630973301:key/45aa290c-d70c-4d86-9c8d-c4a76f1ff97f"
