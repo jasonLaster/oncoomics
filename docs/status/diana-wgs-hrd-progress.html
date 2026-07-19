@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local real AI-staging hash inputs</li>
+          <li class="pill">Latest milestone = local real AI-prep hash inputs</li>
+          <li class="pill">AI-prep hash inputs = real</li>
           <li class="pill">AI-staging hash inputs = real</li>
           <li class="pill">AI-bundle hash inputs = real</li>
           <li class="pill">Staged cross-check hash inputs = real</li>
@@ -1607,6 +1608,10 @@
               <span>AI-review preparation now rejects symlinked local JSON leaves inside its duplicate-key-safe loader before rebasing staged reviewer-input receipts or validating generated bundle and postcondition JSON for preparation receipts.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require real AI-prep hash inputs</strong>
+              <span>AI-review preparation now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before prepared model-review receipts can bind model-catalog, generated bundle, or staged reviewer-input receipts.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real AI-staging manifest files</strong>
               <span>AI-review staging now rechecks that the bundle manifest is still a real non-symlink file before the post-validation duplicate-key-safe read, so a redirected manifest leaf cannot feed exact two-file reviewer input staging.</span>
             </li>
@@ -2060,6 +2065,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:49:09-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require real AI-prep hash inputs:</strong>
+                AI-review preparation now rejects symlinked local SHA-256
+                inputs and hash-input ancestors before prepared model-review
+                receipts bind model-catalog, bundle, and staging receipts.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T12:49:08-07:00">Jul 19 · local</time>
               <span>

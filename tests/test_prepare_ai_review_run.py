@@ -734,11 +734,12 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             manifest = fixture.manifests[0]
             link = root / "source-manifest-link.json"
             link.symlink_to(manifest)
-            fixture.manifests[0] = link
             output = root / "ai-review"
+            args = command(fixture, output)
+            args[args.index(str(manifest))] = str(link)
 
             result = subprocess.run(
-                command(fixture, output),
+                args,
                 text=True,
                 capture_output=True,
             )
@@ -761,11 +762,14 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             shutil.copytree(fixture.manifests[0].parent, real_packet)
             linked_parent = root / "linked-source-parent"
             linked_parent.symlink_to(real_parent, target_is_directory=True)
-            fixture.manifests[0] = linked_parent / "existing" / "report_manifest.json"
+            manifest = fixture.manifests[0]
+            linked_manifest = linked_parent / "existing" / "report_manifest.json"
             output = root / "ai-review"
+            args = command(fixture, output)
+            args[args.index(str(manifest))] = str(linked_manifest)
 
             result = subprocess.run(
-                command(fixture, output),
+                args,
                 text=True,
                 capture_output=True,
             )
@@ -967,6 +971,38 @@ class PrepareAiReviewRunTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
             self.assertFalse(any(root.glob(".ai-review.*")))
+
+    def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_source = root / "real-source.txt"
+            real_source.write_text("real source\n", encoding="utf-8")
+            source_link = root / "source-link.txt"
+            source_link.symlink_to(real_source)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "source-link.txt SHA-256 input must be a real file",
+            ):
+                PREPARE.sha256(source_link)
+
+            real_inputs = root / "real-inputs"
+            real_inputs.mkdir()
+            stage_receipt = real_inputs / "stage_ai_review_inputs_receipt.json"
+            stage_receipt.write_text('{"status": "passed"}\n', encoding="utf-8")
+            linked_inputs = root / "linked-inputs"
+            linked_inputs.symlink_to(real_inputs, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                (
+                    "stage_ai_review_inputs_receipt.json SHA-256 input "
+                    "parent may not be a symlink"
+                ),
+            ):
+                PREPARE.sha256(
+                    linked_inputs / "stage_ai_review_inputs_receipt.json"
+                )
 
     def test_cleans_current_attempt_after_install_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
