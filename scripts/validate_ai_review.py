@@ -78,6 +78,7 @@ REQUIRED_REPORT_HEADINGS = (
     "## Authorized conclusion",
 )
 REVIEW_OUTPUT_FILES = {"claims.csv", "report.md", "review_manifest.json"}
+VALIDATED_REVIEW_OUTPUT_FILES = REVIEW_OUTPUT_FILES | {"validation.json"}
 
 CLAIM_ID = re.compile(r"^C[0-9]{3,}$")
 CITATION = re.compile(r"(?<!!)\[(C[0-9]{3,})\|((?:E[0-9]{3,})(?:;E[0-9]{3,})*)\](?!\()")
@@ -899,28 +900,52 @@ def validate_review_manifest(
 
 
 def require_exact_review_output_dir(review_dir: Path) -> None:
+    require_exact_review_dir(
+        review_dir,
+        REVIEW_OUTPUT_FILES,
+        (
+            "review directory must contain exactly report.md, claims.csv, "
+            "and review_manifest.json before validation"
+        ),
+    )
+
+
+def require_exact_validated_review_dir(review_dir: Path) -> None:
+    require_exact_review_dir(
+        review_dir,
+        VALIDATED_REVIEW_OUTPUT_FILES,
+        (
+            "validated review directory must contain exactly report.md, "
+            "claims.csv, review_manifest.json, and validation.json"
+        ),
+    )
+
+
+def require_exact_review_dir(
+    review_dir: Path,
+    expected: set[str],
+    message: str,
+) -> None:
     if review_dir.is_symlink() or not review_dir.is_dir():
         raise ValueError("review directory is missing or a symlink")
 
     observed = {path.name for path in review_dir.iterdir()}
-    if observed != REVIEW_OUTPUT_FILES:
-        missing = sorted(REVIEW_OUTPUT_FILES - observed)
-        unexpected = sorted(observed - REVIEW_OUTPUT_FILES)
+    if observed != expected:
+        missing = sorted(expected - observed)
+        unexpected = sorted(observed - expected)
         details = []
         if missing:
             details.append("missing " + ",".join(missing))
         if unexpected:
             details.append("unexpected " + ",".join(unexpected))
-        raise ValueError(
-            "review directory must contain exactly report.md, claims.csv, and review_manifest.json before validation: " + "; ".join(details)
-        )
+        raise ValueError(message + ": " + "; ".join(details))
 
     invalid = sorted(path.name for path in review_dir.iterdir() if path.is_symlink() or not path.is_file())
     if invalid:
         raise ValueError("review directory contains invalid output paths: " + ",".join(invalid))
 
 
-def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None:
+def write_validation_create_only(path: Path, validation: dict[str, Any]) -> str:
     require_safe_validation_parent(path)
     payload = (json.dumps(validation, indent=2, sort_keys=True) + "\n").encode("utf-8")
     expected_sha256 = hashlib.sha256(payload).hexdigest()
@@ -942,6 +967,7 @@ def write_validation_create_only(path: Path, validation: dict[str, Any]) -> None
             os.fsync(handle.fileno())
         fsync_directory(path.parent)
         require_installed_validation(path, expected_sha256)
+        return expected_sha256
     except Exception:
         path.unlink(missing_ok=True)
         raise
@@ -1135,7 +1161,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     }
 
     try:
-        write_validation_create_only(validation_path, validation)
+        validation_sha256 = write_validation_create_only(validation_path, validation)
+        try:
+            require_exact_validated_review_dir(review_dir)
+            require_installed_validation(validation_path, validation_sha256)
+        except ValueError:
+            validation_path.unlink(missing_ok=True)
+            raise
     except ValueError as error:
         raise SystemExit(f"Fail-closed: {error}") from error
     print(f"Validated independent reviewer {args.reviewer}: {len(claims)} claims; authorized state {authorized}")

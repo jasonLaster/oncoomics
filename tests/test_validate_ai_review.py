@@ -200,6 +200,35 @@ class ValidateReviewFixture(AiReviewBundleFixture):
             command.extend(["--other-review-dir", str(other_review_dir)])
         return subprocess.run(command, text=True, capture_output=True)
 
+    def validate_argv(
+        self,
+        review_dir: Path,
+        *,
+        reviewer: str = "A",
+        other_review_dir: Path | None = None,
+    ) -> list[str]:
+        argv = [
+            "--bundle-dir",
+            str(self.bundle_dir),
+        ]
+        for manifest in self.manifests:
+            argv.extend(["--source-manifest", str(manifest)])
+        argv.extend(
+            [
+                "--reviewer",
+                reviewer,
+                "--review-dir",
+                str(review_dir),
+                "--model-catalog-receipt",
+                str(self.catalog_receipt),
+                "--forbidden-token",
+                "DirectIdentifier",
+            ]
+        )
+        if other_review_dir is not None:
+            argv.extend(["--other-review-dir", str(other_review_dir)])
+        return argv
+
     def refresh_output_hashes(self, directory: Path) -> None:
         manifest_path = directory / "review_manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -771,6 +800,51 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertNotEqual(validated.returncode, 0)
             self.assertIn("review directory must contain exactly", validated.stderr)
             self.assertFalse((review / "validation.json").exists())
+
+    def test_rejects_stale_or_tampered_review_after_validation_write(self) -> None:
+        cases = (
+            (
+                "extra output",
+                lambda review: (review / "notes.md").write_text(
+                    "stale reviewer scratch\n",
+                    encoding="utf-8",
+                ),
+                "validated review directory must contain exactly",
+            ),
+            (
+                "tampered validation",
+                lambda review: (review / "validation.json").write_text(
+                    '{"status":"tampered"}\n',
+                    encoding="utf-8",
+                ),
+                "validation.json changed during write",
+            ),
+        )
+
+        for label, tamper, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = ValidateReviewFixture(Path(temporary))
+                fixture.build()
+                review = Path(temporary) / "review-a"
+                fixture.write_review(review)
+                real_write = VALIDATE.write_validation_create_only
+
+                def write_then_tamper(path: Path, validation: dict) -> str:
+                    digest = real_write(path, validation)
+                    tamper(review)
+                    return digest
+
+                with (
+                    mock.patch.object(
+                        VALIDATE,
+                        "write_validation_create_only",
+                        side_effect=write_then_tamper,
+                    ),
+                    self.assertRaisesRegex(SystemExit, message),
+                ):
+                    VALIDATE.main(fixture.validate_argv(review))
+
+                self.assertFalse((review / "validation.json").exists())
 
     def test_reviewer_b_requires_independent_validated_a_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
