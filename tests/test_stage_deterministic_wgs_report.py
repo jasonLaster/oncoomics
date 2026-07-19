@@ -2196,6 +2196,24 @@ class SyntheticFixture:
         ]
 
 
+def mutate_variant_json_count(
+    fixture: SyntheticFixture,
+    field: str,
+    value: Any,
+) -> None:
+    def mutate_variants(variants: dict[str, Any]) -> None:
+        variants[field] = value
+
+    StageDeterministicWgsReportInstallTests._mutate_json(
+        fixture.artifacts / "variants/mutect2_summary.json",
+        mutate_variants,
+    )
+    StageDeterministicWgsReportInstallTests._mutate_json(
+        fixture.artifacts / "diana_hrd_summary.json",
+        lambda summary: mutate_variants(summary["variants"]),
+    )
+
+
 @unittest.skipUnless(shutil.which("bcftools"), "bcftools is required for the indexed-VCF E2E fixture")
 class StageDeterministicWgsReportTests(unittest.TestCase):
     def test_packet_file_install_is_create_only_and_fsynced(self) -> None:
@@ -2613,6 +2631,85 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("variant_summary_counts", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_variant_counts_reject_coercible_json_counts(self) -> None:
+        mutations = (
+            (
+                "total filtered records float",
+                "total_filtered_records",
+                2.0,
+                "variant_summary_counts",
+            ),
+            (
+                "pass records string",
+                "pass_records",
+                "1",
+                "variant_summary_counts",
+            ),
+            (
+                "pass snvs bool",
+                "pass_snvs",
+                True,
+                "variant_summary_counts",
+            ),
+            (
+                "pass indels string",
+                "pass_indels",
+                "0",
+                "variant_summary_counts",
+            ),
+            (
+                "brca region records bool",
+                "brca1_brca2_pass_region_records",
+                True,
+                "brca_region_rows",
+            ),
+        )
+        for name, field, value, expected_check in mutations:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                mutate_variant_json_count(fixture, field, value)
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_check, result.stdout + result.stderr)
+                self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_variant_guards_avoid_raw_int_coercion(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        module = ast.parse(source)
+        raw_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "int"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in (
+                    "variants.get('total_filtered_records'",
+                    'variants.get("total_filtered_records"',
+                    "variants.get('pass_records'",
+                    'variants.get("pass_records"',
+                    "variants.get('pass_snvs'",
+                    'variants.get("pass_snvs"',
+                    "variants.get('pass_indels'",
+                    'variants.get("pass_indels"',
+                    "variants.get('brca1_brca2_pass_region_records'",
+                    'variants.get("brca1_brca2_pass_region_records"',
+                )
+            )
+        ]
+
+        self.assertEqual(raw_coercions, [])
 
     def test_existing_packet_files_fail_create_only_and_remain_unchanged(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:

@@ -2585,12 +2585,27 @@ def main() -> None:
     filtered_snvs = bcftools_count(bcftools, paths["filtered_vcf"], ["-f", "PASS", "-v", "snps"])
     filtered_indels = bcftools_count(bcftools, paths["filtered_vcf"], ["-f", "PASS", "-v", "indels"])
     add_check(checks, "filtered_vcf_index", paths["filtered_vcf_index"].stat().st_size > 0 and filtered_total == filtered_total_streamed, "The filtered VCF index is readable and its record count matches a full VCF stream.")
-    add_check(checks, "variant_summary_counts", variants.get("status") == "passed" and filtered_total == int(variants.get("total_filtered_records", -1)) and filtered_pass == int(variants.get("pass_records", -1)) and filtered_snvs == int(variants.get("pass_snvs", -1)) and filtered_indels == int(variants.get("pass_indels", -1)), "Filtered, PASS, SNV, and indel VCF counts match mutect2_summary.json.")
+    variant_summary_counts_match = (
+        variants.get("status") == "passed"
+        and integer_equals(variants.get("total_filtered_records"), filtered_total)
+        and integer_equals(variants.get("pass_records"), filtered_pass)
+        and integer_equals(variants.get("pass_snvs"), filtered_snvs)
+        and integer_equals(variants.get("pass_indels"), filtered_indels)
+    )
+    add_check(checks, "variant_summary_counts", variant_summary_counts_match, "Filtered, PASS, SNV, and indel VCF counts match mutect2_summary.json.")
 
     brca_vcf_count = bcftools_index_records(bcftools, paths["brca_vcf"])
     brca_stream_count = bcftools_count(bcftools, paths["brca_vcf"], [])
     brca_rows_valid = all(row.get("filter") == "PASS" and row.get("region_label") in {"BRCA1", "BRCA2"} and row.get("annotation_status") == "region_only_requires_variant_annotation_review" for row in brca_rows)
-    add_check(checks, "brca_region_rows", paths["brca_vcf_index"].stat().st_size > 0 and brca_vcf_count == brca_stream_count == len(brca_rows) == int(variants.get("brca1_brca2_pass_region_records", -1)) and brca_rows_valid, "Indexed BRCA-region VCF, CSV rows, summary count, PASS state, and region-only annotation boundary agree.")
+    brca_region_rows_match = (
+        paths["brca_vcf_index"].stat().st_size > 0
+        and brca_vcf_count == brca_stream_count == len(brca_rows)
+        and integer_equals(
+            variants.get("brca1_brca2_pass_region_records"), len(brca_rows)
+        )
+        and brca_rows_valid
+    )
+    add_check(checks, "brca_region_rows", brca_region_rows_match, "Indexed BRCA-region VCF, CSV rows, summary count, PASS state, and region-only annotation boundary agree.")
 
     sbs_counts = [int(row.get("count", -1)) for row in sbs_rows]
     sbs_keys = {(row.get("mutation_type", ""), row.get("trinucleotide", "")) for row in sbs_rows}
