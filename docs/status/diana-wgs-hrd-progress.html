@@ -306,24 +306,23 @@
         <p class="eyebrow">Diana WGS HRD ops tracker</p>
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
-          Current verified compute state:
-          <strong>legacy Batch v2 failed after FilterMutectCalls</strong>.
-          The S3-only worker cleared somatic filtering and then crashed while
-          strictly UTF-8-decoding <code>samtools --version</code>; no
-          <code>deterministic/final</code> artifacts exist. The later patched
-          v4 retry passed that UTF-8 failure, restored all 23 Mutect2 shards,
-          and was intentionally stopped during paired contamination pileups.
-          Selected next compute is the checked-in
-          <code>phase3_wgs_fast</code> P5en/Parabricks path or distributed CPU
-          only; the monolithic CPU topology should not be restarted.
+          Latest validation milestone:
+          <strong>1f8aeb1603f32c24f15861ca0f08acd57f01b995</strong>.
+          A public HCC1395 known-answer rehearsal carried precomputed WGS
+          evidence through the Rosalind packet contract and two qualitative
+          model audits. It separates interpretation gaps from operational/data
+          blockers and keeps every unrun analytical HRD method at
+          <code>no_call</code>. This is workflow validation, not a Diana
+          biological result. Diana deterministic compute remains blocked on
+          GPU quota; the stopped monolithic CPU topology must not be restarted.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest source hardening = 70733ca</li>
-          <li class="pill">Legacy v2 = FAILED</li>
-          <li class="pill">Patched v4 = stopped</li>
-          <li class="pill">east-2 P quota = 8 / 384 vCPUs</li>
-          <li class="pill">HRD remains no_call / partial_evidence</li>
+          <li class="pill">Validation milestone = 1f8aeb1</li>
+          <li class="pill">HCC1395 rehearsal = complete</li>
+          <li class="pill">Analytical methods = no_call / not run</li>
+          <li class="pill">Diana compute = GPU-quota blocked</li>
+          <li class="pill">Diana HRD remains no_call / partial_evidence</li>
         </ul>
       </section>
 
@@ -331,6 +330,11 @@
         <article class="card wide">
           <h2>Visual progress dashboard</h2>
           <ol class="tracks" aria-label="Operational progress by lane">
+            <li class="track" style="--tone: var(--done)">
+              <strong>HCC1395 known-answer rehearsal</strong>
+              <span>100%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 100%"><span></span></div>
+            </li>
             <li class="track" style="--tone: var(--done)">
               <strong>Source custody hardening</strong>
               <span>99.9%</span>
@@ -358,10 +362,10 @@
             </li>
           </ol>
           <p class="note">
-            Percentages are operational readiness only. Broad CNV bins,
-            blocked cross-check scaffolds, BRCA evidence, source-only receipt
-            hardening, and reviewer-packet installers must not be interpreted
-            as a Diana terminal HRD call.
+            Percentages are operational readiness only. The completed HCC1395
+            lane validates mechanics, packet construction, and reporting on a
+            public known-answer sample. It is not a Diana result, and no
+            scarHRD, SBS3, CHORD, or HRDetect result was produced.
           </p>
         </article>
 
@@ -399,11 +403,23 @@
         <article class="card narrow">
           <h2>TODO list</h2>
 
+          <h3>Known-answer rehearsal</h3>
+          <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Complete the HCC1395 reviewer-packet rehearsal</strong>
+              <span>Precomputed WGS evidence reached a bounded Rosalind packet without realignment, variant recall, or Diana compute.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Complete qualitative model audits</strong>
+              <span><code>gpt-5.6-sol</code> and <code>gpt-5.6-terra</code> audited the evidence contract and narrative boundary; neither model ran or replaced an analytical HRD method.</span>
+            </li>
+          </ol>
+
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 70733ca</strong>
-              <span>Blocked FACETS/CHORD/HRDetect packets now require exact ordered upstream manifests from deterministic, Rosalind, scarHRD, and SBS3 source packets.</span>
+              <strong>Preserve 1f8aeb1</strong>
+              <span>Keep interpretation gaps separate from operational/data blockers and normalize ambiguous readiness labels before review.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
               <strong>Keep receipt custody source-bound</strong>
@@ -431,12 +447,16 @@
           <ol class="todo">
             <li class="item" style="--tone: var(--queued)">
               <strong>Materialize alias-only inputs</strong>
-              <span>Bind the real terminal outputs before building the Diana WGS HRD reviewer packet.</span>
+              <span>Bind real Diana terminal outputs before building its packet; the completed HCC1395 rehearsal is not a substitute.</span>
             </li>
           </ol>
 
           <h3>Model and cross-check packets</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--active)">
+              <strong>Keep five interpretation gaps open</strong>
+              <span>SigProfilerAssignment, scarHRD, SBS3, CHORD, and HRDetect remain <code>no_call</code> / not run until their exact inputs and validation gates exist.</span>
+            </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Review dry-run route requests</strong>
               <span>Run expensive cross-checks only after deterministic and Rosalind packets are complete.</span>
@@ -455,6 +475,33 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>1f8aeb1 Surface HRD interpretation gaps in reviewer packets:</strong>
+                the Rosalind contract now reports interpretation gaps
+                separately from operational/data blockers. A disposable
+                regeneration from real HCC1395 evidence retained
+                <code>blockers=[]</code> while surfacing five gaps:
+                SigProfilerAssignment, scarHRD, SBS3, CHORD, and HRDetect. The
+                ambiguous <code>input_ready_threshold_met</code> state is now
+                <code>input_matrix_ready_assignment_not_run</code>.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>Completed the HCC1395 HRD model rehearsal:</strong>
+                precomputed public WGS evidence exercised deterministic
+                mechanics, the Rosalind packet, and qualitative
+                <code>gpt-5.6-sol</code> and <code>gpt-5.6-terra</code> audits.
+                The descriptive report is
+                <code>docs/validation/hcc1395-hrd-model-rehearsal.md</code>.
+                46 focused tests and 1,659 full tests passed. This is
+                not a Diana biological result; SigProfilerAssignment, scarHRD,
+                SBS3, CHORD, and HRDetect remain <code>no_call</code> / not run.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
