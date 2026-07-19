@@ -226,6 +226,32 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse(self.output_root.exists())
         self.assertFalse(self.receipt.exists())
 
+    def test_rejects_symlinked_bundle_manifest_after_validation(self) -> None:
+        real_require_bundle_manifest = STAGE.require_bundle_manifest
+
+        def symlink_after_validation(bundle: Path) -> None:
+            real_require_bundle_manifest(bundle)
+            manifest_path = bundle / "bundle_manifest.json"
+            relocated = bundle.parent / "bundle_manifest.real.json"
+            manifest_path.rename(relocated)
+            manifest_path.symlink_to(relocated)
+
+        with (
+            mock.patch.object(
+                STAGE,
+                "require_bundle_manifest",
+                side_effect=symlink_after_validation,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "bundle_manifest.json is not a non-empty real file",
+            ),
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse(self.output_root.exists())
+        self.assertFalse(self.receipt.exists())
+
     def test_rejects_unbound_bundle_files_before_creating_outputs(self) -> None:
         (self.bundle / "unbound-scratch.json").write_text(
             "{}\n",

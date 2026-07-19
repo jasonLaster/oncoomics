@@ -46,6 +46,7 @@ def sha256(path: Path) -> str:
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    require_real_file(path, label)
     try:
         value = json.loads(
             path.read_text(encoding="utf-8"),
