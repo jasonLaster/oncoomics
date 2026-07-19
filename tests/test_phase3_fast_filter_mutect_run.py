@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import threading
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -85,6 +86,40 @@ class SymlinkFilterMutectRunner(FilterMutectRunner):
         path.symlink_to(target)
 
 
+class BlockingPrerequisiteFilterMutectRunner(FilterMutectRunner):
+    def __init__(self, plan: dict) -> None:
+        super().__init__()
+        self._command_by_argv = {
+            tuple(command["argv"]): name
+            for name, command in plan["commands"].items()
+        }
+        self._lock = threading.Lock()
+        self._all_prerequisites_started = threading.Event()
+        self._active_prerequisites: set[str] = set()
+        self.timeline: list[str] = []
+
+    def run(self, argv: list[str]) -> None:
+        name = self._command_by_argv[tuple(argv)]
+        if name in run_filter.PARALLEL_PREREQUISITE_COMMANDS:
+            with self._lock:
+                self._active_prerequisites.add(name)
+                self.timeline.append(f"start:{name}")
+                if self._active_prerequisites == set(run_filter.PARALLEL_PREREQUISITE_COMMANDS):
+                    self._all_prerequisites_started.set()
+            if not self._all_prerequisites_started.wait(timeout=2):
+                raise AssertionError("FilterMutect prerequisites did not run as one parallel wave")
+            super().run(argv)
+            with self._lock:
+                self.timeline.append(f"finish:{name}")
+            return
+
+        with self._lock:
+            self.timeline.append(f"start:{name}")
+        super().run(argv)
+        with self._lock:
+            self.timeline.append(f"finish:{name}")
+
+
 def _sha256_json(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -143,7 +178,11 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
             )
             matrix_rows = _matrix_rows(receipt)
 
-        self.assertEqual([plan["commands"][name]["argv"] for name in run_filter.EXPECTED_COMMANDS], runner.commands)
+        self.assertCountEqual([plan["commands"][name]["argv"] for name in run_filter.EXPECTED_COMMANDS], runner.commands)
+        self.assertEqual(["calculate_contamination", "filter_mutect_calls", "index_filtered_vcf"], [
+            next(name for name, command in plan["commands"].items() if command["argv"] == argv)
+            for argv in runner.commands[-3:]
+        ])
         self.assertEqual("phase3_wgs_fast_filter_mutect_receipt", receipt["manifest_type"])
         self.assertEqual("completed", receipt["status"])
         self.assertEqual("no_call", receipt["interpretation"]["authorized_hrd_state"])
@@ -154,6 +193,34 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
         self.assertEqual(set(run_filter.MATERIALIZED_OUTPUTS), set(receipt["materialized_outputs"]))
         self.assertGreater(receipt["materialized_outputs"]["filtered_vcf"]["bytes"], 0)
         self.assertEqual(96, matrix_rows)
+
+    def test_runs_filter_prerequisites_as_bounded_parallel_wave(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
+
+            runner = BlockingPrerequisiteFilterMutectRunner(plan)
+            run_filter.run_phase3_fast_filter_mutect(
+                plan,
+                parabricks_receipt,
+                runner=runner,
+                filter_mutect_plan_sha256=SHA_1,
+                parabricks_mutect_receipt_sha256=SHA_3,
+            )
+
+        calculate_start = runner.timeline.index("start:calculate_contamination")
+        for name in run_filter.PARALLEL_PREREQUISITE_COMMANDS:
+            self.assertLess(runner.timeline.index(f"finish:{name}"), calculate_start)
+        self.assertEqual(
+            [
+                "start:calculate_contamination",
+                "finish:calculate_contamination",
+                "start:filter_mutect_calls",
+                "finish:filter_mutect_calls",
+                "start:index_filtered_vcf",
+                "finish:index_filtered_vcf",
+            ],
+            runner.timeline[calculate_start:],
+        )
 
     def test_environment_command_writes_receipt_after_running_planned_commands(self) -> None:
         with TemporaryDirectory() as tmp:

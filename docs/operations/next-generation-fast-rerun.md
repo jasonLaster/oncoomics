@@ -356,8 +356,10 @@ Its input contract also carries the implicit BAM, FASTA, and common-sites
 sidecars that GATK resolves beside those primary inputs.
 `run:phase3-fast-filter-mutect` must require the completed Parabricks receipt, re-check
 the raw VCF, raw `.stats`, F1R2 tarball, and PoN-annotated VCF against that
-receipt, run only the planned GATK/bcftools commands, and write a completed
-receipt with bytes and SHA-256 for every tail artifact it materializes.
+receipt, run only the planned GATK/bcftools commands, execute the two
+independent `GetPileupSummaries` scans, `LearnReadOrientationModel`, and the
+PoN VCF index as one bounded prerequisite wave, and write a completed receipt
+with bytes and SHA-256 for every tail artifact it materializes.
 It also clears those declared tail artifacts before execution and hashes only
 post-run files.
 The first execution-mode Nextflow seam keeps Parabricks and the short

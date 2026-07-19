@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Protocol, Sequence
 
@@ -24,6 +25,17 @@ EXPECTED_COMMANDS = (
     "learn_read_orientation_model",
     "calculate_contamination",
     "index_pon_annotated_vcf",
+    "filter_mutect_calls",
+    "index_filtered_vcf",
+)
+PARALLEL_PREREQUISITE_COMMANDS = (
+    "get_tumor_pileups",
+    "get_normal_pileups",
+    "learn_read_orientation_model",
+    "index_pon_annotated_vcf",
+)
+SERIAL_TAIL_COMMANDS = (
+    "calculate_contamination",
     "filter_mutect_calls",
     "index_filtered_vcf",
 )
@@ -548,8 +560,16 @@ def run_phase3_fast_filter_mutect(
     commands = _validate_plan(plan)
     _verify_parabricks_receipt(plan, parabricks_receipt)
     _prepare_materialized_outputs(plan)
-    for _, argv in commands:
-        runner.run(argv)
+    commands_by_name = dict(commands)
+    with ThreadPoolExecutor(max_workers=len(PARALLEL_PREREQUISITE_COMMANDS)) as executor:
+        futures = {
+            name: executor.submit(runner.run, commands_by_name[name])
+            for name in PARALLEL_PREREQUISITE_COMMANDS
+        }
+        for name in PARALLEL_PREREQUISITE_COMMANDS:
+            futures[name].result()
+    for name in SERIAL_TAIL_COMMANDS:
+        runner.run(commands_by_name[name])
     _materialized_outputs(plan, MATERIALIZED_OUTPUTS[:8])
     _write_sbs96_outputs(plan)
     materialized_outputs = _materialized_outputs(plan)
