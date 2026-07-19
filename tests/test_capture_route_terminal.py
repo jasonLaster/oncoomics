@@ -903,6 +903,31 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                         fixture["submission_environment"],
                     )
 
+    def test_batch_terminal_timestamps_must_be_exact_integers(self):
+        cases = (
+            ("startedAt", 100.0),
+            ("startedAt", True),
+            ("startedAt", "100"),
+            ("stoppedAt", 200.0),
+            ("stoppedAt", True),
+            ("stoppedAt", "200"),
+        )
+
+        for field, value in cases:
+            with self.subTest(field=field, value=value):
+                fixture = self.fixture()
+                fixture["job"][field] = value
+
+                with self.assertRaisesRegex(ValueError, "failed terminal_timestamps"):
+                    MODULE.validate_job(
+                        fixture["job"],
+                        fixture["definition"],
+                        fixture["queue"],
+                        fixture["compute"],
+                        self.args(Path("unused"), fixture),
+                        fixture["submission_environment"],
+                    )
+
     def test_terminal_parser_rejects_duplicate_anchor_and_trailing_output(self):
         fixture = self.fixture()
         valid = self.events(fixture)

@@ -800,6 +800,31 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                         self.parameters,
                     )
 
+    def test_batch_terminal_timestamps_must_be_exact_integers(self) -> None:
+        cases = (
+            ("startedAt", 100.0),
+            ("startedAt", True),
+            ("startedAt", "100"),
+            ("stoppedAt", 200.0),
+            ("stoppedAt", True),
+            ("stoppedAt", "200"),
+        )
+
+        for field, value in cases:
+            with self.subTest(field=field, value=value):
+                job = copy.deepcopy(self.job)
+                job[field] = value
+
+                with self.assertRaisesRegex(ValueError, "failed terminal_timestamps"):
+                    MODULE.validate_job(
+                        job,
+                        self.definition,
+                        self.queue,
+                        self.compute,
+                        "job-1",
+                        self.parameters,
+                    )
+
     def test_logged_anchor_outer_check_map_must_be_exact(self) -> None:
         cases = (
             (

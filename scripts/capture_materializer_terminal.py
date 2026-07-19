@@ -256,6 +256,15 @@ def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def exact_terminal_timestamps(started_at: Any, stopped_at: Any) -> bool:
+    return (
+        type(started_at) is int
+        and type(stopped_at) is int
+        and started_at > 0
+        and stopped_at >= started_at
+    )
+
+
 def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
@@ -502,10 +511,12 @@ def validate_job(
     log_options = log_configuration.get("options", {}) if isinstance(log_configuration, dict) else {}
     definition_retry = definition.get("retryStrategy")
     definition_timeout = definition.get("timeout")
+    started_at = job.get("startedAt")
+    stopped_at = job.get("stoppedAt")
     checks = {
         "job_id_exact": job.get("jobId") == job_id,
         "succeeded": job.get("status") == "SUCCEEDED",
-        "terminal_timestamps": (int(job.get("startedAt", 0)) > 0 and int(job.get("stoppedAt", 0)) >= int(job.get("startedAt", 0))),
+        "terminal_timestamps": exact_terminal_timestamps(started_at, stopped_at),
         "exact_job_definition": job.get("jobDefinition") == EXPECTED_JOB_DEFINITION,
         "exact_queue": job.get("jobQueue") == EXPECTED_QUEUE_ARN,
         "one_retry_attempt": isinstance(retry, dict) and exact_int(retry.get("attempts"), 1),
@@ -563,8 +574,8 @@ def validate_job(
         "job_id": job_id,
         "job_name": str(job.get("jobName", "")),
         "status": "SUCCEEDED",
-        "started_at_epoch_ms": int(job["startedAt"]),
-        "stopped_at_epoch_ms": int(job["stoppedAt"]),
+        "started_at_epoch_ms": started_at,
+        "stopped_at_epoch_ms": stopped_at,
         "job_definition_arn": EXPECTED_JOB_DEFINITION,
         "job_queue_arn": EXPECTED_QUEUE_ARN,
         "compute_environment_arn": EXPECTED_COMPUTE_ENVIRONMENT,

@@ -222,6 +222,15 @@ def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def exact_terminal_timestamps(started_at: Any, stopped_at: Any) -> bool:
+    return (
+        type(started_at) is int
+        and type(stopped_at) is int
+        and started_at > 0
+        and stopped_at >= started_at
+    )
+
+
 def aws_json(region: str, *args: str) -> dict[str, Any]:
     output = subprocess.check_output(
         ["aws", *args, "--region", region, "--output", "json"],
@@ -551,10 +560,12 @@ def validate_job(
     queue_order = queue.get("computeEnvironmentOrder")
     job_log_stream = str(container.get("logStreamName", ""))
     attempt_log_stream = str(attempt_container.get("logStreamName", ""))
+    started_at = job.get("startedAt")
+    stopped_at = job.get("stoppedAt")
     checks = {
         "job_id_exact": job.get("jobId") == args.job_id,
         "succeeded": job.get("status") == "SUCCEEDED",
-        "terminal_timestamps": (int(job.get("startedAt", 0)) > 0 and int(job.get("stoppedAt", 0)) >= int(job.get("startedAt", 0))),
+        "terminal_timestamps": exact_terminal_timestamps(started_at, stopped_at),
         "exact_job_definition": (job.get("jobDefinition") == route["job_definition_arn"]),
         "exact_queue": job.get("jobQueue") == EXPECTED_QUEUE_ARN,
         "one_retry_attempt": (isinstance(retry, dict) and exact_int(retry.get("attempts"), 1)),
@@ -650,8 +661,8 @@ def validate_job(
         "job_id": args.job_id,
         "job_name": str(job.get("jobName", "")),
         "status": "SUCCEEDED",
-        "started_at_epoch_ms": int(job["startedAt"]),
-        "stopped_at_epoch_ms": int(job["stoppedAt"]),
+        "started_at_epoch_ms": started_at,
+        "stopped_at_epoch_ms": stopped_at,
         "job_definition_arn": route["job_definition_arn"],
         "job_queue_arn": EXPECTED_QUEUE_ARN,
         "compute_environment_arn": EXPECTED_COMPUTE_ENVIRONMENT,
