@@ -191,6 +191,20 @@ EXPECTED_LIVE_QUEUE_CHECKS = {
     "ce_ec2",
     "ce_arm_instances",
 }
+REQUEST_DRY_RUN_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "generated_at_utc",
+    "scope",
+    "run_id",
+    "classification_authorization",
+    "authorized_hrd_state",
+    "input_receipts",
+    "custody",
+    "live_preflight",
+    "submit_job_request",
+    "checks",
+}
 
 
 def now() -> str:
@@ -1105,6 +1119,13 @@ def require_safe_new_output_parent(path: Path) -> None:
             raise NotADirectoryError(parent)
 
 
+def require_real_input_file(path: Path, label: str) -> Path:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file")
+    return path.resolve()
+
+
 def require_no_symlinked_ancestors(path: Path, label: str) -> None:
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
@@ -1298,6 +1319,46 @@ def submit(request: dict[str, Any], region: str) -> dict[str, Any]:
     return response
 
 
+def validate_dry_run_receipt(
+    path: Path,
+    expected: dict[str, Any],
+) -> dict[str, str]:
+    path = require_real_input_file(path, "materializer dry-run request receipt")
+    dry_run = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(dry_run, dict):
+        raise ValueError("materializer dry-run request receipt must be a JSON object")
+    if (
+        set(dry_run) != REQUEST_DRY_RUN_RECEIPT_KEYS
+        or dry_run.get("schema_version") != 1
+        or dry_run.get("status") != "rendered_only"
+        or not dry_run.get("generated_at_utc")
+        or dry_run.get("scope") != "private one-shot materializer-v4 submission preflight"
+        or dry_run.get("classification_authorization") != "none"
+        or dry_run.get("authorized_hrd_state") != "no_call"
+        or not isinstance(dry_run.get("submit_job_request"), dict)
+    ):
+        raise ValueError("materializer dry-run request receipt contract is malformed")
+
+    comparable = {
+        **dry_run,
+        "status": expected["status"],
+        "generated_at_utc": expected["generated_at_utc"],
+    }
+    if comparable != expected:
+        raise ValueError(
+            "materializer dry-run request receipt does not match this submit"
+        )
+
+    return {
+        "path": str(path.resolve()),
+        "sha256": sha256_path(path),
+        "submit_job_request_sha256": sha256_bytes(
+            canonical_bytes(dry_run["submit_job_request"])
+        ),
+        "status": "rendered_only",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-id", required=True)
@@ -1312,6 +1373,7 @@ def main() -> int:
     parser.add_argument("--job-definition-payload", required=True, type=Path)
     parser.add_argument("--request-output", required=True, type=Path)
     parser.add_argument("--response-output", type=Path)
+    parser.add_argument("--dry-run-receipt", type=Path)
     parser.add_argument("--region", default=REGION, choices=[REGION])
     parser.add_argument("--submit", action="store_true")
     args = parser.parse_args()
@@ -1321,12 +1383,22 @@ def main() -> int:
             raise SystemExit("Fail-closed: --submit requires HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES")
         if args.response_output is None:
             raise SystemExit("Fail-closed: --submit requires --response-output")
+        if args.dry_run_receipt is None:
+            raise SystemExit("Fail-closed: --submit requires --dry-run-receipt")
         outputs.append(args.response_output)
     elif args.response_output is not None:
         raise SystemExit("Fail-closed: --response-output is valid only with --submit")
+    elif args.dry_run_receipt is not None:
+        raise SystemExit("Fail-closed: --dry-run-receipt is valid only with --submit")
     try:
         require_new_outputs(outputs)
         request_receipt = preflight(args)
+        if args.dry_run_receipt is not None:
+            request_receipt["dry_run_receipt"] = validate_dry_run_receipt(
+                args.dry_run_receipt,
+                request_receipt,
+            )
+            request_receipt["checks"]["dry_run_receipt"] = True
         create_private(args.request_output, canonical_bytes(request_receipt))
     except (
         FileExistsError,

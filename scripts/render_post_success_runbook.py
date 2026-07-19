@@ -178,6 +178,7 @@ def materializer_command(
     *,
     request_output: Path,
     response_output: Path | None = None,
+    dry_run_receipt: Path | None = None,
 ) -> list[str | Path]:
     command: list[str | Path] = [
         "python3",
@@ -206,14 +207,20 @@ def materializer_command(
         REGION,
     ]
     if response_output is not None:
+        if dry_run_receipt is None:
+            raise ValueError("materializer submit command requires a dry-run receipt")
         return [
             "env",
             "HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES",
             *command,
+            "--dry-run-receipt",
+            dry_run_receipt,
             "--response-output",
             response_output,
             "--submit",
         ]
+    if dry_run_receipt is not None:
+        raise ValueError("--dry-run-receipt is only valid with materializer submit")
     return command
 
 
@@ -308,6 +315,7 @@ def submit_route_command(
     route: str,
     *,
     response_output: Path | None = None,
+    dry_run_receipt: Path | None = None,
 ) -> list[str | Path]:
     submission = Raw(f'"${route_var(route, "SUBMISSION_ID")}"')
     command: list[str | Path] = [
@@ -331,6 +339,8 @@ def submit_route_command(
         REGION,
     ]
     if response_output is not None:
+        if dry_run_receipt is None:
+            raise ValueError("route submit command requires a dry-run receipt")
         command = [
             "python3",
             aws_dir / "submit_route.py",
@@ -348,6 +358,8 @@ def submit_route_command(
             submission,
             "--request-output",
             deterministic / f"terminal.{route}.request.json",
+            "--dry-run-receipt",
+            dry_run_receipt,
             "--response-output",
             response_output,
             "--region",
@@ -360,6 +372,8 @@ def submit_route_command(
             "HRD_CROSSCHECK_LICENSE_REVIEWED=YES",
             *command,
         ]
+    if dry_run_receipt is not None:
+        raise ValueError("--dry-run-receipt is only valid with route submit")
     return command
 
 
@@ -737,6 +751,8 @@ def render(root: Path, terminal_job_id: str) -> str:
                 scripts,
                 deterministic,
                 request_output=deterministic / "terminal.materializer.request.json",
+                dry_run_receipt=deterministic
+                / "terminal.materializer.request.dry.json",
                 response_output=deterministic / "terminal.materializer.response.json",
             )
         ),
@@ -916,6 +932,8 @@ def render(root: Path, terminal_job_id: str) -> str:
                         aws_dir,
                         deterministic,
                         route,
+                        dry_run_receipt=deterministic
+                        / f"terminal.{route}.request.dry.json",
                         response_output=response,
                     )
                 ),

@@ -178,7 +178,10 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertNotIn("'$CONTRACT_URI'", text)
 
         for route in MODULE.EXECUTABLE_CROSSCHECK_METHOD_IDS:
-            submit = text.index(f"terminal.{route}.request.json --response-output")
+            dry = text.index(f"terminal.{route}.request.dry.json")
+            submit = text.index(
+                f"terminal.{route}.request.json --dry-run-receipt"
+            )
             wait = text.index(
                 "Wait for this route's submitted Batch job to reach `SUCCEEDED`",
                 submit,
@@ -189,11 +192,13 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             )
             capture = text.index(f"capture_route_terminal.py --route {route}", wait)
             self.assertLess(submit, wait)
+            self.assertLess(dry, submit)
             self.assertLess(wait, waiter)
             self.assertLess(waiter, capture)
 
     def test_route_submit_command_has_exact_response_output_argv(self) -> None:
         response = Path("/run/terminal.sequenza_scarhrd.response.json")
+        dry_receipt = Path("/run/terminal.sequenza_scarhrd.request.dry.json")
 
         dry_run = MODULE.submit_route_command(
             Path("/repo/aws"),
@@ -204,6 +209,7 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
             Path("/repo/aws"),
             Path("/run"),
             "sequenza_scarhrd",
+            dry_run_receipt=dry_receipt,
             response_output=response,
         )
 
@@ -211,12 +217,73 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         self.assertEqual(dry_run.count("--region"), 1)
         self.assertEqual(dry_run[dry_run.index("--region") + 1], MODULE.REGION)
         self.assertEqual(dry_run[-1], MODULE.REGION)
+        self.assertEqual(
+            apply[apply.index("--dry-run-receipt") + 1],
+            dry_receipt,
+        )
         self.assertEqual(apply.count("--response-output"), 1)
         self.assertEqual(apply.count("--region"), 1)
         self.assertEqual(apply[apply.index("--response-output") + 1], response)
         self.assertIn("HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES", apply)
         self.assertIn("HRD_CROSSCHECK_LICENSE_REVIEWED=YES", apply)
         self.assertEqual(apply[-1], "--submit")
+
+        with self.assertRaisesRegex(ValueError, "requires a dry-run receipt"):
+            MODULE.submit_route_command(
+                Path("/repo/aws"),
+                Path("/run"),
+                "sequenza_scarhrd",
+                response_output=response,
+            )
+        with self.assertRaisesRegex(ValueError, "only valid with route submit"):
+            MODULE.submit_route_command(
+                Path("/repo/aws"),
+                Path("/run"),
+                "sequenza_scarhrd",
+                dry_run_receipt=dry_receipt,
+            )
+
+    def test_materializer_submit_command_is_bound_to_dry_request(self) -> None:
+        response = Path("/run/terminal.materializer.response.json")
+        dry_receipt = Path("/run/terminal.materializer.request.dry.json")
+
+        dry_run = MODULE.materializer_command(
+            Path("/repo/scripts"),
+            Path("/run"),
+            request_output=Path("/run/terminal.materializer.request.dry.json"),
+        )
+        apply = MODULE.materializer_command(
+            Path("/repo/scripts"),
+            Path("/run"),
+            request_output=Path("/run/terminal.materializer.request.json"),
+            dry_run_receipt=dry_receipt,
+            response_output=response,
+        )
+
+        self.assertNotIn("--response-output", dry_run)
+        self.assertEqual(
+            apply[apply.index("--dry-run-receipt") + 1],
+            dry_receipt,
+        )
+        self.assertEqual(apply[apply.index("--response-output") + 1], response)
+        self.assertIn("HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES", apply)
+        self.assertNotIn("HRD_CROSSCHECK_LICENSE_REVIEWED=YES", apply)
+        self.assertEqual(apply[-1], "--submit")
+
+        with self.assertRaisesRegex(ValueError, "requires a dry-run receipt"):
+            MODULE.materializer_command(
+                Path("/repo/scripts"),
+                Path("/run"),
+                request_output=Path("/run/terminal.materializer.request.json"),
+                response_output=response,
+            )
+        with self.assertRaisesRegex(ValueError, "only valid with materializer submit"):
+            MODULE.materializer_command(
+                Path("/repo/scripts"),
+                Path("/run"),
+                request_output=Path("/run/terminal.materializer.request.dry.json"),
+                dry_run_receipt=dry_receipt,
+            )
 
     def test_input_contract_apply_is_bound_to_dry_run_receipt(self) -> None:
         text = render()

@@ -51,6 +51,20 @@ SUBMISSION_ENVIRONMENT_NAMES = (
     "HRD_CROSSCHECK_PUBLICATION_RECEIPT_PREFIX",
     "HRD_CROSSCHECK_SUBMISSION_ID",
 )
+REQUEST_DRY_RUN_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "generated_at_utc",
+    "scope",
+    "route",
+    "submission_id",
+    "contract",
+    "live_preflight",
+    "submit_job_request",
+    "checks",
+    "classification_authorization",
+    "authorized_hrd_state",
+}
 
 ROUTES: dict[str, dict[str, Any]] = {
     "sigprofiler_sbs3": {
@@ -582,6 +596,17 @@ def require_safe_new_output_parent(path: Path) -> None:
             raise NotADirectoryError(parent)
 
 
+def require_real_input_file(path: Path, label: str) -> Path:
+    for parent in path.parents:
+        if parent.is_symlink() and not is_platform_root_alias(parent):
+            raise ValueError(f"{label} parent may not be a symlink: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"{label} parent is not a directory: {parent}")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file")
+    return path.resolve()
+
+
 def build_submission_environment(
     *,
     contract_uri: str,
@@ -604,6 +629,44 @@ def build_submission_environment(
     if tuple(values) != SUBMISSION_ENVIRONMENT_NAMES:
         raise AssertionError("submission environment order is not exact")
     return [{"name": name, "value": value} for name, value in values.items()]
+
+
+def validate_dry_run_receipt(
+    path: Path,
+    expected: dict[str, Any],
+) -> dict[str, str]:
+    path = require_real_input_file(path, "route dry-run request receipt")
+    dry_run = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(dry_run, dict):
+        raise ValueError("route dry-run request receipt must be a JSON object")
+    if (
+        set(dry_run) != REQUEST_DRY_RUN_RECEIPT_KEYS
+        or dry_run.get("schema_version") != 1
+        or dry_run.get("status") != "rendered_only"
+        or not dry_run.get("generated_at_utc")
+        or dry_run.get("scope") != "private one-shot HRD cross-check route submission preflight"
+        or dry_run.get("classification_authorization") != "none"
+        or dry_run.get("authorized_hrd_state") != "no_call"
+        or not isinstance(dry_run.get("submit_job_request"), dict)
+    ):
+        raise ValueError("route dry-run request receipt contract is malformed")
+
+    comparable = {
+        **dry_run,
+        "status": expected["status"],
+        "generated_at_utc": expected["generated_at_utc"],
+    }
+    if comparable != expected:
+        raise ValueError("route dry-run request receipt does not match this submit")
+
+    return {
+        "path": str(path.resolve()),
+        "sha256": digest(path),
+        "submit_job_request_sha256": sha256_bytes(
+            canonical_bytes(dry_run["submit_job_request"])
+        ),
+        "status": "rendered_only",
+    }
 
 
 def preflight(args: argparse.Namespace) -> dict[str, Any]:
@@ -737,6 +800,7 @@ def main() -> int:
     )
     parser.add_argument("--request-output", required=True, type=Path)
     parser.add_argument("--response-output", type=Path)
+    parser.add_argument("--dry-run-receipt", type=Path)
     parser.add_argument("--region", default=REGION, choices=[REGION])
     parser.add_argument("--submit", action="store_true")
     args = parser.parse_args()
@@ -749,13 +813,23 @@ def main() -> int:
             raise SystemExit("Fail-closed: --submit requires HRD_CROSSCHECK_LICENSE_REVIEWED=YES")
         if args.response_output is None:
             raise SystemExit("Fail-closed: --submit requires --response-output")
+        if args.dry_run_receipt is None:
+            raise SystemExit("Fail-closed: --submit requires --dry-run-receipt")
         outputs.append(args.response_output)
     elif args.response_output is not None:
         raise SystemExit("Fail-closed: --response-output is valid only with --submit")
+    elif args.dry_run_receipt is not None:
+        raise SystemExit("Fail-closed: --dry-run-receipt is valid only with --submit")
 
     try:
         require_new_outputs(outputs)
         request_receipt = preflight(args)
+        if args.dry_run_receipt is not None:
+            request_receipt["dry_run_receipt"] = validate_dry_run_receipt(
+                args.dry_run_receipt,
+                request_receipt,
+            )
+            request_receipt["checks"]["dry_run_receipt"] = True
         create_private(args.request_output, canonical_bytes(request_receipt))
     except (
         FileExistsError,

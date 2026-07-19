@@ -136,8 +136,27 @@ class SubmitRouteTests(unittest.TestCase):
         return {
             "schema_version": 1,
             "status": "submission_authorized",
+            "generated_at_utc": "2026-07-17T01:02:03Z",
+            "scope": "private one-shot HRD cross-check route submission preflight",
             "route": "sigprofiler_sbs3",
             "submission_id": self.submission_id,
+            "contract": {
+                "path": str(self.root / "contract.json"),
+                "uri": "s3://diana-omics-private-results-172630973301-us-east-1/contract.json",
+                "version_id": "exact-version",
+                "sha256": "a" * 64,
+                "publication_anchor_path": str(self.root / "anchor.json"),
+                "publication_anchor_sha256": "b" * 64,
+            },
+            "live_preflight": {
+                "identity": {"account": MODULE.ACCOUNT_ID, "arn": "arn:aws:iam::172630973301:user/unit"},
+                "job_definition": {},
+                "image": {},
+                "queue": {},
+                "job_name_uniqueness": {},
+                "route_output_history": {},
+                "publication_receipt_history": {},
+            },
             "submit_job_request": {
                 "jobName": job_name,
                 "jobQueue": MODULE.QUEUE_NAME,
@@ -145,9 +164,38 @@ class SubmitRouteTests(unittest.TestCase):
                 "containerOverrides": {"environment": []},
                 "retryStrategy": {"attempts": 1},
             },
+            "checks": {
+                "exact_contract_version_bound": True,
+                "exact_active_route_revision_3": True,
+                "immutable_linux_amd64_image": True,
+                "exact_static_environment": True,
+                "exact_live_x86_queue_compute_environment": True,
+                "one_attempt": True,
+                "zero_existing_exact_job_name_across_all_queues_statuses": True,
+                "empty_route_output_history": True,
+                "empty_publication_receipt_history": True,
+                "default_dry_run_behavior_preserved": True,
+                "submission_guards_satisfied": True,
+            },
+            "classification_authorization": "none",
+            "authorized_hrd_state": "no_call",
         }
 
-    def argv(self, *, submit: bool = False) -> list[str]:
+    def write_dry_run_receipt(self, receipt: dict) -> Path:
+        dry_run = copy.deepcopy(receipt)
+        dry_run["status"] = "rendered_only"
+        dry_run["generated_at_utc"] = "2026-07-17T01:01:01Z"
+        path = self.root / "request.dry.json"
+        path.write_text(json.dumps(dry_run, indent=2, sort_keys=True) + "\n")
+        return path
+
+    def argv(
+        self,
+        *,
+        submit: bool = False,
+        dry_run_receipt: Path | None = None,
+        bind_dry_run: bool = True,
+    ) -> list[str]:
         values = [
             "submit_route.py",
             "--route",
@@ -166,6 +214,13 @@ class SubmitRouteTests(unittest.TestCase):
             str(self.request),
         ]
         if submit:
+            if bind_dry_run:
+                values.extend(
+                    [
+                        "--dry-run-receipt",
+                        str(dry_run_receipt or self.root / "request.dry.json"),
+                    ]
+                )
             values.extend(["--response-output", str(self.response), "--submit"])
         return values
 
@@ -331,6 +386,55 @@ class SubmitRouteTests(unittest.TestCase):
             self.assertFalse(self.request.exists())
             self.assertFalse(self.response.exists())
 
+    def test_submit_requires_matching_dry_run_receipt_before_submit(self) -> None:
+        receipt = self.preflight_receipt()
+
+        with (
+            mock.patch.object(sys, "argv", self.argv(submit=True, bind_dry_run=False)),
+            mock.patch.dict(
+                os.environ,
+                {
+                    "HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES",
+                    "HRD_CROSSCHECK_LICENSE_REVIEWED": "YES",
+                },
+                clear=True,
+            ),
+            mock.patch.object(MODULE, "preflight") as preflight,
+            self.assertRaisesRegex(SystemExit, "requires --dry-run-receipt"),
+        ):
+            MODULE.main()
+
+        preflight.assert_not_called()
+
+        dry_run = self.write_dry_run_receipt(receipt)
+        stale = json.loads(dry_run.read_text(encoding="utf-8"))
+        stale["submit_job_request"]["jobName"] = "stale"
+        dry_run.write_text(json.dumps(stale, indent=2, sort_keys=True) + "\n")
+
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                self.argv(submit=True, dry_run_receipt=dry_run),
+            ),
+            mock.patch.dict(
+                os.environ,
+                {
+                    "HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES",
+                    "HRD_CROSSCHECK_LICENSE_REVIEWED": "YES",
+                },
+                clear=True,
+            ),
+            mock.patch.object(MODULE, "preflight", return_value=receipt),
+            mock.patch.object(MODULE, "submit") as submit,
+            self.assertRaisesRegex(SystemExit, "does not match this submit"),
+        ):
+            MODULE.main()
+
+        submit.assert_not_called()
+        self.assertFalse(self.request.exists())
+        self.assertFalse(self.response.exists())
+
     def test_request_receipt_fsyncs_parent_directory(self) -> None:
         with mock.patch.object(
             MODULE,
@@ -435,6 +539,7 @@ class SubmitRouteTests(unittest.TestCase):
 
     def test_submit_captures_job_id_and_arn_in_distinct_mode_0600_receipt(self) -> None:
         receipt = self.preflight_receipt()
+        dry_run = self.write_dry_run_receipt(receipt)
         job_id = "12345678-1234-1234-1234-123456789abc"
         response = {
             "jobName": receipt["submit_job_request"]["jobName"],
@@ -442,7 +547,11 @@ class SubmitRouteTests(unittest.TestCase):
             "jobArn": f"arn:aws:batch:{MODULE.REGION}:{MODULE.ACCOUNT_ID}:job/{job_id}",
         }
         with (
-            mock.patch.object(sys, "argv", self.argv(submit=True)),
+            mock.patch.object(
+                sys,
+                "argv",
+                self.argv(submit=True, dry_run_receipt=dry_run),
+            ),
             mock.patch.dict(
                 os.environ,
                 {
@@ -465,8 +574,13 @@ class SubmitRouteTests(unittest.TestCase):
 
     def test_submit_failure_writes_ambiguity_receipt_and_forbids_retry(self) -> None:
         receipt = self.preflight_receipt()
+        dry_run = self.write_dry_run_receipt(receipt)
         with (
-            mock.patch.object(sys, "argv", self.argv(submit=True)),
+            mock.patch.object(
+                sys,
+                "argv",
+                self.argv(submit=True, dry_run_receipt=dry_run),
+            ),
             mock.patch.dict(
                 os.environ,
                 {
@@ -487,6 +601,7 @@ class SubmitRouteTests(unittest.TestCase):
 
     def test_response_receipt_is_reserved_before_submit(self) -> None:
         receipt = self.preflight_receipt()
+        dry_run = self.write_dry_run_receipt(receipt)
 
         def verify_reserved(request: dict, region: str) -> dict:
             del request, region
@@ -495,7 +610,11 @@ class SubmitRouteTests(unittest.TestCase):
             raise TimeoutError("uncertain")
 
         with (
-            mock.patch.object(sys, "argv", self.argv(submit=True)),
+            mock.patch.object(
+                sys,
+                "argv",
+                self.argv(submit=True, dry_run_receipt=dry_run),
+            ),
             mock.patch.dict(
                 os.environ,
                 {

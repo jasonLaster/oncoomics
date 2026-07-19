@@ -436,11 +436,75 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             job_definition_payload=self.job_definition,
             request_output=self.request_output,
             response_output=self.response_output if submit else None,
+            dry_run_receipt=None,
             region=MODULE.REGION,
             submit=submit,
         )
 
-    def argv(self, *, submit: bool = False) -> list[str]:
+    def preflight_receipt(
+        self,
+        job_name: str = "diana-wgs-hrd-materialize-20260716T033101Z",
+    ) -> dict:
+        return {
+            "schema_version": 1,
+            "status": "submission_authorized",
+            "generated_at_utc": "2026-07-17T01:02:03Z",
+            "scope": "private one-shot materializer-v4 submission preflight",
+            "run_id": self.run_id,
+            "classification_authorization": "none",
+            "authorized_hrd_state": "no_call",
+            "input_receipts": {
+                "final_freeze": {"path": str(self.final_freeze), "sha256": "a" * 64},
+                "registration_v4": {"path": str(self.registration), "sha256": "b" * 64},
+            },
+            "custody": {"final": {}, "reference": {}},
+            "live_preflight": {
+                "identity": {},
+                "job_definition": {},
+                "image": {},
+                "queue": {},
+                "job_name_uniqueness": {},
+                "destination_history": {},
+                "receipt_history": {},
+            },
+            "submit_job_request": {
+                "jobName": job_name,
+                "jobQueue": MODULE.QUEUE_NAME,
+                "jobDefinition": MODULE.JOB_DEFINITION_ARN,
+                "parameters": {name: "value" for name in MODULE.PARAMETER_NAMES},
+                "retryStrategy": {"attempts": 1},
+            },
+            "checks": {
+                "receipt_hashes_cross_bound": True,
+                "three_exact_source_versions_and_local_sha256": True,
+                "two_exact_reference_versions_and_aws_sha256": True,
+                "exact_active_revision_4": True,
+                "immutable_arm64_image": True,
+                "exact_live_arm_queue": True,
+                "one_attempt": True,
+                "zero_existing_exact_job_name": True,
+                "empty_destination_history": True,
+                "empty_receipt_history": True,
+                "default_dry_run_behavior_preserved": True,
+                "submission_guard_satisfied": True,
+            },
+        }
+
+    def write_dry_run_receipt(self, receipt: dict) -> Path:
+        dry_run = copy.deepcopy(receipt)
+        dry_run["status"] = "rendered_only"
+        dry_run["generated_at_utc"] = "2026-07-17T01:01:01Z"
+        output = self.root / "request.dry.json"
+        output.write_text(json.dumps(dry_run, indent=2, sort_keys=True) + "\n")
+        return output
+
+    def argv(
+        self,
+        *,
+        submit: bool = False,
+        dry_run_receipt: Path | None = None,
+        bind_dry_run: bool = True,
+    ) -> list[str]:
         values = [
             "submit_materializer_v4.py",
             "--run-id",
@@ -467,6 +531,14 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         if submit:
             values.extend(
                 [
+                    *(
+                        [
+                            "--dry-run-receipt",
+                            str(dry_run_receipt or self.root / "request.dry.json"),
+                        ]
+                        if bind_dry_run
+                        else []
+                    ),
                     "--response-output",
                     str(self.response_output),
                     "--submit",
@@ -1153,34 +1225,8 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         self.assertTrue(self.response_output.exists())
 
     def test_submit_guard_is_required_before_receipt_or_aws(self) -> None:
-        argv = [
-            "submit_materializer_v4.py",
-            "--run-id",
-            self.run_id,
-            "--final-freeze-receipt",
-            str(self.final_freeze),
-            "--final-freeze-anchor",
-            str(self.final_anchor),
-            "--exact-materialization-receipt",
-            str(self.exact_materialization),
-            "--reference-freeze-receipt",
-            str(self.reference_freeze),
-            "--reference-sha256-receipt",
-            str(self.reference_sha),
-            "--materializer-script-anchor",
-            str(self.script_anchor),
-            "--registration-receipt",
-            str(self.registration),
-            "--job-definition-payload",
-            str(self.job_definition),
-            "--request-output",
-            str(self.request_output),
-            "--response-output",
-            str(self.response_output),
-            "--submit",
-        ]
         with (
-            mock.patch.object(sys, "argv", argv),
+            mock.patch.object(sys, "argv", self.argv(submit=True)),
             mock.patch.dict(os.environ, {}, clear=True),
             mock.patch.object(MODULE, "aws_json") as aws,
             self.assertRaisesRegex(SystemExit, "EXPENSIVE_RUN=YES"),
@@ -1190,55 +1236,71 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         self.assertFalse(self.request_output.exists())
         self.assertFalse(self.response_output.exists())
 
+    def test_submit_requires_matching_dry_run_receipt_before_submit(self) -> None:
+        request = self.preflight_receipt()
+
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                self.argv(submit=True, bind_dry_run=False),
+            ),
+            mock.patch.dict(
+                os.environ,
+                {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"},
+                clear=True,
+            ),
+            mock.patch.object(MODULE, "preflight") as preflight,
+            self.assertRaisesRegex(SystemExit, "requires --dry-run-receipt"),
+        ):
+            MODULE.main()
+
+        preflight.assert_not_called()
+
+        dry_run = self.write_dry_run_receipt(request)
+        stale = json.loads(dry_run.read_text(encoding="utf-8"))
+        stale["submit_job_request"]["jobName"] = "stale"
+        dry_run.write_text(json.dumps(stale, indent=2, sort_keys=True) + "\n")
+
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                self.argv(submit=True, dry_run_receipt=dry_run),
+            ),
+            mock.patch.object(MODULE, "preflight", return_value=request),
+            mock.patch.object(MODULE, "submit") as submitter,
+            mock.patch.dict(
+                os.environ,
+                {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"},
+                clear=True,
+            ),
+            self.assertRaisesRegex(SystemExit, "does not match this submit"),
+        ):
+            MODULE.main()
+
+        submitter.assert_not_called()
+        self.assertFalse(self.request_output.exists())
+        self.assertFalse(self.response_output.exists())
+
     def test_submit_writes_distinct_request_and_response_receipts(self) -> None:
         response = {
             "jobName": "diana-wgs-hrd-materialize-20260716T033101Z",
             "jobId": "12345678-1234-1234-1234-123456789abc",
             "jobArn": ("arn:aws:batch:us-east-1:172630973301:job/12345678-1234-1234-1234-123456789abc"),
         }
+        request = self.preflight_receipt(response["jobName"])
+        dry_run = self.write_dry_run_receipt(request)
         with (
-            mock.patch.object(MODULE, "preflight") as preflight,
+            mock.patch.object(MODULE, "preflight", return_value=request),
             mock.patch.object(MODULE, "submit", return_value=response) as submitter,
             mock.patch.dict(os.environ, {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"}, clear=True),
         ):
-            preflight.return_value = {
-                "status": "submission_authorized",
-                "run_id": self.run_id,
-                "submit_job_request": {
-                    "jobName": response["jobName"],
-                    "jobQueue": MODULE.QUEUE_NAME,
-                    "jobDefinition": MODULE.JOB_DEFINITION_ARN,
-                    "parameters": {name: "value" for name in MODULE.PARAMETER_NAMES},
-                    "retryStrategy": {"attempts": 1},
-                },
-            }
-            argv = [
-                "submit_materializer_v4.py",
-                "--run-id",
-                self.run_id,
-                "--final-freeze-receipt",
-                str(self.final_freeze),
-                "--final-freeze-anchor",
-                str(self.final_anchor),
-                "--exact-materialization-receipt",
-                str(self.exact_materialization),
-                "--reference-freeze-receipt",
-                str(self.reference_freeze),
-                "--reference-sha256-receipt",
-                str(self.reference_sha),
-                "--materializer-script-anchor",
-                str(self.script_anchor),
-                "--registration-receipt",
-                str(self.registration),
-                "--job-definition-payload",
-                str(self.job_definition),
-                "--request-output",
-                str(self.request_output),
-                "--response-output",
-                str(self.response_output),
-                "--submit",
-            ]
-            with mock.patch.object(sys, "argv", argv):
+            with mock.patch.object(
+                sys,
+                "argv",
+                self.argv(submit=True, dry_run_receipt=dry_run),
+            ):
                 self.assertEqual(MODULE.main(), 0)
         submitter.assert_called_once()
         for path in (self.request_output, self.response_output):
@@ -1257,45 +1319,14 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             "jobId": "12345678-1234-1234-1234-123456789abc",
             "jobArn": ("arn:aws:batch:us-east-1:172630973301:job/12345678-1234-1234-1234-123456789abc"),
         }
-        request = {
-            "status": "submission_authorized",
-            "run_id": self.run_id,
-            "submit_job_request": {
-                "jobName": response["jobName"],
-                "jobQueue": MODULE.QUEUE_NAME,
-                "jobDefinition": MODULE.JOB_DEFINITION_ARN,
-                "parameters": {name: "value" for name in MODULE.PARAMETER_NAMES},
-                "retryStrategy": {"attempts": 1},
-            },
-        }
-        argv = [
-            "submit_materializer_v4.py",
-            "--run-id",
-            self.run_id,
-            "--final-freeze-receipt",
-            str(self.final_freeze),
-            "--final-freeze-anchor",
-            str(self.final_anchor),
-            "--exact-materialization-receipt",
-            str(self.exact_materialization),
-            "--reference-freeze-receipt",
-            str(self.reference_freeze),
-            "--reference-sha256-receipt",
-            str(self.reference_sha),
-            "--materializer-script-anchor",
-            str(self.script_anchor),
-            "--registration-receipt",
-            str(self.registration),
-            "--job-definition-payload",
-            str(self.job_definition),
-            "--request-output",
-            str(self.request_output),
-            "--response-output",
-            str(self.response_output),
-            "--submit",
-        ]
+        request = self.preflight_receipt(response["jobName"])
+        dry_run = self.write_dry_run_receipt(request)
         with (
-            mock.patch.object(sys, "argv", argv),
+            mock.patch.object(
+                sys,
+                "argv",
+                self.argv(submit=True, dry_run_receipt=dry_run),
+            ),
             mock.patch.object(MODULE, "preflight", return_value=request),
             mock.patch.object(MODULE, "submit", return_value=response) as submitter,
             mock.patch.object(MODULE, "complete_reserved", side_effect=OSError("fsync failed")),
