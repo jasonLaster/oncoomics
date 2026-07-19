@@ -446,13 +446,20 @@ def validate_report_manifest_support(
 ) -> None:
     report_kind = str(manifest.get("report_kind", ""))
     expected_extra = REPORT_KIND_EXTRA_KEYS.get(report_kind)
+    schema_version = manifest.get("schema_version")
     if (
-        manifest.get("schema_version") != 1
+        isinstance(schema_version, bool)
+        or not isinstance(schema_version, int)
+        or schema_version != 1
         or manifest.get("method_id") != method
         or expected_extra is None
         or set(manifest) != CORE_REPORT_MANIFEST_KEYS | set(expected_extra)
     ):
         raise ValueError(f"report manifest envelope is not exact for {method}")
+    if not isinstance(manifest.get("classification_authorized"), bool):
+        raise ValueError(
+            f"report manifest classification authorization is not exact for {method}"
+        )
 
     support_hashes = manifest.get("support_sha256")
     if not isinstance(support_hashes, dict) or not support_hashes:

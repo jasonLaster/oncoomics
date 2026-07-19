@@ -761,6 +761,7 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             ("extra_legacy_key", {"legacy_support": {}}, {}),
             ("missing_report_kind", {}, {"report_kind"}),
             ("unknown_report_kind", {"report_kind": "unknown_packet"}, {}),
+            ("bool_schema_version", {"schema_version": True}, {}),
         )
 
         for name, patch, remove in cases:
@@ -781,6 +782,30 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                     built.stderr,
                 )
                 self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_rejects_non_boolean_source_packet_classification_authorization(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            fixture.update_manifest(
+                0,
+                {
+                    "classification_authorized": "false",
+                },
+            )
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn(
+                (
+                    "report manifest classification authorization is not exact "
+                    "for deterministic_full_wgs"
+                ),
+                built.stderr,
+            )
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
     def test_rejects_symlinked_source_packet_support_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
