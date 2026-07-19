@@ -828,6 +828,38 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "object is not exact"):
                 MODULE.validate_private_receipt(fixture.receipt_path, fixture.method_id)
 
+    def test_private_receipt_object_hashes_must_be_exact_strings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            receipt = json.loads(fixture.receipt_path.read_text())
+            numeric_digest = int("1" * 64)
+            digest = "1" * 64
+            receipt["objects"][0]["sha256"] = numeric_digest
+            receipt["objects"][0]["checksum_sha256"] = MODULE.checksum_sha256(digest)
+            readdress_private_receipt(
+                receipt,
+                fixture.method_id,
+                [
+                    {
+                        **row,
+                        "sha256": digest
+                        if row["sha256"] == numeric_digest
+                        else row["sha256"],
+                    }
+                    for row in receipt["objects"]
+                ],
+            )
+            fixture.receipt_path.write_text(
+                json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "object is not exact"):
+                MODULE.validate_private_receipt(
+                    fixture.receipt_path,
+                    fixture.method_id,
+                )
+
     def test_private_receipt_object_checks_must_be_exact(self) -> None:
         cases = (
             {"version_id": True},

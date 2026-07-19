@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact blocked cross-check packet hashes</li>
+          <li class="pill">Latest milestone = local exact private-publication hashes</li>
+          <li class="pill">Private-publication hashes = exact</li>
           <li class="pill">Blocked cross-check hashes = exact</li>
           <li class="pill">Cross-check contract hashes = exact</li>
           <li class="pill">Public-index hashes = exact</li>
@@ -1266,6 +1267,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact private-publication object hashes</strong>
+              <span>The reviewed-public report publisher now rejects non-string SHA-256 values in private publication receipt object rows before a private deterministic/Rosalind/cross-check/AI/synthesis report packet can be copied into the reviewed public alias tree.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact public-index hashes</strong>
               <span>The public results-index builder now rejects non-string reviewed-public receipt SHA-256 fields before constructing <code>public-index/objects.json</code>.</span>
             </li>
@@ -1395,6 +1400,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T12:00:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact private-publication object hashes:</strong>
+                the reviewed-public report publisher now rejects non-string
+                SHA-256 values in private publication receipt object rows before
+                a private deterministic/Rosalind/cross-check/AI/synthesis
+                report packet can be copied into the reviewed public alias tree.
+                No live cloud action, compute action, or replacement run was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T11:45:00-07:00">Jul 19 · local</time>
               <span>

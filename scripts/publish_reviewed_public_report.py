@@ -49,6 +49,11 @@ REVISION = re.compile(r"^[0-9a-f]{64}$")
 MAX_FILE_BYTES = 25 * 1024 * 1024
 MAX_PACKET_BYTES = 100 * 1024 * 1024
 
+
+def is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and SHA256_HEX.fullmatch(value) is not None
+
+
 DETERMINISTIC_FILES = (
     "crosscheck_input_plans.json",
     "evidence_checks.json",
@@ -606,7 +611,7 @@ def validate_private_receipt(
         if relative in seen:
             raise ValueError(f"private publication receipt repeats {relative}")
         seen.add(relative)
-        digest = str(raw.get("sha256", ""))
+        digest = raw.get("sha256")
         version_id = str(raw.get("version_id", ""))
         size = raw.get("bytes")
         checks = raw.get("checks")
@@ -617,7 +622,7 @@ def validate_private_receipt(
             or raw.get("key") != expected_key
             or raw.get("uri") != f"s3://{bucket}/{expected_key}"
             or not non_null_version_id(version_id)
-            or not SHA256_HEX.fullmatch(digest)
+            or not is_sha256(digest)
             or not is_positive_exact_int(size)
             or size > MAX_FILE_BYTES
             or raw.get("server_side_encryption") != "aws:kms"
