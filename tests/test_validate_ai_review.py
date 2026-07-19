@@ -295,6 +295,30 @@ class ValidateAiReviewTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_validation_receipt_rechecks_mode_after_directory_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "validation.json"
+            real_fsync_directory = VALIDATE.fsync_directory
+
+            def relax_mode_after_directory_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.chmod(0o644)
+
+            with (
+                mock.patch.object(
+                    VALIDATE,
+                    "fsync_directory",
+                    side_effect=relax_mode_after_directory_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "validation.json changed during write",
+                ),
+            ):
+                VALIDATE.write_validation_create_only(output, {"status": "passed"})
+
+            self.assertFalse(output.exists())
+
     def test_validation_receipt_refuses_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

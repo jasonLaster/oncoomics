@@ -945,6 +945,8 @@ def require_installed_validation(path: Path, expected_sha256: str) -> None:
     require_no_symlinked_ancestors(path, "validation.json")
     if path.is_symlink() or not path.is_file():
         raise ValueError("validation.json changed during write")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError("validation.json changed during write")
     if sha256(path) != expected_sha256:
         raise ValueError("validation.json changed during write")
 
