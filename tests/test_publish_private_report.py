@@ -681,6 +681,42 @@ class PublishPrivateReportTests(unittest.TestCase):
 
                 self.assertFalse(fixture.receipt_path.exists())
 
+    def test_apply_rejects_dry_run_receipt_with_non_exact_counts_before_aws(
+        self,
+    ) -> None:
+        cases = (
+            ("object_count", 8.0),
+            ("object_count", "8"),
+            ("passed_count", False),
+            ("passed_count", 0.0),
+            ("passed_count", "0"),
+            ("forbidden_token_count", 4.0),
+            ("forbidden_token_count", "4"),
+        )
+
+        for field, value in cases:
+            with self.subTest(field=field, value=value), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                dry_run_receipt = self.write_dry_run_receipt(fixture)
+                payload = json.loads(dry_run_receipt.read_text(encoding="utf-8"))
+                payload[field] = value
+                dry_run_receipt.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with (
+                    self.assertRaisesRegex(ValueError, "contract is malformed"),
+                    mock.patch.object(
+                        MODULE,
+                        "aws_json",
+                        side_effect=AssertionError("AWS called"),
+                    ),
+                ):
+                    MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_run_receipt))
+
+                self.assertFalse(fixture.receipt_path.exists())
+
     def test_apply_rejects_dry_run_receipt_below_symlinked_parent_before_aws(
         self,
     ) -> None:

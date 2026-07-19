@@ -28,9 +28,9 @@ from publish_reviewed_public_report import (
     canonical_packet_digest,
     checksum_sha256,
     content_type,
-    exact_schema_version,
-    exact_int,
     exact_final_history,
+    exact_int,
+    exact_schema_version,
     head_object,
     non_null_version_id,
     now,
@@ -236,7 +236,12 @@ def validate_dry_run_receipt(
         or not dry_run.get("generated_at_utc")
         or not isinstance(dry_run.get("completed_at_utc"), str)
         or not dry_run.get("completed_at_utc")
-        or dry_run.get("passed_count") != 0
+        or not exact_int(dry_run.get("object_count"), receipt["object_count"])
+        or not exact_int(dry_run.get("passed_count"), 0)
+        or not exact_int(
+            dry_run.get("forbidden_token_count"),
+            receipt["forbidden_token_count"],
+        )
         or dry_run.get("objects") != []
     ):
         raise ValueError("private report dry-run receipt contract is malformed")
@@ -250,8 +255,6 @@ def validate_dry_run_receipt(
         "destination_prefix",
         "kms_key_arn",
         "expected_files",
-        "object_count",
-        "forbidden_token_count",
         "forbidden_token_sha256",
     )
     if any(dry_run.get(field) != receipt.get(field) for field in expected_fields):

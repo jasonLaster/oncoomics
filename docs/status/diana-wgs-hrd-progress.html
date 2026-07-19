@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local final-freeze receipt-anchor ContentLength exactness</li>
+          <li class="pill">Latest milestone = local private report dry-run count exactness</li>
+          <li class="pill">Private report dry-run counts = exact</li>
           <li class="pill">Final-freeze receipt-anchor ContentLength = exact</li>
           <li class="pill">Deterministic terminal counts = exact</li>
           <li class="pill">Input-contract publication bytes = exact</li>
@@ -939,6 +940,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact private report dry-run counts</strong>
+              <span>Private report apply-mode now rejects non-exact dry-run receipt object, passed, or forbidden-token counts before any private source-freeze, reviewer, or synthesis packet publication can make an AWS call or write an apply receipt.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact comparative synthesis schemas</strong>
               <span>Comparative HRD synthesis now rejects non-exact source <code>report_manifest.json</code> schemas before summarizing independent AI review evidence; synthesis and AI finalization also keep raw <code>schema_version</code> comparisons out of their custody gates.</span>
             </li>
@@ -1180,6 +1185,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:25:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact private report dry-run counts:</strong>
+                private report apply-mode now rejects non-exact
+                <code>object_count</code>, <code>passed_count</code>, and
+                <code>forbidden_token_count</code> values from private preflight
+                dry-run receipts before source-freeze, reviewer, or synthesis
+                packet publication can make an AWS call or write an apply
+                receipt. No S3, Batch, route, GPU, quota, replacement compute,
+                or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:24:00-07:00">Jul 19 · local</time>
               <span>
