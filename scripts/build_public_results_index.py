@@ -192,13 +192,16 @@ def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
     return value
 
 
-def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> dict[str, int]:
+def validate_reviewed_public_receipts(
+    paths: Sequence[pathlib.Path],
+) -> tuple[dict[str, int], list[dict[str, Any]]]:
     if len(paths) != len(REPORT_METHOD_IDS):
         raise RuntimeError(
             "reviewed-public index build requires exactly ten public publication receipts"
         )
 
     receipt_objects: dict[str, int] = {}
+    receipt_binding: list[dict[str, Any]] = []
     for method_id, path in zip(REPORT_METHOD_IDS, paths):
         receipt = load_json_object(path, f"{method_id} reviewed-public receipt")
         contract = METHOD_CONTRACTS[method_id]
@@ -339,7 +342,16 @@ def validate_reviewed_public_receipts(paths: Sequence[pathlib.Path]) -> dict[str
         if observed_keys != expected_keys or observed_relative_paths != set(expected_files):
             raise RuntimeError(f"{method_id} reviewed-public receipt objects do not match the public contract")
 
-    return receipt_objects
+        receipt_binding.append(
+            {
+                "method_id": method_id,
+                "sha256": sha256(path),
+                "destination_prefix": expected_prefix,
+                "object_count": len(expected_files),
+            }
+        )
+
+    return receipt_objects, receipt_binding
 
 
 def validate_reviewed_public_s3_state(
@@ -410,8 +422,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     expected_reviewed_public_objects: dict[str, int] = {}
+    reviewed_public_receipts: list[dict[str, Any]] = []
     if args.reviewed_public_receipt:
-        expected_reviewed_public_objects = validate_reviewed_public_receipts(args.reviewed_public_receipt)
+        expected_reviewed_public_objects, reviewed_public_receipts = validate_reviewed_public_receipts(
+            args.reviewed_public_receipt
+        )
 
     objects: list[dict[str, Any]] = []
     for prefix in PUBLIC_PREFIXES:
@@ -432,6 +447,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "prefixes": list(PUBLIC_PREFIXES),
         "object_count": len(objects),
         "total_size": sum(item["size"] for item in objects),
+        "reviewed_public_receipts": reviewed_public_receipts,
         "objects": objects,
     }
     write_index(args.output, payload)

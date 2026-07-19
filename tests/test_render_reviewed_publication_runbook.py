@@ -234,6 +234,8 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
 
         self.assertIn("/repo/scripts/build_public_results_index.py", text)
         self.assertEqual(text.count("/repo/scripts/publish_public_results_index.py"), 2)
+        index_section = text.split("## 2. Rebuild and publish the public index", 1)[1]
+        self.assertEqual(index_section.count("--reviewed-public-receipt "), 30)
         self.assertIn("/repo/.codex-tmp/public-index/public-index.terminal.dry.json", text)
         self.assertIn("/repo/.codex-tmp/public-index/public-index.terminal.json", text)
         for stale in MODULE.STALE_TOKENS:
@@ -268,6 +270,17 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                     Path("/repo/scripts/publish_public_results_index.py"),
                     "--index",
                     index,
+                    *[
+                        token
+                        for method_id in MODULE.REPORT_METHOD_IDS
+                        for token in (
+                            "--reviewed-public-receipt",
+                            Path(
+                                "/repo/.codex-tmp/hrd-reports/publication/"
+                                f"unit.{method_id}.public.json"
+                            ),
+                        )
+                    ],
                     "--receipt-output",
                     Path("/repo/.codex-tmp/public-index/public-index.unit.dry.json"),
                 ],
@@ -276,6 +289,17 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                     Path("/repo/scripts/publish_public_results_index.py"),
                     "--index",
                     index,
+                    *[
+                        token
+                        for method_id in MODULE.REPORT_METHOD_IDS
+                        for token in (
+                            "--reviewed-public-receipt",
+                            Path(
+                                "/repo/.codex-tmp/hrd-reports/publication/"
+                                f"unit.{method_id}.public.json"
+                            ),
+                        )
+                    ],
                     "--receipt-output",
                     Path("/repo/.codex-tmp/public-index/public-index.unit.json"),
                     "--dry-run-receipt",

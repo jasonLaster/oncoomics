@@ -134,23 +134,25 @@ def index_commands(root: Path, receipt_stem: str = "terminal") -> list[list[str 
         receipt_output(root, receipt_stem, method_id, "")
         for method_id in REPORT_METHOD_IDS
     ]
+    reviewed_public_receipt_args = [
+        token
+        for receipt in reviewed_public_receipts
+        for token in ("--reviewed-public-receipt", receipt)
+    ]
     return [
         [
             "python3",
             scripts / "build_public_results_index.py",
             "--output",
             index,
-            *[
-                token
-                for receipt in reviewed_public_receipts
-                for token in ("--reviewed-public-receipt", receipt)
-            ],
+            *reviewed_public_receipt_args,
         ],
         [
             "python3",
             scripts / "publish_public_results_index.py",
             "--index",
             index,
+            *reviewed_public_receipt_args,
             "--receipt-output",
             dry_receipt,
         ],
@@ -159,6 +161,7 @@ def index_commands(root: Path, receipt_stem: str = "terminal") -> list[list[str 
             scripts / "publish_public_results_index.py",
             "--index",
             index,
+            *reviewed_public_receipt_args,
             "--receipt-output",
             apply_receipt,
             "--dry-run-receipt",

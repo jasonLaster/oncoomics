@@ -15,7 +15,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
-from build_public_results_index import BUCKET, FORBIDDEN_PREFIXES, PUBLIC_PREFIXES
+from build_public_results_index import (
+    BUCKET,
+    FORBIDDEN_PREFIXES,
+    PUBLIC_PREFIXES,
+    validate_reviewed_public_receipts,
+    validate_reviewed_public_s3_state,
+)
 
 REGION = "us-east-1"
 INDEX_KEY = "public-index/objects.json"
@@ -179,8 +185,14 @@ def public_index_object(row: Any) -> dict[str, Any]:
     return {"key": key, "size": size, "last_modified": last_modified}
 
 
-def validate_public_index(path: Path) -> dict[str, Any]:
+def validate_public_index(
+    path: Path,
+    reviewed_public_receipts: Sequence[Path],
+) -> dict[str, Any]:
     path = require_real_input_file(path, "public index")
+    reviewed_public_objects, reviewed_public_binding = validate_reviewed_public_receipts(
+        reviewed_public_receipts
+    )
     digest = sha256(path)
     if not SHA256_HEX.fullmatch(digest):
         raise ValueError("public index SHA-256 is malformed")
@@ -204,11 +216,15 @@ def validate_public_index(path: Path) -> dict[str, Any]:
         or payload.get("total_size") != sum(row["size"] for row in normalized)
     ):
         raise ValueError("public index inventory is not exact")
+    if payload.get("reviewed_public_receipts") != reviewed_public_binding:
+        raise ValueError("public index reviewed-public receipt binding is not exact")
+    validate_reviewed_public_s3_state(normalized, reviewed_public_objects)
     return {
         "sha256": digest,
         "bytes": path.stat().st_size,
         "object_count": len(normalized),
         "total_size": sum(row["size"] for row in normalized),
+        "reviewed_public_receipt_count": len(reviewed_public_binding),
     }
 
 
@@ -338,6 +354,7 @@ def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, A
         "bytes": custody["bytes"],
         "object_count": custody["object_count"],
         "total_size": custody["total_size"],
+        "reviewed_public_receipt_count": custody["reviewed_public_receipt_count"],
     }
     if {field: index.get(field) for field in expected_index} != expected_index:
         raise ValueError("public index dry-run receipt does not match the index")
@@ -352,6 +369,7 @@ def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, A
         "index_allowlisted_prefixes": True,
         "index_schema": True,
         "index_sorted_unique_keys": True,
+        "index_reviewed_public_receipts": True,
     }
     if checks != required_checks:
         raise ValueError("public index dry-run receipt did not pass preflight checks")
@@ -364,7 +382,7 @@ def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, A
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
-    custody = validate_public_index(args.index)
+    custody = validate_public_index(args.index, args.reviewed_public_receipt)
     dry_run_receipt = None
     if args.apply:
         if args.dry_run_receipt is None:
@@ -390,6 +408,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "index_schema": True,
             "index_allowlisted_prefixes": True,
             "index_sorted_unique_keys": True,
+            "index_reviewed_public_receipts": True,
         },
     }
     if dry_run_receipt is not None:
@@ -435,6 +454,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--index", required=True, type=Path)
     parser.add_argument("--receipt-output", required=True, type=Path)
+    parser.add_argument(
+        "--reviewed-public-receipt",
+        action="append",
+        required=True,
+        type=Path,
+        help=(
+            "repeat once for each passed reviewed-public publication receipt, "
+            "in canonical report-method order"
+        ),
+    )
     parser.add_argument("--dry-run-receipt", type=Path)
     parser.add_argument("--region", default=REGION, choices=(REGION,))
     parser.add_argument("--apply", action="store_true")
@@ -444,6 +473,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (
         FileExistsError,
         OSError,
+        RuntimeError,
         ValueError,
         json.JSONDecodeError,
         subprocess.CalledProcessError,

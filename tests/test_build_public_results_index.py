@@ -440,6 +440,23 @@ class PublicIndexTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, message):
                     MODULE.validate_reviewed_public_receipts(receipts)
 
+    def test_reviewed_public_receipt_binding_hashes_current_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipts = write_public_receipts(Path(temporary))
+            _, original_binding = MODULE.validate_reviewed_public_receipts(receipts)
+
+            receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+            receipt["extra_review_note"] = "hash-current-receipt-bytes"
+            receipts[0].write_text(
+                json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            _, updated_binding = MODULE.validate_reviewed_public_receipts(receipts)
+
+        self.assertNotEqual(original_binding[0]["sha256"], updated_binding[0]["sha256"])
+        self.assertEqual(original_binding[0]["method_id"], updated_binding[0]["method_id"])
+
     def test_reviewed_public_receipts_must_bind_source_objects(self) -> None:
         cases = (
             (
@@ -514,6 +531,12 @@ class PublicIndexTests(unittest.TestCase):
             payload = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual(payload["objects"], expected_public_objects(receipts))
             self.assertEqual(payload["object_count"], len(expected_public_objects(receipts)))
+            self.assertEqual(
+                [row["method_id"] for row in payload["reviewed_public_receipts"]],
+                list(MODULE.REPORT_METHOD_IDS),
+            )
+            for row, receipt in zip(payload["reviewed_public_receipts"], receipts):
+                self.assertEqual(row["sha256"], MODULE.sha256(receipt))
             self.assertEqual(list_prefix.call_count, len(MODULE.PUBLIC_PREFIXES))
 
     def test_main_rejects_reviewed_public_state_that_differs_from_receipts(self) -> None:
