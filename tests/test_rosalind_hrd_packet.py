@@ -18,6 +18,16 @@ from tests.test_phase3_fast_deterministic_report import (
 PHASE3_FAST_FORBIDDEN_TOKENS_JSON = json.dumps(["UNIT-FORBIDDEN-PHASE3-FAST"])
 
 
+def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> None:
+    payload = utils.read_json(path)
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    current = f'  "{key}": {json.dumps(payload[key], sort_keys=True)}'
+    if text.count(current) != 1:
+        raise AssertionError(f"expected exactly one top-level JSON field {key}")
+    duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
+    path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
 def write_diana_wgs_worker_artifacts(root: Path, readiness_overrides: Optional[Dict[str, str]] = None) -> None:
     readiness_overrides = readiness_overrides or {}
     readiness = [
@@ -1266,6 +1276,54 @@ class RosalindHrdPacketTest(unittest.TestCase):
                         "report_manifest.json"
                     ).exists()
                 )
+
+    def test_diana_wgs_phase3_fast_packet_rejects_duplicate_report_manifest_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                output_root / "phase3_fast"
+            )
+            write_duplicate_json_field(
+                deterministic_root / "report_manifest.json",
+                "schema_version",
+                0,
+            )
+
+            with (
+                patch.object(
+                    packet,
+                    "path_from_root",
+                    lambda relative: output_root / relative,
+                ),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(
+                            deterministic_root
+                        ),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": (
+                            PHASE3_FAST_FORBIDDEN_TOKENS_JSON
+                        ),
+                    },
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "duplicate JSON object name in deterministic report manifest: schema_version",
+                ),
+            ):
+                packet.write_packet(
+                    packet.PACKET_SPECS["diana_wgs"],
+                    "phase3-fast",
+                )
+
+            self.assertFalse(
+                (
+                    output_root
+                    / "results/rosalind_hrd/diana_wgs/phase3-fast/"
+                    "report_manifest.json"
+                ).exists()
+            )
 
     def test_diana_wgs_phase3_fast_packet_rejects_non_exact_run_provenance(self):
         cases = (

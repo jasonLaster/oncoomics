@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from ...paths import path_from_root
-from ...utils import ensure_dir, iso_now, parse_csv, read_json, read_text
+from ...utils import ensure_dir, iso_now, parse_csv, read_text
 
 RESULT_ROOT = "results/rosalind_hrd"
 OUTPUT_ROOT_ENV = "ROSALIND_HRD_OUTPUT_ROOT"
@@ -189,11 +189,37 @@ def artifact_path_from_root(relative_path: str | Path) -> Path:
     return artifact_root() / path
 
 
+class DuplicateJsonObjectName(ValueError):
+    """Raised when a JSON object repeats a name."""
+
+
+def reject_duplicate_json_object_names(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise DuplicateJsonObjectName(key)
+        result[key] = value
+    return result
+
+
+def read_json_file(path: Path, label: str) -> Any:
+    path = require_real_nonempty_file(path, label)
+    try:
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonObjectName as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"{label} is not valid JSON: {path}") from error
+
+
 def read_json_or_empty(relative_path: str) -> dict[str, Any]:
     path = artifact_path_from_root(relative_path)
     if not path.exists():
         return {}
-    payload = read_json(path)
+    payload = read_json_file(path, f"artifact {relative_path}")
     return payload if isinstance(payload, dict) else {"payload": payload}
 
 
@@ -932,7 +958,7 @@ def diana_wgs_deterministic_report_kind() -> str:
     if not manifest_path.is_file() or manifest_path.is_symlink():
         return ""
     require_no_symlinked_ancestors(manifest_path, "deterministic report manifest")
-    manifest = read_json(manifest_path)
+    manifest = read_json_file(manifest_path, "deterministic report manifest")
     return str(manifest.get("report_kind", "")) if isinstance(manifest, dict) else ""
 
 
@@ -1094,7 +1120,7 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
             "report.md", "report_manifest.json", *DETERMINISTIC_SUPPORT_FILES
         }
     }
-    manifest = read_json(paths["report_manifest.json"])
+    manifest = read_json_file(paths["report_manifest.json"], "deterministic report manifest")
     if not isinstance(manifest, dict):
         raise ValueError("deterministic report manifest must be an object")
     expected_contract = {
@@ -1160,7 +1186,7 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
             raise ValueError(f"Diana WGS artifact is not exactly bound by deterministic input {input_id}")
         artifact_hashes[input_id] = digest
 
-    checks = read_json(paths["evidence_checks.json"])
+    checks = read_json_file(paths["evidence_checks.json"], "deterministic evidence checks")
     check_rows = checks.get("checks", []) if isinstance(checks, dict) else []
     checks_input = checks.get("input_sha256", []) if isinstance(checks, dict) else []
     normalized_checks_input = [
@@ -1204,7 +1230,7 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     }
     if not custody_hashes:
         raise ValueError("deterministic custody lacks hash-bound receipts")
-    tools = read_json(artifact_path_from_root("tool_versions.json"))
+    tools = read_json_file(artifact_path_from_root("tool_versions.json"), "Diana WGS tool versions")
     if not isinstance(tools, dict) or set(tools) != {"bwa", "samtools", "bcftools", "gatk"}:
         raise ValueError("Diana WGS tool version inventory is missing or malformed")
     tool_versions = {
@@ -1266,7 +1292,10 @@ def diana_wgs_phase3_fast_deterministic_binding(
         raise ValueError("Phase 3 fast deterministic artifact_count differs from input_sha256.csv")
     if set(source) != {str(row["input_id"]) for row in input_rows}:
         raise ValueError("Phase 3 fast deterministic source SHA-256 inventory differs from input_sha256.csv")
-    crosscheck_input_plans = read_json(paths["crosscheck_input_plans.json"])
+    crosscheck_input_plans = read_json_file(
+        paths["crosscheck_input_plans.json"],
+        "Phase 3 fast cross-check input plan",
+    )
     if (
         not isinstance(crosscheck_input_plans, dict)
         or not is_exact_int(crosscheck_input_plans.get("schema_version"), 1)
@@ -1293,7 +1322,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
         crosscheck_routes["sequenza_scarhrd"]
     )
 
-    checks = read_json(paths["evidence_checks.json"])
+    checks = read_json_file(paths["evidence_checks.json"], "Phase 3 fast evidence checks")
     check_rows = checks.get("checks", []) if isinstance(checks, dict) else []
     checks_input = checks.get("input_sha256", []) if isinstance(checks, dict) else []
     normalized_checks_input = [
@@ -1761,7 +1790,7 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
         name: require_real_nonempty_file(report_root / name, f"deterministic {name}")
         for name in {"crosscheck_input_plans.json", "readiness.csv", "report_manifest.json"}
     }
-    manifest = read_json(paths["report_manifest.json"])
+    manifest = read_json_file(paths["report_manifest.json"], "Phase 3 fast report manifest")
     if not isinstance(manifest, dict) or manifest.get("report_kind") != PHASE3_FAST_REPORT_KIND:
         raise ValueError("Diana WGS Phase 3 fast packet requires a phase3_fast_deterministic_evidence report")
     review_summary = manifest.get("review_summary")
@@ -1770,7 +1799,10 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
     groups = review_summary.get("artifact_groups")
     if not isinstance(groups, dict):
         groups = {}
-    crosscheck_input_plans = read_json(paths["crosscheck_input_plans.json"])
+    crosscheck_input_plans = read_json_file(
+        paths["crosscheck_input_plans.json"],
+        "Phase 3 fast cross-check input plan",
+    )
     crosscheck_routes = (
         crosscheck_input_plans.get("routes", {})
         if isinstance(crosscheck_input_plans, dict)
@@ -2280,10 +2312,11 @@ def require_bound_packet_file(packet_dir: Path, name: str, digest: Any) -> None:
 
 
 def require_rosalind_report_manifest(packet_dir: Path) -> None:
-    manifest = read_json(
+    manifest = read_json_file(
         require_real_nonempty_file(
             packet_dir / "report_manifest.json", "Rosalind report manifest"
-        )
+        ),
+        "Rosalind report manifest",
     )
     if not isinstance(manifest, Mapping):
         raise ValueError("Rosalind report manifest must be a JSON object")
