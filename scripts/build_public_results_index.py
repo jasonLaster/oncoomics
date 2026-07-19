@@ -11,7 +11,7 @@ import os
 import pathlib
 import subprocess
 import tempfile
-from typing import Any, Sequence
+from typing import Any, Sequence, Union
 
 from hrd_report_inventory import REPORT_METHOD_IDS
 from publish_reviewed_public_report import (
@@ -133,7 +133,7 @@ REVIEWED_PUBLIC_DESTINATION_OBJECT_KEYS = {
 }
 
 
-ReviewedPublicObject = dict[str, int | str]
+ReviewedPublicObject = dict[str, Union[int, str]]
 
 
 def list_prefix(prefix: str) -> list[dict[str, Any]]:
@@ -393,7 +393,7 @@ def validate_reviewed_public_receipts(
             for relative in expected_files
         }
         expected_keys = set(expected_key_by_relative.values())
-        source_by_relative: dict[str, dict[str, int | str]] = {}
+        source_by_relative: dict[str, ReviewedPublicObject] = {}
         for row in source_objects:
             if (
                 not isinstance(row, dict)

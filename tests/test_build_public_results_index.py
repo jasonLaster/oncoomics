@@ -191,6 +191,28 @@ class PublicIndexTests(unittest.TestCase):
 
         self.assertEqual(raw_comparisons, [])
 
+    def test_runtime_type_aliases_are_python39_safe(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(SCRIPT))
+
+        unsafe_aliases = []
+        for node in tree.body:
+            if not isinstance(node, ast.Assign):
+                continue
+            for target in node.targets:
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id.endswith("Object")
+                    and any(
+                        isinstance(child, ast.BinOp)
+                        and isinstance(child.op, ast.BitOr)
+                        for child in ast.walk(node.value)
+                    )
+                ):
+                    unsafe_aliases.append(target.id)
+
+        self.assertEqual(unsafe_aliases, [])
+
     def test_diana_public_prefixes_are_exact_reviewed_report_destinations(self) -> None:
         expected = tuple(
             PUBLISH.PUBLIC_ROOT + str(contract["destination"])
