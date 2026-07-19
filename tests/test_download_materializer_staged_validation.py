@@ -684,6 +684,42 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
             self.assertTrue(failed["checks"]["sha256_exact"])
             self.assertFalse(failed["checks"]["full_object_sha256_exact"])
 
+    def test_validate_download_rejects_boolean_content_lengths(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            payload = b"1"
+            output = root / "staged_input_validation.json"
+            output.write_bytes(payload)
+            row = {
+                "version_id": "version-1",
+                "bytes": len(payload),
+                "sha256": sha(payload),
+                "checksums": {
+                    "ChecksumType": "FULL_OBJECT",
+                    "ChecksumSHA256": checksum(payload),
+                },
+            }
+            response = {
+                "VersionId": "version-1",
+                "ContentLength": len(payload),
+                "ChecksumSHA256": checksum(payload),
+                "ChecksumType": "FULL_OBJECT",
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": KMS,
+            }
+
+            for source, head_size, get_size in (
+                ("head", True, len(payload)),
+                ("get", len(payload), True),
+            ):
+                with self.subTest(source=source):
+                    head = dict(response, ContentLength=head_size)
+                    get = dict(response, ContentLength=get_size)
+
+                    checks = MODULE.validate_download(row, head, get, output, KMS)
+
+                    self.assertFalse(checks["bytes_exact"])
+
     def test_rejects_symlinked_download_before_installing_output(self) -> None:
         payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
 

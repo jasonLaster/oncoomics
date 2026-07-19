@@ -577,7 +577,7 @@ def safe_float(value: Any) -> float:
 
 
 def valid_sha256(value: Any) -> bool:
-    return bool(HEX64.fullmatch(str(value)))
+    return isinstance(value, str) and HEX64.fullmatch(value) is not None
 
 
 def require_manifest_sha256(value: Any, name: str) -> str:
@@ -587,11 +587,11 @@ def require_manifest_sha256(value: Any, name: str) -> str:
 
 
 def valid_version_id(value: Any) -> bool:
-    text = str(value)
     return bool(
-        text
-        and text.lower() not in {"none", "null"}
-        and not any(character.isspace() for character in text)
+        isinstance(value, str)
+        and value
+        and value.lower() not in {"none", "null"}
+        and not any(character.isspace() for character in value)
     )
 
 

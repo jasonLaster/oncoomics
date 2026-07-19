@@ -82,6 +82,10 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -376,10 +380,9 @@ def validate_download(
             == row["version_id"]
         ),
         "bytes_exact": (
-            get.get("ContentLength")
-            == head.get("ContentLength")
-            == row["bytes"]
-            == local_path.stat().st_size
+            exact_int(get.get("ContentLength"), row["bytes"])
+            and exact_int(head.get("ContentLength"), row["bytes"])
+            and exact_int(local_path.stat().st_size, row["bytes"])
         ),
         "sha256_exact": local_sha == row["sha256"],
         "get_checksum_present": bool(get_checksums),

@@ -2714,6 +2714,63 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                 )
                 self.assertFalse((fixture.output / "report.md").exists())
 
+    def test_stage_provenance_rejects_coerced_hashes_and_version_ids(self) -> None:
+        for label, mutate, check_id in (
+            (
+                "numeric script_sha256",
+                lambda receipt, anchor: receipt.__setitem__(
+                    "script_sha256", int("1" * 64)
+                ),
+                "receipt_script",
+            ),
+            (
+                "boolean receipt_version_id",
+                lambda receipt, anchor: anchor.__setitem__(
+                    "receipt_version_id", True
+                ),
+                "anchor_content_address",
+            ),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                receipt = load_json(fixture.aux / "stage-provenance.json")
+                anchor = load_json(fixture.aux / "stage-provenance-anchor.json")
+                mutate(receipt, anchor)
+
+                evidence = REPORT_MODULE.validate_stage_provenance(
+                    receipt,
+                    anchor,
+                    receipt_path=fixture.aux / "stage-provenance.json",
+                    execution_path=fixture.aux / "execution.json",
+                    preflight_path=fixture.aux / "preflight.json",
+                    gather_path=fixture.aux / "gather.json",
+                    run_id=RUN_ID,
+                    batch_job_id="synthetic-job",
+                    expected_kms_key_arn=KMS_ARN,
+                )
+
+                self.assertEqual(evidence["status"], "failed")
+                self.assertIs(evidence["checks"][check_id], False)
+
+    def test_exact_materialization_rejects_coerced_script_sha256(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            materialization_path = fixture.aux / "exact-materialization.json"
+            materialization = load_json(materialization_path)
+            materialization["script_sha256"] = int("1" * 64)
+            write_json(materialization_path, materialization)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "exact_version_materialization",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((fixture.output / "report.md").exists())
+
     def test_terminal_capture_validators_require_exact_schema_integers(self) -> None:
         cases = (
             (
@@ -2783,6 +2840,7 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
 
                 self.assertEqual(evidence["status"], "failed")
                 self.assertIs(evidence["checks"][check_id], False)
+
     def test_forbidden_token_file_findings_fail_before_report_install(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
             fixture = SyntheticFixture(Path(temporary))
