@@ -307,15 +307,20 @@
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
           Latest HRD source-hardening frontier:
-          <strong>207c2e7accf22d826439c2a9c2c6d33eddf076e0</strong>.
-          The latest work is still cross-check materialization custody hardening, not
-          terminal HRD evidence. No deterministic final artifacts yet; no real
-          Diana WGS Rosalind packet, executable cross-check packets,
-          model-review outputs, or comparative synthesis have been produced.
+          <strong>39df9b9d0b02b072ef46b2741508c7d5567bc9b3</strong>.
+          The latest work is AI-synthesis receipt-gate hardening:
+          <code>render_ai_synthesis_runbook.py</code> now fails closed when the
+          seven receipt-bound source summaries carry malformed private destination prefixes,
+          null or missing report_manifest VersionIds,
+          malformed report_manifest SHA-256s, or bogus object counts. This is
+          still source/test/dashboard work only. No deterministic final
+          artifacts yet; no real Diana WGS Rosalind packet, executable
+          cross-check packets, AI-review inputs, model-review outputs, or
+          comparative synthesis have been produced.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest hardening = 207c2e7</li>
+          <li class="pill">Latest hardening = 39df9b9</li>
           <li class="pill">Legacy CPU run stopped</li>
           <li class="pill">GPU/distributed rerun pending</li>
           <li class="pill">HRD remains no_call / partial_evidence</li>
@@ -328,8 +333,8 @@
           <ol class="tracks" aria-label="Operational progress by lane">
             <li class="track" style="--tone: var(--done)">
               <strong>Source custody hardening</strong>
-              <span>90%</span>
-              <div class="bar" aria-hidden="true" style="--pct: 90%"><span></span></div>
+              <span>98%</span>
+              <div class="bar" aria-hidden="true" style="--pct: 98%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--blocked)">
               <strong>Deterministic terminal outputs</strong>
@@ -397,12 +402,12 @@
           <h3>Source hardening</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
-              <strong>Preserve 207c2e7</strong>
-              <span>Cross-check JSON receipts now write create-only 0600, fsync the file and parent, rehash final bytes, verify mode 0600, and unlink partial files on failure.</span>
+              <strong>Preserve 39df9b9</strong>
+              <span>AI-synthesis runbook rendering now rejects malformed private receipt summaries before handoff packets can consume them.</span>
             </li>
             <li class="item" style="--tone: var(--active)">
-              <strong>Audit the next report-packet seam</strong>
-              <span>Keep the pass source-only and stop at generated-result drift.</span>
+              <strong>Keep receipt custody source-bound</strong>
+              <span>Carry the manifest, SHA-256, mode, and exact-inventory guards forward without accepting generated-result drift as terminal evidence.</span>
             </li>
           </ol>
 
@@ -446,6 +451,73 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>39df9b9 Validate AI synthesis receipt gates:</strong>
+                <code>render_ai_synthesis_runbook.py</code> now fails closed
+                unless all seven receipt-bound source summaries have valid
+                private destination prefixes, report-manifest VersionIds,
+                report-manifest SHA-256s, and object counts. The
+                reviewed-public renderer also avoids the Python 3.10-only
+                <code>zip(strict=True)</code> path so checked-in
+                <code>/usr/bin/python3</code> validation can cover it.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>7322a25 Harden AI review prep receipts:</strong>
+                <code>prepare_ai_review_run.py</code> now treats its final run
+                root as an exact four-entry handoff and derives
+                <code>reviewer_inputs</code> only from the validated
+                <code>stage_ai_review_inputs.py</code> child receipt. The child
+                receipt must bind schema version, passed child checks, final
+                bundle and output roots, reviewer A/B directories, exact
+                two-file reviewer inventories, 0600 file modes, 0700 directory
+                modes, and the bundle plus prompt SHA-256 values from
+                <code>bundle_manifest.json</code>.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>dc05e8c Bind comparative synthesis provenance:</strong>
+                require current agreement and generator hashes, the ordered
+                seven-method source manifest inventory, reviewer summaries,
+                structured agreement and disagreement rows, readiness, method
+                rows, and the authorized conclusion before a comparative
+                synthesis packet can install.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>0921b41 + 8ef56a9 Harden AI-review manifests:</strong>
+                rehash finalized review manifests and require AI-review bundles
+                to preserve exact reviewer prompt and bundle-manifest bindings
+                before downstream receipt preparation can trust them.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>90c6be4 + 5138c82 Guard review staging and blocked reports:</strong>
+                keep staged AI-review files private and exact, reject report
+                manifests with stale support SHA-256s, and require blocked
+                cross-check reports to bind their exact upstream inputs.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18">Jul 18</time>
+              <span>
+                <strong>08fde3d, d7762cb, 92b0cb4, 0acb685, f3797a2:</strong>
+                harden Rosalind packet writes, HRD input-contract checksums,
+                deterministic report staged validation, materializer
+                VersionId checks, and deterministic snapshot receipts while
+                leaving the real post-terminal chain blocked.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18">Jul 18</time>
               <span>
