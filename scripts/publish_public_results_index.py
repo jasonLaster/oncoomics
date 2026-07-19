@@ -23,7 +23,7 @@ from build_public_results_index import (
     validate_reviewed_public_receipts,
     validate_reviewed_public_s3_state,
 )
-from publish_reviewed_public_report import exact_schema_version
+from publish_reviewed_public_report import exact_schema_version, exact_int
 
 REGION = "us-east-1"
 INDEX_KEY = "public-index/objects.json"
@@ -340,9 +340,8 @@ def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, 
     current = head_object(BUCKET, INDEX_KEY, region)
     checks = {
         "version_exact": exact.get("VersionId") == current.get("VersionId") == version_id,
-        "bytes_exact": int(exact.get("ContentLength", -1))
-        == int(current.get("ContentLength", -2))
-        == custody["bytes"],
+        "bytes_exact": exact_int(exact.get("ContentLength"), custody["bytes"])
+        and exact_int(current.get("ContentLength"), custody["bytes"]),
         "checksum_type": exact.get("ChecksumType")
         == current.get("ChecksumType")
         == CHECKSUM_TYPE,

@@ -298,6 +298,26 @@ class PublicIndexTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "pagination did not advance"):
                 MODULE.list_prefix("runs/example/")
 
+    def test_list_prefix_rejects_non_exact_object_size(self) -> None:
+        page = {
+            "IsTruncated": False,
+            "Contents": [
+                {
+                    "Key": "runs/example/one-byte.json",
+                    "Size": True,
+                    "LastModified": "2026-07-17T00:00:00Z",
+                }
+            ],
+        }
+
+        with mock.patch.object(
+            MODULE.subprocess,
+            "run",
+            return_value=SimpleNamespace(stdout=json.dumps(page)),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "malformed object size"):
+                MODULE.list_prefix("runs/example/")
+
     def test_list_prefix_rejects_private_or_out_of_prefix_objects(self) -> None:
         for key, message in (
             ("runs/private/object.json", "outside"),
@@ -752,6 +772,20 @@ class PublicIndexTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, message):
                         MODULE.main(argv)
 
+    def test_reviewed_public_s3_state_size_must_be_exact_int(self) -> None:
+        key = MODULE.DIANA_HRD_PUBLIC_PREFIXES[0] + "one-byte.json"
+        with self.assertRaisesRegex(RuntimeError, "size_mismatches"):
+            MODULE.validate_reviewed_public_s3_state(
+                [
+                    {
+                        "key": key,
+                        "size": True,
+                        "last_modified": "2026-07-17T00:00:00Z",
+                    }
+                ],
+                {key: {"bytes": 1}},
+            )
+
     def test_main_rejects_current_reviewed_public_object_version_drift(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -783,6 +817,38 @@ class PublicIndexTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(RuntimeError, "current reviewed-public"):
                     MODULE.main(argv)
+
+    def test_current_reviewed_public_content_length_must_be_exact_int(self) -> None:
+        key = MODULE.DIANA_HRD_PUBLIC_PREFIXES[0] + "one-byte.json"
+        sha = "a" * 64
+        expected = {
+            key: {
+                "version_id": "public-version-1",
+                "bytes": 1,
+                "sha256": sha,
+                "checksum_sha256": MODULE.checksum_sha256(sha),
+            }
+        }
+
+        def head_current(observed_key: str) -> dict[str, object]:
+            self.assertEqual(observed_key, key)
+            return {
+                "VersionId": "public-version-1",
+                "ContentLength": True,
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": MODULE.checksum_sha256(sha),
+                "ServerSideEncryption": "AES256",
+                "Metadata": {
+                    "classification": PUBLISH.CLASSIFICATION,
+                    "sha256": sha,
+                },
+            }
+
+        with self.assertRaisesRegex(RuntimeError, "current reviewed-public"):
+            MODULE.validate_reviewed_public_current_versions(
+                expected,
+                head_current=head_current,
+            )
 
     def test_write_index_fsyncs_file_and_parent_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

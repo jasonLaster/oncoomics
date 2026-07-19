@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local reviewed-public S3 byte exactness</li>
+          <li class="pill">Latest milestone = local public-index S3 byte exactness</li>
+          <li class="pill">Public-index S3 bytes = exact</li>
           <li class="pill">Reviewed-public S3 bytes = exact</li>
           <li class="pill">Frozen/report-tree replay bytes = exact</li>
           <li class="pill">Final-freeze materialization ints = exact</li>
@@ -1026,6 +1027,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact public-index S3 bytes</strong>
+              <span>Public index build/apply now rejects non-exact list-object Size metadata, reviewed-public Size comparisons, no-overwrite ContentLength proofs, and exact/current post-upload ContentLength checks before public <code>objects.json</code> or public-index receipts can trust public S3 byte metadata.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact reviewed-public S3 bytes</strong>
               <span>Private reviewed-report and reviewed-public publishers now share exact S3 byte guards for private upload ContentLength, reviewed-public source preflight, destination verification, and final version-history Size checks before public receipts can trust private and reviewed objects.</span>
             </li>
@@ -1115,6 +1120,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:12:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact public-index S3 bytes:</strong>
+                public-index build/apply now rejects non-exact list-object Size
+                values before emitting <code>objects.json</code>, compares
+                reviewed-public Size rows with exact integer equality, requires
+                exact current ContentLength metadata when proving no public
+                overwrite occurred, and exact-checks public-index upload heads.
+                Regression coverage flips Size and ContentLength to JSON
+                booleans with an expected byte count of one. No S3, Batch,
+                route, GPU, quota, replacement compute, or AWS-side
+                verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:11:00-07:00">Jul 19 · local</time>
               <span>

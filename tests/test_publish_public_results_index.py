@@ -48,6 +48,7 @@ class FakeAws:
         self.null_version = False
         self.literal_null_version = False
         self.wrong_checksum = False
+        self.boolean_content_length = False
 
     @staticmethod
     def value(arguments: list[str], name: str) -> str:
@@ -82,7 +83,10 @@ class FakeAws:
             }
             return {"VersionId": self.public["VersionId"]}
         if operation == ("s3api", "head-object"):
-            return dict(self.public)
+            metadata = dict(self.public)
+            if self.boolean_content_length:
+                metadata["ContentLength"] = True
+            return metadata
         raise AssertionError(f"unexpected AWS call: {arguments}")
 
 
@@ -509,6 +513,27 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                     )
 
             self.assertEqual(json.loads(receipt.read_text())["status"], "failed")
+
+    def test_upload_index_rejects_boolean_destination_content_length(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = b"x"
+            index = Path(temporary) / "objects.json"
+            index.write_bytes(payload)
+            fake = FakeAws(payload)
+            fake.boolean_content_length = True
+
+            with (
+                mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "public index destination verification failed",
+                ),
+            ):
+                MODULE.upload_index(
+                    index,
+                    {"sha256": digest(payload), "bytes": len(payload)},
+                    MODULE.REGION,
+                )
 
     def test_public_index_destination_checks_must_be_exact(self) -> None:
         cases = (

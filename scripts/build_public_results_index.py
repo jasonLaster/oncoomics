@@ -31,6 +31,7 @@ from publish_reviewed_public_report import (
     SUBJECT_ALIAS,
     checksum_sha256,
     exact_schema_version,
+    exact_int,
     non_null_version_id,
     private_report_prefix,
 )
@@ -165,16 +166,19 @@ def list_prefix(prefix: str) -> list[dict[str, Any]]:
             raise RuntimeError(f"S3 returned malformed objects for {prefix}")
         for item in contents:
             key = item["Key"]
+            size = item["Size"]
             if not key.startswith(prefix):
                 raise RuntimeError(f"S3 returned an object outside {prefix}: {key}")
             if any(key.startswith(blocked) for blocked in FORBIDDEN_PREFIXES):
                 raise RuntimeError(f"Refusing to index private object: {key}")
+            if not is_nonnegative_exact_int(size):
+                raise RuntimeError(f"S3 returned malformed object size for {key}")
             if key.endswith("/"):
                 continue
             objects.append(
                 {
                     "key": key,
-                    "size": item["Size"],
+                    "size": size,
                     "last_modified": item["LastModified"],
                 }
             )
@@ -283,6 +287,10 @@ def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
 
 def is_positive_exact_int(value: Any) -> bool:
     return type(value) is int and value > 0
+
+
+def is_nonnegative_exact_int(value: Any) -> bool:
+    return type(value) is int and value >= 0
 
 
 def validate_reviewed_public_receipts(
@@ -489,7 +497,7 @@ def validate_reviewed_public_s3_state(
     expected_objects: dict[str, ReviewedPublicObject],
 ) -> None:
     observed_objects = {
-        str(item["key"]): int(item["size"])
+        str(item["key"]): item.get("size")
         for item in objects
         if any(str(item["key"]).startswith(prefix) for prefix in DIANA_HRD_PUBLIC_PREFIXES)
     }
@@ -498,8 +506,8 @@ def validate_reviewed_public_s3_state(
     size_mismatches = sorted(
         key
         for key, expected in expected_objects.items()
-        for expected_size in (int(expected["bytes"]),)
-        if key in observed_objects and observed_objects[key] != expected_size
+        if key in observed_objects
+        and not exact_int(observed_objects[key], expected["bytes"])
     )
     if missing or unexpected or size_mismatches:
         details = {
@@ -524,7 +532,7 @@ def validate_reviewed_public_current_versions(
         current = head_current(key)
         if (
             current.get("VersionId") != expected["version_id"]
-            or int(current.get("ContentLength", -1)) != expected["bytes"]
+            or not exact_int(current.get("ContentLength"), expected["bytes"])
             or current.get("ChecksumType") != "FULL_OBJECT"
             or current.get("ChecksumSHA256") != expected["checksum_sha256"]
             or current.get("ServerSideEncryption") != "AES256"
