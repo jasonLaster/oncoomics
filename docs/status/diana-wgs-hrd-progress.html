@@ -346,8 +346,10 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-18</li>
-          <li class="pill">Latest milestone = ff7284f</li>
-          <li class="pill">Prior source = 7c5f43e</li>
+          <li class="pill">Latest milestone = ef0884a</li>
+          <li class="pill">Prior dashboard = 4de1f21</li>
+          <li class="pill">AI validation method inventory = exact</li>
+          <li class="pill">Terminal cross-check inputs = absent</li>
           <li class="pill">AI bundle staging = exact</li>
           <li class="pill">Pre-route digests = bound</li>
           <li class="pill">Private dry-run receipts = exact</li>
@@ -401,8 +403,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
-              <span>60% · exact input staging guarded</span>
-              <div class="bar" aria-hidden="true" style="--pct: 60%"><span></span></div>
+              <span>65% · validation inventory exact</span>
+              <div class="bar" aria-hidden="true" style="--pct: 65%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
@@ -423,7 +425,10 @@
             <code>blocked</code>, and <code>no_call</code> states.
             The 5 Mb coverage-derived CNV bins are not allele-specific LOH, and
             metadata-only or BAM-derived SV counters are not sufficient for
-            CHORD or HRDetect.
+            CHORD or HRDetect. scarHRD remains <code>no_call</code> without
+            validated allele-specific terminal CNV/LOH inputs; CHORD and
+            HRDetect remain <code>no_call</code> without validated production
+            terminal SV inputs.
             Launch no extra cross-check routes or significant compute without
             explicit approval.
           </p>
@@ -528,7 +533,7 @@
             </li>
             <li class="item" style="--tone: var(--blocked)">
               <strong>Blocked · require exact evidence inputs and explicit approval</strong>
-              <span>The 5 Mb coverage-derived CNV bins cannot substitute for allele-specific LOH, and metadata-only or BAM-derived SV counters cannot support CHORD or HRDetect. Do not launch extra routes until both the method contract and compute decision are approved.</span>
+              <span>The 5 Mb coverage-derived CNV bins cannot support terminal scarHRD or substitute for allele-specific LOH, and metadata-only or BAM-derived SV counters cannot support CHORD or HRDetect. Do not launch extra routes until both the method contract and compute decision are approved.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Next · freeze real terminal artifacts</strong>
@@ -542,6 +547,10 @@
 
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require the exact AI validation method inventory</strong>
+              <span>Finalized reviewer packets and comparative synthesis now require the full ordered <code>validation.json</code> method inventory to match its pinned SHA-256, not only the digest field.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI review bundle staging</strong>
               <span>The reviewer-input stager now rejects contaminated source bundles with unbound scratch files before copying the exact <code>review_bundle.json</code> plus reviewer-specific prompt into either isolated reviewer directory.</span>
@@ -636,6 +645,28 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-18T23:58:02-07:00">Jul 18 · 11:58 PM</time>
+              <span>
+                <strong>ef0884a Require exact AI validation method inventory:</strong>
+                finalized AI review packets and comparative synthesis now bind
+                the full ordered validation method inventory to its pinned
+                SHA-256. Validation passed: 266 focused handoff tests + 112
+                subtests, then 1,701 full-suite tests + 736 subtests. No model
+                invocation or compute was launched.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-18T23:53:18-07:00">Jul 18 · 11:53 PM</time>
+              <span>
+                <strong>4de1f21 Refresh HRD dashboard for private dry-run exactness:</strong>
+                published the exact private dry-run receipt gate while keeping
+                the selected P5en path quota-blocked, the legacy CPU run
+                stopped, terminal cross-check inputs absent, and Diana HRD at
+                <code>partial_evidence</code> / <code>no_call</code>. No
+                publication or compute was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-18T23:52:33-07:00">Jul 18 · 11:52 PM</time>
               <span>
