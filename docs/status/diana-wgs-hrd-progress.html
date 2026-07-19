@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local public-index dry-run nested-index exactness</li>
+          <li class="pill">Latest milestone = local public recovery S3 size exactness</li>
+          <li class="pill">Public recovery S3 sizes = exact</li>
           <li class="pill">Public-index dry-run index = exact</li>
           <li class="pill">Public-index reviewed-public histories = exact</li>
           <li class="pill">Reviewed-public private counts = exact</li>
@@ -1095,6 +1096,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact public recovery S3 sizes</strong>
+              <span>Public recovery now rejects boolean, float, or string S3 Size and ContentLength metadata across preserved early-look inventory, preserved historical Rosalind inventory, source HEAD checks, and public destination HEAD checks instead of coercing AWS metadata with <code>int(...)</code>.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact public-index dry-run index</strong>
               <span>Public-index dry-run receipts now validate nested index <code>bytes</code>, <code>object_count</code>, <code>total_size</code>, and <code>reviewed_public_receipt_count</code> as exact integers instead of relying on permissive Python dict equality.</span>
             </li>
@@ -1200,6 +1205,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T03:29:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact public recovery S3 sizes:</strong>
+                public recovery now rejects boolean, float, or string S3 Size
+                and ContentLength values for the preserved early-look
+                inventory, preserved historical Rosalind inventory, source HEAD
+                checks, and public destination HEAD checks instead of coercing
+                AWS metadata with <code>int(...)</code>. No S3, Batch, route,
+                GPU, quota, replacement compute, or AWS-side verification was
+                launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T03:28:00-07:00">Jul 19 · local</time>
               <span>

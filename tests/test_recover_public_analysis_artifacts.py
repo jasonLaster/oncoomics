@@ -129,6 +129,91 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                     Path(temporary),
                 )
 
+    def test_inventory_total_bytes_requires_exact_s3_sizes(self) -> None:
+        self.assertEqual(
+            MODULE.inventory_total_bytes(
+                [
+                    {"Key": MODULE.WORK_PREFIX + "a.json", "Size": 12},
+                    {"Key": MODULE.WORK_PREFIX + "b.json", "Size": 30},
+                ],
+                "preserved early-look",
+            ),
+            42,
+        )
+
+        for value in (True, 42.0, "42", -1, None):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "exact nonnegative S3 size"):
+                    MODULE.inventory_total_bytes(
+                        [{"Key": MODULE.WORK_PREFIX + "a.json", "Size": value}],
+                        "preserved early-look",
+                    )
+
+    def test_source_evidence_requires_exact_s3_sizes(self) -> None:
+        head = {
+            "ContentLength": 42,
+            "ChecksumCRC64NVME": "crc64",
+            "ChecksumType": "FULL_OBJECT",
+            "ContentType": "application/json",
+            "ServerSideEncryption": "aws:kms",
+            "SSEKMSKeyId": MODULE.EXPECTED_KMS_KEY,
+        }
+
+        with mock.patch.object(MODULE, "head", return_value=head):
+            self.assertEqual(
+                MODULE.source_evidence(
+                    "source-bucket",
+                    {"Key": MODULE.WORK_PREFIX + "a.json", "Size": 42},
+                ),
+                {
+                    "bucket": "source-bucket",
+                    "key": MODULE.WORK_PREFIX + "a.json",
+                    "bytes": 42,
+                    "checksum_crc64nvme": "crc64",
+                    "content_type": "application/json",
+                },
+            )
+
+        cases = (
+            (
+                "listing bool",
+                {"Key": MODULE.WORK_PREFIX + "a.json", "Size": True},
+                head,
+            ),
+            (
+                "listing float",
+                {"Key": MODULE.WORK_PREFIX + "a.json", "Size": 42.0},
+                head,
+            ),
+            (
+                "listing string",
+                {"Key": MODULE.WORK_PREFIX + "a.json", "Size": "42"},
+                head,
+            ),
+            (
+                "head bool",
+                {"Key": MODULE.WORK_PREFIX + "a.json", "Size": 42},
+                {**head, "ContentLength": True},
+            ),
+            (
+                "head float",
+                {"Key": MODULE.WORK_PREFIX + "a.json", "Size": 42},
+                {**head, "ContentLength": 42.0},
+            ),
+            (
+                "head string",
+                {"Key": MODULE.WORK_PREFIX + "a.json", "Size": 42},
+                {**head, "ContentLength": "42"},
+            ),
+        )
+        for label, row, head_response in cases:
+            with (
+                self.subTest(label=label),
+                mock.patch.object(MODULE, "head", return_value=head_response),
+                self.assertRaisesRegex(ValueError, "exact nonnegative S3 size"),
+            ):
+                MODULE.source_evidence("source-bucket", row)
+
     def test_public_upload_pins_exact_checksum(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = b"# public recovery\n"
@@ -245,6 +330,47 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                 self.assertRaisesRegex(ValueError, "destination verification failed"),
             ):
                 MODULE.upload(item)
+
+    def test_public_upload_requires_exact_destination_content_length(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = b"# public recovery\n"
+            path = Path(temporary) / "README.md"
+            path.write_bytes(payload)
+            digest = MODULE.hashlib.sha256(payload).hexdigest()
+            item = {
+                "source": None,
+                "destination_key": MODULE.DESTINATION_PREFIX + "README.md",
+                "path": str(path),
+                "bytes": len(payload),
+                "sha256": digest,
+                "content_type": "text/markdown; charset=utf-8",
+                "transformed": False,
+            }
+
+            for value in (True, float(len(payload)), str(len(payload))):
+                with (
+                    self.subTest(value=value),
+                    mock.patch.object(
+                        MODULE, "aws_json", return_value={"VersionId": "v1"}
+                    ),
+                    mock.patch.object(
+                        MODULE,
+                        "head",
+                        return_value={
+                            "ContentLength": value,
+                            "ChecksumSHA256": MODULE.checksum_sha256(digest),
+                            "ChecksumType": "FULL_OBJECT",
+                            "ServerSideEncryption": "AES256",
+                            "VersionId": "v1",
+                            "Metadata": {
+                                "classification": MODULE.CLASSIFICATION,
+                                "sha256": digest,
+                            },
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, "exact nonnegative S3 size"),
+                ):
+                    MODULE.upload(item)
 
     def test_private_receipt_rejects_output_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as value:

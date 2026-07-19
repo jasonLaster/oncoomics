@@ -63,6 +63,20 @@ def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode()
 
 
+def exact_s3_size(value: Any, label: str) -> int:
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{label} is not an exact nonnegative S3 size")
+    return value
+
+
+def inventory_total_bytes(rows: list[dict[str, Any]], label: str) -> int:
+    total = 0
+    for index, row in enumerate(rows, 1):
+        key = str(row.get("Key", f"object {index}"))
+        total += exact_s3_size(row.get("Size"), f"{label} {key} Size")
+    return total
+
+
 def aws_json(*arguments: str) -> dict[str, Any]:
     completed = subprocess.run(
         ["aws", *arguments, "--region", REGION, "--output", "json"],
@@ -176,10 +190,15 @@ def head(bucket: str, key: str) -> dict[str, Any]:
 
 def source_evidence(bucket: str, row: dict[str, Any]) -> dict[str, Any]:
     key = str(row["Key"])
+    listed_size = exact_s3_size(row.get("Size"), f"source listing {key} Size")
     evidence = head(bucket, key)
+    head_size = exact_s3_size(
+        evidence.get("ContentLength"),
+        f"source head {key} ContentLength",
+    )
     checksum = str(evidence.get("ChecksumCRC64NVME", ""))
     checks = {
-        "bytes": int(evidence.get("ContentLength", -1)) == int(row["Size"]),
+        "bytes": head_size == listed_size,
         "encryption": evidence.get("ServerSideEncryption") == "aws:kms",
         "kms_key": evidence.get("SSEKMSKeyId") == EXPECTED_KMS_KEY,
         "checksum": bool(checksum),
@@ -190,7 +209,7 @@ def source_evidence(bucket: str, row: dict[str, Any]) -> dict[str, Any]:
     return {
         "bucket": bucket,
         "key": key,
-        "bytes": int(row["Size"]),
+        "bytes": listed_size,
         "checksum_crc64nvme": checksum,
         "content_type": str(evidence.get("ContentType", "application/octet-stream")),
     }
@@ -430,8 +449,12 @@ def upload(item: dict[str, Any]) -> dict[str, Any]:
     if not version_id or version_id == "null":
         raise ValueError(f"put-object returned no version for {item['destination_key']}")
     evidence = head(DESTINATION_BUCKET, item["destination_key"])
+    destination_size = exact_s3_size(
+        evidence.get("ContentLength"),
+        f"destination {item['destination_key']} ContentLength",
+    )
     checks = {
-        "bytes": int(evidence.get("ContentLength", -1)) == item["bytes"],
+        "bytes": destination_size == item["bytes"],
         "checksum": evidence.get("ChecksumSHA256") == expected_checksum,
         "checksum_type": evidence.get("ChecksumType") == "FULL_OBJECT",
         "encryption": evidence.get("ServerSideEncryption") == "AES256",
@@ -466,13 +489,25 @@ def main() -> int:
 
     try:
         work_rows = list_objects(WORK_BUCKET, WORK_PREFIX)
-        if len(work_rows) != EXPECTED_WORK_OBJECTS or sum(int(row["Size"]) for row in work_rows) != EXPECTED_WORK_BYTES:
+        if (
+            len(work_rows) != EXPECTED_WORK_OBJECTS
+            or inventory_total_bytes(work_rows, "preserved early-look")
+            != EXPECTED_WORK_BYTES
+        ):
             raise ValueError("preserved early-look inventory changed")
-        selected = [row for row in work_rows if selected_early_look(str(row["Key"]).removeprefix(WORK_PREFIX))]
+        selected = [
+            row
+            for row in work_rows
+            if selected_early_look(str(row["Key"]).removeprefix(WORK_PREFIX))
+        ]
 
         preserved_rows = list_objects(PRESERVATION_BUCKET, PRESERVATION_PREFIX)
         historical = [row for row in preserved_rows if "/runs/rosalind_hrd/" in str(row["Key"])]
-        if len(historical) != EXPECTED_HISTORICAL_OBJECTS or sum(int(row["Size"]) for row in historical) != EXPECTED_HISTORICAL_BYTES:
+        if (
+            len(historical) != EXPECTED_HISTORICAL_OBJECTS
+            or inventory_total_bytes(historical, "preserved historical Rosalind")
+            != EXPECTED_HISTORICAL_BYTES
+        ):
             raise ValueError("preserved historical Rosalind inventory changed")
 
         versions, markers = list_destination_history()
