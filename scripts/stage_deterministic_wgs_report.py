@@ -622,6 +622,14 @@ def integer_equals(value: Any, expected: int) -> bool:
         return False
 
 
+def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
+    return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
+
+
+def exact_schema_status(payload: dict[str, Any], expected: int = 1) -> bool:
+    return exact_schema_version(payload, expected) and payload.get("status") == "passed"
+
+
 def exact_materialization_receipt_envelope(receipt: dict[str, Any]) -> bool:
     observed = set(receipt)
     unexpected = (
@@ -719,9 +727,7 @@ def validate_stage_provenance(
         else ""
     )
     checks = {
-        "receipt_schema_status": (
-            receipt.get("schema_version") == 1 and receipt.get("status") == "passed"
-        ),
+        "receipt_schema_status": exact_schema_status(receipt),
         "receipt_run_execution": (
             receipt.get("run_id") == run_id
             and receipt.get("batch_job_id") == batch_job_id
@@ -750,9 +756,7 @@ def validate_stage_provenance(
         ),
         "preflight_exact_version": object_checks.get("preflight.json") is True,
         "gather_exact_version": object_checks.get("gather.json") is True,
-        "anchor_schema_status": (
-            anchor.get("schema_version") == 1 and anchor.get("status") == "passed"
-        ),
+        "anchor_schema_status": exact_schema_status(anchor),
         "anchor_content_address": (
             anchor.get("receipt_sha256") == receipt_sha
             and integer_equals(anchor.get("receipt_bytes"), receipt_path.stat().st_size)
@@ -854,8 +858,7 @@ def validate_crosscheck_terminal_capture(
     )
     checks = {
         "capture_schema_status": (
-            capture.get("schema_version") == 1
-            and capture.get("status") == "passed"
+            exact_schema_status(capture)
             and capture.get("scope")
             == "private read-only terminal materializer custody capture"
         ),
@@ -881,8 +884,7 @@ def validate_crosscheck_terminal_capture(
             and receipt_upload.get("kms_key_arn") == expected_kms_key_arn
         ),
         "anchor_schema_checks": (
-            anchor.get("schema_version") == 1
-            and anchor.get("status") == "passed"
+            exact_schema_status(anchor)
             and anchor_checks == EXPECTED_CROSSCHECK_ANCHOR_CHECKS
         ),
         "anchor_binds_receipt": (
@@ -910,8 +912,7 @@ def validate_crosscheck_terminal_capture(
             and single_receipt_version
         ),
         "download_schema_checks": (
-            download.get("schema_version") == 1
-            and download.get("status") == "passed"
+            exact_schema_status(download)
             and download.get("expected_kms_key_arn") == expected_kms_key_arn
             and download.get("materializer_receipt_sha256") == receipt_sha
             and download_checks == EXPECTED_STAGED_VALIDATION_DOWNLOAD_CHECKS
@@ -1071,8 +1072,7 @@ def validate_final_freeze_provenance(
         else ""
     )
     checks = {
-        "receipt_schema_status": receipt.get("schema_version") == 1
-        and receipt.get("status") == "passed",
+        "receipt_schema_status": exact_schema_status(receipt),
         "receipt_run_execution": receipt.get("run_id") == run_id
         and receipt.get("batch_job_id") == batch_job_id
         and receipt.get("batch_status") == "SUCCEEDED"
@@ -1098,8 +1098,7 @@ def validate_final_freeze_provenance(
         "source_inventory_unchanged": initial_identity == final_identity,
         "receipt_checks": receipt_checks == EXPECTED_FINAL_FREEZE_CHECKS,
         "object_custody": object_custody,
-        "anchor_schema_status": anchor.get("schema_version") == 1
-        and anchor.get("status") == "passed"
+        "anchor_schema_status": exact_schema_status(anchor)
         and anchor.get("run_id") == run_id
         and anchor.get("batch_job_id") == batch_job_id,
         "anchor_content_address": anchor.get("receipt_sha256") == receipt_sha
@@ -1539,7 +1538,7 @@ def require_report_manifest(packet_dir: Path) -> None:
     if set(payload) != REPORT_MANIFEST_KEYS:
         raise ValueError("report manifest envelope is not exact")
     if (
-        payload.get("schema_version") != 1
+        not exact_schema_version(payload, 1)
         or payload.get("method_id") != "deterministic_full_wgs"
         or payload.get("report_kind") != "deterministic_baseline"
         or payload.get("evidence_status") != "partial_evidence"
@@ -1881,8 +1880,7 @@ def main() -> None:
     add_check(
         checks,
         "stable_input_snapshot",
-        input_snapshot.get("schema_version") == 1
-        and input_snapshot.get("status") == "passed"
+        exact_schema_status(input_snapshot)
         and input_snapshot.get("snapshot_strategy")
         == "open_no_follow_fstat_copy_global_restat"
         and len(snapshot_rows) == int(input_snapshot.get("file_count", -1))
@@ -1924,7 +1922,7 @@ def main() -> None:
     add_check(
         checks,
         "batch_execution_provenance",
-        execution.get("schema_version") == 1
+        exact_schema_version(execution, 1)
         and execution.get("run_id") == summary.get("run_id")
         and execution_batch.get("status") == "SUCCEEDED"
         and int(execution_batch.get("started_at_epoch_ms", 0)) > 0
@@ -1992,8 +1990,7 @@ def main() -> None:
     add_check(
         checks,
         "batch_worker_custody",
-        executed_worker_freeze.get("schema_version") == 1
-        and executed_worker_freeze.get("status") == "passed"
+        exact_schema_status(executed_worker_freeze)
         and executed_worker_freeze.get("run_id") == summary.get("run_id")
         and executed_worker_freeze.get("batch_job_id") == execution_batch.get("job_id")
         and worker_freeze_source.get("task_arn") == execution_container.get("task_arn")
@@ -2016,8 +2013,7 @@ def main() -> None:
         == sha256(paths["executed_worker_freeze"])
         and execution_worker.get("freeze_receipt_upload_sha256")
         == sha256(paths["executed_worker_freeze_upload"])
-        and executed_worker_freeze_upload.get("schema_version") == 1
-        and executed_worker_freeze_upload.get("status") == "passed"
+        and exact_schema_status(executed_worker_freeze_upload)
         and executed_worker_freeze_upload.get("local_receipt_sha256")
         == sha256(paths["executed_worker_freeze"])
         and worker_freeze_upload_object.get("version_id")
@@ -2099,8 +2095,7 @@ def main() -> None:
     add_check(
         checks,
         "final_artifact_freeze",
-        final_freeze.get("schema_version") == 1
-        and final_freeze.get("status") == "passed"
+        exact_schema_status(final_freeze)
         and final_freeze.get("run_id") == summary.get("run_id")
         and final_freeze.get("batch_job_id") == execution_batch.get("job_id")
         and final_freeze.get("batch_status") == "SUCCEEDED"
@@ -2164,8 +2159,7 @@ def main() -> None:
     add_check(
         checks,
         "exact_version_materialization",
-        exact_materialization.get("schema_version") == 1
-        and exact_materialization.get("status") == "passed"
+        exact_schema_status(exact_materialization)
         and exact_materialization.get("run_id") == summary.get("run_id")
         and exact_materialization.get("batch_job_id") == execution_batch.get("job_id")
         and exact_materialization.get("freeze_receipt_sha256") == sha256(paths["final_freeze"])
@@ -2411,13 +2405,12 @@ def main() -> None:
     add_check(
         checks,
         "crosscheck_materialization_custody",
-        crosscheck_materialization.get("schema_version") == 2
-        and crosscheck_materialization.get("status") == "passed"
+        exact_schema_status(crosscheck_materialization, 2)
         and crosscheck_materialization.get("run_alias") == "subject01"
         and valid_sha256(crosscheck_materialization.get("script_sha256"))
         and crosscheck_materialization.get("classification_authorization") == "none"
         and crosscheck_materialization.get("authorized_hrd_state") == "no_call"
-        and staged_input_validation.get("schema_version") == 1
+        and exact_schema_version(staged_input_validation, 1)
         and staged_input_validation.get("classification_authorization") == "none"
         and staged_input_validation.get("authorized_hrd_state") == "no_call"
         and crosscheck_sources_valid

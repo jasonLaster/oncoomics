@@ -8,6 +8,7 @@ artifact paths, sample identifiers, cloud calls, or patient data.
 
 from __future__ import annotations
 
+import ast
 import base64
 import csv
 import hashlib
@@ -53,6 +54,10 @@ def sha256(path: Path) -> str:
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def write_csv(
@@ -128,6 +133,40 @@ def write_indexed_vcf(path: Path, records: list[str]) -> None:
 
 
 class StageDeterministicWgsReportInstallTests(unittest.TestCase):
+    def test_schema_versions_are_exact_json_integers(self) -> None:
+        for value in (True, 1.0, "1", 2, None):
+            with self.subTest(value=value):
+                self.assertFalse(
+                    REPORT_MODULE.exact_schema_version(
+                        {"schema_version": value},
+                        1,
+                    )
+                )
+
+        self.assertTrue(REPORT_MODULE.exact_schema_version({"schema_version": 1}, 1))
+        self.assertTrue(REPORT_MODULE.exact_schema_status({"schema_version": 2, "status": "passed"}, 2))
+        self.assertFalse(REPORT_MODULE.exact_schema_status({"schema_version": 2.0, "status": "passed"}, 2))
+
+    def test_terminal_schema_guards_use_exact_integer_helper(self) -> None:
+        source = GENERATOR.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(GENERATOR))
+
+        raw_comparisons = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Compare):
+                continue
+            segment = ast.get_source_segment(source, node) or ""
+            if "schema_version" not in segment:
+                continue
+            if segment in {
+                'type(payload.get("schema_version")) is int',
+                'payload["schema_version"] == expected',
+            }:
+                continue
+            raw_comparisons.append(f"{node.lineno}: {segment}")
+
+        self.assertEqual(raw_comparisons, [])
+
     def test_load_json_rejects_input_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-input-"
@@ -423,6 +462,10 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             "extra_support_file": lambda manifest: manifest[
                 "support_sha256"
             ].__setitem__("legacy_support.json", "a" * 64),
+            "float_schema_version": lambda manifest: manifest.__setitem__(
+                "schema_version",
+                1.0,
+            ),
         }
         for name, mutate in mutations.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory(
@@ -440,7 +483,7 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
                 with self.assertRaisesRegex(
                     ValueError,
-                    "report manifest (envelope|support SHA-256 inventory) is not exact",
+                    "report manifest (envelope|identity|support SHA-256 inventory) is not exact",
                 ):
                     REPORT_MODULE.require_report_manifest(staging)
 
@@ -1851,6 +1894,88 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                 )
             )
 
+    def test_terminal_source_schema_versions_must_be_exact_integers(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            fixture = SyntheticFixture(Path(temporary))
+            materialization = load_json(fixture.aux / "exact-materialization.json")
+            materialization["schema_version"] = 1.0
+            write_json(fixture.aux / "exact-materialization.json", materialization)
+
+            result = subprocess.run(fixture.command(), text=True, capture_output=True)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("exact_version_materialization", result.stdout + result.stderr)
+            self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_terminal_capture_validators_require_exact_schema_integers(self) -> None:
+        cases = (
+            (
+                "stage provenance receipt",
+                lambda fixture: REPORT_MODULE.validate_stage_provenance(
+                    {
+                        **load_json(fixture.aux / "stage-provenance.json"),
+                        "schema_version": 1.0,
+                    },
+                    load_json(fixture.aux / "stage-provenance-anchor.json"),
+                    receipt_path=fixture.aux / "stage-provenance.json",
+                    execution_path=fixture.aux / "execution.json",
+                    preflight_path=fixture.aux / "preflight.json",
+                    gather_path=fixture.aux / "gather.json",
+                    run_id=RUN_ID,
+                    batch_job_id="synthetic-job",
+                    expected_kms_key_arn=KMS_ARN,
+                ),
+                "receipt_schema_status",
+            ),
+            (
+                "final freeze anchor",
+                lambda fixture: REPORT_MODULE.validate_final_freeze_provenance(
+                    load_json(fixture.aux / "final-freeze.json"),
+                    {
+                        **load_json(fixture.aux / "final-freeze-anchor.json"),
+                        "schema_version": 1.0,
+                    },
+                    receipt_path=fixture.aux / "final-freeze.json",
+                    execution_path=fixture.aux / "execution.json",
+                    run_id=RUN_ID,
+                    batch_job_id="synthetic-job",
+                    expected_kms_key_arn=KMS_ARN,
+                ),
+                "anchor_schema_status",
+            ),
+            (
+                "crosscheck terminal capture",
+                lambda fixture: REPORT_MODULE.validate_crosscheck_terminal_capture(
+                    {
+                        **load_json(
+                            fixture.aux / "crosscheck-materialization-capture.json"
+                        ),
+                        "schema_version": 1.0,
+                    },
+                    load_json(fixture.aux / "crosscheck-materialization-anchor.json"),
+                    load_json(fixture.aux / "crosscheck-materialization.json"),
+                    load_json(fixture.aux / "staged-input-validation-download.json"),
+                    capture_path=fixture.aux / "crosscheck-materialization-capture.json",
+                    anchor_path=fixture.aux / "crosscheck-materialization-anchor.json",
+                    receipt_path=fixture.aux / "crosscheck-materialization.json",
+                    download_path=fixture.aux / "staged-input-validation-download.json",
+                    staged_input_validation_path=(
+                        fixture.aux / "staged-input-validation.json"
+                    ),
+                    expected_kms_key_arn=KMS_ARN,
+                    run_id=RUN_ID,
+                ),
+                "capture_schema_status",
+            ),
+        )
+        for label, validate, check_id in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                evidence = validate(SyntheticFixture(Path(temporary)))
+
+                self.assertEqual(evidence["status"], "failed")
+                self.assertIs(evidence["checks"][check_id], False)
     def test_forbidden_token_file_findings_fail_before_report_install(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
             fixture = SyntheticFixture(Path(temporary))
