@@ -261,6 +261,21 @@ class Phase3FastBamQcRunTests(unittest.TestCase):
                 bam_qc_plan_sha256=SHA_1,
             )
 
+    def test_rejects_non_exact_runtime_threads_before_running_samtools(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = phase3_fast_bam_qc_plan(Path(tmp))
+        plan["runtime"]["samtools_threads"] = True
+        runner = MaterializingSamtoolsRunner()
+
+        with self.assertRaisesRegex(run_qc.ManifestError, "runtime.samtools_threads"):
+            run_qc.run_phase3_fast_bam_qc(
+                plan,
+                runner=runner,
+                bam_qc_plan_sha256=SHA_1,
+            )
+
+        self.assertEqual([], runner.commands)
+
     def test_clears_stale_output_before_requiring_fresh_materialization(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_bam_qc_plan(Path(tmp))

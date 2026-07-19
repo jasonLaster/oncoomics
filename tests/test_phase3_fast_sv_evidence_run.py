@@ -241,6 +241,21 @@ class Phase3FastSvEvidenceRunTests(unittest.TestCase):
                 sv_evidence_plan_sha256=SHA_1,
             )
 
+    def test_rejects_non_exact_runtime_threads_before_running_samtools(self) -> None:
+        with TemporaryDirectory() as tmp:
+            plan = phase3_fast_sv_evidence_plan(Path(tmp))
+        plan["runtime"]["samtools_threads"] = True
+        runner = MaterializingSamtoolsRunner()
+
+        with self.assertRaisesRegex(run_sv.ManifestError, "runtime.samtools_threads"):
+            run_sv.run_phase3_fast_sv_evidence(
+                plan,
+                runner=runner,
+                sv_evidence_plan_sha256=SHA_1,
+            )
+
+        self.assertEqual([], runner.commands)
+
     def test_clears_stale_output_before_requiring_fresh_materialization(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_sv_evidence_plan(Path(tmp))

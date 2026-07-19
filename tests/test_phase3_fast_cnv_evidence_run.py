@@ -184,6 +184,32 @@ class Phase3FastCnvEvidenceRunTests(unittest.TestCase):
 
         self.assertEqual([], runner.commands)
 
+    def test_rejects_non_exact_plan_counts_before_running_bedcov(self) -> None:
+        cases = (
+            ("runtime", "bin_size"),
+            ("runtime", "bedcov_workers"),
+            ("interval_shards", "length"),
+            ("interval_shards", "bin_size"),
+            ("interval_shards", "bin_count"),
+        )
+        for section, key in cases:
+            with self.subTest(section=section, key=key), TemporaryDirectory() as tmp:
+                plan = phase3_fast_cnv_evidence_plan(Path(tmp))
+                if section == "runtime":
+                    plan["runtime"][key] = True
+                else:
+                    plan["interval_shards"][0][key] = True
+                runner = MaterializingBedcovRunner()
+
+                with self.assertRaisesRegex(run_cnv.ManifestError, "positive integer"):
+                    run_cnv.run_phase3_fast_cnv_evidence(
+                        plan,
+                        runner=runner,
+                        cnv_evidence_plan_sha256=SHA_1,
+                    )
+
+                self.assertEqual([], runner.commands)
+
     def test_clears_stale_bedcov_before_requiring_fresh_materialization(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_cnv_evidence_plan(Path(tmp))
