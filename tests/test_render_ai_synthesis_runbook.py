@@ -286,6 +286,60 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 dry_run_receipt=root / "ai-reviewer-a.private.dry.json",
             )
 
+    def test_ai_private_publish_checklists_are_concrete(self) -> None:
+        root = Path("/repo")
+        text = render()
+        report_root = f"{root}/.codex-tmp/hrd-reports"
+        packet_dirs = {
+            MODULE.AI_REVIEW_METHOD_IDS[0]: (
+                f"{report_root}/ai-review/{MODULE.RUN_ID}/reviewer-a"
+            ),
+            MODULE.AI_REVIEW_METHOD_IDS[1]: (
+                f"{report_root}/ai-review/{MODULE.RUN_ID}/reviewer-b"
+            ),
+            MODULE.COMPARATIVE_METHOD_IDS[0]: (
+                f"{report_root}/synthesis/{MODULE.RUN_ID}"
+            ),
+        }
+
+        for method_id, apply_receipt in MODULE.ai_private_receipt_outputs(
+            root,
+            "terminal",
+        ):
+            dry_receipt = dict(
+                MODULE.ai_private_receipt_outputs(root, "terminal", ".dry")
+            )[method_id]
+            review = text.index(
+                f"Review `{dry_receipt}` before private AI report apply:"
+            )
+            apply = text.index(f"--receipt-output {apply_receipt}", review)
+            checklist = text[review:apply]
+
+            self.assertIn(f"`method_id` is `{method_id}`", checklist)
+            self.assertIn(
+                f"`source_packet_dir` is `{packet_dirs[method_id]}`",
+                checklist,
+            )
+            self.assertIn("`expected_files`", checklist)
+            self.assertIn("no extra files", checklist)
+            self.assertIn("`forbidden_token_count`", checklist)
+            self.assertIn("`forbidden_token_sha256`", checklist)
+            self.assertIn("`checks.packet_inventory_exact`", checklist)
+            self.assertIn("`checks.packet_manifest_no_call_boundary`", checklist)
+            self.assertIn("`checks.packet_forbidden_token_scan`", checklist)
+            self.assertIn(f"`{apply_receipt}` does not already exist", checklist)
+            self.assertIn("no version history", checklist)
+            self.assertIn("`checks.dry_run_receipt`", checklist)
+            self.assertIn("`checks.destination_initially_empty`", checklist)
+            self.assertIn("`checks.destination_sse_kms`", checklist)
+            self.assertIn("`checks.destination_full_object_sha256`", checklist)
+            self.assertIn("`checks.destination_non_null_versions`", checklist)
+            self.assertIn(
+                "`checks.destination_exact_one_version_no_delete_history`",
+                checklist,
+            )
+            self.assertIn("`--apply` command", checklist)
+
     def test_reviewer_output_checklists_are_concrete(self) -> None:
         text = render()
         review_root = (

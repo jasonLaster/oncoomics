@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local isolated-reviewer checklists</li>
+          <li class="pill">Latest milestone = local AI private-apply checklists</li>
+          <li class="pill">AI private-apply checklists = explicit</li>
           <li class="pill">Isolated-reviewer checklists = explicit</li>
           <li class="pill">Reviewed-public checklists = explicit</li>
           <li class="pill">Executable dry-run checklists = explicit</li>
@@ -1624,6 +1625,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require AI private-apply checklists</strong>
+              <span>AI synthesis runbook rendering now adds explicit dry-run review checklists before private publication of Reviewer A, Reviewer B, and comparative synthesis packets, so method identity, packet inventory, forbidden-token fingerprinting, no-call boundary checks, destination emptiness, dry-run receipt binding, and exact encryption/checksum/version checks are reviewed before private apply.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require isolated-reviewer output checklists</strong>
               <span>AI synthesis runbook rendering now inserts concrete Reviewer A and Reviewer B output checklists before validation, making the two-file input limit, no cross-reviewer context, exact three-file outputs, model/invocation/independence metadata, allowed-state and authorized-ceiling preservation, and source-grounded/no-escalation review explicit before synthesis or finalization.</span>
             </li>
@@ -2145,6 +2150,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T13:57:52-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Add AI private-apply checklists:</strong>
+                AI synthesis runbook rendering now adds dry-run review
+                checklists before Reviewer A, Reviewer B, and comparative
+                synthesis packet publication so packet inventory,
+                forbidden-token fingerprints, no-call boundaries, destination
+                emptiness, dry-run binding, and exact encryption/checksum/version
+                checks are reviewed before private apply.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T13:55:38-07:00">Jul 19 · local</time>
               <span>
