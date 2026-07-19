@@ -348,7 +348,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact Phase 3 blocked-source binding</li>
+          <li class="pill">Latest milestone = local exact synthesis method summaries</li>
+          <li class="pill">Synthesis method summaries = exact</li>
           <li class="pill">Blocked source binding = exact</li>
           <li class="pill">Materializer-capture anchors = exact</li>
           <li class="pill">Route capture hashes = exact</li>
@@ -1163,6 +1164,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact synthesis method summaries</strong>
+              <span>Comparative HRD synthesis now derives <code>report_manifest</code> review-summary methods from exact <code>agreement_disagreement.csv</code> rows, and agreement rows must preserve exact ordered method IDs before the synthesis packet can validate.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI-review prep hashes</strong>
               <span>The AI-review run preparer now rejects coerced SHA-256 values in bundle and reviewer prompt hashes before trusting the staged two-reviewer input receipt that feeds the later source-free model-review and synthesis steps.</span>
             </li>
@@ -1480,6 +1485,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T16:10:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact synthesis method summaries:</strong>
+                comparative HRD synthesis now derives
+                <code>report_manifest</code> review-summary methods from exact
+                <code>agreement_disagreement.csv</code> rows, and agreement rows
+                must preserve exact ordered method IDs before the synthesis
+                packet can validate.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T16:00:00-07:00">Jul 19 · local</time>
               <span>

@@ -840,6 +840,44 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.require_synthesis_report_manifest(staging)
 
+    def test_synthesis_rejects_stale_method_summary(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            write_synthesis_agreement(agreement)
+            payload = write_synthesis_manifest(manifest, report, agreement)
+            payload["review_summary"]["methods"][0]["evidence_status"] = "ready"
+            write_json(manifest, payload)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis method summary is not exact",
+            ):
+                GENERATE.require_synthesis_report_manifest(staging)
+
+    def test_synthesis_rejects_rekeyed_agreement_method_rows(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            staging = Path(temporary)
+            report = staging / "report.md"
+            agreement = staging / "agreement_disagreement.csv"
+            manifest = staging / "report_manifest.json"
+            GENERATE.write_staged_text(report, "# Report\n")
+            write_synthesis_agreement(agreement)
+            rows = GENERATE.read_agreement(agreement)
+            rows[1]["evidence_id"] = "E001"
+            agreement.unlink()
+            GENERATE.write_agreement(agreement, rows)
+            write_synthesis_manifest(manifest, report, agreement)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis agreement rows are not exact",
+            ):
+                GENERATE.require_synthesis_report_manifest(staging)
+
     def test_synthesis_rejects_stale_agreement_count_summary(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             staging = Path(temporary)

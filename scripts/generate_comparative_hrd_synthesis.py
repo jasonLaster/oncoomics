@@ -261,6 +261,37 @@ def summarize_structured_disagreements(
     return disagreements
 
 
+def expected_method_summary(
+    agreement_rows: Sequence[Dict[str, str]],
+    required_methods: Sequence[str],
+) -> List[Dict[str, str]]:
+    if len(agreement_rows) != len(required_methods):
+        raise ValueError("comparative synthesis agreement rows are not exact")
+
+    expected = []
+    for index, (row, method_id) in enumerate(zip(agreement_rows, required_methods), 1):
+        evidence_id = "E{0:03d}".format(index)
+        if (
+            row.get("comparison_id") != "X{0:03d}".format(index)
+            or row.get("evidence_id") != evidence_id
+            or row.get("method_id") != method_id
+            or not str(row.get("report_kind", "")).strip()
+            or row.get("source_evidence_status") not in ALLOWED_EVIDENCE_STATES
+            or row.get("source_authorized_hrd_state") not in ALLOWED_HRD_STATES
+        ):
+            raise ValueError("comparative synthesis agreement rows are not exact")
+        expected.append(
+            {
+                "evidence_id": evidence_id,
+                "method_id": method_id,
+                "report_kind": row["report_kind"],
+                "evidence_status": row["source_evidence_status"],
+                "authorized_hrd_state": row["source_authorized_hrd_state"],
+            }
+        )
+    return expected
+
+
 def markdown_text(value: Any) -> str:
     return " ".join(str(value).split()).replace("|", "\\|")
 
@@ -1109,22 +1140,13 @@ def require_synthesis_review_summary(
     }:
         raise ValueError("comparative synthesis readiness summary is stale")
 
+    expected_methods = expected_method_summary(agreement_rows, required_methods)
     methods = summary.get("methods")
-    if not isinstance(methods, list) or len(methods) != len(required_methods):
+    if not isinstance(methods, list) or methods != expected_methods:
         raise ValueError("comparative synthesis method summary is not exact")
     method_by_evidence: Dict[str, str] = {}
-    for index, (row, method_id) in enumerate(zip(methods, required_methods), 1):
-        evidence_id = "E{0:03d}".format(index)
-        if (
-            not isinstance(row, dict)
-            or row.get("evidence_id") != evidence_id
-            or row.get("method_id") != method_id
-            or not str(row.get("report_kind", "")).strip()
-            or row.get("evidence_status") not in ALLOWED_EVIDENCE_STATES
-            or row.get("authorized_hrd_state") not in ALLOWED_HRD_STATES
-        ):
-            raise ValueError("comparative synthesis method summary is not exact")
-        method_by_evidence[evidence_id] = method_id
+    for row in expected_methods:
+        method_by_evidence[row["evidence_id"]] = row["method_id"]
 
     reviewers = summary.get("reviewers")
     if not isinstance(reviewers, list) or len(reviewers) != 2:
