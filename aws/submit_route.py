@@ -27,9 +27,10 @@ from daily_cost_guard import check_daily_cost_guard
 REGION = "us-east-1"
 ACCOUNT_ID = "172630973301"
 PRIVATE_BUCKET = f"diana-omics-private-results-{ACCOUNT_ID}-{REGION}"
-QUEUE_NAME = "diana-omics-prod-use1-hrd-x86-ondemand"
+QUEUE_NAME = "diana-omics-prod-use1-hrd-x86"
+COMPUTE_ENVIRONMENT_NAME = "diana-omics-prod-use1-hrd-x86-ondemand"
 QUEUE_ARN = f"arn:aws:batch:{REGION}:{ACCOUNT_ID}:job-queue/{QUEUE_NAME}"
-COMPUTE_ENVIRONMENT_ARN = f"arn:aws:batch:{REGION}:{ACCOUNT_ID}:compute-environment/{QUEUE_NAME}"
+COMPUTE_ENVIRONMENT_ARN = f"arn:aws:batch:{REGION}:{ACCOUNT_ID}:compute-environment/{COMPUTE_ENVIRONMENT_NAME}"
 EXPECTED_JOB_ROLE = f"arn:aws:iam::{ACCOUNT_ID}:role/diana-omics-prod-use1-batch-job"
 EXPECTED_INSTANCE_TYPES = ("c7i", "m7i", "r7i")
 DAILY_COST_GUARD_LEDGER = "diana-omics-prod-use1-daily-cost-guard-ledger"
@@ -358,7 +359,7 @@ def validate_live_queue(region: str) -> dict[str, Any]:
         "queue_priority": queue.get("priority") == 30,
         "queue_exact_ce": queue.get("computeEnvironmentOrder") == [{"order": 1, "computeEnvironment": COMPUTE_ENVIRONMENT_ARN}],
         "exact_compute_environment": compute.get("computeEnvironmentArn") == COMPUTE_ENVIRONMENT_ARN
-        and compute.get("computeEnvironmentName") == QUEUE_NAME,
+        and compute.get("computeEnvironmentName") == COMPUTE_ENVIRONMENT_NAME,
         "compute_environment_live": compute.get("state") == "ENABLED"
         and compute.get("status") == "VALID"
         and compute.get("type") == "MANAGED"
