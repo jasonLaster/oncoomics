@@ -4954,6 +4954,57 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 (root / "results/rosalind_hrd/unit/run_manifest.json").exists()
             )
 
+    def test_run_manifest_rechecks_packet_summary_fields_against_report_manifest(self):
+        cases = (
+            ("title", lambda summary: summary.__setitem__("title", "Stale title")),
+            ("evidenceRows", lambda summary: summary.__setitem__("evidenceRows", 99)),
+            ("adapterRows", lambda summary: summary.__setitem__("adapterRows", 99)),
+            ("evidenceStatus", lambda summary: summary.__setitem__("evidenceStatus", "blocked")),
+            ("allowedConclusion", lambda summary: summary.__setitem__("allowedConclusion", "Stale conclusion")),
+            ("blockers", lambda summary: summary.__setitem__("blockers", [])),
+            ("missingArtifacts", lambda summary: summary.__setitem__("missingArtifacts", ["stale.fastq.gz"])),
+            ("interpretationGaps", lambda summary: summary.__setitem__("interpretationGaps", [])),
+        )
+
+        for label, mutation in cases:
+            with self.subTest(field=label), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                write_diana_raw_intake_artifacts(root)
+                real_write_json = packet.write_json_create_only
+
+                def alter_packet_summary(path: Path, value: object) -> None:
+                    if path.name == "run_manifest.json":
+                        value = json.loads(json.dumps(value))
+                        mutation(value["packets"][0])
+                    real_write_json(path, value)
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": "",
+                            "ROSALIND_HRD_OUTPUT_ROOT": "",
+                            "ROSALIND_HRD_RUN_ID": "unit",
+                            "ROSALIND_HRD_SAMPLE_SET": "diana_raw_intake",
+                        },
+                    ),
+                    patch.object(
+                        packet,
+                        "write_json_create_only",
+                        side_effect=alter_packet_summary,
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "Rosalind packet summary differs from report manifest",
+                    ),
+                ):
+                    packet.main()
+
+                self.assertFalse(
+                    (root / "results/rosalind_hrd/unit/run_manifest.json").exists()
+                )
+
     def test_diana_raw_intake_packet_marks_waiting_input_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

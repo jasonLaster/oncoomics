@@ -1227,6 +1227,20 @@ PACKET_REPORT_SUPPORT_FILES = PACKET_REPORT_FILES - {
     "report_manifest.json",
 }
 RUN_MANIFEST_SUPPORT_FILES = {"cloud_materialization_plan.md", "packet_index.md"}
+RUN_PACKET_SUMMARY_KEYS = {
+    "adapterRows",
+    "allowedConclusion",
+    "blockers",
+    "evidenceRows",
+    "evidenceStatus",
+    "interpretationGaps",
+    "missingArtifacts",
+    "outputDir",
+    "reportManifest",
+    "reportManifestSha256",
+    "sampleSet",
+    "title",
+}
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 EXPECTED_SBS96 = {
     (mutation, f"{left}[{mutation}]{right}")
@@ -1313,6 +1327,12 @@ def require_exact_nonempty_string(value: Any, label: str) -> str:
     ):
         raise ValueError(f"{label} must be a non-empty unpadded single-line string")
     return value
+
+
+def require_exact_string_list(value: Any, label: str) -> list[str]:
+    if not isinstance(value, list) or any(type(item) is not str for item in value):
+        raise ValueError(f"{label} must be a string array")
+    return list(value)
 
 
 def is_exact_int(value: Any, expected: int) -> bool:
@@ -3304,27 +3324,136 @@ def packet_summary_report_manifest_path(summary: Mapping[str, Any]) -> Path:
     return path_from_root(raw)
 
 
+def require_packet_summary_report_manifest(
+    summary: Mapping[str, Any],
+) -> tuple[Path, Mapping[str, Any], str]:
+    manifest_path = packet_summary_report_manifest_path(summary)
+    expected_sha256 = require_sha256(
+        summary.get("reportManifestSha256"),
+        "Rosalind packet summary reportManifestSha256",
+    )
+    require_rosalind_report_manifest(manifest_path.parent)
+    manifest, actual_sha256 = read_json_file_with_sha256(
+        require_real_nonempty_file(
+            manifest_path,
+            "Rosalind packet summary report manifest",
+        ),
+        "Rosalind packet summary report manifest",
+    )
+    if actual_sha256 != expected_sha256:
+        raise ValueError(
+            "Rosalind packet summary report manifest changed before run manifest"
+        )
+    if not isinstance(manifest, Mapping):
+        raise ValueError("Rosalind packet summary report manifest must be an object")
+    return manifest_path, manifest, actual_sha256
+
+
+def packet_summary_missing_artifacts(packet_dir: Path) -> list[str]:
+    payload = read_json_file(
+        require_real_nonempty_file(
+            packet_dir / "input_evidence_index.json",
+            "Rosalind input evidence index",
+        ),
+        "Rosalind input evidence index",
+    )
+    artifacts = payload.get("artifacts") if isinstance(payload, Mapping) else None
+    if not isinstance(artifacts, list):
+        raise ValueError("Rosalind input evidence index artifacts are not exact")
+
+    missing: list[str] = []
+    for row in artifacts:
+        if not isinstance(row, Mapping):
+            raise ValueError("Rosalind input evidence index artifacts are not exact")
+        if row.get("exists") != "yes":
+            missing.append(
+                require_exact_nonempty_string(
+                    row.get("path"),
+                    "Rosalind input evidence index missing path",
+                )
+            )
+    return missing
+
+
+def exact_packet_summary_from_report_manifest(
+    summary: Mapping[str, Any],
+) -> dict[str, Any]:
+    if set(summary) != RUN_PACKET_SUMMARY_KEYS:
+        raise ValueError("Rosalind packet summary is not exact")
+
+    manifest_path, manifest, actual_sha256 = require_packet_summary_report_manifest(
+        summary
+    )
+    review_summary = manifest.get("review_summary")
+    if not isinstance(review_summary, Mapping):
+        raise ValueError("Rosalind packet summary review_summary is not exact")
+
+    sample_set = require_exact_nonempty_string(
+        review_summary.get("packet_type"),
+        "Rosalind packet summary sampleSet",
+    )
+    spec = PACKET_SPECS.get(sample_set)
+    if spec is None:
+        raise ValueError("Rosalind packet summary sampleSet is unknown")
+    if manifest.get("method_id") != f"rosalind_{sample_set}":
+        raise ValueError("Rosalind packet summary method_id is not exact")
+    if review_summary.get("allowed_conclusion") != spec.allowed_conclusion:
+        raise ValueError("Rosalind packet summary allowed conclusion is not exact")
+
+    evidence = review_summary.get("evidence")
+    if not isinstance(evidence, list) or any(
+        not isinstance(row, Mapping) for row in evidence
+    ):
+        raise ValueError("Rosalind packet summary evidence is not exact")
+    adapters = review_summary.get("adapters")
+    if not isinstance(adapters, list) or any(
+        not isinstance(row, Mapping) for row in adapters
+    ):
+        raise ValueError("Rosalind packet summary adapters are not exact")
+    interpretation_gaps = review_summary.get("interpretation_gaps")
+    if not isinstance(interpretation_gaps, list) or any(
+        not isinstance(row, Mapping) for row in interpretation_gaps
+    ):
+        raise ValueError("Rosalind packet summary interpretation gaps are not exact")
+
+    output_dir = require_exact_nonempty_string(
+        summary.get("outputDir"),
+        "Rosalind packet summary outputDir",
+    )
+    report_manifest_label = require_exact_nonempty_string(
+        summary.get("reportManifest"),
+        "Rosalind packet summary reportManifest",
+    )
+    expected_summary = {
+        "sampleSet": sample_set,
+        "title": spec.title,
+        "outputDir": output_dir,
+        "evidenceRows": len(evidence),
+        "adapterRows": len(adapters),
+        "interpretationGaps": list(interpretation_gaps),
+        "blockers": require_exact_string_list(
+            review_summary.get("blockers"),
+            "Rosalind packet summary blockers",
+        ),
+        "missingArtifacts": packet_summary_missing_artifacts(manifest_path.parent),
+        "allowedConclusion": spec.allowed_conclusion,
+        "evidenceStatus": manifest.get("evidence_status"),
+        "reportManifest": f"{output_dir}/report_manifest.json",
+        "reportManifestSha256": actual_sha256,
+    }
+    if report_manifest_label != expected_summary["reportManifest"]:
+        raise ValueError("Rosalind packet summary reportManifest is not exact")
+    if dict(summary) != expected_summary:
+        raise ValueError("Rosalind packet summary differs from report manifest")
+    return expected_summary
+
+
 def recheck_packet_summaries(
     packet_summaries: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
     rechecked: list[dict[str, Any]] = []
     for summary in packet_summaries:
-        manifest_path = packet_summary_report_manifest_path(summary)
-        expected_sha256 = require_sha256(
-            summary.get("reportManifestSha256"),
-            "Rosalind packet summary reportManifestSha256",
-        )
-        actual_sha256 = sha256_file(
-            require_real_nonempty_file(
-                manifest_path,
-                "Rosalind packet summary report manifest",
-            )
-        )
-        if actual_sha256 != expected_sha256:
-            raise ValueError(
-                "Rosalind packet summary report manifest changed before run manifest"
-            )
-        rechecked.append(dict(summary))
+        rechecked.append(exact_packet_summary_from_report_manifest(summary))
     return rechecked
 
 
