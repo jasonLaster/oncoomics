@@ -375,13 +375,14 @@
           counters before terminal artifact freezing, exact-version
           materialization, private report replays, final alias-only input
           contracts, alias-only materializer submission, cross-check report
-          replay, or post-terminal freeze handoff can continue.
+          replay, or WGS stage-provenance handoff can continue.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = freeze Batch attempts</li>
+          <li class="pill">Latest milestone = stage WGS counts</li>
+          <li class="pill">Stage WGS lanes = exact</li>
           <li class="pill">Terminal freeze attempts = exact</li>
           <li class="pill">Cross-check replay counts = exact</li>
           <li class="pill">Materializer submit counts = exact</li>
@@ -1221,6 +1222,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact WGS stage counts</strong>
+              <span>Stage-provenance freezing now rejects boolean, string, or float tumor/normal lane counts and dry-run source counts before the preflight and gather files can become deterministic handoff evidence for Rosalind, cross-check staging, or AI/freeform review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact terminal freeze attempts</strong>
               <span>Stage-provenance and final-artifact freezing now reject boolean, string, or float Batch attempt counts before a captured terminal job can freeze deterministic handoff files for Rosalind, cross-check staging, or AI/freeform review.</span>
@@ -2799,6 +2804,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:52:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject loose WGS stage counts:</strong>
+                WGS stage-provenance freezing now exact-checks
+                tumor/normal lane counts and the two-source dry-run receipt
+                count before preflight and gather evidence can be frozen for
+                downstream deterministic, Rosalind, executable cross-check, and
+                AI/freeform reports. No S3, Batch, route, GPU, quota,
+                replacement compute, or apply-mode AWS work was launched; Cost
+                Explorer was refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:50:00-07:00">Jul 19 · local</time>
               <span>
