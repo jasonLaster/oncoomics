@@ -86,9 +86,11 @@ def require_real_hash_input(path: Path) -> None:
 
 def sha256(path: Path) -> str:
     require_real_hash_input(path)
-    digest = sha256_file_once(path)
-    if sha256_file_once(path) != digest:
-        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    _payload, digest = read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )
+    require_real_hash_input(path)
     return digest
 
 
@@ -102,6 +104,17 @@ def sha256_file_once(path: Path) -> str:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    try:
+        payload = path.read_bytes()
+        digest = sha256_bytes(payload)
+        if sha256_bytes(path.read_bytes()) != digest:
+            raise ValueError(f"{label} changed during read")
+    except OSError as error:
+        raise ValueError(f"{label} changed during read") from error
+    return payload, digest
 
 
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
@@ -235,10 +248,10 @@ def load_contract_with_sha256(path: Path) -> tuple[dict[str, Any], str, bytes]:
     require_no_symlinked_ancestors(path, "contract")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"contract must be a real JSON file: {path}")
-    payload = path.read_bytes()
-    payload_sha256 = sha256_bytes(payload)
-    if sha256(path) != payload_sha256:
-        raise ValueError("contract changed during read")
+    payload, payload_sha256 = read_stable_file_with_sha256(path, "contract")
+    require_no_symlinked_ancestors(path, "contract")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"contract must be a real JSON file: {path}")
     try:
         value = json.loads(
             payload.decode("utf-8"),
