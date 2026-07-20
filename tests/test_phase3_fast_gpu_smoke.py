@@ -771,6 +771,27 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                 with self.assertRaisesRegex(verify.GpuSmokeConfigError, "current Nextflow params"):
                     verify.load_mirror_receipt_for_smoke(expected_params=verify.validate_gpu_smoke_params(p5en_params()))
 
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.load_gpu_batch_job_queue")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.load_daily_cost_guard_estimated_spend")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.load_params_from_environment")
+    def test_smoke_main_stops_before_queue_when_daily_cost_guard_is_spent(
+        self,
+        load_params,
+        load_cost,
+        load_queue,
+    ) -> None:
+        load_params.return_value = (p5en_params(), Path("infra/aws/nextflow.aws.use2.json"))
+        load_cost.side_effect = verify.GpuSmokeConfigError("Daily Batch EC2 cost guard is already spent")
+
+        with self.assertRaisesRegex(SystemExit, "Daily Batch EC2 cost guard is already spent"):
+            verify.main()
+
+        load_cost.assert_called_once_with(
+            ledger="diana-omics-prod-use2-daily-cost-guard-ledger",
+            region="us-east-2",
+        )
+        load_queue.assert_not_called()
+
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
     def test_loads_mirrored_parabricks_image_digest_from_ecr(self, run) -> None:
         digest = "sha256:" + "a" * 64

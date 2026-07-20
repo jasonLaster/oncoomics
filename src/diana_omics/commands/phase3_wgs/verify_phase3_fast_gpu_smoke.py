@@ -695,6 +695,14 @@ def main() -> None:
     try:
         params, path = load_params_from_environment()
         summary = validate_gpu_smoke_params(params)
+        estimated_daily_ec2_usd = load_daily_cost_guard_estimated_spend(
+            ledger=summary["daily_cost_guard_ledger"],
+            region=summary["aws_region"],
+        )
+        validate_daily_cost_guard_estimated_spend(
+            estimated_daily_ec2_usd,
+            live_stop_usd=summary["daily_cost_guard_live_stop_usd"],
+        )
         queue = load_gpu_batch_job_queue(queue=summary["aws_gpu_queue"], region=summary["aws_region"])
         queue_summary = validate_gpu_batch_job_queue(queue, expected_queue=summary["aws_gpu_queue"])
         compute_environment = load_gpu_batch_compute_environment(
@@ -718,6 +726,7 @@ def main() -> None:
     print(
         f"Phase 3 WGS fast GPU smoke config passed: {path} "
         f"queue={summary['aws_gpu_queue']} "
+        f"estimated_daily_batch_ec2_usd={estimated_daily_ec2_usd:.6f} "
         f"compute_environment={queue_summary['compute_environment']} "
         f"compute_max_vcpus={compute_environment_summary['max_vcpus']} "
         f"max_vcpus={summary['gpu_p5en_max_vcpus']} "
