@@ -994,6 +994,28 @@ DETERMINISTIC_EVIDENCE_CHECK_KEYS = {
     "checks",
     "input_sha256",
 }
+DETERMINISTIC_REVIEW_SUMMARY_KEYS = {
+    "overall",
+    "custody",
+}
+DETERMINISTIC_REVIEW_OVERALL_KEYS = {
+    "evidence_status",
+    "authorized_hrd_state",
+}
+DETERMINISTIC_CUSTODY_VERSION_FIELDS = (
+    "freeze_receipt_version_id",
+    "stage_provenance_receipt_version_id",
+)
+DETERMINISTIC_CUSTODY_HASH_FIELDS = (
+    "freeze_receipt_sha256",
+    "stage_provenance_receipt_sha256",
+)
+DETERMINISTIC_CUSTODY_KEYS = {
+    "private_freeze_status",
+    "exact_kms_match",
+    *DETERMINISTIC_CUSTODY_VERSION_FIELDS,
+    *DETERMINISTIC_CUSTODY_HASH_FIELDS,
+}
 DIANA_WGS_DETERMINISTIC_INPUTS = {
     "diana_hrd_summary.json": "summary",
     "hrd_readiness.csv": "readiness",
@@ -1342,27 +1364,51 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     ):
         raise ValueError("deterministic evidence checks are incomplete or not all passed")
     review_summary = manifest.get("review_summary")
-    custody = review_summary.get("custody", {}) if isinstance(review_summary, dict) else {}
-    if custody.get("private_freeze_status") != "passed" or custody.get("exact_kms_match") is not True:
+    if not isinstance(review_summary, Mapping) or set(review_summary) != DETERMINISTIC_REVIEW_SUMMARY_KEYS:
+        raise ValueError("deterministic review summary is not exact")
+    overall = review_summary["overall"]
+    if (
+        not isinstance(overall, Mapping)
+        or set(overall) != DETERMINISTIC_REVIEW_OVERALL_KEYS
+        or require_exact_nonempty_string(
+            overall["evidence_status"],
+            "deterministic review summary evidence_status",
+        )
+        != "partial_evidence"
+        or require_exact_nonempty_string(
+            overall["authorized_hrd_state"],
+            "deterministic review summary authorized_hrd_state",
+        )
+        != "no_call"
+    ):
+        raise ValueError("deterministic review summary does not preserve a no-call partial-evidence boundary")
+
+    custody = review_summary["custody"]
+    if not isinstance(custody, Mapping) or set(custody) != DETERMINISTIC_CUSTODY_KEYS:
+        raise ValueError("deterministic custody is not exact")
+    if (
+        require_exact_nonempty_string(
+            custody["private_freeze_status"],
+            "deterministic custody private_freeze_status",
+        )
+        != "passed"
+        or custody["exact_kms_match"] is not True
+    ):
         raise ValueError("deterministic report lacks passed exact-KMS custody")
-    version_fields = (
-        "freeze_receipt_version_id",
-        "stage_provenance_receipt_version_id",
-    )
     custody_version_ids = {
         field: require_version_id(
-            custody.get(field),
+            custody[field],
             f"deterministic custody {field}",
         )
-        for field in version_fields
+        for field in DETERMINISTIC_CUSTODY_VERSION_FIELDS
     }
     custody_hashes = {
-        key: require_sha256(value, f"deterministic custody {key}")
-        for key, value in custody.items()
-        if key.endswith("_sha256")
+        field: require_sha256(
+            custody[field],
+            f"deterministic custody {field}",
+        )
+        for field in DETERMINISTIC_CUSTODY_HASH_FIELDS
     }
-    if not custody_hashes:
-        raise ValueError("deterministic custody lacks hash-bound receipts")
     tools = read_json_file(artifact_path_from_root("tool_versions.json"), "Diana WGS tool versions")
     if not isinstance(tools, dict) or set(tools) != {"bwa", "samtools", "bcftools", "gatk"}:
         raise ValueError("Diana WGS tool version inventory is missing or malformed")

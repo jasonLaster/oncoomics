@@ -313,6 +313,16 @@ def mutate_deterministic_evidence_checks(
     utils.write_json(report_manifest_path, report_manifest)
 
 
+def mutate_deterministic_report_manifest(
+    deterministic_root: Path,
+    mutation: Callable[[dict], None],
+) -> None:
+    report_manifest_path = deterministic_root / "report_manifest.json"
+    report_manifest = utils.read_json(report_manifest_path)
+    mutation(report_manifest)
+    utils.write_json(report_manifest_path, report_manifest)
+
+
 def mutate_phase3_fast_report_manifest(
     deterministic_root: Path,
     mutation: Callable[[dict], None],
@@ -3319,6 +3329,105 @@ class RosalindHrdPacketTest(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(ValueError, "one passed tumor and one passed normal"):
                     packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+    def test_diana_wgs_packet_rejects_loose_terminal_review_summary(self):
+        cases = (
+            (
+                "extra_review_summary_field",
+                lambda manifest: manifest["review_summary"].__setitem__(
+                    "extra",
+                    "stale",
+                ),
+                "deterministic review summary is not exact",
+            ),
+            (
+                "extra_overall_field",
+                lambda manifest: manifest["review_summary"]["overall"].__setitem__(
+                    "extra",
+                    "stale",
+                ),
+                "deterministic review summary does not preserve a no-call partial-evidence boundary",
+            ),
+            (
+                "padded_overall_status",
+                lambda manifest: manifest["review_summary"]["overall"].__setitem__(
+                    "evidence_status",
+                    " partial_evidence",
+                ),
+                "deterministic review summary evidence_status must be a non-empty unpadded single-line string",
+            ),
+            (
+                "padded_custody_status",
+                lambda manifest: manifest["review_summary"]["custody"].__setitem__(
+                    "private_freeze_status",
+                    " passed",
+                ),
+                "deterministic custody private_freeze_status must be a non-empty unpadded single-line string",
+            ),
+            (
+                "failed_custody_status",
+                lambda manifest: manifest["review_summary"]["custody"].__setitem__(
+                    "private_freeze_status",
+                    "failed",
+                ),
+                "deterministic report lacks passed exact-KMS custody",
+            ),
+            (
+                "numeric_exact_kms",
+                lambda manifest: manifest["review_summary"]["custody"].__setitem__(
+                    "exact_kms_match",
+                    1,
+                ),
+                "deterministic report lacks passed exact-KMS custody",
+            ),
+            (
+                "extra_custody_field",
+                lambda manifest: manifest["review_summary"]["custody"].__setitem__(
+                    "extra_receipt_sha256",
+                    "c" * 64,
+                ),
+                "deterministic custody is not exact",
+            ),
+            (
+                "bad_receipt_hash",
+                lambda manifest: manifest["review_summary"]["custody"].__setitem__(
+                    "freeze_receipt_sha256",
+                    "C" * 64,
+                ),
+                "deterministic custody freeze_receipt_sha256 must be a SHA-256 hex digest",
+            ),
+        )
+
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+                output_root = Path(tmp)
+                artifact_root = Path(artifacts)
+                write_diana_wgs_worker_artifacts(artifact_root)
+                deterministic_root = write_deterministic_report(
+                    output_root / "deterministic",
+                    artifact_root,
+                )
+                mutate_deterministic_report_manifest(deterministic_root, mutation)
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json"
+                    ).exists()
+                )
 
     def test_diana_wgs_packet_rejects_stale_artifact_index(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
