@@ -659,28 +659,39 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                     )
                 )
 
-    def test_rejects_index_symlinked_after_sha256_before_json_load(self) -> None:
+    def test_rejects_index_symlinked_between_stable_reads(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             index, receipts = self.write_receipt_bound_index(root)
             forged = root / "forged-objects.json"
             forged.write_text(index.read_text(encoding="utf-8"))
-            real_sha256 = MODULE.sha256
+            real_read = MODULE.read_real_input_file_once
             swapped = False
             index_resolved = index.resolve()
 
-            def swap_index_after_sha256(path: Path) -> str:
+            def swap_index_after_first_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
                 nonlocal swapped
-                digest = real_sha256(path)
-                if path == index_resolved and not swapped:
+                result = real_read(path, label)
+                if (
+                    path.resolve() == index_resolved
+                    and label == "public index"
+                    and not swapped
+                ):
                     swapped = True
                     path.unlink()
                     path.symlink_to(forged)
-                return digest
+                return result
 
             with (
                 self.assertRaisesRegex(ValueError, "public index must be a real file"),
-                mock.patch.object(MODULE, "sha256", side_effect=swap_index_after_sha256),
+                mock.patch.object(
+                    MODULE,
+                    "read_real_input_file_once",
+                    side_effect=swap_index_after_first_read,
+                ),
                 mock.patch.object(
                     MODULE,
                     "aws_json",
@@ -720,6 +731,79 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 )
 
             self.assertFalse(receipt.exists())
+
+    def test_load_json_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = self.write_index(root)
+            replacement = root / "replacement-objects.json"
+            replacement.write_text(index.read_text(encoding="utf-8"))
+            real_read = MODULE.read_real_input_file_once
+            swapped = False
+            index_resolved = index.resolve()
+
+            def replace_after_first_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+                nonlocal swapped
+                result = real_read(path, label)
+                if path.resolve() == index_resolved and not swapped:
+                    swapped = True
+                    replacement.replace(index)
+                return result
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_real_input_file_once",
+                    side_effect=replace_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "public index changed during read",
+                ),
+            ):
+                MODULE.load_json(index, "public index")
+
+            self.assertTrue(swapped)
+
+    def test_load_json_rejects_mid_read_rewrites(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index = self.write_index(root)
+            real_read = MODULE.read_real_input_file_once
+            mutated = False
+            index_resolved = index.resolve()
+
+            def mutate_after_first_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+                nonlocal mutated
+                result = real_read(path, label)
+                if path.resolve() == index_resolved and not mutated:
+                    mutated = True
+                    index.write_text(
+                        '{"changed_after_first_read": true}\n',
+                        encoding="utf-8",
+                    )
+                return result
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_real_input_file_once",
+                    side_effect=mutate_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "public index changed during read",
+                ),
+            ):
+                MODULE.load_json(index, "public index")
+
+            self.assertTrue(mutated)
 
     def test_apply_rejects_destination_checksum_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

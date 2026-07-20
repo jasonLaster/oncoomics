@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -95,12 +96,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 
 def sha256(path: Path) -> str:
-    require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+    return read_stable_file(path, f"{path.name} SHA-256 input")[1]
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -141,9 +137,8 @@ def is_nonnegative_exact_int(value: Any) -> bool:
 
 
 def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str, int]:
-    path = require_real_input_file(path, label)
     try:
-        payload = path.read_bytes()
+        payload, digest = read_stable_file(path, label)
         value = json.loads(
             payload.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
@@ -154,11 +149,66 @@ def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str, 
         raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    digest = sha256_bytes(payload)
-    if sha256(path) != digest:
-        raise ValueError(f"{label} changed during read")
-    require_real_input_file(path, label)
     return value, digest, len(payload)
+
+
+def read_stable_file(
+    path: Path,
+    label: str,
+) -> tuple[bytes, str]:
+    data, identity = read_real_input_file_once(path, label)
+    digest = sha256_bytes(data)
+    stable_data, stable_identity = read_real_input_file_once(path, label)
+    if stable_identity != identity or sha256_bytes(stable_data) != digest:
+        raise ValueError(f"{label} changed during read")
+    return data, digest
+
+
+def read_real_input_file_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+    path = require_real_input_file(path, label)
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{label} must be a real file")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{label} changed during read") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{label} changed during read")
+    return data, stat_identity(opened)
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
