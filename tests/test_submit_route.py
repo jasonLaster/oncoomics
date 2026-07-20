@@ -561,6 +561,11 @@ class SubmitRouteTests(unittest.TestCase):
                 clear=True,
             ),
             mock.patch.object(MODULE, "preflight", return_value=receipt),
+            mock.patch.object(
+                MODULE,
+                "check_submit_daily_cost_guard",
+                return_value={"status": "passed"},
+            ),
             mock.patch.object(MODULE, "submit", return_value=response),
         ):
             self.assertEqual(MODULE.main(), 0)
@@ -570,7 +575,43 @@ class SubmitRouteTests(unittest.TestCase):
         self.assertEqual(persisted["status"], "submitted")
         self.assertEqual(persisted["job_id"], job_id)
         self.assertEqual(persisted["job_arn"], response["jobArn"])
+        self.assertEqual(persisted["daily_cost_guard"], {"status": "passed"})
+        self.assertIs(persisted["checks"]["daily_cost_guard_not_spent"], True)
         self.assertEqual(persisted["response"], response)
+
+    def test_daily_cost_guard_fails_before_submit(self) -> None:
+        receipt = self.preflight_receipt()
+        dry_run = self.write_dry_run_receipt(receipt)
+
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                self.argv(submit=True, dry_run_receipt=dry_run),
+            ),
+            mock.patch.dict(
+                os.environ,
+                {
+                    "HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES",
+                    "HRD_CROSSCHECK_LICENSE_REVIEWED": "YES",
+                },
+                clear=True,
+            ),
+            mock.patch.object(MODULE, "preflight", return_value=receipt),
+            mock.patch.object(
+                MODULE,
+                "check_submit_daily_cost_guard",
+                side_effect=ValueError("Daily Batch EC2 cost guard is already spent"),
+            ),
+            mock.patch.object(MODULE, "submit") as submit,
+            self.assertRaisesRegex(SystemExit, "do not retry"),
+        ):
+            MODULE.main()
+
+        submit.assert_not_called()
+        persisted = json.loads(self.response.read_text())
+        self.assertEqual(persisted["status"], "submission_failed_or_ambiguous")
+        self.assertIn("Daily Batch EC2 cost guard", persisted["error"])
 
     def test_submit_failure_writes_ambiguity_receipt_and_forbids_retry(self) -> None:
         receipt = self.preflight_receipt()
@@ -590,6 +631,11 @@ class SubmitRouteTests(unittest.TestCase):
                 clear=True,
             ),
             mock.patch.object(MODULE, "preflight", return_value=receipt),
+            mock.patch.object(
+                MODULE,
+                "check_submit_daily_cost_guard",
+                return_value={"status": "passed"},
+            ),
             mock.patch.object(MODULE, "submit", side_effect=TimeoutError("uncertain")),
             self.assertRaisesRegex(SystemExit, "do not retry"),
         ):
@@ -624,6 +670,11 @@ class SubmitRouteTests(unittest.TestCase):
                 clear=True,
             ),
             mock.patch.object(MODULE, "preflight", return_value=receipt),
+            mock.patch.object(
+                MODULE,
+                "check_submit_daily_cost_guard",
+                return_value={"status": "passed"},
+            ),
             mock.patch.object(MODULE, "submit", side_effect=verify_reserved),
             self.assertRaises(SystemExit),
         ):

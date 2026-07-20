@@ -407,6 +407,9 @@
           review-evidence support, executable cross-check staging now rejects
           padded S3/KMS receipt strings, coerced output directories, and
           coerced downloaded-object paths,
+          static HRD route submits, alias-only materializer submits, and the
+          bounded Rosalind packet cloud helper now reread the same daily Batch
+          spend ledger immediately before any direct Batch submit,
           reviewed-public publication now preserves the support file,
           pre-route blocked cross-check packets now exact-check the top-level
           and nested review summary they are about to hand to AI/freeform
@@ -1113,6 +1116,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind P5 launches to the daily cost guard</strong>
               <span>The generated <code>nextflow.aws.use2.json</code> now carries the daily Batch guard cap, live stop threshold, live stop dollars, live ledger, guarded Batch queues, guarded compute environments, and guarded regions; the P5 smoke and full execute preflights reject params that omit the GPU queue, omit a required region, raise the cap above $200/day, or raise the live stop threshold above 80%, and both P5 launch gates read the live UTC-day ledger before queue checks so they refuse to submit when the estimated Batch EC2 spend is already at the $160 live stop.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · guard direct Batch submitters</strong>
+              <span>The static route submitter, v4 materializer submitter, and bounded Rosalind cloud-packet helper now all reread the live daily spend ledger immediately before their direct Batch submission and fail before <code>SubmitJob</code> if the UTC-day Batch EC2 estimate has already reached the $160 live stop.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Pending · hold the us-west-2 P-family quota hedge</strong>
@@ -3132,6 +3139,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Guard direct Batch submitters:</strong>
+                the static HRD route submitter, v4 cross-check materializer
+                submitter, and bounded Rosalind cloud-packet helper now reread
+                the live daily Batch EC2 spend ledger immediately before their
+                direct <code>SubmitJob</code> call and fail closed at the $160
+                live stop. No S3, Batch, route, GPU, quota, rerun, or
+                apply-mode AWS work was launched; Cost Explorer was refreshed
+                read-only for 2026-07-19 UTC and remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

@@ -24,12 +24,15 @@ from build_ai_review_bundle import (
     DuplicateJsonKeyError,
     reject_duplicate_json_object_names,
 )
+from daily_cost_guard import check_daily_cost_guard
 
 REGION = "us-east-1"
 ACCOUNT_ID = "172630973301"
 QUEUE_NAME = "diana-omics-prod-use1-ondemand"
 QUEUE_ARN = f"arn:aws:batch:{REGION}:{ACCOUNT_ID}:job-queue/{QUEUE_NAME}"
 COMPUTE_ENVIRONMENT_ARN = f"arn:aws:batch:{REGION}:{ACCOUNT_ID}:compute-environment/{QUEUE_NAME}"
+DAILY_COST_GUARD_LEDGER = "diana-omics-prod-use1-daily-cost-guard-ledger"
+DAILY_COST_GUARD_LIVE_STOP_USD = "160"
 JOB_DEFINITION_NAME = "diana-wgs-hrd-materialize-crosscheck-inputs"
 JOB_DEFINITION_ARN = f"arn:aws:batch:{REGION}:{ACCOUNT_ID}:job-definition/{JOB_DEFINITION_NAME}:4"
 EXPECTED_JOB_ROLE_ARN = f"arn:aws:iam::{ACCOUNT_ID}:role/diana-omics-prod-use1-batch-job"
@@ -1404,6 +1407,14 @@ def submit(request: dict[str, Any], region: str) -> dict[str, Any]:
     return response
 
 
+def check_submit_daily_cost_guard(region: str) -> dict[str, str]:
+    return check_daily_cost_guard(
+        ledger=DAILY_COST_GUARD_LEDGER,
+        region=region,
+        live_stop_usd=DAILY_COST_GUARD_LIVE_STOP_USD,
+    )
+
+
 def validate_dry_run_receipt(
     path: Path,
     expected: dict[str, Any],
@@ -1511,6 +1522,7 @@ def main() -> int:
     assert args.response_output is not None
     descriptor = reserve_private(args.response_output)
     try:
+        daily_cost_guard = check_submit_daily_cost_guard(args.region)
         response = submit(request_receipt["submit_job_request"], args.region)
         response_receipt = {
             "schema_version": 1,
@@ -1522,8 +1534,10 @@ def main() -> int:
                 "sha256": sha256_path(args.request_output),
             },
             "submit_job_request_sha256": sha256_bytes(canonical_bytes(request_receipt["submit_job_request"])),
+            "daily_cost_guard": daily_cost_guard,
             "response": response,
             "checks": {
+                "daily_cost_guard_not_spent": daily_cost_guard["status"] == "passed",
                 "request_receipt_mode_0600": (args.request_output.stat().st_mode & 0o777) == 0o600,
                 "exact_job_name": response.get("jobName") == request_receipt["submit_job_request"]["jobName"],
                 "job_id_and_arn": True,

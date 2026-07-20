@@ -171,6 +171,19 @@ if [[ -z "$JOB_DEFINITION" ]]; then
   exit 2
 fi
 
+if [[ "$DRY_RUN" -ne 1 ]]; then
+  DAILY_COST_GUARD_LEDGER="$(config_value daily_cost_guard_ledger)"
+  DAILY_COST_GUARD_LIVE_STOP_USD="$(config_value daily_cost_guard_live_stop_usd)"
+  if [[ -z "$DAILY_COST_GUARD_LEDGER" || -z "$DAILY_COST_GUARD_LIVE_STOP_USD" ]]; then
+    echo "Missing daily cost guard settings. Set daily_cost_guard_ledger and daily_cost_guard_live_stop_usd in ${CONFIG_PATH}." >&2
+    exit 64
+  fi
+  python3 "${ROOT_DIR}/scripts/daily_cost_guard.py" \
+    --ledger "$DAILY_COST_GUARD_LEDGER" \
+    --region "$REGION" \
+    --live-stop-usd "$DAILY_COST_GUARD_LIVE_STOP_USD" >/dev/null
+fi
+
 PAYLOAD_PATH="$(mktemp -t diana-hrd-packet-submit.XXXXXX.json)"
 export RUN_ID SAMPLE_SET ARTIFACT_ROOT_REL SOURCE_COMMIT SOURCE_ARCHIVE_URL S3_PREFIX REGION QUEUE JOB_DEFINITION
 export VCPUS MEMORY TIMEOUT JOB_NAME
