@@ -627,6 +627,7 @@ def required_existing(root: Path) -> tuple[Path, ...]:
             scripts / "freeze_stage_provenance.py",
             scripts / "freeze_final_artifacts.py",
             scripts / "materialize_frozen_artifacts.py",
+            scripts / "daily_cost_guard.py",
             scripts / "submit_materializer_v4.py",
             scripts / "render_materializer_capture_command.py",
             scripts / "capture_materializer_terminal.py",

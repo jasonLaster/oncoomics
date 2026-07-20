@@ -606,6 +606,7 @@ class RenderPostSuccessRunbookTests(unittest.TestCase):
         }
 
         self.assertIn("/repo/aws/submit_route.py", prerequisites)
+        self.assertIn("/repo/scripts/daily_cost_guard.py", prerequisites)
         self.assertIn("/repo/scripts/capture_materializer_terminal.py", prerequisites)
         self.assertIn("/repo/scripts/stage_hrd_crosscheck_report.py", prerequisites)
         self.assertIn(
