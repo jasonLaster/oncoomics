@@ -262,6 +262,23 @@ def mutate_phase3_fast_crosscheck_plans(
     utils.write_json(report_manifest_path, report_manifest)
 
 
+def mutate_phase3_fast_readiness(
+    deterministic_root: Path,
+    mutation: Callable[[list[dict[str, str]]], None],
+) -> None:
+    readiness_path = deterministic_root / "readiness.csv"
+    readiness = utils.parse_csv(utils.read_text(readiness_path))
+    mutation(readiness)
+    utils.write_csv(readiness_path, readiness)
+
+    report_manifest_path = deterministic_root / "report_manifest.json"
+    report_manifest = utils.read_json(report_manifest_path)
+    report_manifest["support_sha256"]["readiness.csv"] = (
+        hashlib.sha256(readiness_path.read_bytes()).hexdigest()
+    )
+    utils.write_json(report_manifest_path, report_manifest)
+
+
 def mutate_phase3_fast_report_manifest(
     deterministic_root: Path,
     mutation: Callable[[dict], None],
@@ -1812,6 +1829,46 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     / "results/rosalind_hrd/diana_wgs/phase3-fast/report_manifest.json"
                 ).exists()
             )
+
+    def test_diana_wgs_phase3_fast_packet_rejects_loose_readiness_fields(self):
+        for field, value in (
+            ("evidence_surface", " source_sha256"),
+            ("state", "ready|partial"),
+            ("reason", "Validated evidence.\nStale note."),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                    output_root / "phase3_fast"
+                )
+                mutate_phase3_fast_readiness(
+                    deterministic_root,
+                    lambda rows: rows[0].__setitem__(field, value),
+                )
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                            "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
+                        },
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        f"Phase 3 fast readiness row 1 {field} must be a non-empty unpadded single-line string",
+                    ),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/phase3-fast/report_manifest.json"
+                    ).exists()
+                )
 
     def test_diana_wgs_phase3_fast_packet_requires_sequenza_alias_contract(self):
         with tempfile.TemporaryDirectory() as tmp:

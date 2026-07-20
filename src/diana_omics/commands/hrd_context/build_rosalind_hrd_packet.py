@@ -1889,6 +1889,24 @@ def bounded_phase3_fast_state(surface: str, state: str, blockers: list[str]) -> 
     return state
 
 
+def exact_phase3_fast_readiness_rows(
+    rows: Iterable[Mapping[str, Any]],
+) -> list[dict[str, str]]:
+    fields = ("evidence_surface", "state", "reason")
+    exact_rows: list[dict[str, str]] = []
+    for index, row in enumerate(rows, start=1):
+        exact_rows.append(
+            {
+                field: require_exact_nonempty_string(
+                    row.get(field),
+                    f"Phase 3 fast readiness row {index} {field}",
+                )
+                for field in fields
+            }
+        )
+    return exact_rows
+
+
 def diana_wgs_phase3_fast_evidence(
     deterministic_binding: Mapping[str, Any],
 ) -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
@@ -1915,7 +1933,9 @@ def diana_wgs_phase3_fast_evidence(
     )
     sequenza_attestations = sequenza_alias_contract["attestations"]
     sequenza_aliases = sequenza_alias_contract["planned_aliases"]
-    readiness_rows = parse_csv(read_text(paths["readiness.csv"]))
+    readiness_rows = exact_phase3_fast_readiness_rows(
+        parse_csv(read_text(paths["readiness.csv"]))
+    )
     surfaces = [str(row.get("evidence_surface", "")) for row in readiness_rows if row.get("evidence_surface")]
     blockers: list[str] = []
 

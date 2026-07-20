@@ -371,15 +371,15 @@
           is stopped, the selected GPU lane is live on all three allowed P5
           Hopper shapes and still waiting on quota, the prod-use2 daily cost
           guard now has a one-minute live spend poller, and the latest
-          source-only guardrail rejects loose Diana WGS rendered worker fields
-          before reference and SBS status text can enter the Rosalind and AI
+          source-only guardrail rejects loose Phase 3 fast readiness fields
+          before final-run readiness reasons can enter the Rosalind and AI
           review handoff.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = Diana rendered fields</li>
+          <li class="pill">Latest milestone = Phase 3 readiness fields</li>
           <li class="pill">Live P5 placement = p5en / p5e / p5</li>
           <li class="pill">Daily $200 Batch guard = live</li>
           <li class="pill">Live spend poll = 1 minute</li>
@@ -403,6 +403,7 @@
           <li class="pill">Deterministic review summaries = exact</li>
           <li class="pill">Comparative reviewer rows = exact</li>
           <li class="pill">Input-contract finalizer = route-checked</li>
+          <li class="pill">Phase 3 fast readiness fields = exact</li>
           <li class="pill">Diana WGS rendered fields = exact</li>
           <li class="pill">Diana WGS summary fields = exact</li>
           <li class="pill">Diana WGS readiness CSV = exact</li>
@@ -2116,6 +2117,10 @@
               <span><code>generate_comparative_hrd_synthesis.py</code> now rejects padded, multiline, NUL-containing, or semicolon-list-padded reviewer <code>claims.csv</code> and generated <code>agreement_disagreement.csv</code> fields before independent AI claims or comparative agreement rows can feed synthesis manifests.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Phase 3 fast readiness fields</strong>
+              <span>The Phase 3 fast Diana WGS packet path now rejects padded, multiline, or pipe-bearing <code>readiness.csv</code> surface, state, and reason fields before those final-run reasons can feed evidence rows or adapter blockers.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Diana WGS rendered fields</strong>
               <span>The Diana WGS Rosalind packet now rejects malformed summary reference values and signature-assignment status strings before rendering WGS boundary and SBS96 evidence rows, so booleans, arrays, or padded status text cannot leak into reviewer prose.</span>
             </li>
@@ -2717,6 +2722,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T22:53:10-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject loose Phase 3 fast readiness fields:</strong>
+                the Rosalind Diana WGS packet now requires exact Phase 3
+                fast <code>readiness.csv</code> surface, state, and reason
+                strings before final-run readiness can render into evidence
+                rows or adapter blockers.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T22:51:14-07:00">Jul 19 · local</time>
               <span>
