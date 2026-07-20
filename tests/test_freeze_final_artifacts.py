@@ -973,6 +973,28 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             ):
                 MODULE.load_json(receipt)
 
+    def test_load_json_with_sha256_hashes_parsed_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            receipt = Path(value) / "freeze.dry.json"
+            payload = b'{"status":"passed"}\n'
+            receipt.write_bytes(payload)
+
+            document, digest = MODULE.load_json_with_sha256(receipt)
+
+        self.assertEqual({"status": "passed"}, document)
+        self.assertEqual(MODULE.sha256_bytes(payload), digest)
+
+    def test_load_json_with_sha256_rejects_stale_local_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            receipt = Path(value) / "freeze.dry.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+
+            with (
+                patch.object(MODULE, "sha256", return_value="0" * 64),
+                self.assertRaisesRegex(ValueError, "JSON document changed during read"),
+            ):
+                MODULE.load_json_with_sha256(receipt)
+
     def test_validate_dry_run_receipt_rejects_duplicate_object_names(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             root = Path(value)
@@ -1345,6 +1367,103 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 "destination-version",
             )
             self.assertFalse(anchor.exists())
+
+    def test_main_hashes_validated_execution_receipt_bytes(self) -> None:
+        run_id = "run-id"
+        job_id = "job-id"
+        kms_key_arn = "arn:aws:kms:us-east-1:172630973301:key/test"
+        source_row = {
+            "relative_key": "variants/final.vcf.gz",
+            "key": (
+                f"runs/diana-hrd/{run_id}/private-results/final/artifacts/"
+                "variants/final.vcf.gz"
+            ),
+            "bytes": 10,
+            "etag": '"etag"',
+            "version_id": "source-version",
+            "checksums": {"ChecksumSHA256": "source-checksum"},
+            "checksum_type": "FULL_OBJECT",
+        }
+        source_head = {
+            "ContentLength": 10,
+            "ETag": '"etag"',
+            "VersionId": "source-version",
+            "ChecksumType": "FULL_OBJECT",
+            "ChecksumSHA256": "source-checksum",
+        }
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            execution = root / "execution.json"
+            output = root / "freeze.json"
+            anchor = root / "anchor.json"
+            original = {"status": "passed"}
+            execution.write_text(json.dumps(original) + "\n", encoding="utf-8")
+            expected_sha = MODULE.sha256(execution)
+            argv = [
+                "freeze_final_artifacts.py",
+                "--job-id",
+                job_id,
+                "--run-id",
+                run_id,
+                "--execution-receipt",
+                str(execution),
+                "--source-prefix",
+                (
+                    "s3://diana-omics-work-172630973301-us-east-1/"
+                    f"runs/diana-hrd/{run_id}/private-results/final/artifacts/"
+                ),
+                "--destination-prefix",
+                (
+                    "s3://diana-omics-private-results-172630973301-us-east-1/"
+                    f"runs/subject01/{run_id}/deterministic/final/"
+                ),
+                "--kms-key-arn",
+                kms_key_arn,
+                "--output",
+                str(output),
+                "--anchor-output",
+                str(anchor),
+            ]
+
+            def validate_then_tamper(
+                receipt: dict,
+                **_kwargs: object,
+            ) -> tuple[str, str]:
+                self.assertEqual(original, receipt)
+                execution.write_text('{"status":"tampered"}\n', encoding="utf-8")
+                return "172630973301", kms_key_arn
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    MODULE,
+                    "aws_json",
+                    return_value={"jobs": [{"status": "SUCCEEDED"}]},
+                ),
+                patch.object(
+                    MODULE,
+                    "validate_execution_binding",
+                    side_effect=validate_then_tamper,
+                ),
+                patch.object(MODULE, "require_bucket_versioning"),
+                patch.object(
+                    MODULE,
+                    "snapshot_inventory",
+                    side_effect=[[source_row], [source_row]],
+                ),
+                patch.object(MODULE, "version_history", return_value=[]),
+                patch.object(MODULE, "head", return_value=source_head),
+            ):
+                MODULE.main()
+
+            receipt = json.loads(output.read_text(encoding="utf-8"))
+
+        self.assertEqual("dry_run", receipt["status"])
+        self.assertEqual(
+            expected_sha,
+            receipt["execution_receipt"]["sha256"],
+        )
 
     def test_main_copy_content_lengths_must_be_exact_integers(self) -> None:
         run_id = "run-id"

@@ -26,7 +26,6 @@ from build_ai_review_bundle import (
     DuplicateJsonKeyError,
     reject_duplicate_json_object_names,
 )
-
 from capture_batch_provenance import EXPECTED_BATCH_WORKER_CHECKS
 
 S3_URI = re.compile(r"^s3://([^/]+)/(.+)$")
@@ -207,7 +206,7 @@ def fsync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
-def load_json(path: Path) -> dict[str, Any]:
+def load_json_with_sha256(path: Path) -> tuple[dict[str, Any], str]:
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"JSON document parent must not be a symlink: {parent}")
@@ -215,16 +214,24 @@ def load_json(path: Path) -> dict[str, Any]:
             raise ValueError(f"JSON document parent must be a directory: {parent}")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"JSON document must be a real file: {path}")
+    raw = path.read_bytes()
+    digest = sha256_bytes(raw)
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            raw.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
         raise ValueError(f"duplicate JSON object name in JSON document: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"JSON document is not an object: {path}")
-    return value
+    if sha256(path) != digest:
+        raise ValueError(f"JSON document changed during read: {path}")
+    return value, digest
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    return load_json_with_sha256(path)[0]
 
 
 def write_json_atomic(
@@ -971,7 +978,9 @@ def main() -> int:
     if len(jobs) != 1 or jobs[0].get("status") != "SUCCEEDED":
         raise SystemExit("Fail-closed: deterministic Batch job is not SUCCEEDED")
     try:
-        execution_receipt = load_json(args.execution_receipt)
+        execution_receipt, execution_receipt_sha256 = load_json_with_sha256(
+            args.execution_receipt
+        )
         account_id, worker_kms_key = validate_execution_binding(
             execution_receipt,
             job=jobs[0],
@@ -1024,7 +1033,7 @@ def main() -> int:
         "batch_status": "SUCCEEDED",
         "execution_receipt": {
             "path": str(args.execution_receipt.resolve()),
-            "sha256": sha256(args.execution_receipt),
+            "sha256": execution_receipt_sha256,
         },
         "source_prefix": args.source_prefix.rstrip("/") + "/",
         "destination_prefix": args.destination_prefix.rstrip("/") + "/",
