@@ -952,6 +952,36 @@ class CustodyHandoffTests(unittest.TestCase):
                 original_hashes["cross-check materialization receipt"],
             )
 
+    def test_finalizer_rejects_loaded_receipt_that_changes_during_read(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "final-freeze-receipt.json"
+            write_json(receipt, CustodyFixture().freeze)
+            original_sha256 = finalizer.sha256
+            mutated = False
+
+            def mutate_before_stability_hash(path: Path) -> str:
+                nonlocal mutated
+                if path == receipt and not mutated:
+                    mutated = True
+                    payload = json.loads(path.read_text(encoding="utf-8"))
+                    payload["status"] = "raced"
+                    write_json(path, payload)
+                return original_sha256(path)
+
+            with (
+                patch.object(
+                    finalizer,
+                    "sha256",
+                    side_effect=mutate_before_stability_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "final freeze receipt changed during read",
+                ),
+            ):
+                finalizer.load_object_with_sha256(receipt, "final freeze receipt")
+
     def test_contract_check_requires_exact_finalized_custody_checks(self):
         contract = CustodyFixture().finalize()
         contract["custody"]["checks"]["future_check"] = True
@@ -1906,6 +1936,35 @@ class CustodyHandoffTests(unittest.TestCase):
                 with self.subTest(path=path):
                     with self.assertRaisesRegex(ValueError, message):
                         finalizer.sha256(path)
+
+    def test_finalizer_sha256_rejects_hash_input_that_changes_during_read(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "final-contract.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+            original_sha256_file_once = finalizer.sha256_file_once
+            mutated = False
+
+            def mutate_after_first_hash(path: Path) -> str:
+                nonlocal mutated
+                digest = original_sha256_file_once(path)
+                if path == receipt and not mutated:
+                    mutated = True
+                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                return digest
+
+            with (
+                patch.object(
+                    finalizer,
+                    "sha256_file_once",
+                    side_effect=mutate_after_first_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "final-contract.json SHA-256 input changed during read",
+                ),
+            ):
+                finalizer.sha256(receipt)
 
     def test_finalizer_rejects_duplicate_input_json_object_names(self):
         for label, payload, key, stale in (

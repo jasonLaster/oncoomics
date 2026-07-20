@@ -369,14 +369,14 @@
           files it used. The public HCC1395 rehearsal still tests only packaging
           mechanics; it does not stand in for Diana biology. The legacy CPU run
           is stopped, the selected GPU rerun is still waiting on quota, and the
-          latest source-only guardrail makes the cross-check handoff reread its
-          local inputs before trusting their SHA-256s. Diana HRD remains
+          latest source-only guardrail makes the final cross-check contract
+          reread its receipts before minting their SHA-256 custody. Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = cross-check handoff hashes stay stable</li>
+          <li class="pill">Latest milestone = final contract receipts stay stable</li>
           <li class="pill">Blocked generator hashes = stable</li>
           <li class="pill">Phase 3 fast manifest hashes = stable</li>
           <li class="pill">AI handoff report hashes = stable</li>
@@ -2627,6 +2627,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T21:19:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Keep final contract receipts stable:</strong>
+                the cross-check input-contract finalizer now rereads final
+                freeze, exact materialization, and cross-check materialization
+                receipts before trusting the SHA-256s that become final
+                custody evidence.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T21:18:00-07:00">Jul 19 · local</time>
               <span>

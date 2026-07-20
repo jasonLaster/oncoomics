@@ -272,6 +272,13 @@ def require_real_hash_input(path: Path) -> None:
 
 def sha256(path: Path) -> str:
     require_real_hash_input(path)
+    digest = sha256_file_once(path)
+    if sha256_file_once(path) != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
+
+
+def sha256_file_once(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
@@ -334,6 +341,9 @@ def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str
         raise ValueError(f"{label} must be a real JSON file: {path}")
     try:
         raw = path.read_bytes()
+        digest = sha256_bytes(raw)
+        if sha256(path) != digest:
+            raise ValueError(f"{label} changed during read")
         value = json.loads(
             raw.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
@@ -344,7 +354,7 @@ def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str
         raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value, sha256_bytes(raw), len(raw)
+    return value, digest, len(raw)
 
 
 def require_hex(value: Any, label: str) -> str:
