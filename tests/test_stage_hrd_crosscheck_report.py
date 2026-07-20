@@ -729,7 +729,7 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     "object_count",
                     str(len(payload["objects"])),
                 ),
-                "download verification is not passed and exact",
+                "download verification object_count",
             ),
             (
                 "object",
@@ -750,6 +750,30 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 write_json(verification, payload)
 
                 with self.assertRaisesRegex(ValueError, message):
+                    STAGE.stage(
+                        source,
+                        verification,
+                        root / "staged",
+                        "sigprofiler_sbs3",
+                    )
+
+                self.assertFalse((root / "staged").exists())
+
+    def test_stage_rejects_coerced_download_verification_object_count(self) -> None:
+        cases = (float, str, lambda value: True)
+        for coerce in cases:
+            with self.subTest(coerce=coerce), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "exact"
+                verification = write_route_report(source)
+                payload = json.loads(verification.read_text(encoding="utf-8"))
+                payload["object_count"] = coerce(len(payload["objects"]))
+                write_json(verification, payload)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "download verification object_count",
+                ):
                     STAGE.stage(
                         source,
                         verification,

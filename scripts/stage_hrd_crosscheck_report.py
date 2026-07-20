@@ -272,8 +272,11 @@ def require_download_verification(
         or not str(verification.get("output_dir", ""))
         or not isinstance(rows, list)
         or not rows
-        or type(verification.get("object_count")) is not int
-        or verification.get("object_count") != len(rows)
+        or require_positive_exact_int(
+            verification.get("object_count"),
+            "download verification object_count",
+        )
+        != len(rows)
     ):
         raise ValueError("download verification is not passed and exact")
     require_exact_check_map(
