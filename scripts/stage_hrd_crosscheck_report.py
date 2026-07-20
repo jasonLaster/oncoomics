@@ -114,6 +114,13 @@ def require_real_hash_input(path: Path) -> None:
 
 def sha256(path: Path) -> str:
     require_real_hash_input(path)
+    digest = sha256_file_once(path)
+    if sha256_file_once(path) != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
+
+
+def sha256_file_once(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
@@ -131,6 +138,9 @@ def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} is missing or a symlink")
     payload = path.read_bytes()
+    payload_sha256 = sha256_bytes(payload)
+    if sha256_file_once(path) != payload_sha256:
+        raise ValueError(f"{label} changed during read")
     try:
         value = json.loads(
             payload.decode("utf-8"),
@@ -142,7 +152,7 @@ def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
         raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value, sha256_bytes(payload)
+    return value, payload_sha256
 
 
 def require_sha(value: Any, label: str) -> str:

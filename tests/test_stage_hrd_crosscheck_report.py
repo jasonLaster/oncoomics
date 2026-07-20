@@ -317,6 +317,35 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             ):
                 STAGE.sha256(linked_inputs / "route_result.json")
 
+    def test_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            report = root / "report.md"
+            report.write_text("stable report\n", encoding="utf-8")
+            original_sha256_file_once = STAGE.sha256_file_once
+            mutated = False
+
+            def mutate_after_first_hash(path: Path) -> str:
+                nonlocal mutated
+                digest = original_sha256_file_once(path)
+                if path == report and not mutated:
+                    mutated = True
+                    path.write_text("rewritten report\n", encoding="utf-8")
+                return digest
+
+            with (
+                mock.patch.object(
+                    STAGE,
+                    "sha256_file_once",
+                    side_effect=mutate_after_first_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report.md SHA-256 input changed during read",
+                ),
+            ):
+                STAGE.sha256(report)
+
     def test_stage_compacts_route_tree_and_remains_publishable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -383,6 +412,36 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 verified_hash,
             )
             self.assertNotEqual(tampered_hash, verified_hash)
+
+    def test_stage_rejects_loaded_json_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            original_sha256_file_once = STAGE.sha256_file_once
+            mutated = False
+
+            def mutate_before_stability_hash(path: Path) -> str:
+                nonlocal mutated
+                if path == verification and not mutated:
+                    mutated = True
+                    payload = json.loads(path.read_text(encoding="utf-8"))
+                    payload["prior_error"] = "late local mutation"
+                    write_json(path, payload)
+                return original_sha256_file_once(path)
+
+            with (
+                mock.patch.object(
+                    STAGE,
+                    "sha256_file_once",
+                    side_effect=mutate_before_stability_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "download verification changed during read",
+                ),
+            ):
+                STAGE.load_json_with_sha256(verification, "download verification")
 
     def test_stage_binds_parsed_source_manifest_digest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
