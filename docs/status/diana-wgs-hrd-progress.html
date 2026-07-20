@@ -368,10 +368,10 @@
           packets from a public known-answer dataset; it is not a Diana result.
           Recent hardening makes each handoff re-check the files it depends on
           before private review or reviewed-public release can continue. The
-          one-shot materializer submitter, staged-validation downloader,
-          input-contract finalizer, freeze steps, and local materialization now
-          carry the exact digests of the JSON bytes they parsed instead of
-          trusting a later filesystem read.
+          materializer registration, one-shot materializer submitter,
+          staged-validation downloader, input-contract finalizer, freeze steps,
+          and local materialization now carry the exact digests of the JSON
+          bytes they parsed instead of trusting a later filesystem read.
           The selected GPU rerun is still quota-blocked, the legacy CPU run
           remains stopped, and Diana HRD remains <code>partial_evidence</code> /
           <code>no_call</code> until terminal artifacts and reviewed cross-check
@@ -735,6 +735,7 @@
           <li class="pill">Materializer download receipts = exact</li>
           <li class="pill">Materializer receipts = alias-exact</li>
           <li class="pill">Input finalizer receipts = stable</li>
+          <li class="pill">Materializer registration = stable</li>
           <li class="pill">Private handoff dry-runs = required</li>
           <li class="pill">Stage freeze dry-run = exact</li>
           <li class="pill">Final freeze dry-run = exact</li>
@@ -908,6 +909,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind materializer registration reads</strong>
+              <span>The reviewed materializer Batch registration validator now records the frozen script anchor and rendered job-definition hashes from the same JSON bytes it validated, so a local rewrite cannot swap the digests carried into the registered-not-submitted receipt.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind final input-contract reads</strong>
               <span>The alias-only input-contract finalizer now records the final-freeze, exact-materialization, and cross-check materialization receipt hashes from the same JSON bytes it validated, so a local rewrite cannot swap the digests carried into the final contract custody block.</span>
@@ -2486,6 +2491,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:59:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind registration digests:</strong>
+                <code>validate_materializer_registration.py</code> now carries
+                script-anchor and job-definition hashes from the stable JSON
+                bytes it parsed before writing the registered-not-submitted
+                materializer receipt.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:56:00-07:00">Jul 19 · local</time>
               <span>

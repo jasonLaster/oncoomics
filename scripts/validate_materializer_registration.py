@@ -103,6 +103,10 @@ def sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
 def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
@@ -124,19 +128,24 @@ def require_no_symlinked_ancestors(path: Path, label: str) -> None:
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
+    return load_json_with_sha256(path, label)[0]
+
+
+def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
     try:
+        payload = path.read_bytes()
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            payload.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value
+    return value, sha256_bytes(payload)
 
 
 def require_safe_output(path: Path) -> None:
@@ -411,8 +420,12 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
 
-    script_anchor = load_json(args.materializer_script_anchor, "materializer script anchor")
-    definition = load_json(args.job_definition_payload, "materializer job definition")
+    script_anchor, script_anchor_sha256 = load_json_with_sha256(
+        args.materializer_script_anchor, "materializer script anchor"
+    )
+    definition, definition_sha256 = load_json_with_sha256(
+        args.job_definition_payload, "materializer job definition"
+    )
     registration = load_json(args.registration_response, "materializer registration response")
     live = load_json(args.live_job_definition, "materializer live job definition")
     receipt = validate(
@@ -420,8 +433,8 @@ def main() -> int:
         definition=definition,
         registration=registration,
         live=live,
-        script_anchor_sha256=sha256_path(args.materializer_script_anchor),
-        definition_sha256=sha256_path(args.job_definition_payload),
+        script_anchor_sha256=script_anchor_sha256,
+        definition_sha256=definition_sha256,
     )
     write_json_create_only(args.output, receipt)
     print(json.dumps({"status": "passed", "output": str(args.output)}, sort_keys=True))

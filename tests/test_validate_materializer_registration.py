@@ -191,6 +191,52 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
         self.assertTrue(receipt["checks"]["exact_active_revision"])
         self.assertEqual(self.output.stat().st_mode & 0o777, 0o600)
 
+    def test_main_binds_hashes_from_loaded_anchor_and_definition_bytes(self) -> None:
+        original_hashes = {
+            "materializer script anchor": module.sha256_path(self.script_anchor),
+            "materializer job definition": module.sha256_path(self.definition),
+        }
+        rewritten_labels: set[str] = set()
+        original_load = module.load_json_with_sha256
+
+        def load_then_rewrite(path: Path, label: str) -> tuple[dict[str, object], str]:
+            value, digest = original_load(path, label)
+            if label in original_hashes:
+                rewritten = json.loads(path.read_text(encoding="utf-8"))
+                rewritten["rewritten_after_parse"] = label
+                self.write(path, rewritten)
+                rewritten_labels.add(label)
+            return value, digest
+
+        with (
+            mock.patch.object(sys, "argv", self.main_argv()),
+            mock.patch.object(
+                module,
+                "load_json_with_sha256",
+                side_effect=load_then_rewrite,
+            ),
+        ):
+            self.assertEqual(module.main(), 0)
+
+        self.assertEqual(rewritten_labels, set(original_hashes))
+        self.assertNotEqual(
+            module.sha256_path(self.script_anchor),
+            original_hashes["materializer script anchor"],
+        )
+        self.assertNotEqual(
+            module.sha256_path(self.definition),
+            original_hashes["materializer job definition"],
+        )
+        receipt = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertEqual(
+            receipt["script_freeze"]["anchor_sha256"],
+            original_hashes["materializer script anchor"],
+        )
+        self.assertEqual(
+            receipt["batch"]["definition_sha256"],
+            original_hashes["materializer job definition"],
+        )
+
     def test_rejects_duplicate_input_object_names_before_output(self) -> None:
         cases = (
             ("materializer script anchor", self.script_anchor, "schema_version"),
