@@ -38,7 +38,7 @@ locals {
   daily_cost_guard_budget_name   = "${local.name_prefix}-daily-cost-guard"
   daily_cost_guard_budget_arn    = "arn:aws:budgets::${data.aws_caller_identity.current.account_id}:budget/${local.daily_cost_guard_budget_name}"
   daily_cost_guard_ec2_tag_key   = "DianaBatchCostGuard"
-  daily_cost_guard_ec2_tag_value = local.name_prefix
+  daily_cost_guard_ec2_tag_value = var.project
 
   # Public access is opt-in per reviewed validation or alias-only analysis run.
   # Never grant bucket listing, version listing, historical-version reads, or a
@@ -1408,6 +1408,7 @@ resource "aws_lambda_function" "batch_cost_guard" {
     variables = {
       BATCH_BUDGET_STOP_REASON   = "Diana daily AWS Budget cost guard tripped"
       BATCH_COST_GUARD_TAG_KEY   = local.daily_cost_guard_ec2_tag_key
+      BATCH_COST_GUARD_REGIONS   = jsonencode(sort(distinct(concat([var.region], var.daily_cost_guard_regions))))
       BATCH_COST_GUARD_TAG_VALUE = local.daily_cost_guard_ec2_tag_value
       BATCH_COST_LEDGER_TABLE    = aws_dynamodb_table.daily_cost_guard.name
       BATCH_COMPUTE_ENVIRONMENTS = jsonencode(concat(
@@ -1505,6 +1506,7 @@ resource "local_file" "nextflow_params" {
     daily_cost_guard_limit_usd                   = tostring(var.daily_cost_guard_limit_usd)
     daily_cost_guard_live_stop_threshold_percent = tostring(var.daily_cost_guard_live_stop_threshold_percent)
     daily_cost_guard_live_stop_usd               = tostring(var.daily_cost_guard_limit_usd * var.daily_cost_guard_live_stop_threshold_percent / 100)
+    daily_cost_guard_regions                     = sort(distinct(concat([var.region], var.daily_cost_guard_regions)))
 
     diana_raw_inbox_uri           = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_inbox_prefix}"
     aws_private_results_dir       = "s3://${aws_s3_bucket.this["private_results"].bucket}/runs"

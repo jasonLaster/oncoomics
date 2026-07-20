@@ -40,6 +40,7 @@ def p5en_params(**overrides):
         "daily_cost_guard_limit_usd": "200",
         "daily_cost_guard_live_stop_threshold_percent": "80",
         "daily_cost_guard_live_stop_usd": "160",
+        "daily_cost_guard_regions": list(verify.REQUIRED_DAILY_COST_GUARD_REGIONS),
         "gpu_p5en_max_vcpus": 384,
         "parabricks_container": f"{PARABRICKS_REPOSITORY}@{DESTINATION_DIGEST}",
         "parabricks_mirror_repository": PARABRICKS_REPOSITORY,
@@ -91,6 +92,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
         self.assertEqual("200", summary["daily_cost_guard_limit_usd"])
         self.assertEqual("160", summary["daily_cost_guard_live_stop_usd"])
         self.assertEqual("80", summary["daily_cost_guard_live_stop_threshold_percent"])
+        self.assertEqual(["us-east-1", "us-east-2", "us-west-2"], summary["daily_cost_guard_regions"])
         self.assertEqual("us-east-2", summary["phase3_fast_cache_region"])
         self.assertEqual(384, summary["gpu_p5en_max_vcpus"])
         self.assertEqual(list(verify.REQUIRED_INSTANCE_TYPES), summary["instance_types"])
@@ -178,6 +180,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
             {"daily_cost_guard_live_stop_usd": "200"},
             {"daily_cost_guard_live_stop_usd": "159"},
             {"daily_cost_guard_limit_usd": True},
+            {"daily_cost_guard_regions": ["us-east-2"]},
             {"daily_cost_guard_batch_job_queues": ["diana-omics-prod-use2-spot"]},
             {
                 "daily_cost_guard_batch_compute_environments": [

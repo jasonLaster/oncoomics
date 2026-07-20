@@ -16,6 +16,7 @@ DEFAULT_PARAMS = "infra/aws/nextflow.aws.use2.json"
 REQUIRED_AWS_REGION = "us-east-2"
 REQUIRED_GPU_QUEUE_SUFFIX = "-gpu-p5en"
 REQUIRED_INSTANCE_TYPES = ("p5en.48xlarge", "p5e.48xlarge", "p5.48xlarge")
+REQUIRED_DAILY_COST_GUARD_REGIONS = ("us-east-1", "us-east-2", "us-west-2")
 P5_HOPPER_48XLARGE_VCPUS = 192
 EC2_SERVICE_CODE = "ec2"
 ON_DEMAND_P_QUOTA_CODE = "L-417A185B"
@@ -120,6 +121,12 @@ def _require_cost_guard_list(
         errors.append(f"{key} must include {required}")
 
 
+def _require_daily_cost_guard_regions(params: Mapping[str, Any], errors: list[str]) -> None:
+    regions = params.get("daily_cost_guard_regions")
+    if regions != list(REQUIRED_DAILY_COST_GUARD_REGIONS):
+        errors.append(f"daily_cost_guard_regions must be exactly {list(REQUIRED_DAILY_COST_GUARD_REGIONS)!r}")
+
+
 def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
 
@@ -157,6 +164,7 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     )
     if live_stop_usd != cost_guard_limit * live_stop_threshold / Decimal(100):
         errors.append("daily_cost_guard_live_stop_usd must match the live stop threshold")
+    _require_daily_cost_guard_regions(params, errors)
     if queue:
         _require_cost_guard_list(
             params,
@@ -215,6 +223,7 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
         "daily_cost_guard_limit_usd": str(cost_guard_limit),
         "daily_cost_guard_live_stop_usd": str(live_stop_usd),
         "daily_cost_guard_live_stop_threshold_percent": str(live_stop_threshold),
+        "daily_cost_guard_regions": list(REQUIRED_DAILY_COST_GUARD_REGIONS),
         "instance_types": list(REQUIRED_INSTANCE_TYPES),
         "status": "ready",
     }

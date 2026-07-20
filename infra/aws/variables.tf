@@ -115,6 +115,24 @@ variable "daily_cost_guard_schedule_expression" {
   default     = "rate(1 minute)"
 }
 
+variable "daily_cost_guard_regions" {
+  description = "AWS regions included in the account-wide live Diana Batch EC2 spend estimator."
+  type        = list(string)
+  default     = ["us-east-1", "us-east-2", "us-west-2"]
+
+  validation {
+    condition = (
+      length(var.daily_cost_guard_regions) > 0 &&
+      length(var.daily_cost_guard_regions) == length(distinct(var.daily_cost_guard_regions)) &&
+      alltrue([
+        for region in var.daily_cost_guard_regions :
+        can(regex("^[a-z]{2}-[a-z]+-[0-9]+$", region))
+      ])
+    )
+    error_message = "daily_cost_guard_regions must be a non-empty list of distinct AWS region names."
+  }
+}
+
 variable "daily_cost_guard_instance_hourly_rates_usd" {
   description = "Conservative hourly USD rates used by the near-real-time Diana Batch EC2 spend estimator."
   type        = map(number)
