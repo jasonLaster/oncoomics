@@ -377,9 +377,9 @@
           contracts, input-contract publication receipts, alias-only
           cross-check materialization, alias-only
           materializer submission, materializer retry capture, captured
-          terminal attempts, executable route replay checks,
-          reviewed-public receipt checks, terminal materializer and route
-          capture, cross-check report publication and replay, or WGS
+          terminal materializer and route capture checks, captured terminal
+          attempts, executable route replay checks, reviewed-public receipt
+          checks, cross-check report publication and replay, or WGS
           stage-provenance handoff can continue.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
@@ -746,6 +746,7 @@
           <li class="pill">P5 Hopper placement = widened</li>
           <li class="pill">us-west-2 P-family hedge = pending</li>
           <li class="pill">Report-tree publication checks = exact</li>
+          <li class="pill">Terminal capture checks = exact</li>
           <li class="pill">Deterministic Phase 3 fast schemas = exact</li>
           <li class="pill">Rosalind Phase 3 fast schemas = exact</li>
           <li class="pill">Materializer submit schemas = exact</li>
@@ -1672,6 +1673,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact terminal capture checks</strong>
+              <span>Terminal materializer and cross-check route capture now reject integer stand-ins inside logged anchor, upload, receipt, output-row, and history-audit check maps before terminal Batch evidence can seed source-freeze, Rosalind, cross-check replay, or AI/freeform review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact report-tree publication checks</strong>
               <span>Exact-version cross-check report replay now rejects integer stand-ins inside publication receipts, publication anchors, report-object rows, and history-audit rows before scarHRD, CHORD, HRDetect, or SBS3 report trees can be trusted by the source-freeze, AI/freeform, or reviewed-public handoffs.</span>
@@ -2874,6 +2879,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:33:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Reject loose terminal capture checks:</strong>
+                materializer and cross-check route terminal capture now
+                exact-check nested logged-anchor, upload, receipt, output-row,
+                and history-audit maps, so JSON <code>1</code> cannot masquerade
+                as successful terminal Batch custody before deterministic
+                staging, exact report replay, source-freeze, Rosalind, or
+                AI/freeform review consume the capture receipts. No S3, Batch,
+                route, GPU, quota, replacement compute, or apply-mode AWS work
+                was launched; Cost Explorer was refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:31:00-07:00">Jul 20 · local</time>
               <span>

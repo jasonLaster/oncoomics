@@ -317,6 +317,10 @@ def check_map_mismatches(value: dict[str, Any], expected: dict[str, bool]) -> li
     return errors
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return isinstance(value, dict) and not check_map_mismatches(value, expected)
+
+
 def require_exact_checks(checks: dict[str, bool], expected: dict[str, bool], label: str) -> None:
     errors = check_map_mismatches(checks, expected)
     if errors:
@@ -768,7 +772,10 @@ def validate_logged_anchor(
     checks = {
         "anchor_keys_exact": set(anchor) == expected_anchor_keys,
         "anchor_schema_status": (exact_schema_version(anchor, 1) and anchor.get("status") == "passed"),
-        "anchor_checks_exact": anchor_checks == EXPECTED_PUBLICATION_ANCHOR_CHECKS,
+        "anchor_checks_exact": exact_check_map(
+            anchor_checks,
+            EXPECTED_PUBLICATION_ANCHOR_CHECKS,
+        ),
         "receipt_sha256_well_formed": valid_sha256(receipt_sha),
         "receipt_bytes_positive": is_positive_exact_int(receipt_bytes),
         "receipt_version_nonempty": valid_version_id(receipt_version),
@@ -861,7 +868,7 @@ def validate_output_rows(
             and is_positive_exact_int(row.get("content_length"))
             and row.get("server_side_encryption") == "aws:kms"
             and row.get("ssekms_key_id") == expected_kms_key_arn
-            and row_checks == EXPECTED_OBJECT_CHECKS
+            and exact_check_map(row_checks, EXPECTED_OBJECT_CHECKS)
         )
         if valid:
             try:
@@ -900,7 +907,7 @@ def validate_output_rows(
             or not isinstance(key, str)
             or not valid_version_id(version_id)
             or not valid_sha256(sha)
-            or row_checks != EXPECTED_HISTORY_AUDIT_CHECKS
+            or not exact_check_map(row_checks, EXPECTED_HISTORY_AUDIT_CHECKS)
         ):
             raise ValueError("route receipt history audit row failed")
         binding = (key, version_id, sha)
@@ -1025,8 +1032,14 @@ def validate_exact_receipt(
             and receipt.get("route_output_bucket_versioning") == "Enabled"
             and receipt.get("publication_strategy") == "one_shot_create_only_exact_version_history"
         ),
-        "receipt_checks_exact": receipt_checks == EXPECTED_RECEIPT_CHECKS,
-        "output_inventory_exact": output_checks == EXPECTED_OUTPUT_INVENTORY_CHECKS,
+        "receipt_checks_exact": exact_check_map(
+            receipt_checks,
+            EXPECTED_RECEIPT_CHECKS,
+        ),
+        "output_inventory_exact": exact_check_map(
+            output_checks,
+            EXPECTED_OUTPUT_INVENTORY_CHECKS,
+        ),
     }
     try:
         require_exact_checks(

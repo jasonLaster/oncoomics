@@ -825,6 +825,10 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 "failed",
                 lambda checks: checks.__setitem__("exact_kms", False),
             ),
+            (
+                "truthy-integer",
+                lambda checks: checks.__setitem__("sha256_exact", 1),
+            ),
         ):
             terminal = copy.deepcopy(self.terminal)
             mutate(terminal["receipt_anchor"]["checks"])
@@ -1057,6 +1061,10 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 "failed",
                 lambda checks: checks.__setitem__("single_version_history", False),
             ),
+            (
+                "truthy-integer",
+                lambda checks: checks.__setitem__("single_version_history", 1),
+            ),
         ):
             terminal = copy.deepcopy(self.terminal)
             mutate(terminal["receipt"]["checks"])
@@ -1184,6 +1192,40 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                 ):
                     self.run_capture_with_receipt(
                         Path(temporary) / version_id.lower(),
+                        receipt,
+                    )
+
+    def test_rejects_truthy_integer_materializer_receipt_checks(self) -> None:
+        cases = (
+            (
+                "receipt",
+                lambda receipt: receipt["checks"].__setitem__(
+                    "all_outputs_create_only",
+                    1,
+                ),
+                "failed receipt_checks_exact",
+            ),
+            (
+                "output",
+                lambda receipt: receipt["outputs"]["sbs96.csv"]["checks"].__setitem__(
+                    "version_exact",
+                    1,
+                ),
+                "failed receipt_outputs_exact",
+            ),
+        )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, mutate, error in cases:
+                receipt = json.loads(self.receipt_bytes)
+                mutate(receipt)
+
+                with self.subTest(label=label), self.assertRaisesRegex(
+                    ValueError,
+                    error,
+                ):
+                    self.run_capture_with_receipt(
+                        Path(temporary) / label,
                         receipt,
                     )
 
