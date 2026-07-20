@@ -380,7 +380,7 @@
           stay bound to that same bundle-manifest fingerprint, finalized
           AI-review packets now exact-check the bundle envelopes they are about
           to source-freeze, finalized Reviewer A/B summaries now have to keep
-          the exact reviewer, inventory, and claim-count envelope, AI review
+          the exact reviewer, pinned-model, inventory, and claim-count envelope, AI review
           validation, finalization, and comparative synthesis now reject stale extra fields
           inside each source evidence row before trusting a rebound bundle hash, prepared
           AI-review runs now rehash the exact
@@ -417,7 +417,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = AI evidence rows exact</li>
+          <li class="pill">Latest milestone = AI finalizer model exact</li>
+          <li class="pill">AI finalizer model = exact</li>
           <li class="pill">AI evidence rows = exact</li>
           <li class="pill">AI finalizer evidence rows = exact</li>
           <li class="pill">AI synthesis summary = exact</li>
@@ -946,8 +947,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
-              <span>77% · finalizer evidence rows exact</span>
-              <div class="bar" aria-hidden="true" style="--pct: 77%"><span></span></div>
+              <span>78% · finalizer model exact</span>
+              <div class="bar" aria-hidden="true" style="--pct: 78%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
@@ -2274,6 +2275,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · exact-check finalized AI model summaries</strong>
+              <span>Finalized Reviewer A/B packets now reject extra, malformed, padded, non-attested, or timezone-less pinned-model fields before a narrative AI review can be wrapped as a source-freezeable report manifest.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · reject stale AI evidence rows at finalization</strong>
               <span>Finalized Reviewer A/B packets now enforce the same exact <code>evidence_sources</code> row contract as validation and comparative synthesis, so a stale nested row cannot be rebound into <code>review_bundle.json</code> after validation and then frozen into the final AI-review report manifest.</span>
             </li>
@@ -3031,6 +3036,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Exact-check finalized AI model summaries:</strong>
+                finalized Reviewer A/B packets now require the nested
+                <code>review_summary.model</code> object to contain exactly the
+                pinned provider, model ID, timezone-qualified catalog timestamp,
+                and latest-model attestation before
+                <code>report_manifest.json</code> can be installed. No S3,
+                Batch, route, GPU, quota, replacement compute, or apply-mode
+                AWS work was launched; Cost Explorer was refreshed read-only
+                for 2026-07-19 UTC at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

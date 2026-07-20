@@ -9,6 +9,7 @@ import hashlib
 import io
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -67,6 +68,12 @@ REVIEW_SUMMARY_KEYS = {
     "covered_evidence_ids",
     "disagreement_claim_count",
     "limitations",
+}
+REVIEW_SUMMARY_MODEL_KEYS = {
+    "catalog_verified_at",
+    "latest_available_attested",
+    "model_id",
+    "provider",
 }
 
 
@@ -236,12 +243,11 @@ def require_exact_review_summary(
         raise ValueError("AI review overall summary is stale")
     if (
         summary.get("reviewer_id") != reviewer
-        or not isinstance(summary.get("model"), dict)
-        or not summary.get("model")
         or not isinstance(summary.get("invocation_id"), str)
         or not summary.get("invocation_id")
     ):
         raise ValueError("AI review summary reviewer binding is not exact")
+    require_exact_review_model_summary(summary.get("model"))
     inventory_id = require_inventory_binding(
         summary.get("method_inventory"),
         summary.get("method_inventory_sha256"),
@@ -276,6 +282,40 @@ def require_exact_review_summary(
         )
     ):
         raise ValueError("AI review summary counts are not exact")
+
+
+def require_exact_summary_string(value: Any) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
+        return ""
+    return value
+
+
+def require_exact_review_model_summary(model: Any) -> None:
+    provider = model.get("provider") if isinstance(model, dict) else None
+    model_id = model.get("model_id") if isinstance(model, dict) else None
+    catalog_verified_at = (
+        model.get("catalog_verified_at") if isinstance(model, dict) else None
+    )
+    if (
+        not isinstance(model, dict)
+        or set(model) != REVIEW_SUMMARY_MODEL_KEYS
+        or not require_exact_summary_string(provider)
+        or not require_exact_summary_string(model_id)
+        or not require_exact_summary_string(catalog_verified_at)
+        or model.get("latest_available_attested") is not True
+    ):
+        raise ValueError("AI review summary model is not exact")
+    try:
+        verified_at = datetime.fromisoformat(catalog_verified_at.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError("AI review summary model is not exact") from error
+    if verified_at.tzinfo is None:
+        raise ValueError("AI review summary model is not exact")
 
 
 def is_nonnegative_exact_int(value: Any) -> bool:
