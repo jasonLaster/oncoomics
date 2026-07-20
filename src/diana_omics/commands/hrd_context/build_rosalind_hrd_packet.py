@@ -1777,16 +1777,38 @@ def require_diana_wgs_artifact_index_binding(
             )
 
 
+def exact_diana_wgs_readiness_rows(
+    rows: Iterable[Mapping[str, Any]],
+    label: str,
+) -> list[dict[str, str]]:
+    fields = ("evidence_surface", "status", "detail")
+    exact_rows: list[dict[str, str]] = []
+    for index, row in enumerate(rows, start=1):
+        exact_rows.append(
+            {
+                field: require_exact_nonempty_string(
+                    row.get(field),
+                    f"Diana WGS {label} row {index} {field}",
+                )
+                for field in fields
+            }
+        )
+    return exact_rows
+
+
 def diana_wgs_readiness_rows(summary: Mapping[str, Any], blockers: list[str]) -> list[dict[str, Any]]:
-    csv_rows: list[dict[str, Any]] = read_csv_or_empty("hrd_readiness.csv")
+    csv_rows = exact_diana_wgs_readiness_rows(
+        read_csv_or_empty("hrd_readiness.csv"),
+        "readiness CSV",
+    )
     embedded = summary.get("hrd_readiness", [])
     if not isinstance(embedded, list) or any(not isinstance(row, dict) for row in embedded):
         raise ValueError("Diana WGS embedded readiness must be a list of JSON objects")
     fields = ("evidence_surface", "status", "detail")
-    for row in embedded:
-        if any(not isinstance(row.get(field), str) for field in fields):
-            raise ValueError("Diana WGS embedded readiness fields must be strings")
-    embedded_rows = [dict(row) for row in embedded]
+    embedded_rows = exact_diana_wgs_readiness_rows(
+        embedded,
+        "embedded readiness",
+    )
     if csv_rows and embedded_rows:
         csv_contract = sorted(tuple(str(row.get(field, "")) for field in fields) for row in csv_rows)
         embedded_contract = sorted(tuple(str(row.get(field, "")) for field in fields) for row in embedded_rows)

@@ -2716,6 +2716,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
             ("evidence_surface", True),
             ("status", None),
             ("detail", ["Coverage bins are partial."]),
+            ("detail", " Coverage bins are partial."),
         ):
             with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
                 output_root = Path(tmp)
@@ -2742,7 +2743,44 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     ),
                     self.assertRaisesRegex(
                         ValueError,
-                        "Diana WGS embedded readiness fields must be strings",
+                        f"Diana WGS embedded readiness row 1 {field} must be a non-empty unpadded single-line string",
+                    ),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+                self.assertFalse((output_dir / "report_manifest.json").exists())
+
+    def test_diana_wgs_packet_rejects_loose_readiness_csv_fields(self):
+        for field, value in (
+            ("evidence_surface", " source_sha256"),
+            ("status", "ready|partial"),
+            ("detail", "Payload checksums passed.\nStale row."),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+                output_root = Path(tmp)
+                artifact_root = Path(artifacts)
+                write_diana_wgs_worker_artifacts(artifact_root)
+                csv_rows = utils.parse_csv(utils.read_text(artifact_root / "hrd_readiness.csv"))
+                csv_rows[0][field] = value
+                utils.write_csv(artifact_root / "hrd_readiness.csv", csv_rows)
+                deterministic_root = write_deterministic_report(
+                    output_root / "deterministic",
+                    artifact_root,
+                )
+                output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        },
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        f"Diana WGS readiness CSV row 1 {field} must be a non-empty unpadded single-line string",
                     ),
                 ):
                     packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
