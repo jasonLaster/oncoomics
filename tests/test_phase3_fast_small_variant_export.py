@@ -366,12 +366,15 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
             root = Path(tmp)
             output_root = root / "exported"
             parabricks_receipt, filter_receipt = _receipts(root)
+            original_write_bytes = Path.write_bytes
 
-            def fail_after_partial_copy(_source: Path, destination: Path) -> None:
-                Path(destination).write_bytes(b"partial small variant artifact")
-                raise OSError("simulated export interruption")
+            def fail_after_partial_write(destination: Path, payload: bytes) -> int:
+                if destination.name.startswith(".") and destination.name.endswith(".tmp"):
+                    original_write_bytes(destination, b"partial small variant artifact")
+                    raise OSError("simulated export interruption")
+                return original_write_bytes(destination, payload)
 
-            with patch.object(export_small_variants.shutil, "copyfile", side_effect=fail_after_partial_copy):
+            with patch.object(Path, "write_bytes", fail_after_partial_write):
                 with self.assertRaisesRegex(OSError, "simulated export interruption"):
                     export_small_variants.export_phase3_fast_small_variant_artifacts(
                         parabricks_receipt,
@@ -383,18 +386,54 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
 
             self.assertEqual([], [path for path in output_root.rglob("*") if path.is_file()])
 
+    def test_copies_previously_validated_source_bytes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "exported"
+            parabricks_receipt, filter_receipt = _receipts(root)
+            source = Path(parabricks_receipt["materialized_outputs"]["raw_vcf"]["local_path"])
+            source_payload = source.read_bytes()
+            target_temporary = output_root / "parabricks_mutect" / "raw_vcf" / f".{source.name}.tmp"
+            original_write_bytes = Path.write_bytes
+            mutated = False
+
+            def mutate_source_before_temporary_write(destination: Path, payload: bytes) -> int:
+                nonlocal mutated
+                if destination == target_temporary:
+                    mutated = True
+                    original_write_bytes(source, b"changed\n")
+                return original_write_bytes(destination, payload)
+
+            with patch.object(Path, "write_bytes", mutate_source_before_temporary_write):
+                export = export_small_variants.export_phase3_fast_small_variant_artifacts(
+                    parabricks_receipt,
+                    filter_receipt,
+                    parabricks_mutect_receipt_sha256=SHA_2,
+                    filter_mutect_receipt_sha256=SHA_3,
+                    output_root=output_root,
+                )
+
+            exported = Path(export["exports"]["parabricks_mutect"]["raw_vcf"]["exported_path"])
+            self.assertTrue(mutated)
+            self.assertEqual(source_payload, exported.read_bytes())
+            self.assertEqual(b"changed\n", source.read_bytes())
+
     def test_rejects_symlinked_temporary_export_before_installing_artifact(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             output_root = root / "exported"
             redirected = root / "redirected-small-variant-artifact"
             parabricks_receipt, filter_receipt = _receipts(root)
+            original_write_bytes = Path.write_bytes
 
-            def write_symlink(_source: Path, destination: Path) -> None:
-                redirected.write_bytes(b"redirected small variant artifact")
-                Path(destination).symlink_to(redirected)
+            def write_symlink(destination: Path, payload: bytes) -> int:
+                if destination.name.startswith(".") and destination.name.endswith(".tmp"):
+                    original_write_bytes(redirected, b"redirected small variant artifact")
+                    destination.symlink_to(redirected)
+                    return len(payload)
+                return original_write_bytes(destination, payload)
 
-            with patch.object(export_small_variants.shutil, "copyfile", side_effect=write_symlink):
+            with patch.object(Path, "write_bytes", write_symlink):
                 with self.assertRaisesRegex(export_small_variants.ManifestError, "may not be a symlink"):
                     export_small_variants.export_phase3_fast_small_variant_artifacts(
                         parabricks_receipt,
