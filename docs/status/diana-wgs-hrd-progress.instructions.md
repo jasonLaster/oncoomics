@@ -12,6 +12,10 @@ Use this checklist when updating `docs/status/diana-wgs-hrd-progress.html`.
   dashboard refresh is incomplete until the past-day Cost Explorer total and
   visible service / usage-type breakdown have been freshly checked or a
   read-only Cost Explorer failure is shown in their place.
+- Treat the Cost Explorer card as part of the required dashboard state, even
+  for source-only progress: each refresh must show the latest complete UTC day
+  total plus a row-level service / usage-type breakdown or a visible read-only
+  failure for that exact attempted Cost Explorer window.
 - Update the ignored preview copy after editing:
 
 ```sh
@@ -45,7 +49,8 @@ buckets and avoids partial same-day estimates.
   total, and aggregate low-dollar rows into `Other` only after preserving the
   largest cost drivers as their own rows.
 - Preserve enough visible row detail to explain the prior-day total at a glance;
-  a lone aggregate cost number is not a valid dashboard refresh.
+  a lone aggregate cost number, a stale row list, or a hidden Cost Explorer note
+  is not a valid dashboard refresh.
 - Keep the panel near the top of the dashboard as a plain-English
   "Yesterday's AWS cost" card so spend is visible alongside execution status.
 - Label each row in plain language first, then keep the raw Cost Explorer service and usage type in the smaller secondary text.

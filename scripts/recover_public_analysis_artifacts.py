@@ -593,6 +593,8 @@ def upload(item: dict[str, Any]) -> dict[str, Any]:
         "SHA256",
         "--checksum-sha256",
         expected_checksum,
+        "--if-none-match",
+        "*",
         "--metadata",
         json.dumps(metadata, sort_keys=True, separators=(",", ":")),
     )

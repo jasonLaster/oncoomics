@@ -520,7 +520,7 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "may not be a symlink"):
                 MODULE.download(source, Path(temporary) / "download.txt")
 
-    def test_public_upload_pins_exact_checksum(self) -> None:
+    def test_public_upload_is_create_only_and_pins_exact_checksum(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = b"# public recovery\n"
             path = Path(temporary) / "README.md"
@@ -592,6 +592,8 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                 "SHA256",
                 "--checksum-sha256",
                 MODULE.checksum_sha256(digest),
+                "--if-none-match",
+                "*",
                 "--metadata",
                 json.dumps(metadata, sort_keys=True, separators=(",", ":")),
             ),

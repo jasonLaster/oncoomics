@@ -368,16 +368,17 @@
           AI review, and reviewed release must prove exactly which files it
           used before the next step can trust it. The public HCC1395 rehearsal
           path proves that packaging shape without standing in for Diana, and
-          the latest source-only guardrails make final report and recovery
-          receipts prove their exact bytes before any reviewed public handoff
-          can trust them. The selected GPU rerun remains quota-blocked, the
-          legacy CPU run remains stopped, and Diana HRD remains
+          the latest source-only guardrails make recovered public uploads
+          refuse to overwrite a file if anything appears between the empty-tree
+          check and the S3 write. The selected GPU rerun remains
+          quota-blocked, the legacy CPU run remains stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = recovery receipts post-fsync checked</li>
+          <li class="pill">Latest milestone = public recovery uploads cannot overwrite</li>
+          <li class="pill">Public recovery uploads = create-only</li>
           <li class="pill">Public recovery receipts = post-fsync checked</li>
           <li class="pill">Private/public source IDs = canonical</li>
           <li class="pill">Private/public packet envelopes = exact</li>
@@ -647,6 +648,7 @@
           <li class="pill">Public index import = 3.9-safe</li>
           <li class="pill">HRD method inventory = exact</li>
           <li class="pill">Phase 3 packet rows = exact</li>
+          <li class="pill">Public recovery uploads = create-only</li>
           <li class="pill">Public recovery CRC = exact</li>
           <li class="pill">Public recovery receipts = rechecked</li>
           <li class="pill">Public recovery staging paths = real</li>
@@ -742,7 +744,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 4c7d8dd</li>
+          <li class="pill">Prior dashboard = 7ba6a07</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -931,6 +933,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · prevent recovered public files from being overwritten</strong>
+              <span>Public recovery now tells S3 to create each recovered object only if it is still absent, so another writer cannot slip into the narrow window between the empty-folder check and final verification.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · prove HCC1395 AI prep receipts still match</strong>
               <span>The public rehearsal now opens the final AI prep receipt and checks it still matches the final bundle, staged reviewer inputs, and staging receipt before the known-answer package can stand in for the real Diana review path.</span>
@@ -2613,6 +2619,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T20:47:33-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Make public recovery uploads create-only:</strong>
+                recovered public objects now use S3's create-only precondition,
+                so each upload fails instead of overwriting an object that
+                appears after the empty-prefix preflight.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T20:43:37-07:00">Jul 19 · local</time>
               <span>
