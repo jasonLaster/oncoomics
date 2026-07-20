@@ -1015,7 +1015,12 @@ resource "aws_batch_compute_environment" "spot" {
   ]
 
   lifecycle {
-    ignore_changes = [compute_resources[0].desired_vcpus]
+    # Preserve the daily cost guard's DISABLED kill switch across unrelated
+    # Terraform applies. Capacity must be re-enabled explicitly after a trip.
+    ignore_changes = [
+      compute_resources[0].desired_vcpus,
+      state,
+    ]
   }
 }
 
@@ -1049,7 +1054,12 @@ resource "aws_batch_compute_environment" "ondemand" {
   ]
 
   lifecycle {
-    ignore_changes = [compute_resources[0].desired_vcpus]
+    # Preserve the daily cost guard's DISABLED kill switch across unrelated
+    # Terraform applies. Capacity must be re-enabled explicitly after a trip.
+    ignore_changes = [
+      compute_resources[0].desired_vcpus,
+      state,
+    ]
   }
 }
 
@@ -1087,7 +1097,12 @@ resource "aws_batch_compute_environment" "hrd_x86_ondemand" {
   ]
 
   lifecycle {
-    ignore_changes = [compute_resources[0].desired_vcpus]
+    # Preserve the daily cost guard's DISABLED kill switch across unrelated
+    # Terraform applies. Capacity must be re-enabled explicitly after a trip.
+    ignore_changes = [
+      compute_resources[0].desired_vcpus,
+      state,
+    ]
   }
 
   tags = {
@@ -1132,7 +1147,12 @@ resource "aws_batch_compute_environment" "gpu_p5en_ondemand" {
   ]
 
   lifecycle {
-    ignore_changes = [compute_resources[0].desired_vcpus]
+    # Preserve the daily cost guard's DISABLED kill switch across unrelated
+    # Terraform applies. Capacity must be re-enabled explicitly after a trip.
+    ignore_changes = [
+      compute_resources[0].desired_vcpus,
+      state,
+    ]
   }
 
   tags = {
@@ -1155,6 +1175,12 @@ resource "aws_batch_job_queue" "spot" {
     order               = 2
     compute_environment = aws_batch_compute_environment.ondemand.arn
   }
+
+  lifecycle {
+    # Preserve the daily cost guard's DISABLED kill switch across unrelated
+    # Terraform applies. Capacity must be re-enabled explicitly after a trip.
+    ignore_changes = [state]
+  }
 }
 
 resource "aws_batch_job_queue" "ondemand" {
@@ -1165,6 +1191,12 @@ resource "aws_batch_job_queue" "ondemand" {
   compute_environment_order {
     order               = 1
     compute_environment = aws_batch_compute_environment.ondemand.arn
+  }
+
+  lifecycle {
+    # Preserve the daily cost guard's DISABLED kill switch across unrelated
+    # Terraform applies. Capacity must be re-enabled explicitly after a trip.
+    ignore_changes = [state]
   }
 }
 
@@ -1181,6 +1213,12 @@ resource "aws_batch_job_queue" "hrd_x86" {
   tags = {
     Architecture = "linux-amd64"
     Workload     = "private-hrd-cross-check"
+  }
+
+  lifecycle {
+    # Preserve the daily cost guard's DISABLED kill switch across unrelated
+    # Terraform applies. Capacity must be re-enabled explicitly after a trip.
+    ignore_changes = [state]
   }
 }
 
@@ -1199,6 +1237,12 @@ resource "aws_batch_job_queue" "gpu_p5en" {
   tags = {
     Architecture = "linux-amd64"
     Workload     = "parabricks-p5en"
+  }
+
+  lifecycle {
+    # Preserve the daily cost guard's DISABLED kill switch across unrelated
+    # Terraform applies. Capacity must be re-enabled explicitly after a trip.
+    ignore_changes = [state]
   }
 }
 

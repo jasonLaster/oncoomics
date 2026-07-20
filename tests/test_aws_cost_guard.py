@@ -99,6 +99,26 @@ class FakeTable:
         self.item = kwargs["Item"]
 
 
+def terraform_block(text: str, header: str) -> str:
+    start = text.index(header)
+    block_start = text.index("{", start)
+    depth = 0
+    for index in range(block_start, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+        if depth == 0:
+            return text[start : index + 1]
+    raise AssertionError(f"unterminated Terraform block: {header}")
+
+
+def assert_lifecycle_ignores(test: unittest.TestCase, block: str, *fields: str) -> None:
+    lifecycle = terraform_block(block, "lifecycle")
+    for field in fields:
+        test.assertIn(field, lifecycle)
+
+
 class AwsCostGuardTests(unittest.TestCase):
     def test_lambda_disables_batch_and_stops_visible_jobs(self) -> None:
         batch = FakeBatch()
@@ -632,6 +652,39 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn('output "daily_cost_guard_budget"', outputs)
         self.assertIn('output "daily_cost_guard_topic_arn"', outputs)
         self.assertIn('output "daily_cost_guard_ledger"', outputs)
+
+    def test_terraform_preserves_tripped_batch_kill_switch_state(self) -> None:
+        main = MAIN_TF.read_text(encoding="utf-8")
+
+        for name in (
+            "spot",
+            "ondemand",
+            "hrd_x86_ondemand",
+            "gpu_p5en_ondemand",
+        ):
+            with self.subTest(compute_environment=name):
+                assert_lifecycle_ignores(
+                    self,
+                    terraform_block(
+                        main,
+                        f'resource "aws_batch_compute_environment" "{name}"',
+                    ),
+                    "compute_resources[0].desired_vcpus",
+                    "state",
+                )
+
+        for name in (
+            "spot",
+            "ondemand",
+            "hrd_x86",
+            "gpu_p5en",
+        ):
+            with self.subTest(job_queue=name):
+                assert_lifecycle_ignores(
+                    self,
+                    terraform_block(main, f'resource "aws_batch_job_queue" "{name}"'),
+                    "state",
+                )
 
 
 if __name__ == "__main__":
