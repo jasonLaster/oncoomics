@@ -426,6 +426,34 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "failed one_attempt"):
             self.validate(definition=definition, live=live)
 
+    def test_batch_retry_and_timeout_checks_require_exact_integers(self) -> None:
+        cases = (
+            ("retry_bool", "retryStrategy", {"attempts": True}, "failed one_attempt"),
+            ("retry_float", "retryStrategy", {"attempts": 1.0}, "failed one_attempt"),
+            (
+                "timeout_float",
+                "timeout",
+                {"attemptDurationSeconds": 21600.0},
+                "failed timeout_21600",
+            ),
+            (
+                "timeout_bool",
+                "timeout",
+                {"attemptDurationSeconds": True},
+                "failed timeout_21600",
+            ),
+        )
+
+        for label, field, value, error in cases:
+            with self.subTest(label=label):
+                definition = json.loads(self.definition.read_text(encoding="utf-8"))
+                live = json.loads(self.live.read_text(encoding="utf-8"))
+                definition[field] = value
+                live["jobDefinitions"][0][field] = value
+
+                with self.assertRaisesRegex(ValueError, error):
+                    self.validate(definition=definition, live=live)
+
     def test_output_below_symlinked_parent_is_rejected(self) -> None:
         real_parent = self.root / "real"
         real_parent.mkdir()

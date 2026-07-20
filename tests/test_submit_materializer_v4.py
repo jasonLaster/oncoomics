@@ -1848,6 +1848,52 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             hashlib.sha256(self.request_output.read_bytes()).hexdigest(),
         )
 
+    def test_submit_response_receipt_records_inexact_retry_attempts_as_failed(
+        self,
+    ) -> None:
+        cases = (
+            ("bool", {"attempts": True}),
+            ("float", {"attempts": 1.0}),
+            ("extra", {"attempts": 1, "evaluateOnExit": []}),
+        )
+        response = {
+            "jobName": "diana-wgs-hrd-materialize-20260716T033101Z",
+            "jobId": "12345678-1234-1234-1234-123456789abc",
+            "jobArn": (
+                "arn:aws:batch:us-east-1:172630973301:job/"
+                "12345678-1234-1234-1234-123456789abc"
+            ),
+        }
+
+        for label, retry_strategy in cases:
+            with self.subTest(label=label):
+                self.request_output = self.root / f"request-{label}.json"
+                self.response_output = self.root / f"response-{label}.json"
+                request = self.preflight_receipt(response["jobName"])
+                request["submit_job_request"]["retryStrategy"] = retry_strategy
+                dry_run = self.write_dry_run_receipt(request)
+
+                with (
+                    mock.patch.object(
+                        sys,
+                        "argv",
+                        self.argv(submit=True, dry_run_receipt=dry_run),
+                    ),
+                    mock.patch.object(MODULE, "preflight", return_value=request),
+                    mock.patch.object(MODULE, "submit", return_value=response),
+                    mock.patch.dict(
+                        os.environ,
+                        {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"},
+                        clear=True,
+                    ),
+                ):
+                    self.assertEqual(MODULE.main(), 0)
+
+                persisted = json.loads(
+                    self.response_output.read_text(encoding="utf-8")
+                )
+                self.assertIs(persisted["checks"]["one_shot_no_retry"], False)
+
     def test_successful_submit_with_response_fsync_failure_requires_manual_reconciliation(self) -> None:
         response = {
             "jobName": "diana-wgs-hrd-materialize-20260716T033101Z",

@@ -103,6 +103,18 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
+def one_shot_retry_strategy(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"attempts"}
+        and exact_int(value.get("attempts"), 1)
+    )
+
+
 def sha256_path_once(path: Path) -> str:
     label = f"{path.name} SHA-256 input"
     require_no_symlinked_ancestors(path, label)
@@ -289,7 +301,7 @@ def validate_receipts(
     expected_submit_sha256 = sha256_bytes(canonical_bytes(submit_request))
     if response.get("submit_job_request_sha256") != expected_submit_sha256:
         raise ValueError("response receipt is not bound to the submit_job_request")
-    if submit_request.get("retryStrategy") != {"attempts": 1}:
+    if not one_shot_retry_strategy(submit_request.get("retryStrategy")):
         raise ValueError("materializer SubmitJob request must be one-shot")
 
     checks = require_object(response.get("checks"), "response.checks")
