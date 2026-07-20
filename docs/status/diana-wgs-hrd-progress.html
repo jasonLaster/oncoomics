@@ -374,9 +374,11 @@
           smoke/execute preflights now require generated cost-guard bindings
           for that GPU queue and the guarded region set, staged AI reviewer
           packets now have to carry the exact bundle-manifest fingerprint that
-          authorized them, packet-validation receipts can no longer
-          double-count a report file, and the latest source-only guardrails now
-          reject truthy reviewer modes plus
+          authorized them, finalized AI-review packets now exact-check the
+          bundle envelopes they are about to source-freeze,
+          packet-validation receipts can no longer double-count a report file,
+          and the latest source-only guardrails now reject truthy reviewer modes
+          plus
           not-really-zero and not-quite-exact counters before terminal artifact
           freezing, exact-version
           materialization, private report replays, final alias-only input
@@ -397,6 +399,7 @@
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
           <li class="pill">Latest milestone = AI stage manifest binding</li>
+          <li class="pill">AI finalizer bundle envelopes = exact</li>
           <li class="pill">AI stage manifest = hash-bound</li>
           <li class="pill">Daily Batch spend = cross-region</li>
           <li class="pill">Packet file rows = unique</li>
@@ -2224,6 +2227,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · recheck finalized AI bundle envelopes</strong>
+              <span>AI-review finalization now rejects rewritten <code>review_bundle.json</code> or <code>bundle_manifest.json</code> envelopes on the same bytes it is about to freeze into a Reviewer A/B packet.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind AI reviewer inputs to their manifest</strong>
               <span>The reviewer-input stager now writes the exact bundle-manifest SHA-256 into its receipt, and AI-review preparation refuses to install Reviewer A/B packets if that receipt points at an older bundle.</span>
             </li>
@@ -2941,6 +2948,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Recheck finalized AI bundle envelopes:</strong>
+                AI-review finalization now exact-checks
+                <code>review_bundle.json</code> and
+                <code>bundle_manifest.json</code> on the same parsed bytes it
+                binds into a final Reviewer A/B source packet, closing the
+                post-preflight window for extra legacy bundle fields. No S3,
+                Batch, route, GPU, quota, replacement compute, or apply-mode
+                AWS work was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

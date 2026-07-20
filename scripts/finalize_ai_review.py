@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from build_ai_review_bundle import (
+    BUNDLE_MANIFEST_KEYS,
+    BUNDLE_REVIEW_BUNDLE_KEYS,
     DuplicateJsonKeyError,
     is_exact_int,
     require_bundle_manifest,
@@ -312,6 +314,10 @@ def build_manifest(
         raise ValueError("review manifest envelope is not exact")
     if set(validation) != VALIDATION_KEYS:
         raise ValueError("validation envelope is not exact")
+    if set(bundle) != BUNDLE_REVIEW_BUNDLE_KEYS:
+        raise ValueError("AI review bundle envelope is not exact")
+    if set(bundle_manifest) != BUNDLE_MANIFEST_KEYS:
+        raise ValueError("AI review bundle manifest envelope is not exact")
     if not is_exact_int(
         review_manifest.get("schema_version"),
         2,
