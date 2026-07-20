@@ -2081,8 +2081,18 @@ def diana_wgs_evidence(
     blockers: list[str] = []
     readiness_rows = diana_wgs_readiness_rows(summary, blockers)
 
-    summary_status = str(summary.get("status", "missing"))
-    evidence_status = str(summary.get("evidence_status", "missing"))
+    summary_status = require_exact_nonempty_string(
+        summary.get("status"),
+        "Diana WGS summary status",
+    )
+    evidence_status = require_exact_nonempty_string(
+        summary.get("evidence_status"),
+        "Diana WGS summary evidence_status",
+    )
+    require_exact_nonempty_string(
+        summary.get("boundary"),
+        "Diana WGS summary boundary",
+    )
     if summary_status != "no_call":
         blockers.append(
             f"Diana WGS summary status is {summary_status}; this packet requires the worker's explicit no_call HRD boundary."
@@ -2091,9 +2101,6 @@ def diana_wgs_evidence(
         blockers.append(
             f"Diana WGS summary evidence_status is {evidence_status}; expected partial_evidence from the current worker schema."
         )
-    if not summary.get("boundary"):
-        blockers.append("Diana WGS summary is missing its interpretation boundary.")
-
     alignment_rows = alignment.get("rows", []) if isinstance(alignment.get("rows"), list) else []
     alignment_rows = [row for row in alignment_rows if isinstance(row, dict)]
     passed_alignment_rows = sum(str(row.get("status", "")) == "passed" for row in alignment_rows)
