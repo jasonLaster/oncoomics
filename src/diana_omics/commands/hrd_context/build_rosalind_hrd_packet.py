@@ -208,14 +208,17 @@ def _sha256_bytes(data: bytes) -> str:
 
 
 def read_stable_file_bytes(path: Path, label: str) -> bytes:
-    data = read_real_nonempty_file_once(path, label)
+    data, identity = read_real_nonempty_file_once(path, label)
     digest = _sha256_bytes(data)
-    if _sha256_bytes(read_real_nonempty_file_once(path, label)) != digest:
+    stable_data, stable_identity = read_real_nonempty_file_once(path, label)
+    if stable_identity != identity or _sha256_bytes(stable_data) != digest:
         raise ValueError(f"{label} changed during read: {path}")
     return data
 
 
-def read_real_nonempty_file_once(path: Path, label: str) -> bytes:
+def read_real_nonempty_file_once(
+    path: Path, label: str
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     return read_real_file_once(
         require_real_nonempty_file(path, label),
         label,
@@ -366,17 +369,20 @@ def artifact_index(paths: Sequence[str], *, logical_paths_only: bool = False) ->
 
 def sha256_file(path: Path) -> str:
     require_real_hash_input(path)
-    digest = sha256_file_once(path)
-    if sha256_file_once(path) != digest:
+    data, identity = read_real_hash_input_once(path)
+    digest = _sha256_bytes(data)
+    stable_data, stable_identity = read_real_hash_input_once(path)
+    if stable_identity != identity or _sha256_bytes(stable_data) != digest:
         raise ValueError(f"{path.name} SHA-256 input changed during read")
     return digest
 
 
 def sha256_file_once(path: Path) -> str:
-    return _sha256_bytes(read_real_hash_input_once(path))
+    data, _identity = read_real_hash_input_once(path)
+    return _sha256_bytes(data)
 
 
-def read_real_hash_input_once(path: Path) -> bytes:
+def read_real_hash_input_once(path: Path) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     return read_real_file_once(
         require_real_hash_input(path),
         f"{path.name} SHA-256 input",
@@ -384,7 +390,9 @@ def read_real_hash_input_once(path: Path) -> bytes:
     )
 
 
-def read_real_file_once(path: Path, label: str, *, require_nonempty: bool) -> bytes:
+def read_real_file_once(
+    path: Path, label: str, *, require_nonempty: bool
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     flags = (
         os.O_RDONLY
         | getattr(os, "O_CLOEXEC", 0)
@@ -416,7 +424,7 @@ def read_real_file_once(path: Path, label: str, *, require_nonempty: bool) -> by
         or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{label} changed during read: {path}")
-    return data
+    return data, stat_identity(opened)
 
 
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:

@@ -714,23 +714,26 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
     def test_sha256_file_rejects_input_that_changes_during_read(self):
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "report_manifest.json"
+            root = Path(tmp)
+            path = root / "report_manifest.json"
+            replacement = root / "replacement_report_manifest.json"
             path.write_text('{"status":"stable"}\n', encoding="utf-8")
-            original_sha256_file_once = packet.sha256_file_once
+            replacement.write_text('{"status":"rewritten"}\n', encoding="utf-8")
+            original_sha256_bytes = packet._sha256_bytes
             mutated = False
 
-            def mutate_after_first_hash(input_path: Path) -> str:
+            def mutate_after_first_hash(data: bytes) -> str:
                 nonlocal mutated
-                digest = original_sha256_file_once(input_path)
-                if input_path == path and not mutated:
+                digest = original_sha256_bytes(data)
+                if not mutated:
                     mutated = True
-                    path.write_text('{"status":"rewritten"}\n', encoding="utf-8")
+                    replacement.replace(path)
                 return digest
 
             with (
                 patch.object(
                     packet,
-                    "sha256_file_once",
+                    "_sha256_bytes",
                     side_effect=mutate_after_first_hash,
                 ),
                 self.assertRaisesRegex(
@@ -739,6 +742,74 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 ),
             ):
                 packet.sha256_file(path)
+
+            self.assertTrue(mutated)
+
+    def test_sha256_file_rejects_same_byte_leaf_replacement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "report_manifest.json"
+            replacement = root / "replacement_report_manifest.json"
+            path.write_text('{"status":"stable"}\n', encoding="utf-8")
+            replacement.write_text('{"status":"stable"}\n', encoding="utf-8")
+            original_sha256_bytes = packet._sha256_bytes
+            mutated = False
+
+            def replace_after_first_hash(data: bytes) -> str:
+                nonlocal mutated
+                digest = original_sha256_bytes(data)
+                if not mutated:
+                    mutated = True
+                    replacement.replace(path)
+                return digest
+
+            with (
+                patch.object(
+                    packet,
+                    "_sha256_bytes",
+                    side_effect=replace_after_first_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report_manifest.json SHA-256 input changed during read",
+                ),
+            ):
+                packet.sha256_file(path)
+
+            self.assertTrue(mutated)
+
+    def test_read_stable_file_bytes_rejects_same_byte_leaf_replacement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "report_manifest.json"
+            replacement = root / "replacement_report_manifest.json"
+            path.write_text('{"status":"stable"}\n', encoding="utf-8")
+            replacement.write_text('{"status":"stable"}\n', encoding="utf-8")
+            original_sha256_bytes = packet._sha256_bytes
+            mutated = False
+
+            def replace_after_first_hash(data: bytes) -> str:
+                nonlocal mutated
+                digest = original_sha256_bytes(data)
+                if not mutated:
+                    mutated = True
+                    replacement.replace(path)
+                return digest
+
+            with (
+                patch.object(
+                    packet,
+                    "_sha256_bytes",
+                    side_effect=replace_after_first_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report manifest changed during read",
+                ),
+            ):
+                packet.read_stable_file_bytes(path, "report manifest")
+
+            self.assertTrue(mutated)
 
     def test_sha256_file_rejects_symlink_swap_after_preflight(self):
         with tempfile.TemporaryDirectory() as tmp:
