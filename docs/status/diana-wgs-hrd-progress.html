@@ -799,6 +799,7 @@
           <li class="pill">AI synthesis hashes = carried</li>
           <li class="pill">AI validation method inventory = exact</li>
           <li class="pill">Terminal cross-check inputs = exact</li>
+          <li class="pill">Fast review summaries = exact</li>
           <li class="pill">AI bundle staging = exact</li>
           <li class="pill">AI staging bundle rereads = exact</li>
           <li class="pill">Pre-route digests = bound</li>
@@ -976,6 +977,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind blocked cross-checks to parsed upstream manifests</strong>
               <span>Blocked FACETS/scarHRD, CHORD, and HRDetect reports now record the SHA-256 values from the exact deterministic and Rosalind manifests they already parsed, so a late local rewrite cannot change the upstream digest carried into a no-call packet.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · seal fast-rerun review summaries</strong>
+              <span>Rosalind packet building now rejects extra, stale, promoted, or non-reconciling Phase 3 fast deterministic review-summary fields, so the selected P5 Hopper/Parabricks report has to preserve the same artifact groups and blocked SBS3, scarHRD, CHORD, and HRDetect boundaries that deterministic staging wrote.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · prevent recovered public files from being overwritten</strong>
@@ -2751,6 +2756,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:20:28-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject loose fast review summaries:</strong>
+                the Diana WGS Phase 3 fast Rosalind binder now exact-validates
+                deterministic review-summary envelopes, overall
+                <code>partial_evidence</code> / <code>no_call</code> values,
+                artifact groups, blocked routes, and compact cross-check
+                route states before a P5 Hopper no-call report can enter
+                Rosalind review.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:07:36-07:00">Jul 19 · local</time>
               <span>
