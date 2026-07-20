@@ -136,6 +136,12 @@ STACK_AI_REVIEW_OUTPUTS = {
     "ai_review_prepare_receipt": "ai-review/prepare_ai_review_run_receipt.json",
     "ai_review_stage_receipt": "ai-review/stage_ai_review_inputs_receipt.json",
 }
+STACK_ROOT_ENTRIES = {"ai-review", "source-reports", "stack_manifest.json"}
+SOURCE_REPORT_ROOT_ENTRIES = {
+    "deterministic_full_wgs",
+    "rosalind",
+    *HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS[2:],
+}
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -293,6 +299,38 @@ def require_bound_file(root: Path, details: Any, expected: str, label: str) -> P
     return path
 
 
+def require_directory_inventory(
+    path: Path,
+    expected: set[str],
+    label: str,
+) -> None:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_dir():
+        raise ValueError(f"{label} is not a real directory: {path}")
+    observed = {child.name for child in path.iterdir()}
+    if observed != expected:
+        raise ValueError(
+            f"{label} inventory is not exact; "
+            f"expected={sorted(expected)!r} observed={sorted(observed)!r}"
+        )
+
+
+def expected_artifact_source_sha256(artifact_root: Path) -> dict[str, str]:
+    return {
+        f"source_artifact_{index:03d}": sha256(path)
+        for index, path in enumerate(artifact_paths(artifact_root), 1)
+    }
+
+
+def require_exact_source_sha256(
+    manifest: Mapping[str, Any],
+    expected: Mapping[str, str],
+    label: str,
+) -> None:
+    if manifest.get("source_sha256") != dict(expected):
+        raise ValueError(f"{label} source hashes are stale")
+
+
 def require_source_report(
     root: Path,
     method_id: str,
@@ -324,7 +362,17 @@ def require_source_report(
     return path
 
 
-def require_stack_manifest(root: Path, catalog: Path) -> dict[str, Any]:
+def require_stack_manifest(
+    root: Path,
+    catalog: Path,
+    artifact_root: Path,
+) -> dict[str, Any]:
+    require_directory_inventory(root, STACK_ROOT_ENTRIES, "HCC1395 stack")
+    require_directory_inventory(
+        root / "source-reports",
+        SOURCE_REPORT_ROOT_ENTRIES,
+        "HCC1395 source-report root",
+    )
     manifest = read_object(root / "stack_manifest.json", "HCC1395 stack manifest")
     if (
         set(manifest) != STACK_MANIFEST_KEYS
@@ -346,8 +394,36 @@ def require_stack_manifest(root: Path, catalog: Path) -> dict[str, Any]:
     ):
         raise ValueError("HCC1395 stack source reports are not exact")
 
-    for method_id in HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS:
-        require_source_report(root, method_id, source_reports[method_id])
+    report_manifests = {
+        method_id: read_object(
+            require_source_report(root, method_id, source_reports[method_id]),
+            f"HCC1395 {method_id} report manifest",
+        )
+        for method_id in HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS
+    }
+
+    artifact_source_sha256 = expected_artifact_source_sha256(artifact_root)
+    for method_id in ("deterministic_full_wgs", "rosalind_hcc1395_wgs"):
+        require_exact_source_sha256(
+            report_manifests[method_id],
+            artifact_source_sha256,
+            f"HCC1395 {method_id}",
+        )
+
+    upstream_source_sha256 = {
+        f"{method_id}_report_manifest": source_reports[method_id]["manifest_sha256"]
+        for method_id in HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS[:2]
+    }
+    for spec in METHOD_SPECS:
+        method_id = str(spec["method_id"])
+        require_exact_source_sha256(
+            report_manifests[method_id],
+            {
+                "generator": sha256(Path(__file__).resolve()),
+                **upstream_source_sha256,
+            },
+            f"HCC1395 {method_id}",
+        )
 
     for label, expected in STACK_AI_REVIEW_OUTPUTS.items():
         require_bound_file(root, manifest.get(label), expected, label)
@@ -727,13 +803,13 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             "models_invoked": False,
         }
         write_json(staging / "stack_manifest.json", stack_manifest)
-        require_stack_manifest(staging, catalog)
+        require_stack_manifest(staging, catalog, artifact_root)
         if output.exists() or output.is_symlink():
             raise FileExistsError(f"output appeared during build: {output}")
         try:
             staging.rename(output)
             fsync_directory(output.parent)
-            require_stack_manifest(output, catalog)
+            require_stack_manifest(output, catalog, artifact_root)
         except Exception:
             if output.is_dir() and not output.is_symlink():
                 shutil.rmtree(output)

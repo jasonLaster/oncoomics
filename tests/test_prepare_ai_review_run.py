@@ -264,6 +264,7 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 sorted(path.name for path in (output / "reviewer-inputs/reviewer-b-input").iterdir()),
                 ["review_bundle.json", "reviewer-b.prompt.md"],
             )
+            self.assertFalse(any(output.parent.glob(".ai-review.*")))
 
     def test_prepares_hcc1395_known_answer_inventory_without_diana_relabeling(
         self,

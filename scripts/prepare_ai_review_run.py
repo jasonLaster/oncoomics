@@ -737,7 +737,6 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
     )
 
     staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=str(output.parent)))
-    keep_staging = False
     try:
         bundle_dir = staging / "bundle"
         reviewer_root = staging / "reviewer-inputs"
@@ -783,10 +782,9 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
         require_prepared_run_support(staging)
 
         install_staged_run(staging, output)
-        keep_staging = True
         return receipt
     finally:
-        if not keep_staging and staging.exists():
+        if staging.exists():
             shutil.rmtree(staging)
 
 

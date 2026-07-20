@@ -317,6 +317,44 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertFalse(any(root.glob(".stack.*")))
 
+    def test_stack_manifest_rejects_stale_crosscheck_upstream_hashes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            real_run_ai_review_prepare = STACK.run_ai_review_prepare
+
+            def stale_upstream_after_method_packet(
+                manifests: list[Path],
+                ai_review: Path,
+                args: argparse.Namespace,
+            ) -> None:
+                sequenza_manifest = manifests[2]
+                payload = json.loads(sequenza_manifest.read_text(encoding="utf-8"))
+                payload["source_sha256"][
+                    "deterministic_full_wgs_report_manifest"
+                ] = "0" * 64
+                sequenza_manifest.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                real_run_ai_review_prepare(manifests, ai_review, args)
+
+            with (
+                mock.patch.object(
+                    STACK,
+                    "run_ai_review_prepare",
+                    side_effect=stale_upstream_after_method_packet,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "HCC1395 sequenza_scarhrd source hashes are stale",
+                ),
+            ):
+                STACK.build(args_for(root, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".stack.*")))
+
     def test_stack_manifest_rechecks_ai_receipts_after_install(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -341,6 +379,35 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
                 self.assertRaisesRegex(
                     ValueError,
                     "HCC1395 stack manifest is stale for ai_review_stage_receipt",
+                ),
+            ):
+                STACK.build(args_for(root, output))
+
+            self.assertFalse(output.exists())
+
+    def test_stack_manifest_rejects_unbound_entries_after_install(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            real_fsync_directory = STACK.fsync_directory
+
+            def add_unbound_entry_after_install_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                if path == output.parent and output.exists():
+                    (output / "unbound.json").write_text(
+                        "{}\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    STACK,
+                    "fsync_directory",
+                    side_effect=add_unbound_entry_after_install_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "HCC1395 stack inventory is not exact",
                 ),
             ):
                 STACK.build(args_for(root, output))
