@@ -1004,6 +1004,78 @@ class RosalindHrdPacketTest(unittest.TestCase):
             ):
                 packet.require_rosalind_report_manifest(output_dir)
 
+    def test_report_manifest_preserves_exact_no_call_review_boundary(self):
+        cases = (
+            (
+                "extra_top_level",
+                lambda manifest: manifest.__setitem__("stale_hrd_call", "positive"),
+                "Rosalind report manifest is not exact",
+            ),
+            (
+                "authorized_state",
+                lambda manifest: manifest.__setitem__("authorized_hrd_state", "hrd_positive"),
+                "Rosalind report manifest authorized_hrd_state must be no_call",
+            ),
+            (
+                "classification_authorized",
+                lambda manifest: manifest.__setitem__("classification_authorized", True),
+                "Rosalind report manifest may not authorize classification",
+            ),
+            (
+                "classification_qc_status",
+                lambda manifest: manifest.__setitem__("classification_qc_status", "passed"),
+                "Rosalind report manifest classification_qc_status is not exact",
+            ),
+            (
+                "evidence_status",
+                lambda manifest: manifest.__setitem__("evidence_status", "blocked"),
+                "Rosalind report manifest evidence_status is not exact",
+            ),
+            (
+                "review_overall_state",
+                lambda manifest: manifest["review_summary"]["overall"].__setitem__(
+                    "authorized_hrd_state",
+                    "hrd_positive",
+                ),
+                "Rosalind report manifest review_summary overall is not exact",
+            ),
+            (
+                "review_evidence",
+                lambda manifest: manifest["review_summary"].__setitem__("evidence", []),
+                "Rosalind report manifest review_summary evidence is not exact",
+            ),
+            (
+                "review_adapters",
+                lambda manifest: manifest["review_summary"].__setitem__("adapters", []),
+                "Rosalind report manifest review_summary adapters are not exact",
+            ),
+            (
+                "interpretation_gaps",
+                lambda manifest: manifest["review_summary"].__setitem__(
+                    "interpretation_gaps",
+                    [],
+                ),
+                "Rosalind report manifest review_summary interpretation_gaps are not exact",
+            ),
+        )
+
+        for label, mutation, error in cases:
+            with self.subTest(field=label), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                write_diana_raw_intake_artifacts(root)
+
+                with patch.object(packet, "path_from_root", lambda relative: root / relative):
+                    packet.write_packet(packet.PACKET_SPECS["diana_raw_intake"], "unit")
+
+                output_dir = root / "results/rosalind_hrd/diana_raw_intake/unit"
+                manifest_path = output_dir / "report_manifest.json"
+                manifest = utils.read_json(manifest_path)
+                mutation(manifest)
+                utils.write_json(manifest_path, manifest)
+
+                with self.assertRaisesRegex(ValueError, error):
+                    packet.require_rosalind_report_manifest(output_dir)
+
     def test_hcc1395_wgs_packet_blocks_metadata_only_sv_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
