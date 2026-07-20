@@ -12,7 +12,7 @@ from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3
 from .run_phase3_fast_filter_mutect import MATERIALIZED_OUTPUTS as FILTER_MUTECT_OUTPUTS
 from .run_phase3_fast_parabricks_mutect import MATERIALIZED_OUTPUTS as PARABRICKS_MUTECT_OUTPUTS
 from .safe_json_output import (
-    read_real_json,
+    read_real_json_with_sha256,
     require_no_symlinked_ancestors,
     require_safe_output_path,
     sha256_real_file,
@@ -393,11 +393,17 @@ def load_export_from_environment() -> tuple[dict[str, Any], Path]:
     filter_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT", DEFAULT_FILTER_RECEIPT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT_OUTPUT", DEFAULT_OUTPUT))
     output_root = path_from_root(os.environ.get("PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT_ROOT", DEFAULT_OUTPUT_ROOT))
+    parabricks_receipt, parabricks_receipt_sha256 = read_real_json_with_sha256(
+        parabricks_path, "Parabricks receipt", ManifestError
+    )
+    filter_receipt, filter_receipt_sha256 = read_real_json_with_sha256(
+        filter_path, "FilterMutect receipt", ManifestError
+    )
     export = export_phase3_fast_small_variant_artifacts(
-        read_real_json(parabricks_path, "Parabricks receipt", ManifestError),
-        read_real_json(filter_path, "FilterMutect receipt", ManifestError),
-        parabricks_mutect_receipt_sha256=_sha256_path(parabricks_path),
-        filter_mutect_receipt_sha256=_sha256_path(filter_path),
+        parabricks_receipt,
+        filter_receipt,
+        parabricks_mutect_receipt_sha256=parabricks_receipt_sha256,
+        filter_mutect_receipt_sha256=filter_receipt_sha256,
         output_root=output_root,
     )
     return export, output_path

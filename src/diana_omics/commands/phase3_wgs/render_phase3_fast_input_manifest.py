@@ -11,7 +11,7 @@ from typing import Any, Mapping, Sequence
 from ...paths import ROOT, path_from_root
 from ...utils import ensure_parent
 from .safe_json_output import (
-    read_real_json,
+    read_real_json_with_sha256,
     require_no_symlinked_ancestors,
     require_safe_output_path,
 )
@@ -374,8 +374,8 @@ def git_head() -> str:
         raise ManifestError("PHASE3_WGS_FAST_SOURCE_COMMIT is required when git rev-parse HEAD is unavailable") from error
 
 
-def _source_receipt_entry(path: Path) -> dict[str, str]:
-    return {"path": str(path), "sha256": sha256_file(path)}
+def _source_receipt_entry(path: Path, sha256: str) -> dict[str, str]:
+    return {"path": str(path), "sha256": sha256}
 
 
 def _metadata_value(metadata: Mapping[str, str], key: str, default: str = "") -> str:
@@ -538,24 +538,63 @@ def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
         "subject_alias": os.environ.get("PHASE3_WGS_FAST_SUBJECT_ALIAS", "subject01"),
         "tumor_sample_id": os.environ.get("PHASE3_WGS_FAST_TUMOR_SAMPLE_ID", "subject01_tumor"),
     }
+    private_freeze_receipt, private_freeze_sha256 = read_real_json_with_sha256(
+        private_freeze, "private_freeze receipt", ManifestError
+    )
+    private_sha256_receipt, private_sha256_sha256 = read_real_json_with_sha256(
+        private_sha256, "private_sha256 receipt", ManifestError
+    )
+    reference_freeze_receipt, reference_freeze_sha256 = read_real_json_with_sha256(
+        reference_freeze, "reference_freeze receipt", ManifestError
+    )
+    reference_sha256_receipt, reference_sha256_sha256 = read_real_json_with_sha256(
+        reference_sha256, "reference_sha256 receipt", ManifestError
+    )
+    bam_validation_receipt, bam_validation_sha256 = read_real_json_with_sha256(
+        bam_validation, "bam_validation receipt", ManifestError
+    )
+    contig_compatibility_receipt, contig_compatibility_sha256 = (
+        read_real_json_with_sha256(
+            contig_compatibility,
+            "contig_compatibility receipt",
+            ManifestError,
+        )
+    )
+    caller_resource_receipt, caller_resource_sha256 = read_real_json_with_sha256(
+        caller_resources, "caller_resources receipt", ManifestError
+    )
 
     manifest = build_phase3_wgs_fast_input_manifest(
-        private_freeze_receipt=read_real_json(private_freeze, "private_freeze receipt", ManifestError),
-        private_sha256_receipt=read_real_json(private_sha256, "private_sha256 receipt", ManifestError),
-        reference_freeze_receipt=read_real_json(reference_freeze, "reference_freeze receipt", ManifestError),
-        reference_sha256_receipt=read_real_json(reference_sha256, "reference_sha256 receipt", ManifestError),
-        bam_validation_receipt=read_real_json(bam_validation, "bam_validation receipt", ManifestError),
-        contig_compatibility_receipt=read_real_json(contig_compatibility, "contig_compatibility receipt", ManifestError),
-        caller_resource_receipt=read_real_json(caller_resources, "caller_resources receipt", ManifestError),
+        private_freeze_receipt=private_freeze_receipt,
+        private_sha256_receipt=private_sha256_receipt,
+        reference_freeze_receipt=reference_freeze_receipt,
+        reference_sha256_receipt=reference_sha256_receipt,
+        bam_validation_receipt=bam_validation_receipt,
+        contig_compatibility_receipt=contig_compatibility_receipt,
+        caller_resource_receipt=caller_resource_receipt,
         metadata=metadata,
         source_receipts={
-            "bam_validation": _source_receipt_entry(bam_validation),
-            "caller_resources": _source_receipt_entry(caller_resources),
-            "contig_compatibility": _source_receipt_entry(contig_compatibility),
-            "private_freeze": _source_receipt_entry(private_freeze),
-            "private_sha256": _source_receipt_entry(private_sha256),
-            "reference_freeze": _source_receipt_entry(reference_freeze),
-            "reference_sha256": _source_receipt_entry(reference_sha256),
+            "bam_validation": _source_receipt_entry(
+                bam_validation, bam_validation_sha256
+            ),
+            "caller_resources": _source_receipt_entry(
+                caller_resources, caller_resource_sha256
+            ),
+            "contig_compatibility": _source_receipt_entry(
+                contig_compatibility, contig_compatibility_sha256
+            ),
+            "private_freeze": _source_receipt_entry(
+                private_freeze, private_freeze_sha256
+            ),
+            "private_sha256": _source_receipt_entry(
+                private_sha256, private_sha256_sha256
+            ),
+            "reference_freeze": _source_receipt_entry(
+                reference_freeze, reference_freeze_sha256
+            ),
+            "reference_sha256": _source_receipt_entry(
+                reference_sha256, reference_sha256_sha256
+            ),
         },
     )
     output = path_from_root(os.environ.get("PHASE3_WGS_FAST_OUTPUT", DEFAULT_OUTPUT))

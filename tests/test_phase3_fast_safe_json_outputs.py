@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import unittest
-from unittest import mock
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Mapping
+from unittest import mock
 
 from diana_omics.commands.phase3_wgs import export_phase3_fast_small_variant_artifacts as small_variant_export
 from diana_omics.commands.phase3_wgs import join_phase3_fast_evidence as evidence_join
@@ -138,6 +139,21 @@ class Phase3FastSafeJsonOutputsTests(unittest.TestCase):
             payload = safe_json_output.read_real_json(input_path, "source", ManifestError)
 
         self.assertEqual({"status": "ready"}, payload)
+
+    def test_read_real_json_with_sha256_returns_digest_from_same_bytes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            input_path = Path(tmp) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+
+            payload, digest = safe_json_output.read_real_json_with_sha256(
+                input_path, "source", ManifestError
+            )
+
+        self.assertEqual({"status": "ready"}, payload)
+        self.assertEqual(
+            hashlib.sha256(b'{"status": "ready"}\n').hexdigest(),
+            digest,
+        )
 
     def test_read_real_json_rejects_file_that_changes_during_read(self) -> None:
         with TemporaryDirectory() as tmp:

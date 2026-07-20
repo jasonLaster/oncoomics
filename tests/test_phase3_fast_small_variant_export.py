@@ -102,6 +102,62 @@ class Phase3FastSmallVariantExportTests(unittest.TestCase):
         self.assertEqual(expected_filter_sha, receipt["source"]["filter_mutect_receipt_sha256"])
         self.assertIn('"manifest_type": "phase3_wgs_fast_small_variant_artifact_export"', export_text)
 
+    def test_environment_command_binds_export_to_parsed_receipts(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            parabricks_receipt_path = root / "parabricks-receipt.json"
+            filter_receipt_path = root / "filter-receipt.json"
+            parabricks_receipt, filter_receipt = _receipts(root)
+            write_json(parabricks_receipt_path, parabricks_receipt)
+            original_parabricks_sha = _sha256_json(parabricks_receipt_path)
+            filter_receipt["source"]["parabricks_mutect_receipt_sha256"] = (
+                original_parabricks_sha
+            )
+            write_json(filter_receipt_path, filter_receipt)
+            original_filter_sha = _sha256_json(filter_receipt_path)
+            real_read = export_small_variants.read_real_json_with_sha256
+
+            def mutate_after_read(path, label, error_type):
+                value, digest = real_read(path, label, error_type)
+                write_json(path, {"status": "mutated"})
+                return value, digest
+
+            with (
+                patch.dict(
+                    "os.environ",
+                    {
+                        "PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT": str(
+                            parabricks_receipt_path
+                        ),
+                        "PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT": str(
+                            filter_receipt_path
+                        ),
+                        "PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT_ROOT": str(
+                            root / "exported"
+                        ),
+                        "PHASE3_WGS_FAST_SMALL_VARIANT_EXPORT_OUTPUT": str(
+                            root / "small-variant-export.json"
+                        ),
+                    },
+                    clear=False,
+                ),
+                patch.object(
+                    export_small_variants,
+                    "read_real_json_with_sha256",
+                    side_effect=mutate_after_read,
+                ),
+            ):
+                receipt, _output = export_small_variants.load_export_from_environment()
+
+        self.assertEqual(
+            original_parabricks_sha,
+            receipt["source"]["parabricks_mutect_receipt_sha256"],
+        )
+        self.assertEqual(
+            original_filter_sha,
+            receipt["source"]["filter_mutect_receipt_sha256"],
+        )
+
     def test_environment_command_rejects_redirected_receipts_before_copying_artifacts(self) -> None:
         cases = (
             (

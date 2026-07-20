@@ -9,7 +9,7 @@ from ...paths import path_from_root
 from ...utils import ensure_parent
 from .crosscheck_contracts import EXPECTED_CROSSCHECK_BLOCKED_ROUTES, sequenza_alias_input_contract
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
-from .safe_json_output import read_real_json, require_safe_output_path, sha256_real_file
+from .safe_json_output import read_real_json_with_sha256, require_safe_output_path, sha256_real_file
 
 DEFAULT_FINAL_EVIDENCE = "manifests/phase3_wgs_fast/final_evidence_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/crosscheck_materialization_plan.json"
@@ -65,8 +65,9 @@ def _sha256_path(path: Path) -> str:
     return sha256_real_file(path, ManifestError)
 
 
-def _read_final_evidence(path: Path) -> Mapping[str, Any]:
-    return _require_mapping(read_real_json(path, "final evidence", ManifestError), "final_evidence")
+def _read_final_evidence_with_sha256(path: Path) -> tuple[Mapping[str, Any], str]:
+    value, digest = read_real_json_with_sha256(path, "final evidence", ManifestError)
+    return _require_mapping(value, "final_evidence"), digest
 
 
 def _source_blob(value: Any, label: str) -> dict[str, Any]:
@@ -221,9 +222,12 @@ def write_plan(path: Path, plan: Mapping[str, Any]) -> None:
 def load_plan_from_environment() -> tuple[dict[str, Any], Path]:
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_FINAL_EVIDENCE_MANIFEST", DEFAULT_FINAL_EVIDENCE))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_CROSSCHECK_MATERIALIZATION_PLAN", DEFAULT_OUTPUT))
+    final_evidence, final_evidence_sha256 = _read_final_evidence_with_sha256(
+        input_path
+    )
     plan = build_phase3_fast_crosscheck_materialization_plan(
-        _read_final_evidence(input_path),
-        final_evidence_sha256=_sha256_path(input_path),
+        final_evidence,
+        final_evidence_sha256=final_evidence_sha256,
     )
     return plan, output_path
 

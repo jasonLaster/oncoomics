@@ -16,7 +16,7 @@ from .render_phase3_fast_input_manifest import (
     normalize_method_parameters,
 )
 from .render_phase3_fast_staging_plan import EXPECTED_STAGED_OBJECTS
-from .safe_json_output import read_real_json, require_safe_output_path, sha256_real_file
+from .safe_json_output import read_real_json_with_sha256, require_safe_output_path, sha256_real_file
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staging_plan.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
@@ -257,9 +257,12 @@ def write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
 def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_STAGING_PLAN", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_STAGED_INPUTS_OUTPUT", DEFAULT_OUTPUT))
+    staging_plan, staging_plan_sha256 = read_real_json_with_sha256(
+        input_path, "staging_plan", ManifestError
+    )
     manifest = build_phase3_fast_staged_inputs_manifest(
-        read_real_json(input_path, "staging_plan", ManifestError),
-        staging_plan_sha256=_sha256_path(input_path),
+        staging_plan,
+        staging_plan_sha256=staging_plan_sha256,
     )
     return manifest, output_path
 

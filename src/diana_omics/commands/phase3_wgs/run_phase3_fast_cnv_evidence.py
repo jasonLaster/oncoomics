@@ -14,7 +14,7 @@ from ...utils import ensure_parent, round_value, write_csv
 from .cnv_contigs import require_no_standard_autosome_gaps
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 from .safe_json_output import (
-    read_real_json,
+    read_real_json_with_sha256,
     require_no_symlinked_ancestors,
     require_safe_output_path,
     sha256_real_file,
@@ -504,10 +504,13 @@ def load_receipt_from_environment(
 ) -> tuple[dict[str, Any], Path]:
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_CNV_EVIDENCE_PLAN", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_CNV_EVIDENCE_RECEIPT_OUTPUT", DEFAULT_OUTPUT))
+    plan, plan_sha256 = read_real_json_with_sha256(
+        input_path, "CNV evidence plan", ManifestError
+    )
     receipt = run_phase3_fast_cnv_evidence(
-        read_real_json(input_path, "CNV evidence plan", ManifestError),
+        plan,
         runner=runner if runner is not None else SubprocessBedcovRunner(),
-        cnv_evidence_plan_sha256=_sha256_path(input_path),
+        cnv_evidence_plan_sha256=plan_sha256,
     )
     return receipt, output_path
 

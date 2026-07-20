@@ -92,12 +92,41 @@ def read_stable_real_file_bytes(
 
 
 def read_real_json(path: Path, label: str, error_type: type[Exception]) -> Any:
+    value, _digest = read_real_json_with_sha256(path, label, error_type)
+    return value
+
+
+def read_real_json_with_sha256(
+    path: Path,
+    label: str,
+    error_type: type[Exception],
+) -> tuple[Any, str]:
+    value, digest, _size = read_real_json_with_sha256_and_size(
+        path, label, error_type
+    )
+    return value, digest
+
+
+def read_real_json_with_sha256_and_size(
+    path: Path,
+    label: str,
+    error_type: type[Exception],
+) -> tuple[Any, str, int]:
     if path.is_symlink() or not path.is_file():
         raise error_type(f"{label} must be a real JSON file: {path}")
+    data = read_stable_real_file_bytes(path, label, error_type)
     try:
-        return json.loads(
-            read_stable_real_file_bytes(path, label, error_type).decode("utf-8"),
-            object_pairs_hook=reject_duplicate_json_object_names,
+        return (
+            json.loads(
+                data.decode("utf-8"),
+                object_pairs_hook=reject_duplicate_json_object_names,
+            ),
+            _sha256_bytes(data),
+            len(data),
         )
+    except UnicodeError as error:
+        raise error_type(f"invalid JSON in {label}") from error
+    except json.JSONDecodeError as error:
+        raise error_type(f"invalid JSON in {label}") from error
     except DuplicateJsonObjectName as error:
         raise error_type(f"duplicate JSON object name in {label}: {error}") from error

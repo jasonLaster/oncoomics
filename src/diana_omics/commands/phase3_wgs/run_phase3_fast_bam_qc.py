@@ -12,7 +12,7 @@ from ...paths import path_from_root
 from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 from .safe_json_output import (
-    read_real_json,
+    read_real_json_with_sha256,
     require_no_symlinked_ancestors,
     require_safe_output_path,
     sha256_real_file,
@@ -351,10 +351,13 @@ def load_receipt_from_environment(
 ) -> tuple[dict[str, Any], Path]:
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_BAM_QC_PLAN", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_BAM_QC_RECEIPT_OUTPUT", DEFAULT_OUTPUT))
+    plan, plan_sha256 = read_real_json_with_sha256(
+        input_path, "BAM QC plan", ManifestError
+    )
     receipt = run_phase3_fast_bam_qc(
-        read_real_json(input_path, "BAM QC plan", ManifestError),
+        plan,
         runner=runner if runner is not None else SubprocessSamtoolsRunner(),
-        bam_qc_plan_sha256=_sha256_path(input_path),
+        bam_qc_plan_sha256=plan_sha256,
     )
     return receipt, output_path
 

@@ -17,6 +17,7 @@ from .crosscheck_contracts import EXPECTED_CROSSCHECK_BLOCKED_ROUTES, sequenza_a
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 from .safe_json_output import (
     read_real_json,
+    read_real_json_with_sha256_and_size,
     require_no_symlinked_ancestors,
     sha256_real_file,
 )
@@ -113,7 +114,17 @@ def _json_bytes(value: Mapping[str, Any]) -> bytes:
 
 
 def _read_manifest_file(path: Path, label: str) -> Mapping[str, Any]:
-    return _require_mapping(read_real_json(path, label, ManifestError), label)
+    value, _digest, _size = _read_manifest_file_with_sha256_and_size(path, label)
+    return value
+
+
+def _read_manifest_file_with_sha256_and_size(
+    path: Path, label: str
+) -> tuple[Mapping[str, Any], str, int]:
+    value, digest, size = read_real_json_with_sha256_and_size(
+        path, label, ManifestError
+    )
+    return _require_mapping(value, label), digest, size
 
 
 def _require_unsymlinked_path(path: Path, label: str) -> None:
@@ -1149,12 +1160,20 @@ def load_report_from_environment() -> tuple[dict[str, Any], Path]:
     )
     final_root = path_from_root(os.environ.get("PHASE3_WGS_FAST_FINAL_EVIDENCE_ROOT", DEFAULT_FINAL_EVIDENCE_ROOT))
     output = path_from_root(os.environ.get("PHASE3_WGS_FAST_DETERMINISTIC_REPORT_OUTPUT", DEFAULT_OUTPUT_ROOT))
+    final_manifest, final_manifest_sha256, final_manifest_bytes = (
+        _read_manifest_file_with_sha256_and_size(
+            manifest_path, "final_evidence_manifest"
+        )
+    )
+    crosscheck_plan = _read_manifest_file(
+        crosscheck_plan_path, "crosscheck_materialization_plan"
+    )
 
     manifest = stage_phase3_fast_deterministic_report(
-        _read_manifest_file(manifest_path, "final_evidence_manifest"),
-        _read_manifest_file(crosscheck_plan_path, "crosscheck_materialization_plan"),
-        final_manifest_sha256=_sha256_path(manifest_path),
-        final_manifest_bytes=manifest_path.stat().st_size,
+        final_manifest,
+        crosscheck_plan,
+        final_manifest_sha256=final_manifest_sha256,
+        final_manifest_bytes=final_manifest_bytes,
         final_root=final_root,
         output_dir=output,
     )

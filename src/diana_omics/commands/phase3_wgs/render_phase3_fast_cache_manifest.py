@@ -15,7 +15,7 @@ from .render_phase3_fast_input_manifest import (
     normalize_method_parameters,
 )
 from .replicate_phase3_fast_inputs import EXPECTED_REPLICATION_OBJECTS
-from .safe_json_output import read_real_json, require_safe_output_path, sha256_real_file
+from .safe_json_output import read_real_json_with_sha256, require_safe_output_path, sha256_real_file
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/replication_receipt.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/cache_manifest.json"
@@ -226,9 +226,12 @@ def write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
 def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
     receipt_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_REPLICATION_RECEIPT", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_CACHE_MANIFEST_OUTPUT", DEFAULT_OUTPUT))
+    receipt, receipt_sha256 = read_real_json_with_sha256(
+        receipt_path, "replication_receipt", ManifestError
+    )
     manifest = build_phase3_fast_cache_manifest(
-        read_real_json(receipt_path, "replication_receipt", ManifestError),
-        replication_receipt_sha256=_sha256_path(receipt_path),
+        receipt,
+        replication_receipt_sha256=receipt_sha256,
     )
     return manifest, output_path
 

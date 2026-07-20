@@ -27,6 +27,9 @@ buckets and avoids partial same-day estimates.
 - Use `Start` as the latest complete UTC date and `End` as the following UTC date; Cost Explorer treats `End` as exclusive.
 - Request `UnblendedCost`.
 - Group by `SERVICE` first and `USAGE_TYPE` second.
+- Use the Cost Explorer API response as the source of truth for the displayed
+  values; do not estimate the past-day total from service dashboards or
+  CloudWatch metrics.
 - Display the covered UTC date, total unblended cost, and the top service / usage-type rows.
 - Keep the breakdown row-level: every visible non-`Other` row should come from
   one exact Cost Explorer `SERVICE` / `USAGE_TYPE` pair, except rows that

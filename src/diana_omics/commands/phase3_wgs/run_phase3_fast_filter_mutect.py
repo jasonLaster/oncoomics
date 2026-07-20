@@ -13,7 +13,7 @@ from ...paths import path_from_root
 from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 from .safe_json_output import (
-    read_real_json,
+    read_real_json_with_sha256,
     require_no_symlinked_ancestors,
     require_safe_output_path,
     sha256_real_file,
@@ -625,12 +625,18 @@ def load_receipt_from_environment(
         os.environ.get("PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT", DEFAULT_PARABRICKS_RECEIPT)
     )
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_FILTER_MUTECT_RECEIPT_OUTPUT", DEFAULT_OUTPUT))
+    plan, plan_sha256 = read_real_json_with_sha256(
+        input_path, "FilterMutect plan", ManifestError
+    )
+    parabricks_receipt, parabricks_receipt_sha256 = read_real_json_with_sha256(
+        parabricks_receipt_path, "Parabricks receipt", ManifestError
+    )
     receipt = run_phase3_fast_filter_mutect(
-        read_real_json(input_path, "FilterMutect plan", ManifestError),
-        read_real_json(parabricks_receipt_path, "Parabricks receipt", ManifestError),
+        plan,
+        parabricks_receipt,
         runner=runner if runner is not None else SubprocessCommandRunner(),
-        filter_mutect_plan_sha256=_sha256_path(input_path),
-        parabricks_mutect_receipt_sha256=_sha256_path(parabricks_receipt_path),
+        filter_mutect_plan_sha256=plan_sha256,
+        parabricks_mutect_receipt_sha256=parabricks_receipt_sha256,
     )
     return receipt, output_path
 

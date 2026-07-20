@@ -370,9 +370,10 @@
           before private review or reviewed-public release can continue. The
           materializer registration, one-shot materializer submitter,
           staged-validation downloader, input-contract finalizer, freeze steps,
-          local materialization, and input-contract publication now carry the
-          exact digests and bytes they parsed instead of trusting a later
-          filesystem read or mutable upload path.
+          local materialization, input-contract publication, and the selected
+          fast-rerun handoff chain now carry the exact digests and bytes they
+          parsed instead of trusting a later filesystem read or mutable upload
+          path.
           The selected GPU rerun is still quota-blocked, the legacy CPU run
           remains stopped, and Diana HRD remains <code>partial_evidence</code> /
           <code>no_call</code> until terminal artifacts and reviewed cross-check
@@ -380,7 +381,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = input-contract publication stable</li>
+          <li class="pill">Latest milestone = fast-rerun handoffs stable</li>
+          <li class="pill">Fast-rerun source reads = stable</li>
           <li class="pill">Input-contract publication = stable</li>
           <li class="pill">Staged-validation receipt reads = stable</li>
           <li class="pill">Materializer submit reads = stable</li>
@@ -796,7 +798,7 @@
             </li>
             <li class="track" style="--tone: var(--blocked)">
               <strong>Next-generation P5en / Parabricks architecture</strong>
-              <span>60% · quota-blocked; no race</span>
+              <span>60% · source handoffs stable; quota-blocked</span>
               <div class="bar" aria-hidden="true" style="--pct: 60%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--blocked)">
@@ -914,6 +916,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind fast-rerun source reads</strong>
+              <span>The selected fast-rerun handoffs now keep the checksum from the same JSON bytes they just verified, so a rewritten local manifest, plan, or receipt cannot change what later deterministic, Rosalind, or cross-check paperwork claims it used.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · publish stable input contracts</strong>
               <span>HRD input-contract publication now binds dry-run receipts, create-only uploads, and recovery checks to the exact finalized contract bytes before the contract can feed downstream Rosalind, executable route, or AI/freeform review.</span>
@@ -2512,6 +2518,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T19:20:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind fast-rerun source reads:</strong>
+                the selected fast-rerun handoff chain now carries each parsed
+                receipt, manifest, plan, and completed-run digest forward
+                instead of rehashing mutable local paths after validation.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T19:12:15-07:00">Jul 19 · local</time>
               <span>

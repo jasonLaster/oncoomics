@@ -11,7 +11,7 @@ from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 from .render_phase3_fast_parabricks_mutect_plan import REQUIRED_NUM_GPUS
 from .safe_json_output import (
-    read_real_json,
+    read_real_json_with_sha256,
     require_no_symlinked_ancestors,
     require_safe_output_path,
     sha256_real_file,
@@ -304,10 +304,13 @@ def load_receipt_from_environment(
 ) -> tuple[dict[str, Any], Path]:
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_PARABRICKS_MUTECT_RECEIPT_OUTPUT", DEFAULT_OUTPUT))
+    plan, plan_sha256 = read_real_json_with_sha256(
+        input_path, "Parabricks Mutect plan", ManifestError
+    )
     receipt = run_phase3_fast_parabricks_mutect(
-        read_real_json(input_path, "Parabricks Mutect plan", ManifestError),
+        plan,
         runner=runner if runner is not None else SubprocessCommandRunner(),
-        parabricks_mutect_plan_sha256=_sha256_path(input_path),
+        parabricks_mutect_plan_sha256=plan_sha256,
     )
     return receipt, output_path
 

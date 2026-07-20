@@ -11,7 +11,7 @@ from ...paths import path_from_root
 from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 from .safe_json_output import (
-    read_real_json,
+    read_real_json_with_sha256,
     require_no_symlinked_ancestors,
     require_safe_output_path,
     sha256_real_file,
@@ -69,8 +69,9 @@ def _sha256_path(path: Path) -> str:
     return sha256_real_file(path, ManifestError)
 
 
-def _read_evidence_join(path: Path) -> Mapping[str, Any]:
-    return _require_mapping(read_real_json(path, "evidence_join", ManifestError), "evidence_join")
+def _read_evidence_join_with_sha256(path: Path) -> tuple[Mapping[str, Any], str]:
+    value, digest = read_real_json_with_sha256(path, "evidence_join", ManifestError)
+    return _require_mapping(value, "evidence_join"), digest
 
 
 def _require_safe_destination_path(path: Path, label: str) -> None:
@@ -371,9 +372,10 @@ def write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
 def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
     join_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_EVIDENCE_JOIN", DEFAULT_EVIDENCE_JOIN))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_FINAL_EVIDENCE_OUTPUT", DEFAULT_OUTPUT))
+    evidence_join, evidence_join_sha256 = _read_evidence_join_with_sha256(join_path)
     manifest = build_phase3_fast_final_evidence_manifest(
-        _read_evidence_join(join_path),
-        evidence_join_sha256=_sha256_path(join_path),
+        evidence_join,
+        evidence_join_sha256=evidence_join_sha256,
         small_variant_artifact_root=path_from_root(
             os.environ.get("PHASE3_WGS_FAST_SMALL_VARIANT_ARTIFACT_ROOT", DEFAULT_SMALL_VARIANT_ARTIFACT_ROOT)
         ),

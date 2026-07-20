@@ -13,7 +13,7 @@ from .run_phase3_fast_cnv_evidence import MATERIALIZED_OUTPUTS as CNV_OUTPUTS
 from .run_phase3_fast_filter_mutect import MATERIALIZED_OUTPUTS as FILTER_MUTECT_OUTPUTS
 from .run_phase3_fast_parabricks_mutect import MATERIALIZED_OUTPUTS as PARABRICKS_MUTECT_OUTPUTS
 from .run_phase3_fast_sv_evidence import EXPECTED_COMMANDS as SV_OUTPUTS
-from .safe_json_output import read_real_json, require_safe_output_path, sha256_real_file
+from .safe_json_output import read_real_json_with_sha256, require_safe_output_path, sha256_real_file
 
 DEFAULT_SMALL_VARIANT_EXPORT = "manifests/phase3_wgs_fast/small_variant_artifact_export.json"
 DEFAULT_BAM_QC_RECEIPT = "manifests/phase3_wgs_fast/bam_qc_receipt.json"
@@ -52,8 +52,9 @@ def _sha256_path(path: Path) -> str:
     return sha256_real_file(path, ManifestError)
 
 
-def _read_receipt(path: Path, label: str) -> Mapping[str, Any]:
-    return _require_mapping(read_real_json(path, label, ManifestError), label)
+def _read_receipt_with_sha256(path: Path, label: str) -> tuple[Mapping[str, Any], str]:
+    value, digest = read_real_json_with_sha256(path, label, ManifestError)
+    return _require_mapping(value, label), digest
 
 
 def _require_receipt(
@@ -419,15 +420,21 @@ def load_manifest_from_environment() -> tuple[dict[str, Any], Path]:
     cnv_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_CNV_EVIDENCE_RECEIPT", DEFAULT_CNV_EVIDENCE_RECEIPT))
     sv_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_SV_EVIDENCE_RECEIPT", DEFAULT_SV_EVIDENCE_RECEIPT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_EVIDENCE_JOIN_OUTPUT", DEFAULT_OUTPUT))
+    small_variant_export, small_variant_export_sha256 = _read_receipt_with_sha256(
+        small_variant_path, "small_variant_artifact_export"
+    )
+    bam_qc, bam_qc_sha256 = _read_receipt_with_sha256(bam_qc_path, "bam_qc")
+    cnv, cnv_sha256 = _read_receipt_with_sha256(cnv_path, "cnv_evidence")
+    sv, sv_sha256 = _read_receipt_with_sha256(sv_path, "sv_evidence")
     manifest = build_phase3_fast_evidence_join_manifest(
-        _read_receipt(small_variant_path, "small_variant_artifact_export"),
-        _read_receipt(bam_qc_path, "bam_qc"),
-        _read_receipt(cnv_path, "cnv_evidence"),
-        _read_receipt(sv_path, "sv_evidence"),
-        small_variant_artifact_export_sha256=_sha256_path(small_variant_path),
-        bam_qc_receipt_sha256=_sha256_path(bam_qc_path),
-        cnv_evidence_receipt_sha256=_sha256_path(cnv_path),
-        sv_evidence_receipt_sha256=_sha256_path(sv_path),
+        small_variant_export,
+        bam_qc,
+        cnv,
+        sv,
+        small_variant_artifact_export_sha256=small_variant_export_sha256,
+        bam_qc_receipt_sha256=bam_qc_sha256,
+        cnv_evidence_receipt_sha256=cnv_sha256,
+        sv_evidence_receipt_sha256=sv_sha256,
     )
     return manifest, output_path
 

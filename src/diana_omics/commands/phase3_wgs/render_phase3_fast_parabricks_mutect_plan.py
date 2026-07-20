@@ -8,7 +8,7 @@ from typing import Any, Mapping
 from ...paths import path_from_root
 from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, _require_s3_uri, normalize_method_parameters
-from .safe_json_output import read_real_json, require_safe_output_path, sha256_real_file
+from .safe_json_output import read_real_json_with_sha256, require_safe_output_path, sha256_real_file
 
 DEFAULT_INPUT = "manifests/phase3_wgs_fast/staged_inputs_manifest.json"
 DEFAULT_OUTPUT = "manifests/phase3_wgs_fast/parabricks_mutect_plan.json"
@@ -366,9 +366,12 @@ def write_plan(path: Path, plan: Mapping[str, Any]) -> None:
 def load_plan_from_environment() -> tuple[dict[str, Any], Path]:
     input_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_STAGED_INPUTS_MANIFEST", DEFAULT_INPUT))
     output_path = path_from_root(os.environ.get("PHASE3_WGS_FAST_PARABRICKS_MUTECT_PLAN_OUTPUT", DEFAULT_OUTPUT))
+    staged_inputs, staged_inputs_sha256 = read_real_json_with_sha256(
+        input_path, "staged_inputs", ManifestError
+    )
     plan = build_phase3_fast_parabricks_mutect_plan(
-        read_real_json(input_path, "staged_inputs", ManifestError),
-        staged_inputs_manifest_sha256=_sha256_path(input_path),
+        staged_inputs,
+        staged_inputs_manifest_sha256=staged_inputs_sha256,
         output_root=os.environ.get("PHASE3_WGS_FAST_PARABRICKS_OUTPUT_ROOT", DEFAULT_OUTPUT_ROOT),
         num_gpus=_require_num_gpus(os.environ.get("PHASE3_WGS_FAST_PARABRICKS_NUM_GPUS")),
     )

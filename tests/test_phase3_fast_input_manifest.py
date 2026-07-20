@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -593,6 +594,51 @@ class Phase3FastInputManifestTests(unittest.TestCase):
             self.assertIn('"manifest_type": "phase3_wgs_fast_input_manifest"', written)
             self.assertIn('"bam_validation"', written)
             self.assertIn('"contig_compatibility"', written)
+
+    def test_environment_command_binds_source_receipts_to_parsed_bytes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            receipt_paths = write_environment_receipts(root)
+            output = root / "input-manifest.json"
+            original_sha256 = {
+                key: hashlib.sha256(path.read_bytes()).hexdigest()
+                for key, path in receipt_paths.items()
+            }
+            real_read = render.read_real_json_with_sha256
+
+            def mutate_after_read(path, label, error_type):
+                value, digest = real_read(path, label, error_type)
+                write_json(path, {"status": "mutated"})
+                return value, digest
+
+            with (
+                patch.dict(
+                    "os.environ",
+                    input_manifest_environment(receipt_paths, output),
+                    clear=False,
+                ),
+                patch.object(
+                    render,
+                    "read_real_json_with_sha256",
+                    side_effect=mutate_after_read,
+                ),
+            ):
+                manifest, manifest_path = render.load_manifest_from_environment()
+                render.write_manifest(manifest_path, manifest)
+
+        self.assertEqual(output, manifest_path)
+        self.assertEqual(
+            original_sha256["PHASE3_WGS_FAST_PRIVATE_FREEZE_RECEIPT"],
+            manifest["source_receipts"]["private_freeze"]["sha256"],
+        )
+        self.assertEqual(
+            original_sha256["PHASE3_WGS_FAST_BAM_VALIDATION_RECEIPT"],
+            manifest["source_receipts"]["bam_validation"]["sha256"],
+        )
+        self.assertEqual(
+            original_sha256["PHASE3_WGS_FAST_CALLER_RESOURCE_RECEIPT"],
+            manifest["source_receipts"]["caller_resources"]["sha256"],
+        )
 
     def test_environment_command_rejects_redirected_source_receipt(self) -> None:
         for bad_kind in ("missing", "directory", "symlink"):
