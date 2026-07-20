@@ -159,6 +159,17 @@ def is_exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and value == expected
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == set(expected)
+        and all(
+            value.get(name) is expected_value
+            for name, expected_value in expected.items()
+        )
+    )
+
+
 def require_installed_json(path: Path, expected_sha256: str) -> None:
     require_real_file(path, "staged AI review JSON")
     if (path.stat().st_mode & 0o777) != 0o600:
@@ -543,7 +554,7 @@ def require_rebased_stage_receipt(
         or receipt.get("bundle_dir") != str(output / "bundle")
         or receipt.get("output_root") != str(output / "reviewer-inputs")
         or receipt.get("reviewers") != expected_reviewers
-        or receipt.get("checks") != STAGE_RECEIPT_CHECKS
+        or not exact_check_map(receipt.get("checks"), STAGE_RECEIPT_CHECKS)
     ):
         raise ValueError("stage AI review input receipt is not exact")
 

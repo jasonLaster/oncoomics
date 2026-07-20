@@ -107,6 +107,17 @@ def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == set(expected)
+        and all(
+            value.get(name) is expected_value
+            for name, expected_value in expected.items()
+        )
+    )
+
+
 def one_shot_retry_strategy(value: Any) -> bool:
     return (
         isinstance(value, dict)
@@ -304,8 +315,8 @@ def validate_receipts(
     if not one_shot_retry_strategy(submit_request.get("retryStrategy")):
         raise ValueError("materializer SubmitJob request must be one-shot")
 
-    checks = require_object(response.get("checks"), "response.checks")
-    if checks != EXPECTED_RESPONSE_CHECKS:
+    checks = response.get("checks")
+    if not exact_check_map(checks, EXPECTED_RESPONSE_CHECKS):
         raise ValueError(
             "response receipt checks are not exact"
         )

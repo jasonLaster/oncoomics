@@ -377,7 +377,9 @@
           contracts, final-freeze and materialized-final receipt checks,
           input-contract publication receipts, alias-only
           cross-check materialization, alias-only
-          materializer submission, materializer retry capture, captured
+          materializer submission, materializer submit responses,
+          AI-review staging receipts, terminal Batch worker custody,
+          materializer retry capture, captured
           terminal materializer and route capture checks, captured terminal
           attempts, executable route replay checks, reviewed-public receipt
           checks, cross-check report publication and replay, or WGS
@@ -387,7 +389,10 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = final-freeze checks exact</li>
+          <li class="pill">Latest milestone = Batch / AI checks exact</li>
+          <li class="pill">Batch worker check maps = exact</li>
+          <li class="pill">Materializer response checks = exact</li>
+          <li class="pill">AI staging receipt checks = exact</li>
           <li class="pill">Final-freeze checks = exact</li>
           <li class="pill">Materialized-final checks = exact</li>
           <li class="pill">$200/day limit = max-validated</li>
@@ -1246,6 +1251,10 @@
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact Batch worker check maps</strong>
+              <span>Terminal Batch provenance now rejects numeric stand-ins inside executed-worker, upload, task-host, and SSM-command check maps before a worker receipt can freeze deterministic WGS handoff files or feed the first deterministic report for Rosalind and AI/freeform review.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact final-freeze check maps</strong>
               <span>Final freezing, stage-provenance freezing, and alias-only materialization now reject numeric stand-ins inside dry-run, worker, materialized-object, final-freeze, and final-row check maps before deterministic WGS files can be frozen, replayed locally, packetized for Rosalind, or handed to AI/freeform review.</span>
             </li>
@@ -1681,6 +1690,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer response checks</strong>
+              <span>Materializer capture-command rendering now rejects integer stand-ins inside the one-shot Batch submit-response check map before an alias-only materializer job can be captured into cross-check custody for Rosalind, scarHRD, CHORD, HRDetect, or SBS3 handoffs.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact terminal capture checks</strong>
               <span>Terminal materializer and cross-check route capture now reject integer stand-ins inside logged anchor, upload, receipt, output-row, and history-audit check maps before terminal Batch evidence can seed source-freeze, Rosalind, cross-check replay, or AI/freeform review.</span>
@@ -2181,6 +2194,10 @@
 
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact AI staging checks</strong>
+              <span>AI-review preparation now rejects numeric stand-ins inside staged two-reviewer input check maps before exact Reviewer A and Reviewer B prompt bundles can become isolated source material for independent model review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact private report check maps</strong>
               <span>Private report apply-mode now rejects integer or float stand-ins inside private destination verification and dry-run packet check maps before deterministic, Rosalind, cross-check, AI-review, or synthesis packets can be frozen into the private reviewed-report tree.</span>
@@ -2887,6 +2904,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:48:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Reject loose Batch, materializer, and AI checks:</strong>
+                terminal Batch provenance, materializer capture-command
+                rendering, and AI-review staging now exact-check their nested
+                worker, submit-response, and staged-reviewer input maps, so
+                JSON <code>1</code> cannot masquerade as a reviewed
+                <code>true</code> before deterministic Batch custody,
+                alias-only cross-check materialization, or two-reviewer
+                AI/freeform inputs can continue. No S3, Batch, route, GPU,
+                quota, replacement compute, or apply-mode AWS work was
+                launched; Cost Explorer was refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:40:00-07:00">Jul 20 · local</time>
               <span>

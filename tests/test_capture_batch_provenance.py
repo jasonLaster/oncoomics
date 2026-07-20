@@ -780,6 +780,15 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             ),
             (
                 "host",
+                "truthy-integer",
+                lambda checks: checks.__setitem__(
+                    "ecs_container_instance_matches_task",
+                    1,
+                ),
+                "task_host_mapping",
+            ),
+            (
+                "host",
                 "failed",
                 lambda checks: checks.__setitem__("ecs_container_instance_matches_task", False),
                 "task_host_mapping",
@@ -798,6 +807,12 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             ),
             (
                 "hash",
+                "truthy-integer",
+                lambda checks: checks.__setitem__("invocation_response_code", 1),
+                "hash_command_definition",
+            ),
+            (
+                "hash",
                 "failed",
                 lambda checks: checks.__setitem__("invocation_response_code", False),
                 "hash_command_definition",
@@ -812,6 +827,12 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 "freeze",
                 "unexpected",
                 lambda checks: checks.__setitem__("forged_extra", True),
+                "freeze_command_definition",
+            ),
+            (
+                "freeze",
+                "truthy-integer",
+                lambda checks: checks.__setitem__("command_status", 1),
                 "freeze_command_definition",
             ),
             (
@@ -863,6 +884,12 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             ),
             (
                 "freeze",
+                "truthy-integer",
+                lambda checks: checks.__setitem__("s3_exact_version_present", 1),
+                "freeze_receipt",
+            ),
+            (
+                "freeze",
                 "failed",
                 lambda checks: checks.__setitem__("s3_exact_version_present", False),
                 "freeze_receipt",
@@ -877,6 +904,12 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 "upload",
                 "unexpected",
                 lambda checks: checks.__setitem__("forged_extra", True),
+                "freeze_receipt_upload",
+            ),
+            (
+                "upload",
+                "truthy-integer",
+                lambda checks: checks.__setitem__("exact_version", 1),
                 "freeze_receipt_upload",
             ),
             (
