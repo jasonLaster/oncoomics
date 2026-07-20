@@ -1837,6 +1837,42 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             self.assertFalse(path.is_symlink())
             self.assertEqual(relocated.read_bytes(), b"complete")
 
+    def test_private_create_rejects_symlink_swap_before_final_open(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "private.json"
+            relocated = root / "relocated-private.json"
+            real_open = MODULE.os.open
+            swapped = False
+
+            def swap_before_verify_open(
+                path_arg: Path,
+                flags: int,
+                *args: int,
+            ) -> int:
+                nonlocal swapped
+                if path_arg == path and not args and not swapped:
+                    path.unlink()
+                    relocated.write_bytes(b"complete")
+                    relocated.chmod(0o600)
+                    path.symlink_to(relocated)
+                    swapped = True
+                return real_open(path_arg, flags, *args)
+
+            with (
+                mock.patch.object(MODULE.os, "open", side_effect=swap_before_verify_open),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private output changed during write",
+                ),
+            ):
+                MODULE.create_private(path, b"complete")
+
+            self.assertTrue(swapped)
+            self.assertFalse(path.exists())
+            self.assertFalse(path.is_symlink())
+            self.assertEqual(relocated.read_bytes(), b"complete")
+
     def test_private_group_rolls_back_only_its_partial_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
