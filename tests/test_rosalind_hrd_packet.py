@@ -296,6 +296,23 @@ def mutate_phase3_fast_evidence_checks(
     utils.write_json(report_manifest_path, report_manifest)
 
 
+def mutate_deterministic_evidence_checks(
+    deterministic_root: Path,
+    mutation: Callable[[dict], None],
+) -> None:
+    checks_path = deterministic_root / "evidence_checks.json"
+    checks = utils.read_json(checks_path)
+    mutation(checks)
+    utils.write_json(checks_path, checks)
+
+    report_manifest_path = deterministic_root / "report_manifest.json"
+    report_manifest = utils.read_json(report_manifest_path)
+    report_manifest["support_sha256"]["evidence_checks.json"] = (
+        hashlib.sha256(checks_path.read_bytes()).hexdigest()
+    )
+    utils.write_json(report_manifest_path, report_manifest)
+
+
 def mutate_phase3_fast_report_manifest(
     deterministic_root: Path,
     mutation: Callable[[dict], None],
@@ -1395,6 +1412,79 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 expected_manifest_sha256,
                 packet.sha256_file(deterministic_root / "report_manifest.json"),
             )
+
+    def test_diana_wgs_packet_rejects_loose_terminal_evidence_checks(self):
+        cases = (
+            (
+                "extra_top_level",
+                lambda checks: checks.__setitem__("status_copy", "passed"),
+                "deterministic evidence checks are not exact",
+            ),
+            (
+                "padded_status",
+                lambda checks: checks.__setitem__("status", " passed"),
+                "deterministic evidence-check status must be a non-empty unpadded single-line string",
+            ),
+            (
+                "extra_input_field",
+                lambda checks: checks["input_sha256"][0].__setitem__("extra", "stale"),
+                "deterministic evidence-check input rows are not exact",
+            ),
+            (
+                "bytes_bool",
+                lambda checks: checks["input_sha256"][0].__setitem__("bytes", True),
+                "deterministic evidence-check input row 1 bytes must be a non-negative integer",
+            ),
+            (
+                "extra_check_field",
+                lambda checks: checks["checks"][0].__setitem__("extra", "stale"),
+                "deterministic evidence-check rows are not exact",
+            ),
+            (
+                "multiline_check_detail",
+                lambda checks: checks["checks"][0].__setitem__(
+                    "detail",
+                    "synthetic\nstale",
+                ),
+                "deterministic evidence-check row 1 detail must be a non-empty unpadded single-line string",
+            ),
+            (
+                "failed_check",
+                lambda checks: checks["checks"][0].__setitem__("status", "failed"),
+                "deterministic evidence-check rows are incomplete or not all passed",
+            ),
+        )
+
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+                output_root = Path(tmp)
+                artifact_root = Path(artifacts)
+                write_diana_wgs_worker_artifacts(artifact_root)
+                deterministic_root = write_deterministic_report(
+                    output_root / "deterministic",
+                    artifact_root,
+                )
+                mutate_deterministic_evidence_checks(deterministic_root, mutation)
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json"
+                    ).exists()
+                )
 
     def test_diana_wgs_packet_consumes_phase3_fast_deterministic_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
