@@ -4116,38 +4116,31 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
-    def test_diana_wgs_packet_file_copy_rejects_source_symlink_swap(self):
+    def test_diana_wgs_packet_file_copy_uses_exact_stable_source_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = root / "source.txt"
-            relocated = root / "relocated.txt"
             destination = root / "report.md"
             source.write_text("packet\n", encoding="utf-8")
-            real_fsync_directory = packet.fsync_directory
+            real_require_safe = packet.require_safe_diana_wgs_packet_file
+            mutated = False
 
-            def swap_source_after_parent_fsync(path: Path) -> None:
-                real_fsync_directory(path)
-                relocated.write_text("packet\n", encoding="utf-8")
-                source.unlink()
-                source.symlink_to(relocated)
+            def mutate_before_destination_open(path: Path) -> Path:
+                nonlocal mutated
+                if not mutated:
+                    mutated = True
+                    source.write_text("rewritten\n", encoding="utf-8")
+                return real_require_safe(path)
 
-            with (
-                patch.object(
-                    packet,
-                    "fsync_directory",
-                    side_effect=swap_source_after_parent_fsync,
-                ),
-                self.assertRaisesRegex(
-                    ValueError,
-                    "source.txt SHA-256 input must be a regular "
-                    "non-symlink file",
-                ),
+            with patch.object(
+                packet,
+                "require_safe_diana_wgs_packet_file",
+                side_effect=mutate_before_destination_open,
             ):
                 packet.copy_diana_wgs_packet_file(source, destination)
 
-            self.assertTrue(relocated.exists())
-            self.assertTrue(source.is_symlink())
-            self.assertFalse(destination.exists())
+            self.assertEqual(source.read_text(encoding="utf-8"), "rewritten\n")
+            self.assertEqual(destination.read_text(encoding="utf-8"), "packet\n")
 
     def test_diana_wgs_packet_cleans_current_attempt_after_install_failure(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
