@@ -252,14 +252,18 @@ def load_object_with_sha256(path: Path, label: str) -> Tuple[Dict[str, Any], str
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> Tuple[bytes, str]:
-    data = read_real_nonempty_file_once(path, label)
+    data, identity = read_real_nonempty_file_once(path, label)
     digest = sha256_bytes(data)
-    if sha256_bytes(read_real_nonempty_file_once(path, label)) != digest:
+    stable_data, stable_identity = read_real_nonempty_file_once(path, label)
+    if stable_identity != identity or sha256_bytes(stable_data) != digest:
         raise ValueError(f"{label} changed during read: {path}")
     return data, digest
 
 
-def read_real_nonempty_file_once(path: Path, label: str) -> bytes:
+def read_real_nonempty_file_once(
+    path: Path,
+    label: str,
+) -> Tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_real_nonempty_file(path, label)
     flags = (
         os.O_RDONLY
@@ -289,7 +293,7 @@ def read_real_nonempty_file_once(path: Path, label: str) -> bytes:
         or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{label} changed during read: {path}")
-    return data
+    return data, stat_identity(opened)
 
 
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
