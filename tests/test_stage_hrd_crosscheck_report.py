@@ -382,6 +382,39 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
             self.assertTrue(moved)
 
+    def test_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            report = root / "report.md"
+            replacement = root / "replacement-report.md"
+            report.write_text("stable report\n", encoding="utf-8")
+            replacement.write_text("stable report\n", encoding="utf-8")
+            real_read_once = STAGE.read_real_file_once
+            swapped = False
+
+            def replace_leaf_after_first_read(path: Path, label: str):
+                nonlocal swapped
+                result = real_read_once(path, label)
+                if path == report and not swapped:
+                    replacement.replace(report)
+                    swapped = True
+                return result
+
+            with (
+                mock.patch.object(
+                    STAGE,
+                    "read_real_file_once",
+                    side_effect=replace_leaf_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report.md SHA-256 input changed during read",
+                ),
+            ):
+                STAGE.sha256(report)
+
+            self.assertTrue(swapped)
+
     def test_sha256_rejects_hash_input_swapped_to_symlink_after_preflight(
         self,
     ) -> None:
@@ -554,6 +587,39 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 STAGE.load_json_with_sha256(verification, "download verification")
 
             self.assertTrue(moved)
+
+    def test_stage_rejects_loaded_json_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            replacement = root / "download-verification.replacement.json"
+            shutil.copy2(verification, replacement)
+            real_read_once = STAGE.read_real_file_once
+            swapped = False
+
+            def replace_leaf_after_first_read(path: Path, label: str):
+                nonlocal swapped
+                result = real_read_once(path, label)
+                if path == verification and not swapped:
+                    replacement.replace(verification)
+                    swapped = True
+                return result
+
+            with (
+                mock.patch.object(
+                    STAGE,
+                    "read_real_file_once",
+                    side_effect=replace_leaf_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "download verification changed during read",
+                ),
+            ):
+                STAGE.load_json_with_sha256(verification, "download verification")
+
+            self.assertTrue(swapped)
 
     def test_stage_binds_parsed_source_manifest_digest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
