@@ -22,6 +22,7 @@ from typing import Any, Iterable
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from check_contract import private_output, validate
+from daily_cost_guard import check_daily_cost_guard
 
 REGION = "us-east-1"
 ACCOUNT_ID = "172630973301"
@@ -31,6 +32,8 @@ QUEUE_ARN = f"arn:aws:batch:{REGION}:{ACCOUNT_ID}:job-queue/{QUEUE_NAME}"
 COMPUTE_ENVIRONMENT_ARN = f"arn:aws:batch:{REGION}:{ACCOUNT_ID}:compute-environment/{QUEUE_NAME}"
 EXPECTED_JOB_ROLE = f"arn:aws:iam::{ACCOUNT_ID}:role/diana-omics-prod-use1-batch-job"
 EXPECTED_INSTANCE_TYPES = ("c7i", "m7i", "r7i")
+DAILY_COST_GUARD_LEDGER = "diana-omics-prod-use1-daily-cost-guard-ledger"
+DAILY_COST_GUARD_LIVE_STOP_USD = "160"
 LOG_GROUP = "/aws/batch/diana-omics-prod-use1"
 LOG_STREAM_PREFIX = "hrd-crosscheck"
 JOB_STATUSES = (
@@ -786,6 +789,14 @@ def submit(request: dict[str, Any], region: str) -> dict[str, Any]:
     return response
 
 
+def check_submit_daily_cost_guard(region: str) -> dict[str, str]:
+    return check_daily_cost_guard(
+        ledger=DAILY_COST_GUARD_LEDGER,
+        region=region,
+        live_stop_usd=DAILY_COST_GUARD_LIVE_STOP_USD,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--route", required=True, choices=sorted(ROUTES))
@@ -862,6 +873,7 @@ def main() -> int:
         raise SystemExit(f"Fail-closed: response receipt could not be reserved; no job submitted: {error}") from error
     response: dict[str, Any] | None = None
     try:
+        daily_cost_guard = check_submit_daily_cost_guard(args.region)
         response = submit(request_receipt["submit_job_request"], args.region)
         response_receipt = {
             "schema_version": 1,
@@ -876,8 +888,10 @@ def main() -> int:
             "submit_job_request_sha256": sha256_bytes(canonical_bytes(request_receipt["submit_job_request"])),
             "job_id": response["jobId"],
             "job_arn": response["jobArn"],
+            "daily_cost_guard": daily_cost_guard,
             "response": response,
             "checks": {
+                "daily_cost_guard_not_spent": daily_cost_guard["status"] == "passed",
                 "request_receipt_mode_0600": (args.request_output.stat().st_mode & 0o777) == 0o600,
                 "exact_job_name": response.get("jobName") == request_receipt["submit_job_request"]["jobName"],
                 "job_id_and_arn_captured": True,

@@ -1828,6 +1828,11 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         dry_run = self.write_dry_run_receipt(request)
         with (
             mock.patch.object(MODULE, "preflight", return_value=request),
+            mock.patch.object(
+                MODULE,
+                "check_submit_daily_cost_guard",
+                return_value={"status": "passed"},
+            ),
             mock.patch.object(MODULE, "submit", return_value=response) as submitter,
             mock.patch.dict(os.environ, {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"}, clear=True),
         ):
@@ -1843,10 +1848,43 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         persisted = json.loads(self.response_output.read_text(encoding="utf-8"))
         self.assertEqual(persisted["status"], "submitted")
         self.assertEqual(persisted["response"], response)
+        self.assertEqual(persisted["daily_cost_guard"], {"status": "passed"})
+        self.assertIs(persisted["checks"]["daily_cost_guard_not_spent"], True)
         self.assertEqual(
             persisted["request_receipt"]["sha256"],
             hashlib.sha256(self.request_output.read_bytes()).hexdigest(),
         )
+
+    def test_daily_cost_guard_fails_before_submit(self) -> None:
+        request = self.preflight_receipt("diana-wgs-hrd-materialize-20260716T033101Z")
+        dry_run = self.write_dry_run_receipt(request)
+
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                self.argv(submit=True, dry_run_receipt=dry_run),
+            ),
+            mock.patch.object(MODULE, "preflight", return_value=request),
+            mock.patch.object(
+                MODULE,
+                "check_submit_daily_cost_guard",
+                side_effect=ValueError("Daily Batch EC2 cost guard is already spent"),
+            ),
+            mock.patch.object(MODULE, "submit") as submitter,
+            mock.patch.dict(
+                os.environ,
+                {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"},
+                clear=True,
+            ),
+            self.assertRaisesRegex(SystemExit, "do not retry"),
+        ):
+            MODULE.main()
+
+        submitter.assert_not_called()
+        persisted = json.loads(self.response_output.read_text(encoding="utf-8"))
+        self.assertEqual(persisted["status"], "submission_failed_or_ambiguous")
+        self.assertIn("Daily Batch EC2 cost guard", persisted["error"])
 
     def test_submit_response_receipt_records_inexact_retry_attempts_as_failed(
         self,
@@ -1880,6 +1918,11 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                         self.argv(submit=True, dry_run_receipt=dry_run),
                     ),
                     mock.patch.object(MODULE, "preflight", return_value=request),
+                    mock.patch.object(
+                        MODULE,
+                        "check_submit_daily_cost_guard",
+                        return_value={"status": "passed"},
+                    ),
                     mock.patch.object(MODULE, "submit", return_value=response),
                     mock.patch.dict(
                         os.environ,
@@ -1909,6 +1952,11 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                 self.argv(submit=True, dry_run_receipt=dry_run),
             ),
             mock.patch.object(MODULE, "preflight", return_value=request),
+            mock.patch.object(
+                MODULE,
+                "check_submit_daily_cost_guard",
+                return_value={"status": "passed"},
+            ),
             mock.patch.object(MODULE, "submit", return_value=response) as submitter,
             mock.patch.object(MODULE, "complete_reserved", side_effect=OSError("fsync failed")),
             mock.patch.dict(os.environ, {"HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN": "YES"}, clear=True),

@@ -522,3 +522,10 @@ slower NAT Gateway, S3, ECR, DynamoDB, Lambda, logs, EventBridge, and AWS
 Budgets metering. That makes a GPU run stop early rather than late. AWS billing
 telemetry is still delayed, so leave GPU smoke and execute runs bounded and
 re-check Batch state after every high-cost test.
+
+Mutating submitters that bypass Nextflow must also re-read the same UTC-day
+DynamoDB ledger immediately before `SubmitJob`. The static HRD route submitter,
+v4 cross-check materializer submitter, and bounded cloud Rosalind packet helper
+fail closed once the ledger reaches the live stop, so setting an explicit
+`--submit` flag or `HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES` cannot jump around
+the daily guard.
