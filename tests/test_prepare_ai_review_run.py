@@ -37,6 +37,39 @@ def write_staged_run(staging: Path) -> None:
         else:
             path.write_text("{}\n", encoding="utf-8")
 
+    bundle_dir = staging / "bundle"
+    reviewer_a_prompt = bundle_dir / "reviewer-a.prompt.md"
+    reviewer_b_prompt = bundle_dir / "reviewer-b.prompt.md"
+    review_bundle = bundle_dir / "review_bundle.json"
+    bundle_manifest = bundle_dir / "bundle_manifest.json"
+    stage_receipt = staging / "stage_ai_review_inputs_receipt.json"
+    reviewer_a_prompt.write_text("reviewer A prompt\n", encoding="utf-8")
+    reviewer_b_prompt.write_text("reviewer B prompt\n", encoding="utf-8")
+    review_bundle.write_text("{}\n", encoding="utf-8")
+    write_json(
+        bundle_manifest,
+        {
+            "review_bundle_sha256": PREPARE.sha256(review_bundle),
+            "prompt_sha256": {
+                "A": PREPARE.sha256(reviewer_a_prompt),
+                "B": PREPARE.sha256(reviewer_b_prompt),
+            },
+        },
+    )
+    write_json(stage_receipt, {"status": "passed"})
+    write_json(
+        staging / "prepare_ai_review_run_receipt.json",
+        {
+            "bundle_manifest_sha256": PREPARE.sha256(bundle_manifest),
+            "review_bundle_sha256": PREPARE.sha256(review_bundle),
+            "stage_receipt_sha256": PREPARE.sha256(stage_receipt),
+            "prompt_sha256": {
+                "A": PREPARE.sha256(reviewer_a_prompt),
+                "B": PREPARE.sha256(reviewer_b_prompt),
+            },
+        },
+    )
+
 
 def rebased_stage_receipt(
     output: Path,
@@ -599,6 +632,99 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 self.assertRaisesRegex(
                     ValueError,
                     "stage AI review input receipt is not exact",
+                ),
+            ):
+                PREPARE.prepare(namespace(fixture, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".ai-review.*")))
+
+    def test_rejects_bundle_manifest_changed_after_postcondition_validation(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+            real_validate_postconditions = PREPARE.validate_postconditions
+
+            def validate_then_mutate_bundle_manifest(
+                bundle_dir: Path,
+                reviewer_root: Path,
+                stage_receipt_path: Path,
+                source_manifests: dict[str, dict[str, str]],
+                output: Path,
+                inventory_id: str,
+            ) -> dict[str, object]:
+                postconditions = real_validate_postconditions(
+                    bundle_dir,
+                    reviewer_root,
+                    stage_receipt_path,
+                    source_manifests,
+                    output,
+                    inventory_id,
+                )
+                manifest_path = bundle_dir / "bundle_manifest.json"
+                payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+                payload["tampered_after_validation"] = True
+                write_json(manifest_path, payload)
+                return postconditions
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "validate_postconditions",
+                    side_effect=validate_then_mutate_bundle_manifest,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "bundle_manifest_sha256 is stale",
+                ),
+            ):
+                PREPARE.prepare(namespace(fixture, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".ai-review.*")))
+
+    def test_rejects_stage_receipt_changed_after_postcondition_validation(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+            real_validate_postconditions = PREPARE.validate_postconditions
+
+            def validate_then_mutate_stage_receipt(
+                bundle_dir: Path,
+                reviewer_root: Path,
+                stage_receipt_path: Path,
+                source_manifests: dict[str, dict[str, str]],
+                output: Path,
+                inventory_id: str,
+            ) -> dict[str, object]:
+                postconditions = real_validate_postconditions(
+                    bundle_dir,
+                    reviewer_root,
+                    stage_receipt_path,
+                    source_manifests,
+                    output,
+                    inventory_id,
+                )
+                payload = json.loads(stage_receipt_path.read_text(encoding="utf-8"))
+                payload["tampered_after_validation"] = True
+                write_json(stage_receipt_path, payload)
+                return postconditions
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "validate_postconditions",
+                    side_effect=validate_then_mutate_stage_receipt,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "stage_receipt_sha256 is stale",
                 ),
             ):
                 PREPARE.prepare(namespace(fixture, output))
@@ -1227,6 +1353,27 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                     ValueError,
                     "staged AI review entry changed during install",
                 ),
+            ):
+                PREPARE.install_staged_run(staging, output)
+
+            self.assertFalse(output.exists())
+
+    def test_install_rejects_stale_prepared_run_hashes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            staging = root / "staging"
+            output = root / "ai-review"
+            PREPARE.prepare(namespace(fixture, staging))
+
+            manifest_path = staging / "bundle" / "bundle_manifest.json"
+            payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+            payload["tampered_before_install"] = True
+            write_json(manifest_path, payload)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "bundle_manifest_sha256 is stale",
             ):
                 PREPARE.install_staged_run(staging, output)
 

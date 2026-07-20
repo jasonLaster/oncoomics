@@ -24,6 +24,7 @@ Every dashboard refresh should include an AWS Cost Explorer breakdown for the pr
 - Request `UnblendedCost`.
 - Group by `SERVICE` first and `USAGE_TYPE` second.
 - Display the covered UTC date, total unblended cost, and the top service / usage-type rows.
+- Label each row in plain language first, then keep the raw Cost Explorer service and usage type in the smaller secondary text.
 - Fold tiny rows into `Other` if that keeps the card readable.
 - If Cost Explorer is unavailable or permission denied, keep the cost card visible and state the attempted UTC window plus the read-only error class; do not omit the card.
 

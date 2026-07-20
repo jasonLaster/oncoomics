@@ -115,10 +115,16 @@ def sha256(path: Path) -> str:
 
 
 def load_object(path: Path) -> dict[str, Any]:
+    value, _ = load_object_with_sha256(path)
+    return value
+
+
+def load_object_with_sha256(path: Path) -> tuple[dict[str, Any], str]:
     path = require_real_file(path, path.name)
+    data, digest = read_stable_file_with_sha256(path, path.name)
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -129,7 +135,7 @@ def load_object(path: Path) -> dict[str, Any]:
         raise ValueError(f"invalid JSON in {path.name}") from error
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path}")
-    return value
+    return value, digest
 
 
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
@@ -138,6 +144,15 @@ def canonical_json_bytes(value: dict[str, Any]) -> bytes:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    require_real_hash_input(path)
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if not data or sha256_bytes(path.read_bytes()) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data, digest
 
 
 def is_exact_int(value: Any, expected: int) -> bool:
@@ -204,13 +219,13 @@ def require_real_file(path: Path, label: str) -> Path:
     return resolved
 
 
-def require_manifest(path: Path, expected_method: str) -> dict[str, Any]:
+def require_manifest(path: Path, expected_method: str) -> tuple[dict[str, Any], str]:
     manifest_path = require_real_file(path, f"{expected_method} manifest")
     report_path = require_real_file(
         manifest_path.parent / "report.md",
         f"{expected_method} report",
     )
-    manifest = load_object(manifest_path)
+    manifest, manifest_sha256 = load_object_with_sha256(manifest_path)
     source_sha256 = manifest.get("source_sha256")
     review_summary = manifest.get("review_summary")
     if (
@@ -231,7 +246,7 @@ def require_manifest(path: Path, expected_method: str) -> dict[str, Any]:
         manifest,
         expected_method,
     )
-    return manifest
+    return manifest, manifest_sha256
 
 
 def required_methods(args: argparse.Namespace) -> tuple[str, ...]:
@@ -297,8 +312,7 @@ def validate_sources(
             raise ValueError(f"duplicate source packet directory for {method_id}")
         if path.is_relative_to(output) or directory.is_relative_to(output):
             raise ValueError(f"source manifest for {method_id} is inside output")
-        require_manifest(path, method_id)
-        actual_sha256 = sha256(path)
+        _, actual_sha256 = require_manifest(path, method_id)
         if actual_sha256 != expected_sha256.get(method_id):
             raise ValueError(f"{method_id} source manifest SHA-256 is not receipt-bound")
         source_manifests[method_id] = {
@@ -413,8 +427,10 @@ def validate_postconditions(
 ) -> dict[str, Any]:
     methods = required_method_ids(inventory_id)
     bundle_manifest_path = bundle_dir / "bundle_manifest.json"
-    bundle_manifest = load_object(bundle_manifest_path)
-    stage_receipt = load_object(stage_receipt_path)
+    bundle_manifest, bundle_manifest_sha256 = load_object_with_sha256(
+        bundle_manifest_path
+    )
+    stage_receipt, stage_receipt_sha256 = load_object_with_sha256(stage_receipt_path)
     require_inventory_binding(
         bundle_manifest.get("method_inventory"),
         bundle_manifest.get("method_inventory_sha256"),
@@ -449,8 +465,10 @@ def validate_postconditions(
     require_exact_postcondition_checks(checks)
     return {
         "bundle_manifest": bundle_manifest,
+        "bundle_manifest_sha256": bundle_manifest_sha256,
         "stage_receipt_reviewers": stage_receipt_reviewers,
         "stage_receipt": stage_receipt,
+        "stage_receipt_sha256": stage_receipt_sha256,
         "checks": checks,
     }
 
@@ -601,6 +619,28 @@ def require_staged_run_inventory(path: Path) -> None:
         )
 
 
+def require_prepared_run_support(path: Path) -> None:
+    receipt = load_object(path / "prepare_ai_review_run_receipt.json")
+    bundle_dir = path / "bundle"
+    current_hashes = {
+        "bundle_manifest_sha256": sha256(bundle_dir / "bundle_manifest.json"),
+        "review_bundle_sha256": sha256(bundle_dir / "review_bundle.json"),
+        "stage_receipt_sha256": sha256(
+            path / "stage_ai_review_inputs_receipt.json"
+        ),
+    }
+    for key, actual_sha256 in current_hashes.items():
+        if receipt.get(key) != actual_sha256:
+            raise ValueError(f"prepared AI review run {key} is stale")
+
+    prompt_sha256 = receipt.get("prompt_sha256")
+    if not isinstance(prompt_sha256, dict):
+        raise ValueError("prepared AI review run prompt hashes are stale")
+    for role, (_, prompt_name) in REVIEWER_INPUTS.items():
+        if prompt_sha256.get(role) != sha256(bundle_dir / prompt_name):
+            raise ValueError("prepared AI review run prompt hashes are stale")
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -667,6 +707,7 @@ def install_staged_run(staging: Path, output: Path) -> None:
                     + destination.name
                 )
         require_staged_run_inventory(output)
+        require_prepared_run_support(output)
     except Exception:
         for path in reversed(installed):
             if path.is_dir() and not path.is_symlink():
@@ -725,10 +766,10 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
             "source_manifests": source_manifests,
             "model_catalog_receipt_sha256": sha256(require_real_file(args.model_catalog_receipt, "model catalog receipt")),
             "bundle_dir": str(output / "bundle"),
-            "bundle_manifest_sha256": sha256(bundle_dir / "bundle_manifest.json"),
+            "bundle_manifest_sha256": postconditions["bundle_manifest_sha256"],
             "review_bundle_sha256": bundle_manifest["review_bundle_sha256"],
             "prompt_sha256": bundle_manifest["prompt_sha256"],
-            "stage_receipt_sha256": sha256(stage_receipt),
+            "stage_receipt_sha256": postconditions["stage_receipt_sha256"],
             "reviewer_inputs": {
                 role: {
                     "directory": details["directory"],
@@ -739,6 +780,7 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
             "checks": postconditions["checks"],
         }
         write_json(staging / "prepare_ai_review_run_receipt.json", receipt, create=True)
+        require_prepared_run_support(staging)
 
         install_staged_run(staging, output)
         keep_staging = True
