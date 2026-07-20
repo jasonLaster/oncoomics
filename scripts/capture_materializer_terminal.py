@@ -363,7 +363,14 @@ def require_exact_checks(checks: dict[str, bool], expected: dict[str, bool], lab
 def s3_location(uri: str) -> tuple[str, str]:
     parsed = urlparse(uri)
     key = parsed.path.lstrip("/")
-    if parsed.scheme != "s3" or not parsed.netloc or not key:
+    if (
+        parsed.scheme != "s3"
+        or not parsed.netloc
+        or not key
+        or parsed.params
+        or parsed.query
+        or parsed.fragment
+    ):
         raise ValueError(f"expected an S3 object URI: {uri}")
     if not parsed.netloc.startswith("diana-omics-private-results-"):
         raise ValueError("receipt is outside the private-results bucket")
