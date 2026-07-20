@@ -260,22 +260,21 @@ class RenderMaterializerJobDefinitionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "materializer-job-definition.json"
             source.write_text('{"status":"first"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_sha256_file_once = module.sha256_file_once
             reads = 0
 
-            def mutate_after_first_read(path: Path) -> bytes:
+            def mutate_after_first_read(path: Path) -> str:
                 nonlocal reads
-                data = real_read_bytes(path)
+                digest = real_sha256_file_once(path)
                 if path == source and reads == 0:
                     source.write_text('{"status":"second"}\n', encoding="utf-8")
                 reads += 1
-                return data
+                return digest
 
             with (
                 mock.patch.object(
-                    Path,
-                    "read_bytes",
-                    autospec=True,
+                    module,
+                    "sha256_file_once",
                     side_effect=mutate_after_first_read,
                 ),
                 self.assertRaisesRegex(
@@ -285,6 +284,42 @@ class RenderMaterializerJobDefinitionTests(unittest.TestCase):
                 ),
             ):
                 module.sha256_file(source)
+
+    def test_sha256_file_rejects_symlink_swap_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "materializer-job-definition.json"
+            relocated = root / "relocated-job-definition.json"
+            source.write_text('{"status":"first"}\n', encoding="utf-8")
+            real_os_open = module.os.open
+            swapped = False
+
+            def swap_before_open(
+                path: Path,
+                flags: int,
+                mode: int = 0o777,
+                *,
+                dir_fd: int | None = None,
+            ) -> int:
+                nonlocal swapped
+                if path == source and not swapped:
+                    swapped = True
+                    source.unlink()
+                    relocated.write_text('{"status":"relocated"}\n', encoding="utf-8")
+                    source.symlink_to(relocated)
+                return real_os_open(path, flags, mode, dir_fd=dir_fd)
+
+            with (
+                mock.patch.object(module.os, "open", side_effect=swap_before_open),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materializer-job-definition.json SHA-256 input "
+                    "changed during read",
+                ),
+            ):
+                module.sha256_file(source)
+
+            self.assertTrue(swapped)
 
 
 if __name__ == "__main__":
