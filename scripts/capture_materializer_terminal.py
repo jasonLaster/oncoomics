@@ -562,7 +562,6 @@ def validate_job(
         if isinstance(definition.get("containerProperties"), dict)
         else {}
     )
-    log_options = log_configuration.get("options", {}) if isinstance(log_configuration, dict) else {}
     definition_retry = definition.get("retryStrategy")
     definition_timeout = definition.get("timeout")
     started_at = job.get("startedAt")
@@ -594,10 +593,14 @@ def validate_job(
             and exact_int(definition_timeout.get("attemptDurationSeconds"), 21600)
         ),
         "definition_log_exact": (
-            log_configuration.get("logDriver") == "awslogs"
-            and log_options.get("awslogs-group") == LOG_GROUP
-            and log_options.get("awslogs-region") == REGION
-            and log_options.get("awslogs-stream-prefix") == LOG_STREAM_PREFIX.rstrip("/")
+            log_configuration == {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": LOG_GROUP,
+                    "awslogs-region": REGION,
+                    "awslogs-stream-prefix": LOG_STREAM_PREFIX.rstrip("/"),
+                },
+            }
         ),
         "queue_live_exact": (
             queue.get("jobQueueArn") == EXPECTED_QUEUE_ARN

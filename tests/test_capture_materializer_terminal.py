@@ -892,6 +892,31 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                     self.parameters,
                 )
 
+    def test_definition_log_configuration_must_be_exact(self) -> None:
+        cases = {
+            "extra_option": lambda log: log["options"].__setitem__(
+                "awslogs-create-group",
+                "true",
+            ),
+            "secret_options": lambda log: log.__setitem__("secretOptions", []),
+            "future_driver": lambda log: log.__setitem__("futureLogField", "x"),
+        }
+
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, mutate in cases.items():
+                with self.subTest(label=label):
+                    definition = copy.deepcopy(self.definition)
+                    mutate(definition["containerProperties"]["logConfiguration"])
+
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "failed definition_log_exact",
+                    ):
+                        self.run_capture(
+                            self.args(Path(temporary) / label),
+                            aws=self.aws_side_effect(definition=definition),
+                        )
+
     def test_failed_batch_identity_check_reports_exact_key(self) -> None:
         job = copy.deepcopy(self.job)
         job["stoppedAt"] = 99
