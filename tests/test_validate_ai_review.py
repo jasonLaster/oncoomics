@@ -1460,6 +1460,30 @@ class ValidateAiReviewTests(unittest.TestCase):
                 ),
                 "validation.json changed during write",
             ),
+            (
+                "tampered report",
+                lambda review: (review / "report.md").write_text(
+                    "# Tampered reviewer report\n",
+                    encoding="utf-8",
+                ),
+                "validated review artifacts changed during write",
+            ),
+            (
+                "tampered claims",
+                lambda review: (review / "claims.csv").write_text(
+                    "claim_id,claim\nC001,tampered\n",
+                    encoding="utf-8",
+                ),
+                "validated review artifacts changed during write",
+            ),
+            (
+                "tampered review manifest",
+                lambda review: (review / "review_manifest.json").write_text(
+                    '{"schema_version":2,"tampered":true}\n',
+                    encoding="utf-8",
+                ),
+                "validated review artifacts changed during write",
+            ),
         )
 
         for label, tamper, message in cases:
