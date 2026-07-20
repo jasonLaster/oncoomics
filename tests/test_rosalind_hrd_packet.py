@@ -1908,16 +1908,52 @@ class RosalindHrdPacketTest(unittest.TestCase):
                         "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
                     },
                 ),
-                self.assertRaisesRegex(ValueError, "lacks an alias input contract"),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "Phase 3 fast sequenza_scarhrd materialization plan is not exact",
+                ),
             ):
                 packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
 
     def test_diana_wgs_phase3_fast_packet_rejects_non_exact_plan_schemas(self):
         cases = (
             (
+                "extra_crosscheck_field",
+                lambda plans: plans.__setitem__("extra", "stale"),
+                "Phase 3 fast cross-check input plan contract is not exact",
+            ),
+            (
                 "crosscheck_input_plans",
                 lambda plans: plans.update({"schema_version": 1.0}),
                 "Phase 3 fast cross-check input plan contract is not exact",
+            ),
+            (
+                "extra_route",
+                lambda plans: plans["routes"].__setitem__(
+                    "facets",
+                    {
+                        "status": "blocked",
+                        "execution_status": "not_run",
+                        "interpretation_status": "no_call",
+                    },
+                ),
+                "Phase 3 fast cross-check input plan lacks exact routes",
+            ),
+            (
+                "extra_sigprofiler_field",
+                lambda plans: plans["routes"]["sigprofiler_sbs3"].__setitem__(
+                    "extra",
+                    "stale",
+                ),
+                "Phase 3 fast sigprofiler_sbs3 materialization plan is not exact",
+            ),
+            (
+                "extra_sequenza_field",
+                lambda plans: plans["routes"]["sequenza_scarhrd"].__setitem__(
+                    "extra",
+                    "stale",
+                ),
+                "Phase 3 fast sequenza_scarhrd materialization plan is not exact",
             ),
             (
                 "sequenza_alias_contract",
