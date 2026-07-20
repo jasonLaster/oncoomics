@@ -531,6 +531,42 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             self.assertEqual(fake.get_calls, [])
             self.assertEqual(fake.put_calls, [])
 
+    def test_private_receipt_digest_is_bound_to_validated_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            original_private_receipt_sha256 = digest(fixture.receipt_path.read_bytes())
+            real_validate = MODULE.validate_private_receipt_payload
+            mutated = False
+
+            def mutate_after_private_receipt_parse(
+                receipt: dict[str, object],
+                method_id: str,
+            ) -> tuple[tuple[str, ...], list[dict[str, object]]]:
+                nonlocal mutated
+                result = real_validate(receipt, method_id)
+                fixture.receipt_path.write_text(
+                    '{"changed_after_validated_read": true}\n',
+                    encoding="utf-8",
+                )
+                mutated = True
+                return result
+
+            with mock.patch.object(
+                MODULE,
+                "validate_private_receipt_payload",
+                side_effect=mutate_after_private_receipt_parse,
+            ):
+                result = self.execute(fixture, fake)
+
+            self.assertTrue(mutated)
+            self.assertEqual(
+                result["private_publication_receipt"]["sha256"],
+                original_private_receipt_sha256,
+            )
+
+            self.assertEqual(fake.put_calls, [])
+
     def test_apply_requires_dry_run_receipt_before_s3(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
@@ -775,6 +811,46 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                     checksum(fixture.payloads[relative]),
                 )
                 self.assertTrue(key.startswith(MODULE.PUBLIC_ROOT + "rosalind/"))
+
+    def test_apply_dry_run_receipt_digest_is_bound_to_validated_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws(fixture)
+            dry_run_receipt = fixture.write_dry_run_receipt()
+            original_dry_run_sha256 = digest(dry_run_receipt.read_bytes())
+            real_source_preflight_object = MODULE.source_preflight_object
+            mutated = False
+
+            def mutate_after_dry_run_parse(
+                row: dict[str, object],
+            ) -> dict[str, object]:
+                nonlocal mutated
+                expected = real_source_preflight_object(row)
+                if not mutated:
+                    dry_run_receipt.write_text(
+                        '{"changed_after_validated_read": true}\n',
+                        encoding="utf-8",
+                    )
+                    mutated = True
+                return expected
+
+            with mock.patch.object(
+                MODULE,
+                "source_preflight_object",
+                side_effect=mutate_after_dry_run_parse,
+            ):
+                result = self.execute(
+                    fixture,
+                    fake,
+                    apply=True,
+                    dry_run_receipt=dry_run_receipt,
+                )
+
+            self.assertTrue(mutated)
+            self.assertEqual(
+                result["dry_run_receipt"]["sha256"],
+                original_dry_run_sha256,
+            )
 
     def test_second_scan_rejects_unauthorized_hrd_classification(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

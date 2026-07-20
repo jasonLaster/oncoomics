@@ -17,15 +17,21 @@ cp docs/status/diana-wgs-hrd-progress.html .codex-tmp/diana-wgs-hrd-progress/ind
 
 ## Cost Explorer panel
 
-Every dashboard refresh should include an AWS Cost Explorer breakdown for the previous complete UTC day.
+Every dashboard refresh should include an AWS Cost Explorer breakdown for the latest
+complete UTC billing day. Treat "the past day" as the newest complete UTC day,
+not as a rolling 24-hour window, so the card matches Cost Explorer's daily
+buckets and avoids partial same-day estimates.
 
 - Query Cost Explorer with `Granularity=DAILY`.
-- Use `Start` as yesterday's UTC date and `End` as today's UTC date; Cost Explorer treats `End` as exclusive.
+- Use `Start` as the latest complete UTC date and `End` as the following UTC date; Cost Explorer treats `End` as exclusive.
 - Request `UnblendedCost`.
 - Group by `SERVICE` first and `USAGE_TYPE` second.
 - Display the covered UTC date, total unblended cost, and the top service / usage-type rows.
 - Label each row in plain language first, then keep the raw Cost Explorer service and usage type in the smaller secondary text.
 - Fold tiny rows into `Other` if that keeps the card readable.
+- Refresh the visible total and row list even for source-only dashboard edits.
+- Do not expose AWS account IDs, quota case IDs, raw private S3 paths, or
+  collaborator transfer identifiers in the cost card.
 - If Cost Explorer is unavailable or permission denied, keep the cost card visible and state the attempted UTC window plus the read-only error class; do not omit the card.
 
 Example query shape:

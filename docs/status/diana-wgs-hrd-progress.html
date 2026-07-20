@@ -368,15 +368,16 @@
           packets from a public known-answer dataset; it is not a Diana result.
           Recent hardening makes each handoff re-check the files it depends on
           before private review or reviewed-public release can continue, and
-          the runbook renderers now carry the exact private receipt digests
-          they parsed. The selected GPU rerun is still quota-blocked, the legacy
+          the reviewed-public publisher now carries the exact receipt digests
+          it parsed. The selected GPU rerun is still quota-blocked, the legacy
           CPU run remains stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = runbook receipt digests carried</li>
+          <li class="pill">Latest milestone = public release receipts carried</li>
+          <li class="pill">Reviewed-public receipt digests = stable</li>
           <li class="pill">Private receipt runbooks = stable</li>
           <li class="pill">AI prep child hashes = stable</li>
           <li class="pill">AI bundle ingress reads = stable</li>
@@ -895,6 +896,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind reviewed-public receipt reads</strong>
+              <span>Reviewed-public report publication now records private and dry-run receipt digests from the exact JSON bytes it parsed, so a mid-run receipt rewrite cannot swap the digest recorded in a public-apply receipt.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · stop on changing Phase 3 inputs</strong>
               <span>Shared Phase 3 JSON and SHA-256 readers now reread real local inputs and fail if file bytes change mid-read, so a handoff cannot validate one version of an input and bind a digest from another.</span>
@@ -2441,6 +2446,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:41:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind reviewed-public receipt digests:</strong>
+                reviewed-public report publishing now derives private and
+                dry-run receipt summaries from the exact JSON bytes it parsed
+                before recording those digests in dry-run or apply receipts.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:40:00-07:00">Jul 19 · local</time>
               <span>

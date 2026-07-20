@@ -344,11 +344,12 @@ def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
-def load_json(path: Path, label: str) -> dict[str, Any]:
+def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     require_real_input_file(path, label)
     try:
+        payload = path.read_bytes()
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            payload.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -357,6 +358,11 @@ def load_json(path: Path, label: str) -> dict[str, Any]:
         raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
+    return value, sha256_bytes(payload)
+
+
+def load_json(path: Path, label: str) -> dict[str, Any]:
+    value, _ = load_json_with_sha256(path, label)
     return value
 
 
@@ -994,7 +1000,9 @@ def validate_dry_run_receipt(
     require_real_input_file(path, "reviewed-public report dry-run receipt")
     if path.is_symlink() or not path.is_file():
         raise ValueError("reviewed-public report dry-run receipt must be a real file")
-    dry_run = load_json(path, "reviewed-public report dry-run receipt")
+    dry_run, dry_run_sha256 = load_json_with_sha256(
+        path, "reviewed-public report dry-run receipt"
+    )
     source_objects = dry_run.get("source_objects")
     checks = dry_run.get("checks")
     private_publication_receipt = dry_run.get("private_publication_receipt")
@@ -1048,7 +1056,7 @@ def validate_dry_run_receipt(
 
     return {
         "path": str(path.resolve()),
-        "sha256": sha256(path),
+        "sha256": dry_run_sha256,
         "method_id": str(receipt["method_id"]),
         "status": "dry_run",
     }
@@ -1065,16 +1073,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         )
     if not re.fullmatch(r"[0-9a-f]{64}", args.private_publication_receipt_sha256):
         raise ValueError("expected private publication receipt SHA-256 is malformed")
-    require_real_input_file(
+    private_receipt, actual_receipt_sha256 = load_json_with_sha256(
         args.private_publication_receipt,
         "private publication receipt",
     )
-    actual_receipt_sha256 = sha256(args.private_publication_receipt)
     if actual_receipt_sha256 != args.private_publication_receipt_sha256:
         raise ValueError("private publication receipt SHA-256 does not match expected")
-    private_receipt, expected, source_rows = validate_private_receipt(
-        args.private_publication_receipt, method_id
-    )
+    expected, source_rows = validate_private_receipt_payload(private_receipt, method_id)
     tokens = merge_forbidden_tokens(
         (*DEFAULT_FORBIDDEN_TOKENS, *args.forbidden_token),
         files=args.forbidden_tokens_file,
@@ -1094,7 +1099,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "script_sha256": sha256(Path(__file__)),
         "private_publication_receipt": {
             "path": str(args.private_publication_receipt.resolve()),
-            "sha256": sha256(args.private_publication_receipt),
+            "sha256": actual_receipt_sha256,
             "destination_prefix": private_receipt["destination_prefix"],
         },
         "destination_prefix": f"s3://{bucket}/{destination_prefix}",
