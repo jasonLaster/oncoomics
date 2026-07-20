@@ -139,6 +139,35 @@ def _nextflow(*args: str, append_args: bool = False) -> TaskStep:
     return _tool("nextflow", "-log", str(NEXTFLOW_LOG_PATH), "run", "main.nf", *args, append_args=append_args)
 
 
+def _aws_daily_cost_guard(params_file: str) -> TaskStep:
+    return _tool("bash", "infra/aws/check-daily-cost-guard.sh", params_file)
+
+
+def _aws_nextflow_params_file(step: TaskStep) -> str | None:
+    if not step.argv or step.argv[0] != "nextflow":
+        return None
+    try:
+        profile = step.argv[step.argv.index("-profile") + 1]
+    except (ValueError, IndexError):
+        return None
+    if not profile.startswith("awsbatch"):
+        return None
+    try:
+        return step.argv[step.argv.index("-params-file") + 1]
+    except (ValueError, IndexError) as error:
+        raise ValueError("AWS Nextflow tasks must pass -params-file before the daily cost guard") from error
+
+
+def _with_aws_daily_cost_guards(steps: Sequence[TaskStep]) -> tuple[TaskStep, ...]:
+    guarded: list[TaskStep] = []
+    for step in steps:
+        params_file = _aws_nextflow_params_file(step)
+        if params_file is not None:
+            guarded.append(_aws_daily_cost_guard(params_file))
+        guarded.append(step)
+    return tuple(guarded)
+
+
 def _terraform(*args: str, env: Optional[Mapping[str, str]] = None) -> TaskStep:
     return _tool("terraform", "-chdir=infra/aws", *args, env=env)
 
@@ -158,7 +187,7 @@ def _task(
     required_env: Optional[Mapping[str, str]] = None,
 ) -> Task:
     return Task(
-        tuple(steps),
+        _with_aws_daily_cost_guards(steps),
         accepts_args=accepts_args,
         allowed_extra_args=allowed_extra_args,
         description=description,

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_NAME="${1:?usage: scripts/launch_phase3_aws_full.sh RUN_NAME RUN_DIR CONTAINER}"
 RUN_DIR="${2:?usage: scripts/launch_phase3_aws_full.sh RUN_NAME RUN_DIR CONTAINER}"
 CONTAINER="${3:?usage: scripts/launch_phase3_aws_full.sh RUN_NAME RUN_DIR CONTAINER}"
@@ -46,6 +47,9 @@ EOF
     exit 64
   fi
 fi
+
+bash "${ROOT_DIR}/infra/aws/check-daily-cost-guard.sh" \
+  "${DIANA_AWS_CONFIG:-${ROOT_DIR}/infra/aws/nextflow.aws.json}"
 
 mkdir -p "$RUN_DIR"
 
