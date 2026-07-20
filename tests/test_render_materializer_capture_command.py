@@ -239,12 +239,12 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
 
     def test_refuses_request_changed_after_json_read(self) -> None:
         args = self.args()
-        real_read_bytes = Path.read_bytes
+        real_read_input = MODULE.read_real_hash_input_once
         changed = False
 
-        def change_after_first_request_read(path: Path) -> bytes:
+        def change_after_first_request_read(path: Path, label: str) -> bytes:
             nonlocal changed
-            data = real_read_bytes(path)
+            data = real_read_input(path, label)
             if path == self.request_path and not changed:
                 request = copy.deepcopy(self.request)
                 request["submit_job_request"]["parameters"][
@@ -259,9 +259,8 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
 
         with (
             mock.patch.object(
-                Path,
-                "read_bytes",
-                autospec=True,
+                MODULE,
+                "read_real_hash_input_once",
                 side_effect=change_after_first_request_read,
             ),
             self.assertRaisesRegex(ValueError, "request receipt changed during read"),
@@ -272,12 +271,12 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
 
     def test_refuses_response_changed_after_json_read(self) -> None:
         args = self.args()
-        real_read_bytes = Path.read_bytes
+        real_read_input = MODULE.read_real_hash_input_once
         changed = False
 
-        def change_after_first_response_read(path: Path) -> bytes:
+        def change_after_first_response_read(path: Path, label: str) -> bytes:
             nonlocal changed
-            data = real_read_bytes(path)
+            data = real_read_input(path, label)
             if path == self.response_path and not changed:
                 response = copy.deepcopy(self.response)
                 response["response"]["jobId"] = "ffffffff-ffff-ffff-ffff-ffffffffffff"
@@ -290,9 +289,8 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
 
         with (
             mock.patch.object(
-                Path,
-                "read_bytes",
-                autospec=True,
+                MODULE,
+                "read_real_hash_input_once",
                 side_effect=change_after_first_response_read,
             ),
             self.assertRaisesRegex(ValueError, "response receipt changed during read"),
@@ -422,23 +420,22 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
     def test_sha256_path_rejects_changing_hash_inputs(self) -> None:
         input_path = self.root / "request.json"
         input_path.write_text('{"status":"first"}\n', encoding="utf-8")
-        real_read_bytes = Path.read_bytes
-        reads = 0
+        real_sha256_path_once = MODULE.sha256_path_once
+        hashes = 0
 
-        def mutate_after_first_read(path: Path) -> bytes:
-            nonlocal reads
-            data = real_read_bytes(path)
-            if path == input_path and reads == 0:
+        def mutate_after_first_hash(path: Path) -> str:
+            nonlocal hashes
+            digest = real_sha256_path_once(path)
+            if path == input_path and hashes == 0:
                 input_path.write_text('{"status":"second"}\n', encoding="utf-8")
-            reads += 1
-            return data
+            hashes += 1
+            return digest
 
         with (
             mock.patch.object(
-                Path,
-                "read_bytes",
-                autospec=True,
-                side_effect=mutate_after_first_read,
+                MODULE,
+                "sha256_path_once",
+                side_effect=mutate_after_first_hash,
             ),
             self.assertRaisesRegex(
                 ValueError,
@@ -446,6 +443,33 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
             ),
         ):
             MODULE.sha256_path(input_path)
+
+    def test_sha256_path_rejects_symlink_swap_after_preflight(self) -> None:
+        input_path = self.root / "request.json"
+        target_path = self.root / "target.json"
+        input_path.write_text('{"status":"original"}\n', encoding="utf-8")
+        target_path.write_text('{"status":"redirected"}\n', encoding="utf-8")
+        real_open = MODULE.os.open
+        swapped = False
+
+        def swap_before_open(path: Path, flags: int, *args: int) -> int:
+            nonlocal swapped
+            if path == input_path and not swapped:
+                input_path.unlink()
+                input_path.symlink_to(target_path)
+                swapped = True
+            return real_open(path, flags, *args)
+
+        with (
+            mock.patch.object(MODULE.os, "open", side_effect=swap_before_open),
+            self.assertRaisesRegex(
+                ValueError,
+                "request.json SHA-256 input changed during read",
+            ),
+        ):
+            MODULE.sha256_path(input_path)
+
+        self.assertTrue(swapped)
 
     def test_rejects_duplicate_receipt_object_names(self) -> None:
         for label, select_path in (
