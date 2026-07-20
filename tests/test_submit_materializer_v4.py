@@ -1092,6 +1092,27 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
 
         aws.assert_not_called()
 
+    def test_reference_crc64nvme_must_be_an_exact_string_before_aws(self) -> None:
+        freeze = json.loads(self.reference_freeze.read_text(encoding="utf-8"))
+        freeze["objects"][0]["destination"]["crc64nvme"] = True
+        self._write(self.reference_freeze, freeze)
+
+        sha_receipt = json.loads(self.reference_sha.read_text(encoding="utf-8"))
+        sha_receipt["freeze_receipt_sha256"] = MODULE.sha256_path(
+            self.reference_freeze
+        )
+        sha_receipt["objects"][0]["crc64nvme"] = True
+        self._write(self.reference_sha, sha_receipt)
+
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(
+                ValueError,
+                "reference freeze destination crc64nvme must be an exact non-empty string",
+            ):
+                MODULE.preflight(self.args())
+
+        aws.assert_not_called()
+
     def test_registration_hash_must_bind_exact_definition(self) -> None:
         altered = self.root / "definition.json"
         value = json.loads(self.job_definition.read_text(encoding="utf-8"))

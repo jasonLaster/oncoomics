@@ -618,7 +618,10 @@ def validate_reference_sources(
             destination.get("version_id") in {"", None, "null"}
             or not valid_version(destination.get("version_id"))
             or not is_positive_exact_int(destination.get("bytes"))
-            or not str(destination.get("crc64nvme", ""))
+            or not require_exact_key(
+                destination.get("crc64nvme"),
+                "reference freeze destination crc64nvme",
+            )
             or destination.get("kms_key_id") is None
         ):
             raise ValueError(f"reference freeze destination is incomplete: {artifact}")
