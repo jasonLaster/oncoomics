@@ -19,11 +19,11 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+import finalize_input_contract as INPUT_CONTRACT
 from build_ai_review_bundle import (
     DuplicateJsonKeyError,
     reject_duplicate_json_object_names,
 )
-import finalize_input_contract as INPUT_CONTRACT
 
 CHECKSUM_FIELDS = (
     "ChecksumCRC64NVME",
@@ -248,7 +248,7 @@ def recover_local_cutover(
     return True
 
 
-def load_object(path: Path, label: str) -> dict[str, Any]:
+def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"{label} parent may not be a symlink: {parent}")
@@ -256,16 +256,24 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
             raise ValueError(f"{label} parent is not a directory: {parent}")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
+    raw = path.read_bytes()
+    digest = sha256_bytes(raw)
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            raw.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value
+    if sha256(path) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return value, digest
+
+
+def load_object(path: Path, label: str) -> dict[str, Any]:
+    return load_object_with_sha256(path, label)[0]
 
 
 def exact_version_id(value: Any) -> str:
@@ -438,7 +446,9 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
     if receipt_output == output or receipt_output.is_relative_to(output):
         raise ValueError("materialization receipt must be outside the artifact tree")
 
-    freeze = load_object(args.freeze_receipt, "freeze receipt")
+    freeze, freeze_receipt_sha256 = load_object_with_sha256(
+        args.freeze_receipt, "freeze receipt"
+    )
     rows = require_exact_final_freeze(freeze, args.expected_kms_key_arn)
 
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -449,7 +459,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
         "run_id": freeze.get("run_id"),
         "batch_job_id": freeze.get("batch_job_id"),
         "script_sha256": sha256(Path(__file__)),
-        "freeze_receipt_sha256": sha256(args.freeze_receipt),
+        "freeze_receipt_sha256": freeze_receipt_sha256,
         "expected_kms_key_arn": args.expected_kms_key_arn,
         "materialization_dir": str(output),
         "object_count": len(rows),
@@ -457,7 +467,9 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
     }
 
     if receipt_output.exists():
-        prior = load_object(receipt_output, "materialization receipt")
+        prior, prior_receipt_sha256 = load_object_with_sha256(
+            receipt_output, "materialization receipt"
+        )
         identity_matches = (
             exact_schema_version(prior, 1)
             and prior.get("run_id") == result["run_id"]
@@ -489,7 +501,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
                 raise ValueError("recovery staging path is unsafe")
             shutil.rmtree(staging)
         result["recovered_from_status"] = prior.get("status")
-        result["prior_receipt_sha256"] = sha256(receipt_output)
+        result["prior_receipt_sha256"] = prior_receipt_sha256
         if prior.get("error"):
             result["prior_error"] = prior.get("error")
         write_json_atomic(receipt_output, result)

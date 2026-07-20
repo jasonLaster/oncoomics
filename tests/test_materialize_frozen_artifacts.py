@@ -512,6 +512,107 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertFalse(receipt.exists())
 
+    def test_hashes_validated_final_freeze_receipt_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            expected_sha = MODULE.sha256(freeze)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+
+            def validate_then_tamper(
+                payload: dict,
+                expected_kms_key_arn: str,
+            ) -> list[dict]:
+                self.assertEqual("synthetic-run", payload.get("run_id"))
+                self.assertEqual(kms, expected_kms_key_arn)
+                freeze.write_text('{"status":"tampered"}\n', encoding="utf-8")
+                return []
+
+            with patch.object(
+                MODULE,
+                "require_exact_final_freeze",
+                side_effect=validate_then_tamper,
+            ):
+                MODULE.main(self.args(freeze, output, receipt, kms))
+
+            payload = json.loads(receipt.read_text(encoding="utf-8"))
+            self.assertEqual(expected_sha, payload["freeze_receipt_sha256"])
+            self.assertEqual("passed", payload["status"])
+
+    def test_hashes_validated_prior_materialization_receipt_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze = self.freeze_fixture(root, kms)
+            output = root / "materialized"
+            receipt = root / "materialization.json"
+            prior = {
+                "schema_version": 1,
+                "status": "failed",
+                "run_id": "synthetic-run",
+                "batch_job_id": "synthetic-job",
+                "script_sha256": MODULE.sha256(
+                    SCRIPT_DIR / "materialize_frozen_artifacts.py"
+                ),
+                "freeze_receipt_sha256": MODULE.sha256(freeze),
+                "expected_kms_key_arn": kms,
+                "materialization_dir": str(output.resolve()),
+                "object_count": 0,
+                "objects": [],
+                "error": "synthetic failure",
+            }
+            MODULE.reserve_json(receipt, prior)
+            expected_prior_sha = MODULE.sha256(receipt)
+
+            def tamper_prior_and_continue(
+                payload: dict,
+                _staging: Path,
+                _output: Path,
+                receipt_output: Path,
+            ) -> bool:
+                self.assertEqual(prior, payload)
+                receipt_output.write_text(
+                    '{"status":"tampered"}\n',
+                    encoding="utf-8",
+                )
+                return False
+
+            with patch.object(
+                MODULE,
+                "recover_local_cutover",
+                side_effect=tamper_prior_and_continue,
+            ), patch.object(MODULE, "require_exact_final_freeze", return_value=[]):
+                MODULE.main(self.args(freeze, output, receipt, kms))
+
+            payload = json.loads(receipt.read_text(encoding="utf-8"))
+            self.assertEqual(expected_prior_sha, payload["prior_receipt_sha256"])
+            self.assertEqual("failed", payload["recovered_from_status"])
+            self.assertEqual("passed", payload["status"])
+
+    def test_load_object_with_sha256_hashes_parsed_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+            payload = b'{"status":"passed"}\n'
+            receipt.write_bytes(payload)
+
+            parsed, digest = MODULE.load_object_with_sha256(receipt, "receipt")
+
+        self.assertEqual({"status": "passed"}, parsed)
+        self.assertEqual(MODULE.sha256_bytes(payload), digest)
+
+    def test_load_object_with_sha256_rejects_stale_local_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+
+            with (
+                patch.object(MODULE, "sha256", return_value="0" * 64),
+                self.assertRaisesRegex(ValueError, "receipt changed during read"),
+            ):
+                MODULE.load_object_with_sha256(receipt, "receipt")
+
     def test_prepared_receipt_recovery_requires_exact_schema(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
