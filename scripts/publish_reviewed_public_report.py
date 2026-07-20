@@ -603,6 +603,14 @@ def validate_private_receipt(
     if path.is_symlink() or not path.is_file():
         raise ValueError("private publication receipt must be a real file")
     receipt = load_json(path, "private publication receipt")
+    expected, rows = validate_private_receipt_payload(receipt, method_id)
+    return receipt, expected, rows
+
+
+def validate_private_receipt_payload(
+    receipt: dict[str, Any],
+    method_id: str,
+) -> tuple[tuple[str, ...], list[dict[str, Any]]]:
     contract = METHOD_CONTRACTS[method_id]
     expected = tuple(sorted(contract["files"]))
     bucket, prefix = private_report_prefix(
@@ -715,7 +723,7 @@ def validate_private_receipt(
         or not SHA256_HEX.fullmatch(dry_run.get("sha256", ""))
     ):
         raise ValueError("private publication dry-run receipt summary is not exact")
-    return receipt, expected, sorted(normalized, key=lambda row: row["relative_path"])
+    return expected, sorted(normalized, key=lambda row: row["relative_path"])
 
 
 def exact_source_checks(

@@ -77,6 +77,13 @@ def preexisting_create_only_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
 def load_json_object(path: Path, label: str) -> dict[str, Any]:
     """Load a required JSON object while rejecting symlinked receipts."""
 
+    value, _ = load_json_object_with_sha256(path, label)
+    return value
+
+
+def load_json_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
+    """Load a required JSON object and the SHA-256 of the exact parsed bytes."""
+
     data = read_stable_file(path, label)
     try:
         value = json.loads(
@@ -89,7 +96,7 @@ def load_json_object(path: Path, label: str) -> dict[str, Any]:
         raise ValueError(f"invalid JSON in {label}: {path}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} is not a JSON object: {path}")
-    return value
+    return value, sha256_bytes(data)
 
 
 def sha256_bytes(value: bytes) -> str:

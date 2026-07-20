@@ -368,15 +368,16 @@
           packets from a public known-answer dataset; it is not a Diana result.
           Recent hardening makes each handoff re-check the files it depends on
           before private review or reviewed-public release can continue, and
-          AI-review preparation now carries the exact bundle and staging receipt
-          hashes it parsed. The selected GPU rerun is still quota-blocked, the
-          legacy CPU run remains stopped, and Diana HRD remains
+          the runbook renderers now carry the exact private receipt digests
+          they parsed. The selected GPU rerun is still quota-blocked, the legacy
+          CPU run remains stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = AI prep receipts rechecked</li>
+          <li class="pill">Latest milestone = runbook receipt digests carried</li>
+          <li class="pill">Private receipt runbooks = stable</li>
           <li class="pill">AI prep child hashes = stable</li>
           <li class="pill">AI bundle ingress reads = stable</li>
           <li class="pill">AI finalization local reads = stable</li>
@@ -1851,6 +1852,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · carry private receipt bytes into runbooks</strong>
+              <span>AI-synthesis and reviewed-public runbook renderers now parse each private publication receipt once, use the same object for canonical method gates, and carry the exact parsed digests into downstream report handoffs.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · recheck AI prep child hashes</strong>
               <span>AI-review preparation now parses bundle manifests and staged-input receipts once with their SHA-256s, carries those exact digests into the prepare receipt, and rejects prepared runs whose final bundle, prompt, or staging hashes drift before install.</span>
             </li>
@@ -2436,6 +2441,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:40:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Carry runbook receipt digests:</strong>
+                AI-synthesis and reviewed-public handoff renderers now derive
+                private receipt summaries from the exact receipt bytes they
+                parsed, then carry those digests into the next publication
+                commands.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:31:00-07:00">Jul 19 · local</time>
               <span>

@@ -564,6 +564,52 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "report-bound"):
                 MODULE.validate_private_report_receipts(receipts, manifests)
 
+    def test_private_freeze_gate_carries_stable_receipt_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifests = write_manifest_files(root)
+            receipts = write_receipts(root, manifests)
+            receipt = receipts[0]
+            original = json.loads(receipt.read_text(encoding="utf-8"))
+            original_version = next(
+                row["version_id"]
+                for row in original["objects"]
+                if row["relative_path"] == "report_manifest.json"
+            )
+            real_load = MODULE.load_json_object_with_sha256
+
+            def load_then_mutate_receipt(path: Path, label: str) -> tuple[dict, str]:
+                payload, digest = real_load(path, label)
+                if path == receipt and label == "private publication receipt":
+                    mutated = json.loads(path.read_text(encoding="utf-8"))
+                    for row in mutated["objects"]:
+                        if row["relative_path"] == "report_manifest.json":
+                            row["version_id"] = "tampered-version"
+                    path.write_text(
+                        json.dumps(mutated, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                return payload, digest
+
+            with patch.object(
+                MODULE,
+                "load_json_object_with_sha256",
+                side_effect=load_then_mutate_receipt,
+            ):
+                summaries = MODULE.validate_private_report_receipts(receipts, manifests)
+
+            current = json.loads(receipt.read_text(encoding="utf-8"))
+            current_version = next(
+                row["version_id"]
+                for row in current["objects"]
+                if row["relative_path"] == "report_manifest.json"
+            )
+            self.assertEqual(
+                summaries[0]["report_manifest_version_id"],
+                original_version,
+            )
+            self.assertNotEqual(current_version, original_version)
+
     def test_private_freeze_gate_rejects_receipts_below_symlinked_parent(
         self,
     ) -> None:
@@ -661,26 +707,33 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
                 }
             ]
 
-            def load_json_object(path: Path, label: str) -> dict[str, str]:
+            def load_json_object_with_sha256(
+                path: Path,
+                label: str,
+            ) -> tuple[dict[str, str], str]:
                 if path == receipt_path:
                     raise AssertionError("private receipt was reread")
                 self.assertEqual(path, manifest_path)
-                return json.loads(path.read_text(encoding="utf-8"))
+                return (
+                    json.loads(path.read_text(encoding="utf-8")),
+                    digest(path.read_bytes()),
+                )
 
             with (
                 patch.object(
                     MODULE,
-                    "validate_private_receipt",
-                    return_value=(private_receipt, ("report_manifest.json",), rows),
+                    "validate_private_receipt_payload",
+                    return_value=(("report_manifest.json",), rows),
                 ),
                 patch.object(
                     MODULE,
-                    "load_json_object",
-                    side_effect=load_json_object,
+                    "load_json_object_with_sha256",
+                    side_effect=load_json_object_with_sha256,
                 ),
             ):
                 summary = MODULE.validate_private_report_receipt(
                     receipt_path,
+                    private_receipt,
                     method_id,
                     manifest_path,
                 )

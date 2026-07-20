@@ -573,6 +573,35 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
                         receipt_summaries=tuple(summaries),
                     )
 
+    def test_private_receipt_summary_carries_stable_loaded_sha256(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipts = write_receipts(root)
+            receipt = receipts[0]
+            expected_sha256 = sha256(receipt)
+            real_load = MODULE.load_json_object_with_sha256
+
+            def load_then_mutate_receipt(path: Path, label: str) -> tuple[dict, str]:
+                payload, digest = real_load(path, label)
+                if path == receipt and label == "private publication receipt":
+                    mutated = json.loads(path.read_text(encoding="utf-8"))
+                    mutated["objects"][0]["version_id"] = "tampered-version"
+                    path.write_text(
+                        json.dumps(mutated, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                return payload, digest
+
+            with patch.object(
+                MODULE,
+                "load_json_object_with_sha256",
+                side_effect=load_then_mutate_receipt,
+            ):
+                summaries = MODULE.validate_private_report_receipts(receipts)
+
+            self.assertEqual(summaries[0]["receipt_sha256"], expected_sha256)
+            self.assertNotEqual(sha256(receipt), expected_sha256)
+
     def test_required_existing_points_at_checked_in_scripts(self) -> None:
         prerequisites = {
             path.as_posix() for path in MODULE.required_existing(Path("/repo"))

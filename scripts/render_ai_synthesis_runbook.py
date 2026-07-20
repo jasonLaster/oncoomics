@@ -31,7 +31,7 @@ from publish_reviewed_public_report import (
     SUBJECT_ALIAS,
     exact_non_null_version_id,
     private_report_prefix,
-    validate_private_receipt,
+    validate_private_receipt_payload,
 )
 from render_reviewed_publication_runbook import (
     required_absent as reviewed_public_required_absent,
@@ -43,7 +43,7 @@ from runbook_io import (
     Raw,
     bash_block,
     block,
-    load_json_object,
+    load_json_object_with_sha256,
     missing_required_files,
     preexisting_create_only_paths,
     require_real_input_file,
@@ -105,10 +105,11 @@ def require_summary_receipt(value: object, method_id: str) -> str:
 
 def validate_private_report_receipt(
     receipt_path: Path,
+    private_receipt: dict[str, object],
     method_id: str,
     report_manifest_path: Path,
 ) -> dict[str, str | int]:
-    private_receipt, expected, rows = validate_private_receipt(receipt_path, method_id)
+    expected, rows = validate_private_receipt_payload(private_receipt, method_id)
     manifest_row = next(
         (row for row in rows if row["relative_path"] == "report_manifest.json"),
         None,
@@ -123,7 +124,7 @@ def validate_private_report_receipt(
     require_real_input_file(report_path, f"{method_id} local report.md")
     if report_path.stat().st_size <= 0:
         raise ValueError(f"{method_id} local report.md is missing")
-    manifest = load_json_object(
+    manifest, local_manifest_sha256 = load_json_object_with_sha256(
         report_manifest_path,
         f"{method_id} local report manifest",
     )
@@ -132,7 +133,6 @@ def validate_private_report_receipt(
     if manifest.get("report_sha256") != sha256_path(report_path):
         raise ValueError(f"{method_id} local report_manifest.json is not report-bound")
 
-    local_manifest_sha256 = sha256_path(report_manifest_path)
     if manifest_row["sha256"] != local_manifest_sha256:
         raise ValueError(f"{method_id} local report_manifest.json is not receipt-bound")
     version_id = exact_non_null_version_id(
@@ -158,14 +158,25 @@ def validate_private_report_receipts(
     if len(paths) != len(REQUIRED_METHOD_IDS):
         raise ValueError("exactly seven private publication receipts are required")
 
-    method_ids = [str(load_json_object(path, "private publication receipt").get("method_id", "")) for path in paths]
+    receipts = [
+        load_json_object_with_sha256(path, "private publication receipt")
+        for path in paths
+    ]
+    method_ids = [str(receipt.get("method_id", "")) for receipt, _ in receipts]
     if method_ids != list(REQUIRED_METHOD_IDS):
         raise ValueError(f"private publication receipts must be passed in canonical seven-method order; observed={method_ids!r}")
 
     summaries = []
-    for index, path in enumerate(paths):
+    for index, (path, (receipt, _)) in enumerate(zip(paths, receipts)):
         method_id = REQUIRED_METHOD_IDS[index]
-        summaries.append(validate_private_report_receipt(path, method_id, manifests[method_id]))
+        summaries.append(
+            validate_private_report_receipt(
+                path,
+                receipt,
+                method_id,
+                manifests[method_id],
+            )
+        )
     return tuple(summaries)
 
 

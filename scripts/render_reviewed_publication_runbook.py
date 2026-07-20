@@ -15,11 +15,11 @@ from publish_reviewed_public_report import (
     PUBLIC_BUCKET,
     PUBLIC_ROOT,
     REGION,
-    validate_private_receipt,
+    validate_private_receipt_payload,
 )
 from runbook_io import (
     block,
-    load_json_object,
+    load_json_object_with_sha256,
     missing_required_files,
     preexisting_create_only_paths,
     require_real_input_file,
@@ -69,10 +69,11 @@ def validate_private_report_receipts(
     if len(paths) != len(REPORT_METHOD_IDS):
         raise ValueError("exactly ten private publication receipts are required")
 
-    method_ids = [
-        str(load_json_object(path, "private publication receipt").get("method_id", ""))
+    receipts = [
+        load_json_object_with_sha256(path, "private publication receipt")
         for path in paths
     ]
+    method_ids = [str(receipt.get("method_id", "")) for receipt, _ in receipts]
     if method_ids != list(REPORT_METHOD_IDS):
         raise ValueError(
             "private publication receipts must be passed in canonical "
@@ -80,14 +81,14 @@ def validate_private_report_receipts(
         )
 
     summaries = []
-    for index, path in enumerate(paths):
+    for index, (path, (receipt, receipt_sha256)) in enumerate(zip(paths, receipts)):
         method_id = REPORT_METHOD_IDS[index]
-        _, _, rows = validate_private_receipt(path, method_id)
+        _, rows = validate_private_receipt_payload(receipt, method_id)
         summaries.append(
             {
                 "method_id": method_id,
                 "receipt": str(path),
-                "receipt_sha256": sha256(path),
+                "receipt_sha256": receipt_sha256,
                 "destination_prefix": destination_prefix(method_id),
                 "object_count": len(rows),
             }
