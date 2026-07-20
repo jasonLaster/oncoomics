@@ -307,19 +307,23 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             source = root / "report_manifest.json"
             source.write_text('{"stable": true}\n', encoding="utf-8")
 
-            original_read_bytes = Path.read_bytes
+            original_read_once = GENERATOR.read_real_nonempty_file_once
             mutated = False
 
-            def mutate_after_first_read(path: Path) -> bytes:
+            def mutate_after_first_read(path: Path, label: str) -> bytes:
                 nonlocal mutated
-                data = original_read_bytes(path)
+                data = original_read_once(path, label)
                 if path == source and not mutated:
                     mutated = True
                     path.write_text('{"stable": false}\n', encoding="utf-8")
                 return data
 
             with (
-                mock.patch.object(Path, "read_bytes", mutate_after_first_read),
+                mock.patch.object(
+                    GENERATOR,
+                    "read_real_nonempty_file_once",
+                    side_effect=mutate_after_first_read,
+                ),
                 self.assertRaisesRegex(
                     ValueError,
                     "report_manifest.json SHA-256 input changed during read",
@@ -334,12 +338,12 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             relocated = root / "relocated_report_manifest.json"
             source.write_text('{"stable": true}\n', encoding="utf-8")
 
-            original_read_bytes = Path.read_bytes
+            original_read_once = GENERATOR.read_real_nonempty_file_once
             swapped = False
 
-            def swap_after_first_read(path: Path) -> bytes:
+            def swap_after_first_read(path: Path, label: str) -> bytes:
                 nonlocal swapped
-                data = original_read_bytes(path)
+                data = original_read_once(path, label)
                 if path == source and not swapped:
                     swapped = True
                     source.unlink()
@@ -348,7 +352,11 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 return data
 
             with (
-                mock.patch.object(Path, "read_bytes", swap_after_first_read),
+                mock.patch.object(
+                    GENERATOR,
+                    "read_real_nonempty_file_once",
+                    side_effect=swap_after_first_read,
+                ),
                 self.assertRaisesRegex(
                     ValueError,
                     "report_manifest.json SHA-256 input must be a real "
@@ -356,6 +364,45 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 ),
             ):
                 GENERATOR.sha256_file(source)
+
+    def test_sha256_file_rejects_symlink_swap_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "report_manifest.json"
+            relocated = root / "relocated_report_manifest.json"
+            source.write_text('{"stable": true}\n', encoding="utf-8")
+            real_os_open = GENERATOR.os.open
+            swapped = False
+
+            def swap_before_open(
+                path: Path,
+                flags: int,
+                mode: int = 0o777,
+                *,
+                dir_fd: int | None = None,
+            ) -> int:
+                nonlocal swapped
+                if path == source and not swapped:
+                    swapped = True
+                    source.unlink()
+                    relocated.write_text('{"stable": true}\n', encoding="utf-8")
+                    source.symlink_to(relocated)
+                return real_os_open(path, flags, mode, dir_fd=dir_fd)
+
+            with (
+                mock.patch.object(
+                    GENERATOR.os,
+                    "open",
+                    side_effect=swap_before_open,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report_manifest.json SHA-256 input changed during read",
+                ),
+            ):
+                GENERATOR.sha256_file(source)
+
+            self.assertTrue(swapped)
 
     def test_packet_file_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
