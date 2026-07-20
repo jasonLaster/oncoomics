@@ -1109,6 +1109,59 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_source_report_manifest_binding_uses_parsed_digest_after_rewrite(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            values = []
+            for method_id in GENERATOR.SOURCE_REPORT_METHOD_IDS:
+                path = root / "sources" / method_id / "report_manifest.json"
+                write_source_report_manifest(path, method_id=method_id)
+                values.append(f"{method_id}={path}")
+
+            target = (
+                root
+                / "sources"
+                / "deterministic_full_wgs"
+                / "report_manifest.json"
+            )
+            expected_sha256 = sha256(target)
+            real_load = GENERATOR.load_json_object_with_sha256
+            mutated = False
+
+            def mutate_after_stable_load(
+                path: Path,
+                label: str,
+            ) -> tuple[dict, str]:
+                nonlocal mutated
+                manifest, digest = real_load(path, label)
+                if path == target and not mutated:
+                    payload = json.loads(path.read_text(encoding="utf-8"))
+                    payload["review_summary"]["late_local_rewrite"] = (
+                        "not validated"
+                    )
+                    path.write_text(
+                        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                    mutated = True
+                return manifest, digest
+
+            with mock.patch.object(
+                GENERATOR,
+                "load_json_object_with_sha256",
+                side_effect=mutate_after_stable_load,
+            ):
+                observed = GENERATOR.load_source_report_manifests(values)
+
+            self.assertTrue(mutated)
+            self.assertEqual(
+                observed["deterministic_full_wgs"],
+                expected_sha256,
+            )
+            self.assertNotEqual(sha256(target), expected_sha256)
+
     def test_rejects_output_below_symlinked_parent_without_writing_packets(
         self,
     ) -> None:

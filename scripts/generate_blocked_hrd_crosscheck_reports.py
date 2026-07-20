@@ -389,24 +389,32 @@ def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
-def load_json_object(path: Path, label: str) -> dict[str, Any]:
+def load_json_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     require_real_nonempty_file(path, label)
     try:
+        data = path.read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        if sha256_file(path) != digest:
+            raise ValueError(f"{label} changed during read")
         manifest = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
-    except json.JSONDecodeError as error:
+    except (UnicodeError, json.JSONDecodeError) as error:
         raise ValueError(f"invalid JSON in {label}: {path}") from error
     if not isinstance(manifest, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return manifest
+    return manifest, digest
 
 
-def load_source_report_manifest(path: Path, method_id: str) -> None:
-    manifest = load_json_object(
+def load_json_object(path: Path, label: str) -> dict[str, Any]:
+    return load_json_object_with_sha256(path, label)[0]
+
+
+def load_source_report_manifest(path: Path, method_id: str) -> str:
+    manifest, manifest_sha256 = load_json_object_with_sha256(
         path,
         f"{method_id} source report manifest",
     )
@@ -428,6 +436,7 @@ def load_source_report_manifest(path: Path, method_id: str) -> None:
     if not isinstance(review_summary, dict) or not review_summary:
         raise ValueError(f"source report manifest review_summary is required: {method_id}")
     validate_report_manifest_support(path.parent, manifest, method_id)
+    return manifest_sha256
 
 
 def source_report_binding_scope(method_ids: Sequence[str]) -> str:
@@ -457,8 +466,7 @@ def load_source_report_manifests(
             raise ValueError(f"duplicate source report method: {method_id}")
 
         path = Path(raw_path)
-        load_source_report_manifest(path, method_id)
-        manifests[method_id] = sha256_file(path)
+        manifests[method_id] = load_source_report_manifest(path, method_id)
     return validate_source_report_manifests(
         manifests,
         allow_pre_route_source_reports=allow_pre_route_source_reports,
