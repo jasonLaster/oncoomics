@@ -247,6 +247,7 @@ REVIEWED_PUBLIC_PREFLIGHT_CHECKS = (
     "source_exact_kms",
     "second_forbidden_token_scan",
     "manifest_no_call_boundary",
+    "source_report_kind_exact",
     "destination_initially_empty",
     "packet_size_bounded",
 )
@@ -1188,6 +1189,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "source_exact_kms": True,
                 "second_forbidden_token_scan": True,
                 "manifest_no_call_boundary": True,
+                "source_report_kind_exact": True,
                 "destination_initially_empty": True,
                 "packet_size_bounded": True,
             }

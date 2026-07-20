@@ -692,6 +692,7 @@ class PublicIndexTests(unittest.TestCase):
         newly_bound_checks = (
             "source_exact_kms",
             "manifest_no_call_boundary",
+            "source_report_kind_exact",
             "destination_initially_empty",
             "packet_size_bounded",
         )

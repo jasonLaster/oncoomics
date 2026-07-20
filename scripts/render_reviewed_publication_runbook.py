@@ -171,7 +171,7 @@ def reviewed_public_report_checklist(
         "- [ ] `checks.private_receipt_exact_and_passed`, "
         "`checks.source_exact_versions`, `checks.source_sha256_and_bytes`, "
         "`checks.source_exact_kms`, `checks.second_forbidden_token_scan`, "
-        "`checks.manifest_no_call_boundary`, "
+        "`checks.manifest_no_call_boundary`, `checks.source_report_kind_exact`, "
         "`checks.destination_initially_empty`, and "
         "`checks.packet_size_bounded` are all true.",
         "- [ ] Running the following `--apply` command is still the intended "
