@@ -714,6 +714,41 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         self.run_capture(args, aws=self.aws_side_effect(job=job))
 
+    def test_rejects_coerced_exit_codes(self) -> None:
+        mutations = (
+            (
+                "job bool",
+                lambda job: job["container"].__setitem__("exitCode", False),
+            ),
+            (
+                "job float",
+                lambda job: job["container"].__setitem__("exitCode", 0.0),
+            ),
+            (
+                "attempt bool",
+                lambda job: job["attempts"][0]["container"].__setitem__(
+                    "exitCode",
+                    False,
+                ),
+            ),
+            (
+                "attempt float",
+                lambda job: job["attempts"][0]["container"].__setitem__(
+                    "exitCode",
+                    0.0,
+                ),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, mutate in mutations:
+                with self.subTest(label=label), self.assertRaises(ValueError):
+                    job = copy.deepcopy(self.job)
+                    mutate(job)
+                    self.run_capture(
+                        self.args(Path(temporary) / label),
+                        aws=self.aws_side_effect(job=job),
+                    )
+
     def test_rejects_queue_that_is_not_live_exact_graviton_route(self) -> None:
         queue = copy.deepcopy(self.queue)
         queue["computeEnvironmentOrder"][0]["computeEnvironment"] += "-x86"

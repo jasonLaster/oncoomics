@@ -847,6 +847,43 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                         aws=self.aws_side_effect(fixture, job=job),
                     )
 
+    def test_rejects_coerced_exit_codes(self):
+        mutations = (
+            (
+                "job bool",
+                lambda job: job["container"].__setitem__("exitCode", False),
+            ),
+            (
+                "job float",
+                lambda job: job["container"].__setitem__("exitCode", 0.0),
+            ),
+            (
+                "attempt bool",
+                lambda job: job["attempts"][0]["container"].__setitem__(
+                    "exitCode",
+                    False,
+                ),
+            ),
+            (
+                "attempt float",
+                lambda job: job["attempts"][0]["container"].__setitem__(
+                    "exitCode",
+                    0.0,
+                ),
+            ),
+        )
+        fixture = self.fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            for label, mutate in mutations:
+                with self.subTest(label=label), self.assertRaises(ValueError):
+                    job = copy.deepcopy(fixture["job"])
+                    mutate(job)
+                    self.run_capture(
+                        self.args(Path(temporary) / label, fixture),
+                        fixture,
+                        aws=self.aws_side_effect(fixture, job=job),
+                    )
+
     def test_batch_identity_check_map_must_be_exact(self):
         fixture = self.fixture()
         cases = (

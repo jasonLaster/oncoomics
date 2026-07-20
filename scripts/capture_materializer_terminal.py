@@ -564,8 +564,8 @@ def validate_job(
         "exact_queue": job.get("jobQueue") == EXPECTED_QUEUE_ARN,
         "one_retry_attempt": isinstance(retry, dict) and exact_int(retry.get("attempts"), 1),
         "one_terminal_attempt": len(attempts) == 1,
-        "job_exit_zero": container.get("exitCode") == 0,
-        "attempt_exit_zero": attempt_container.get("exitCode") == 0,
+        "job_exit_zero": exact_int(container.get("exitCode"), 0),
+        "attempt_exit_zero": exact_int(attempt_container.get("exitCode"), 0),
         "parameters_exact": normalized_parameters == expected_parameters,
         "log_stream_exact": (
             bool(job_log_stream) and job_log_stream == attempt_log_stream and job_log_stream.startswith(LOG_STREAM_PREFIX)
