@@ -513,6 +513,8 @@ allowances.
 - an account-wide AWS Budget publishes to the same Lambda through SNS when
   actual same-day spend crosses `daily_cost_guard_stop_threshold_percent = 80`,
   and again at 100%, as a delayed whole-account backstop for non-Batch costs.
+  That Budget path also closes public raw/results bucket reads with S3 Public
+  Access Block so anonymous egress cannot continue after the emergency stop.
 
 The live estimator deliberately overprices P5-family 48xlarge hosts in
 `daily_cost_guard_instance_hourly_rates_usd`, uses the same conservative
@@ -529,9 +531,11 @@ queues and compute environments instead of leaving P5 or CPU capacity running
 without a fresh same-day estimate.
 
 Terraform preserves a tripped kill switch: protected Batch queues and compute
-environments ignore subsequent `state` drift, so an unrelated `terraform apply`
-cannot re-enable same-day capacity after the Lambda disables it. Re-enable
-Batch capacity only after the spend event is reviewed.
+environments ignore subsequent `state` drift, and the raw/results Public Access
+Block resources ignore the emergency public-read closure, so an unrelated
+`terraform apply` cannot re-enable same-day capacity or public S3 reads after
+the Lambda disables them. Re-enable Batch capacity and public reads only after
+the spend event is reviewed.
 
 Mutating submitters that bypass Nextflow must also re-read the same UTC-day
 DynamoDB ledger immediately before `SubmitJob`. The static HRD route submitter,
