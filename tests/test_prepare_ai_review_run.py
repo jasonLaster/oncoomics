@@ -605,6 +605,7 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                         receipt,
                         output,
                         bundle_manifest,
+                        "d" * 64,
                     )
 
     def test_rejects_stage_receipt_with_stale_reviewer_file_hash(self) -> None:
@@ -860,6 +861,9 @@ class PrepareAiReviewRunTests(unittest.TestCase):
 
     def test_rejects_thin_or_legacy_stage_receipt_envelope(self) -> None:
         cases = {
+            "missing_bundle_manifest_sha256": lambda payload: payload.pop(
+                "bundle_manifest_sha256"
+            ),
             "missing_generated_at": lambda payload: payload.pop("generated_at"),
             "extra_legacy_key": lambda payload: payload.update(
                 {"legacy_stage_receipt": True}
@@ -903,6 +907,39 @@ class PrepareAiReviewRunTests(unittest.TestCase):
 
                 self.assertFalse(output.exists())
                 self.assertFalse(any(root.glob(".ai-review.*")))
+
+    def test_rejects_stage_receipt_with_stale_bundle_manifest_sha256(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+            real_stage_inputs = PREPARE.stage_inputs
+
+            def stage_then_stale_bundle_manifest_hash(
+                bundle_dir: Path,
+                output_root: Path,
+                receipt: Path,
+            ) -> None:
+                real_stage_inputs(bundle_dir, output_root, receipt)
+                payload = json.loads(receipt.read_text(encoding="utf-8"))
+                payload["bundle_manifest_sha256"] = "0" * 64
+                write_json(receipt, payload)
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "stage_inputs",
+                    side_effect=stage_then_stale_bundle_manifest_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "stage AI review input receipt is not exact",
+                ),
+            ):
+                PREPARE.prepare(namespace(fixture, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".ai-review.*")))
 
     def test_rejects_stage_receipt_with_reviewer_inventory_drift(self) -> None:
         cases = {
