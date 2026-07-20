@@ -82,6 +82,16 @@ def write_packet(
             json.dumps(method_spec, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        directory.joinpath("report.md").write_text(
+            VALIDATOR.render_blocked_report(
+                VALIDATOR.METHODS_BY_ID[method_id],
+                "2026-07-17T00:00:00+00:00",
+                run_id="unit",
+                source_report_manifests=source_report_manifests,
+                source_report_binding_scope="pre_route_deterministic_rosalind",
+            ),
+            encoding="utf-8",
+        )
 
     support_names = set(PUBLISH.METHOD_CONTRACTS[method_id]["files"]) - {
         "report.md",
@@ -645,6 +655,39 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError,
                 "must use pre_route_deterministic_rosalind",
+            ):
+                VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
+
+    def test_rejects_pre_route_blocked_packet_stale_report_after_rehash(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            blocked = packet_dirs["hrdetect_blocked"]
+
+            report_path = blocked / "report.md"
+            report_path.write_text(
+                "# Forged blocked method report\n\n"
+                "Execution remains `not_run` and HRD remains `no_call`, "
+                "but this text was not emitted by the blocked-report renderer.\n",
+                encoding="utf-8",
+            )
+
+            manifest_path = blocked / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = sha256(report_path)
+            manifest_path.write_text(
+                json.dumps(manifest, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "hrdetect_blocked blocked report is stale",
             ):
                 VALIDATOR.validate_packets(
                     packet_dirs,
