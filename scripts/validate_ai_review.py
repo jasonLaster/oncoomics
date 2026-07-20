@@ -1245,11 +1245,20 @@ def require_installed_review_artifacts(
     review_manifest_path: Path,
     validation: dict[str, Any],
 ) -> None:
-    if (
-        sha256(report_path) != validation.get("report_sha256")
-        or sha256(claims_path) != validation.get("claims_sha256")
-        or sha256(review_manifest_path) != validation.get("review_manifest_sha256")
-    ):
+    try:
+        installed = {
+            "report_sha256": sha256(report_path),
+            "claims_sha256": sha256(claims_path),
+            "review_manifest_sha256": sha256(review_manifest_path),
+        }
+    except OSError as error:
+        raise ValueError("validated review artifacts changed during write") from error
+    expected = {
+        "report_sha256": validation.get("report_sha256"),
+        "claims_sha256": validation.get("claims_sha256"),
+        "review_manifest_sha256": validation.get("review_manifest_sha256"),
+    }
+    if installed != expected:
         raise ValueError("validated review artifacts changed during write")
 
 

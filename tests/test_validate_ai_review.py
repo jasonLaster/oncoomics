@@ -1659,6 +1659,32 @@ class ValidateAiReviewTests(unittest.TestCase):
 
                 self.assertFalse((review / "validation.json").exists())
 
+    def test_rejects_unreadable_review_artifact_after_validation_write(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review = Path(temporary) / "review-a"
+            fixture.write_review(review)
+            real_sha256 = VALIDATE.sha256
+
+            def fail_after_validation(path: Path) -> str:
+                if path.name == "report.md" and (review / "validation.json").exists():
+                    raise OSError("synthetic report.md read failure")
+                return real_sha256(path)
+
+            with (
+                mock.patch.object(VALIDATE, "sha256", side_effect=fail_after_validation),
+                self.assertRaisesRegex(
+                    SystemExit,
+                    "validated review artifacts changed during write",
+                ),
+            ):
+                VALIDATE.main(fixture.validate_argv(review))
+
+            self.assertFalse((review / "validation.json").exists())
+
     def test_reviewer_b_requires_independent_validated_a_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = ValidateReviewFixture(Path(temporary))
