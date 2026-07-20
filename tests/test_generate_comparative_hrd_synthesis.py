@@ -1857,6 +1857,32 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.require_synthesis_report_manifest(fixture.output_dir)
 
+    def test_synthesis_manifest_rejects_stale_rebound_report_text(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            report_path = fixture.output_dir / "report.md"
+            report_path.write_text(
+                "# Comparative HRD evidence synthesis\n\n"
+                "Forged copied reviewer summary.\n",
+                encoding="utf-8",
+            )
+
+            manifest_path = fixture.output_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = sha256(report_path)
+            write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis report is stale",
+            ):
+                GENERATE.require_synthesis_report_manifest(fixture.output_dir)
+
     def test_synthesis_manifest_rejects_incomplete_reviewer_model_summary(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             fixture = SynthesisFixture(Path(temporary))

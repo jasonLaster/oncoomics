@@ -1616,7 +1616,13 @@ def require_review_evidence_reviewers(
             raise ValueError(
                 "comparative synthesis review evidence reviewers are stale"
             )
-        reviewers.append({"reviewer_id": reviewer, "claims": exact_claims})
+        reviewers.append(
+            {
+                "reviewer_id": reviewer,
+                "manifest": {"model": row["model"]},
+                "claims": exact_claims,
+            }
+        )
     return reviewers
 
 
@@ -1626,7 +1632,7 @@ def require_synthesis_review_evidence(
     agreement_rows: Sequence[Dict[str, str]],
     required_methods: Sequence[str],
     source_hashes: Mapping[str, str],
-) -> None:
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     summary = manifest.get("review_summary")
     if (
         set(review_evidence) != REVIEW_EVIDENCE_KEYS
@@ -1667,6 +1673,28 @@ def require_synthesis_review_evidence(
         {"claims": reviewers[1]["claims"]},
     ):
         raise ValueError("comparative synthesis review evidence agreement is stale")
+    return methods, reviewers
+
+
+def require_synthesis_report_text(
+    report_text: str,
+    manifest: Dict[str, Any],
+    methods: Sequence[Dict[str, Any]],
+    reviewers: Sequence[Dict[str, Any]],
+    agreement_rows: Sequence[Dict[str, str]],
+) -> None:
+    expected = render_report(
+        str(manifest["subject_alias"]),
+        str(manifest["authorized_hrd_state"]),
+        methods,
+        reviewers[0],
+        reviewers[1],
+        agreement_rows,
+        collect_limitations(methods, reviewers),
+        collect_unresolved(reviewers),
+    )
+    if report_text != expected:
+        raise ValueError("comparative synthesis report is stale")
 
 
 def require_synthesis_report_manifest(
@@ -1773,12 +1801,23 @@ def require_synthesis_report_manifest(
         required_methods,
         expected_source_hashes=expected_source_hashes,
     )
-    require_synthesis_review_evidence(
+    methods, reviewers = require_synthesis_review_evidence(
         load_object(packet_dir / "review_evidence.json", "synthesis review evidence"),
         manifest,
         agreement_rows,
         required_methods,
         source_hashes,
+    )
+    report_text, _ = read_stable_text_with_sha256(
+        require_real_nonempty_file(packet_dir / "report.md", "synthesis packet"),
+        "synthesis report.md",
+    )
+    require_synthesis_report_text(
+        report_text,
+        manifest,
+        methods,
+        reviewers,
+        agreement_rows,
     )
 
 
