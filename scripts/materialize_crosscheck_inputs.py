@@ -18,6 +18,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 from collections import Counter
@@ -77,12 +78,10 @@ def now() -> str:
 
 
 def sha256(path: Path) -> str:
-    require_real_local_file(path, f"{path.name} SHA-256 input")
     _payload, digest = read_stable_file_with_sha256(
         path,
         f"{path.name} SHA-256 input",
     )
-    require_real_local_file(path, f"{path.name} SHA-256 input")
     return digest
 
 
@@ -99,14 +98,61 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    data, identity = read_real_hash_input_with_identity(path, label)
+    digest = sha256_bytes(data)
+    stable_data, stable_identity = read_real_hash_input_with_identity(path, label)
+    if stable_identity != identity or sha256_bytes(stable_data) != digest:
+        raise ValueError(f"{label} changed during read")
+    return data, digest
+
+
+def read_real_hash_input_once(path: Path, label: str) -> bytes:
+    data, _identity = read_real_hash_input_with_identity(path, label)
+    return data
+
+
+def read_real_hash_input_with_identity(path: Path, label: str) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+    require_real_hash_input(path, label)
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
     try:
-        data = path.read_bytes()
-        digest = sha256_bytes(data)
-        if sha256_bytes(path.read_bytes()) != digest:
-            raise ValueError(f"{label} changed during read")
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{label} must be a real file: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
     except OSError as error:
         raise ValueError(f"{label} changed during read") from error
-    return data, digest
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{label} changed during read")
+    return data, stat_identity(opened)
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def checksum_sha256(digest: str) -> str:
@@ -198,6 +244,14 @@ def require_safe_new_output(path: Path, label: str) -> None:
 def require_real_local_file(path: Path, label: str) -> None:
     require_safe_new_output_parent(path, label)
     if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+
+
+def require_real_hash_input(path: Path, label: str) -> None:
+    require_safe_new_output_parent(path, label)
+    if path.is_symlink():
+        raise ValueError(f"{label} may not be a symlink")
+    if not path.is_file():
         raise ValueError(f"{label} must be a real file: {path}")
 
 
