@@ -99,6 +99,7 @@ def write_hash_bound_catalog_schema(
     validation_path = review_dir / "validation.json"
     validation = load_json(validation_path)
     validation["model_catalog_receipt_sha256"] = catalog_hash
+    validation["bundle_manifest_sha256"] = FINALIZE.sha256(manifest_path)
     validation["review_bundle_sha256"] = bundle_hash
     validation["prompt_sha256"] = prompt_hashes[validation["reviewer_id"]]
     validation["review_manifest_sha256"] = review_manifest_hash
@@ -784,6 +785,20 @@ class FinalizeAiReviewTests(unittest.TestCase):
                     )
 
                 self.assertFalse((review / "report_manifest.json").exists())
+
+    def test_rejects_validation_bound_to_stale_bundle_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+            bundle_manifest = load_json(manifest_path)
+            bundle_manifest["input_manifest_sha256"]["E001"] = "0" * 64
+            write_json(manifest_path, bundle_manifest)
+
+            finalized = self.execute(fixture, review)
+
+            self.assertNotEqual(finalized.returncode, 0)
+            self.assertIn("bundle or prompt hash binding failed", finalized.stderr)
+            self.assertFalse((review / "report_manifest.json").exists())
 
     def test_final_manifest_parses_claims_from_stable_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

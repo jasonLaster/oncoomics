@@ -635,6 +635,10 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertEqual(validation["authorized_hrd_state"], "no_call")
             self.assertEqual(validation["claim_count"], 7)
             self.assertEqual(
+                validation["bundle_manifest_sha256"],
+                sha256(fixture.bundle_dir / "bundle_manifest.json"),
+            )
+            self.assertEqual(
                 validation["covered_evidence_ids"],
                 [f"E{index:03d}" for index in range(1, 8)],
             )

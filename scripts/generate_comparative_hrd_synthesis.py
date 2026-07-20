@@ -695,6 +695,7 @@ def verify_review(
     bundle: Dict[str, Any],
     bundle_manifest: Dict[str, Any],
     bundle_hash: str,
+    bundle_manifest_hash: str,
     inventory_id: str,
 ) -> Dict[str, Any]:
     directory = require_real_directory(directory, "reviewer " + reviewer)
@@ -751,6 +752,10 @@ def verify_review(
     prompt_hash = checked_hash(bundle_manifest["prompt_sha256"][reviewer], reviewer + " prompt")
     if validation.get("review_bundle_sha256") != bundle_hash or manifest.get("input_bundle_sha256") != bundle_hash:
         raise ValueError("reviewer " + reviewer + " used a different AI bundle")
+    if validation.get("bundle_manifest_sha256") != bundle_manifest_hash:
+        raise ValueError(
+            "reviewer " + reviewer + " bundle manifest changed after validation"
+        )
     if validation.get("prompt_sha256") != prompt_hash or manifest.get("prompt_sha256") != prompt_hash:
         raise ValueError("reviewer " + reviewer + " prompt binding changed")
     expected_inputs = {
@@ -1618,6 +1623,7 @@ def main() -> None:
             bundle,
             bundle_manifest,
             bundle_hash,
+            bundle_manifest_hash,
             inventory_id,
         )
         review_b = verify_review(
@@ -1626,6 +1632,7 @@ def main() -> None:
             bundle,
             bundle_manifest,
             bundle_hash,
+            bundle_manifest_hash,
             inventory_id,
         )
         verify_pair(review_a, review_b)
