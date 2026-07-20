@@ -396,6 +396,8 @@
           support hash, the agreement table now has to be re-derivable from
           that same support file, every exact synthesis method row is now
           hash-bound before embedded source-custody digests can be trusted,
+          and Reviewer A/B claim arrays are now hash-bound before copied claim
+          text or support wording can be trusted,
           reviewed-public publication now preserves the support file,
           pre-route blocked cross-check packets now exact-check the top-level
           and nested review summary they are about to hand to AI/freeform
@@ -428,7 +430,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = synthesis method rows exact</li>
+          <li class="pill">Latest milestone = synthesis reviewer claims exact</li>
+          <li class="pill">Synthesis reviewer claims = exact</li>
           <li class="pill">Blocked method specs = exact</li>
           <li class="pill">Deterministic review summary = exact</li>
           <li class="pill">AI finalizer model = exact</li>
@@ -2304,6 +2307,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind exact synthesis reviewer claims</strong>
+              <span>Comparative synthesis now hash-binds the exact Reviewer A/B claim arrays installed in <code>review_evidence.json</code> before trusting copied claim text or per-claim support wording, so changed reviewer assertions cannot pass by refreshing only the support-file hash.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind exact synthesis method rows</strong>
               <span>Comparative synthesis now hash-binds each installed <code>review_evidence.json</code> method row before trusting its embedded report and source-artifact digests, so a custody rewrite cannot pass by refreshing only the support-file hash.</span>
             </li>
@@ -3077,6 +3084,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Bind synthesis reviewer claims exactly:</strong>
+                comparative synthesis manifests now carry one
+                <code>source_sha256</code> entry for each Reviewer A/B
+                <code>review_evidence.json</code> claim array and reject
+                changed copied claim text or per-claim support wording even
+                when the edited support file itself has been rebound. No S3,
+                Batch, route, GPU, quota, rerun, or apply-mode AWS work was
+                launched; Cost Explorer was refreshed read-only for
+                2026-07-19 UTC and remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

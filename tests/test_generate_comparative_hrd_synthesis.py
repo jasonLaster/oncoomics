@@ -55,7 +55,7 @@ def write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def bind_review_evidence_method_hashes(
+def bind_review_evidence_hashes(
     source_sha256: Dict[str, str],
     review_evidence: Dict[str, Any],
 ) -> None:
@@ -63,6 +63,12 @@ def bind_review_evidence_method_hashes(
         source_sha256[
             method["evidence_id"] + "_review_evidence_method"
         ] = GENERATE.sha256_bytes(GENERATE.canonical_json_bytes(method))
+    for reviewer in review_evidence["reviewers"]:
+        source_sha256[
+            "reviewer_{0}_review_evidence_claims".format(reviewer["reviewer_id"])
+        ] = GENERATE.sha256_bytes(
+            GENERATE.canonical_json_bytes({"claims": reviewer["claims"]})
+        )
 
 
 def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
@@ -74,7 +80,7 @@ def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
         key: hashlib.sha256(key.encode()).hexdigest()
         for key in GENERATE.expected_synthesis_source_hash_keys()
     }
-    bind_review_evidence_method_hashes(source_sha256, review_evidence)
+    bind_review_evidence_hashes(source_sha256, review_evidence)
     return {
         "schema_version": 1,
         "report_kind": "comparative_synthesis",
@@ -1733,7 +1739,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             manifest_path = fixture.output_dir / "report_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
-            bind_review_evidence_method_hashes(
+            bind_review_evidence_hashes(
                 manifest["source_sha256"],
                 evidence,
             )
@@ -1763,6 +1769,10 @@ class GenerateSynthesisTests(unittest.TestCase):
             manifest_path = fixture.output_dir / "report_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
+            bind_review_evidence_hashes(
+                manifest["source_sha256"],
+                evidence,
+            )
             write_json(manifest_path, manifest)
 
             with self.assertRaisesRegex(
@@ -1787,6 +1797,10 @@ class GenerateSynthesisTests(unittest.TestCase):
             manifest_path = fixture.output_dir / "report_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
+            bind_review_evidence_hashes(
+                manifest["source_sha256"],
+                evidence,
+            )
             write_json(manifest_path, manifest)
 
             with self.assertRaisesRegex(
@@ -1816,6 +1830,30 @@ class GenerateSynthesisTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError,
                 "comparative synthesis review evidence methods are stale",
+            ):
+                GENERATE.require_synthesis_report_manifest(fixture.output_dir)
+
+    def test_synthesis_manifest_rejects_stale_review_evidence_claim_hash(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            evidence_path = fixture.output_dir / "review_evidence.json"
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            evidence["reviewers"][0]["claims"][0]["claim"] = "Forged claim text."
+            write_json(evidence_path, evidence)
+
+            manifest_path = fixture.output_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
+            write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis review evidence reviewers are stale",
             ):
                 GENERATE.require_synthesis_report_manifest(fixture.output_dir)
 

@@ -1249,6 +1249,10 @@ def expected_synthesis_source_hash_keys(
             for reviewer in ("A", "B")
             for filename in REVIEW_FILES
         ),
+        *(
+            f"reviewer_{reviewer}_review_evidence_claims"
+            for reviewer in ("A", "B")
+        ),
     }
 
 
@@ -1550,6 +1554,7 @@ def require_review_evidence_reviewers(
     methods: Sequence[Dict[str, Any]],
     expected_reviewers: Any,
     ceiling: str,
+    source_hashes: Mapping[str, str],
 ) -> List[Dict[str, Any]]:
     if (
         not isinstance(value, list)
@@ -1595,6 +1600,14 @@ def require_review_evidence_reviewers(
             evidence_by_id,
             ceiling,
         )
+        if sha256_bytes(
+            canonical_json_bytes({"claims": exact_claim_rows})
+        ) != source_hashes.get(
+            f"reviewer_{reviewer}_review_evidence_claims"
+        ):
+            raise ValueError(
+                "comparative synthesis review evidence reviewers are stale"
+            )
         if (
             expected.get("claim_count") != len(exact_claims)
             or expected.get("disagreement_claim_count")
@@ -1642,6 +1655,7 @@ def require_synthesis_review_evidence(
         methods,
         summary.get("reviewers"),
         str(manifest["authorized_hrd_state"]),
+        source_hashes,
     )
     if summary.get("limitations") != collect_limitations(methods, reviewers):
         raise ValueError("comparative synthesis limitations are stale")
@@ -1962,6 +1976,10 @@ def main() -> None:
             source_hashes[
                 str(row["evidence_id"]) + "_review_evidence_method"
             ] = sha256_bytes(canonical_json_bytes(row))
+        for row in review_evidence["reviewers"]:
+            source_hashes[
+                "reviewer_{0}_review_evidence_claims".format(row["reviewer_id"])
+            ] = sha256_bytes(canonical_json_bytes({"claims": row["claims"]}))
         manifest = {
             "schema_version": 1,
             "report_kind": "comparative_synthesis",
