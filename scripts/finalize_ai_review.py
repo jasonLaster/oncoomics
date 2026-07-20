@@ -318,16 +318,17 @@ def require_exact_review_summary(
         or not isinstance(covered_evidence_ids, list)
         or not covered_evidence_ids
         or any(
-            type(evidence_id) is not str or not evidence_id
+            not require_exact_summary_string(evidence_id)
             for evidence_id in covered_evidence_ids
         )
+        or covered_evidence_ids != sorted(covered_evidence_ids)
         or len(set(covered_evidence_ids)) != len(covered_evidence_ids)
         or not is_nonnegative_exact_int(disagreement_claim_count)
         or disagreement_claim_count > claim_count
         or not isinstance(limitations, list)
         or not limitations
         or any(
-            type(limitation) is not str or not limitation
+            not require_exact_summary_string(limitation)
             for limitation in limitations
         )
     ):
