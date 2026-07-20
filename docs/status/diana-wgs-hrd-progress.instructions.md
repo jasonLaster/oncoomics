@@ -8,7 +8,10 @@ Use this checklist when updating `docs/status/diana-wgs-hrd-progress.html`.
 - Keep the summary user-centric: lead with what a collaborator can understand now, what changed, and what remains blocked.
 - Preserve `partial_evidence`, `no_call`, and `blocked` boundaries. Do not imply Diana HRD, scarHRD, SBS3, CHORD, or HRDetect readiness until real terminal artifacts and reviewed cross-check reports exist.
 - Update the visual progress dashboard, the Cost Explorer past-day breakdown,
-  priority todo lists, and changelog for every material source milestone.
+  priority todo lists, and changelog for every material source milestone; a
+  dashboard refresh is incomplete until the past-day Cost Explorer total and
+  visible service / usage-type breakdown have been freshly checked or a
+  read-only Cost Explorer failure is shown in their place.
 - Update the ignored preview copy after editing:
 
 ```sh

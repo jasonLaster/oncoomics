@@ -51,12 +51,24 @@ CLASSIFICATION = "reviewed-public-pseudonymous-analysis"
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 VERSION_ID = re.compile(r"^\S+$")
 REVISION = re.compile(r"^[0-9a-f]{64}$")
+FINAL_SOURCE_ARTIFACT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
+RESERVED_SOURCE_ARTIFACT_IDS = {"false", "null", "true"}
 MAX_FILE_BYTES = 25 * 1024 * 1024
 MAX_PACKET_BYTES = 100 * 1024 * 1024
 
 
 def is_sha256(value: Any) -> bool:
     return isinstance(value, str) and SHA256_HEX.fullmatch(value) is not None
+
+
+def checked_final_source_artifact_id(value: Any, method_id: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not FINAL_SOURCE_ARTIFACT_ID.fullmatch(value)
+        or value in RESERVED_SOURCE_ARTIFACT_IDS
+    ):
+        raise ValueError(f"malformed source-artifact ID for {method_id}")
+    return value
 
 
 DETERMINISTIC_FILES = (
@@ -883,8 +895,7 @@ def validate_report_packet(
         not isinstance(sources, dict)
         or not sources
         or any(
-            not isinstance(name, str)
-            or not name
+            checked_final_source_artifact_id(name, method_id) != name
             or not isinstance(digest, str)
             or not SHA256_HEX.fullmatch(digest)
             for name, digest in sources.items()

@@ -986,6 +986,20 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertEqual(fake.put_calls, [])
 
+    def test_second_scan_rejects_malformed_source_artifact_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fixture.mutate_manifest(source_sha256={"../frozen_input": "a" * 64})
+            fake = FakeAws(fixture)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "malformed source-artifact ID for rosalind_diana_wgs",
+            ):
+                self.execute(fixture, fake, apply=True)
+
+            self.assertEqual(fake.put_calls, [])
+
     def test_version_history_consumes_key_and_version_markers(self) -> None:
         pages = [
             {

@@ -549,6 +549,24 @@ class PublishPrivateReportTests(unittest.TestCase):
                     "aws_json",
                     side_effect=AssertionError("AWS called"),
                 ),
+                ):
+                    MODULE.run(fixture.args())
+
+    def test_source_hash_artifact_ids_must_be_canonical_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fixture.mutate_manifest(source_sha256={"../frozen_input": "a" * 64})
+
+            with (
+                self.assertRaisesRegex(
+                    ValueError,
+                    "malformed source-artifact ID for rosalind_diana_wgs",
+                ),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
             ):
                 MODULE.run(fixture.args())
 

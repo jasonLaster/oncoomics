@@ -369,16 +369,17 @@
           used before the next step can trust it. The public HCC1395 rehearsal
           path proves that packaging shape without standing in for Diana, and
           the latest source-only guardrails make private and public handoffs
-          prove every report carries the exact fields for its report family
-          before freeze, AI review, or reviewed release can trust it. The
-          selected GPU rerun remains quota-blocked, the legacy CPU run remains
-          stopped, and Diana HRD remains
+          reject stray source labels or report fields before freeze, AI review,
+          or reviewed release can trust a packet. The selected GPU rerun
+          remains quota-blocked, the legacy CPU run remains stopped, and Diana
+          HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = private/public packet envelopes exact</li>
+          <li class="pill">Latest milestone = final source IDs canonical</li>
+          <li class="pill">Private/public source IDs = canonical</li>
           <li class="pill">Private/public packet envelopes = exact</li>
           <li class="pill">Private packet-kind checks = explicit</li>
           <li class="pill">Reviewed-public kind checks = explicit</li>
@@ -831,8 +832,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
-              <span>80% · private/public dry-run receipts exact</span>
-              <div class="bar" aria-hidden="true" style="--pct: 80%"><span></span></div>
+              <span>82% · final source IDs canonical</span>
+              <div class="bar" aria-hidden="true" style="--pct: 82%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Public / private boundary posture</strong>
@@ -2346,6 +2347,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require canonical final source IDs</strong>
+              <span>Private freeze and reviewed-public publication now reject malformed <code>source_sha256</code> artifact names, so final report packets cannot carry path-like or otherwise unbound source labels into private or public trees.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require private kind proof before public copy</strong>
               <span>Reviewed-public publication now rejects private apply receipts that do not carry explicit packet-kind proof, so public publication cannot rely on an older private receipt that only proved packet inventory, no-call boundaries, and forbidden-token scans.</span>
             </li>
@@ -2603,6 +2608,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T20:42:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Canonicalize final source IDs:</strong>
+                private freeze and reviewed-public publication now reject
+                malformed <code>source_sha256</code> artifact names before a
+                final report packet can be frozen or copied into the reviewed
+                public tree.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T20:41:05-07:00">Jul 19 · local</time>
               <span>
