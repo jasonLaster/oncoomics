@@ -1156,6 +1156,8 @@ def require_installed_private_output(path: Path, expected_sha256: str) -> None:
     require_no_symlinked_ancestors(path, "private output")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"private output changed during write: {path}")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"private output mode changed during write: {path}")
     if sha256_path(path) != expected_sha256:
         raise ValueError(f"private output changed during write: {path}")
 
