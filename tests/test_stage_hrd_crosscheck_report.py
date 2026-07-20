@@ -669,6 +669,14 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 "live history check map is not exact",
             ),
             (
+                "numeric live history check",
+                lambda payload: payload["live_history_checks"].__setitem__(
+                    "version_count_exact",
+                    1,
+                ),
+                "live history check map is not exact",
+            ),
+            (
                 "missing object check",
                 lambda payload: payload["objects"][0]["checks"].pop(
                     "checksum_type_full_object"
@@ -688,6 +696,14 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 lambda payload: payload["objects"][0]["checks"].__setitem__(
                     "exact_kms",
                     False,
+                ),
+                "object report.md check map is not exact",
+            ),
+            (
+                "float object check",
+                lambda payload: payload["objects"][0]["checks"].__setitem__(
+                    "exact_kms",
+                    1.0,
                 ),
                 "object report.md check map is not exact",
             ),
