@@ -492,7 +492,7 @@ transfer can create charges. Work-bucket objects expire by lifecycle policy,
 but Batch compute and failed runs should still be checked after testing.
 
 Each Terraform workspace also installs a two-layer daily Batch cost guard with
-a default `daily_cost_guard_limit_usd = 200`. The guard protects that
+a default and maximum `daily_cost_guard_limit_usd = 200`. The guard protects that
 workspace's existing Batch queues and compute environments: the use1 CPU/x86
 queues when `enable_gpu_p5en_batch=false`, and those queues plus the isolated
 P5 Hopper queue in the phase3-fast use2 workspace.
@@ -509,8 +509,10 @@ P5 Hopper queue in the phase3-fast use2 workspace.
   and again at 100%, as a delayed whole-account backstop for non-Batch costs.
 
 The live estimator deliberately overprices P5-family 48xlarge hosts in
-`daily_cost_guard_instance_hourly_rates_usd`, and now reserves 20% of the daily
-cap for slower NAT Gateway, S3, ECR, DynamoDB, Lambda, logs, and EventBridge
-metering, so a GPU run stops early rather than late. AWS billing telemetry is
-still delayed, so leave GPU smoke and execute runs bounded and re-check Batch
-state after every high-cost test.
+`daily_cost_guard_instance_hourly_rates_usd`, uses the same conservative
+`daily_cost_guard_unknown_instance_hourly_rate_usd = 140` fallback for any
+future unlisted Batch instance type, and reserves 20% of the daily cap for
+slower NAT Gateway, S3, ECR, DynamoDB, Lambda, logs, EventBridge, and AWS
+Budgets metering. That makes a GPU run stop early rather than late. AWS billing
+telemetry is still delayed, so leave GPU smoke and execute runs bounded and
+re-check Batch state after every high-cost test.

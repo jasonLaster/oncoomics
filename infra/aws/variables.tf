@@ -71,13 +71,13 @@ variable "enable_gpu_p5en_batch" {
 }
 
 variable "daily_cost_guard_limit_usd" {
-  description = "Account-wide daily AWS Budgets limit in USD for the Diana Batch kill switch."
+  description = "Account-wide daily AWS Budgets limit in USD for the Diana Batch kill switch. Keep at or below 200 USD/day."
   type        = number
   default     = 200
 
   validation {
-    condition     = var.daily_cost_guard_limit_usd > 0
-    error_message = "daily_cost_guard_limit_usd must be greater than 0."
+    condition     = var.daily_cost_guard_limit_usd > 0 && var.daily_cost_guard_limit_usd <= 200
+    error_message = "daily_cost_guard_limit_usd must be greater than 0 and no more than 200."
   }
 }
 
@@ -135,7 +135,7 @@ variable "daily_cost_guard_instance_hourly_rates_usd" {
 variable "daily_cost_guard_unknown_instance_hourly_rate_usd" {
   description = "Fallback hourly USD rate for any tagged Diana Batch EC2 type not listed in daily_cost_guard_instance_hourly_rates_usd."
   type        = number
-  default     = 20
+  default     = 140
 }
 
 variable "batch_arm_instance_families" {

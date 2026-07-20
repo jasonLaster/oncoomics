@@ -309,6 +309,54 @@ class AwsCostGuardTests(unittest.TestCase):
             table.item["instances"]["i-p5"],
         )
 
+    def test_scheduled_guard_conservatively_stops_unknown_instance_types(self) -> None:
+        now = datetime(2026, 7, 19, 2, 0, tzinfo=timezone.utc)
+        batch = FakeBatch()
+        ec2 = FakeEc2(
+            {
+                "Reservations": [
+                    {
+                        "Instances": [
+                            {
+                                "InstanceId": "i-gpu",
+                                "InstanceType": "p6.48xlarge",
+                                "LaunchTime": now - timedelta(hours=2),
+                            },
+                        ],
+                    },
+                ],
+            },
+        )
+        table = FakeTable()
+
+        result = GUARD.monitor_estimated_ec2_spend(
+            batch,
+            ec2,
+            table,
+            job_queues=["gpu"],
+            compute_environments=["gpu-ce"],
+            reason="unknown guard",
+            tag_key="DianaBatchCostGuard",
+            tag_value="diana-omics-prod-use2",
+            daily_limit_usd=Decimal("200"),
+            hourly_rates={},
+            unknown_hourly_rate=Decimal("140"),
+            now=now,
+        )
+
+        self.assertEqual("stopped", result["status"])
+        self.assertEqual("280.000000", result["estimated_daily_ec2_usd"])
+        self.assertIn(
+            (
+                "terminate_job",
+                {
+                    "jobId": "running",
+                    "reason": "unknown guard",
+                },
+            ),
+            batch.calls,
+        )
+
     def test_handler_requires_exact_nonempty_environment_lists(self) -> None:
         with mock.patch.dict(
             os.environ,
@@ -334,7 +382,7 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn('variable "daily_cost_guard_limit_usd"', variables)
         self.assertIn("default     = 200", variables)
         self.assertIn(
-            "var.daily_cost_guard_limit_usd > 0",
+            "var.daily_cost_guard_limit_usd > 0 && var.daily_cost_guard_limit_usd <= 200",
             variables,
         )
         self.assertIn('variable "daily_cost_guard_stop_threshold_percent"', variables)
@@ -357,6 +405,7 @@ class AwsCostGuardTests(unittest.TestCase):
             ),
             variables,
         )
+        self.assertIn("default     = 140", variables)
         self.assertIn(
             (
                 "BATCH_DAILY_EC2_LIMIT_USD       = "
