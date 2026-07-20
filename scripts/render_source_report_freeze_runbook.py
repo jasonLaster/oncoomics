@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 from typing import Iterable
@@ -34,8 +33,9 @@ from runbook_io import (
     load_json_object,
     missing_required_files,
     preexisting_create_only_paths,
-    require_real_input_file,
+    read_stable_file,
     shell_join,
+    sha256_bytes,
     source_private_receipt_path,
     timestamped_runbook_assignment,
     unique_paths,
@@ -84,12 +84,7 @@ def forbidden_flags() -> list[str]:
 
 
 def sha256(path: Path) -> str:
-    require_real_input_file(path, f"{path.name} SHA-256 input")
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_bytes(read_stable_file(path, f"{path.name} SHA-256 input"))
 
 
 def source_packet_dirs(
@@ -128,11 +123,13 @@ def validate_packet_dirs(
     forbidden_tokens = tuple(DEFAULT_FORBIDDEN_TOKENS)
     expected_forbidden_tokens_sha256 = None
     if phase3_fast_forbidden_tokens_file is not None:
-        require_real_input_file(
+        forbidden_tokens_data = read_stable_file(
             phase3_fast_forbidden_tokens_file,
             "Phase 3 fast forbidden-token file",
         )
-        forbidden_tokens = canonical_forbidden_tokens(phase3_fast_forbidden_tokens_file.read_text(encoding="utf-8"))
+        forbidden_tokens = canonical_forbidden_tokens(
+            forbidden_tokens_data.decode("utf-8")
+        )
         expected_forbidden_tokens_sha256 = sha256_forbidden_tokens(forbidden_tokens)
 
     if tuple(paths) != REQUIRED_METHOD_IDS:
@@ -207,11 +204,11 @@ def validate_blocked_source_bindings(paths: dict[str, Path]) -> None:
         review_summary = manifest.get("review_summary")
         source_sha256 = manifest.get("source_sha256")
         report_path = packet_dir / "report.md"
-        require_real_input_file(
+        report_data = read_stable_file(
             report_path,
             f"{blocked_method_id} blocked report",
         )
-        report = report_path.read_text(encoding="utf-8")
+        report = report_data.decode("utf-8")
         observed_lines = [
             line
             for line in report.splitlines()

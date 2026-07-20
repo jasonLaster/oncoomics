@@ -1084,6 +1084,32 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             ):
                 MODULE.sha256(linked_input)
 
+    def test_sha256_rejects_mid_read_rewrites(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hash_input = root / "report_manifest.json"
+            hash_input.write_text('{"stable": true}\n', encoding="utf-8")
+
+            original_read_bytes = Path.read_bytes
+            mutated = False
+
+            def mutate_after_first_read(path: Path) -> bytes:
+                nonlocal mutated
+                data = original_read_bytes(path)
+                if path == hash_input and not mutated:
+                    mutated = True
+                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                return data
+
+            with (
+                patch.object(Path, "read_bytes", mutate_after_first_read),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report_manifest.json SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256(hash_input)
+
     def test_runbook_io_sha256_rejects_symlinked_hash_leaf(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

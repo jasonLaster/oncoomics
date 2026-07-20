@@ -13,9 +13,10 @@ Use this checklist when updating `docs/status/diana-wgs-hrd-progress.html`.
   visible service / usage-type breakdown have been freshly checked or a
   read-only Cost Explorer failure is shown in their place.
 - Treat the Cost Explorer card as part of the required dashboard state, even
-  for source-only progress: each refresh must show the latest complete UTC day
-  total plus a row-level service / usage-type breakdown or a visible read-only
-  failure for that exact attempted Cost Explorer window.
+  for source-only progress: each refresh must show the latest complete UTC day,
+  the total unblended cost, and a row-level service / usage-type breakdown from
+  that same Cost Explorer response, or a visible read-only failure for that
+  exact attempted Cost Explorer window.
 - Update the ignored preview copy after editing:
 
 ```sh
@@ -40,7 +41,7 @@ buckets and avoids partial same-day estimates.
 - Re-run Cost Explorer immediately before each dashboard refresh so the
   yesterday card never carries a stale spend snapshot alongside fresh progress
   text.
-- Display the covered UTC date, total unblended cost, and the top service / usage-type rows.
+- Display the covered UTC date, total unblended cost, and the top service / usage-type rows in the visible card; do not leave the breakdown only in an HTML comment or a commit message.
 - Keep the breakdown row-level: every visible non-`Other` row should come from
   one exact Cost Explorer `SERVICE` / `USAGE_TYPE` pair, except rows that
   intentionally combine a single plain-language cost such as Public IPv4 across
@@ -64,18 +65,18 @@ buckets and avoids partial same-day estimates.
 Example query shape:
 
 ```sh
-python3 - <<'PY'
+TIME_PERIOD=$(python3 - <<'PY'
 from datetime import datetime, timedelta, timezone
 
 end = datetime.now(timezone.utc).date()
 start = end - timedelta(days=1)
-print(f"START={start}")
-print(f"END={end}")
+print(f"Start={start},End={end}")
 PY
+)
 
 aws ce get-cost-and-usage \
   --region us-east-1 \
-  --time-period "Start=${START},End=${END}" \
+  --time-period "${TIME_PERIOD}" \
   --granularity DAILY \
   --metrics UnblendedCost \
   --group-by Type=DIMENSION,Key=SERVICE Type=DIMENSION,Key=USAGE_TYPE \
