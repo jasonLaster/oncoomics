@@ -392,11 +392,14 @@ def first_json_row(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {}
 
 
-def as_int(value: Any) -> int:
-    try:
-        return int(value or 0)
-    except (TypeError, ValueError):
+def optional_nonnegative_int(value: Any, label: str) -> int:
+    if value in (None, ""):
         return 0
+    if type(value) is int and value >= 0:
+        return value
+    if isinstance(value, str) and value.isascii() and value.isdecimal():
+        return int(value)
+    raise ValueError(f"{label} must be a non-negative integer or blank")
 
 
 def has_value(value: Any) -> bool:
@@ -605,11 +608,21 @@ def hcc1395_wgs_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], 
     cnv_readiness = read_json_or_empty("results/clinicalization/cnv_loh_readiness_summary.json")
     hrd_readiness = read_json_or_empty("results/clinicalization/hrd_interpretation_readiness_summary.json")
     sv_rows = sv_summary.get("rows", []) if isinstance(sv_summary.get("rows"), list) else []
-    discordant_pairs = sum(as_int(row.get("discordant_mapped_pairs")) for row in sv_rows if isinstance(row, dict))
+    discordant_pairs = sum(
+        optional_nonnegative_int(
+            row.get("discordant_mapped_pairs"),
+            "HCC1395 WGS SV discordant_mapped_pairs",
+        )
+        for row in sv_rows
+        if isinstance(row, dict)
+    )
     sv_statuses = sorted({str(row.get("chord_input_status", "")) for row in sv_rows if isinstance(row, dict) and row.get("chord_input_status")})
     sv_readiness_row = first_json_row(sv_readiness)
     cnv_readiness_row = first_json_row(cnv_readiness)
-    sv_readiness_pairs = as_int(sv_readiness_row.get("phase3_discordant_mapped_pairs"))
+    sv_readiness_pairs = optional_nonnegative_int(
+        sv_readiness_row.get("phase3_discordant_mapped_pairs"),
+        "HCC1395 WGS SV readiness phase3_discordant_mapped_pairs",
+    )
     sv_readiness_pairs_present = has_value(sv_readiness_row.get("phase3_discordant_mapped_pairs"))
     blockers: list[str] = []
     if discordant_pairs <= 0:
@@ -1219,7 +1232,10 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
             or require_sha256(source.get(input_id), f"deterministic source {input_id}") != digest
             or require_sha256(row.get("sha256"), f"deterministic input {input_id}") != digest
             or str(row.get("path")) != f"artifact-root/{relative}"
-            or as_int(row.get("bytes")) != artifact.stat().st_size
+            or require_csv_nonnegative_int(
+                row.get("bytes"),
+                f"deterministic input {input_id} bytes",
+            ) != artifact.stat().st_size
         ):
             raise ValueError(f"Diana WGS artifact is not exactly bound by deterministic input {input_id}")
         artifact_hashes[input_id] = digest
@@ -2063,8 +2079,14 @@ def diana_wgs_evidence(
     alignment_rows = alignment.get("rows", []) if isinstance(alignment.get("rows"), list) else []
     alignment_rows = [row for row in alignment_rows if isinstance(row, dict)]
     passed_alignment_rows = sum(str(row.get("status", "")) == "passed" for row in alignment_rows)
-    total_reads = sum(as_int(row.get("total_reads")) for row in alignment_rows)
-    mapped_reads = sum(as_int(row.get("mapped_reads")) for row in alignment_rows)
+    total_reads = sum(
+        optional_nonnegative_int(row.get("total_reads"), "Diana WGS alignment total_reads")
+        for row in alignment_rows
+    )
+    mapped_reads = sum(
+        optional_nonnegative_int(row.get("mapped_reads"), "Diana WGS alignment mapped_reads")
+        for row in alignment_rows
+    )
     alignment_status = str(alignment.get("status", "missing"))
     if alignment_status != "passed":
         blockers.append("Diana WGS alignment validation did not pass.")
@@ -2079,7 +2101,10 @@ def diana_wgs_evidence(
     variant_status = str(variants.get("status", "missing"))
     if variant_status != "passed":
         blockers.append("Diana WGS matched-normal small-variant generation did not pass.")
-    hrr_region_records = as_int(variants.get("brca1_brca2_pass_region_records"))
+    hrr_region_records = optional_nonnegative_int(
+        variants.get("brca1_brca2_pass_region_records"),
+        "Diana WGS BRCA1/BRCA2 PASS region records",
+    )
     hrr_region_records_available = variant_status == "passed" and has_value(variants.get("brca1_brca2_pass_region_records"))
     if variant_status == "passed":
         variant_detail = (
@@ -2119,8 +2144,20 @@ def diana_wgs_evidence(
 
     sv_rows = sv.get("rows", []) if isinstance(sv.get("rows"), list) else []
     sv_rows = [row for row in sv_rows if isinstance(row, dict)]
-    discordant_pairs = sum(as_int(row.get("discordant_mapped_pairs")) for row in sv_rows)
-    supplementary_alignments = sum(as_int(row.get("supplementary_alignments")) for row in sv_rows)
+    discordant_pairs = sum(
+        optional_nonnegative_int(
+            row.get("discordant_mapped_pairs"),
+            "Diana WGS SV discordant_mapped_pairs",
+        )
+        for row in sv_rows
+    )
+    supplementary_alignments = sum(
+        optional_nonnegative_int(
+            row.get("supplementary_alignments"),
+            "Diana WGS SV supplementary_alignments",
+        )
+        for row in sv_rows
+    )
     sv_status = str(sv.get("status", "missing"))
     if sv_rows:
         sv_detail = (
