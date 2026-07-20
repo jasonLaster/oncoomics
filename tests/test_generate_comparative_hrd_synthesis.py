@@ -2425,18 +2425,22 @@ class GenerateSynthesisTests(unittest.TestCase):
         ) as temporary:
             input_path = Path(temporary) / "input.json"
             input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = GENERATE.read_real_nonempty_file_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(path: Path, label: str) -> bytes:
                 nonlocal calls
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 calls += 1
                 if calls == 1:
                     input_path.write_text('{"status": "mutated"}\n', encoding="utf-8")
                 return data
 
-            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+            with mock.patch.object(
+                GENERATE,
+                "read_real_nonempty_file_once",
+                mutating_read_once,
+            ):
                 with self.assertRaisesRegex(ValueError, "changed during read"):
                     GENERATE.sha256(input_path)
 
@@ -2448,12 +2452,12 @@ class GenerateSynthesisTests(unittest.TestCase):
             input_path = root / "input.json"
             relocated = root / "relocated-input.json"
             input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = GENERATE.read_real_nonempty_file_once
             calls = 0
 
-            def swapping_read_bytes(path: Path) -> bytes:
+            def swapping_read_once(path: Path, label: str) -> bytes:
                 nonlocal calls
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 if path == input_path and calls == 0:
                     input_path.unlink()
                     relocated.write_text('{"status": "ready"}\n', encoding="utf-8")
@@ -2461,12 +2465,46 @@ class GenerateSynthesisTests(unittest.TestCase):
                 calls += 1
                 return data
 
-            with mock.patch.object(Path, "read_bytes", swapping_read_bytes):
+            with mock.patch.object(
+                GENERATE,
+                "read_real_nonempty_file_once",
+                swapping_read_once,
+            ):
                 with self.assertRaisesRegex(
                     ValueError,
                     "missing or unsafe input.json SHA-256 input",
                 ):
                     GENERATE.sha256(input_path)
+
+    def test_synthesis_sha256_rejects_symlink_swap_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="hrd-synthesis-stable-hash-"
+        ) as temporary:
+            root = Path(temporary)
+            input_path = root / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_require = GENERATE.require_real_nonempty_file
+            moved = False
+
+            def swapping_require(path: Path, label: str) -> Path:
+                nonlocal moved
+                result = real_require(path, label)
+                if path == input_path and not moved:
+                    moved = True
+                    relocated = root / "relocated-input.json"
+                    input_path.rename(relocated)
+                    input_path.symlink_to(relocated)
+                return result
+
+            with mock.patch.object(
+                GENERATE,
+                "require_real_nonempty_file",
+                swapping_require,
+            ):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    GENERATE.sha256(input_path)
+
+            self.assertTrue(moved)
 
     def test_synthesis_json_rejects_input_that_changes_during_read(self) -> None:
         with tempfile.TemporaryDirectory(
@@ -2474,18 +2512,22 @@ class GenerateSynthesisTests(unittest.TestCase):
         ) as temporary:
             input_path = Path(temporary) / "input.json"
             input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = GENERATE.read_real_nonempty_file_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(path: Path, label: str) -> bytes:
                 nonlocal calls
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 calls += 1
                 if calls == 1:
                     input_path.write_text('{"status": "mutated"}\n', encoding="utf-8")
                 return data
 
-            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+            with mock.patch.object(
+                GENERATE,
+                "read_real_nonempty_file_once",
+                mutating_read_once,
+            ):
                 with self.assertRaisesRegex(ValueError, "changed during read"):
                     GENERATE.load_object(input_path, "input")
 
