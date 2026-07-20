@@ -67,9 +67,7 @@ def require_summary_receipt(value: object, method_id: str) -> str:
         not isinstance(value, str)
         or not value
         or value.strip() != value
-        or "\n" in value
-        or "\r" in value
-        or "\0" in value
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
         or value.lower() in {"null", "none"}
     ):
         raise ValueError(f"{method_id} private receipt path is malformed")

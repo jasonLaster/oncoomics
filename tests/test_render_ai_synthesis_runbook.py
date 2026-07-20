@@ -1060,6 +1060,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             ("receipt", True, "private receipt path is malformed"),
             ("receipt", " receipt.json", "private receipt path is malformed"),
             ("receipt", "receipt.json\n", "private receipt path is malformed"),
+            ("receipt", "receipt\t.json", "private receipt path is malformed"),
             ("object_count", 999, "object count is malformed"),
             ("object_count", 0, "object count is malformed"),
             ("object_count", True, "object count is malformed"),
