@@ -324,6 +324,10 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         wrong_schema = deepcopy(receipt)
         wrong_schema["schema_version"] = 1.0
         tampered.append(wrong_schema)
+        for value in (True, 1.0, "1"):
+            inexact_attempt_count = deepcopy(receipt)
+            inexact_attempt_count["batch"]["attempt_count"] = value
+            tampered.append(inexact_attempt_count)
         for value in (True, 42.0, "42", 0):
             non_exact_worker_bytes = deepcopy(receipt)
             non_exact_worker_bytes["worker"]["bytes"] = value

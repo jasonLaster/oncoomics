@@ -2034,6 +2034,19 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                 },
                 **kwargs,
             )
+        for value in (True, 1.0, "1"):
+            with self.subTest(attempt_count=value):
+                with self.assertRaisesRegex(ValueError, "exact successful Batch job"):
+                    MODULE.validate_execution_binding(
+                        {
+                            **receipt,
+                            "batch": {
+                                **receipt["batch"],
+                                "attempt_count": value,
+                            },
+                        },
+                        **kwargs,
+                    )
         for label, mutate in (
             ("legacy", lambda checks: checks.clear() or checks.update(LEGACY_BATCH_WORKER_CHECKS)),
             ("missing", lambda checks: checks.pop("receipt_envelope")),
