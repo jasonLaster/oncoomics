@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import os
 import re
@@ -185,19 +186,23 @@ def require_real_hash_input(path: Path) -> None:
 
 
 def sha256(path: Path) -> str:
-    require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )[1]
 
 
 def load_object(path: Path) -> dict[str, Any]:
+    value, _ = load_object_with_sha256(path)
+    return value
+
+
+def load_object_with_sha256(path: Path) -> tuple[dict[str, Any], str]:
     path = resolve_real_file(path, path.name)
+    data, digest = read_stable_file_with_sha256(path, path.name)
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -208,7 +213,24 @@ def load_object(path: Path) -> dict[str, Any]:
         raise ValueError(f"invalid JSON in {path.name}") from error
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path.name}")
-    return value
+    return value, digest
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    require_real_hash_input(path)
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    if not data or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data, digest
+
+
+def read_stable_text(path: Path, label: str) -> str:
+    data, _ = read_stable_file_with_sha256(path, label)
+    try:
+        return data.decode("utf-8")
+    except UnicodeError as error:
+        raise ValueError(f"invalid UTF-8 in {label}") from error
 
 
 def resolve_real_dir(path: Path, label: str) -> Path:
@@ -290,7 +312,7 @@ def split_semicolon(value: str, label: str, row_number: int) -> tuple[str, ...]:
 def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str:
     if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
         raise ValueError("model catalog receipt is missing or empty")
-    receipt = load_object(path)
+    receipt, receipt_sha256 = load_object_with_sha256(path)
     if set(receipt) != MODEL_CATALOG_RECEIPT_KEYS:
         raise ValueError("model catalog receipt envelope is not exact")
     if not is_exact_int(receipt.get("schema_version"), 1):
@@ -327,7 +349,7 @@ def validate_catalog_receipt(path: Path, model_contracts: dict[str, Any]) -> str
     expected = {(row["provider"], row["model_id"]) for row in model_contracts.values()}
     if observed != expected:
         raise ValueError("model catalog receipt does not match the pinned reviewer models")
-    return sha256(path)
+    return receipt_sha256
 
 
 def json_pointer_token(value: str) -> str:
@@ -422,10 +444,9 @@ def validate_source_manifests(
             source_path,
             f"source manifest for {evidence_id}",
         )
-        if sha256(path) != input_hashes.get(evidence_id):
+        source, source_sha256 = load_object_with_sha256(path)
+        if source_sha256 != input_hashes.get(evidence_id):
             raise ValueError(f"source-manifest hash mismatch for {evidence_id}")
-
-        source = load_object(path)
         if not is_exact_int(source.get("schema_version"), 1):
             raise ValueError(f"unsupported source-manifest schema for {evidence_id}")
 
@@ -518,7 +539,7 @@ def validate_numeric_rendering(
 
 def scan_output(paths: list[Path], forbidden_tokens: list[str]) -> None:
     for path in paths:
-        text = normalized_scan_text(path.read_text(encoding="utf-8"))
+        text = normalized_scan_text(read_stable_text(path, path.name))
         if PROHIBITED_INPUT.search(text):
             raise ValueError(f"raw object, URI, or local path leaked into {path.name}")
         lowered = text.lower()
@@ -534,7 +555,7 @@ def validate_prompt(
     subject_alias: str,
     model: dict[str, Any],
 ) -> None:
-    prompt_text = prompt_path.read_text(encoding="utf-8")
+    prompt_text = read_stable_text(prompt_path, prompt_path.name)
     if f"Input: `review_bundle.json` with SHA-256 `{bundle_hash}`." not in prompt_text:
         raise ValueError("reviewer prompt is not bound to the current bundle hash")
     if (
@@ -565,7 +586,9 @@ def validate_other_reviewer(
         raise ValueError("reviewer B requires a complete validated reviewer A output")
 
     other_validation = load_object(paths["validation"])
-    other_manifest = load_object(paths["manifest"])
+    other_manifest, other_manifest_sha256 = load_object_with_sha256(
+        paths["manifest"],
+    )
     if (
         not is_exact_int(other_validation.get("schema_version"), 2)
         or other_validation.get("status") != "passed"
@@ -589,7 +612,7 @@ def validate_other_reviewer(
     if (
         other_validation.get("report_sha256") != other_outputs["report.md"]
         or other_validation.get("claims_sha256") != other_outputs["claims.csv"]
-        or other_validation.get("review_manifest_sha256") != sha256(paths["manifest"])
+        or other_validation.get("review_manifest_sha256") != other_manifest_sha256
     ):
         raise ValueError("reviewer A artifacts changed after validation")
     if other_manifest.get("reviewer_id") != "A":
@@ -833,15 +856,16 @@ def validate_report_and_claims(
     evidence: dict[str, dict[str, Any]],
     quantitative_facts: dict[str, dict[str, Any]],
 ) -> tuple[list[dict[str, str]], set[str]]:
-    with claims_path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        if reader.fieldnames != CLAIMS_FIELDS:
-            raise ValueError("claims.csv header does not match the required schema")
-        claims = list(reader)
+    claims_text = read_stable_text(claims_path, "claims.csv")
+    handle = io.StringIO(claims_text, newline="")
+    reader = csv.DictReader(handle)
+    if reader.fieldnames != CLAIMS_FIELDS:
+        raise ValueError("claims.csv header does not match the required schema")
+    claims = list(reader)
     if not claims:
         raise ValueError("claims.csv contains no claims")
 
-    report = report_path.read_text(encoding="utf-8")
+    report = read_stable_text(report_path, "report.md")
     if re.search(r"</?[A-Za-z][^>]*>", report):
         raise ValueError("raw HTML is prohibited in report.md")
 
@@ -1019,7 +1043,7 @@ def validate_report_and_claims(
         if not required.issubset(observed):
             raise ValueError(f"{claim_id} cites an unused quantitative fact")
 
-    review_narrative = normalized_scan_text(visible_report + "\n" + claims_path.read_text(encoding="utf-8"))
+    review_narrative = normalized_scan_text(visible_report + "\n" + claims_text)
     other_role = "B" if reviewer == "A" else "A"
     other_context = re.compile(
         rf"\breviewer\s*{other_role}\b|\bother reviewer(?:'s)?\b|"
@@ -1251,7 +1275,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         bundle = load_object(bundle_path)
         bundle_manifest = load_object(bundle_manifest_path)
-        review_manifest = load_object(review_manifest_path)
+        review_manifest, review_manifest_sha256 = load_object_with_sha256(
+            review_manifest_path,
+        )
         bundle_hash = sha256(bundle_path)
         prompt_hash = sha256(prompt_path)
 
@@ -1358,7 +1384,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "prompt_sha256": prompt_hash,
         "report_sha256": expected_outputs["report.md"],
         "claims_sha256": expected_outputs["claims.csv"],
-        "review_manifest_sha256": sha256(review_manifest_path),
+        "review_manifest_sha256": review_manifest_sha256,
         "forbidden_token_count": len(forbidden),
     }
 

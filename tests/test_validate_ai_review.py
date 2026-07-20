@@ -467,6 +467,98 @@ class ValidateAiReviewTests(unittest.TestCase):
             ):
                 VALIDATE.sha256(linked_inputs / "review_manifest.json")
 
+    def test_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            input_path = Path(temporary) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text('{"status": "mutated"}\n', encoding="utf-8")
+                return data
+
+            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    VALIDATE.sha256(input_path)
+
+    def test_load_object_rejects_json_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            input_path = Path(temporary) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text('{"status": "mutated"}\n', encoding="utf-8")
+                return data
+
+            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    VALIDATE.load_object(input_path)
+
+    def test_validation_scans_reviewer_claims_from_stable_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review = Path(temporary) / "review-a"
+            fixture.write_review(review)
+            bundle = VALIDATE.load_object(fixture.bundle_dir / "review_bundle.json")
+            bundle_manifest = VALIDATE.load_object(
+                fixture.bundle_dir / "bundle_manifest.json",
+            )
+            (
+                subject_alias,
+                model_contracts,
+                _required_methods,
+                evidence_rows,
+                quantitative_facts,
+                _catalog_receipt_hash,
+                _inventory_id,
+            ) = VALIDATE.validate_bundle(
+                bundle,
+                bundle_manifest,
+                sha256(fixture.bundle_dir / "review_bundle.json"),
+                sha256(fixture.bundle_dir / "reviewer-a.prompt.md"),
+                "A",
+                ["DirectIdentifier"],
+                fixture.catalog_receipt,
+            )
+            claims_path = review / "claims.csv"
+            real_read_stable_text = VALIDATE.read_stable_text
+
+            def mutate_claims_after_read(path: Path, label: str) -> str:
+                text = real_read_stable_text(path, label)
+                if path == claims_path:
+                    claims_path.write_text("reviewer B\n", encoding="utf-8")
+                return text
+
+            with mock.patch.object(
+                VALIDATE,
+                "read_stable_text",
+                side_effect=mutate_claims_after_read,
+            ):
+                claims, covered = VALIDATE.validate_report_and_claims(
+                    review / "report.md",
+                    claims_path,
+                    "A",
+                    subject_alias,
+                    str(bundle["authorized_hrd_state"]),
+                    {str(row["evidence_id"]): row for row in evidence_rows},
+                    quantitative_facts,
+                )
+
+        self.assertEqual(len(fixture.manifests), len(covered))
+        self.assertGreater(len(claims), 0)
+
     def test_validation_receipt_rechecks_mode_after_directory_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "validation.json"
@@ -1082,6 +1174,7 @@ class ValidateAiReviewTests(unittest.TestCase):
                     }
                 ]
 
+                source_sha256 = VALIDATE.sha256(source_path)
                 with (
                     mock.patch.object(VALIDATE, "sha256", return_value=valid_hash),
                     mock.patch.object(
@@ -1097,7 +1190,7 @@ class ValidateAiReviewTests(unittest.TestCase):
                     VALIDATE.validate_source_manifests(
                         [source_path],
                         evidence,
-                        {"E001": valid_hash},
+                        {"E001": source_sha256},
                     )
 
     def test_source_manifests_reject_malformed_source_artifact_ids(self) -> None:
@@ -1181,22 +1274,24 @@ class ValidateAiReviewTests(unittest.TestCase):
             fixture.build()
             review = root / "review-a"
             fixture.write_review(review)
-            real_load_object = VALIDATE.load_object
+            real_load_object_with_sha256 = VALIDATE.load_object_with_sha256
             swapped = False
 
-            def swap_review_manifest_before_parse(path: Path) -> dict:
+            def swap_review_manifest_before_parse(
+                path: Path,
+            ) -> tuple[dict[str, object], str]:
                 nonlocal swapped
                 if path.name == "review_manifest.json" and not swapped:
                     relocated = root / "review_manifest.real.json"
                     path.rename(relocated)
                     path.symlink_to(relocated)
                     swapped = True
-                return real_load_object(path)
+                return real_load_object_with_sha256(path)
 
             with (
                 mock.patch.object(
                     VALIDATE,
-                    "load_object",
+                    "load_object_with_sha256",
                     side_effect=swap_review_manifest_before_parse,
                 ),
                 self.assertRaisesRegex(

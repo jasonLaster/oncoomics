@@ -337,7 +337,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = AI synthesis reads rechecked</li>
+          <li class="pill">Latest milestone = AI validation reads rechecked</li>
+          <li class="pill">AI validation local reads = stable</li>
           <li class="pill">AI synthesis local reads = stable</li>
           <li class="pill">Phase 3 JSON reads = stable</li>
           <li class="pill">Public-index receipt digests = guarded</li>
@@ -1777,6 +1778,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · recheck AI validation reads</strong>
+              <span>Independent AI-review validation now reads model-catalog receipts, source manifests, review manifests, prompts, reviewer reports, and reviewer claim tables through stable local bytes before validating models, source evidence, isolated outputs, forbidden tokens, and final validation receipt bindings.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · recheck comparative synthesis reads</strong>
               <span>Comparative synthesis now reads AI bundle JSON, source manifests, reviewer validations, reviewer manifests, reviewer reports, reviewer claim tables, and generated agreement rows through stable local bytes before it parses, scans, or binds them into the source inventory.</span>
             </li>
@@ -2346,6 +2351,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:12:49-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Recheck AI validation reads:</strong>
+                independent AI-review validation now parses and scans
+                hash-bound JSON, prompt Markdown, reviewer Markdown, and
+                reviewer CSV from stable local bytes before writing
+                <code>validation.json</code>.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:09:37-07:00">Jul 19 · local</time>
               <span>
