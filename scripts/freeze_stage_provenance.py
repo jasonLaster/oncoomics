@@ -102,17 +102,20 @@ def require_real_hash_input(path: Path) -> None:
 
 
 def sha256(path: Path) -> str:
-    digest = sha256_once(path)
-    if sha256_once(path) != digest:
+    data, identity = read_real_hash_input_once(path)
+    digest = sha256_bytes(data)
+    stable_data, stable_identity = read_real_hash_input_once(path)
+    if stable_identity != identity or sha256_bytes(stable_data) != digest:
         raise ValueError(f"{path.name} SHA-256 input changed during read")
     return digest
 
 
 def sha256_once(path: Path) -> str:
-    return sha256_bytes(read_real_hash_input_once(path))
+    data, _identity = read_real_hash_input_once(path)
+    return sha256_bytes(data)
 
 
-def read_real_hash_input_once(path: Path) -> bytes:
+def read_real_hash_input_once(path: Path) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_real_hash_input(path)
     flags = (
         os.O_RDONLY
@@ -142,7 +145,7 @@ def read_real_hash_input_once(path: Path) -> bytes:
         or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{path.name} SHA-256 input changed during read")
-    return data
+    return data, stat_identity(opened)
 
 
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
