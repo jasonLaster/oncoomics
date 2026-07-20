@@ -261,6 +261,22 @@ class Phase3FastBamQcRunTests(unittest.TestCase):
                 with self.subTest(hash_input=hash_input), self.assertRaisesRegex(run_qc.ManifestError, message):
                     run_qc._sha256_path(hash_input)
 
+    def test_hash_materialized_binds_size_and_sha_to_one_stable_payload(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output = Path(tmp) / "flagstat.txt"
+            output.write_text("changed after snapshot\n", encoding="utf-8")
+            payload = b"stable flagstat\n"
+
+            with patch.object(run_qc, "read_stable_real_file_bytes", return_value=payload):
+                materialized = run_qc._hash_materialized(
+                    output,
+                    "normal flagstat",
+                    allow_empty=False,
+                )
+
+        self.assertEqual(len(payload), materialized["bytes"])
+        self.assertEqual(hashlib.sha256(payload).hexdigest(), materialized["sha256"])
+
     def test_rejects_missing_planned_command(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_bam_qc_plan(Path(tmp))

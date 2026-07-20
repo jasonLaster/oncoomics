@@ -168,6 +168,18 @@ class Phase3FastCnvEvidenceRunTests(unittest.TestCase):
                 with self.subTest(hash_input=hash_input), self.assertRaisesRegex(run_cnv.ManifestError, message):
                     run_cnv._sha256_path(hash_input)
 
+    def test_hash_materialized_binds_size_and_sha_to_one_stable_payload(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output = Path(tmp) / "coverage_bins.csv"
+            output.write_text("changed after snapshot\n", encoding="utf-8")
+            payload = b"stable coverage bins\n"
+
+            with patch.object(run_cnv, "read_stable_real_file_bytes", return_value=payload):
+                materialized = run_cnv._hash_materialized(output, "coverage_bins")
+
+        self.assertEqual(len(payload), materialized["bytes"])
+        self.assertEqual(hashlib.sha256(payload).hexdigest(), materialized["sha256"])
+
     def test_rejects_missing_planned_command(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_cnv_evidence_plan(Path(tmp))
