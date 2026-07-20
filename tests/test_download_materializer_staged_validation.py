@@ -5,6 +5,7 @@ import ast
 import base64
 import hashlib
 import json
+import os
 import stat
 import sys
 import tempfile
@@ -442,25 +443,28 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
             root = Path(value)
             hash_input = root / "staged_input_validation.json"
             hash_input.write_text('{"status":"first"}\n', encoding="utf-8")
-            original_sha256_path_once = MODULE.sha256_path_once
-            hashes = 0
+            original_read_once = MODULE.read_real_hash_input_once
+            reads = 0
 
-            def mutate_after_first_hash(path: Path) -> str:
-                nonlocal hashes
-                digest = original_sha256_path_once(path)
-                if path == hash_input and hashes == 0:
+            def mutate_after_first_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+                nonlocal reads
+                result = original_read_once(path, label)
+                if path == hash_input and reads == 0:
                     hash_input.write_text(
                         '{"status":"second"}\n',
                         encoding="utf-8",
                     )
-                hashes += 1
-                return digest
+                reads += 1
+                return result
 
             with (
                 patch.object(
                     MODULE,
-                    "sha256_path_once",
-                    side_effect=mutate_after_first_hash,
+                    "read_real_hash_input_once",
+                    side_effect=mutate_after_first_read,
                 ),
                 self.assertRaisesRegex(
                     ValueError,
@@ -474,22 +478,24 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
             root = Path(value)
             receipt = root / "materializer-receipt.json"
             receipt.write_text('{"status":"first"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            original_read_once = MODULE.read_real_hash_input_once
             reads = 0
 
-            def mutate_after_first_read(path: Path) -> bytes:
+            def mutate_after_first_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
                 nonlocal reads
-                payload = real_read_bytes(path)
+                result = original_read_once(path, label)
                 if path.name == receipt.name and reads == 0:
                     receipt.write_text('{"status":"second"}\n', encoding="utf-8")
                 reads += 1
-                return payload
+                return result
 
             with (
                 patch.object(
-                    Path,
-                    "read_bytes",
-                    autospec=True,
+                    MODULE,
+                    "read_real_hash_input_once",
                     side_effect=mutate_after_first_read,
                 ),
                 self.assertRaisesRegex(
@@ -498,6 +504,68 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                 ),
             ):
                 MODULE.load_json_with_sha256(receipt, "materializer receipt")
+
+    def test_load_json_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt = root / "materializer-receipt.json"
+            target = root / "target-receipt.json"
+            receipt.write_text('{"status":"ready"}\n', encoding="utf-8")
+            target.write_bytes(receipt.read_bytes())
+            real_fstat = MODULE.os.fstat
+            swapped = False
+
+            def replace_leaf_after_open(descriptor: int) -> os.stat_result:
+                nonlocal swapped
+                result = real_fstat(descriptor)
+                if not swapped:
+                    swapped = True
+                    target.replace(receipt)
+                return result
+
+            with (
+                patch.object(
+                    MODULE.os,
+                    "fstat",
+                    side_effect=replace_leaf_after_open,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materializer receipt changed during read",
+                ),
+            ):
+                MODULE.load_json_with_sha256(receipt, "materializer receipt")
+
+    def test_sha256_path_rejects_leaf_replaced_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            hash_input = root / "staged_input_validation.json"
+            target = root / "target.json"
+            hash_input.write_text('{"status":"ready"}\n', encoding="utf-8")
+            target.write_text('{"status":"redirected"}\n', encoding="utf-8")
+            real_require = MODULE.require_no_symlinked_ancestors
+            swapped = False
+
+            def swap_leaf_after_preflight(path: Path, label: str) -> None:
+                nonlocal swapped
+                real_require(path, label)
+                if path == hash_input and not swapped:
+                    swapped = True
+                    hash_input.unlink()
+                    hash_input.symlink_to(target)
+
+            with (
+                patch.object(
+                    MODULE,
+                    "require_no_symlinked_ancestors",
+                    side_effect=swap_leaf_after_preflight,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged_input_validation.json SHA-256 input must be a real file",
+                ),
+            ):
+                MODULE.sha256_path(hash_input)
 
     def test_reserve_json_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as value:

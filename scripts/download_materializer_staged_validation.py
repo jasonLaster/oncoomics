@@ -8,6 +8,7 @@ import base64
 import hashlib
 import json
 import os
+import stat
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -61,22 +62,11 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def sha256_path(path: Path) -> str:
-    digest = sha256_path_once(path)
-    if sha256_path_once(path) != digest:
-        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    _payload, digest = read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )
     return digest
-
-
-def sha256_path_once(path: Path) -> str:
-    label = f"{path.name} SHA-256 input"
-    require_no_symlinked_ancestors(path, label)
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"{label} must be a real file: {path}")
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def checksum_sha256(digest: str) -> str:
@@ -85,7 +75,7 @@ def checksum_sha256(digest: str) -> str:
 
 def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     path = resolve_real_file(path, label)
-    payload = read_stable_file(path, label)
+    payload, digest = read_stable_file_with_sha256(path, label)
     try:
         value = json.loads(
             payload,
@@ -95,18 +85,71 @@ def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} is not a JSON object")
-    return value, sha256_bytes(payload)
+    return value, digest
 
 
 def read_stable_file(path: Path, label: str) -> bytes:
+    payload, _digest = read_stable_file_with_sha256(path, label)
+    return payload
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    payload, identity = read_real_hash_input_once(path, label)
+    digest = sha256_bytes(payload)
+    stable_payload, stable_identity = read_real_hash_input_once(path, label)
+    if stable_identity != identity or sha256_bytes(stable_payload) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return payload, digest
+
+
+def read_real_hash_input_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real file: {path}")
-    payload = path.read_bytes()
-    digest = sha256_bytes(payload)
-    if sha256_path(path) != digest:
+
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{label} must be a real file: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            payload = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{label} changed during read: {path}") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
         raise ValueError(f"{label} changed during read: {path}")
-    return payload
+    return payload, stat_identity(opened)
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
