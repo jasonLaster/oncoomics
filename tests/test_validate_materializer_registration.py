@@ -507,6 +507,37 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
         ):
             module.sha256_path(hash_input)
 
+    def test_sha256_path_rejects_same_byte_leaf_replacement(self) -> None:
+        hash_input = self.root / "materializer-script-anchor.json"
+        replacement = self.root / "replacement-materializer-script-anchor.json"
+        hash_input.write_text('{"status":"passed"}\n', encoding="utf-8")
+        replacement.write_text('{"status":"passed"}\n', encoding="utf-8")
+        real_read_once = module.read_real_file_once
+        swapped = False
+
+        def replace_after_first_read(path: Path, label: str):
+            nonlocal swapped
+            data = real_read_once(path, label)
+            if path == hash_input and not swapped:
+                replacement.replace(hash_input)
+                swapped = True
+            return data
+
+        with (
+            mock.patch.object(
+                module,
+                "read_real_file_once",
+                side_effect=replace_after_first_read,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "materializer-script-anchor.json SHA-256 input changed during read",
+            ),
+        ):
+            module.sha256_path(hash_input)
+
+        self.assertTrue(swapped)
+
     def test_load_json_rejects_changing_json_inputs(self) -> None:
         receipt = self.root / "registration-response.json"
         receipt.write_text('{"status":"first"}\n', encoding="utf-8")
