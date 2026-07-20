@@ -372,14 +372,16 @@
           CHORD, and HRDetect packets cite the exact upstream deterministic and
           Rosalind manifests they already parsed and validated; source-freeze
           then rereads every local report, hash input, and forbidden-token list
-          before it trusts those bytes. The selected GPU rerun remains
-          quota-blocked, the legacy CPU run remains stopped, and Diana HRD remains
+          before it trusts those bytes; the AI handoff now uses the same stable
+          read before accepting locally staged reports. The selected GPU rerun
+          remains quota-blocked, the legacy CPU run remains stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = source-freeze reads are rechecked</li>
+          <li class="pill">Latest milestone = AI handoff report reads are rechecked</li>
+          <li class="pill">AI handoff report hashes = stable</li>
           <li class="pill">Source-freeze hash inputs = stable</li>
           <li class="pill">Blocked upstream manifests = parsed-exact</li>
           <li class="pill">Public recovery uploads = create-only</li>
@@ -834,8 +836,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
-              <span>73% · reviewer summaries exact</span>
-              <div class="bar" aria-hidden="true" style="--pct: 73%"><span></span></div>
+              <span>74% · report handoffs rechecked</span>
+              <div class="bar" aria-hidden="true" style="--pct: 74%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
@@ -2627,6 +2629,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T21:05:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Recheck AI-handoff report reads:</strong>
+                the AI-synthesis runbook now compares each receipt-bound local
+                report manifest to a report Markdown hash computed from stable
+                bytes, closing the same mid-read rewrite gap before model review.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T20:55:00-07:00">Jul 19 · local</time>
               <span>

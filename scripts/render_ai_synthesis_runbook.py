@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 from typing import Iterable
@@ -46,8 +45,10 @@ from runbook_io import (
     load_json_object_with_sha256,
     missing_required_files,
     preexisting_create_only_paths,
+    read_stable_file,
     require_real_input_file,
     shell_join,
+    sha256_bytes,
     source_private_receipt_paths,
     timestamped_runbook_assignment,
     unique_paths,
@@ -71,12 +72,7 @@ PRIVATE_REPORT_RECEIPT_SUMMARY_KEYS = {
 
 
 def sha256_path(path: Path) -> str:
-    require_real_input_file(path, f"{path.name} SHA-256 input")
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return sha256_bytes(read_stable_file(path, f"{path.name} SHA-256 input"))
 
 
 def require_summary_sha256(value: object, label: str) -> str:

@@ -760,6 +760,32 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             ):
                 MODULE.sha256_path(linked_input)
 
+    def test_sha256_path_rejects_mid_read_rewrites(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hash_input = root / "report.md"
+            hash_input.write_text("# trusted report\n", encoding="utf-8")
+
+            original_read_bytes = Path.read_bytes
+            mutated = False
+
+            def mutate_after_first_read(path: Path) -> bytes:
+                nonlocal mutated
+                data = original_read_bytes(path)
+                if path == hash_input and not mutated:
+                    mutated = True
+                    path.write_text("# tampered report\n", encoding="utf-8")
+                return data
+
+            with (
+                patch.object(Path, "read_bytes", mutate_after_first_read),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report.md SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256_path(hash_input)
+
     def test_report_manifest_paths_match_current_blocked_generator_dirs(self) -> None:
         root = Path("/repo")
         paths = MODULE.report_manifest_paths(root)
