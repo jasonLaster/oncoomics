@@ -396,20 +396,22 @@ def json_bytes(value: Any) -> bytes:
 
 
 def sha256_file(path: Path) -> str:
-    require_real_hash_input(path)
-    data = path.read_bytes()
+    return read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )[1]
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    data = read_real_nonempty_file_once(path, label)
     digest = hashlib.sha256(data).hexdigest()
-    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
-        raise ValueError(f"{path.name} SHA-256 input changed during read")
-    return digest
+    if hashlib.sha256(read_real_nonempty_file_once(path, label)).hexdigest() != digest:
+        raise ValueError(f"{label} changed during read")
+    return data, digest
 
 
 def read_stable_text(path: Path, label: str) -> str:
-    require_real_nonempty_file(path, label)
-    data = path.read_bytes()
-    digest = hashlib.sha256(data).hexdigest()
-    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
-        raise ValueError(f"{label} changed during read")
+    data, _digest = read_stable_file_with_sha256(path, label)
     try:
         return data.decode("utf-8")
     except UnicodeError as error:
@@ -434,6 +436,11 @@ def require_real_nonempty_file(path: Path, label: str) -> None:
         raise ValueError(f"{label} must be a real non-empty file")
 
 
+def read_real_nonempty_file_once(path: Path, label: str) -> bytes:
+    require_real_nonempty_file(path, label)
+    return path.read_bytes()
+
+
 def require_real_hash_input(path: Path) -> None:
     require_real_nonempty_file(path, f"{path.name} SHA-256 input")
 
@@ -443,12 +450,8 @@ def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
 
 
 def load_json_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
-    require_real_nonempty_file(path, label)
     try:
-        data = path.read_bytes()
-        digest = hashlib.sha256(data).hexdigest()
-        if sha256_file(path) != digest:
-            raise ValueError(f"{label} changed during read")
+        data, digest = read_stable_file_with_sha256(path, label)
         manifest = json.loads(
             data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,

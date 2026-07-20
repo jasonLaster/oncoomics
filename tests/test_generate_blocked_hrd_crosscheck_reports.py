@@ -327,6 +327,36 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             ):
                 GENERATOR.sha256_file(source)
 
+    def test_sha256_file_rejects_symlink_swap_between_reads(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "report_manifest.json"
+            relocated = root / "relocated_report_manifest.json"
+            source.write_text('{"stable": true}\n', encoding="utf-8")
+
+            original_read_bytes = Path.read_bytes
+            swapped = False
+
+            def swap_after_first_read(path: Path) -> bytes:
+                nonlocal swapped
+                data = original_read_bytes(path)
+                if path == source and not swapped:
+                    swapped = True
+                    source.unlink()
+                    relocated.write_text('{"stable": true}\n', encoding="utf-8")
+                    source.symlink_to(relocated)
+                return data
+
+            with (
+                mock.patch.object(Path, "read_bytes", swap_after_first_read),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report_manifest.json SHA-256 input must be a real "
+                    "non-empty file",
+                ),
+            ):
+                GENERATOR.sha256_file(source)
+
     def test_packet_file_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "report.md"
