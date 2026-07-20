@@ -129,11 +129,10 @@ EXPECTED_DOWNLOAD_OBJECT_CHECKS = {
 
 def sha256(path: Path) -> str:
     require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+    return read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )[1]
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -370,10 +369,7 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
 
 
 def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
-    require_no_symlinked_ancestors(path, label)
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"{label} is missing or a symlink: {path}")
-    payload = path.read_bytes()
+    payload, digest = read_stable_file_with_sha256(path, label)
     try:
         value = json.loads(
             payload.decode("utf-8"),
@@ -383,7 +379,24 @@ def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value, sha256_bytes(payload)
+    return value, digest
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} is missing or a symlink: {path}")
+    try:
+        payload = path.read_bytes()
+        digest = sha256_bytes(payload)
+        if sha256_bytes(path.read_bytes()) != digest:
+            raise ValueError(f"{label} changed during read: {path}")
+    except OSError as error:
+        raise ValueError(f"{label} changed during read: {path}") from error
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} is missing or a symlink: {path}")
+    return payload, digest
 
 
 def s3_parts(uri: str) -> tuple[str, str]:

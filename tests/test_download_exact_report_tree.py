@@ -346,6 +346,36 @@ class ExactReportDownloadTests(unittest.TestCase):
                 expected_receipt_sha256,
             )
 
+    def test_load_object_with_sha256_rejects_input_that_changes_during_read(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, _anchor, _data, _row = self.fixture(root)
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                if path == receipt:
+                    calls += 1
+                    if calls == 1:
+                        receipt.write_text(
+                            '{"changed_after_first_read": true}\n',
+                            encoding="utf-8",
+                        )
+                return data
+
+            with (
+                patch.object(Path, "read_bytes", mutating_read_bytes),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "publication receipt changed during read",
+                ),
+            ):
+                MODULE.load_object_with_sha256(receipt, "publication receipt")
+
     def test_restart_binds_parsed_prior_verification_sha256(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1489,6 +1519,34 @@ class ExactReportDownloadTests(unittest.TestCase):
                 "report\\.md SHA-256 input parent may not be a symlink",
             ):
                 MODULE.sha256(linked_parent / "report.md")
+
+    def test_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, _anchor, _data, _row = self.fixture(root)
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                if path == receipt:
+                    calls += 1
+                    if calls == 1:
+                        receipt.write_text(
+                            '{"changed_after_first_read": true}\n',
+                            encoding="utf-8",
+                        )
+                return data
+
+            with (
+                patch.object(Path, "read_bytes", mutating_read_bytes),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "publication\\.json SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256(receipt)
 
     def test_rejects_duplicate_receipt_object_names_before_download(self) -> None:
         cases = (
