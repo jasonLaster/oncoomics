@@ -178,12 +178,12 @@ class RunbookIoTests(unittest.TestCase):
             runbook = root / "runbook.md"
             relocated = root / "relocated-runbook.md"
             runbook.write_text("original\n", encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = MODULE.read_real_input_file_once
             reads = 0
 
-            def swap_after_initial_read(path: Path) -> bytes:
+            def swap_after_initial_read(path: Path, label: str) -> bytes:
                 nonlocal reads
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 if path == runbook and reads == 0:
                     runbook.unlink()
                     relocated.write_text("original\n", encoding="utf-8")
@@ -193,9 +193,8 @@ class RunbookIoTests(unittest.TestCase):
 
             with (
                 mock.patch.object(
-                    Path,
-                    "read_bytes",
-                    autospec=True,
+                    MODULE,
+                    "read_real_input_file_once",
                     side_effect=swap_after_initial_read,
                 ),
                 self.assertRaisesRegex(
@@ -204,6 +203,45 @@ class RunbookIoTests(unittest.TestCase):
                 ),
             ):
                 MODULE.sha256_file(runbook)
+
+    def test_sha256_file_rejects_symlink_swap_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runbook = root / "runbook.md"
+            relocated = root / "relocated-runbook.md"
+            runbook.write_text("original\n", encoding="utf-8")
+            real_os_open = MODULE.os.open
+            moved = False
+
+            def swap_before_open(
+                path: Path,
+                flags: int,
+                mode: int = 0o777,
+                *,
+                dir_fd: int | None = None,
+            ) -> int:
+                nonlocal moved
+                if path == runbook and not moved:
+                    moved = True
+                    runbook.unlink()
+                    relocated.write_text("original\n", encoding="utf-8")
+                    runbook.symlink_to(relocated)
+                return real_os_open(path, flags, mode, dir_fd=dir_fd)
+
+            with (
+                mock.patch.object(
+                    MODULE.os,
+                    "open",
+                    side_effect=swap_before_open,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "runbook.md SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256_file(runbook)
+
+            self.assertTrue(moved)
 
     def test_write_once_is_mode_0600_and_refuses_replacement(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
