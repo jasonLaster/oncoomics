@@ -3163,7 +3163,8 @@ def require_safe_diana_wgs_packet_file(path: Path) -> Path:
 
 def copy_diana_wgs_packet_file(source: Path, destination: Path) -> None:
     source = require_real_nonempty_file(source, "staged Diana WGS packet")
-    expected_sha256 = sha256_file(source)
+    payload = read_stable_file_bytes(source, "staged Diana WGS packet")
+    expected_sha256 = _sha256_bytes(payload)
     destination = require_safe_diana_wgs_packet_file(destination)
     descriptor = -1
     try:
@@ -3174,19 +3175,13 @@ def copy_diana_wgs_packet_file(source: Path, destination: Path) -> None:
         ) from error
 
     try:
-        with source.open("rb") as source_handle, os.fdopen(
-            descriptor, "wb"
-        ) as destination_handle:
+        with os.fdopen(descriptor, "wb") as destination_handle:
             descriptor = -1
-            for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
-                destination_handle.write(chunk)
+            destination_handle.write(payload)
             destination_handle.flush()
             os.fsync(destination_handle.fileno())
         fsync_directory(destination.parent)
-        if (
-            sha256_file(source) != expected_sha256
-            or sha256_file(destination) != expected_sha256
-        ):
+        if sha256_file(destination) != expected_sha256:
             raise ValueError(
                 "staged Diana WGS packet changed during copy: " + source.name
             )
