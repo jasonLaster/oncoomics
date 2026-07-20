@@ -1737,6 +1737,28 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
 
         self.assertFalse(self.request_output.exists())
 
+    def test_request_receipt_rechecks_mode_after_parent_fsync(self) -> None:
+        real_fsync_directory = MODULE.fsync_directory
+
+        def chmod_after_parent_fsync(parent: Path) -> None:
+            real_fsync_directory(parent)
+            self.request_output.chmod(0o644)
+
+        with (
+            mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                side_effect=chmod_after_parent_fsync,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "private output mode changed during write",
+            ),
+        ):
+            MODULE.create_private(self.request_output, b'{"status":"passed"}\n')
+
+        self.assertFalse(self.request_output.exists())
+
     def test_response_reservation_fsyncs_parent_directory(self) -> None:
         descriptor = -1
         try:
@@ -1781,6 +1803,29 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             self.assertRaisesRegex(
                 ValueError,
                 "private output changed during write",
+            ),
+        ):
+            MODULE.complete_reserved(
+                descriptor,
+                self.response_output,
+                {"status": "submitted"},
+            )
+
+        self.assertTrue(self.response_output.exists())
+
+    def test_completed_response_receipt_rechecks_mode_after_fsync(self) -> None:
+        descriptor = MODULE.reserve_private(self.response_output)
+        real_fsync = MODULE.os.fsync
+
+        def chmod_after_fsync(file_descriptor: int) -> None:
+            real_fsync(file_descriptor)
+            self.response_output.chmod(0o644)
+
+        with (
+            mock.patch.object(MODULE.os, "fsync", side_effect=chmod_after_fsync),
+            self.assertRaisesRegex(
+                ValueError,
+                "private output mode changed during write",
             ),
         ):
             MODULE.complete_reserved(
