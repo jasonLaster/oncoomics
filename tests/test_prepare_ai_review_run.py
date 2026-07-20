@@ -1398,6 +1398,28 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                     linked_inputs / "stage_ai_review_inputs_receipt.json"
                 )
 
+    def test_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            input_path = root / "model-catalog-receipt.json"
+            input_path.write_text('{"status":"ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text('{"status":"mutated"}\n', encoding="utf-8")
+                return data
+
+            with (
+                mock.patch.object(Path, "read_bytes", mutating_read_bytes),
+                self.assertRaisesRegex(ValueError, "changed during read"),
+            ):
+                PREPARE.sha256(input_path)
+
     def test_cleans_current_attempt_after_install_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))
