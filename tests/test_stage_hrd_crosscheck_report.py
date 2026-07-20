@@ -345,6 +345,128 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 sorted(PUBLISH.METHOD_CONTRACTS["sigprofiler_sbs3"]["files"]),
             )
 
+    def test_stage_binds_parsed_download_verification_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            output = root / "staged"
+            verified_hash = STAGE.sha256(verification)
+            tampered_hash = ""
+            real_load = STAGE.load_json_with_sha256
+
+            def tamper_after_parse(path: Path, label: str):
+                nonlocal tampered_hash
+                value, digest = real_load(path, label)
+                if label == "download verification" and not tampered_hash:
+                    payload = json.loads(verification.read_text(encoding="utf-8"))
+                    payload["prior_error"] = "late local mutation"
+                    write_json(verification, payload)
+                    tampered_hash = STAGE.sha256(verification)
+                return value, digest
+
+            with mock.patch.object(
+                STAGE,
+                "load_json_with_sha256",
+                side_effect=tamper_after_parse,
+            ):
+                STAGE.stage(source, verification, output, "sigprofiler_sbs3")
+
+            manifest = json.loads((output / "report_manifest.json").read_text())
+            method_spec = json.loads((output / "method_spec.json").read_text())
+            self.assertEqual(
+                manifest["source_sha256"]["download_verification"],
+                verified_hash,
+            )
+            self.assertEqual(
+                method_spec["download_verification_sha256"],
+                verified_hash,
+            )
+            self.assertNotEqual(tampered_hash, verified_hash)
+
+    def test_stage_binds_parsed_source_manifest_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            _verification = write_route_report(source)
+            verified_hash = STAGE.sha256(source / "report_manifest.json")
+            tampered_hash = ""
+            real_load = STAGE.load_json_with_sha256
+
+            def tamper_after_parse(path: Path, label: str):
+                nonlocal tampered_hash
+                value, digest = real_load(path, label)
+                if label == "route report manifest" and not tampered_hash:
+                    payload = json.loads(
+                        (source / "report_manifest.json").read_text(
+                            encoding="utf-8"
+                        )
+                    )
+                    payload["review_summary"]["limitations"].append(
+                        "late local mutation"
+                    )
+                    write_json(source / "report_manifest.json", payload)
+                    tampered_hash = STAGE.sha256(source / "report_manifest.json")
+                return value, digest
+
+            with mock.patch.object(
+                STAGE,
+                "load_json_with_sha256",
+                side_effect=tamper_after_parse,
+            ):
+                summary = STAGE.require_download_verification(
+                    root / "download.verification.json",
+                    source,
+                    "sigprofiler_sbs3",
+                )
+
+            self.assertEqual(
+                summary["source_report_manifest_sha256"],
+                verified_hash,
+            )
+            self.assertNotIn(
+                "late local mutation",
+                summary["source_review_summary"]["limitations"],
+            )
+            self.assertNotEqual(tampered_hash, verified_hash)
+
+    def test_stage_reuses_verified_source_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            output = root / "staged"
+            real_require = STAGE.require_download_verification
+
+            def tamper_after_verification(*args, **kwargs):
+                summary = real_require(*args, **kwargs)
+                staging = Path(args[1])
+                manifest_path = staging / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["review_summary"]["limitations"].append(
+                    "late unverified staging mutation"
+                )
+                write_json(manifest_path, manifest)
+                return summary
+
+            with mock.patch.object(
+                STAGE,
+                "require_download_verification",
+                side_effect=tamper_after_verification,
+            ):
+                STAGE.stage(source, verification, output, "sigprofiler_sbs3")
+
+            manifest = json.loads((output / "report_manifest.json").read_text())
+            method_spec = json.loads((output / "method_spec.json").read_text())
+            self.assertNotIn(
+                "late unverified staging mutation",
+                manifest["review_summary"]["limitations"],
+            )
+            self.assertEqual(
+                method_spec["source_review_summary"],
+                manifest["review_summary"],
+            )
+
     def test_stage_rejects_duplicate_download_verification_object_names(
         self,
     ) -> None:

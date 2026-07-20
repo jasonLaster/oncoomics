@@ -1413,6 +1413,80 @@ class GenerateSynthesisTests(unittest.TestCase):
                 sha256(bundle_manifest_path),
             )
 
+    def test_synthesis_source_hashes_use_parsed_bundle_digest(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            bundle_path = fixture.bundle_dir / "review_bundle.json"
+            verified_hash = sha256(bundle_path)
+            tampered_hash = ""
+            real_load = GENERATE.load_object_with_sha256
+
+            def tamper_after_bundle_parse(path: Path, label: str):
+                nonlocal tampered_hash
+                value, digest = real_load(path, label)
+                if label == "review_bundle.json" and not tampered_hash:
+                    bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+                    bundle["generated_at"] = "2026-07-18T00:00:00+00:00"
+                    write_json(bundle_path, bundle)
+                    tampered_hash = sha256(bundle_path)
+                return value, digest
+
+            with mock.patch.object(
+                GENERATE,
+                "load_object_with_sha256",
+                side_effect=tamper_after_bundle_parse,
+            ):
+                run_synthesis_main(fixture)
+
+            manifest = json.loads(
+                (fixture.output_dir / "report_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                manifest["source_sha256"]["review_bundle.json"],
+                verified_hash,
+            )
+            self.assertNotEqual(tampered_hash, verified_hash)
+
+    def test_synthesis_source_hashes_use_parsed_bundle_manifest_digest(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+            verified_hash = sha256(bundle_manifest_path)
+            tampered_hash = ""
+            real_load = GENERATE.load_object_with_sha256
+
+            def tamper_after_bundle_manifest_parse(path: Path, label: str):
+                nonlocal tampered_hash
+                value, digest = real_load(path, label)
+                if label == "bundle_manifest.json" and not tampered_hash:
+                    manifest = json.loads(
+                        bundle_manifest_path.read_text(encoding="utf-8")
+                    )
+                    manifest["generated_at"] = "2026-07-18T00:00:00+00:00"
+                    write_json(bundle_manifest_path, manifest)
+                    tampered_hash = sha256(bundle_manifest_path)
+                return value, digest
+
+            with mock.patch.object(
+                GENERATE,
+                "load_object_with_sha256",
+                side_effect=tamper_after_bundle_manifest_parse,
+            ):
+                run_synthesis_main(fixture)
+
+            manifest = json.loads(
+                (fixture.output_dir / "report_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                manifest["source_sha256"]["bundle_manifest.json"],
+                verified_hash,
+            )
+            self.assertNotEqual(tampered_hash, verified_hash)
+
     def test_synthesis_source_hashes_stay_bound_to_verified_source_manifests(
         self,
     ) -> None:
@@ -1456,6 +1530,44 @@ class GenerateSynthesisTests(unittest.TestCase):
                 manifest["source_sha256"]["E001_report_manifest.json"],
                 sha256(source_manifest_path),
             )
+
+    def test_synthesis_source_hashes_use_parsed_source_manifest_digest(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            source_manifest_path = fixture.source_manifests[0]
+            verified_hash = sha256(source_manifest_path)
+            tampered_hash = ""
+            real_load = GENERATE.load_object_with_sha256
+
+            def tamper_after_source_parse(path: Path, label: str):
+                nonlocal tampered_hash
+                value, digest = real_load(path, label)
+                if label == "E001 report_manifest.json" and not tampered_hash:
+                    source = json.loads(source_manifest_path.read_text(encoding="utf-8"))
+                    source["review_summary"]["limitations"].append(
+                        "Late unverified source mutation."
+                    )
+                    write_json(source_manifest_path, source)
+                    tampered_hash = sha256(source_manifest_path)
+                return value, digest
+
+            with mock.patch.object(
+                GENERATE,
+                "load_object_with_sha256",
+                side_effect=tamper_after_source_parse,
+            ):
+                run_synthesis_main(fixture)
+
+            manifest = json.loads(
+                (fixture.output_dir / "report_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                manifest["source_sha256"]["E001_report_manifest.json"],
+                verified_hash,
+            )
+            self.assertNotEqual(tampered_hash, verified_hash)
 
     def test_synthesis_manifest_rejects_inexact_support_inventory(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:

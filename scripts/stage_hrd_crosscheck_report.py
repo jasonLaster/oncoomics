@@ -122,12 +122,18 @@ def sha256(path: Path) -> str:
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
+    value, _digest = load_json_with_sha256(path, label)
+    return value
+
+
+def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} is missing or a symlink")
+    payload = path.read_bytes()
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            payload.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -136,7 +142,7 @@ def load_json(path: Path, label: str) -> dict[str, Any]:
         raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value
+    return value, sha256_bytes(payload)
 
 
 def require_sha(value: Any, label: str) -> str:
@@ -221,8 +227,10 @@ def require_real_file(path: Path, label: str) -> Path:
 
 def require_download_verification(
     verification_path: Path, source_dir: Path, route: str
-) -> dict[str, str | int]:
-    verification = load_json(verification_path, "download verification")
+) -> dict[str, Any]:
+    verification, verification_sha256 = load_json_with_sha256(
+        verification_path, "download verification"
+    )
     rows = verification.get("objects")
     keys = set(verification)
     if (
@@ -298,7 +306,9 @@ def require_download_verification(
         ):
             raise ValueError(f"download verification is stale for {relative}")
 
-    manifest = load_json(source_dir / "report_manifest.json", "route report manifest")
+    manifest, source_report_manifest_sha256 = load_json_with_sha256(
+        source_dir / "report_manifest.json", "route report manifest"
+    )
     if (
         not exact_schema_version(manifest)
         or manifest.get("method_id") != route
@@ -361,9 +371,10 @@ def require_download_verification(
     return {
         "route": route,
         "evidence_status": evidence_status,
+        "source_review_summary": manifest["review_summary"],
         "source_object_count": len(rows),
-        "download_verification_sha256": sha256(verification_path),
-        "source_report_manifest_sha256": sha256(source_dir / "report_manifest.json"),
+        "download_verification_sha256": verification_sha256,
+        "source_report_manifest_sha256": source_report_manifest_sha256,
         "source_report_sha256": source_report_sha256,
     }
 
@@ -691,9 +702,6 @@ def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: st
         copy_route_file(source_dir, staging, "report_manifest.json")
         copy_route_support_files(source_dir, staging)
         summary = require_download_verification(verification_path, staging, route)
-        source_manifest = load_json(
-            staging / "report_manifest.json", "route report manifest"
-        )
         method_spec = {
             "schema_version": 1,
             "method_id": route,
@@ -711,7 +719,7 @@ def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: st
             "download_verification_sha256": summary[
                 "download_verification_sha256"
             ],
-            "source_review_summary": source_manifest["review_summary"],
+            "source_review_summary": summary["source_review_summary"],
         }
         write_json(staging / "method_spec.json", method_spec, create=True)
 
@@ -724,7 +732,7 @@ def stage(source_dir: Path, verification_path: Path, output_dir: Path, route: st
             "authorized_hrd_state": "no_call",
             "classification_authorized": False,
             "classification_qc_status": "not_applicable",
-            "review_summary": source_manifest["review_summary"],
+            "review_summary": summary["source_review_summary"],
             "source_sha256": {
                 "download_verification": summary["download_verification_sha256"],
                 "source_report": summary["source_report_sha256"],

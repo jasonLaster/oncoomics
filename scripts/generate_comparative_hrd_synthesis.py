@@ -417,8 +417,10 @@ def verify_bundle(
     bundle_manifest_path: Path,
     required_methods: Sequence[str],
 ) -> Tuple[Dict[str, Any], Dict[str, Any], str, str]:
-    bundle = load_object(bundle_path, "review_bundle.json")
-    manifest = load_object(bundle_manifest_path, "bundle_manifest.json")
+    bundle, bundle_hash = load_object_with_sha256(bundle_path, "review_bundle.json")
+    manifest, bundle_manifest_hash = load_object_with_sha256(
+        bundle_manifest_path, "bundle_manifest.json"
+    )
     if set(bundle) != BUNDLE_REVIEW_BUNDLE_KEYS:
         raise ValueError("AI review bundle envelope is not exact")
     if set(manifest) != BUNDLE_MANIFEST_KEYS:
@@ -432,7 +434,6 @@ def verify_bundle(
         raise ValueError("AI bundle purpose is missing or altered")
     if bundle.get("policy") != REQUIRED_POLICY:
         raise ValueError("AI bundle policy is missing or altered")
-    bundle_hash = sha256(bundle_path)
     if checked_hash(manifest.get("review_bundle_sha256"), "AI bundle") != bundle_hash:
         raise ValueError("AI bundle hash differs from bundle_manifest.json")
     subject_alias = str(bundle.get("subject_alias", ""))
@@ -507,7 +508,6 @@ def verify_bundle(
         raise ValueError("source-manifest hash inventory is missing or altered")
     for evidence_id in expected_ids:
         checked_hash(input_hashes[evidence_id], evidence_id + " source manifest")
-    bundle_manifest_hash = sha256(bundle_manifest_path)
     return bundle, manifest, bundle_hash, bundle_manifest_hash, inventory_id
 
 
@@ -525,13 +525,15 @@ def verify_sources(
     input_hashes = bundle_manifest["input_manifest_sha256"]
     for index, (source_path, required_method) in enumerate(zip(source_paths, required_methods), 1):
         evidence_id = "E{0:03d}".format(index)
-        source = load_object(source_path, evidence_id + " report_manifest.json")
+        source, source_manifest_hash = load_object_with_sha256(
+            source_path,
+            evidence_id + " report_manifest.json",
+        )
         if not is_exact_int(source.get("schema_version"), 1):
             raise ValueError("unsupported source report schema for " + evidence_id)
         method = str(source.get("method_id") or source.get("route") or "")
         if method != required_method or not METHOD_ID.fullmatch(method):
             raise ValueError("source method does not match ordered required inventory at " + evidence_id)
-        source_manifest_hash = sha256(source_path)
         if source_manifest_hash != checked_hash(input_hashes[evidence_id], evidence_id + " source manifest"):
             raise ValueError("source manifest changed after AI bundle construction at " + evidence_id)
         source_manifest_hashes[
