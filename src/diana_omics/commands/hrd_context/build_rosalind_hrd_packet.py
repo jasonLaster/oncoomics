@@ -1782,9 +1782,12 @@ def diana_wgs_readiness_rows(summary: Mapping[str, Any], blockers: list[str]) ->
     embedded = summary.get("hrd_readiness", [])
     if not isinstance(embedded, list) or any(not isinstance(row, dict) for row in embedded):
         raise ValueError("Diana WGS embedded readiness must be a list of JSON objects")
+    fields = ("evidence_surface", "status", "detail")
+    for row in embedded:
+        if any(not isinstance(row.get(field), str) for field in fields):
+            raise ValueError("Diana WGS embedded readiness fields must be strings")
     embedded_rows = [dict(row) for row in embedded]
     if csv_rows and embedded_rows:
-        fields = ("evidence_surface", "status", "detail")
         csv_contract = sorted(tuple(str(row.get(field, "")) for field in fields) for row in csv_rows)
         embedded_contract = sorted(tuple(str(row.get(field, "")) for field in fields) for row in embedded_rows)
         if csv_contract != embedded_contract:
