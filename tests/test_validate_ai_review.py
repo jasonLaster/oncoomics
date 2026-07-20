@@ -1278,6 +1278,22 @@ class ValidateAiReviewTests(unittest.TestCase):
                 ),
                 "invalid classification QC state for E001",
             ),
+            (
+                "defaulted report kind",
+                lambda source, evidence: (
+                    source.pop("report_kind"),
+                    evidence.__setitem__("report_kind", "method"),
+                ),
+                "invalid report kind for E001",
+            ),
+            (
+                "coerced report kind",
+                lambda source, evidence: (
+                    source.__setitem__("report_kind", 12),
+                    evidence.__setitem__("report_kind", "12"),
+                ),
+                "invalid report kind for E001",
+            ),
         )
 
         for label, mutate, message in cases:
