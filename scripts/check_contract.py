@@ -265,19 +265,28 @@ def validate(contract: dict) -> dict:
 
 
 def load_contract(path: Path) -> dict:
-    require_no_symlinked_ancestors(path, "contract")
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"contract must be a real JSON file: {path}")
+    data, _identity = read_stable_contract(path)
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonObjectName as error:
         raise ValueError(f"duplicate JSON object name in contract: {error}") from error
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in contract: {path}") from error
     if not isinstance(value, dict):
         raise ValueError(f"contract must be a JSON object: {path}")
     return value
+
+
+def read_stable_contract(path: Path) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+    data, identity = read_real_hash_input_once(path, "contract")
+    digest = hashlib.sha256(data).hexdigest()
+    stable_data, stable_identity = read_real_hash_input_once(path, "contract")
+    if stable_identity != identity or hashlib.sha256(stable_data).hexdigest() != digest:
+        raise ValueError(f"contract changed during read: {path}")
+    return data, identity
 
 
 def sha256(path: Path) -> str:
@@ -289,8 +298,12 @@ def sha256(path: Path) -> str:
     return digest
 
 
-def read_real_hash_input_once(path: Path) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
-    require_real_hash_input(path)
+def read_real_hash_input_once(
+    path: Path,
+    label: str | None = None,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+    label = label or f"{path.name} SHA-256 input"
+    require_real_hash_input(path, label)
     flags = (
         os.O_RDONLY
         | getattr(os, "O_CLOEXEC", 0)
@@ -302,7 +315,7 @@ def read_real_hash_input_once(path: Path) -> tuple[bytes, tuple[int, int, int, i
         descriptor = os.open(path, flags)
         opened = os.fstat(descriptor)
         if not stat.S_ISREG(opened.st_mode):
-            raise ValueError(f"{path.name} SHA-256 input must be a real file: {path}")
+            raise ValueError(f"{label} must be a real file: {path}")
         with os.fdopen(descriptor, "rb") as handle:
             descriptor = -1
             data = handle.read()
@@ -318,7 +331,7 @@ def read_real_hash_input_once(path: Path) -> tuple[bytes, tuple[int, int, int, i
         stat_identity(opened) != stat_identity(after_read)
         or stat_identity(after_read) != stat_identity(current)
     ):
-        raise ValueError(f"{path.name} SHA-256 input changed during read")
+        raise ValueError(f"{label} changed during read")
     return data, stat_identity(opened)
 
 
@@ -394,10 +407,12 @@ def require_no_symlinked_ancestors(path: Path, label: str) -> None:
             raise ValueError(f"{label} parent is not a directory: {parent}")
 
 
-def require_real_hash_input(path: Path) -> None:
-    label = f"{path.name} SHA-256 input"
+def require_real_hash_input(path: Path, label: str | None = None) -> None:
+    label = label or f"{path.name} SHA-256 input"
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
+        if label == "contract":
+            raise ValueError(f"contract must be a real JSON file: {path}")
         raise ValueError(f"{label} must be a real file: {path}")
 
 
