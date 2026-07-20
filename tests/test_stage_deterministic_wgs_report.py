@@ -4311,6 +4311,50 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
             self.assertIn("crosscheck_terminal_custody", result.stdout + result.stderr)
             self.assertFalse((fixture.output / "report.md").exists())
 
+    def test_coerced_terminal_batch_counts_fail_before_report_publication(
+        self,
+    ) -> None:
+        mutations = (
+            (
+                "attempt count bool",
+                lambda capture: capture["batch"].__setitem__("attempt_count", True),
+            ),
+            (
+                "attempt count float",
+                lambda capture: capture["batch"].__setitem__("attempt_count", 1.0),
+            ),
+            (
+                "exit code bool",
+                lambda capture: capture["batch"].__setitem__("exit_code", False),
+            ),
+            (
+                "exit code float",
+                lambda capture: capture["batch"].__setitem__("exit_code", 0.0),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                capture_path = fixture.aux / "crosscheck-materialization-capture.json"
+                capture = json.loads(capture_path.read_text(encoding="utf-8"))
+                mutate(capture)
+                write_json(capture_path, capture)
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "crosscheck_terminal_custody",
+                    result.stdout + result.stderr,
+                )
+                self.assertFalse((fixture.output / "report.md").exists())
+
     def test_changed_staged_validation_download_fails_before_report_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
             fixture = SyntheticFixture(Path(temporary))
