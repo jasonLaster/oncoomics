@@ -802,6 +802,36 @@ class FinalizeAiReviewTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "changed during read"):
                     FINALIZE.sha256(input_path)
 
+    def test_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            input_path = root / "input.json"
+            replacement = root / "replacement.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            replacement.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_once = FINALIZE.read_real_hash_input_once
+            swapped = False
+
+            def replace_after_initial_read(path: Path, label: str):
+                nonlocal swapped
+                data = real_read_once(path, label)
+                if path == input_path and not swapped:
+                    swapped = True
+                    replacement.replace(input_path)
+                return data
+
+            with (
+                mock.patch.object(
+                    FINALIZE,
+                    "read_real_hash_input_once",
+                    side_effect=replace_after_initial_read,
+                ),
+                self.assertRaisesRegex(ValueError, "changed during read"),
+            ):
+                FINALIZE.sha256(input_path)
+
+            self.assertTrue(swapped)
+
     def test_final_manifest_binds_parsed_validation_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)
