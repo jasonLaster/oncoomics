@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from build_ai_review_bundle import (
+    BUNDLE_EVIDENCE_SOURCE_KEYS,
     BUNDLE_MANIFEST_KEYS,
     BUNDLE_REVIEW_BUNDLE_KEYS,
     DuplicateJsonKeyError,
@@ -295,7 +296,11 @@ def validated_claim_summary(
 ) -> tuple[dict[str, Any], str]:
     evidence_ids = []
     for row in evidence_sources:
-        if not isinstance(row, dict) or not isinstance(row.get("evidence_id"), str):
+        if not isinstance(row, dict):
+            raise ValueError("review bundle evidence source is malformed")
+        if set(row) != BUNDLE_EVIDENCE_SOURCE_KEYS:
+            raise ValueError("review bundle evidence source envelope is not exact")
+        if not isinstance(row.get("evidence_id"), str):
             raise ValueError("review bundle evidence IDs are not exact")
         evidence_ids.append(row["evidence_id"])
     if len(evidence_ids) != len(set(evidence_ids)):

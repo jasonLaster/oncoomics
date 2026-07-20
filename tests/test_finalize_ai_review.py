@@ -115,6 +115,34 @@ def refresh_review_manifest_validation_hash(review_dir: Path) -> None:
     write_json(validation_path, validation)
 
 
+def rebind_review_to_current_bundle(
+    fixture: ValidateReviewFixture,
+    review_dir: Path,
+) -> None:
+    bundle_path = fixture.bundle_dir / "review_bundle.json"
+    bundle_hash = FINALIZE.sha256(bundle_path)
+
+    bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+    bundle_manifest = load_json(bundle_manifest_path)
+    bundle_manifest["review_bundle_sha256"] = bundle_hash
+    write_json(bundle_manifest_path, bundle_manifest)
+    bundle_manifest_hash = FINALIZE.sha256(bundle_manifest_path)
+
+    review_manifest_path = review_dir / "review_manifest.json"
+    review_manifest = load_json(review_manifest_path)
+    review_manifest["input_bundle_sha256"] = bundle_hash
+    review_manifest["input_artifact_sha256"]["review_bundle.json"] = bundle_hash
+    write_json(review_manifest_path, review_manifest)
+    review_manifest_hash = FINALIZE.sha256(review_manifest_path)
+
+    validation_path = review_dir / "validation.json"
+    validation = load_json(validation_path)
+    validation["review_bundle_sha256"] = bundle_hash
+    validation["bundle_manifest_sha256"] = bundle_manifest_hash
+    validation["review_manifest_sha256"] = review_manifest_hash
+    write_json(validation_path, validation)
+
+
 class FinalizeAiReviewTests(unittest.TestCase):
     def execute(
         self,
@@ -785,6 +813,28 @@ class FinalizeAiReviewTests(unittest.TestCase):
                     )
 
                 self.assertFalse((review / "report_manifest.json").exists())
+
+    def test_rejects_rebound_bundle_with_non_exact_evidence_source_envelope(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            bundle_path = fixture.bundle_dir / "review_bundle.json"
+            bundle = load_json(bundle_path)
+            bundle["evidence_sources"][0]["legacy_unreviewed_context"] = {
+                "stale": "not part of the exact source evidence row contract",
+            }
+            write_json(bundle_path, bundle)
+            rebind_review_to_current_bundle(fixture, review)
+
+            finalized = self.execute(fixture, review)
+
+            self.assertNotEqual(finalized.returncode, 0)
+            self.assertIn(
+                "review bundle evidence source envelope is not exact",
+                finalized.stderr,
+            )
+            self.assertFalse((review / "report_manifest.json").exists())
 
     def test_final_manifest_rejects_extra_review_summary_fields(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
