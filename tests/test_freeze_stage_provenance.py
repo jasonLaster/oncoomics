@@ -328,6 +328,15 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             inexact_attempt_count = deepcopy(receipt)
             inexact_attempt_count["batch"]["attempt_count"] = value
             tampered.append(inexact_attempt_count)
+        for field, value in (
+            ("started_at_epoch_ms", True),
+            ("stopped_at_epoch_ms", 2.0),
+            ("exit_code", False),
+            ("exit_code", 0.0),
+        ):
+            inexact_captured_attempt = deepcopy(receipt)
+            inexact_captured_attempt["batch"]["attempts"][0][field] = value
+            tampered.append(inexact_captured_attempt)
         for value in (True, 42.0, "42", 0):
             non_exact_worker_bytes = deepcopy(receipt)
             non_exact_worker_bytes["worker"]["bytes"] = value
