@@ -279,6 +279,23 @@ def mutate_phase3_fast_readiness(
     utils.write_json(report_manifest_path, report_manifest)
 
 
+def mutate_phase3_fast_evidence_checks(
+    deterministic_root: Path,
+    mutation: Callable[[dict], None],
+) -> None:
+    checks_path = deterministic_root / "evidence_checks.json"
+    checks = utils.read_json(checks_path)
+    mutation(checks)
+    utils.write_json(checks_path, checks)
+
+    report_manifest_path = deterministic_root / "report_manifest.json"
+    report_manifest = utils.read_json(report_manifest_path)
+    report_manifest["support_sha256"]["evidence_checks.json"] = (
+        hashlib.sha256(checks_path.read_bytes()).hexdigest()
+    )
+    utils.write_json(report_manifest_path, report_manifest)
+
+
 def mutate_phase3_fast_report_manifest(
     deterministic_root: Path,
     mutation: Callable[[dict], None],
@@ -1944,6 +1961,57 @@ class RosalindHrdPacketTest(unittest.TestCase):
                         packet.PACKET_SPECS["diana_wgs"],
                         "phase3-fast",
                     )
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/phase3-fast/"
+                        "report_manifest.json"
+                    ).exists()
+                )
+
+    def test_diana_wgs_phase3_fast_packet_rejects_loose_evidence_check_inputs(self):
+        cases = (
+            (
+                "extra_field",
+                lambda checks: checks["input_sha256"][0].__setitem__("extra", "stale"),
+                "Phase 3 fast evidence-check input rows are not exact",
+            ),
+            (
+                "bytes_bool",
+                lambda checks: checks["input_sha256"][0].__setitem__("bytes", True),
+                "Phase 3 fast evidence-check input row 1 bytes must be a non-negative integer",
+            ),
+            (
+                "padded_path",
+                lambda checks: checks["input_sha256"][0].__setitem__(
+                    "path",
+                    " " + checks["input_sha256"][0]["path"],
+                ),
+                "Phase 3 fast evidence-check input row 1 path must be a non-empty unpadded single-line string",
+            ),
+        )
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                    output_root / "phase3_fast"
+                )
+                mutate_phase3_fast_evidence_checks(deterministic_root, mutation)
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                            "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
 
                 self.assertFalse(
                     (

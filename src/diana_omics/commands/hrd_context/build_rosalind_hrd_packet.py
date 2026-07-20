@@ -1402,12 +1402,11 @@ def diana_wgs_phase3_fast_deterministic_binding(
 
     checks = read_json_file(paths["evidence_checks.json"], "Phase 3 fast evidence checks")
     check_rows = checks.get("checks", []) if isinstance(checks, dict) else []
-    checks_input = checks.get("input_sha256", []) if isinstance(checks, dict) else []
-    normalized_checks_input = [
-        {key: str(row.get(key, "")) for key in ("input_id", "path", "bytes", "sha256")}
-        for row in checks_input
-        if isinstance(row, dict)
-    ]
+    checks_input = (
+        phase3_fast_evidence_check_inputs(checks.get("input_sha256"))
+        if isinstance(checks, dict)
+        else []
+    )
     normalized_csv_input = [
         {key: str(row.get(key, "")) for key in ("input_id", "path", "bytes", "sha256")}
         for row in input_rows
@@ -1419,7 +1418,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
         or not isinstance(check_rows, list)
         or not check_rows
         or any(not isinstance(row, dict) or row.get("status") != "passed" for row in check_rows)
-        or normalized_checks_input != normalized_csv_input
+        or checks_input != normalized_csv_input
     ):
         raise ValueError("Phase 3 fast deterministic evidence checks are incomplete or not all passed")
 
@@ -1501,6 +1500,40 @@ def phase3_fast_crosscheck_route_summary(value: Any) -> dict[str, str]:
     if not isinstance(value, Mapping) or value != PHASE3_FAST_CROSSCHECK_ROUTE_STATES:
         raise ValueError("Phase 3 fast cross-check route summary is not exact")
     return dict(PHASE3_FAST_CROSSCHECK_ROUTE_STATES)
+
+
+def phase3_fast_evidence_check_inputs(value: Any) -> list[dict[str, str]]:
+    fields = ("input_id", "path", "bytes", "sha256")
+    if not isinstance(value, list):
+        raise ValueError("Phase 3 fast evidence-check input rows are not exact")
+
+    rows: list[dict[str, str]] = []
+    for index, row in enumerate(value, start=1):
+        if not isinstance(row, Mapping) or set(row) != set(fields):
+            raise ValueError("Phase 3 fast evidence-check input rows are not exact")
+        rows.append(
+            {
+                "input_id": require_exact_nonempty_string(
+                    row.get("input_id"),
+                    f"Phase 3 fast evidence-check input row {index} input_id",
+                ),
+                "path": require_exact_nonempty_string(
+                    row.get("path"),
+                    f"Phase 3 fast evidence-check input row {index} path",
+                ),
+                "bytes": str(
+                    require_json_nonnegative_int(
+                        row.get("bytes"),
+                        f"Phase 3 fast evidence-check input row {index} bytes",
+                    )
+                ),
+                "sha256": require_sha256(
+                    row.get("sha256"),
+                    f"Phase 3 fast evidence-check input row {index} sha256",
+                ),
+            }
+        )
+    return rows
 
 
 def phase3_fast_compact_sequenza_summary(value: Any) -> dict[str, Any]:
