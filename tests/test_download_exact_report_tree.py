@@ -911,6 +911,25 @@ class ExactReportDownloadTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "anchor"):
                 MODULE.validate_publication(receipt, anchor, KMS)
 
+    def test_rejects_non_exact_route_initial_history_counts(self) -> None:
+        for label, value in (
+            ("boolean", False),
+            ("float", 0.0),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                receipt, anchor, _, _ = self.fixture(root)
+                payload = json.loads(receipt.read_text(encoding="utf-8"))
+                payload["route_output_initial_version_history_count"] = value
+                write_json(receipt, payload)
+                anchor_payload = json.loads(anchor.read_text(encoding="utf-8"))
+                anchor_payload["receipt_sha256"] = MODULE.sha256(receipt)
+                anchor_payload["receipt_bytes"] = receipt.stat().st_size
+                write_json(anchor, anchor_payload)
+
+                with self.assertRaisesRegex(ValueError, "incomplete"):
+                    MODULE.validate_publication(receipt, anchor, KMS)
+
     def test_rejects_unexpected_staging_child_before_local_cutover(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

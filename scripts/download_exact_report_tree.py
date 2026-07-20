@@ -548,7 +548,10 @@ def validate_publication(
     if (
         not exact_schema_version(receipt, 1)
         or receipt.get("status") != "passed"
-        or receipt.get("route_output_initial_version_history_count") != 0
+        or not exact_int(
+            receipt.get("route_output_initial_version_history_count"),
+            0,
+        )
         or receipt.get("route_output_bucket_versioning") != "Enabled"
         or receipt.get("publication_strategy")
         != "one_shot_create_only_exact_version_history"
