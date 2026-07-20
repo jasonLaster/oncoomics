@@ -5,6 +5,7 @@ import ast
 import hashlib
 import importlib.util
 import json
+import os
 import stat
 import sys
 import tempfile
@@ -326,6 +327,68 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
                 self.assertRaisesRegex(
                     ValueError,
                     "executed-worker freeze receipt changed during read",
+                ),
+            ):
+                MODULE.load_object(receipt, "executed-worker freeze receipt")
+
+    def test_load_object_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "executed-worker-freeze-receipt.json"
+            target = root / "target-receipt.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            target.write_bytes(receipt.read_bytes())
+            real_fstat = MODULE.os.fstat
+            swapped = False
+
+            def replace_leaf_after_open(descriptor: int) -> os.stat_result:
+                nonlocal swapped
+                result = real_fstat(descriptor)
+                if not swapped:
+                    swapped = True
+                    target.replace(receipt)
+                return result
+
+            with (
+                patch.object(
+                    MODULE.os,
+                    "fstat",
+                    side_effect=replace_leaf_after_open,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "executed-worker freeze receipt changed during read",
+                ),
+            ):
+                MODULE.load_object(receipt, "executed-worker freeze receipt")
+
+    def test_load_object_rejects_leaf_replaced_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "executed-worker-freeze-receipt.json"
+            target = root / "target-receipt.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            target.write_text('{"status":"redirected"}\n', encoding="utf-8")
+            real_require = MODULE.require_no_symlinked_ancestors
+            swapped = False
+
+            def swap_leaf_after_preflight(path: Path, label: str) -> None:
+                nonlocal swapped
+                real_require(path, label)
+                if path == receipt and not swapped:
+                    swapped = True
+                    receipt.unlink()
+                    receipt.symlink_to(target)
+
+            with (
+                patch.object(
+                    MODULE,
+                    "require_no_symlinked_ancestors",
+                    side_effect=swap_leaf_after_preflight,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "executed-worker freeze receipt must be a real JSON file",
                 ),
             ):
                 MODULE.load_object(receipt, "executed-worker freeze receipt")

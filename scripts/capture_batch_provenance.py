@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import tempfile
 from pathlib import Path
@@ -190,12 +191,12 @@ def ecs_cluster(task_arn: str) -> str:
 
 
 def sha256(path: Path) -> str:
-    require_real_downloaded_file(path, f"{path.name} SHA-256 input")
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    _data, digest = read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+        require_real_downloaded_file,
+    )
+    return digest
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -486,14 +487,79 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
 
 
 def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str, int]:
+    data, digest = read_stable_file_with_sha256(
+        path,
+        label,
+        require_real_json_input,
+    )
+    return parse_json_object(data, label), digest, len(data)
+
+
+def read_stable_file_with_sha256(
+    path: Path,
+    label: str,
+    preflight,
+) -> tuple[bytes, str]:
+    data, identity = read_real_hash_input_once(path, label, preflight)
+    digest = sha256_bytes(data)
+    stable_data, stable_identity = read_real_hash_input_once(path, label, preflight)
+    if stable_identity != identity or sha256_bytes(stable_data) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data, digest
+
+
+def read_real_hash_input_once(
+    path: Path,
+    label: str,
+    preflight,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+    preflight(path, label)
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{label} changed during read: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{label} changed during read: {path}") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{label} changed during read: {path}")
+    return data, stat_identity(opened)
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
+def require_real_json_input(path: Path, label: str) -> None:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
-    data = path.read_bytes()
-    digest = sha256_bytes(data)
-    if sha256(path) != digest:
-        raise ValueError(f"{label} changed during read: {path}")
-    return parse_json_object(data, label), digest, len(data)
 
 
 def parse_json_object(value: str | bytes, label: str) -> dict[str, Any]:
