@@ -124,7 +124,20 @@ def write_minimal_report_packet(staging: Path) -> None:
                 )
             },
             "source_sha256": {"somatic_vcf": "a" * 64},
-            "review_summary": {"overall": {"authorized_hrd_state": "no_call"}},
+            "review_summary": {
+                "overall": {
+                    "evidence_status": "partial_evidence",
+                    "authorized_hrd_state": "no_call",
+                },
+                "custody": {},
+                "alignment": {},
+                "contamination": {},
+                "somatic_variants": {},
+                "sbs96": {},
+                "coverage_cnv": {},
+                "sv_evidence": {},
+                "readiness": {},
+            },
         },
     )
 
@@ -1305,6 +1318,9 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                 "schema_version",
                 1.0,
             ),
+            "extra_review_summary_section": lambda manifest: manifest[
+                "review_summary"
+            ].__setitem__("legacy_notes", {}),
         }
         for name, mutate in mutations.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory(
@@ -1322,7 +1338,7 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
                 with self.assertRaisesRegex(
                     ValueError,
-                    "report manifest (envelope|identity|support SHA-256 inventory) is not exact",
+                    "report manifest (envelope|identity|support SHA-256 inventory|review summary) is not exact",
                 ):
                     REPORT_MODULE.require_report_manifest(staging)
 

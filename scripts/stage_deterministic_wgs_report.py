@@ -100,6 +100,17 @@ REPORT_MANIFEST_KEYS = {
     "report_sha256",
     "review_summary",
 }
+REVIEW_SUMMARY_KEYS = {
+    "overall",
+    "custody",
+    "alignment",
+    "contamination",
+    "somatic_variants",
+    "sbs96",
+    "coverage_cnv",
+    "sv_evidence",
+    "readiness",
+}
 SBS_MUTATION_TYPES = ("C>A", "C>G", "C>T", "T>A", "T>C", "T>G")
 SBS_BASES = "ACGT"
 EXPECTED_SBS96 = {
@@ -1635,9 +1646,19 @@ def require_report_manifest(packet_dir: Path) -> None:
         or payload.get("authorized_hrd_state") != "no_call"
         or payload.get("classification_authorized") is not False
         or payload.get("classification_qc_status") != "not_applicable"
-        or not isinstance(payload.get("review_summary"), dict)
     ):
         raise ValueError("report manifest identity is not exact")
+    review_summary = payload.get("review_summary")
+    if (
+        not isinstance(review_summary, dict)
+        or set(review_summary) != REVIEW_SUMMARY_KEYS
+        or review_summary.get("overall")
+        != {
+            "evidence_status": "partial_evidence",
+            "authorized_hrd_state": "no_call",
+        }
+    ):
+        raise ValueError("report manifest review summary is not exact")
 
     support_hashes = payload.get("support_sha256")
     support_names = {
