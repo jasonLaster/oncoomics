@@ -86,6 +86,13 @@ def require_real_hash_input(path: Path) -> None:
 
 def sha256(path: Path) -> str:
     require_real_hash_input(path)
+    digest = sha256_file_once(path)
+    if sha256_file_once(path) != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
+
+
+def sha256_file_once(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
@@ -229,6 +236,9 @@ def load_contract_with_sha256(path: Path) -> tuple[dict[str, Any], str, bytes]:
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"contract must be a real JSON file: {path}")
     payload = path.read_bytes()
+    payload_sha256 = sha256_bytes(payload)
+    if sha256(path) != payload_sha256:
+        raise ValueError("contract changed during read")
     try:
         value = json.loads(
             payload.decode("utf-8"),
@@ -240,7 +250,7 @@ def load_contract_with_sha256(path: Path) -> tuple[dict[str, Any], str, bytes]:
         raise ValueError("invalid JSON in contract") from error
     if not isinstance(value, dict):
         raise ValueError("contract is not a JSON object")
-    return value, sha256_bytes(payload), payload
+    return value, payload_sha256, payload
 
 
 def write_stable_contract(path: Path, payload: bytes, expected_sha256: str) -> None:

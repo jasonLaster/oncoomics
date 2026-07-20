@@ -2811,6 +2811,36 @@ class CustodyHandoffTests(unittest.TestCase):
             self.assertEqual(receipt["receipt_bytes"], len(original_bytes))
             self.assertNotEqual(receipt["receipt_sha256"], mutated_sha)
 
+    def test_contract_publication_rejects_loaded_contract_that_changes_during_read(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            original_sha256 = publisher.sha256
+            mutated = False
+
+            def mutate_before_stability_hash(path: Path) -> str:
+                nonlocal mutated
+                if path == contract and not mutated:
+                    mutated = True
+                    payload = json.loads(path.read_text(encoding="utf-8"))
+                    payload["run_alias"] = "subject99"
+                    write_json(path, payload)
+                return original_sha256(path)
+
+            with (
+                patch.object(
+                    publisher,
+                    "sha256",
+                    side_effect=mutate_before_stability_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "contract changed during read",
+                ),
+            ):
+                publisher.load_contract_with_sha256(contract)
+
     def test_contract_publication_uploads_stable_parsed_contract_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -3308,6 +3338,35 @@ class CustodyHandoffTests(unittest.TestCase):
                 with self.subTest(path=path):
                     with self.assertRaisesRegex(ValueError, message):
                         publisher.sha256(path)
+
+    def test_contract_publication_sha256_rejects_hash_input_that_changes_during_read(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            anchor = root / "anchor.json"
+            anchor.write_text('{"stable": true}\n', encoding="utf-8")
+            original_sha256_file_once = publisher.sha256_file_once
+            mutated = False
+
+            def mutate_after_first_hash(path: Path) -> str:
+                nonlocal mutated
+                digest = original_sha256_file_once(path)
+                if path == anchor and not mutated:
+                    mutated = True
+                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                return digest
+
+            with (
+                patch.object(
+                    publisher,
+                    "sha256_file_once",
+                    side_effect=mutate_after_first_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "anchor.json SHA-256 input changed during read",
+                ),
+            ):
+                publisher.sha256(anchor)
 
     def test_contract_publication_rejects_symlinked_anchor_parent_without_writing_target(self):
         with tempfile.TemporaryDirectory() as temporary:
