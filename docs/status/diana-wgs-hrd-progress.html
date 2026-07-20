@@ -375,8 +375,8 @@
           now carry verified bytes forward, bind the top-level run index and
           cloud handoff to the run manifest, re-check per-packet manifests, and
           re-check exact public HCC1395 rehearsal stack manifests,
-          inventories, and reviewer input directories before they feed
-          AI-review inputs.
+          inventories, reviewer input directories, and AI-review preparation
+          receipt links before they feed model-review inputs.
           The selected GPU rerun is still quota-blocked, the legacy CPU run
           remains stopped, and Diana HRD remains <code>partial_evidence</code> /
           <code>no_call</code> until terminal artifacts and reviewed cross-check
@@ -384,7 +384,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = HCC1395 reviewer inputs rechecked</li>
+          <li class="pill">Latest milestone = HCC1395 AI prep receipt links rechecked</li>
+          <li class="pill">HCC1395 AI prep receipts = rechecked</li>
           <li class="pill">HCC1395 reviewer inputs = rechecked</li>
           <li class="pill">AI prep staging = cleaned</li>
           <li class="pill">HCC1395 known-answer stack = self-checked</li>
@@ -824,8 +825,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
-              <span>71% · public reviewer inputs rechecked</span>
-              <div class="bar" aria-hidden="true" style="--pct: 71%"><span></span></div>
+              <span>72% · rehearsal review package self-checks</span>
+              <div class="bar" aria-hidden="true" style="--pct: 72%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
@@ -927,6 +928,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · prove HCC1395 AI prep receipts still match</strong>
+              <span>The public rehearsal now opens the final AI prep receipt and checks it still matches the final bundle, staged reviewer inputs, and staging receipt before the known-answer package can stand in for the real Diana review path.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · recheck HCC1395 reviewer inputs</strong>
               <span>The public HCC1395 rehearsal now revalidates its AI-review bundle and both exact two-file reviewer input directories directly, so a prompt drift cannot hide behind a stale staging receipt.</span>
@@ -2561,6 +2566,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T20:05:38-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Recheck HCC1395 AI prep receipt links:</strong>
+                the public known-answer stack now reopens the final
+                AI-review preparation receipt and proves its bundle, prompt,
+                and staging hashes still match the package that will feed
+                independent reviewers.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T19:58:09-07:00">Jul 19 · local</time>
               <span>

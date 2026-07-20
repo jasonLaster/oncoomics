@@ -23,7 +23,7 @@ from hrd_report_inventory import (
     inventory_payload,
     inventory_sha256,
 )
-from prepare_ai_review_run import MANIFEST_ARGUMENTS
+from prepare_ai_review_run import MANIFEST_ARGUMENTS, require_prepared_run_support
 from stage_ai_review_inputs import reviewer_inventory, validate_bundle
 
 from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as rosalind
@@ -456,6 +456,7 @@ def require_stack_manifest(
     for label, expected in STACK_AI_REVIEW_OUTPUTS.items():
         require_bound_file(root, manifest.get(label), expected, label)
     require_ai_review_inputs(root / "ai-review")
+    require_prepared_run_support(root / "ai-review")
 
     expected_catalog_sha256 = require_sha256(
         manifest.get("model_catalog_receipt_sha256"),

@@ -385,6 +385,42 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_stack_manifest_rechecks_prepare_receipt_inner_hashes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            real_run_ai_review_prepare = STACK.run_ai_review_prepare
+
+            def stale_prepare_receipt(
+                manifests: list[Path],
+                ai_review: Path,
+                args: argparse.Namespace,
+            ) -> None:
+                real_run_ai_review_prepare(manifests, ai_review, args)
+                receipt = ai_review / "prepare_ai_review_run_receipt.json"
+                payload = json.loads(receipt.read_text(encoding="utf-8"))
+                payload["stage_receipt_sha256"] = "0" * 64
+                receipt.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+            with (
+                mock.patch.object(
+                    STACK,
+                    "run_ai_review_prepare",
+                    side_effect=stale_prepare_receipt,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "prepared AI review run stage_receipt_sha256 is stale",
+                ),
+            ):
+                STACK.build(args_for(root, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".stack.*")))
+
     def test_stack_manifest_rejects_unbound_entries_after_install(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
