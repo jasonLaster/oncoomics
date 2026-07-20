@@ -351,12 +351,15 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             root = Path(temporary)
             report = root / "report.md"
             report.write_text("stable report\n", encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = STAGE.read_real_file_once
             moved = False
 
-            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+            def swap_to_symlink_after_first_read(
+                path: Path,
+                label: str,
+            ) -> bytes:
                 nonlocal moved
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 if path == report and not moved:
                     moved = True
                     real_report = root / "report.real.md"
@@ -366,13 +369,53 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
             with (
                 mock.patch.object(
-                    Path,
-                    "read_bytes",
-                    swap_to_symlink_after_first_read,
+                    STAGE,
+                    "read_real_file_once",
+                    side_effect=swap_to_symlink_after_first_read,
                 ),
                 self.assertRaisesRegex(
                     ValueError,
-                    "report.md SHA-256 input is missing or a symlink",
+                    "report.md SHA-256 input changed during read",
+                ),
+            ):
+                STAGE.sha256(report)
+
+            self.assertTrue(moved)
+
+    def test_sha256_rejects_hash_input_swapped_to_symlink_after_preflight(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            report = root / "report.md"
+            report.write_text("stable report\n", encoding="utf-8")
+            real_os_open = STAGE.os.open
+            moved = False
+
+            def swap_to_symlink_before_open(
+                path: Path,
+                flags: int,
+                mode: int = 0o777,
+                *,
+                dir_fd: int | None = None,
+            ) -> int:
+                nonlocal moved
+                if path == report and not moved:
+                    moved = True
+                    real_report = root / "report.real.md"
+                    report.rename(real_report)
+                    report.symlink_to(real_report)
+                return real_os_open(path, flags, mode, dir_fd=dir_fd)
+
+            with (
+                mock.patch.object(
+                    STAGE.os,
+                    "open",
+                    side_effect=swap_to_symlink_before_open,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report.md SHA-256 input changed during read",
                 ),
             ):
                 STAGE.sha256(report)
@@ -481,12 +524,15 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             root = Path(temporary)
             source = root / "exact"
             verification = write_route_report(source)
-            real_read_bytes = Path.read_bytes
+            real_read_once = STAGE.read_real_file_once
             moved = False
 
-            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+            def swap_to_symlink_after_first_read(
+                path: Path,
+                label: str,
+            ) -> bytes:
                 nonlocal moved
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 if path == verification and not moved:
                     moved = True
                     real_verification = root / "download-verification.real.json"
@@ -496,13 +542,13 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
             with (
                 mock.patch.object(
-                    Path,
-                    "read_bytes",
-                    swap_to_symlink_after_first_read,
+                    STAGE,
+                    "read_real_file_once",
+                    side_effect=swap_to_symlink_after_first_read,
                 ),
                 self.assertRaisesRegex(
                     ValueError,
-                    "download verification is missing or a symlink",
+                    "download verification changed during read",
                 ),
             ):
                 STAGE.load_json_with_sha256(verification, "download verification")
