@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from decimal import Decimal
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -16,6 +17,8 @@ def expected_gpu_params() -> dict:
     return {
         "aws_region": "us-east-2",
         "aws_gpu_queue": "diana-omics-prod-use2-gpu-p5en",
+        "daily_cost_guard_ledger": "diana-omics-prod-use2-daily-cost-guard-ledger",
+        "daily_cost_guard_live_stop_usd": "160",
         "parabricks_container": PARABRICKS_CONTAINER,
     }
 
@@ -565,6 +568,8 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         load_receipt.assert_not_called()
 
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_mirror_receipt_from_environment")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_daily_cost_guard_estimated_spend")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_daily_cost_guard_estimated_spend")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_compute_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_gpu_batch_job_queue")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_job_queue")
@@ -577,6 +582,8 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         load_queue,
         validate_queue,
         load_compute_environment,
+        load_cost,
+        validate_cost,
         load_mirror,
     ) -> None:
         load_params.return_value = ({}, Path("infra/aws/nextflow.aws.use2.json"))
@@ -587,9 +594,41 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "P5 Hopper Batch queue is not ready"):
             verify.main()
 
+        load_cost.assert_called_once_with(
+            ledger="diana-omics-prod-use2-daily-cost-guard-ledger",
+            region="us-east-2",
+        )
+        validate_cost.assert_called_once_with(
+            load_cost.return_value,
+            live_stop_usd="160",
+        )
         load_queue.assert_called_once_with(queue="diana-omics-prod-use2-gpu-p5en", region="us-east-2")
         load_compute_environment.assert_not_called()
         load_mirror.assert_not_called()
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_job_queue")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_daily_cost_guard_estimated_spend")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_gpu_smoke_params")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_params_from_environment")
+    def test_execute_main_stops_before_queue_when_daily_cost_guard_is_spent(
+        self,
+        load_params,
+        validate_params,
+        load_cost,
+        load_queue,
+    ) -> None:
+        load_params.return_value = ({}, Path("infra/aws/nextflow.aws.use2.json"))
+        validate_params.return_value = expected_gpu_params()
+        load_cost.side_effect = verify.gpu_smoke.GpuSmokeConfigError("Daily Batch EC2 cost guard is already spent")
+
+        with self.assertRaisesRegex(SystemExit, "Daily Batch EC2 cost guard is already spent"):
+            verify.main()
+
+        load_cost.assert_called_once_with(
+            ledger="diana-omics-prod-use2-daily-cost-guard-ledger",
+            region="us-east-2",
+        )
+        load_queue.assert_not_called()
 
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_mirror_receipt_from_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_gpu_smoke_result_from_environment")
@@ -599,10 +638,14 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_compute_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_gpu_batch_job_queue")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_job_queue")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_daily_cost_guard_estimated_spend")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_daily_cost_guard_estimated_spend")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_params_from_environment")
     def test_execute_main_rechecks_mirrored_parabricks_digest(
         self,
         load_params,
+        load_cost,
+        validate_cost,
         load_queue,
         validate_queue,
         load_compute_environment,
@@ -633,6 +676,7 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
                     "diana-omics-prod-use2-hrd-x86",
                     "diana-omics-prod-use2-gpu-p5en",
                 ],
+                "daily_cost_guard_ledger": "diana-omics-prod-use2-daily-cost-guard-ledger",
                 "daily_cost_guard_limit_usd": "200",
                 "daily_cost_guard_live_stop_threshold_percent": "80",
                 "daily_cost_guard_live_stop_usd": "160",
@@ -662,6 +706,7 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
             "status": "ready",
         }
         load_quota.return_value = 384.0
+        load_cost.return_value = Decimal("42.000000")
         load_image.return_value = "sha256:" + "a" * 64
         load_smoke.return_value = ({"observed_gpu_count": 8}, Path("gpu_smoke.json"))
         load_mirror.return_value = (
@@ -674,6 +719,14 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
 
         verify.main()
 
+        load_cost.assert_called_once_with(
+            ledger="diana-omics-prod-use2-daily-cost-guard-ledger",
+            region="us-east-2",
+        )
+        validate_cost.assert_called_once_with(
+            load_cost.return_value,
+            live_stop_usd="160",
+        )
         load_queue.assert_called_once_with(queue="diana-omics-prod-use2-gpu-p5en", region="us-east-2")
         validate_queue.assert_called_once_with(
             {"jobQueueName": "diana-omics-prod-use2-gpu-p5en"},

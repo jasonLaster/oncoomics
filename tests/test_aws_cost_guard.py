@@ -518,6 +518,7 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn('resource "aws_cloudwatch_event_rule" "daily_cost_guard_poll"', main)
         self.assertIn("var.daily_cost_guard_schedule_expression", main)
         self.assertIn("BATCH_COST_LEDGER_TABLE", main)
+        self.assertIn("daily_cost_guard_ledger", main)
         self.assertIn("BATCH_INSTANCE_HOURLY_RATES_USD", main)
         self.assertIn("BATCH_UNKNOWN_INSTANCE_HOURLY_RATE_USD", main)
         self.assertIn("daily_cost_guard_batch_compute_environments", main)

@@ -1503,6 +1503,7 @@ resource "local_file" "nextflow_params" {
       ],
       var.enable_gpu_p5en_batch ? [aws_batch_job_queue.gpu_p5en[0].name] : []
     )
+    daily_cost_guard_ledger                      = aws_dynamodb_table.daily_cost_guard.name
     daily_cost_guard_limit_usd                   = tostring(var.daily_cost_guard_limit_usd)
     daily_cost_guard_live_stop_threshold_percent = tostring(var.daily_cost_guard_live_stop_threshold_percent)
     daily_cost_guard_live_stop_usd               = tostring(var.daily_cost_guard_limit_usd * var.daily_cost_guard_live_stop_threshold_percent / 100)

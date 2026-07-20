@@ -151,6 +151,7 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn("daily_cost_guard_limit_usd", text)
         self.assertIn("daily_cost_guard_live_stop_threshold_percent", text)
         self.assertIn("daily_cost_guard_live_stop_usd", text)
+        self.assertIn("daily_cost_guard_ledger", text)
         self.assertIn("daily_cost_guard_batch_job_queues", text)
         self.assertIn("daily_cost_guard_batch_compute_environments", text)
         self.assertRegex(text, r"parabricks_container\s+=\s+var\.parabricks_container")

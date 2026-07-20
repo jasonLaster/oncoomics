@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Mapping
@@ -127,6 +128,15 @@ def _require_daily_cost_guard_regions(params: Mapping[str, Any], errors: list[st
         errors.append(f"daily_cost_guard_regions must be exactly {list(REQUIRED_DAILY_COST_GUARD_REGIONS)!r}")
 
 
+def _require_daily_cost_guard_ledger(params: Mapping[str, Any], errors: list[str]) -> str:
+    ledger = _require_non_empty_string(params, "daily_cost_guard_ledger", errors)
+    if ledger and not ledger.startswith("diana-omics-prod-use2-"):
+        errors.append("daily_cost_guard_ledger must target the prod-use2 daily cost guard ledger")
+    if ledger and not ledger.endswith("-daily-cost-guard-ledger"):
+        errors.append("daily_cost_guard_ledger must name the Terraform-managed daily cost guard ledger")
+    return ledger
+
+
 def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
 
@@ -165,6 +175,7 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     if live_stop_usd != cost_guard_limit * live_stop_threshold / Decimal(100):
         errors.append("daily_cost_guard_live_stop_usd must match the live stop threshold")
     _require_daily_cost_guard_regions(params, errors)
+    ledger = _require_daily_cost_guard_ledger(params, errors)
     if queue:
         _require_cost_guard_list(
             params,
@@ -220,6 +231,7 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
         "phase3_fast_cache_kms_key_arn": cache_kms_key_arn,
         "phase3_fast_cache_region": REQUIRED_AWS_REGION,
         "gpu_p5en_max_vcpus": max_vcpus,
+        "daily_cost_guard_ledger": ledger,
         "daily_cost_guard_limit_usd": str(cost_guard_limit),
         "daily_cost_guard_live_stop_usd": str(live_stop_usd),
         "daily_cost_guard_live_stop_threshold_percent": str(live_stop_threshold),
@@ -239,6 +251,100 @@ def load_params_from_environment() -> tuple[dict[str, Any], Path]:
     if not isinstance(payload, dict):
         raise GpuSmokeConfigError(f"{path} must contain a JSON object")
     return payload, path
+
+
+def _today_utc() -> str:
+    return datetime.now(timezone.utc).date().isoformat()
+
+
+def _parse_dynamodb_number(value: Any, label: str) -> Decimal:
+    if not isinstance(value, dict) or set(value) != {"N"}:
+        raise GpuSmokeConfigError(f"DynamoDB {label} must be a number attribute")
+    raw = value.get("N")
+    if not isinstance(raw, str) or not raw:
+        raise GpuSmokeConfigError(f"DynamoDB {label} must be a number string")
+    try:
+        parsed = Decimal(raw)
+    except InvalidOperation as error:
+        raise GpuSmokeConfigError(f"DynamoDB {label} must be a decimal number") from error
+    if parsed < 0:
+        raise GpuSmokeConfigError(f"DynamoDB {label} must be non-negative")
+    return parsed
+
+
+def parse_daily_cost_guard_ledger_item(payload: Mapping[str, Any]) -> Decimal:
+    item = payload.get("Item")
+    if item is None:
+        return Decimal(0)
+    if not isinstance(item, dict):
+        raise GpuSmokeConfigError("DynamoDB daily cost guard Item must be a JSON object")
+    return _parse_dynamodb_number(item.get("estimated_daily_ec2_usd"), "estimated_daily_ec2_usd")
+
+
+def load_daily_cost_guard_estimated_spend(
+    *,
+    ledger: str,
+    region: str,
+    guard_day: str | None = None,
+    aws_cli: str = "aws",
+) -> Decimal:
+    day = guard_day or _today_utc()
+    try:
+        result = subprocess.run(
+            [
+                aws_cli,
+                "dynamodb",
+                "get-item",
+                "--region",
+                region,
+                "--table-name",
+                ledger,
+                "--key",
+                json.dumps({"guard_day": {"S": day}}, sort_keys=True),
+                "--consistent-read",
+                "--output",
+                "json",
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except FileNotFoundError as error:
+        raise GpuSmokeConfigError(f"{aws_cli} is required to verify today's Diana Batch EC2 spend") from error
+    except subprocess.CalledProcessError as error:
+        output = (error.stdout or "").strip()
+        detail = f": {output}" if output else ""
+        raise GpuSmokeConfigError(
+            f"Unable to read the {region} daily cost guard ledger {ledger}{detail}"
+        ) from error
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise GpuSmokeConfigError("DynamoDB daily cost guard ledger did not return JSON") from error
+
+    if not isinstance(payload, dict):
+        raise GpuSmokeConfigError("DynamoDB daily cost guard response must be a JSON object")
+    return parse_daily_cost_guard_ledger_item(payload)
+
+
+def validate_daily_cost_guard_estimated_spend(
+    estimated_daily_ec2_usd: Decimal,
+    *,
+    live_stop_usd: str,
+) -> None:
+    try:
+        stop = Decimal(live_stop_usd)
+    except InvalidOperation as error:
+        raise GpuSmokeConfigError("daily_cost_guard_live_stop_usd must be a decimal") from error
+    if stop <= 0:
+        raise GpuSmokeConfigError("daily_cost_guard_live_stop_usd must be positive")
+    if estimated_daily_ec2_usd >= stop:
+        raise GpuSmokeConfigError(
+            f"Daily Batch EC2 cost guard is already at ${estimated_daily_ec2_usd:.6f}; "
+            f"refusing P5 Hopper submission at the ${stop:.6f} live stop"
+        )
 
 
 def load_gpu_batch_job_queue(

@@ -545,10 +545,12 @@ Parabricks mirror receipt as `PARABRICKS_MIRROR_RECEIPT`, then pass the reviewed
 Gate 0 receipt paths and alias-only forbidden-token inventory as Nextflow
 arguments after `--`. The full execute alias intentionally repeats the GPU
 params, live Batch queue, live P5 compute-environment, mirror-receipt,
-source-bound ECR tag, mirrored-image, cache, and live-quota checks before
-starting Nextflow. It also requires the reviewed mirror receipt to match the
-current Diana Git commit and `infra/aws/Dockerfile.parabricks` SHA-256, then
-rejects missing, stubbed,
+source-bound ECR tag, mirrored-image, cache, live-quota, and daily-cost-ledger
+checks before starting Nextflow. It reads the generated UTC-day DynamoDB ledger
+and refuses a P5 submission when estimated Diana Batch EC2 spend is already at
+the live stop line, `$160` by default. It also requires the reviewed mirror
+receipt to match the current Diana Git commit and
+`infra/aws/Dockerfile.parabricks` SHA-256, then rejects missing, stubbed,
 malformed, or non-H100/H200 smoke output. A stale non-`us-east-2`, non-P5,
 misrouted, source-mismatched, unpinned, unmirrored, under-quota, wrong-KMS, or
 smoke-skipping launch therefore still fails locally even when
@@ -644,8 +646,10 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
    `PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use2` and
    `infra:aws:apply:use2`. This writes `infra/aws/nextflow.aws.use2.json` and
    leaves the existing `sra-use1` / `infra/aws/nextflow.aws.json` CPU stack
-   pointed at `us-east-1` without a P5 queue; the daily cost guard can still be
-   applied there for the CPU and x86 HRD Batch lanes.
+   pointed at `us-east-1` without a P5 queue. The generated params include the
+   daily cost-guard ledger, protected queues, protected compute environments,
+   guarded regions, `$200` daily cap, and live stop line so P5 execute
+   preflights can fail before submission when the live ledger is already spent.
 5. Build the Diana Parabricks runtime from a reviewed digest-pinned Parabricks
    base image and mirror it with `aws:ecr:mirror-parabricks:use2`, review the
    emitted `parabricks_mirror_receipt.json`, and apply the verified
