@@ -10,6 +10,7 @@ import json
 import os
 import pathlib
 import subprocess
+import stat
 import tempfile
 from typing import Any, Sequence, Union
 
@@ -322,12 +323,57 @@ def load_json_object_with_sha256(
 
 
 def read_stable_file(path: pathlib.Path, label: str) -> tuple[bytes, str]:
-    require_real_input_file(path, label)
-    data = path.read_bytes()
+    data, identity = read_real_input_file_once(path, label)
     digest = sha256_bytes(data)
-    if sha256_bytes(path.read_bytes()) != digest:
+    stable_data, stable_identity = read_real_input_file_once(path, label)
+    if stable_identity != identity or sha256_bytes(stable_data) != digest:
         raise RuntimeError(f"{label} changed during read: {path}")
     return data, digest
+
+
+def read_real_input_file_once(
+    path: pathlib.Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+    require_real_input_file(path, label)
+    flags = os.O_RDONLY
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise OSError(f"{label} is not a regular file: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise RuntimeError(f"{label} changed during read: {path}") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    require_real_input_file(path, label)
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise RuntimeError(f"{label} changed during read: {path}")
+    return data, stat_identity(opened)
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def is_positive_exact_int(value: Any) -> bool:
