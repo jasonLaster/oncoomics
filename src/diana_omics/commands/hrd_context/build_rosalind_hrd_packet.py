@@ -893,6 +893,11 @@ DIANA_WGS_READINESS_SURFACES = (
 DIANA_WGS_PARTIAL_ONLY_SURFACES = {"coverage_cnv", "sbs96", "sv"}
 DIANA_WGS_NO_CALL_SURFACES = {"scarHRD", "CHORD", "HRDetect", "overall_hrd"}
 PHASE3_FAST_REPORT_KIND = "phase3_fast_deterministic_evidence"
+DETERMINISTIC_REPORT_KIND = "deterministic_baseline"
+DETERMINISTIC_REPORT_KINDS = {
+    DETERMINISTIC_REPORT_KIND,
+    PHASE3_FAST_REPORT_KIND,
+}
 DIANA_WGS_PHASE3_FAST_READINESS_SURFACES = (
     "source_sha256",
     "small_variants",
@@ -1015,6 +1020,19 @@ DETERMINISTIC_CUSTODY_KEYS = {
     "exact_kms_match",
     *DETERMINISTIC_CUSTODY_VERSION_FIELDS,
     *DETERMINISTIC_CUSTODY_HASH_FIELDS,
+}
+DETERMINISTIC_REPORT_MANIFEST_KEYS = {
+    "schema_version",
+    "method_id",
+    "report_kind",
+    "evidence_status",
+    "authorized_hrd_state",
+    "classification_authorized",
+    "classification_qc_status",
+    "support_sha256",
+    "source_sha256",
+    "report_sha256",
+    "review_summary",
 }
 DIANA_WGS_DETERMINISTIC_INPUTS = {
     "diana_hrd_summary.json": "summary",
@@ -1259,8 +1277,17 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     )
     if not isinstance(manifest, dict):
         raise ValueError("deterministic report manifest must be an object")
+    if set(manifest) != DETERMINISTIC_REPORT_MANIFEST_KEYS:
+        raise ValueError("deterministic report manifest is not exact")
+    if not is_exact_int(manifest.get("schema_version"), 1):
+        raise ValueError("deterministic report manifest schema_version is not exact")
+    report_kind = require_exact_nonempty_string(
+        manifest.get("report_kind"),
+        "deterministic report manifest report_kind",
+    )
+    if report_kind not in DETERMINISTIC_REPORT_KINDS:
+        raise ValueError("deterministic report manifest report_kind is not exact")
     expected_contract = {
-        "schema_version": 1,
         "method_id": "deterministic_full_wgs",
         "evidence_status": "partial_evidence",
         "authorized_hrd_state": "no_call",
@@ -1272,7 +1299,7 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
             raise ValueError(f"deterministic report manifest {key} is not exact")
     support_files = (
         PHASE3_FAST_DETERMINISTIC_SUPPORT_FILES
-        if manifest.get("report_kind") == PHASE3_FAST_REPORT_KIND
+        if report_kind == PHASE3_FAST_REPORT_KIND
         else DETERMINISTIC_SUPPORT_FILES
     )
     for name in sorted(support_files - set(paths)):
@@ -1296,7 +1323,7 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     input_by_id = {row["input_id"]: row for row in input_rows}
     if len(input_by_id) != len(input_rows):
         raise ValueError("deterministic input SHA-256 CSV has duplicate input IDs")
-    if manifest.get("report_kind") == PHASE3_FAST_REPORT_KIND:
+    if report_kind == PHASE3_FAST_REPORT_KIND:
         return diana_wgs_phase3_fast_deterministic_binding(
             paths=paths,
             manifest=manifest,

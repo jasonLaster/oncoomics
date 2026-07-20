@@ -1496,6 +1496,69 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     ).exists()
                 )
 
+    def test_diana_wgs_packet_rejects_loose_terminal_report_manifest_envelope(self):
+        cases = (
+            (
+                "extra_top_level",
+                lambda manifest: manifest.__setitem__("extra", "stale"),
+                "deterministic report manifest is not exact",
+            ),
+            (
+                "float_schema",
+                lambda manifest: manifest.__setitem__("schema_version", 1.0),
+                "deterministic report manifest schema_version is not exact",
+            ),
+            (
+                "missing_report_kind",
+                lambda manifest: manifest.pop("report_kind"),
+                "deterministic report manifest is not exact",
+            ),
+            (
+                "stale_report_kind",
+                lambda manifest: manifest.__setitem__("report_kind", "stale"),
+                "deterministic report manifest report_kind is not exact",
+            ),
+            (
+                "padded_report_kind",
+                lambda manifest: manifest.__setitem__(
+                    "report_kind",
+                    " deterministic_baseline",
+                ),
+                "deterministic report manifest report_kind must be a non-empty unpadded single-line string",
+            ),
+        )
+
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+                output_root = Path(tmp)
+                artifact_root = Path(artifacts)
+                write_diana_wgs_worker_artifacts(artifact_root)
+                deterministic_root = write_deterministic_report(
+                    output_root / "deterministic",
+                    artifact_root,
+                )
+                mutate_deterministic_report_manifest(deterministic_root, mutation)
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json"
+                    ).exists()
+                )
+
     def test_diana_wgs_packet_consumes_phase3_fast_deterministic_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp)
@@ -2265,6 +2328,66 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     "report_manifest.json"
                 ).exists()
             )
+
+    def test_diana_wgs_phase3_fast_packet_rejects_loose_report_manifest_envelope(self):
+        cases = (
+            (
+                "extra_top_level",
+                lambda manifest: manifest.__setitem__("extra", "stale"),
+                "deterministic report manifest is not exact",
+            ),
+            (
+                "float_schema",
+                lambda manifest: manifest.__setitem__("schema_version", 1.0),
+                "deterministic report manifest schema_version is not exact",
+            ),
+            (
+                "stale_report_kind",
+                lambda manifest: manifest.__setitem__("report_kind", "stale"),
+                "deterministic report manifest report_kind is not exact",
+            ),
+        )
+
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                    output_root / "phase3_fast"
+                )
+                mutate_phase3_fast_report_manifest(deterministic_root, mutation)
+
+                with (
+                    patch.object(
+                        packet,
+                        "path_from_root",
+                        lambda relative: output_root / relative,
+                    ),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(
+                                deterministic_root
+                            ),
+                            "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": (
+                                PHASE3_FAST_FORBIDDEN_TOKENS_JSON
+                            ),
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(
+                        packet.PACKET_SPECS["diana_wgs"],
+                        "phase3-fast",
+                    )
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/phase3-fast/"
+                        "report_manifest.json"
+                    ).exists()
+                )
 
     def test_diana_wgs_phase3_fast_packet_rejects_non_exact_run_provenance(self):
         cases = (
