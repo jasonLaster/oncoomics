@@ -835,6 +835,72 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertTrue(swapped)
 
+    def test_contract_check_load_contract_rejects_same_byte_leaf_replacement(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            contract = root / "input-contract.json"
+            replacement = root / "replacement-input-contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            replacement.write_bytes(contract.read_bytes())
+
+            real_read_once = checker.read_real_hash_input_once
+            swapped = False
+
+            def replace_after_first_read(path: Path, label: str | None = None):
+                nonlocal swapped
+                result = real_read_once(path, label)
+                if path == contract and not swapped:
+                    swapped = True
+                    replacement.replace(contract)
+                return result
+
+            with (
+                mock.patch.object(
+                    checker,
+                    "read_real_hash_input_once",
+                    side_effect=replace_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "contract changed during read",
+                ),
+            ):
+                checker.load_contract(contract)
+
+            self.assertTrue(swapped)
+
+    def test_contract_check_load_contract_rejects_mid_read_rewrites(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            contract = root / "input-contract.json"
+            write_json(contract, CustodyFixture().finalize())
+
+            real_read_once = checker.read_real_hash_input_once
+            mutated = False
+
+            def mutate_after_first_read(path: Path, label: str | None = None):
+                nonlocal mutated
+                result = real_read_once(path, label)
+                if path == contract and not mutated:
+                    mutated = True
+                    contract.write_text('{"run_alias":"subject99"}\n', encoding="utf-8")
+                return result
+
+            with (
+                mock.patch.object(
+                    checker,
+                    "read_real_hash_input_once",
+                    side_effect=mutate_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "contract changed during read",
+                ),
+            ):
+                checker.load_contract(contract)
+
+            self.assertTrue(mutated)
+
     def test_contract_check_rejects_output_below_symlinked_parent(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
