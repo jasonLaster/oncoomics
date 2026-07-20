@@ -29,6 +29,17 @@ class SubmitRouteTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
+    def test_static_route_uses_current_guarded_x86_queue(self) -> None:
+        params = json.loads((ROOT / "infra/aws/nextflow.aws.json").read_text(encoding="utf-8"))
+
+        self.assertEqual("diana-omics-prod-use1-hrd-x86", MODULE.QUEUE_NAME)
+        self.assertNotEqual(MODULE.COMPUTE_ENVIRONMENT_NAME, MODULE.QUEUE_NAME)
+        self.assertIn(MODULE.QUEUE_NAME, params["daily_cost_guard_batch_job_queues"])
+        self.assertIn(
+            MODULE.COMPUTE_ENVIRONMENT_NAME,
+            params["daily_cost_guard_batch_compute_environments"],
+        )
+
     def live_definition(self, route_name: str = "sigprofiler_sbs3") -> dict:
         route = MODULE.ROUTES[route_name]
         return {
@@ -77,7 +88,7 @@ class SubmitRouteTests(unittest.TestCase):
     def live_compute(self) -> dict:
         return {
             "computeEnvironmentArn": MODULE.COMPUTE_ENVIRONMENT_ARN,
-            "computeEnvironmentName": MODULE.QUEUE_NAME,
+            "computeEnvironmentName": MODULE.COMPUTE_ENVIRONMENT_NAME,
             "state": "ENABLED",
             "status": "VALID",
             "type": "MANAGED",

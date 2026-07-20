@@ -235,7 +235,7 @@ class CaptureRouteTerminalTests(unittest.TestCase):
         }
         compute = {
             "computeEnvironmentArn": MODULE.EXPECTED_COMPUTE_ENVIRONMENT,
-            "computeEnvironmentName": MODULE.EXPECTED_QUEUE_NAME,
+            "computeEnvironmentName": MODULE.EXPECTED_COMPUTE_ENVIRONMENT_NAME,
             "state": "ENABLED",
             "status": "VALID",
             "type": "MANAGED",
@@ -340,6 +340,20 @@ class CaptureRouteTerminalTests(unittest.TestCase):
             }
             for index, line in enumerate(lines)
         ]
+
+    def test_terminal_capture_expects_current_guarded_x86_queue(self) -> None:
+        params = json.loads((HERE.parents[0] / "infra/aws/nextflow.aws.json").read_text(encoding="utf-8"))
+
+        self.assertEqual("diana-omics-prod-use1-hrd-x86", MODULE.EXPECTED_QUEUE_NAME)
+        self.assertNotEqual(
+            MODULE.EXPECTED_COMPUTE_ENVIRONMENT_NAME,
+            MODULE.EXPECTED_QUEUE_NAME,
+        )
+        self.assertIn(MODULE.EXPECTED_QUEUE_NAME, params["daily_cost_guard_batch_job_queues"])
+        self.assertIn(
+            MODULE.EXPECTED_COMPUTE_ENVIRONMENT_NAME,
+            params["daily_cost_guard_batch_compute_environments"],
+        )
 
     def aws_side_effect(self, fixture: dict, **overrides):
         values = {

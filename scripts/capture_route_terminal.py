@@ -34,8 +34,9 @@ REGION = "us-east-1"
 ACCOUNT_ID = "172630973301"
 LOG_GROUP = "/aws/batch/diana-omics-prod-use1"
 LOG_STREAM_PREFIX = "hrd-crosscheck"
-EXPECTED_QUEUE_NAME = "diana-omics-prod-use1-hrd-x86-ondemand"
-EXPECTED_QUEUE_ARN = "arn:aws:batch:us-east-1:172630973301:job-queue/diana-omics-prod-use1-hrd-x86-ondemand"
+EXPECTED_QUEUE_NAME = "diana-omics-prod-use1-hrd-x86"
+EXPECTED_QUEUE_ARN = "arn:aws:batch:us-east-1:172630973301:job-queue/diana-omics-prod-use1-hrd-x86"
+EXPECTED_COMPUTE_ENVIRONMENT_NAME = "diana-omics-prod-use1-hrd-x86-ondemand"
 EXPECTED_COMPUTE_ENVIRONMENT = "arn:aws:batch:us-east-1:172630973301:compute-environment/diana-omics-prod-use1-hrd-x86-ondemand"
 EXPECTED_JOB_ROLE = "arn:aws:iam::172630973301:role/diana-omics-prod-use1-batch-job"
 EXPECTED_X86_INSTANCE_TYPES = ("c7i", "m7i", "r7i")
@@ -701,7 +702,7 @@ def validate_job(
         ),
         "x86_compute_environment_live_exact": (
             compute_environment.get("computeEnvironmentArn") == EXPECTED_COMPUTE_ENVIRONMENT
-            and compute_environment.get("computeEnvironmentName") == EXPECTED_QUEUE_NAME
+            and compute_environment.get("computeEnvironmentName") == EXPECTED_COMPUTE_ENVIRONMENT_NAME
             and compute_environment.get("state") == "ENABLED"
             and compute_environment.get("status") == "VALID"
             and compute_environment.get("type") == "MANAGED"
