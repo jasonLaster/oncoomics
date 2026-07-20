@@ -434,6 +434,12 @@ def checked_sha256(value: Any, label: str) -> str:
     return value
 
 
+def require_source_report_kind(value: Any, evidence_id: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"invalid report kind for {evidence_id}")
+    return value
+
+
 def validate_source_manifests(
     paths: list[Path],
     evidence_rows: list[dict[str, Any]],
@@ -494,7 +500,10 @@ def validate_source_manifests(
 
         expected_evidence = {
             "method_id": method,
-            "report_kind": str(source.get("report_kind", "method")),
+            "report_kind": require_source_report_kind(
+                source.get("report_kind"),
+                evidence_id,
+            ),
             "evidence_status": require_allowed_string(
                 source.get("evidence_status"),
                 EVIDENCE_STATES,
