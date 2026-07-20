@@ -436,6 +436,7 @@
           materialization, private report replays, final alias-only input
           contracts, final-freeze and materialized-final receipt checks,
           final-freeze relative keys at both materialized-final gates,
+          alias-only materializer final-freeze job IDs and receipt row keys,
           deterministic WGS staging check maps,
           input-contract publication receipts, alias-only
           cross-check materialization, alias-only
@@ -487,6 +488,7 @@
           <li class="pill">Deterministic stager checks = exact</li>
           <li class="pill">Batch worker check maps = exact</li>
           <li class="pill">Materializer response checks = exact</li>
+          <li class="pill">Materializer final keys = exact</li>
           <li class="pill">AI staging receipt checks = exact</li>
           <li class="pill">Final-freeze checks = exact</li>
           <li class="pill">Materialized-final checks = exact</li>
@@ -1109,6 +1111,10 @@
               <span>The active CPU and selected GPU workspaces both have an active Batch cost-guard Lambda, a one-minute EventBridge poller, a $200/day AWS Budget backstop, and a $160 live Batch EC2 stop; today's selected-GPU ledger was still at $0, and the guarded GPU queue was enabled and valid.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · fail closed on stale spend estimates</strong>
+              <span>The one-minute live spend poller now shuts down the protected Batch queues and compute environments if it cannot inventory Diana-tagged EC2 hosts or update the UTC-day ledger, so the $200/day guard no longer depends on a best-effort estimator error becoming visible before CPU or P5 capacity keeps running.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · share the $200/day guard across regions</strong>
               <span>The one-minute live Batch spend poller now scans the active CPU region, the selected P5 Hopper region, and the west-region quota hedge for the same Diana Batch tag, then records each host as <code>region:instance-id</code> so a CPU run and a P5 run burn the same UTC-day allowance instead of separate regional ledgers.</span>
             </li>
@@ -1259,6 +1265,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind materializer submit reads</strong>
               <span>The one-shot cross-check materializer submitter now records final, reference, script, registration, job-definition, and dry-run receipt hashes from the same JSON bytes it validated, so a local rewrite cannot swap the digest recorded in the submission paperwork.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer final keys</strong>
+              <span>The alias-only materializer submitter now rejects boolean, numeric, missing, or empty final-freeze <code>batch_job_id</code> and receipt row keys before a coerced identifier can satisfy final-freeze, anchor, exact-materialization, or reference custody checks for the one-shot Batch request.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind materialization receipt reads</strong>
@@ -3158,6 +3168,34 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · live</time>
+              <span>
+                <strong>Live patch · Fail closed on cost-guard estimator errors:</strong>
+                both active Batch cost-guard Lambdas now disable their protected
+                Batch queues and compute environments if the scheduled EC2
+                estimator cannot read live host state or update its same-day
+                ledger. The actual-spend Budget kill-switch variable is also
+                capped at 80% of the $200/day ceiling. The only live AWS
+                mutations were in-place cost-guard Lambda code updates; no
+                Batch, GPU, rerun, route, quota, or data S3 work was launched.
+                Cost Explorer was refreshed read-only for 2026-07-19 UTC and
+                remained at $5.24.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact materializer final keys:</strong>
+                alias-only materializer submission preflight now rejects
+                non-string final-freeze <code>batch_job_id</code> values and
+                non-string receipt row keys before coerced identifiers can
+                satisfy anchor, exact-materialization, or inventory checks.
+                No S3, Batch, route, GPU, quota, rerun, or apply-mode AWS work
+                was launched; Cost Explorer was refreshed read-only for
+                2026-07-19 UTC and remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

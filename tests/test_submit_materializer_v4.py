@@ -847,6 +847,55 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
 
                 aws.assert_not_called()
 
+    def test_final_freeze_batch_job_id_must_be_an_exact_string_before_aws(self) -> None:
+        final_freeze = json.loads(self.final_freeze.read_text(encoding="utf-8"))
+        final_freeze["batch_job_id"] = True
+        self._write(self.final_freeze, final_freeze)
+        freeze_sha = MODULE.sha256_path(self.final_freeze)
+
+        anchor = json.loads(self.final_anchor.read_text(encoding="utf-8"))
+        anchor["batch_job_id"] = "True"
+        anchor["receipt_sha256"] = freeze_sha
+        anchor["receipt_bytes"] = self.final_freeze.stat().st_size
+        anchor["receipt_uri"] = (
+            f"s3://{self.private_bucket}/runs/subject01/{self.run_id}/"
+            "deterministic/provenance/final-artifact-freeze-receipts/"
+            f"{freeze_sha}.json"
+        )
+        self._write(self.final_anchor, anchor)
+
+        materialization = json.loads(
+            self.exact_materialization.read_text(encoding="utf-8")
+        )
+        materialization["batch_job_id"] = "True"
+        materialization["freeze_receipt_sha256"] = freeze_sha
+        self._write(self.exact_materialization, materialization)
+
+        with mock.patch.object(MODULE, "aws_json") as aws:
+            with self.assertRaisesRegex(
+                ValueError,
+                "final freeze batch_job_id must be an exact non-empty string",
+            ):
+                MODULE.preflight(self.args())
+
+        aws.assert_not_called()
+
+    def test_unique_receipt_rows_require_exact_string_keys(self) -> None:
+        cases = (True, 1, 1.0, None, "")
+
+        for value in cases:
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "final freeze relative_key must be an exact non-empty string",
+                ):
+                    MODULE.require_unique_rows(
+                        [{"relative_key": value}],
+                        key_field="relative_key",
+                        expected_count=1,
+                        label="final freeze",
+                    )
+
     def test_final_source_version_ids_must_be_strings_before_aws(self) -> None:
         final_freeze = json.loads(self.final_freeze.read_text(encoding="utf-8"))
         final_freeze["objects"][0]["destination"]["version_id"] = True
