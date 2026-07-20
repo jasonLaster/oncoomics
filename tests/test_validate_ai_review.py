@@ -1933,6 +1933,49 @@ class ValidateAiReviewTests(unittest.TestCase):
             )
             self.assertFalse((review_b / "validation.json").exists())
 
+    def test_reviewer_b_rejects_malformed_reviewer_a_forbidden_token_count(
+        self,
+    ) -> None:
+        for value in (True, 0, 1.0, "1"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as temporary:
+                fixture = ValidateReviewFixture(Path(temporary))
+                fixture.build()
+                review_a = Path(temporary) / "review-a"
+                fixture.write_review(review_a, reviewer="A")
+                self.assertEqual(fixture.validate(review_a).returncode, 0)
+
+                validation_path = review_a / "validation.json"
+                validation = json.loads(validation_path.read_text(encoding="utf-8"))
+                validation["forbidden_token_count"] = value
+                write_json(validation_path, validation)
+
+                review_b = Path(temporary) / "review-b"
+                fixture.write_review(
+                    review_b,
+                    reviewer="B",
+                    body=(
+                        "The missing allele-specific copy-number gate remains "
+                        "unresolved [C001|E001]."
+                    ),
+                    claim=(
+                        "The missing allele-specific copy number prevents a "
+                        "categorical conclusion."
+                    ),
+                )
+
+                stale = fixture.validate(
+                    review_b,
+                    reviewer="B",
+                    other_review_dir=review_a,
+                )
+
+                self.assertNotEqual(stale.returncode, 0)
+                self.assertIn(
+                    "other review is not a passed reviewer A validation",
+                    stale.stderr,
+                )
+                self.assertFalse((review_b / "validation.json").exists())
+
     def test_reviewer_b_rejects_legacy_reviewer_a_manifest_envelope(
         self,
     ) -> None:
