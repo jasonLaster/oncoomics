@@ -30,6 +30,40 @@ def checksum(value: bytes) -> str:
     return base64.b64encode(hashlib.sha256(value).digest()).decode("ascii")
 
 
+def report_kind_extras(method_id: str, support: dict[str, str]) -> dict[str, object]:
+    report_kind = MODULE.METHOD_CONTRACTS[method_id]["report_kind"]
+    if report_kind == "blocked_method":
+        return {
+            "alias_scope": "unit",
+            "blockers": ["method not run"],
+            "classification_authorization": "no_call",
+            "explicit_no_patient_result": True,
+            "generated_at": "2026-07-19T00:00:00+00:00",
+            "intended_computation": "blocked unit cross-check",
+            "interpretation_status": "blocked",
+            "next_gate": "review the executable route",
+            "patient_result": "not generated",
+            "prerequisites": ["validated runtime"],
+            "run_id": "unit",
+            "source_report_binding_scope": "unit",
+            "sources": [],
+        }
+    if report_kind == "comparative_synthesis":
+        return {
+            "agreement_disagreement_sha256": support.get(
+                "agreement_disagreement.csv",
+                "a" * 64,
+            ),
+            "classification_authorization": "no_call",
+            "generated_at": "2026-07-19T00:00:00+00:00",
+            "interpretation_status": "no_call",
+            "subject_alias": MODULE.SUBJECT_ALIAS,
+        }
+    if report_kind == "executable_crosscheck_method":
+        return {"route": {"status": "not_run"}}
+    return {}
+
+
 class Fixture:
     def __init__(self, root: Path, method_id: str = "rosalind_diana_wgs") -> None:
         self.root = root
@@ -75,6 +109,7 @@ class Fixture:
                     "authorized_hrd_state": "no_call",
                 }
             },
+            **report_kind_extras(self.method_id, support),
         }
         (self.packet / "report_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
@@ -498,6 +533,24 @@ class PublishPrivateReportTests(unittest.TestCase):
                     ),
                 ):
                     MODULE.run(fixture.args())
+
+    def test_manifest_envelope_must_be_exact_before_aws(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fixture.mutate_manifest(unbound_late_field=True)
+
+            with (
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report manifest envelope is not exact for rosalind_diana_wgs",
+                ),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+            ):
+                MODULE.run(fixture.args())
 
     def test_rejects_encoded_forbidden_token_before_aws(self) -> None:
         for encoded in (

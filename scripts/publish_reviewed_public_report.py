@@ -25,6 +25,7 @@ from typing import Any
 from build_ai_review_bundle import (
     DuplicateJsonKeyError,
     reject_duplicate_json_object_names,
+    validate_report_manifest_support,
 )
 from forbidden_text import (
     DEFAULT_FORBIDDEN_TOKENS,
@@ -853,6 +854,11 @@ def validate_report_packet(
     manifest = load_json(paths["report_manifest.json"], "report manifest")
     if manifest.get("report_kind") != METHOD_CONTRACTS[method_id]["report_kind"]:
         raise ValueError("report manifest report_kind is not exact")
+    validate_report_manifest_support(
+        paths["report_manifest.json"].parent,
+        manifest,
+        method_id,
+    )
     if (
         not exact_schema_version(manifest)
         or manifest.get("method_id") != method_id

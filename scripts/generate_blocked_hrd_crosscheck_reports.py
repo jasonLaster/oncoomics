@@ -36,12 +36,17 @@ STATUS = {
     "classification_authorization": "none",
     "patient_result": "none",
 }
+REPORT_MANIFEST_STATUS = {
+    key: value
+    for key, value in STATUS.items()
+    if key != "execution_status"
+}
 BLOCKED_REPORT_MANIFEST_KEYS = {
     "schema_version",
     "method_id",
     "report_kind",
     "generated_at",
-    *STATUS,
+    *REPORT_MANIFEST_STATUS,
     "authorized_hrd_state",
     "classification_authorized",
     "classification_qc_status",
@@ -558,7 +563,10 @@ def require_blocked_report_manifest(packet_dir: Path) -> None:
         or not exact_schema_version(manifest)
         or manifest.get("method_id") not in BLOCKED_CROSSCHECK_METHOD_IDS
         or manifest.get("report_kind") != "blocked_method"
-        or any(manifest.get(key) != value for key, value in STATUS.items())
+        or any(
+            manifest.get(key) != value
+            for key, value in REPORT_MANIFEST_STATUS.items()
+        )
         or manifest.get("authorized_hrd_state") != "no_call"
         or manifest.get("classification_authorized") is not False
         or manifest.get("classification_qc_status") != "not_applicable"
@@ -770,7 +778,7 @@ def generate(
                 "method_id": method["method_id"],
                 "report_kind": "blocked_method",
                 "generated_at": generated_at,
-                **STATUS,
+                **REPORT_MANIFEST_STATUS,
                 "authorized_hrd_state": "no_call",
                 "classification_authorized": False,
                 "classification_qc_status": "not_applicable",

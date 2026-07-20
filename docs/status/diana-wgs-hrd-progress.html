@@ -368,16 +368,18 @@
           AI review, and reviewed release must prove exactly which files it
           used before the next step can trust it. The public HCC1395 rehearsal
           path proves that packaging shape without standing in for Diana, and
-          the latest source-only guardrails make private handoffs prove every
-          report is the kind it claims to be before freeze, AI review, or
-          reviewed release can trust it. The selected GPU rerun remains
-          quota-blocked, the legacy CPU run remains stopped, and Diana HRD remains
+          the latest source-only guardrails make private and public handoffs
+          prove every report carries the exact fields for its report family
+          before freeze, AI review, or reviewed release can trust it. The
+          selected GPU rerun remains quota-blocked, the legacy CPU run remains
+          stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = private packet-kind checks explicit</li>
+          <li class="pill">Latest milestone = private/public packet envelopes exact</li>
+          <li class="pill">Private/public packet envelopes = exact</li>
           <li class="pill">Private packet-kind checks = explicit</li>
           <li class="pill">Reviewed-public kind checks = explicit</li>
           <li class="pill">Publication report kinds = exact</li>
@@ -1532,6 +1534,14 @@
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · seal publication packet envelopes</strong>
+              <span>Private and reviewed-public publication now reuse the model-review packet validator, so unbound fields in any report-family <code>report_manifest.json</code> fail before a source-freeze, AI, or reviewed-public copy can trust the packet.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · align blocked packet envelopes</strong>
+              <span>Blocked cross-check reports now keep executable state in the bound method spec and reviewer summary while their top-level manifests stay exact for the <code>blocked_method</code> report family.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact cross-check FASTQ lanes</strong>
               <span>Executable cross-check input contracts now reject malformed FASTQ lane collections instead of crashing or reporting a misleading missing-role reason before cross-check inputs can be accepted.</span>
             </li>
@@ -2593,6 +2603,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T20:41:05-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Seal publication packet envelopes:</strong>
+                private and reviewed-public publication now reject
+                <code>report_manifest.json</code> envelopes that diverge from
+                the expected report-family fields, and blocked report
+                generation now emits the exact blocked-family envelope.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T20:27:27-07:00">Jul 19 · local</time>
               <span>

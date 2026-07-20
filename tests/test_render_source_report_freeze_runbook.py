@@ -105,6 +105,27 @@ def write_packet_dirs(paths: dict[str, Path]) -> None:
         }
         if route is not None:
             manifest["route"] = route
+        if method_id in MODULE.BLOCKED_CROSSCHECK_METHOD_IDS:
+            manifest.update(
+                {
+                    "alias_scope": ["subject01_tumor", "subject01_normal"],
+                    "blockers": ["blocked unit route"],
+                    "classification_authorization": "none",
+                    "explicit_no_patient_result": (
+                        "The method was not run and no patient result was "
+                        "generated, inferred, or reported."
+                    ),
+                    "generated_at": "2026-07-17T00:00:00+00:00",
+                    "intended_computation": ["blocked unit computation"],
+                    "interpretation_status": "no_call",
+                    "next_gate": "validate the executable route",
+                    "patient_result": "none",
+                    "prerequisites": ["validated runtime"],
+                    "run_id": "unit",
+                    "source_report_binding_scope": "not_bound",
+                    "sources": [],
+                }
+            )
         (path / "report_manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
