@@ -1241,6 +1241,10 @@ def expected_synthesis_source_hash_keys(
             for index in range(1, len(method_ids) + 1)
         ),
         *(
+            "E{0:03d}_review_evidence_method".format(index)
+            for index in range(1, len(method_ids) + 1)
+        ),
+        *(
             f"reviewer_{reviewer}_{filename}"
             for reviewer in ("A", "B")
             for filename in REVIEW_FILES
@@ -1253,7 +1257,7 @@ def require_synthesis_source_hashes(
     agreement_sha256: str,
     required_methods: Sequence[str],
     expected_source_hashes: Mapping[str, str] | None = None,
-) -> None:
+) -> Dict[str, str]:
     source_hashes = manifest.get("source_sha256")
     if (
         not isinstance(source_hashes, dict)
@@ -1273,6 +1277,7 @@ def require_synthesis_source_hashes(
         and source_hashes != dict(expected_source_hashes)
     ):
         raise ValueError("comparative synthesis source hashes are stale")
+    return dict(source_hashes)
 
 
 def review_evidence_payload(
@@ -1478,6 +1483,7 @@ def require_review_evidence_methods(
     value: Any,
     agreement_rows: Sequence[Dict[str, str]],
     required_methods: Sequence[str],
+    source_hashes: Mapping[str, str],
 ) -> List[Dict[str, Any]]:
     expected_methods = expected_method_summary(agreement_rows, required_methods)
     if not isinstance(value, list) or len(value) != len(expected_methods):
@@ -1495,6 +1501,10 @@ def require_review_evidence_methods(
             "authorized_hrd_state": row.get("authorized_hrd_state"),
         } != expected:
             raise ValueError("comparative synthesis review evidence methods are stale")
+        if sha256_bytes(canonical_json_bytes(row)) != source_hashes.get(
+            str(expected["evidence_id"]) + "_review_evidence_method"
+        ):
+            raise ValueError("comparative synthesis review evidence methods are stale")
         if (
             row.get("evidence_status") not in ALLOWED_EVIDENCE_STATES
             or row.get("authorized_hrd_state") not in ALLOWED_HRD_STATES
@@ -1508,17 +1518,17 @@ def require_review_evidence_methods(
             row.get("report_sha256"),
             "comparative synthesis review evidence report",
         )
-        source_hashes = row.get("source_artifact_sha256")
+        source_artifact_hashes = row.get("source_artifact_sha256")
         if (
-            not isinstance(source_hashes, list)
-            or not source_hashes
+            not isinstance(source_artifact_hashes, list)
+            or not source_artifact_hashes
             or any(
                 checked_hash(
                     digest,
                     "comparative synthesis review evidence source artifact",
                 )
                 != digest
-                for digest in source_hashes
+                for digest in source_artifact_hashes
             )
         ):
             raise ValueError("comparative synthesis review evidence methods are not exact")
@@ -1602,6 +1612,7 @@ def require_synthesis_review_evidence(
     manifest: Dict[str, Any],
     agreement_rows: Sequence[Dict[str, str]],
     required_methods: Sequence[str],
+    source_hashes: Mapping[str, str],
 ) -> None:
     summary = manifest.get("review_summary")
     if (
@@ -1621,6 +1632,7 @@ def require_synthesis_review_evidence(
         review_evidence.get("methods"),
         agreement_rows,
         required_methods,
+        source_hashes,
     )
     if derive_authorized_state(methods) != manifest.get("authorized_hrd_state"):
         raise ValueError("comparative synthesis review evidence authorization is stale")
@@ -1741,7 +1753,7 @@ def require_synthesis_report_manifest(
     agreement_sha256 = sha256(agreement_path)
     agreement_rows = read_agreement(agreement_path)
     required_methods = require_synthesis_review_summary(manifest, agreement_rows)
-    require_synthesis_source_hashes(
+    source_hashes = require_synthesis_source_hashes(
         manifest,
         agreement_sha256,
         required_methods,
@@ -1752,6 +1764,7 @@ def require_synthesis_report_manifest(
         manifest,
         agreement_rows,
         required_methods,
+        source_hashes,
     )
 
 
@@ -1922,20 +1935,16 @@ def main() -> None:
         report_path = staging / "report.md"
         agreement_path = staging / "agreement_disagreement.csv"
         review_evidence_path = staging / "review_evidence.json"
+        review_evidence = review_evidence_payload(
+            subject_alias=str(bundle["subject_alias"]),
+            evidence_status=evidence_state,
+            authorized_hrd_state=ceiling,
+            evidence_rows=evidence_rows,
+            reviews=(review_a, review_b),
+        )
         write_staged_text(report_path, report)
         write_agreement(agreement_path, agreement_rows)
-        write_staged_bytes(
-            review_evidence_path,
-            canonical_json_bytes(
-                review_evidence_payload(
-                    subject_alias=str(bundle["subject_alias"]),
-                    evidence_status=evidence_state,
-                    authorized_hrd_state=ceiling,
-                    evidence_rows=evidence_rows,
-                    reviews=(review_a, review_b),
-                )
-            ),
-        )
+        write_staged_bytes(review_evidence_path, canonical_json_bytes(review_evidence))
         status_counts = summarize_agreement_status_counts(agreement_rows)
         disagreements = summarize_structured_disagreements(agreement_rows)
         source_hashes = {
@@ -1949,6 +1958,10 @@ def main() -> None:
             reviewer = review["reviewer_id"]
             for filename, digest in review["hashes"].items():
                 source_hashes["reviewer_{0}_{1}".format(reviewer, filename)] = digest
+        for row in review_evidence["methods"]:
+            source_hashes[
+                str(row["evidence_id"]) + "_review_evidence_method"
+            ] = sha256_bytes(canonical_json_bytes(row))
         manifest = {
             "schema_version": 1,
             "report_kind": "comparative_synthesis",

@@ -55,9 +55,26 @@ def write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def bind_review_evidence_method_hashes(
+    source_sha256: Dict[str, str],
+    review_evidence: Dict[str, Any],
+) -> None:
+    for method in review_evidence["methods"]:
+        source_sha256[
+            method["evidence_id"] + "_review_evidence_method"
+        ] = GENERATE.sha256_bytes(GENERATE.canonical_json_bytes(method))
+
+
 def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
     agreement_sha256 = sha256(agreement)
-    review_evidence_sha256 = sha256(agreement.with_name("review_evidence.json"))
+    review_evidence_path = agreement.with_name("review_evidence.json")
+    review_evidence_sha256 = sha256(review_evidence_path)
+    review_evidence = json.loads(review_evidence_path.read_text(encoding="utf-8"))
+    source_sha256 = {
+        key: hashlib.sha256(key.encode()).hexdigest()
+        for key in GENERATE.expected_synthesis_source_hash_keys()
+    }
+    bind_review_evidence_method_hashes(source_sha256, review_evidence)
     return {
         "schema_version": 1,
         "report_kind": "comparative_synthesis",
@@ -76,10 +93,7 @@ def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
             "agreement_disagreement.csv": agreement_sha256,
             "review_evidence.json": review_evidence_sha256,
         },
-        "source_sha256": {
-            key: hashlib.sha256(key.encode()).hexdigest()
-            for key in GENERATE.expected_synthesis_source_hash_keys()
-        },
+        "source_sha256": source_sha256,
         "review_summary": {
             "evidence_scope": (
                 "offline comparative synthesis of deterministic, statistical, "
@@ -1719,6 +1733,10 @@ class GenerateSynthesisTests(unittest.TestCase):
             manifest_path = fixture.output_dir / "report_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
+            bind_review_evidence_method_hashes(
+                manifest["source_sha256"],
+                evidence,
+            )
             write_json(manifest_path, manifest)
 
             with self.assertRaisesRegex(
@@ -1774,6 +1792,30 @@ class GenerateSynthesisTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError,
                 "comparative synthesis review evidence agreement is stale",
+            ):
+                GENERATE.require_synthesis_report_manifest(fixture.output_dir)
+
+    def test_synthesis_manifest_rejects_stale_review_evidence_method_hash(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            evidence_path = fixture.output_dir / "review_evidence.json"
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            evidence["methods"][0]["report_sha256"] = "f" * 64
+            write_json(evidence_path, evidence)
+
+            manifest_path = fixture.output_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
+            write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis review evidence methods are stale",
             ):
                 GENERATE.require_synthesis_report_manifest(fixture.output_dir)
 
