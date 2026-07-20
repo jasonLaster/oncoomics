@@ -412,6 +412,12 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                     ),
                 ),
                 (
+                    "truthy-int-check",
+                    lambda receipt: receipt["checks"].__setitem__(
+                        "destination_exact_history_and_receipt_match", 1
+                    ),
+                ),
+                (
                     "non-exact-schema",
                     lambda receipt: receipt.__setitem__("schema_version", 1.0),
                 ),
@@ -440,6 +446,12 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                 (
                     "missing-row-checks",
                     lambda receipt: receipt["objects"][0].pop("checks"),
+                ),
+                (
+                    "truthy-int-row-check",
+                    lambda receipt: receipt["objects"][0]["checks"].__setitem__(
+                        "copy_response_version_matches", 1
+                    ),
                 ),
                 (
                     "extra-destination",
