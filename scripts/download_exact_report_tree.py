@@ -364,19 +364,25 @@ def recover_local_cutover(
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    value, _digest = load_object_with_sha256(path, label)
+    return value
+
+
+def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} is missing or a symlink: {path}")
+    payload = path.read_bytes()
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            payload.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value
+    return value, sha256_bytes(payload)
 
 
 def s3_parts(uri: str) -> tuple[str, str]:
@@ -515,10 +521,11 @@ def get_exact(
 
 def validate_publication(
     receipt_path: Path, anchor_path: Path, kms_key_arn: str
-) -> tuple[dict[str, Any], list[dict[str, Any]], str, str]:
-    receipt = load_object(receipt_path, "publication receipt")
+) -> tuple[dict[str, Any], list[dict[str, Any]], str, str, str, dict[str, Any]]:
+    receipt, receipt_hash = load_object_with_sha256(
+        receipt_path, "publication receipt"
+    )
     anchor = load_object(anchor_path, "publication anchor")
-    receipt_hash = sha256(receipt_path)
     anchor_checks = anchor.get("checks")
     receipt_checks = receipt.get("checks")
     rows = receipt.get("objects")
@@ -625,7 +632,7 @@ def validate_publication(
     if audit_bindings != row_bindings:
         raise ValueError("publication receipt history audit is not exact")
 
-    return receipt, rows, bucket, prefix
+    return receipt, rows, bucket, prefix, receipt_hash, anchor
 
 
 def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
@@ -636,7 +643,7 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
     if verification == output or verification.is_relative_to(output):
         raise ValueError("output paths overlap")
 
-    receipt, rows, bucket, prefix = validate_publication(
+    receipt, rows, bucket, prefix, receipt_hash, anchor = validate_publication(
         args.publication_receipt,
         args.publication_anchor,
         args.kms_key_arn,
@@ -652,10 +659,8 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
     result: dict[str, Any] = {
         "schema_version": 1,
         "status": "in_progress",
-        "publication_receipt_sha256": sha256(args.publication_receipt),
-        "publication_receipt_uri": load_object(
-            args.publication_anchor, "publication anchor"
-        )["receipt_uri"],
+        "publication_receipt_sha256": receipt_hash,
+        "publication_receipt_uri": anchor["receipt_uri"],
         "route_output_uri": receipt["route_output_uri"],
         "expected_kms_key_arn": args.kms_key_arn,
         "live_history_checks": history_checks,
@@ -664,7 +669,9 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
     }
 
     if verification.exists():
-        prior = load_object(verification, "verification receipt")
+        prior, prior_verification_sha256 = load_object_with_sha256(
+            verification, "verification receipt"
+        )
         identity_matches = (
             exact_schema_version(prior, 1)
             and prior.get("publication_receipt_sha256")
@@ -696,7 +703,7 @@ def download_exact_report_tree(args: argparse.Namespace) -> dict[str, Any]:
                 raise ValueError("report replay staging path is unsafe")
             shutil.rmtree(staging)
         result["recovered_from_status"] = prior.get("status")
-        result["prior_verification_sha256"] = sha256(verification)
+        result["prior_verification_sha256"] = prior_verification_sha256
         if prior.get("error"):
             result["prior_error"] = prior.get("error")
         write_json_atomic(verification, result)

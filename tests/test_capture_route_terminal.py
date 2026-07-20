@@ -561,7 +561,7 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                         hashlib.sha256(expected_anchor).hexdigest(),
                     )
                     self.assertEqual(anchor_binding["bytes"], len(expected_anchor))
-                    receipt, rows, _, _ = DOWNLOAD_MODULE.validate_publication(
+                    receipt, rows, *_ = DOWNLOAD_MODULE.validate_publication(
                         args.receipt_output,
                         args.anchor_output,
                         fixture["kms"],

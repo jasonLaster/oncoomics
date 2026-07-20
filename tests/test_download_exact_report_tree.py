@@ -137,6 +137,27 @@ class ExactReportDownloadTests(unittest.TestCase):
             }
         ]
 
+    def fake_get_factory(self, data: bytes, row: dict):
+        def fake_get(
+            _bucket: str,
+            _key: str,
+            version_id: str,
+            destination: Path,
+            _region: str,
+        ) -> dict:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(data)
+            return {
+                "VersionId": version_id,
+                "ContentLength": len(data),
+                "ChecksumSHA256": row["checksum_sha256"],
+                "ChecksumType": "FULL_OBJECT",
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": KMS,
+            }
+
+        return fake_get
+
     def reanchor(self, receipt: Path, anchor: Path) -> None:
         payload = json.loads(anchor.read_text(encoding="utf-8"))
         payload["receipt_sha256"] = MODULE.sha256(receipt)
@@ -273,6 +294,124 @@ class ExactReportDownloadTests(unittest.TestCase):
                 MODULE.EXPECTED_DOWNLOAD_OBJECT_CHECKS,
             )
             self.assertEqual(stat.S_IMODE(verification.stat().st_mode), 0o600)
+
+    def test_verification_binds_parsed_publication_receipt_sha256(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, data, row = self.fixture(root)
+            output = root / "report-tree"
+            verification = root / "verification.json"
+            expected_receipt_sha256 = MODULE.sha256(receipt)
+            tampered_receipt_sha256 = ""
+            real_load = MODULE.load_object_with_sha256
+
+            def tamper_after_publication_parse(
+                path: Path, label: str
+            ) -> tuple[dict, str]:
+                nonlocal tampered_receipt_sha256
+                value, digest = real_load(path, label)
+                if label == "publication receipt" and not tampered_receipt_sha256:
+                    receipt.write_text(
+                        receipt.read_text(encoding="utf-8").replace(
+                            "sigprofiler_sbs3",
+                            "sigprofiler_sbs4",
+                        ),
+                        encoding="utf-8",
+                    )
+                    tampered_receipt_sha256 = MODULE.sha256(receipt)
+                return value, digest
+
+            with (
+                patch.object(
+                    MODULE,
+                    "load_object_with_sha256",
+                    side_effect=tamper_after_publication_parse,
+                ),
+                patch.object(MODULE, "version_history", return_value=self.history(row)),
+                patch.object(
+                    MODULE,
+                    "get_exact",
+                    side_effect=self.fake_get_factory(data, row),
+                ),
+            ):
+                self.assertEqual(
+                    MODULE.main(self.args(receipt, anchor, output, verification)),
+                    0,
+                )
+
+            self.assertNotEqual(tampered_receipt_sha256, expected_receipt_sha256)
+            result = json.loads(verification.read_text(encoding="utf-8"))
+            self.assertEqual(
+                result["publication_receipt_sha256"],
+                expected_receipt_sha256,
+            )
+
+    def test_restart_binds_parsed_prior_verification_sha256(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, anchor, data, row = self.fixture(root)
+            output = root / "report-tree"
+            verification = root / "verification.json"
+            MODULE.reserve_json(
+                verification,
+                {
+                    "schema_version": 1,
+                    "status": "failed",
+                    "publication_receipt_sha256": MODULE.sha256(receipt),
+                    "publication_receipt_uri": json.loads(
+                        anchor.read_text(encoding="utf-8")
+                    )["receipt_uri"],
+                    "route_output_uri": f"s3://{BUCKET}/{PREFIX}",
+                    "expected_kms_key_arn": KMS,
+                    "output_dir": str(output.resolve()),
+                    "objects": [],
+                    "error": "RuntimeError: forced",
+                },
+            )
+            expected_prior_sha256 = MODULE.sha256(verification)
+            tampered_prior_sha256 = ""
+            real_load = MODULE.load_object_with_sha256
+
+            def tamper_after_verification_parse(
+                path: Path, label: str
+            ) -> tuple[dict, str]:
+                nonlocal tampered_prior_sha256
+                value, digest = real_load(path, label)
+                if label == "verification receipt" and not tampered_prior_sha256:
+                    verification.write_text(
+                        verification.read_text(encoding="utf-8").replace(
+                            '"status": "failed"',
+                            '"status": "fabled"',
+                        ),
+                        encoding="utf-8",
+                    )
+                    tampered_prior_sha256 = MODULE.sha256(verification)
+                return value, digest
+
+            with (
+                patch.object(
+                    MODULE,
+                    "load_object_with_sha256",
+                    side_effect=tamper_after_verification_parse,
+                ),
+                patch.object(MODULE, "version_history", return_value=self.history(row)),
+                patch.object(
+                    MODULE,
+                    "get_exact",
+                    side_effect=self.fake_get_factory(data, row),
+                ),
+            ):
+                self.assertEqual(
+                    MODULE.main(self.args(receipt, anchor, output, verification)),
+                    0,
+                )
+
+            self.assertNotEqual(tampered_prior_sha256, expected_prior_sha256)
+            result = json.loads(verification.read_text(encoding="utf-8"))
+            self.assertEqual(
+                result["prior_verification_sha256"],
+                expected_prior_sha256,
+            )
 
     def test_rejects_missing_unexpected_or_failed_live_history_check_maps(
         self,

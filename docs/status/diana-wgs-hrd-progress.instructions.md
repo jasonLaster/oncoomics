@@ -35,6 +35,8 @@ buckets and avoids partial same-day estimates.
 - Sort rows by descending unblended cost, sum all returned rows into the visible
   total, and aggregate low-dollar rows into `Other` only after preserving the
   largest cost drivers as their own rows.
+- Preserve enough visible row detail to explain the prior-day total at a glance;
+  a lone aggregate cost number is not a valid dashboard refresh.
 - Keep the panel near the top of the dashboard as a plain-English
   "Yesterday's AWS cost" card so spend is visible alongside execution status.
 - Label each row in plain language first, then keep the raw Cost Explorer service and usage type in the smaller secondary text.

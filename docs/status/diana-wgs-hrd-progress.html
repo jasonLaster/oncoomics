@@ -723,7 +723,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = 5ad7c5b</li>
+          <li class="pill">Prior dashboard = 013718f</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -736,6 +736,7 @@
           <li class="pill">Materializer receipts = alias-exact</li>
           <li class="pill">Input finalizer receipts = stable</li>
           <li class="pill">Materializer registration = stable</li>
+          <li class="pill">Report-tree replay receipts = stable</li>
           <li class="pill">Private handoff dry-runs = required</li>
           <li class="pill">Stage freeze dry-run = exact</li>
           <li class="pill">Final freeze dry-run = exact</li>
@@ -909,6 +910,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind report-tree replay reads</strong>
+              <span>Exact-version cross-check report downloads now record the publication receipt hash and failed-retry verification hash from the same JSON bytes they validated, so a local rewrite cannot swap replay bookkeeping to a later receipt.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind materializer registration reads</strong>
               <span>The reviewed materializer Batch registration validator now records the frozen script anchor and rendered job-definition hashes from the same JSON bytes it validated, so a local rewrite cannot swap the digests carried into the registered-not-submitted receipt.</span>
@@ -2491,6 +2496,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T19:02:52-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind report-tree replay digests:</strong>
+                <code>download_exact_report_tree.py</code> now carries
+                publication and prior verification receipt hashes from the
+                stable JSON bytes it parsed before exact-version local replay
+                or failed-retry recovery continues.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:59:00-07:00">Jul 19 · local</time>
               <span>
