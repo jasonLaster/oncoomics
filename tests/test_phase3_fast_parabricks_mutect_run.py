@@ -212,6 +212,18 @@ class Phase3FastParabricksMutectRunTests(unittest.TestCase):
                 with self.subTest(hash_input=hash_input), self.assertRaisesRegex(run_mutect.ManifestError, message):
                     run_mutect._sha256_path(hash_input)
 
+    def test_hash_materialized_binds_size_and_sha_to_one_stable_payload(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output = Path(tmp) / "raw.vcf.gz"
+            output.write_text("changed after snapshot\n", encoding="utf-8")
+            payload = b"stable parabricks raw vcf\n"
+
+            with patch.object(run_mutect, "read_stable_real_file_bytes", return_value=payload):
+                materialized = run_mutect._hash_materialized(output, "raw_vcf")
+
+        self.assertEqual(len(payload), materialized["bytes"])
+        self.assertEqual(hashlib.sha256(payload).hexdigest(), materialized["sha256"])
+
     def test_rejects_missing_materialized_output(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = parabricks_plan(Path(tmp))

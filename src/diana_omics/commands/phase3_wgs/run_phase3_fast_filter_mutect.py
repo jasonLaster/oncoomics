@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import os
 import subprocess
@@ -14,6 +15,7 @@ from ...utils import ensure_parent
 from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_method_parameters
 from .safe_json_output import (
     read_real_json_with_sha256,
+    read_stable_real_file_bytes,
     require_no_symlinked_ancestors,
     require_safe_output_path,
     sha256_real_file,
@@ -451,13 +453,13 @@ def _hash_materialized(path: Path, key: str, *, producer: str) -> dict[str, Any]
     _require_safe_output_path(path, key)
     if not path.is_file():
         raise ManifestError(f"{key} must exist after {producer} execution: {path}")
-    bytes_ = path.stat().st_size
-    if bytes_ <= 0:
+    payload = read_stable_real_file_bytes(path, f"{key} materialized output", ManifestError)
+    if not payload:
         raise ManifestError(f"{key} must be non-empty after {producer} execution: {path}")
     return {
         "local_path": str(path),
-        "bytes": bytes_,
-        "sha256": _sha256_path(path),
+        "bytes": len(payload),
+        "sha256": hashlib.sha256(payload).hexdigest(),
     }
 
 
