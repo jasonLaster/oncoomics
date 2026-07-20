@@ -797,6 +797,45 @@ class CaptureRouteTerminalTests(unittest.TestCase):
 
             self.assertTrue(all(not path.exists() for path in paths))
 
+    def test_three_output_rejects_same_byte_leaf_replacement_between_hashes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = [root / f"{index}.json" for index in range(3)]
+            replacement = root / "replacement.json"
+            replacement.write_bytes(b"content-1")
+            replacement.chmod(0o600)
+            real_read = MODULE.read_private_output_once
+            swapped = False
+
+            def replace_leaf_after_first_read(path: Path):
+                nonlocal swapped
+                result = real_read(path)
+                if path == paths[1] and not swapped:
+                    replacement.replace(path)
+                    swapped = True
+                return result
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_private_output_once",
+                    side_effect=replace_leaf_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private output changed during write",
+                ),
+            ):
+                MODULE.create_private_outputs(
+                    [
+                        (path, f"content-{index}".encode())
+                        for index, path in enumerate(paths)
+                    ]
+                )
+
+            self.assertTrue(swapped)
+            self.assertTrue(all(not path.exists() for path in paths))
+
     def test_three_output_rechecks_mode_after_parent_fsync(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -905,6 +944,41 @@ class CaptureRouteTerminalTests(unittest.TestCase):
             self.assertTrue(swapped)
             self.assertTrue(all(not path.exists() for path in paths))
             self.assertEqual(relocated.read_bytes(), b"content-1")
+
+    def test_three_output_rejects_mode_change_before_final_open(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = [root / f"{index}.json" for index in range(3)]
+            real_open = MODULE.os.open
+            chmodded = False
+
+            def chmod_before_verify_open(
+                path_arg: Path,
+                flags: int,
+                *args: int,
+            ) -> int:
+                nonlocal chmodded
+                if path_arg == paths[1] and not args and not chmodded:
+                    path_arg.chmod(0o644)
+                    chmodded = True
+                return real_open(path_arg, flags, *args)
+
+            with (
+                mock.patch.object(MODULE.os, "open", side_effect=chmod_before_verify_open),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private output mode changed during write",
+                ),
+            ):
+                MODULE.create_private_outputs(
+                    [
+                        (path, f"content-{index}".encode())
+                        for index, path in enumerate(paths)
+                    ]
+                )
+
+            self.assertTrue(chmodded)
+            self.assertTrue(all(not path.exists() for path in paths))
 
     def test_rejects_wrong_revision_queue_or_non_x86_compute_environment(self):
         fixture = self.fixture()
@@ -2076,6 +2150,43 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                     fixture,
                     get=get,
                 )
+
+    def test_downloaded_exact_receipt_rejects_same_byte_leaf_replacement(self):
+        fixture = self.fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "publication-receipt.json"
+            replacement = root / "replacement-publication-receipt.json"
+            receipt.write_bytes(fixture["receipt_bytes"])
+            replacement.write_bytes(fixture["receipt_bytes"])
+            real_read = MODULE.read_real_hash_input_once
+            swapped = False
+
+            def replace_leaf_after_first_read(path, label, preflight):
+                nonlocal swapped
+                result = real_read(path, label, preflight)
+                if path == receipt and not swapped:
+                    replacement.replace(receipt)
+                    swapped = True
+                return result
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_real_hash_input_once",
+                    side_effect=replace_leaf_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "downloaded route receipt changed during read",
+                ),
+            ):
+                MODULE.read_stable_downloaded_file(
+                    receipt,
+                    "downloaded route receipt",
+                )
+
+            self.assertTrue(swapped)
 
     def test_exact_get_cli_includes_logged_version_and_checksum_mode(self):
         fixture = self.fixture()
