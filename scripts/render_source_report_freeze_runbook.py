@@ -10,6 +10,7 @@ from typing import Iterable
 
 from forbidden_text import DEFAULT_FORBIDDEN_TOKENS
 from generate_blocked_hrd_crosscheck_reports import (
+    require_blocked_report_manifest,
     TERMINAL_SOURCE_REPORT_BINDING_SCOPE,
 )
 from hrd_report_inventory import (
@@ -160,6 +161,11 @@ def validate_packet_dirs(
         except ValueError as error:
             raise ValueError(f"{method_id} packet directory is invalid: {error}") from error
     validate_blocked_source_bindings(paths)
+    for method_id in BLOCKED_CROSSCHECK_METHOD_IDS:
+        try:
+            require_blocked_report_manifest(paths[method_id])
+        except ValueError as error:
+            raise ValueError(f"{method_id} blocked packet is invalid: {error}") from error
     validate_executable_source_bindings(paths)
     if phase3_fast_report_packet_validation is not None:
         assert expected_forbidden_tokens_sha256 is not None
