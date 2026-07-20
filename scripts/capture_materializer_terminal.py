@@ -397,6 +397,19 @@ def parse_parameters(values: Iterable[str]) -> dict[str, str]:
     return {name: result[name] for name in PARAMETER_NAMES}
 
 
+def normalize_job_parameters(parameters: Any) -> dict[str, str]:
+    if not isinstance(parameters, dict):
+        return {}
+    result: dict[str, str] = {}
+    for name, value in parameters.items():
+        if not isinstance(name, str) or not isinstance(value, str) or not name:
+            return {}
+        if name in result:
+            return {}
+        result[name] = value
+    return result
+
+
 def collect_log_events(region: str, log_stream: str) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
     token = ""
@@ -550,8 +563,7 @@ def validate_job(
     attempt_container = attempts[0].get("container")
     if not isinstance(attempt_container, dict):
         raise ValueError("Batch attempt container is missing")
-    parameters = job.get("parameters")
-    normalized_parameters = {str(key): str(value) for key, value in parameters.items()} if isinstance(parameters, dict) else {}
+    normalized_parameters = normalize_job_parameters(job.get("parameters"))
     job_log_stream = str(container.get("logStreamName", ""))
     attempt_log_stream = str(attempt_container.get("logStreamName", ""))
     queue_order = queue.get("computeEnvironmentOrder")
@@ -854,7 +866,12 @@ def destination_inventory_is_exact(receipt: dict[str, Any]) -> bool:
         or any(not isinstance(row, dict) for row in inventory)
     ):
         return False
-    by_filename = {str(row.get("filename", "")): row for row in inventory}
+    by_filename: dict[str, dict[str, Any]] = {}
+    for row in inventory:
+        filename = row.get("filename")
+        if not isinstance(filename, str) or filename in by_filename:
+            return False
+        by_filename[filename] = row
     if set(by_filename) != set(EXPECTED_MATERIALIZER_OUTPUTS):
         return False
 
