@@ -286,6 +286,12 @@ def require_sha256(value: Any, label: str) -> str:
     return value
 
 
+def require_nonnegative_int(value: Any, label: str) -> int:
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{label} must be a non-negative integer")
+    return value
+
+
 def require_relative_file(root: Path, relative: Any, label: str) -> Path:
     if not isinstance(relative, str) or not relative:
         raise ValueError(f"{label} path is not exact")
@@ -514,19 +520,40 @@ def build_deterministic_packet(
         raise ValueError("HCC1395 deterministic known-answer mechanics are not passed")
     sv_rows = sv.get("rows") if isinstance(sv.get("rows"), list) else []
     discordant_pairs = sum(
-        int(row.get("discordant_mapped_pairs", 0) or 0)
+        require_nonnegative_int(
+            row.get("discordant_mapped_pairs"),
+            "SV discordant_mapped_pairs",
+        )
         for row in sv_rows
         if isinstance(row, dict)
     )
     observations = {
         "full_source_wgs": True,
-        "read_pairs_per_end": int(summary.get("readPairsPerEnd", 0)),
+        "read_pairs_per_end": require_nonnegative_int(
+            summary.get("readPairsPerEnd"),
+            "readPairsPerEnd",
+        ),
         "bam_validation": str(summary.get("bamValidationStatus", "missing")),
-        "truth_depth_eligible_variants": int(summary.get("truthVariantsDepthEligible", 0)),
-        "pass_records_in_intervals": int(summary.get("passRecordsInIntervals", 0)),
-        "exact_pass_truth_matches": int(summary.get("exactPassTruthMatches", 0)),
-        "coverage_bin_count": int(summary.get("coverageCnvBins", 0)),
-        "sbs96_usable_snv_count": int(summary.get("sbs96UsableSnvRecords", 0)),
+        "truth_depth_eligible_variants": require_nonnegative_int(
+            summary.get("truthVariantsDepthEligible"),
+            "truthVariantsDepthEligible",
+        ),
+        "pass_records_in_intervals": require_nonnegative_int(
+            summary.get("passRecordsInIntervals"),
+            "passRecordsInIntervals",
+        ),
+        "exact_pass_truth_matches": require_nonnegative_int(
+            summary.get("exactPassTruthMatches"),
+            "exactPassTruthMatches",
+        ),
+        "coverage_bin_count": require_nonnegative_int(
+            summary.get("coverageCnvBins"),
+            "coverageCnvBins",
+        ),
+        "sbs96_usable_snv_count": require_nonnegative_int(
+            summary.get("sbs96UsableSnvRecords"),
+            "sbs96UsableSnvRecords",
+        ),
         "sv_evidence_row_count": len(sv_rows),
         "discordant_mapped_pair_count": discordant_pairs,
     }

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -82,6 +83,12 @@ def args_for(root: Path, output: Path) -> argparse.Namespace:
         subject_alias="subject99",
         forbidden_token=["DirectIdentifier"],
     )
+
+
+def copy_artifact_root(root: Path) -> Path:
+    artifact_root = root / "artifacts"
+    shutil.copytree(ARTIFACT_ROOT, artifact_root)
+    return artifact_root
 
 
 class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
@@ -449,6 +456,63 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
                 STACK.build(args_for(root, output))
 
             self.assertFalse(output.exists())
+
+    def test_rejects_loose_deterministic_summary_counts(self) -> None:
+        count_mutations = {
+            "readPairsPerEnd": True,
+            "truthVariantsDepthEligible": 1.0,
+            "passRecordsInIntervals": "273",
+            "exactPassTruthMatches": None,
+            "coverageCnvBins": -1,
+            "sbs96UsableSnvRecords": False,
+        }
+
+        for key, value in count_mutations.items():
+            with self.subTest(key=key, value=value), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                artifact_root = copy_artifact_root(root)
+                summary_path = (
+                    artifact_root
+                    / "results/phase3_wgs_smoke/phase3_wgs_summary.json"
+                )
+                summary = json.loads(summary_path.read_text(encoding="utf-8"))
+                summary[key] = value
+                summary_path.write_text(
+                    json.dumps(summary, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                args = args_for(root, root / "stack")
+                args.artifact_root = artifact_root
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"{key} must be a non-negative integer",
+                ):
+                    STACK.build(args)
+
+                self.assertFalse(args.output_dir.exists())
+
+    def test_rejects_loose_deterministic_sv_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifact_root = copy_artifact_root(root)
+            sv_path = artifact_root / "results/phase3_wgs_smoke/sv_evidence_summary.json"
+            sv = json.loads(sv_path.read_text(encoding="utf-8"))
+            sv["rows"][0]["discordant_mapped_pairs"] = True
+            sv_path.write_text(
+                json.dumps(sv, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            args = args_for(root, root / "stack")
+            args.artifact_root = artifact_root
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "SV discordant_mapped_pairs must be a non-negative integer",
+            ):
+                STACK.build(args)
+
+            self.assertFalse(args.output_dir.exists())
 
     def test_stack_manifest_rechecks_reviewer_inputs_after_stack_manifest(
         self,
