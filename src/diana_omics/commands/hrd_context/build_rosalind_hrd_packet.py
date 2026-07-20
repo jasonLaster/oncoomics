@@ -912,6 +912,35 @@ PHASE3_FAST_CROSSCHECK_ROUTE_STATES = {
     "sigprofiler_sbs3": "awaiting_private_results_freeze",
     "sequenza_scarhrd": "blocked",
 }
+PHASE3_FAST_CROSSCHECK_INPUT_PLAN_KEYS = {
+    "schema_version",
+    "plan_type",
+    "status",
+    "authorized_hrd_state",
+    "classification_authorized",
+    "routes",
+}
+PHASE3_FAST_CROSSCHECK_ROUTE_FIELDS = {
+    "sigprofiler_sbs3": {
+        "status",
+        "execution_status",
+        "interpretation_status",
+        "materializer",
+        "planned_alias_outputs",
+        "reference",
+        "source_artifacts",
+        "blockers",
+    },
+    "sequenza_scarhrd": {
+        "status",
+        "execution_status",
+        "interpretation_status",
+        "method_parameters",
+        "source_artifacts",
+        "alias_input_contract",
+        "blockers",
+    },
+}
 PHASE3_FAST_SEQUENZA_ATTESTATIONS = {
     "input_sha256_verified": True,
     "bam_quickcheck_passed": True,
@@ -1384,6 +1413,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
     )
     if (
         not isinstance(crosscheck_input_plans, dict)
+        or set(crosscheck_input_plans) != PHASE3_FAST_CROSSCHECK_INPUT_PLAN_KEYS
         or not is_exact_int(crosscheck_input_plans.get("schema_version"), 1)
         or crosscheck_input_plans.get("plan_type") != "phase3_fast_crosscheck_input_materialization_plan"
         or crosscheck_input_plans.get("status") != "awaiting_private_results_freeze"
@@ -1392,13 +1422,16 @@ def diana_wgs_phase3_fast_deterministic_binding(
     ):
         raise ValueError("Phase 3 fast cross-check input plan contract is not exact")
     crosscheck_routes = crosscheck_input_plans.get("routes")
-    if not isinstance(crosscheck_routes, dict):
-        raise ValueError("Phase 3 fast cross-check input plan lacks exact routes")
     crosscheck_route_states = PHASE3_FAST_CROSSCHECK_ROUTE_STATES
+    if not isinstance(crosscheck_routes, dict) or set(crosscheck_routes) != set(
+        crosscheck_route_states
+    ):
+        raise ValueError("Phase 3 fast cross-check input plan lacks exact routes")
     for route, expected_status in crosscheck_route_states.items():
         route_plan = crosscheck_routes.get(route)
         if (
             not isinstance(route_plan, dict)
+            or set(route_plan) != PHASE3_FAST_CROSSCHECK_ROUTE_FIELDS[route]
             or route_plan.get("status") != expected_status
             or route_plan.get("execution_status") != "not_run"
             or route_plan.get("interpretation_status") != "no_call"
