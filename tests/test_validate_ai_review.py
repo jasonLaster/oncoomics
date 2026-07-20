@@ -900,6 +900,14 @@ class ValidateAiReviewTests(unittest.TestCase):
                 "complete invocation metadata is required",
             ),
             (
+                "hidden-NUL invocation ID",
+                lambda manifest: manifest["invocation"].__setitem__(
+                    "invocation_id",
+                    f"{manifest['invocation']['invocation_id']}\x00",
+                ),
+                "complete invocation metadata is required",
+            ),
+            (
                 "non-exact schema",
                 lambda manifest: manifest.__setitem__("schema_version", 2.0),
                 "review manifest schema or reviewer ID mismatch",
