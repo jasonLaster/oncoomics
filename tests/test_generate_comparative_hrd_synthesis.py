@@ -432,6 +432,9 @@ class SynthesisFixture:
                 "claim_count": 7,
                 "covered_evidence_ids": [f"E{index:03d}" for index in range(1, 8)],
                 "disagreement_claim_count": 3,
+                "bundle_manifest_sha256": sha256(
+                    self.bundle_dir / "bundle_manifest.json"
+                ),
                 "review_bundle_sha256": bundle_manifest["review_bundle_sha256"],
                 "prompt_sha256": bundle_manifest["prompt_sha256"][reviewer],
                 "report_sha256": output_hashes["report.md"],
@@ -2113,6 +2116,23 @@ class GenerateSynthesisTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("output differs", result.stdout + result.stderr)
 
+    def test_stale_reviewer_bundle_manifest_binding_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-stale-bundle-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+            bundle_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            bundle_manifest["generated_at"] = "2026-07-18T00:00:00+00:00"
+            write_json(manifest_path, bundle_manifest)
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "reviewer A bundle manifest changed after validation",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
     def test_synthesis_parses_reviewer_claims_from_hash_bound_bytes(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-stable-claims-") as temporary:
             fixture = SynthesisFixture(Path(temporary))
@@ -2141,6 +2161,7 @@ class GenerateSynthesisTests(unittest.TestCase):
                     bundle,
                     bundle_manifest,
                     bundle_hash,
+                    sha256(fixture.bundle_dir / "bundle_manifest.json"),
                     inventory_id,
                 )
 

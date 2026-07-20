@@ -346,6 +346,7 @@ def build_manifest(
     if not (
         review_manifest.get("input_bundle_sha256") == bundle_hash
         and validation.get("review_bundle_sha256") == bundle_hash
+        and validation.get("bundle_manifest_sha256") == bundle_manifest_hash
         and bundle_manifest.get("review_bundle_sha256") == bundle_hash
         and review_manifest.get("prompt_sha256") == prompt_hash
         and validation.get("prompt_sha256") == prompt_hash

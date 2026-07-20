@@ -123,6 +123,7 @@ VALIDATION_KEYS = {
     "claim_count",
     "covered_evidence_ids",
     "disagreement_claim_count",
+    "bundle_manifest_sha256",
     "review_bundle_sha256",
     "prompt_sha256",
     "report_sha256",
@@ -1274,7 +1275,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("missing review artifacts: " + ",".join(missing))
 
         bundle = load_object(bundle_path)
-        bundle_manifest = load_object(bundle_manifest_path)
+        bundle_manifest, bundle_manifest_sha256 = load_object_with_sha256(
+            bundle_manifest_path,
+        )
         review_manifest, review_manifest_sha256 = load_object_with_sha256(
             review_manifest_path,
         )
@@ -1380,6 +1383,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "disagreement_claim_count": sum(
             row["disagreement_status"] != "none" for row in claims
         ),
+        "bundle_manifest_sha256": bundle_manifest_sha256,
         "review_bundle_sha256": bundle_hash,
         "prompt_sha256": prompt_hash,
         "report_sha256": expected_outputs["report.md"],
