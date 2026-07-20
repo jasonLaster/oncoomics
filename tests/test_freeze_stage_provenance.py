@@ -957,6 +957,32 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, message):
                         MODULE.sha256(path)
 
+    def test_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt = root / "stage-receipt.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+
+            original_read_bytes = Path.read_bytes
+            mutated = False
+
+            def mutate_after_first_read(path: Path) -> bytes:
+                nonlocal mutated
+                data = original_read_bytes(path)
+                if path == receipt and not mutated:
+                    mutated = True
+                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                return data
+
+            with (
+                patch.object(Path, "read_bytes", mutate_after_first_read),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "stage-receipt.json SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256(receipt)
+
     def test_atomic_writer_rejects_output_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             root = Path(value)

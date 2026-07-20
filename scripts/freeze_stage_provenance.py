@@ -102,7 +102,15 @@ def require_real_hash_input(path: Path) -> None:
 
 def sha256(path: Path) -> str:
     require_real_hash_input(path)
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if sha256_bytes(path.read_bytes()) != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
 
 
 def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
@@ -136,7 +144,7 @@ def load_json_with_sha256(path: Path) -> tuple[dict[str, Any], str]:
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"JSON document must be a real file: {path}")
     raw = path.read_bytes()
-    digest = hashlib.sha256(raw).hexdigest()
+    digest = sha256_bytes(raw)
     try:
         value = json.loads(
             raw.decode("utf-8"),
