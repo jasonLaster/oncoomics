@@ -15,6 +15,7 @@ import io
 import json
 import os
 import re
+import stat
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -260,7 +261,46 @@ def read_stable_file_with_sha256(path: Path, label: str) -> Tuple[bytes, str]:
 
 def read_real_nonempty_file_once(path: Path, label: str) -> bytes:
     require_real_nonempty_file(path, label)
-    return path.read_bytes()
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode) or opened.st_size == 0:
+            raise ValueError("missing or unsafe " + label)
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{label} changed during read: {path}") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    if not data or (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{label} changed during read: {path}")
+    return data
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def read_stable_text_with_sha256(path: Path, label: str) -> Tuple[str, str]:
