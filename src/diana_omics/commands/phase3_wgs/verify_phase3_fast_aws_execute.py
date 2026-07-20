@@ -333,6 +333,14 @@ def main() -> None:
     try:
         params, params_path = gpu_smoke.load_params_from_environment()
         params_summary = gpu_smoke.validate_gpu_smoke_params(params)
+        estimated_daily_ec2_usd = gpu_smoke.load_daily_cost_guard_estimated_spend(
+            ledger=params_summary["daily_cost_guard_ledger"],
+            region=params_summary["aws_region"],
+        )
+        gpu_smoke.validate_daily_cost_guard_estimated_spend(
+            estimated_daily_ec2_usd,
+            live_stop_usd=params_summary["daily_cost_guard_live_stop_usd"],
+        )
         queue = gpu_smoke.load_gpu_batch_job_queue(
             queue=params_summary["aws_gpu_queue"],
             region=params_summary["aws_region"],
@@ -364,6 +372,7 @@ def main() -> None:
     print(
         f"Phase 3 WGS fast AWS execute preflight passed: {params_path} "
         f"queue={params_summary['aws_gpu_queue']} "
+        f"estimated_daily_batch_ec2_usd={estimated_daily_ec2_usd:.6f} "
         f"compute_environment={queue_summary['compute_environment']} "
         f"compute_max_vcpus={compute_environment_summary['max_vcpus']} "
         f"running_on_demand_p_vcpus={running_on_demand_p_vcpus:g} "

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import unittest
+from decimal import Decimal
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -37,6 +38,7 @@ def p5en_params(**overrides):
             "diana-omics-prod-use2-hrd-x86",
             "diana-omics-prod-use2-gpu-p5en",
         ],
+        "daily_cost_guard_ledger": "diana-omics-prod-use2-daily-cost-guard-ledger",
         "daily_cost_guard_limit_usd": "200",
         "daily_cost_guard_live_stop_threshold_percent": "80",
         "daily_cost_guard_live_stop_usd": "160",
@@ -89,6 +91,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
 
         self.assertEqual("ready", summary["status"])
         self.assertEqual("diana-omics-prod-use2-gpu-p5en", summary["aws_gpu_queue"])
+        self.assertEqual("diana-omics-prod-use2-daily-cost-guard-ledger", summary["daily_cost_guard_ledger"])
         self.assertEqual("200", summary["daily_cost_guard_limit_usd"])
         self.assertEqual("160", summary["daily_cost_guard_live_stop_usd"])
         self.assertEqual("80", summary["daily_cost_guard_live_stop_threshold_percent"])
@@ -181,6 +184,9 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
             {"daily_cost_guard_live_stop_usd": "159"},
             {"daily_cost_guard_limit_usd": True},
             {"daily_cost_guard_regions": ["us-east-2"]},
+            {"daily_cost_guard_ledger": ""},
+            {"daily_cost_guard_ledger": "diana-omics-prod-daily-cost-guard-ledger"},
+            {"daily_cost_guard_ledger": "diana-omics-prod-use2-ledger"},
             {"daily_cost_guard_batch_job_queues": ["diana-omics-prod-use2-spot"]},
             {
                 "daily_cost_guard_batch_compute_environments": [
@@ -283,6 +289,77 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
 
         self.assertEqual(path, loaded_path)
         self.assertEqual("us-east-2", params["aws_region"])
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
+    def test_loads_daily_cost_guard_estimated_spend(self, run) -> None:
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout='{"Item":{"estimated_daily_ec2_usd":{"N":"159.999999"}}}',
+        )
+
+        spend = verify.load_daily_cost_guard_estimated_spend(
+            ledger="diana-omics-prod-use2-daily-cost-guard-ledger",
+            region="us-east-2",
+            guard_day="2026-07-20",
+        )
+
+        self.assertEqual(Decimal("159.999999"), spend)
+        self.assertEqual(
+            [
+                "aws",
+                "dynamodb",
+                "get-item",
+                "--region",
+                "us-east-2",
+                "--table-name",
+                "diana-omics-prod-use2-daily-cost-guard-ledger",
+                "--key",
+                '{"guard_day": {"S": "2026-07-20"}}',
+                "--consistent-read",
+                "--output",
+                "json",
+            ],
+            run.call_args.args[0],
+        )
+
+    def test_daily_cost_guard_ledger_defaults_to_zero_before_first_poll(self) -> None:
+        self.assertEqual(
+            Decimal(0),
+            verify.parse_daily_cost_guard_ledger_item({}),
+        )
+
+    def test_daily_cost_guard_rejects_malformed_ledger_amounts(self) -> None:
+        for payload in (
+            {"Item": []},
+            {"Item": {}},
+            {"Item": {"estimated_daily_ec2_usd": {"S": "160"}}},
+            {"Item": {"estimated_daily_ec2_usd": {"N": "-1"}}},
+            {"Item": {"estimated_daily_ec2_usd": {"N": "not-money"}}},
+        ):
+            with self.subTest(payload=payload):
+                with self.assertRaisesRegex(
+                    verify.GpuSmokeConfigError,
+                    "DynamoDB",
+                ):
+                    verify.parse_daily_cost_guard_ledger_item(payload)
+
+    def test_daily_cost_guard_fails_closed_at_the_live_stop(self) -> None:
+        verify.validate_daily_cost_guard_estimated_spend(
+            Decimal("159.999999"),
+            live_stop_usd="160",
+        )
+
+        for spend in (Decimal("160"), Decimal("200")):
+            with self.subTest(spend=spend):
+                with self.assertRaisesRegex(
+                    verify.GpuSmokeConfigError,
+                    "refusing P5 Hopper submission",
+                ):
+                    verify.validate_daily_cost_guard_estimated_spend(
+                        spend,
+                        live_stop_usd="160",
+                    )
 
     def p5en_batch_queue(self, **overrides):
         queue = {
