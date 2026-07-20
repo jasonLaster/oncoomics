@@ -657,12 +657,54 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             receipt = Path(temporary) / "receipt.json"
             receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            original_sha256_bytes = MODULE.sha256_bytes
+            mutated = False
 
-            with (
-                patch.object(MODULE, "sha256", return_value="0" * 64),
-                self.assertRaisesRegex(ValueError, "receipt changed during read"),
+            def mutate_before_stability_hash(payload: bytes) -> str:
+                nonlocal mutated
+                if not mutated:
+                    mutated = True
+                    receipt.write_text('{"status":"rewritten"}\n', encoding="utf-8")
+                return original_sha256_bytes(payload)
+
+            with patch.object(
+                MODULE,
+                "sha256_bytes",
+                side_effect=mutate_before_stability_hash,
+            ), self.assertRaisesRegex(ValueError, "receipt changed during read"):
+                MODULE.load_object_with_sha256(receipt, "receipt")
+
+    def test_load_object_with_sha256_rejects_leaf_swapped_to_symlink(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "receipt.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            moved = False
+
+            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+                nonlocal moved
+                raw = real_read_bytes(path)
+                if path == receipt and not moved:
+                    moved = True
+                    real_receipt = root / "receipt.real.json"
+                    receipt.rename(real_receipt)
+                    receipt.symlink_to(real_receipt)
+                return raw
+
+            with patch.object(
+                Path,
+                "read_bytes",
+                swap_to_symlink_after_first_read,
+            ), self.assertRaisesRegex(
+                ValueError,
+                "receipt must be a real JSON file",
             ):
                 MODULE.load_object_with_sha256(receipt, "receipt")
+
+            self.assertTrue(moved)
 
     def test_prepared_receipt_recovery_requires_exact_schema(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1075,21 +1117,21 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             receipt = root / "materialization.json"
             receipt.write_text('{"stable": true}\n', encoding="utf-8")
 
-            original_sha256_file_once = MODULE.sha256_file_once
+            original_sha256_bytes = MODULE.sha256_bytes
             mutated = False
 
-            def mutate_after_first_read(path: Path) -> str:
+            def mutate_after_first_read(payload: bytes) -> str:
                 nonlocal mutated
-                digest = original_sha256_file_once(path)
-                if path == receipt and not mutated:
+                digest = original_sha256_bytes(payload)
+                if not mutated:
                     mutated = True
-                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                    receipt.write_text('{"stable": false}\n', encoding="utf-8")
                 return digest
 
             with (
                 patch.object(
                     MODULE,
-                    "sha256_file_once",
+                    "sha256_bytes",
                     side_effect=mutate_after_first_read,
                 ),
                 self.assertRaisesRegex(
@@ -1098,6 +1140,36 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                 ),
             ):
                 MODULE.sha256(receipt)
+
+    def test_sha256_rejects_leaf_swapped_to_symlink_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "materialization.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            moved = False
+
+            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+                nonlocal moved
+                raw = real_read_bytes(path)
+                if path == receipt and not moved:
+                    moved = True
+                    real_receipt = root / "materialization.real.json"
+                    receipt.rename(real_receipt)
+                    receipt.symlink_to(real_receipt)
+                return raw
+
+            with patch.object(
+                Path,
+                "read_bytes",
+                swap_to_symlink_after_first_read,
+            ), self.assertRaisesRegex(
+                ValueError,
+                "materialization.json SHA-256 input must be a real file",
+            ):
+                MODULE.sha256(receipt)
+
+            self.assertTrue(moved)
 
     def test_prepared_receipt_recovers_cutover_without_redownload(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
