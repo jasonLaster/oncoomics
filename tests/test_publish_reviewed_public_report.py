@@ -67,7 +67,7 @@ class Fixture:
         manifest = {
             "schema_version": 1,
             "method_id": self.method_id,
-            "report_kind": "reviewed_hrd_evidence",
+            "report_kind": MODULE.METHOD_CONTRACTS[self.method_id]["report_kind"],
             "evidence_status": "partial_evidence",
             "authorized_hrd_state": "no_call",
             "classification_authorized": False,
@@ -906,6 +906,35 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 self.execute(fixture, fake, apply=True)
 
             self.assertEqual(fake.put_calls, [])
+
+    def test_second_scan_rejects_wrong_report_kind(self) -> None:
+        cases = {
+            "missing": None,
+            "wrong": "comparative_synthesis",
+        }
+        for label, report_kind in cases.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                manifest_path = fixture.packet / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                if report_kind is None:
+                    del manifest["report_kind"]
+                else:
+                    manifest["report_kind"] = report_kind
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                fixture.rebuild_receipt()
+                fake = FakeAws(fixture)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "report manifest report_kind is not exact",
+                ):
+                    self.execute(fixture, fake, apply=True)
+
+                self.assertEqual(fake.put_calls, [])
 
     def test_version_history_consumes_key_and_version_markers(self) -> None:
         pages = [

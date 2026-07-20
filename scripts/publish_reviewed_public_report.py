@@ -96,42 +96,52 @@ SYNTHESIS_FILES = (
 METHOD_CONTRACTS: dict[str, dict[str, Any]] = {
     "deterministic_full_wgs": {
         "files": DETERMINISTIC_FILES,
+        "report_kind": "deterministic_baseline",
         "destination": "deterministic/",
     },
     "rosalind_diana_wgs": {
         "files": ROSALIND_FILES,
+        "report_kind": "rosalind_hrd_reviewer_packet",
         "destination": "rosalind/",
     },
     "sequenza_scarhrd": {
         "files": CROSSCHECK_FILES,
+        "report_kind": "executable_crosscheck_method",
         "destination": "crosschecks/sequenza_scarhrd/",
     },
     "sigprofiler_sbs3": {
         "files": CROSSCHECK_FILES,
+        "report_kind": "executable_crosscheck_method",
         "destination": "crosschecks/sigprofiler_sbs3/",
     },
     "facets_scarhrd_blocked": {
         "files": CROSSCHECK_FILES,
+        "report_kind": "blocked_method",
         "destination": "crosschecks/facets_scarhrd_blocked/",
     },
     "oncoanalyser_chord_blocked": {
         "files": CROSSCHECK_FILES,
+        "report_kind": "blocked_method",
         "destination": "crosschecks/oncoanalyser_chord_blocked/",
     },
     "hrdetect_blocked": {
         "files": CROSSCHECK_FILES,
+        "report_kind": "blocked_method",
         "destination": "crosschecks/hrdetect_blocked/",
     },
     "ai_review_reviewer_a": {
         "files": AI_REVIEW_FILES,
+        "report_kind": "independent_ai_hrd_evidence_review",
         "destination": "ai-review/reviewer-a/",
     },
     "ai_review_reviewer_b": {
         "files": AI_REVIEW_FILES,
+        "report_kind": "independent_ai_hrd_evidence_review",
         "destination": "ai-review/reviewer-b/",
     },
     "comparative_hrd_synthesis": {
         "files": SYNTHESIS_FILES,
+        "report_kind": "comparative_synthesis",
         "destination": "ai-review/comparative-synthesis/",
     },
 }
@@ -839,6 +849,8 @@ def validate_report_packet(
     paths: dict[str, Path], method_id: str, expected: tuple[str, ...]
 ) -> dict[str, Any]:
     manifest = load_json(paths["report_manifest.json"], "report manifest")
+    if manifest.get("report_kind") != METHOD_CONTRACTS[method_id]["report_kind"]:
+        raise ValueError("report manifest report_kind is not exact")
     if (
         not exact_schema_version(manifest)
         or manifest.get("method_id") != method_id

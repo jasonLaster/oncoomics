@@ -90,7 +90,7 @@ def write_packet(
     manifest = {
         "schema_version": 1,
         "method_id": method_id,
-        "report_kind": "unit_test_packet",
+        "report_kind": PUBLISH.METHOD_CONTRACTS[method_id]["report_kind"],
         "evidence_status": "blocked" if method_id.endswith("_blocked") else "partial_evidence",
         "authorized_hrd_state": "no_call",
         "classification_authorized": False,

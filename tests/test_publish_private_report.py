@@ -61,6 +61,7 @@ class Fixture:
         manifest = {
             "schema_version": 1,
             "method_id": self.method_id,
+            "report_kind": MODULE.METHOD_CONTRACTS[self.method_id]["report_kind"],
             "evidence_status": "partial_evidence",
             "authorized_hrd_state": "no_call",
             "classification_authorized": False,
@@ -465,6 +466,38 @@ class PublishPrivateReportTests(unittest.TestCase):
                 mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
             ):
                 MODULE.run(fixture.args())
+
+    def test_manifest_kind_must_match_method_before_aws(self) -> None:
+        cases = {
+            "missing": None,
+            "wrong": "comparative_synthesis",
+        }
+        for label, report_kind in cases.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = Fixture(Path(temporary))
+                manifest_path = fixture.packet / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                if report_kind is None:
+                    del manifest["report_kind"]
+                else:
+                    manifest["report_kind"] = report_kind
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with (
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "report manifest report_kind is not exact",
+                    ),
+                    mock.patch.object(
+                        MODULE,
+                        "aws_json",
+                        side_effect=AssertionError("AWS called"),
+                    ),
+                ):
+                    MODULE.run(fixture.args())
 
     def test_rejects_encoded_forbidden_token_before_aws(self) -> None:
         for encoded in (

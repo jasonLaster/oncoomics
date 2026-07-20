@@ -377,7 +377,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = deterministic review summaries exact</li>
+          <li class="pill">Latest milestone = publication report kinds exact</li>
+          <li class="pill">Publication report kinds = exact</li>
           <li class="pill">Deterministic review summaries = exact</li>
           <li class="pill">Comparative reviewer rows = exact</li>
           <li class="pill">Input-contract finalizer = route-checked</li>
@@ -2329,6 +2330,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact publication report kinds</strong>
+              <span>Private freeze and reviewed-public publication now reject packets whose <code>report_kind</code> does not match the allowlisted method before deterministic, Rosalind, cross-check, AI-review, or synthesis reports can be copied into their final trees.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind public-index receipts to validated bytes</strong>
               <span>The reviewed-public index builder now rechecks local publication receipts while reading them and records the SHA-256 of the exact bytes it validated.</span>
             </li>
@@ -2574,6 +2579,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T20:19:17-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact publication report kinds:</strong>
+                the shared private-to-public packet verifier now rejects missing
+                or mismatched <code>report_kind</code> values for every
+                allowlisted HRD report family.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T20:17:14-07:00">Jul 19 · local</time>
               <span>

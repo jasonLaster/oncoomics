@@ -157,11 +157,11 @@ def validate_packet_dirs(
         invalid = sorted(child.name for child in path.iterdir() if child.is_symlink() or not child.is_file())
         if invalid:
             raise ValueError(f"{method_id} packet directory contains invalid paths: " + ",".join(invalid))
+        validate_terminal_source_report_kind(method_id, path)
         try:
             validate_private_packet_dir(path, method_id, forbidden_tokens)
         except ValueError as error:
             raise ValueError(f"{method_id} packet directory is invalid: {error}") from error
-        validate_terminal_source_report_kind(method_id, path)
     validate_blocked_source_bindings(paths)
     validate_executable_source_bindings(paths)
     if phase3_fast_report_packet_validation is not None:
