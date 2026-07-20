@@ -1933,6 +1933,49 @@ class ValidateAiReviewTests(unittest.TestCase):
             )
             self.assertFalse((review_b / "validation.json").exists())
 
+    def test_reviewer_b_rejects_legacy_reviewer_a_manifest_envelope(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review_a = Path(temporary) / "review-a"
+            fixture.write_review(review_a, reviewer="A")
+            self.assertEqual(fixture.validate(review_a).returncode, 0)
+
+            manifest_path = review_a / "review_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["legacy_context"] = {
+                "stale": "not part of the exact reviewer A manifest contract",
+            }
+            write_json(manifest_path, manifest)
+
+            validation_path = review_a / "validation.json"
+            validation = json.loads(validation_path.read_text(encoding="utf-8"))
+            validation["review_manifest_sha256"] = sha256(manifest_path)
+            write_json(validation_path, validation)
+
+            review_b = Path(temporary) / "review-b"
+            fixture.write_review(
+                review_b,
+                reviewer="B",
+                body="The missing allele-specific copy-number gate remains unresolved [C001|E001].",
+                claim="The missing allele-specific copy number prevents a categorical conclusion.",
+            )
+
+            stale = fixture.validate(
+                review_b,
+                reviewer="B",
+                other_review_dir=review_a,
+            )
+
+            self.assertNotEqual(stale.returncode, 0)
+            self.assertIn(
+                "review manifest envelope is not exact",
+                stale.stderr,
+            )
+            self.assertFalse((review_b / "validation.json").exists())
+
     def test_reviewer_b_rejects_symlinked_reviewer_a_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
