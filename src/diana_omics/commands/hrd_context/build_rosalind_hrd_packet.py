@@ -1780,7 +1780,9 @@ def require_diana_wgs_artifact_index_binding(
 def diana_wgs_readiness_rows(summary: Mapping[str, Any], blockers: list[str]) -> list[dict[str, Any]]:
     csv_rows: list[dict[str, Any]] = read_csv_or_empty("hrd_readiness.csv")
     embedded = summary.get("hrd_readiness", [])
-    embedded_rows = [dict(row) for row in embedded if isinstance(row, dict)] if isinstance(embedded, list) else []
+    if not isinstance(embedded, list) or any(not isinstance(row, dict) for row in embedded):
+        raise ValueError("Diana WGS embedded readiness must be a list of JSON objects")
+    embedded_rows = [dict(row) for row in embedded]
     if csv_rows and embedded_rows:
         fields = ("evidence_surface", "status", "detail")
         csv_contract = sorted(tuple(str(row.get(field, "")) for field in fields) for row in csv_rows)

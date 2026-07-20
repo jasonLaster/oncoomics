@@ -2585,6 +2585,43 @@ class RosalindHrdPacketTest(unittest.TestCase):
             self.assertEqual(alignment["state"], "no_call")
             self.assertIn("no state promotion", alignment["blocker"])
 
+    def test_diana_wgs_packet_rejects_malformed_embedded_readiness(self):
+        for label, readiness in (
+            ("object", {}),
+            ("non_object_row", [{"evidence_surface": "wgs_alignment"}, True]),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+                output_root = Path(tmp)
+                artifact_root = Path(artifacts)
+                write_diana_wgs_worker_artifacts(artifact_root)
+                worker_summary_path = artifact_root / "diana_hrd_summary.json"
+                worker_summary = utils.read_json(worker_summary_path)
+                worker_summary["hrd_readiness"] = readiness
+                utils.write_json(worker_summary_path, worker_summary)
+                deterministic_root = write_deterministic_report(
+                    output_root / "deterministic",
+                    artifact_root,
+                )
+                output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        },
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "Diana WGS embedded readiness must be a list of JSON objects",
+                    ),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+                self.assertFalse((output_dir / "report_manifest.json").exists())
+
     def test_diana_wgs_packet_rejects_deterministic_or_worker_tampering(self):
         for tool, value in (
             ("bcftools", ""),
