@@ -523,7 +523,10 @@ environment before submission: the queue must be `ENABLED`, `VALID`, and routed
 only to the isolated P5 environment; the compute environment must be managed,
 enabled, valid, scale-to-zero On-Demand EC2 capacity, backed only by
 `p5en.48xlarge`, `p5e.48xlarge`, and `p5.48xlarge`, sized to at least one full P5, and using only the NVIDIA
-Amazon Linux 2023 ECS image. It then queries the live EC2
+Amazon Linux 2023 ECS image. It then re-reads the exact pinned Batch launch
+template and requires `DianaBatchCostGuard=diana-omics` on both EC2 instance
+and volume tag specifications so the 1-minute live EC2 spend estimator can see
+every launched P5 host. It then queries the live EC2
 `Running On-Demand P instances` quota and requires at least 192 applied P vCPUs
 before Nextflow can submit the Hopper placement job.
 The smoke itself verifies the host `/scratch` mount was built from all eight

@@ -357,6 +357,13 @@ def main() -> None:
             compute_environment,
             expected_compute_environment=queue_summary["compute_environment"],
         )
+        launch_template = gpu_smoke.load_batch_launch_template_version(
+            launch_template=compute_environment_summary["launch_template"],
+            region=params_summary["aws_region"],
+        )
+        launch_template_summary = gpu_smoke.validate_batch_launch_template_cost_guard_tags(
+            launch_template
+        )
         mirror_summary, mirror_path = load_mirror_receipt_from_environment(expected_params=params_summary)
         running_on_demand_p_vcpus = gpu_smoke.load_running_on_demand_p_vcpus(params_summary["aws_region"])
         gpu_smoke.validate_running_on_demand_p_quota(running_on_demand_p_vcpus)
@@ -375,6 +382,7 @@ def main() -> None:
         f"estimated_daily_batch_ec2_usd={estimated_daily_ec2_usd:.6f} "
         f"compute_environment={queue_summary['compute_environment']} "
         f"compute_max_vcpus={compute_environment_summary['max_vcpus']} "
+        f"cost_guard_tag={launch_template_summary['cost_guard_tag']} "
         f"running_on_demand_p_vcpus={running_on_demand_p_vcpus:g} "
         f"parabricks_mirror_receipt={mirror_path} "
         f"parabricks_image_digest={image_digest} "
