@@ -945,8 +945,8 @@ def validate_crosscheck_terminal_capture(
         "batch_terminal_identity": (
             batch.get("status") == "SUCCEEDED"
             and batch.get("log_group") == "/aws/batch/job"
-            and batch.get("attempt_count") == 1
-            and batch.get("exit_code") == 0
+            and integer_equals(batch.get("attempt_count"), 1)
+            and integer_equals(batch.get("exit_code"), 0)
             and batch_checks == EXPECTED_CROSSCHECK_BATCH_CHECKS
         ),
         "cloudwatch_anchor_matches_local_anchor": (
