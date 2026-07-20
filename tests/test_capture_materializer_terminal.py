@@ -1653,6 +1653,44 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             ):
                 self.run_capture(self.args(Path(temporary)), get=get)
 
+    def test_downloaded_exact_receipt_rejects_same_byte_leaf_replacement(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "materialization-receipt.json"
+            replacement = root / "replacement-materialization-receipt.json"
+            receipt.write_bytes(self.receipt_bytes)
+            replacement.write_bytes(self.receipt_bytes)
+            real_read = MODULE.read_real_hash_input_once
+            swapped = False
+
+            def replace_leaf_after_first_read(path, label, preflight):
+                nonlocal swapped
+                result = real_read(path, label, preflight)
+                if path == receipt and not swapped:
+                    replacement.replace(receipt)
+                    swapped = True
+                return result
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_real_hash_input_once",
+                    side_effect=replace_leaf_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "downloaded materialization receipt changed during read",
+                ),
+            ):
+                MODULE.read_stable_downloaded_file(
+                    receipt,
+                    "downloaded materialization receipt",
+                )
+
+            self.assertTrue(swapped)
+
     def test_exact_get_cli_includes_logged_version_and_checksum_mode(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             destination = Path(temporary) / "receipt.json"
@@ -1775,6 +1813,42 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
 
             self.assertFalse(path.exists())
 
+    def test_private_create_rejects_same_byte_leaf_replacement_between_hashes(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "private.json"
+            replacement = root / "replacement-private.json"
+            replacement.write_bytes(b"complete")
+            replacement.chmod(0o600)
+            real_read = MODULE.read_private_output_once
+            swapped = False
+
+            def replace_leaf_after_first_read(path_arg):
+                nonlocal swapped
+                result = real_read(path_arg)
+                if path_arg == path and not swapped:
+                    replacement.replace(path)
+                    swapped = True
+                return result
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_private_output_once",
+                    side_effect=replace_leaf_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private output changed during write",
+                ),
+            ):
+                MODULE.create_private(path, b"complete")
+
+            self.assertTrue(swapped)
+            self.assertFalse(path.exists())
+
     def test_private_create_rechecks_mode_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "private.json"
@@ -1872,6 +1946,35 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
             self.assertFalse(path.exists())
             self.assertFalse(path.is_symlink())
             self.assertEqual(relocated.read_bytes(), b"complete")
+
+    def test_private_create_rejects_mode_change_before_final_open(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "private.json"
+            real_open = MODULE.os.open
+            chmodded = False
+
+            def chmod_before_verify_open(
+                path_arg: Path,
+                flags: int,
+                *args: int,
+            ) -> int:
+                nonlocal chmodded
+                if path_arg == path and not args and not chmodded:
+                    path.chmod(0o644)
+                    chmodded = True
+                return real_open(path_arg, flags, *args)
+
+            with (
+                mock.patch.object(MODULE.os, "open", side_effect=chmod_before_verify_open),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private output mode changed during write",
+                ),
+            ):
+                MODULE.create_private(path, b"complete")
+
+            self.assertTrue(chmodded)
+            self.assertFalse(path.exists())
 
     def test_private_group_rolls_back_only_its_partial_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
