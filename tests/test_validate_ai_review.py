@@ -1621,6 +1621,80 @@ class ValidateAiReviewTests(unittest.TestCase):
             )
             self.assertFalse((review_b / "validation.json").exists())
 
+    def test_reviewer_b_rejects_stale_reviewer_a_bundle_manifest_binding(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review_a = Path(temporary) / "review-a"
+            fixture.write_review(review_a, reviewer="A")
+            self.assertEqual(fixture.validate(review_a).returncode, 0)
+
+            bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+            bundle_manifest = json.loads(
+                bundle_manifest_path.read_text(encoding="utf-8")
+            )
+            bundle_manifest["generated_at"] = "2026-07-20T00:00:00+00:00"
+            write_json(bundle_manifest_path, bundle_manifest)
+
+            review_b = Path(temporary) / "review-b"
+            fixture.write_review(
+                review_b,
+                reviewer="B",
+                body="The missing allele-specific copy-number gate remains unresolved [C001|E001].",
+                claim="The missing allele-specific copy number prevents a categorical conclusion.",
+            )
+
+            stale = fixture.validate(
+                review_b,
+                reviewer="B",
+                other_review_dir=review_a,
+            )
+
+            self.assertNotEqual(stale.returncode, 0)
+            self.assertIn(
+                "reviewer A validation is not bound to this review bundle",
+                stale.stderr,
+            )
+            self.assertFalse((review_b / "validation.json").exists())
+
+    def test_reviewer_b_rejects_legacy_reviewer_a_validation_envelope(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+            review_a = Path(temporary) / "review-a"
+            fixture.write_review(review_a, reviewer="A")
+            self.assertEqual(fixture.validate(review_a).returncode, 0)
+
+            validation_path = review_a / "validation.json"
+            validation = json.loads(validation_path.read_text(encoding="utf-8"))
+            validation["legacy_note"] = "accepted"
+            write_json(validation_path, validation)
+
+            review_b = Path(temporary) / "review-b"
+            fixture.write_review(
+                review_b,
+                reviewer="B",
+                body="The missing allele-specific copy-number gate remains unresolved [C001|E001].",
+                claim="The missing allele-specific copy number prevents a categorical conclusion.",
+            )
+
+            stale = fixture.validate(
+                review_b,
+                reviewer="B",
+                other_review_dir=review_a,
+            )
+
+            self.assertNotEqual(stale.returncode, 0)
+            self.assertIn(
+                "other review validation envelope is not exact",
+                stale.stderr,
+            )
+            self.assertFalse((review_b / "validation.json").exists())
+
     def test_reviewer_b_rejects_symlinked_reviewer_a_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

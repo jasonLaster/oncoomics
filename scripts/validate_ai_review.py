@@ -571,6 +571,7 @@ def validate_other_reviewer(
     current_manifest: dict[str, Any],
     current_outputs: dict[str, str],
     bundle_hash: str,
+    bundle_manifest_sha256: str,
     reviewer_a_prompt_hash: str,
     reviewer_a_model: dict[str, Any],
     subject_alias: str,
@@ -590,6 +591,8 @@ def validate_other_reviewer(
     other_manifest, other_manifest_sha256 = load_object_with_sha256(
         paths["manifest"],
     )
+    if set(other_validation) != VALIDATION_KEYS:
+        raise ValueError("other review validation envelope is not exact")
     if (
         not is_exact_int(other_validation.get("schema_version"), 2)
         or other_validation.get("status") != "passed"
@@ -603,6 +606,7 @@ def validate_other_reviewer(
         or other_validation.get("subject_alias") != subject_alias
         or other_validation.get("required_method_ids") != required_methods
         or other_validation.get("model_catalog_receipt_sha256") != catalog_receipt_hash
+        or other_validation.get("bundle_manifest_sha256") != bundle_manifest_sha256
     ):
         raise ValueError("reviewer A validation is not bound to this review bundle")
 
@@ -1369,6 +1373,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 review_manifest,
                 expected_outputs,
                 bundle_hash,
+                bundle_manifest_sha256,
                 checked_sha256(
                     bundle_manifest["prompt_sha256"]["A"],
                     "reviewer A prompt",
