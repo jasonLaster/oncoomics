@@ -416,6 +416,20 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                     lambda receipt: receipt.__setitem__("schema_version", 1.0),
                 ),
                 (
+                    "boolean-destination-history-count",
+                    lambda receipt: receipt.__setitem__(
+                        "destination_initial_version_history_count",
+                        False,
+                    ),
+                ),
+                (
+                    "float-destination-history-count",
+                    lambda receipt: receipt.__setitem__(
+                        "destination_initial_version_history_count",
+                        0.0,
+                    ),
+                ),
+                (
                     "boolean-object-count",
                     set_one_object_boolean_count,
                 ),

@@ -371,14 +371,15 @@
           is stopped, the selected GPU lane is live on all three allowed P5
           Hopper shapes and still waiting on quota, the prod-use2 daily cost
           guard now has a one-minute live spend poller, and the latest
-          source-only guardrail rejects not-really-zero stage/final freeze
-          dry-run counters before terminal artifact freezing can call AWS.
+          source-only guardrails now reject not-really-zero empty-history
+          counters before terminal artifact freezing, exact-version
+          materialization, or private report replays can continue.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = freeze dry-run counts</li>
+          <li class="pill">Latest milestone = replay zero counts</li>
           <li class="pill">Live P5 placement = p5en / p5e / p5</li>
           <li class="pill">Daily $200 Batch guard = live</li>
           <li class="pill">Live spend poll = 1 minute</li>
@@ -613,6 +614,7 @@
           <li class="pill">Input-contract receipt VersionIds = exact</li>
           <li class="pill">AI-review bundle hashes = exact</li>
           <li class="pill">Materialized-final VersionIds/checksums = exact</li>
+          <li class="pill">Materialized-final history = exact</li>
           <li class="pill">Rosalind alias VersionIds = exact</li>
           <li class="pill">Cross-check/Phase 3 source-freeze scalars = exact</li>
           <li class="pill">AI-synthesis private summaries = exact</li>
@@ -682,6 +684,7 @@
           <li class="pill">Public recovery staging paths = real</li>
           <li class="pill">Public recovery source metadata = private</li>
           <li class="pill">Public recovery final history = exact</li>
+          <li class="pill">Private report replay history = exact</li>
           <li class="pill">Public recovery S3 sizes = exact</li>
           <li class="pill">Public-index dry-run index = exact</li>
           <li class="pill">Public-index reviewed-public histories = exact</li>
@@ -1212,6 +1215,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact replay empty histories</strong>
+              <span>Exact-version final materialization and private report-tree replay now reject JSON booleans or floats in their one-shot empty-history counters, so terminal artifacts and reviewed private reports cannot be recovered from a stale destination prefix that only looked empty through Python coercion.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact freeze dry-run zeroes</strong>
               <span>Stage provenance and final artifact freezing now reject dry-run receipts whose zero success and destination-history counters are JSON booleans or floats, so the final post-terminal freezer cannot treat <code>false</code> or <code>0.0</code> as a reviewed empty preflight before AWS-side copy work.</span>
@@ -2770,6 +2777,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:38:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject loose replay empty histories:</strong>
+                exact-version final artifact materialization and private
+                report-tree replay now reject boolean or float empty-history
+                counters before recovered terminal artifacts or reviewed
+                private reports can feed Rosalind, cross-check, AI review, or
+                public handoff steps. No S3, Batch, route, GPU, quota,
+                replacement compute, or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:36:00-07:00">Jul 19 · local</time>
               <span>

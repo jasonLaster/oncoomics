@@ -399,7 +399,10 @@ def require_exact_final_freeze(
         or freeze.get("batch_status") != "SUCCEEDED"
         or freeze.get("kms_key_arn") != expected_kms_key_arn
         or freeze.get("destination_bucket_versioning") != "Enabled"
-        or freeze.get("destination_initial_version_history_count") != 0
+        or not INPUT_CONTRACT.exact_int(
+            freeze.get("destination_initial_version_history_count"),
+            0,
+        )
         or freeze.get("receipt_anchor_strategy")
         != "sha256_content_addressed_create_only"
         or not isinstance(rows, list)
