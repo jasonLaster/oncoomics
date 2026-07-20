@@ -33,7 +33,7 @@ def ai_receipt_summaries() -> tuple[dict[str, str | int], ...]:
             ),
             "report_manifest_version_id": f"version-{index}",
             "report_manifest_sha256": f"{index:064x}",
-            "object_count": 5,
+            "object_count": len(PUBLISH.METHOD_CONTRACTS[method_id]["files"]),
         }
         for index, method_id in enumerate(AI_SYNTHESIS.REQUIRED_METHOD_IDS, 1)
     )
@@ -50,7 +50,9 @@ def reviewed_publication_receipt_summaries(
             "destination_prefix": REVIEWED_PUBLICATION.destination_prefix(
                 method_id
             ),
-            "object_count": 3,
+            "object_count": len(
+                REVIEWED_PUBLICATION.METHOD_CONTRACTS[method_id]["files"]
+            ),
         }
         for index, (method_id, receipt_path) in enumerate(
             zip(REVIEWED_PUBLICATION.REPORT_METHOD_IDS, receipt_paths),

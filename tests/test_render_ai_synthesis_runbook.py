@@ -135,7 +135,7 @@ def receipt_summaries() -> tuple[dict[str, str | int], ...]:
             ),
             "report_manifest_version_id": f"version-{index}",
             "report_manifest_sha256": f"{index:064x}",
-            "object_count": 5,
+            "object_count": len(PUBLISH.METHOD_CONTRACTS[method_id]["files"]),
         }
         for index, method_id in enumerate(MODULE.REQUIRED_METHOD_IDS, 1)
     )
@@ -1060,6 +1060,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             ("receipt", True, "private receipt path is malformed"),
             ("receipt", " receipt.json", "private receipt path is malformed"),
             ("receipt", "receipt.json\n", "private receipt path is malformed"),
+            ("object_count", 999, "object count is malformed"),
             ("object_count", 0, "object count is malformed"),
             ("object_count", True, "object count is malformed"),
         ):
