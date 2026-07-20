@@ -25,6 +25,21 @@ def p5en_params(**overrides):
         "aws_region": "us-east-2",
         "aws_workdir": "s3://diana-omics-work-172630973301-us-east-2/work",
         "batch_gpu_p5en_instance_types": list(verify.REQUIRED_INSTANCE_TYPES),
+        "daily_cost_guard_batch_compute_environments": [
+            "diana-omics-prod-use2-spot",
+            "diana-omics-prod-use2-ondemand",
+            "diana-omics-prod-use2-hrd-x86-ondemand",
+            "diana-omics-prod-use2-gpu-p5en-ondemand",
+        ],
+        "daily_cost_guard_batch_job_queues": [
+            "diana-omics-prod-use2-spot",
+            "diana-omics-prod-use2-ondemand",
+            "diana-omics-prod-use2-hrd-x86",
+            "diana-omics-prod-use2-gpu-p5en",
+        ],
+        "daily_cost_guard_limit_usd": "200",
+        "daily_cost_guard_live_stop_threshold_percent": "80",
+        "daily_cost_guard_live_stop_usd": "160",
         "gpu_p5en_max_vcpus": 384,
         "parabricks_container": f"{PARABRICKS_REPOSITORY}@{DESTINATION_DIGEST}",
         "parabricks_mirror_repository": PARABRICKS_REPOSITORY,
@@ -73,6 +88,9 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
 
         self.assertEqual("ready", summary["status"])
         self.assertEqual("diana-omics-prod-use2-gpu-p5en", summary["aws_gpu_queue"])
+        self.assertEqual("200", summary["daily_cost_guard_limit_usd"])
+        self.assertEqual("160", summary["daily_cost_guard_live_stop_usd"])
+        self.assertEqual("80", summary["daily_cost_guard_live_stop_threshold_percent"])
         self.assertEqual("us-east-2", summary["phase3_fast_cache_region"])
         self.assertEqual(384, summary["gpu_p5en_max_vcpus"])
         self.assertEqual(list(verify.REQUIRED_INSTANCE_TYPES), summary["instance_types"])
@@ -152,6 +170,31 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
 
         with self.assertRaisesRegex(verify.GpuSmokeConfigError, "gpu_p5en_max_vcpus must be an integer"):
             verify.validate_gpu_smoke_params(p5en_params(gpu_p5en_max_vcpus=True))
+
+    def test_rejects_missing_or_unsafe_daily_cost_guard_params(self) -> None:
+        cases = (
+            {"daily_cost_guard_limit_usd": "200.01"},
+            {"daily_cost_guard_live_stop_threshold_percent": "100"},
+            {"daily_cost_guard_live_stop_usd": "200"},
+            {"daily_cost_guard_live_stop_usd": "159"},
+            {"daily_cost_guard_limit_usd": True},
+            {"daily_cost_guard_batch_job_queues": ["diana-omics-prod-use2-spot"]},
+            {
+                "daily_cost_guard_batch_compute_environments": [
+                    "diana-omics-prod-use2-spot",
+                    "diana-omics-prod-use2-ondemand",
+                    "diana-omics-prod-use2-hrd-x86-ondemand",
+                ]
+            },
+        )
+
+        for overrides in cases:
+            with self.subTest(overrides=overrides):
+                with self.assertRaisesRegex(
+                    verify.GpuSmokeConfigError,
+                    "daily_cost_guard",
+                ):
+                    verify.validate_gpu_smoke_params(p5en_params(**overrides))
 
     def test_rejects_missing_or_public_phase3_fast_cache(self) -> None:
         with self.assertRaisesRegex(verify.GpuSmokeConfigError, "phase3_fast_cache_prefix"):

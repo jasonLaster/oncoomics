@@ -401,7 +401,7 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn(
             (
                 "var.daily_cost_guard_live_stop_threshold_percent > 0 && "
-                "var.daily_cost_guard_live_stop_threshold_percent <= 100"
+                "var.daily_cost_guard_live_stop_threshold_percent <= 80"
             ),
             variables,
         )
@@ -432,6 +432,16 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn("BATCH_COST_LEDGER_TABLE", main)
         self.assertIn("BATCH_INSTANCE_HOURLY_RATES_USD", main)
         self.assertIn("BATCH_UNKNOWN_INSTANCE_HOURLY_RATE_USD", main)
+        self.assertIn("daily_cost_guard_batch_compute_environments", main)
+        self.assertIn("daily_cost_guard_batch_job_queues", main)
+        self.assertIn(
+            (
+                "daily_cost_guard_live_stop_usd               = "
+                "tostring(var.daily_cost_guard_limit_usd * "
+                "var.daily_cost_guard_live_stop_threshold_percent / 100)"
+            ),
+            main,
+        )
         self.assertIn("concat(", main)
         self.assertIn("var.enable_gpu_p5en_batch", main)
         self.assertIn("aws_batch_job_queue.gpu_p5en[0].name", main)

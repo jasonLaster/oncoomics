@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -19,6 +20,8 @@ P5_HOPPER_48XLARGE_VCPUS = 192
 EC2_SERVICE_CODE = "ec2"
 ON_DEMAND_P_QUOTA_CODE = "L-417A185B"
 BATCH_GPU_COMPUTE_ENVIRONMENT_SUFFIX = "-ondemand"
+MAX_DAILY_COST_GUARD_LIMIT_USD = Decimal("200")
+MAX_DAILY_COST_GUARD_LIVE_STOP_PERCENT = Decimal("80")
 KMS_KEY_ARN = re.compile(r"^arn:aws:kms:([a-z]{2}-[a-z]+-\d):(\d{12}):key/[A-Za-z0-9-]+$")
 ECR_REPOSITORY = re.compile(r"^\d{12}\.dkr\.ecr\.([a-z]{2}-[a-z]+-\d)\.amazonaws\.com/[a-z0-9][a-z0-9._/-]*$")
 PINNED_IMAGE = re.compile(r"^\S+@sha256:[0-9a-f]{64}$")
@@ -81,6 +84,42 @@ def _require_int_at_least(params: Mapping[str, Any], key: str, minimum: int, err
     return value
 
 
+def _require_decimal_at_most(
+    params: Mapping[str, Any],
+    key: str,
+    maximum: Decimal,
+    errors: list[str],
+) -> Decimal:
+    value = params.get(key)
+    if isinstance(value, bool):
+        errors.append(f"{key} must be a positive decimal")
+        return Decimal(0)
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        errors.append(f"{key} must be a positive decimal")
+        return Decimal(0)
+    if parsed <= 0:
+        errors.append(f"{key} must be a positive decimal")
+    if parsed > maximum:
+        errors.append(f"{key} must be no more than {maximum}")
+    return parsed
+
+
+def _require_cost_guard_list(
+    params: Mapping[str, Any],
+    key: str,
+    required: str,
+    errors: list[str],
+) -> None:
+    values = params.get(key)
+    if not isinstance(values, list) or any(not isinstance(value, str) or not value for value in values):
+        errors.append(f"{key} must be a list of non-empty strings")
+        return
+    if required not in values:
+        errors.append(f"{key} must include {required}")
+
+
 def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
 
@@ -97,6 +136,40 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
         errors.append(f"aws_gpu_queue must target the isolated {REQUIRED_GPU_QUEUE_SUFFIX} queue")
     if queue and "-use2-" not in queue:
         errors.append("aws_gpu_queue must target the prod-use2 stack")
+
+    cost_guard_limit = _require_decimal_at_most(
+        params,
+        "daily_cost_guard_limit_usd",
+        MAX_DAILY_COST_GUARD_LIMIT_USD,
+        errors,
+    )
+    live_stop_threshold = _require_decimal_at_most(
+        params,
+        "daily_cost_guard_live_stop_threshold_percent",
+        MAX_DAILY_COST_GUARD_LIVE_STOP_PERCENT,
+        errors,
+    )
+    live_stop_usd = _require_decimal_at_most(
+        params,
+        "daily_cost_guard_live_stop_usd",
+        MAX_DAILY_COST_GUARD_LIMIT_USD * MAX_DAILY_COST_GUARD_LIVE_STOP_PERCENT / Decimal(100),
+        errors,
+    )
+    if live_stop_usd != cost_guard_limit * live_stop_threshold / Decimal(100):
+        errors.append("daily_cost_guard_live_stop_usd must match the live stop threshold")
+    if queue:
+        _require_cost_guard_list(
+            params,
+            "daily_cost_guard_batch_job_queues",
+            queue,
+            errors,
+        )
+        _require_cost_guard_list(
+            params,
+            "daily_cost_guard_batch_compute_environments",
+            f"{queue}{BATCH_GPU_COMPUTE_ENVIRONMENT_SUFFIX}",
+            errors,
+        )
 
     _require_non_empty_string(params, "aws_job_role", errors)
     _require_non_empty_string(params, "aws_logs_group", errors)
@@ -139,6 +212,9 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
         "phase3_fast_cache_kms_key_arn": cache_kms_key_arn,
         "phase3_fast_cache_region": REQUIRED_AWS_REGION,
         "gpu_p5en_max_vcpus": max_vcpus,
+        "daily_cost_guard_limit_usd": str(cost_guard_limit),
+        "daily_cost_guard_live_stop_usd": str(live_stop_usd),
+        "daily_cost_guard_live_stop_threshold_percent": str(live_stop_threshold),
         "instance_types": list(REQUIRED_INSTANCE_TYPES),
         "status": "ready",
     }
