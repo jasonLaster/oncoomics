@@ -495,18 +495,21 @@ transfer can create charges. Work-bucket objects expire by lifecycle policy,
 but Batch compute and failed runs should still be checked after testing.
 
 Each Terraform workspace also installs a two-layer daily Batch cost guard with
-a default and maximum `daily_cost_guard_limit_usd = 200`. The guard protects that
-workspace's existing Batch queues and compute environments: the use1 CPU/x86
-queues when `enable_gpu_p5en_batch=false`, and those queues plus the isolated
-P5 Hopper queue in the phase3-fast use2 workspace.
+a default and maximum `daily_cost_guard_limit_usd = 200`. The live guard scans
+`daily_cost_guard_regions` for every Diana-tagged Batch EC2 host, so the use1
+CPU/x86 queues, the phase3-fast use2 P5 Hopper queue, and the west-region quota
+hedge share one $200/day Diana Batch allowance instead of independent regional
+allowances.
 
 - a live EventBridge rule invokes `${project}-${environment}-batch-cost-guard`
   every minute, estimates the current UTC day's Diana Batch EC2 spend from
-  tagged Batch instances, persists the observed runtime in a DynamoDB ledger,
-  and disables this workspace's Batch job queues and compute environments before
-  cancelling queued jobs and terminating visible running jobs once the estimate
-  reaches `daily_cost_guard_live_stop_threshold_percent = 80` of the daily
-  limit, or $160 of the default $200/day limit;
+  Diana-tagged Batch instances in `us-east-1`, `us-east-2`, and `us-west-2`,
+  persists the observed region-qualified runtime in a DynamoDB ledger, and
+  disables this workspace's Batch job queues and compute environments before
+  cancelling queued jobs and terminating visible running jobs once the
+  account-wide Diana Batch EC2 estimate reaches
+  `daily_cost_guard_live_stop_threshold_percent = 80` of the daily limit, or
+  $160 of the default $200/day limit;
 - an account-wide AWS Budget publishes to the same Lambda through SNS when
   actual same-day spend crosses `daily_cost_guard_stop_threshold_percent = 80`,
   and again at 100%, as a delayed whole-account backstop for non-Batch costs.

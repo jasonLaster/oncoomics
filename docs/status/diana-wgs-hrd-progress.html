@@ -370,12 +370,13 @@
           mechanics; it does not stand in for Diana biology. The legacy CPU run
           is stopped, the selected GPU lane is live on all three allowed P5
           Hopper shapes and still waiting on quota, the prod-use2 daily cost
-          guard now has a one-minute live spend poller, P5 smoke/execute
-          preflights now require generated cost-guard bindings for that GPU
-          queue, packet-validation receipts can no longer double-count a
-          report file, and the latest source-only guardrails now reject truthy
-          reviewer modes plus not-really-zero and not-quite-exact counters
-          before terminal artifact freezing, exact-version
+          guard now has a one-minute cross-region live spend poller, P5
+          smoke/execute preflights now require generated cost-guard bindings
+          for that GPU queue and the guarded region set, packet-validation
+          receipts can no longer double-count a report file, and the latest
+          source-only guardrails now reject truthy reviewer modes plus
+          not-really-zero and not-quite-exact counters before terminal artifact
+          freezing, exact-version
           materialization, private report replays, final alias-only input
           contracts, final-freeze and materialized-final receipt checks,
           deterministic WGS staging check maps,
@@ -393,7 +394,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = unique packet rows</li>
+          <li class="pill">Latest milestone = shared $200 guard</li>
+          <li class="pill">Daily Batch spend = cross-region</li>
           <li class="pill">Packet file rows = unique</li>
           <li class="pill">P5 cost guard params = bound</li>
           <li class="pill">AI reviewer modes = exact</li>
@@ -1011,6 +1013,10 @@
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · share the $200/day guard across regions</strong>
+              <span>The one-minute live Batch spend poller now scans the active CPU region, the selected P5 Hopper region, and the west-region quota hedge for the same Diana Batch tag, then records each host as <code>region:instance-id</code> so a CPU run and a P5 run burn the same UTC-day allowance instead of separate regional ledgers.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · widen the P5 Hopper placement lane</strong>
               <span>The selected GPU lane now stays inside the existing P-family quota path and live AWS Batch can place eight-GPU Hopper smoke or execute jobs on <code>p5en.48xlarge</code>, <code>p5e.48xlarge</code>, or <code>p5.48xlarge</code>; H100 and H200 smoke outputs are accepted, while P4/A100, G-family, Spot, other regions, and CPU reruns remain excluded.</span>
             </li>
@@ -1020,7 +1026,7 @@
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind P5 launches to the daily cost guard</strong>
-              <span>The generated <code>nextflow.aws.use2.json</code> now carries the daily Batch guard cap, live stop threshold, live stop dollars, guarded Batch queues, and guarded compute environments; the P5 smoke and full execute preflights reject params that omit the GPU queue, raise the cap above $200/day, or raise the live stop threshold above 80%.</span>
+              <span>The generated <code>nextflow.aws.use2.json</code> now carries the daily Batch guard cap, live stop threshold, live stop dollars, guarded Batch queues, guarded compute environments, and guarded regions; the P5 smoke and full execute preflights reject params that omit the GPU queue, omit a required region, raise the cap above $200/day, or raise the live stop threshold above 80%.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Pending · hold the us-west-2 P-family quota hedge</strong>
@@ -2928,6 +2934,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Share the $200/day Batch guard across regions:</strong>
+                the live cost-guard Lambda now polls every guarded region for
+                Diana Batch EC2 hosts with one shared tag and keys its ledger
+                by <code>region:instance-id</code>, while generated P5 params
+                now have to carry the CPU, GPU, and west-hedge guard regions
+                before smoke or full execute can submit to Batch. No S3,
+                Batch, route, GPU, quota, replacement compute, or apply-mode
+                AWS work was launched; Cost Explorer was refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

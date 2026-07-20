@@ -8,7 +8,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -19,6 +19,7 @@ ACTIVE_EC2_STATES = ("pending", "running", "stopping", "shutting-down")
 MICRO_USD = Decimal("0.000001")
 ZERO_USD = Decimal("0")
 TERMINAL_RACE_ERROR_CODES = {"ClientException"}
+COST_GUARD_REGION_FIELD = "_diana_batch_cost_guard_region"
 
 
 def unique(values: Iterable[str]) -> list[str]:
@@ -107,6 +108,7 @@ def describe_guarded_instances(
     *,
     tag_key: str,
     tag_value: str,
+    region: str | None = None,
 ) -> list[dict[str, Any]]:
     instances: list[dict[str, Any]] = []
     token: str | None = None
@@ -121,10 +123,37 @@ def describe_guarded_instances(
             request["NextToken"] = token
         response = ec2.describe_instances(**request)
         for reservation in response.get("Reservations", []):
-            instances.extend(reservation.get("Instances", []))
+            for instance in reservation.get("Instances", []):
+                if region:
+                    instance = {**instance, COST_GUARD_REGION_FIELD: region}
+                instances.append(instance)
         token = response.get("NextToken")
         if not token:
             return instances
+
+
+def describe_guarded_instances_by_region(
+    ec2_clients: Mapping[str, Any],
+    *,
+    tag_key: str,
+    tag_value: str,
+) -> list[dict[str, Any]]:
+    if not ec2_clients:
+        raise ValueError("guarded EC2 regions must not be empty")
+
+    instances: list[dict[str, Any]] = []
+    for region, ec2 in ec2_clients.items():
+        if not isinstance(region, str) or not region:
+            raise ValueError("guarded EC2 regions must be non-empty strings")
+        instances.extend(
+            describe_guarded_instances(
+                ec2,
+                tag_key=tag_key,
+                tag_value=tag_value,
+                region=region,
+            )
+        )
+    return instances
 
 
 def decimal_or_zero(value: Any) -> Decimal:
@@ -167,12 +196,16 @@ def update_estimated_ec2_ledger(
             raise ValueError("guarded Batch EC2 instance omitted InstanceId")
         if not isinstance(instance_type, str) or not instance_type:
             raise ValueError(f"guarded Batch EC2 instance {instance_id} omitted InstanceType")
+        guard_region = instance.get(COST_GUARD_REGION_FIELD)
+        if guard_region is not None and (not isinstance(guard_region, str) or not guard_region):
+            raise ValueError(f"guarded Batch EC2 instance {instance_id} has an invalid region")
 
         launch_time = require_utc_datetime(
             instance.get("LaunchTime"),
             f"guarded Batch EC2 instance {instance_id} LaunchTime",
         )
-        state = observed.get(instance_id, {})
+        ledger_key = f"{guard_region}:{instance_id}" if guard_region else instance_id
+        state = observed.get(ledger_key, {})
         if not isinstance(state, dict):
             raise ValueError(f"stored Batch EC2 ledger state for {instance_id} must be an object")
 
@@ -190,13 +223,16 @@ def update_estimated_ec2_ledger(
         total_seconds = int_or_zero(state.get("billable_seconds")) + elapsed_seconds
         total_usd = decimal_or_zero(state.get("estimated_usd")) + instance_added_usd
 
-        observed[instance_id] = {
+        instance_state: dict[str, Any] = {
             "billable_seconds": total_seconds,
             "estimated_usd": total_usd.quantize(MICRO_USD),
             "hourly_rate_usd": rate.quantize(MICRO_USD),
             "instance_type": instance_type,
             "last_seen_epoch": now_epoch,
         }
+        if guard_region:
+            instance_state["region"] = guard_region
+        observed[ledger_key] = instance_state
         added_usd += instance_added_usd
         active_instance_count += 1
 
@@ -237,7 +273,7 @@ def save_ledger(table: Any, ledger: dict[str, Any]) -> None:
 
 def monitor_estimated_ec2_spend(
     batch: Any,
-    ec2: Any,
+    ec2: Any | Mapping[str, Any],
     table: Any,
     *,
     job_queues: Iterable[str],
@@ -252,11 +288,18 @@ def monitor_estimated_ec2_spend(
 ) -> dict[str, Any]:
     current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     guard_day, _ = today_utc(current)
-    instances = describe_guarded_instances(
-        ec2,
-        tag_key=tag_key,
-        tag_value=tag_value,
-    )
+    if isinstance(ec2, Mapping):
+        instances = describe_guarded_instances_by_region(
+            ec2,
+            tag_key=tag_key,
+            tag_value=tag_value,
+        )
+    else:
+        instances = describe_guarded_instances(
+            ec2,
+            tag_key=tag_key,
+            tag_value=tag_value,
+        )
     ledger = update_estimated_ec2_ledger(
         load_ledger(table, guard_day),
         instances=instances,
@@ -415,7 +458,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     )
     result = monitor_estimated_ec2_spend(
         boto3.client("batch"),
-        boto3.client("ec2"),
+        {
+            region: boto3.client("ec2", region_name=region)
+            for region in env_string_list("BATCH_COST_GUARD_REGIONS")
+        },
         boto3.resource("dynamodb").Table(os.environ["BATCH_COST_LEDGER_TABLE"]),
         job_queues=job_queues,
         compute_environments=compute_environments,

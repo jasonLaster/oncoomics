@@ -357,6 +357,94 @@ class AwsCostGuardTests(unittest.TestCase):
             batch.calls,
         )
 
+    def test_scheduled_guard_estimates_batch_ec2_spend_across_regions(self) -> None:
+        now = datetime(2026, 7, 19, 2, 0, tzinfo=timezone.utc)
+        batch = FakeBatch()
+        ec2_by_region = {
+            "us-east-1": FakeEc2(
+                {
+                    "Reservations": [
+                        {
+                            "Instances": [
+                                {
+                                    "InstanceId": "i-overlap",
+                                    "InstanceType": "c7i.48xlarge",
+                                    "LaunchTime": now - timedelta(minutes=30),
+                                },
+                            ],
+                        },
+                    ],
+                }
+            ),
+            "us-east-2": FakeEc2(
+                {
+                    "Reservations": [
+                        {
+                            "Instances": [
+                                {
+                                    "InstanceId": "i-overlap",
+                                    "InstanceType": "p5en.48xlarge",
+                                    "LaunchTime": now - timedelta(hours=1),
+                                },
+                            ],
+                        },
+                    ],
+                }
+            ),
+        }
+        table = FakeTable()
+
+        result = GUARD.monitor_estimated_ec2_spend(
+            batch,
+            ec2_by_region,
+            table,
+            job_queues=["gpu"],
+            compute_environments=["gpu-ce"],
+            reason="cross-region guard",
+            tag_key="DianaBatchCostGuard",
+            tag_value="diana-omics",
+            daily_limit_usd=Decimal("200"),
+            hourly_rates={
+                "c7i": Decimal("12"),
+                "p5en.48xlarge": Decimal("140"),
+            },
+            unknown_hourly_rate=Decimal("140"),
+            now=now,
+        )
+
+        self.assertEqual(
+            {
+                "active_instance_count": 2,
+                "estimated_daily_ec2_usd": "146.000000",
+                "guard_day": "2026-07-19",
+                "limit_usd": "200",
+                "status": "monitored",
+            },
+            result,
+        )
+        self.assertEqual([], batch.calls)
+        self.assertEqual(
+            {
+                "us-east-1:i-overlap": {
+                    "billable_seconds": 1800,
+                    "estimated_usd": Decimal("6.000000"),
+                    "hourly_rate_usd": Decimal("12.000000"),
+                    "instance_type": "c7i.48xlarge",
+                    "last_seen_epoch": int(now.timestamp()),
+                    "region": "us-east-1",
+                },
+                "us-east-2:i-overlap": {
+                    "billable_seconds": 3600,
+                    "estimated_usd": Decimal("140.000000"),
+                    "hourly_rate_usd": Decimal("140.000000"),
+                    "instance_type": "p5en.48xlarge",
+                    "last_seen_epoch": int(now.timestamp()),
+                    "region": "us-east-2",
+                },
+            },
+            table.item["instances"],
+        )
+
     def test_handler_requires_exact_nonempty_environment_lists(self) -> None:
         with mock.patch.dict(
             os.environ,
@@ -457,6 +545,17 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn('"batch:CancelJob"', main)
         self.assertIn('"batch:TerminateJob"', main)
         self.assertIn('variable "daily_cost_guard_schedule_expression"', variables)
+        self.assertIn('variable "daily_cost_guard_regions"', variables)
+        self.assertIn('default     = ["us-east-1", "us-east-2", "us-west-2"]', variables)
+        self.assertIn('daily_cost_guard_ec2_tag_value = var.project', main)
+        self.assertIn(
+            "BATCH_COST_GUARD_REGIONS   = jsonencode(sort(distinct(concat([var.region], var.daily_cost_guard_regions))))",
+            main,
+        )
+        self.assertIn(
+            "daily_cost_guard_regions                     = sort(distinct(concat([var.region], var.daily_cost_guard_regions)))",
+            main,
+        )
         self.assertIn('variable "daily_cost_guard_instance_hourly_rates_usd"', variables)
         self.assertIn('variable "daily_cost_guard_unknown_instance_hourly_rate_usd"', variables)
         self.assertIn('output "daily_cost_guard_budget"', outputs)
