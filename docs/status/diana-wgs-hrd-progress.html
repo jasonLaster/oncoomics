@@ -377,8 +377,10 @@
           authorized them, validated and synthesized Reviewer A/B outputs now
           stay bound to that same bundle-manifest fingerprint, finalized
           AI-review packets now exact-check the bundle envelopes they are about
-          to source-freeze, paired AI reviewers now have to prove they reviewed
-          the same evidence packet, prepared AI runs now reject model-catalog
+          to source-freeze, prepared AI-review runs now rehash the exact
+          Reviewer A/B input copies they are about to install, paired AI
+          reviewers now have to prove they reviewed the same evidence packet,
+          prepared AI runs now reject model-catalog
           drift before writing a receipt, independent reviewer validation now
           rechecks reviewer-authored outputs after its receipt is installed,
           packet-validation receipts can no longer double-count a report file,
@@ -403,7 +405,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = paired AI binding</li>
+          <li class="pill">Latest milestone = reviewer copies bound</li>
+          <li class="pill">AI reviewer inputs = rehashed</li>
           <li class="pill">AI reviewer pair = same packet</li>
           <li class="pill">AI validation outputs = post-write checked</li>
           <li class="pill">AI model catalog = receipt-bound</li>
@@ -997,27 +1000,31 @@
             Cost Explorer estimate for the complete UTC day 2026-07-19,
             grouped by service and usage type.
           </p>
-          <p class="cost-total">$2.05</p>
+          <p class="cost-total">$5.24</p>
           <ol class="cost-list" aria-label="Top Cost Explorer rows">
             <li class="cost-row">
+              <span>S3 object storage<small>Amazon Simple Storage Service · TimedStorage-ByteHrs</small></span>
+              <strong>$1.621</strong>
+            </li>
+            <li class="cost-row">
               <span>US West 1 NAT Gateway hours<small>EC2 - Other · USW1-NatGateway-Hours</small></span>
-              <strong>$0.624</strong>
+              <strong>$1.104</strong>
             </li>
             <li class="cost-row">
               <span>US East 1 NAT Gateway hours<small>EC2 - Other · NatGateway-Hours</small></span>
-              <strong>$0.585</strong>
+              <strong>$1.035</strong>
             </li>
             <li class="cost-row">
               <span>US East 2 NAT Gateway hours<small>EC2 - Other · USE2-NatGateway-Hours</small></span>
-              <strong>$0.585</strong>
+              <strong>$1.035</strong>
             </li>
             <li class="cost-row">
               <span>Public IPv4 addresses<small>Amazon Virtual Private Cloud · three regions</small></span>
-              <strong>$0.195</strong>
+              <strong>$0.340</strong>
             </li>
             <li class="cost-row">
-              <span>Other metered rows<small>KMS, ECR, Lambda, S3, and tiny transfer rows</small></span>
-              <strong>$0.060</strong>
+              <span>Other metered rows<small>KMS, ECR, Lambda, request, and tiny transfer rows</small></span>
+              <strong>$0.107</strong>
             </li>
           </ol>
         </article>
@@ -2236,6 +2243,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind installed AI reviewer inputs to the bundle</strong>
+              <span>AI-review preparation now rechecks the staged Reviewer A/B directories, file modes, <code>review_bundle.json</code> bytes, and prompt bytes before a two-reviewer run can be installed, so a stale copied prompt cannot slip past the stage receipt.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind paired AI reviews to one evidence packet</strong>
               <span>Reviewer B now refuses to use Reviewer A unless Reviewer A's validation receipt is exact and points at the same evidence-packet fingerprint, so the second review cannot quietly rely on stale first-review approval.</span>
             </li>
@@ -2973,6 +2984,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Recheck installed AI reviewer inputs:</strong>
+                AI-review preparation now rehashes the actual staged
+                Reviewer A/B <code>review_bundle.json</code> and prompt copies
+                before final install and after install support checks. The
+                dashboard now shows the complete July 19 UTC Cost Explorer
+                estimate; quota was refreshed read-only and both P-family
+                requests remain open. No S3, Batch, route, GPU, quota,
+                replacement compute, or apply-mode AWS work was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>
