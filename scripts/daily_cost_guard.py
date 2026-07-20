@@ -90,22 +90,50 @@ def load_daily_cost_guard_estimated_spend(
     return parse_daily_cost_guard_ledger_item(payload)
 
 
+def parse_guard_usd(value: str, label: str, *, allow_zero: bool = False) -> Decimal:
+    try:
+        parsed = Decimal(value)
+    except InvalidOperation as error:
+        raise DailyCostGuardError(f"{label} must be a decimal") from error
+    if parsed < 0 or (parsed == 0 and not allow_zero):
+        raise DailyCostGuardError(f"{label} must be {'non-negative' if allow_zero else 'positive'}")
+    return parsed
+
+
 def validate_daily_cost_guard_estimated_spend(
     estimated_daily_ec2_usd: Decimal,
     *,
     live_stop_usd: str,
-) -> None:
-    try:
-        stop = Decimal(live_stop_usd)
-    except InvalidOperation as error:
-        raise DailyCostGuardError("daily_cost_guard_live_stop_usd must be a decimal") from error
-    if stop <= 0:
-        raise DailyCostGuardError("daily_cost_guard_live_stop_usd must be positive")
+    daily_limit_usd: str | None = None,
+    reservation_usd: str = "0",
+) -> dict[str, str]:
+    stop = parse_guard_usd(live_stop_usd, "daily_cost_guard_live_stop_usd")
+    limit = parse_guard_usd(
+        daily_limit_usd or live_stop_usd,
+        "daily_cost_guard_limit_usd",
+    )
+    reservation = parse_guard_usd(
+        reservation_usd,
+        "daily_cost_guard_reservation_usd",
+        allow_zero=True,
+    )
     if estimated_daily_ec2_usd >= stop:
         raise DailyCostGuardError(
             f"Daily Batch EC2 cost guard is already at ${estimated_daily_ec2_usd:.6f}; "
             f"refusing AWS Batch submission at the ${stop:.6f} live stop"
         )
+    reserved_daily_ec2_usd = estimated_daily_ec2_usd + reservation
+    if reserved_daily_ec2_usd > limit:
+        raise DailyCostGuardError(
+            f"Daily Batch EC2 cost guard is already at ${estimated_daily_ec2_usd:.6f}; "
+            f"refusing AWS Batch submission because its ${reservation:.6f} reservation "
+            f"would exceed the ${limit:.6f} daily limit"
+        )
+    return {
+        "daily_limit_usd": str(limit),
+        "reservation_usd": str(reservation),
+        "reserved_daily_ec2_usd": str(reserved_daily_ec2_usd),
+    }
 
 
 def check_daily_cost_guard(
@@ -113,6 +141,8 @@ def check_daily_cost_guard(
     ledger: str,
     region: str,
     live_stop_usd: str,
+    daily_limit_usd: str | None = None,
+    reservation_usd: str = "0",
     aws_cli: str = "aws",
     guard_day: str | None = None,
 ) -> dict[str, str]:
@@ -123,11 +153,14 @@ def check_daily_cost_guard(
         guard_day=day,
         aws_cli=aws_cli,
     )
-    validate_daily_cost_guard_estimated_spend(
+    reservation = validate_daily_cost_guard_estimated_spend(
         spend,
         live_stop_usd=live_stop_usd,
+        daily_limit_usd=daily_limit_usd,
+        reservation_usd=reservation_usd,
     )
     return {
+        **reservation,
         "estimated_daily_ec2_usd": str(spend),
         "guard_day": day,
         "ledger": ledger,
@@ -142,6 +175,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ledger", required=True, help="DynamoDB daily cost guard ledger table name")
     parser.add_argument("--region", required=True, help="AWS region that owns the ledger")
     parser.add_argument("--live-stop-usd", required=True, help="USD threshold that must not be reached")
+    parser.add_argument("--limit-usd", help="Harder daily USD ceiling checked after any reservation")
+    parser.add_argument("--reservation-usd", default="0", help="Conservative USD reserved for the submission about to start")
     parser.add_argument("--guard-day", help="UTC guard day; defaults to today")
     args = parser.parse_args(argv)
 
@@ -150,6 +185,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             ledger=args.ledger,
             region=args.region,
             live_stop_usd=args.live_stop_usd,
+            daily_limit_usd=args.limit_usd,
+            reservation_usd=args.reservation_usd,
             guard_day=args.guard_day,
         )
     except DailyCostGuardError as error:

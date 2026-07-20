@@ -103,6 +103,28 @@ variable "daily_cost_guard_live_stop_threshold_percent" {
   }
 }
 
+variable "daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd" {
+  description = "Conservative same-day USD reserved before the P5 Hopper placement smoke may submit."
+  type        = number
+  default     = 20
+
+  validation {
+    condition     = var.daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd >= 0 && var.daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd <= 200
+    error_message = "daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd must be between 0 and 200."
+  }
+}
+
+variable "daily_cost_guard_phase3_fast_execute_reservation_usd" {
+  description = "Conservative same-day USD reserved before the full Diana BAM-to-evidence P5 Hopper run may submit."
+  type        = number
+  default     = 150
+
+  validation {
+    condition     = var.daily_cost_guard_phase3_fast_execute_reservation_usd >= 0 && var.daily_cost_guard_phase3_fast_execute_reservation_usd <= 200
+    error_message = "daily_cost_guard_phase3_fast_execute_reservation_usd must be between 0 and 200."
+  }
+}
+
 variable "daily_cost_guard_email" {
   description = "Optional human email subscriber for daily cost guard notifications. Leave empty to keep only the SNS to Lambda stop path."
   type        = string

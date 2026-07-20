@@ -690,6 +690,8 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
                 "daily_cost_guard_limit_usd": "200",
                 "daily_cost_guard_live_stop_threshold_percent": "80",
                 "daily_cost_guard_live_stop_usd": "160",
+                "daily_cost_guard_phase3_fast_execute_reservation_usd": "150",
+                "daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd": "20",
                 "daily_cost_guard_regions": list(verify.gpu_smoke.REQUIRED_DAILY_COST_GUARD_REGIONS),
                 "gpu_p5en_max_vcpus": 384,
                 "parabricks_container": ("172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + "a" * 64),

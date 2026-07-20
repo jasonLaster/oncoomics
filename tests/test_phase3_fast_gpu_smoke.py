@@ -42,6 +42,8 @@ def p5en_params(**overrides):
         "daily_cost_guard_limit_usd": "200",
         "daily_cost_guard_live_stop_threshold_percent": "80",
         "daily_cost_guard_live_stop_usd": "160",
+        "daily_cost_guard_phase3_fast_execute_reservation_usd": "150",
+        "daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd": "20",
         "daily_cost_guard_regions": list(verify.REQUIRED_DAILY_COST_GUARD_REGIONS),
         "gpu_p5en_max_vcpus": 384,
         "parabricks_container": f"{PARABRICKS_REPOSITORY}@{DESTINATION_DIGEST}",
@@ -95,6 +97,8 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
         self.assertEqual("200", summary["daily_cost_guard_limit_usd"])
         self.assertEqual("160", summary["daily_cost_guard_live_stop_usd"])
         self.assertEqual("80", summary["daily_cost_guard_live_stop_threshold_percent"])
+        self.assertEqual("150", summary["daily_cost_guard_phase3_fast_execute_reservation_usd"])
+        self.assertEqual("20", summary["daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd"])
         self.assertEqual(["us-east-1", "us-east-2", "us-west-2"], summary["daily_cost_guard_regions"])
         self.assertEqual("us-east-2", summary["phase3_fast_cache_region"])
         self.assertEqual(384, summary["gpu_p5en_max_vcpus"])
@@ -182,6 +186,8 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
             {"daily_cost_guard_live_stop_threshold_percent": "100"},
             {"daily_cost_guard_live_stop_usd": "200"},
             {"daily_cost_guard_live_stop_usd": "159"},
+            {"daily_cost_guard_phase3_fast_execute_reservation_usd": "149.999"},
+            {"daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd": "19.999"},
             {"daily_cost_guard_limit_usd": True},
             {"daily_cost_guard_regions": ["us-east-2"]},
             {"daily_cost_guard_ledger": ""},
