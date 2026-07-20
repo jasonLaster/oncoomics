@@ -84,6 +84,18 @@ REVIEWER_SUMMARY_KEYS = {
     "claim_count",
     "disagreement_claim_count",
 }
+REVIEW_SUMMARY_KEYS = {
+    "evidence_scope",
+    "process",
+    "readiness",
+    "methods",
+    "reviewers",
+    "agreement_status_counts",
+    "structured_disagreements",
+    "limitations",
+    "unresolved_observations",
+    "authorized_conclusion",
+}
 CLAIMS_FIELDS = [
     "claim_id",
     "claim",
@@ -1286,7 +1298,7 @@ def require_synthesis_review_summary(
     agreement_rows: Sequence[Dict[str, str]],
 ) -> Tuple[str, ...]:
     summary = manifest.get("review_summary")
-    if not isinstance(summary, dict) or not summary:
+    if not isinstance(summary, dict) or set(summary) != REVIEW_SUMMARY_KEYS:
         raise ValueError("comparative synthesis review summary is missing")
 
     process = summary.get("process")

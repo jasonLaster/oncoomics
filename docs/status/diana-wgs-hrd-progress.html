@@ -380,6 +380,8 @@
           to source-freeze, prepared AI-review runs now rehash the exact
           Reviewer A/B input copies they are about to install, paired AI
           reviewers now have to prove they reviewed the same evidence packet,
+          comparative synthesis manifests now exact-check the top-level review
+          summary they are about to preserve,
           prepared AI runs now reject model-catalog
           drift before writing a receipt, independent reviewer validation now
           rechecks reviewer-authored outputs after its receipt is installed,
@@ -405,7 +407,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = reviewer copies bound</li>
+          <li class="pill">Latest milestone = synthesis summary exact</li>
+          <li class="pill">AI synthesis summary = exact</li>
           <li class="pill">AI reviewer inputs = rehashed</li>
           <li class="pill">AI reviewer pair = same packet</li>
           <li class="pill">AI validation outputs = post-write checked</li>
@@ -2243,6 +2246,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind AI synthesis review summaries</strong>
+              <span>Comparative synthesis now exact-checks the top-level <code>review_summary</code> envelope before trusting method, reviewer, agreement, limitation, unresolved-observation, or authorized-conclusion fields, so a late synthesis note cannot enter the source-freezeable manifest unbound.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind installed AI reviewer inputs to the bundle</strong>
               <span>AI-review preparation now rechecks the staged Reviewer A/B directories, file modes, <code>review_bundle.json</code> bytes, and prompt bytes before a two-reviewer run can be installed, so a stale copied prompt cannot slip past the stage receipt.</span>
             </li>
@@ -2984,6 +2991,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T01:33:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Bind AI synthesis review summaries:</strong>
+                comparative synthesis manifests now reject any unbound
+                top-level <code>review_summary</code> field before an
+                AI/freeform HRD synthesis packet can pass as source-freezeable.
+                Cost Explorer was refreshed read-only for the complete July 19
+                UTC day; the visible $5.24 breakdown was unchanged. No S3,
+                Batch, route, GPU, quota, replacement compute, or apply-mode
+                AWS work was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>
