@@ -319,6 +319,49 @@ class PublishPrivateReportTests(unittest.TestCase):
             self.assertEqual(tuple(receipt["expected_files"]), expected)
             self.assertEqual(len(rows), 8)
 
+    def test_apply_dry_run_receipt_digest_is_bound_to_validated_bytes(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            fake = FakeAws()
+            dry_run_receipt = self.write_dry_run_receipt(fixture)
+            original_dry_run_sha256 = digest(dry_run_receipt.read_bytes())
+            real_load = MODULE.load_json_with_sha256
+            mutated = False
+
+            def mutate_after_parse(
+                path: Path,
+                label: str,
+            ) -> tuple[dict[str, object], str]:
+                nonlocal mutated
+                result = real_load(path, label)
+                if label == "private report dry-run receipt" and not mutated:
+                    dry_run_receipt.write_text(
+                        '{"changed_after_validated_read": true}\n',
+                        encoding="utf-8",
+                    )
+                    mutated = True
+                return result
+
+            with mock.patch.object(
+                MODULE,
+                "load_json_with_sha256",
+                side_effect=mutate_after_parse,
+            ):
+                result = self.execute(
+                    fixture,
+                    fake,
+                    apply=True,
+                    dry_run_receipt=dry_run_receipt,
+                )
+
+            self.assertTrue(mutated)
+            self.assertEqual(
+                result["dry_run_receipt"]["sha256"],
+                original_dry_run_sha256,
+            )
+
     def test_rejects_source_hash_for_packet_local_support_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary), "comparative_hrd_synthesis")

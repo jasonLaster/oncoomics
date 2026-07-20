@@ -9,10 +9,6 @@ import subprocess
 from pathlib import Path
 from typing import Any, Sequence
 
-from build_ai_review_bundle import (
-    DuplicateJsonKeyError,
-    reject_duplicate_json_object_names,
-)
 from forbidden_text import (
     DEFAULT_FORBIDDEN_TOKENS,
     forbidden_token_fingerprints,
@@ -37,6 +33,7 @@ from publish_reviewed_public_report import (
     exact_non_null_version_id,
     exact_schema_version,
     head_object,
+    load_json_with_sha256,
     now,
     private_report_prefix,
     scan_text,
@@ -229,19 +226,9 @@ def validate_dry_run_receipt(
     path: Path, receipt: dict[str, Any]
 ) -> dict[str, str]:
     path = require_real_input_file(path, "private report dry-run receipt")
-    try:
-        dry_run = json.loads(
-            path.read_text(encoding="utf-8"),
-            object_pairs_hook=reject_duplicate_json_object_names,
-        )
-    except DuplicateJsonKeyError as error:
-        raise ValueError(
-            f"duplicate JSON object name in private report dry-run receipt: {error}"
-        ) from error
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
-        raise ValueError("invalid JSON in private report dry-run receipt") from error
-    if not isinstance(dry_run, dict):
-        raise ValueError("private report dry-run receipt must be a JSON object")
+    dry_run, dry_run_sha256 = load_json_with_sha256(
+        path, "private report dry-run receipt"
+    )
     if (
         not exact_schema_version(dry_run)
         or dry_run.get("status") != "dry_run"
@@ -286,7 +273,7 @@ def validate_dry_run_receipt(
 
     return {
         "path": str(path.resolve()),
-        "sha256": sha256(path),
+        "sha256": dry_run_sha256,
         "packet_revision": str(receipt["packet_revision"]),
         "status": "dry_run",
     }

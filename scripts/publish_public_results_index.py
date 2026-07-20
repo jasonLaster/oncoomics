@@ -129,11 +129,12 @@ def is_nonnegative_exact_int(value: Any) -> bool:
     return type(value) is int and value >= 0
 
 
-def load_json(path: Path, label: str) -> dict[str, Any]:
+def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str, int]:
     path = require_real_input_file(path, label)
     try:
+        payload = path.read_bytes()
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            payload.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -142,6 +143,15 @@ def load_json(path: Path, label: str) -> dict[str, Any]:
         raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
+    digest = sha256_bytes(payload)
+    if sha256(path) != digest:
+        raise ValueError(f"{label} changed during read")
+    require_real_input_file(path, label)
+    return value, digest, len(payload)
+
+
+def load_json(path: Path, label: str) -> dict[str, Any]:
+    value, _, _ = load_json_with_sha256(path, label)
     return value
 
 
@@ -287,10 +297,9 @@ def validate_public_index(
     reviewed_public_objects, reviewed_public_binding = validate_reviewed_public_receipts(
         reviewed_public_receipts
     )
-    digest = sha256(path)
+    payload, digest, byte_count = load_json_with_sha256(path, "public index")
     if not SHA256_HEX.fullmatch(digest):
         raise ValueError("public index SHA-256 is malformed")
-    payload = load_json(path, "public index")
     objects = payload.get("objects")
     object_count = payload.get("object_count")
     total_size = payload.get("total_size")
@@ -323,7 +332,7 @@ def validate_public_index(
     return {
         "path": str(path.resolve()),
         "sha256": digest,
-        "bytes": path.stat().st_size,
+        "bytes": byte_count,
         "object_count": len(normalized),
         "total_size": sum(row["size"] for row in normalized),
         "reviewed_public_receipt_count": len(reviewed_public_binding),
@@ -438,7 +447,9 @@ def upload_index(path: Path, custody: dict[str, Any], region: str) -> dict[str, 
 
 def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, Any]:
     path = require_real_input_file(path, "public index dry-run receipt")
-    receipt = load_json(path, "public index dry-run receipt")
+    receipt, receipt_sha256, _ = load_json_with_sha256(
+        path, "public index dry-run receipt"
+    )
     index = receipt.get("index")
     destination = receipt.get("destination")
     checks = receipt.get("checks")
@@ -494,7 +505,7 @@ def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, A
         raise ValueError("public index dry-run receipt did not pass preflight checks")
     return {
         "path": str(path.resolve()),
-        "sha256": sha256(path),
+        "sha256": receipt_sha256,
         "index_sha256": custody["sha256"],
         "status": "dry_run",
     }

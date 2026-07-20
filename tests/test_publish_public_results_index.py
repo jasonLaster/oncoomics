@@ -173,7 +173,7 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                 ),
                 self.assertRaisesRegex(
                     ValueError,
-                    "objects.json SHA-256 input must be a real file",
+                    "public index must be a real file",
                 ),
             ):
                 MODULE.validate_public_index(index, [])
@@ -274,6 +274,50 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             self.assertEqual(result["index"]["reviewed_public_receipt_count"], 10)
             self.assertEqual(receipt.stat().st_mode & 0o777, 0o600)
 
+    def test_public_index_digest_is_bound_to_validated_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index, receipts = self.write_receipt_bound_index(root)
+            original_index_sha256 = digest(index.read_bytes())
+            mutated = False
+
+            def mutate_after_index_validation(
+                rows: list[dict[str, object]],
+                reviewed_public_objects: dict[str, object],
+            ) -> None:
+                nonlocal mutated
+                BUILD_INDEX.validate_reviewed_public_s3_state(
+                    rows, reviewed_public_objects
+                )
+                index.write_text(
+                    '{"changed_after_validated_read": true}\n',
+                    encoding="utf-8",
+                )
+                mutated = True
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "validate_reviewed_public_s3_state",
+                    side_effect=mutate_after_index_validation,
+                ),
+                mock.patch.object(
+                    MODULE,
+                    "aws_json",
+                    side_effect=AssertionError("AWS called"),
+                ),
+            ):
+                result = MODULE.run(
+                    self.args(
+                        index,
+                        root / "receipt.json",
+                        reviewed_public_receipts=receipts,
+                    )
+                )
+
+            self.assertTrue(mutated)
+            self.assertEqual(result["index"]["sha256"], original_index_sha256)
+
     def test_apply_uses_sse_sha256_cache_control_and_index_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -326,6 +370,59 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
                     "classification": MODULE.CLASSIFICATION,
                     "sha256": digest(index.read_bytes()),
                 },
+            )
+
+    def test_apply_dry_run_receipt_digest_is_bound_to_validated_bytes(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            index, receipts = self.write_receipt_bound_index(root)
+            receipt = root / "receipt.json"
+            dry_run_receipt = self.write_dry_run_receipt(root, index, receipts)
+            original_dry_run_sha256 = digest(dry_run_receipt.read_bytes())
+            fake = FakeAws(index.read_bytes())
+            real_load = MODULE.load_json_with_sha256
+            mutated = False
+
+            def mutate_after_dry_run_parse(
+                path: Path,
+                label: str,
+            ) -> tuple[dict[str, object], str, int]:
+                nonlocal mutated
+                result = real_load(path, label)
+                if label == "public index dry-run receipt" and not mutated:
+                    dry_run_receipt.write_text(
+                        '{"changed_after_validated_read": true}\n',
+                        encoding="utf-8",
+                    )
+                    mutated = True
+                return result
+
+            with (
+                mock.patch.object(MODULE, "aws_json", side_effect=fake.aws_json),
+                mock.patch.object(MODULE, "head_object", side_effect=lambda *_: fake.public),
+                mock.patch.object(
+                    MODULE,
+                    "load_json_with_sha256",
+                    side_effect=mutate_after_dry_run_parse,
+                ),
+                mock.patch.object(MODULE, "validate_reviewed_public_apply_state"),
+            ):
+                result = MODULE.run(
+                    self.args(
+                        index,
+                        receipt,
+                        apply=True,
+                        dry_run_receipt=dry_run_receipt,
+                        reviewed_public_receipts=receipts,
+                    )
+                )
+
+            self.assertTrue(mutated)
+            self.assertEqual(
+                result["dry_run_receipt"]["sha256"],
+                original_dry_run_sha256,
             )
 
     def test_apply_rejects_reviewed_public_version_drift_before_upload(self) -> None:
