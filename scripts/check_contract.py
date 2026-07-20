@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 
@@ -280,12 +281,56 @@ def load_contract(path: Path) -> dict:
 
 
 def sha256(path: Path) -> str:
+    data, identity = read_real_hash_input_once(path)
+    digest = hashlib.sha256(data).hexdigest()
+    stable_data, stable_identity = read_real_hash_input_once(path)
+    if stable_identity != identity or hashlib.sha256(stable_data).hexdigest() != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
+
+
+def read_real_hash_input_once(path: Path) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{path.name} SHA-256 input must be a real file: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{path.name} SHA-256 input changed during read") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return data, stat_identity(opened)
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def write_text_once(path: Path, value: str) -> None:
