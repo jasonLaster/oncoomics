@@ -22,7 +22,9 @@ from build_ai_review_bundle import (
     DuplicateJsonKeyError,
     checked_source_artifact_id,
     is_exact_int,
+    require_allowed_string,
     reject_duplicate_json_object_names,
+    require_method_id,
     require_bundle_manifest,
     validate_report_manifest_support,
 )
@@ -462,7 +464,12 @@ def validate_source_manifests(
             raise ValueError(f"source report hash mismatch for {evidence_id}")
         if not isinstance(source_hashes, dict) or not source_hashes:
             raise ValueError(f"source artifact hashes are missing for {evidence_id}")
-        method = str(source.get("method_id") or source.get("route") or "")
+        try:
+            method = require_method_id(source)
+        except ValueError as error:
+            raise ValueError(
+                f"invalid or missing method identifier for {evidence_id}"
+            ) from error
         try:
             source_artifact_sha256 = sorted(
                 checked_sha256(
@@ -488,10 +495,22 @@ def validate_source_manifests(
         expected_evidence = {
             "method_id": method,
             "report_kind": str(source.get("report_kind", "method")),
-            "evidence_status": str(source.get("evidence_status", "")),
-            "authorized_hrd_state": str(source.get("authorized_hrd_state") or source.get("interpretation_status") or ""),
+            "evidence_status": require_allowed_string(
+                source.get("evidence_status"),
+                EVIDENCE_STATES,
+                f"evidence status for {evidence_id}",
+            ),
+            "authorized_hrd_state": require_allowed_string(
+                source.get("authorized_hrd_state"),
+                HRD_STATES,
+                f"authorized HRD state for {evidence_id}",
+            ),
             "classification_authorized": source.get("classification_authorized") is True,
-            "classification_qc_status": str(source.get("classification_qc_status", "not_applicable")),
+            "classification_qc_status": require_allowed_string(
+                source.get("classification_qc_status"),
+                CLASSIFICATION_QC_STATES,
+                f"classification QC state for {evidence_id}",
+            ),
             "report_sha256": report_hash,
             "source_artifact_sha256": source_artifact_sha256,
             "review_summary": source.get("review_summary"),
@@ -777,7 +796,9 @@ def validate_bundle(
         review_summary = row.get("review_summary")
         if not EVIDENCE_ID.fullmatch(evidence_id) or evidence_id in evidence:
             raise ValueError("malformed or duplicate evidence source")
-        if not METHOD_ID.fullmatch(str(row.get("method_id", ""))):
+        if not isinstance(row.get("method_id"), str) or not METHOD_ID.fullmatch(
+            row["method_id"]
+        ):
             raise ValueError("invalid method ID in evidence source")
         if row.get("evidence_status") not in EVIDENCE_STATES or row.get("authorized_hrd_state") not in HRD_STATES:
             raise ValueError("invalid evidence or authorization state")
@@ -797,7 +818,7 @@ def validate_bundle(
         if not isinstance(review_summary, dict) or not review_summary:
             raise ValueError("evidence source lacks a review summary")
         evidence[evidence_id] = row
-    if [str(row.get("method_id", "")) for row in evidence_rows] != required_methods:
+    if [row["method_id"] for row in evidence_rows] != required_methods:
         raise ValueError("evidence sources do not match the ordered required method inventory")
 
     quantitative_facts = bundle.get("quantitative_facts")

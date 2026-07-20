@@ -1227,6 +1227,108 @@ class ValidateAiReviewTests(unittest.TestCase):
                         {"E001": source_sha256},
                     )
 
+    def test_source_manifests_reject_non_exact_method_and_state_fields(self) -> None:
+        valid_hash = "a" * 64
+        cases = (
+            (
+                "legacy route fallback",
+                lambda source, evidence: (
+                    source.pop("method_id"),
+                    source.__setitem__("route", "deterministic_full_wgs"),
+                ),
+                "invalid or missing method identifier for E001",
+            ),
+            (
+                "coerced method",
+                lambda source, evidence: (
+                    source.__setitem__("method_id", 12),
+                    evidence.__setitem__("method_id", "12"),
+                ),
+                "invalid or missing method identifier for E001",
+            ),
+            (
+                "coerced evidence status",
+                lambda source, evidence: (
+                    source.__setitem__("evidence_status", True),
+                    evidence.__setitem__("evidence_status", "True"),
+                ),
+                "invalid evidence status for E001",
+            ),
+            (
+                "legacy HRD state fallback",
+                lambda source, evidence: (
+                    source.pop("authorized_hrd_state"),
+                    source.__setitem__("interpretation_status", "no_call"),
+                ),
+                "invalid authorized HRD state for E001",
+            ),
+            (
+                "coerced HRD state",
+                lambda source, evidence: (
+                    source.__setitem__("authorized_hrd_state", False),
+                    evidence.__setitem__("authorized_hrd_state", "False"),
+                ),
+                "invalid authorized HRD state for E001",
+            ),
+            (
+                "coerced classification QC",
+                lambda source, evidence: (
+                    source.__setitem__("classification_qc_status", True),
+                    evidence.__setitem__("classification_qc_status", "True"),
+                ),
+                "invalid classification QC state for E001",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                report = root / "report.md"
+                report.write_text("# Safe source report\n", encoding="utf-8")
+                source_path = root / "report_manifest.json"
+                source = {
+                    "schema_version": 1,
+                    "method_id": "deterministic_full_wgs",
+                    "report_kind": "deterministic_baseline",
+                    "evidence_status": "partial_evidence",
+                    "authorized_hrd_state": "no_call",
+                    "classification_authorized": False,
+                    "classification_qc_status": "not_applicable",
+                    "report_sha256": valid_hash,
+                    "source_sha256": {"source.json": valid_hash},
+                    "support_sha256": {"support.json": valid_hash},
+                    "review_summary": {"scope": "safe synthetic source"},
+                }
+                evidence = {
+                    "method_id": "deterministic_full_wgs",
+                    "report_kind": "deterministic_baseline",
+                    "evidence_status": "partial_evidence",
+                    "authorized_hrd_state": "no_call",
+                    "classification_authorized": False,
+                    "classification_qc_status": "not_applicable",
+                    "report_sha256": valid_hash,
+                    "source_artifact_sha256": [valid_hash],
+                    "review_summary": {"scope": "safe synthetic source"},
+                }
+                mutate(source, evidence)
+                write_json(source_path, source)
+
+                source_sha256 = VALIDATE.sha256(source_path)
+                with (
+                    mock.patch.object(VALIDATE, "sha256", return_value=valid_hash),
+                    mock.patch.object(
+                        VALIDATE,
+                        "validate_report_manifest_support",
+                        return_value=None,
+                    ),
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    VALIDATE.validate_source_manifests(
+                        [source_path],
+                        [evidence],
+                        {"E001": source_sha256},
+                    )
+
     def test_source_manifests_reject_malformed_source_artifact_ids(self) -> None:
         for malformed in (
             "",

@@ -1134,6 +1134,62 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 )
                 self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
+    def test_rejects_non_exact_source_packet_manifest_fields(self) -> None:
+        cases = (
+            (
+                "legacy route fallback",
+                {"route": "deterministic_full_wgs"},
+                {"method_id"},
+                "invalid or missing method identifier",
+            ),
+            (
+                "non-string method",
+                {"method_id": 12},
+                set(),
+                "invalid or missing method identifier",
+            ),
+            (
+                "non-string evidence status",
+                {"evidence_status": True},
+                set(),
+                "invalid evidence status for deterministic_full_wgs",
+            ),
+            (
+                "legacy interpretation fallback",
+                {"interpretation_status": "no_call"},
+                {"authorized_hrd_state"},
+                "invalid authorized HRD state for deterministic_full_wgs",
+            ),
+            (
+                "non-string HRD state",
+                {"authorized_hrd_state": False},
+                set(),
+                "invalid authorized HRD state for deterministic_full_wgs",
+            ),
+            (
+                "non-string classification QC",
+                {"classification_qc_status": True},
+                set(),
+                "invalid classification QC state for deterministic_full_wgs",
+            ),
+        )
+
+        for name, patch, remove, message in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                fixture = AiReviewBundleFixture(Path(temporary))
+                manifest_path = fixture.manifests[0]
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest.update(patch)
+                for key in remove:
+                    manifest.pop(key)
+                write_json(manifest_path, manifest)
+
+                built = fixture.run()
+
+                self.assertNotEqual(built.returncode, 0)
+                self.assertIn(message, built.stderr)
+                self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
     def test_rejects_non_boolean_source_packet_classification_authorization(
         self,
     ) -> None:

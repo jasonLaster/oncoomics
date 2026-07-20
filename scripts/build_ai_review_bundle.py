@@ -542,6 +542,19 @@ def authorized_state(rows: list[dict[str, Any]]) -> str:
     return next(iter(classified), "no_call")
 
 
+def require_allowed_string(value: Any, allowed: set[str], label: str) -> str:
+    if not isinstance(value, str) or value not in allowed:
+        raise ValueError(f"invalid {label}")
+    return value
+
+
+def require_method_id(manifest: dict[str, Any]) -> str:
+    method = manifest.get("method_id")
+    if not isinstance(method, str) or not METHOD_ID.fullmatch(method):
+        raise ValueError("invalid or missing method identifier")
+    return method
+
+
 def require_real_input_file(path: Path, label: str) -> Path:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
@@ -1004,32 +1017,34 @@ def main() -> None:
                 f"Fail-closed: unsupported report-manifest schema in {path.name}"
             )
 
-        method = str(manifest.get("method_id") or manifest.get("route") or "")
-        if not METHOD_ID.fullmatch(method):
+        try:
+            method = require_method_id(manifest)
+        except ValueError as error:
             raise SystemExit(
                 f"Fail-closed: invalid or missing method identifier in {path.name}"
-            )
+            ) from error
         if method in observed_methods:
             raise SystemExit(f"Fail-closed: duplicate method manifest for {method}")
         observed_methods.append(method)
 
-        evidence_status = str(manifest.get("evidence_status", ""))
-        if evidence_status not in ALLOWED_EVIDENCE_STATES:
-            raise SystemExit(f"Fail-closed: invalid evidence status for {method}")
-        hrd_state = str(
-            manifest.get("authorized_hrd_state")
-            or manifest.get("interpretation_status")
-            or ""
-        )
-        if hrd_state not in ALLOWED_HRD_STATES:
-            raise SystemExit(f"Fail-closed: invalid authorized HRD state for {method}")
-        classification_qc = str(
-            manifest.get("classification_qc_status", "not_applicable")
-        )
-        if classification_qc not in ALLOWED_CLASSIFICATION_QC:
-            raise SystemExit(
-                f"Fail-closed: invalid classification QC state for {method}"
+        try:
+            evidence_status = require_allowed_string(
+                manifest.get("evidence_status"),
+                ALLOWED_EVIDENCE_STATES,
+                f"evidence status for {method}",
             )
+            hrd_state = require_allowed_string(
+                manifest.get("authorized_hrd_state"),
+                ALLOWED_HRD_STATES,
+                f"authorized HRD state for {method}",
+            )
+            classification_qc = require_allowed_string(
+                manifest.get("classification_qc_status"),
+                ALLOWED_CLASSIFICATION_QC,
+                f"classification QC state for {method}",
+            )
+        except ValueError as error:
+            raise SystemExit(f"Fail-closed: {error}") from error
         report_hash = manifest.get("report_sha256")
         if not isinstance(report_hash, str) or not HEX64.fullmatch(report_hash):
             raise SystemExit(f"Fail-closed: missing report SHA-256 for {method}")
